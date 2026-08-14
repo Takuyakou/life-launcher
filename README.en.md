@@ -23,6 +23,24 @@ Life Launcher is a local-first Windows desktop launcher for turning a chosen nex
 
 The screenshots are generated deterministically from synthetic data. They do not contain real user configuration, activity, paths, or notes.
 
+## Download
+
+### Installer - Recommended
+
+Use this for the normal installation flow: `Life-Launcher-v1.0.0-windows-x64-setup.exe`
+
+### Standalone EXE
+
+Run directly without installing: `Life-Launcher-v1.0.0-windows-x64.exe`
+
+### Portable ZIP
+
+Extract and run the portable package: `Life-Launcher-v1.0.0-windows-x64-portable.zip`
+
+After the release is published, downloads will be available from [GitHub Releases](https://github.com/Takuyakou/life-launcher/releases). Verify release files with `SHA256SUMS.txt`.
+
+The release binaries target Windows x64 and require Microsoft Edge WebView2 Runtime.
+
 ## Requirements
 
 - Windows 10 or later

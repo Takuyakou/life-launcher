@@ -1,15 +1,21 @@
 param(
-  [switch]$SkipBuild
+  [switch]$SkipBuild,
+  [string]$CandidateRoot
 )
 
 $ErrorActionPreference = "Stop"
 
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$ReleaseRoot = Join-Path $RepoRoot "release"
-$PackageDir = Join-Path $ReleaseRoot "LifeLauncher-v1.0.0"
-$ZipPath = Join-Path $ReleaseRoot "LifeLauncher-v1.0.0-windows.zip"
+$Package = Get-Content -Raw (Join-Path $RepoRoot "package.json") | ConvertFrom-Json
+$Version = $Package.version
+if (-not $CandidateRoot) {
+  $CandidateRoot = Join-Path $RepoRoot "release-candidate\v$Version"
+}
+$CandidateRoot = [System.IO.Path]::GetFullPath($CandidateRoot)
 $ExeSource = Join-Path $RepoRoot "src-tauri\target\release\life-launcher.exe"
-$ExeTarget = Join-Path $PackageDir "Life Launcher.exe"
+$ExeTarget = Join-Path $CandidateRoot "Life-Launcher-v$Version-windows-x64.exe"
+$ZipPath = Join-Path $CandidateRoot "Life-Launcher-v$Version-windows-x64-portable.zip"
+$PortableStage = Join-Path $CandidateRoot ".portable-stage"
 
 function Assert-PathInsideRepo([string]$Path) {
   $fullPath = [System.IO.Path]::GetFullPath($Path)
@@ -19,11 +25,19 @@ function Assert-PathInsideRepo([string]$Path) {
   }
 }
 
-Assert-PathInsideRepo $ReleaseRoot
-Assert-PathInsideRepo $PackageDir
+Assert-PathInsideRepo $CandidateRoot
+Assert-PathInsideRepo $ExeTarget
 Assert-PathInsideRepo $ZipPath
+Assert-PathInsideRepo $PortableStage
 
 Set-Location $RepoRoot
+
+$ReleaseRustFlags = @(
+  "--remap-path-prefix=$env:USERPROFILE=<USERPROFILE>",
+  "--remap-path-prefix=$RepoRoot=<SOURCE_ROOT>"
+) -join " "
+$env:RUSTFLAGS = (@($env:RUSTFLAGS, $ReleaseRustFlags) |
+  Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) -join " "
 
 $CargoBin = Join-Path $env:USERPROFILE ".cargo\bin"
 if (Test-Path (Join-Path $CargoBin "cargo.exe")) {
@@ -33,7 +47,7 @@ if (Test-Path (Join-Path $CargoBin "cargo.exe")) {
 if (-not $SkipBuild) {
   npm.cmd run tauri -- build --no-bundle
   if ($LASTEXITCODE -ne 0) {
-    throw "Tauri portable build failed with exit code $LASTEXITCODE"
+    throw "Tauri standalone build failed with exit code $LASTEXITCODE"
   }
 }
 
@@ -41,25 +55,35 @@ if (-not (Test-Path $ExeSource)) {
   throw "Built exe not found: $ExeSource"
 }
 
-New-Item -ItemType Directory -Force -Path $ReleaseRoot | Out-Null
-if (Test-Path $PackageDir) {
-  Assert-PathInsideRepo $PackageDir
-  Remove-Item -LiteralPath $PackageDir -Recurse -Force
+New-Item -ItemType Directory -Force -Path $CandidateRoot | Out-Null
+if (Test-Path $ExeTarget) {
+  Remove-Item -LiteralPath $ExeTarget -Force
 }
 if (Test-Path $ZipPath) {
-  Assert-PathInsideRepo $ZipPath
   Remove-Item -LiteralPath $ZipPath -Force
 }
+if (Test-Path $PortableStage) {
+  Remove-Item -LiteralPath $PortableStage -Recurse -Force
+}
 
-New-Item -ItemType Directory -Force -Path $PackageDir | Out-Null
+New-Item -ItemType Directory -Force -Path $PortableStage | Out-Null
 Copy-Item -LiteralPath $ExeSource -Destination $ExeTarget -Force
-Copy-Item -LiteralPath (Join-Path $RepoRoot "README.md") -Destination (Join-Path $PackageDir "README.md") -Force
-Copy-Item -LiteralPath (Join-Path $RepoRoot "START-HERE.txt") -Destination (Join-Path $PackageDir "START-HERE.txt") -Force
+Copy-Item -LiteralPath $ExeTarget -Destination (Join-Path $PortableStage (Split-Path $ExeTarget -Leaf)) -Force
 
-Compress-Archive -Path (Join-Path $PackageDir "*") -DestinationPath $ZipPath -Force
+$PortableReadme = @"
+Life Launcher v$Version - Portable ZIP
 
-Write-Host "Created package:"
-Write-Host $ZipPath
-Write-Host ""
-Write-Host "Zip contents are ready to run after extraction:"
+1. Extract this ZIP to a folder.
+2. Run Life-Launcher-v$Version-windows-x64.exe.
+
+Microsoft Edge WebView2 Runtime is required. User data is stored outside this folder
+under %APPDATA%\life-launcher. This package does not contain user data.
+"@
+Set-Content -LiteralPath (Join-Path $PortableStage "README.txt") -Value $PortableReadme -Encoding UTF8
+Compress-Archive -Path (Join-Path $PortableStage "*") -DestinationPath $ZipPath -Force
+Remove-Item -LiteralPath $PortableStage -Recurse -Force
+
+Write-Host "Created standalone executable:"
 Write-Host $ExeTarget
+Write-Host "Created portable ZIP:"
+Write-Host $ZipPath

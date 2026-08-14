@@ -3,6 +3,7 @@ dist/
 target/
 src-tauri/target/
 release/
+release-candidate/
 .local-evaluation/
 test-results/
 playwright-report/

@@ -10,6 +10,7 @@
     "tauri": "tauri",
     "package:windows": "powershell -ExecutionPolicy Bypass -File scripts/package-windows.ps1",
     "package:windows:installer": "powershell -ExecutionPolicy Bypass -File scripts/package-windows-installer.ps1",
+    "package:windows:rc": "powershell -ExecutionPolicy Bypass -File scripts/prepare-release-candidate.ps1",
     "lint": "set ESLINT_USE_FLAT_CONFIG=false&& eslint . --ext ts,tsx --max-warnings=0",
     "format": "prettier --write .",
     "test:visual": "playwright test",

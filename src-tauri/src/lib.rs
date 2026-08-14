@@ -126,6 +126,17 @@ pub fn run() {
 
             apply_dashboard_settings_at_startup(app.handle())?;
             start_config_watcher(app.handle().clone())?;
+            if let Ok(raw_delay) = std::env::var("LIFE_LAUNCHER_RELEASE_SMOKE_EXIT_AFTER_MS") {
+                if let Ok(delay_ms) = raw_delay.parse::<u64>() {
+                    if (1_000..=120_000).contains(&delay_ms) {
+                        let app_handle = app.handle().clone();
+                        std::thread::spawn(move || {
+                            std::thread::sleep(std::time::Duration::from_millis(delay_ms));
+                            app_handle.exit(0);
+                        });
+                    }
+                }
+            }
             Ok(())
         })
         .on_window_event(|window, event| {
