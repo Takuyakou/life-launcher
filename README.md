@@ -1,36 +1,36 @@
 # Life Launcher
 
-**English** | [日本語](README.ja.md)
+**日本語** | [English](README.en.md)
 
-Life Launcher is a local-first Windows desktop launcher for turning a chosen next step into action. It combines a small Quick sidebar, a searchable command dictionary, daily focus, timers, session records, and a read-only instruction viewer.
+Life Launcher は、選んだ「次の一手」を行動に移すためのローカル完結型 Windows デスクトップランチャーです。小さな Quick サイドバー、検索可能なコマンド辞書、今日のフォーカス、タイマー、セッション記録、読み取り専用の手順ビューアを1つにまとめています。
 
-![Life Launcher main dashboard](docs/screenshots/main-dashboard.png)
+![Life Launcher メインダッシュボード](docs/screenshots/main-dashboard.png)
 
-## Highlights
+## 主な機能
 
-- Keep frequently used apps, folders, files, and links in the Quick sidebar.
-- Search the larger dictionary with `Ctrl+K`.
-- Choose a daily victory condition, up to three daily items, and one recommended next step.
-- Start short or normal timers through the same session-recording path.
-- Review local session history and project totals.
-- Read Markdown, text, and sanitized HTML instructions from folders you select.
+- よく使うアプリ・フォルダ・ファイル・リンクを Quick サイドバーに登録。
+- `Ctrl+K` で大きな辞書を検索。
+- 今日の勝利条件、今日の3件(最大3件)、おすすめの次の一手を選択。
+- ショート/ノーマルのタイマーを、同じセッション記録経路から開始。
+- ローカルのセッション履歴とプロジェクト合計を確認。
+- 選んだフォルダから Markdown・テキスト・サニタイズ済み HTML の手順を閲覧。
 
-## Screenshots
+## スクリーンショット
 
-| Dictionary | Instruction viewer |
+| 辞書 | 手順ビューア |
 | --- | --- |
-| ![Searchable dictionary](docs/screenshots/dictionary.png) | ![Instruction viewer](docs/screenshots/instruction-viewer.png) |
+| ![検索可能な辞書](docs/screenshots/dictionary.png) | ![手順ビューア](docs/screenshots/instruction-viewer.png) |
 
-The screenshots are generated deterministically from synthetic data. They do not contain real user configuration, activity, paths, or notes.
+スクリーンショットは合成データから決定論的に生成されています。実際のユーザー設定・アクティビティ・パス・ノートは含まれていません。
 
-## Requirements
+## 動作要件
 
-- Windows 10 or later
+- Windows 10 以降
 - Node.js 24
-- Rust stable with the MSVC toolchain
-- Microsoft Edge WebView2 Runtime
+- Rust stable(MSVC ツールチェーン)
+- Microsoft Edge WebView2 ランタイム
 
-## Development
+## 開発
 
 ```powershell
 npm.cmd ci
@@ -40,42 +40,42 @@ npm.cmd run test:visual
 cargo check --manifest-path src-tauri/Cargo.toml
 ```
 
-Run the Tauri development application:
+Tauri 開発用アプリを起動:
 
 ```powershell
 npm.cmd run tauri -- dev
 ```
 
-Build a local Windows package:
+ローカル向け Windows パッケージをビルド:
 
 ```powershell
 npm.cmd run package:windows
 ```
 
-## Tech Stack
+## 技術スタック
 
-- Tauri 2 and Rust
-- React 18 and TypeScript
+- Tauri 2 / Rust
+- React 18 / TypeScript
 - Vite 8
-- Playwright for deterministic visual checks
-- Zod for frontend data validation
+- Playwright(決定論的なビジュアルチェック)
+- Zod(フロントエンドのデータ検証)
 
-## Security
+## セキュリティ
 
-The public source includes bounded favicon retrieval, local/private destination rejection, redirect revalidation, response validation, and window-specific Tauri capabilities. Automated Rust tests cover the network and permission contracts. These controls reduce known risks but are not a guarantee of security.
+公開ソースには、範囲を制限した favicon 取得、ローカル/プライベート宛先の拒否、リダイレクト再検証、レスポンス検証、ウィンドウ単位の Tauri ケーパビリティが含まれます。ネットワークと権限の契約は Rust の自動テストでカバーされています。これらの対策は既知のリスクを低減しますが、セキュリティを保証するものではありません。
 
-## Local Data And Network Use
+## ローカルデータとネットワーク利用
 
-Life Launcher does not require an account or a Life Launcher server. Configuration, sessions, notes, backups, and icon cache data are stored locally under `%APPDATA%\life-launcher` or in a backup folder selected by the user.
+Life Launcher はアカウントや専用サーバーを必要としません。設定・セッション・ノート・バックアップ・アイコンキャッシュは、`%APPDATA%\life-launcher` またはユーザーが選んだバックアップフォルダにローカル保存されます。
 
-The application has no telemetry, analytics, crash-reporting service, cloud synchronization, or automatic updater. When a URL is registered, Life Launcher may fetch that site's favicon directly from the target origin. The fetch path rejects obvious local/private destinations and applies redirect, timeout, and response-size limits. Opening a registered URL launches the user's browser, whose network behavior is outside Life Launcher.
+テレメトリ、解析、クラッシュレポート、クラウド同期、自動アップデータはありません。URL を登録すると、Life Launcher はその favicon を対象オリジンから直接取得する場合があります。取得経路は明らかなローカル/プライベート宛先を拒否し、リダイレクト・タイムアウト・レスポンスサイズの制限を適用します。登録した URL を開くとユーザーのブラウザが起動し、そのネットワーク挙動は Life Launcher の管理外です。
 
-See [PRIVACY.md](PRIVACY.md) and [SECURITY.md](SECURITY.md) for details.
+詳細は [PRIVACY.md](PRIVACY.md) と [SECURITY.md](SECURITY.md) を参照してください。
 
-## Public Source
+## 公開ソースについて
 
-This repository starts at Life Launcher v1.0.0 with a clean public history. It intentionally excludes private development history, internal plans and reports, real runtime data, private screenshots, build outputs, and release binaries.
+このリポジトリは Life Launcher v1.0.0 から、クリーンな公開履歴で始まっています。非公開の開発履歴、内部の計画書・報告書、実際の実行データ、非公開スクリーンショット、ビルド成果物、リリースバイナリは意図的に除外しています。
 
-## License
+## ライセンス
 
-No open-source license is granted. The source is visible for inspection, but use, modification, and redistribution are not permitted without the copyright holder's explicit permission. All rights reserved.
+オープンソースライセンスは付与されていません。ソースは閲覧可能ですが、著作権者の明示的な許可なく、使用・改変・再配布は認められません。All rights reserved.

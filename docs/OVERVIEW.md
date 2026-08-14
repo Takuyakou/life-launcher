@@ -91,7 +91,7 @@ Life Launcher
 ## 関連文書
 
 - [詳細UI/UX・機能仕様](spec/current-spec.md)
-- [README (English)](../README.md) / [README (日本語)](../README.ja.md)
+- [README (日本語)](../README.md) / [README (English)](../README.en.md)
 - [CHANGELOG](../CHANGELOG.md)
 - [Privacy](../PRIVACY.md)
 - [Security](../SECURITY.md)
