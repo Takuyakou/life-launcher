@@ -1,5 +1,7 @@
 # Life Launcher
 
+**English** | [日本語](README.ja.md)
+
 Life Launcher is a local-first Windows desktop launcher for turning a chosen next step into action. It combines a small Quick sidebar, a searchable command dictionary, daily focus, timers, session records, and a read-only instruction viewer.
 
 ![Life Launcher main dashboard](docs/screenshots/main-dashboard.png)
