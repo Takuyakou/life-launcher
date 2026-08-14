@@ -1,0 +1,14 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "dictionary-capability",
+  "description": "Dictionary window permissions for visibility, focus, movement, resize, and state persistence",
+  "windows": ["dictionary"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-hide",
+    "core:window:allow-set-focus",
+    "core:window:allow-start-dragging",
+    "core:window:allow-start-resize-dragging",
+    "window-state:allow-save-window-state"
+  ]
+}

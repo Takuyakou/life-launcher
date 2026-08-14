@@ -1,0 +1,10 @@
+export const TODAY_ITEM_LIMIT = 3;
+export const WEEKLY_FOCUS_LIMIT = 3;
+export const EXECUTION_TRIGGER_MAX_CHARS = 40;
+export const OVERLAY_PAGE_NAME_MAX_CHARS = 24;
+export const TOAST_TIMEOUT_MS = 4200;
+export const TIMER_TICK_MS = 1000;
+export const MAX_TIMER_MINUTES = 240;
+export const DEFAULT_BUTTON_GROUP = "その他";
+export const GROUP_COLLAPSE_STORAGE_KEY = "life-launcher.sidebar-groups";
+export const WEEKLY_REVIEW_SEEN_STORAGE_KEY = "life-launcher.weekly-review-seen";

@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm.cmd ci
+      - run: npx.cmd playwright install chromium
+      - run: npm.cmd run public:check
+      - run: npm.cmd run lint
+      - run: npm.cmd run build
+      - run: npm.cmd run test:visual
+      - run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
+      - run: cargo check --manifest-path src-tauri/Cargo.toml
+      - run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+      - run: cargo test --manifest-path src-tauri/Cargo.toml
+      - run: npm.cmd audit
+        continue-on-error: true
+      - run: npm.cmd audit --omit=dev

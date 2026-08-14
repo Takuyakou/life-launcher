@@ -1,0 +1,38 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Life Launcher",
+  "version": "1.0.0",
+  "identifier": "com.takuyakou.lifelauncher",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://127.0.0.1:1420",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Life Launcher",
+        "width": 1080,
+        "height": 680,
+        "minWidth": 860,
+        "minHeight": 560,
+        "resizable": true,
+        "fullscreen": false,
+        "visible": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost; img-src 'self' asset: http://asset.localhost data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'none'; frame-src 'self'; form-action 'none'",
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["$HOME/AppData/Roaming/life-launcher/icons/**/*"]
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all"
+  }
+}
