@@ -1,7 +1,7 @@
 # Life Launcher Overview
 
 > 最終更新: 2026-08-14 / Public v1.0.0
-> UI/UXの詳細は [UI/UX・機能仕様書](spec/ui-ux.md) を参照してください。
+> UI/UXの詳細は [UI/UX・機能仕様書](spec/current-spec.md) を参照してください。
 
 ## 何ができるアプリか
 
@@ -90,7 +90,7 @@ Life Launcher
 
 ## 関連文書
 
-- [詳細UI/UX・機能仕様](spec/ui-ux.md)
+- [詳細UI/UX・機能仕様](spec/current-spec.md)
 - [README (English)](../README.md) / [README (日本語)](../README.ja.md)
 - [CHANGELOG](../CHANGELOG.md)
 - [Privacy](../PRIVACY.md)
