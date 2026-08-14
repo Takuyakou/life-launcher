@@ -1,16 +1,39 @@
 param(
-  [switch]$SkipBuild
+  [switch]$SkipBuild,
+  [string]$CandidateRoot
 )
 
 $ErrorActionPreference = "Stop"
 
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$Package = Get-Content -Raw (Join-Path $RepoRoot "package.json") | ConvertFrom-Json
+$Version = $Package.version
+if (-not $CandidateRoot) {
+  $CandidateRoot = Join-Path $RepoRoot "release-candidate\v$Version"
+}
+$CandidateRoot = [System.IO.Path]::GetFullPath($CandidateRoot)
 $BundleDir = Join-Path $RepoRoot "src-tauri\target\release\bundle\nsis"
-$ReleaseRoot = Join-Path $RepoRoot "release"
-$PackageDir = Join-Path $ReleaseRoot "LifeLauncher-v1.0.0"
-$InstallerTarget = Join-Path $PackageDir "Life Launcher_1.0.0_x64-setup.exe"
+$InstallerTarget = Join-Path $CandidateRoot "Life-Launcher-v$Version-windows-x64-setup.exe"
+
+function Assert-PathInsideRepo([string]$Path) {
+  $fullPath = [System.IO.Path]::GetFullPath($Path)
+  $repo = [System.IO.Path]::GetFullPath($RepoRoot)
+  if (-not $fullPath.StartsWith($repo, [System.StringComparison]::OrdinalIgnoreCase)) {
+    throw "Refusing to touch path outside repo: $fullPath"
+  }
+}
+
+Assert-PathInsideRepo $CandidateRoot
+Assert-PathInsideRepo $InstallerTarget
 
 Set-Location $RepoRoot
+
+$ReleaseRustFlags = @(
+  "--remap-path-prefix=$env:USERPROFILE=<USERPROFILE>",
+  "--remap-path-prefix=$RepoRoot=<SOURCE_ROOT>"
+) -join " "
+$env:RUSTFLAGS = (@($env:RUSTFLAGS, $ReleaseRustFlags) |
+  Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) -join " "
 
 $CargoBin = Join-Path $env:USERPROFILE ".cargo\bin"
 if (Test-Path (Join-Path $CargoBin "cargo.exe")) {
@@ -38,7 +61,7 @@ if ($Installers.Count -eq 0) {
 Write-Host "Created installer:"
 Write-Host $Installers[0].FullName
 
-New-Item -ItemType Directory -Force -Path $PackageDir | Out-Null
+New-Item -ItemType Directory -Force -Path $CandidateRoot | Out-Null
 Copy-Item -LiteralPath $Installers[0].FullName -Destination $InstallerTarget -Force
 Write-Host "Copied installer to:"
 Write-Host $InstallerTarget

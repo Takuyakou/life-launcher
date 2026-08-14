@@ -23,6 +23,24 @@ Life Launcher は、選んだ「次の一手」を行動に移すためのロー
 
 スクリーンショットは合成データから決定論的に生成されています。実際のユーザー設定・アクティビティ・パス・ノートは含まれていません。
 
+## Download
+
+### Installer - Recommended
+
+通常はこちらを使用してください: `Life-Launcher-v1.0.0-windows-x64-setup.exe`
+
+### Standalone EXE
+
+インストールせず直接起動する版です: `Life-Launcher-v1.0.0-windows-x64.exe`
+
+### Portable ZIP
+
+ZIPを展開して使用する版です: `Life-Launcher-v1.0.0-windows-x64-portable.zip`
+
+正式リリース後は[GitHub Releases](https://github.com/Takuyakou/life-launcher/releases)からダウンロードできます。配布ファイルの整合性は`SHA256SUMS.txt`で確認してください。
+
+配布バイナリはWindows x64向けです。Microsoft Edge WebView2 Runtimeが必要です。
+
 ## 動作要件
 
 - Windows 10 以降

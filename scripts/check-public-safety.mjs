@@ -9,6 +9,7 @@ const skippedDirectories = new Set([
   "dist",
   "target",
   "release",
+  "release-candidate",
   ".local-evaluation",
   "test-results",
   "playwright-report",
