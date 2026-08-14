@@ -6,7 +6,7 @@
 
 Life Launcherは、迷っているときに「今やる一手」を1つ示し、必要な環境を開いて、開始まで連れていくlocal-firstのWindowsデスクトップアプリです。
 
-[ブラウザで試す](https://life-launcher-web.takuyakou.workers.dev) ・ [Windows版 v1.0.0をダウンロード](https://github.com/Takuyakou/life-launcher/releases/tag/v1.0.0)
+[Windows版をダウンロード](https://github.com/Takuyakou/life-launcher/releases/tag/v1.0.0)
 
 ![Life Launcher メインダッシュボード](docs/screenshots/main-dashboard.png)
 
@@ -14,11 +14,11 @@ Life Launcherは、迷っているときに「今やる一手」を1つ示し、
 
 インストールせず、ブラウザからLife Launcherの中心的な流れを試せます。
 
-[Web Demoを開く](https://life-launcher-web.takuyakou.workers.dev) ・ [Web Demoのソースを見る](https://github.com/Takuyakou/life-launcher-web)
+[Web Demoを開く](https://life-launcher-web.takuyakou.workers.dev)
 
 <img src="docs/screenshots/web-demo.png" alt="Life Launcher Web Demo" width="720">
 
-Web Demoではsynthetic dataを使用し、変更した状態をブラウザのlocalStorageに保存します。Windows版のアプリ・ファイル・URL起動は実際には行わず、「開始すると環境が揃う」流れをDemo演出として確認できます。Windows製品版の完全移植ではありません。
+Web Demoではsynthetic dataを使用し、変更した状態をブラウザのlocalStorageに保存します。Windows版のアプリ・ファイル・URL起動は実際には行わず、「開始すると環境が揃う」流れをDemo演出として確認できます。※Windows製品版の完全移植ではありません。
 
 ## 主な機能
 
@@ -45,11 +45,11 @@ Web Demoではsynthetic dataを使用し、変更した状態をブラウザのl
 | --- | --- |
 | ![検索可能な辞書](docs/screenshots/dictionary.png) | ![手順書ビューア](docs/screenshots/instruction-viewer.png) |
 
-スクリーンショットは合成データから決定論的に生成されています。実際のユーザー設定・アクティビティ・パス・ノートは含まれていません。
+スクリーンショットは合成データから生成されています。実際のユーザー設定・アクティビティ・パス・ノートは含まれていません。
 
 ## Download
 
-Life Launcher v1.0.0は、[GitHub Releases](https://github.com/Takuyakou/life-launcher/releases/tag/v1.0.0)からダウンロードできます。
+Life Launcherは、[GitHub Releases](https://github.com/Takuyakou/life-launcher/releases/tag/v1.0.0)からダウンロードできます。
 
 ### Installer - Recommended
 
@@ -117,7 +117,7 @@ npm.cmd run package:windows
 
 ## セキュリティ
 
-公開ソースには、範囲を制限したfavicon取得、ローカル / プライベート宛先の拒否、リダイレクト再検証、レスポンス検証、ウィンドウ単位のTauri capabilitiesが含まれます。ネットワークと権限の契約はRustの自動テストでカバーされています。これらの対策は既知のリスクを低減しますが、セキュリティを保証するものではありません。
+公開ソースには、範囲を制限したfavicon取得、ローカル / プライベート宛先の拒否、リダイレクト再検証、レスポンス検証、ウィンドウ単位のTauri capabilitiesが含まれます。ネットワークと権限の契約はRustの自動テストでカバーされています。
 
 ## ローカルデータとネットワーク利用
 

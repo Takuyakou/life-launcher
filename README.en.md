@@ -6,7 +6,7 @@
 
 Life Launcher is a local-first Windows desktop app that presents one next step, opens the environment needed for it, and helps you move from deciding to starting.
 
-[Try it in your browser](https://life-launcher-web.takuyakou.workers.dev) · [Download Life Launcher v1.0.0 for Windows](https://github.com/Takuyakou/life-launcher/releases/tag/v1.0.0)
+[Download Life Launcher for Windows](https://github.com/Takuyakou/life-launcher/releases/tag/v1.0.0)
 
 ![Life Launcher main dashboard](docs/screenshots/main-dashboard.png)
 
@@ -14,11 +14,11 @@ Life Launcher is a local-first Windows desktop app that presents one next step, 
 
 Try the central Life Launcher flow in your browser without installing the Windows app.
 
-[Open the Web Demo](https://life-launcher-web.takuyakou.workers.dev) · [View the Web Demo source](https://github.com/Takuyakou/life-launcher-web)
+[Open the Web Demo](https://life-launcher-web.takuyakou.workers.dev)
 
 <img src="docs/screenshots/web-demo.png" alt="Life Launcher Web Demo" width="720">
 
-The Web Demo uses synthetic data and stores changes in your browser's localStorage. It simulates the “start and prepare the environment” flow without launching local apps, files, or URLs. It is a showcase, not a complete port of the Windows product.
+The Web Demo uses synthetic data and stores changes in your browser's localStorage. It simulates the “start and prepare the environment” flow without launching local apps, files, or URLs. Note: it is not a complete port of the Windows product.
 
 ## Highlights
 
@@ -45,11 +45,11 @@ The Web Demo uses synthetic data and stores changes in your browser's localStora
 | --- | --- |
 | ![Searchable dictionary](docs/screenshots/dictionary.png) | ![Instruction Viewer](docs/screenshots/instruction-viewer.png) |
 
-The screenshots are generated deterministically from synthetic data. They do not contain real user configuration, activity, paths, or notes.
+The screenshots are generated from synthetic data. They do not contain real user configuration, activity, paths, or notes.
 
 ## Download
 
-Download Life Launcher v1.0.0 from [GitHub Releases](https://github.com/Takuyakou/life-launcher/releases/tag/v1.0.0).
+Download Life Launcher from [GitHub Releases](https://github.com/Takuyakou/life-launcher/releases/tag/v1.0.0).
 
 ### Installer - Recommended
 
@@ -117,7 +117,7 @@ Public quality checks cover React / TypeScript lint and build, Playwright Visual
 
 ## Security
 
-The public source includes bounded favicon retrieval, local and private destination rejection, redirect revalidation, response validation, and window-specific Tauri capabilities. Automated Rust tests cover the network and permission contracts. These controls reduce known risks but do not guarantee security.
+The public source includes bounded favicon retrieval, local and private destination rejection, redirect revalidation, response validation, and window-specific Tauri capabilities. Automated Rust tests cover the network and permission contracts.
 
 ## Local Data And Network Use
 
