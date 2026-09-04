@@ -9,6 +9,7 @@
 - Base branch: `main`
 - Release/source commit audited: `1b0459d3f0b637e2aad4143429a6ea304effe917`
 - Work branch: `docs/p6-00-audit-baseline`
+- Pull request: [#6](https://github.com/Takuyakou/life-launcher/pull/6)
 - Product behavior changes: none
 
 ## Delivered

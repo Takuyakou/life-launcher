@@ -9,7 +9,7 @@
       "status": "WAITING_HUMAN_APPROVAL",
       "human_approved": false,
       "branch": "docs/p6-00-audit-baseline",
-      "pull_request": null,
+      "pull_request": "https://github.com/Takuyakou/life-launcher/pull/6",
       "report": "docs/phase6/workreports/p6-00-report.md"
     },
     "P6.1-00": {
