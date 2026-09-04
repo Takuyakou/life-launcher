@@ -121,6 +121,8 @@ pub struct TodayItem {
     pub text: String,
     pub done: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub trigger: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub project_id: Option<String>,
@@ -739,6 +741,7 @@ pub fn sample_config() -> AppConfig {
                 TodayItem {
                     text: "最初の一手を決める".to_string(),
                     done: false,
+                    source_key: None,
                     trigger: None,
                     project_id: None,
                     button_ids: Vec::new(),
@@ -748,6 +751,7 @@ pub fn sample_config() -> AppConfig {
                 TodayItem {
                     text: "起動ボタンを1つ試す".to_string(),
                     done: false,
+                    source_key: None,
                     trigger: None,
                     project_id: None,
                     button_ids: Vec::new(),

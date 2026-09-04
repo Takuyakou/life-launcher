@@ -3,18 +3,19 @@
   "target_version": "v1.1.0",
   "workflow": "loop-vault-style-single-start-human-gated",
   "start_prompt_required_once": "P6-CODEX-START.txt",
-  "current_stage": "P6.0-00",
+  "current_stage": "P6.1-00",
   "stages": {
     "P6.0-00": {
-      "status": "WAITING_HUMAN_APPROVAL",
-      "human_approved": false,
+      "status": "APPROVED",
+      "human_approved": true,
       "branch": "docs/p6-00-audit-baseline",
       "pull_request": "https://github.com/Takuyakou/life-launcher/pull/6",
       "report": "docs/phase6/workreports/p6-00-report.md"
     },
     "P6.1-00": {
-      "status": "BLOCKED_BY_P6.0_APPROVAL",
-      "human_approved": false
+      "status": "IN_PROGRESS",
+      "human_approved": false,
+      "branch": "feature/p6-01-main-decision-reduction"
     },
     "P6.2-00": {
       "status": "BLOCKED_BY_P6.1_APPROVAL",

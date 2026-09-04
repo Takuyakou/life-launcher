@@ -48,7 +48,9 @@ function createConfig(): AppConfig {
         overlayPageId: "tools",
         aliases: ["editor", "編集"],
         description: "作業を始めるためのサンプルアプリ",
-        actions: [{ type: "open_app", payload: { path: "C:\\PublicDemo\\Apps\\SampleEditor.exe" } }],
+        actions: [
+          { type: "open_app", payload: { path: "C:\\PublicDemo\\Apps\\SampleEditor.exe" } },
+        ],
       },
       {
         id: "sample-documents",
@@ -106,8 +108,17 @@ function createConfig(): AppConfig {
       date: FIXTURE_DATE,
       victory: { text: "最優先の一手を始める", done: false },
       items: [
-        { text: "資料を1ページ読む", done: false, projectId: "sample-learning" },
-        { text: "机の上を5分だけ整える", done: true },
+        {
+          text: "資料を1ページ読む",
+          done: false,
+          sourceKey: "project:sample-learning",
+          projectId: "sample-learning",
+        },
+        {
+          text: "机の上を5分だけ整える",
+          done: true,
+          sourceKey: "manual:fixture-cleanup",
+        },
       ],
     },
     inbox: [

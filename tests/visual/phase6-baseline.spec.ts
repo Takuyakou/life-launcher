@@ -83,6 +83,7 @@ for (const viewport of [
   { width: 1366, height: 768 },
   { width: 1440, height: 900 },
   { width: 1920, height: 1080 },
+  { width: 1000, height: 900 },
 ]) {
   test(`capture Phase 6 main ${viewport.width}x${viewport.height}`, async ({ page }) => {
     const errors = await prepare(page, "/", "main", viewport);
@@ -99,6 +100,7 @@ test("capture Today Builder at five candidates", async ({ page }) => {
   const errors = await prepare(page, "/", "main", { width: 1440, height: 900 });
   await page.locator(".todayBuilderDisclosure").click();
   await expect(page.locator("[data-today-builder-index]")).toHaveCount(5);
+  await expect(page.locator(".todayBuilderPagination")).toContainText("1 / 2");
   await page.locator(".todayBuilderBand").screenshot({
     path: resolve(SCREENSHOT_DIR, "today-builder-5-items.png"),
   });
@@ -114,14 +116,18 @@ test("capture and reload Today Builder above five candidates", async ({ page }) 
     createLargeBuilderFixture(),
   );
   await page.locator(".todayBuilderDisclosure").click();
-  await expect(page.locator("[data-today-builder-index]")).toHaveCount(8);
+  await expect(page.locator("[data-today-builder-index]")).toHaveCount(5);
+  await expect(page.locator(".todayBuilderPagination")).toContainText("1 / 2");
   await page.locator(".todayBuilderBand").screenshot({
     path: resolve(SCREENSHOT_DIR, "today-builder-8-items.png"),
   });
 
+  await page.getByRole("button", { name: "次のページ" }).click();
+  await expect(page.locator("[data-today-builder-index]")).toHaveCount(4);
   await page.reload();
   await page.locator(".todayBuilderDisclosure").click();
-  await expect(page.locator("[data-today-builder-index]")).toHaveCount(8);
+  await expect(page.locator("[data-today-builder-index]")).toHaveCount(5);
+  await expect(page.locator(".todayBuilderPagination")).toContainText("1 / 2");
   expect(errors).toEqual([]);
 });
 
