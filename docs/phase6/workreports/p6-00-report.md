@@ -59,4 +59,4 @@ Recommended defaults are candidate-only dismissal and completion on dialog confi
 
 ## Stop gate
 
-P6.1 implementation has not started. Main merge, tag, release, and Web Demo changes were not performed.
+P6.1 implementation has not started. Main merge, tag, release, and Web Demo changes were not performed. The only product-source edit is a behavior-preserving `chunks_exact(2)` to `as_chunks::<2>()` migration required by the Rust 1.98 Clippy gate.

@@ -3,7 +3,7 @@
 ## Scope
 
 Phase 6実装前の`main`を、source commit
-`1b0459d3f0b637e2aad4143429a6ea304effe917`で監査した。製品挙動は変更していない。
+`1b0459d3f0b637e2aad4143429a6ea304effe917`で監査した。製品挙動は変更していない。なお、監査後にCIが採用したRust 1.98の新規Clippy lintへ追随するため、UTF-16 decodeの2-byte chunk処理だけを等価な`as_chunks`へ更新した。
 詳細な操作一覧は[00-ui-action-inventory.md](./00-ui-action-inventory.md)、データ影響は
 [00-data-impact.md](./00-data-impact.md)、撮影結果は
 [00-visual-baseline.md](./00-visual-baseline.md)を参照する。
