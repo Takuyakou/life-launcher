@@ -93,6 +93,7 @@ export function DictionaryFeatureParityUi({ c }: { c: DictionaryFeatureParityCon
   const {
     addButtonToSidebar,
     buttonDraft,
+    canRevealButton,
     canMoveButton,
     confirmation,
     deleteButton,
@@ -108,6 +109,7 @@ export function DictionaryFeatureParityUi({ c }: { c: DictionaryFeatureParityCon
     pageError,
     pages,
     register,
+    revealButton,
     requestCloseButtonEdit,
     saveButton,
     savePage,
@@ -154,8 +156,13 @@ export function DictionaryFeatureParityUi({ c }: { c: DictionaryFeatureParityCon
                 サイドバーに追加
               </ContextMenuItem>
               <ContextMenuItem onClick={() => editButton(menu.button)}>編集</ContextMenuItem>
+              {canRevealButton(menu.button) ? (
+                <ContextMenuItem onClick={() => void revealButton(menu.button)}>
+                  エクスプローラーで表示する
+                </ContextMenuItem>
+              ) : null}
               <ContextMenuItem
-                className="contextMenuDanger"
+                className="contextMenuDanger contextMenuSeparatorBefore"
                 onClick={() => deleteButton(menu.button)}
               >
                 削除

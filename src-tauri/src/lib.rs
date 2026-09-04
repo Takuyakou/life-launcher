@@ -10,6 +10,7 @@ use commands::config::{
     select_backup_zip, update_instruction_references,
 };
 use commands::drop::resolve_drop_item;
+use commands::explorer::reveal_launcher_item;
 use commands::icons::{delete_button_icon_cache, ensure_button_icon_cache};
 use commands::instructions::{
     choose_instruction_root, create_instruction_file, create_instruction_folder,
@@ -161,6 +162,7 @@ pub fn run() {
             restore_backup,
             execute_actions,
             resolve_drop_item,
+            reveal_launcher_item,
             ensure_button_icon_cache,
             delete_button_icon_cache,
             validate_instruction_root,

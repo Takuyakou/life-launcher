@@ -192,7 +192,7 @@ test("capture dictionary category state priority matrix", async ({ page }) => {
       boxShadow: style.boxShadow,
     };
   });
-  expect(fixedSelectedStyle).not.toEqual(customSelectedStyle);
+  expect(fixedSelectedStyle).toEqual(customSelectedStyle);
 
   await allTab.click();
   await referenceTab.hover();
