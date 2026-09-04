@@ -7498,6 +7498,12 @@ input[type="number"]::-webkit-inner-spin-button {
   }
 }
 
+@media (max-width: 900px) {
+  .todayGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 820px) {
   .projectsBand .disclosureDescription,
   .inboxBand .disclosureDescription,

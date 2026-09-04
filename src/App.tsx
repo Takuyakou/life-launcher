@@ -6378,8 +6378,12 @@ function DashboardApp() {
                   key={group.name}
                 >
                   <button
+                    aria-expanded={!collapsed}
                     className="quickGroupHeader"
                     data-sidebar-group-name={group.name}
+                    onClick={(event) => {
+                      if (event.detail === 0) toggleGroupCollapsed(group.name);
+                    }}
                     onContextMenu={(event) => {
                       event.preventDefault();
                       event.stopPropagation();
@@ -6422,6 +6426,9 @@ function DashboardApp() {
                         >
                           <button
                             className="quickButton"
+                            onClick={(event) => {
+                              if (event.detail === 0) void runActions(button.id, button.actions);
+                            }}
                             onContextMenu={(event) => {
                               event.preventDefault();
                               event.stopPropagation();
