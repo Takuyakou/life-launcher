@@ -20,9 +20,11 @@
       "report": "docs/phase6/workreports/p6-01-report.md"
     },
     "P6.2-00": {
-      "status": "IN_PROGRESS",
+      "status": "WAITING_HUMAN_APPROVAL",
       "human_approved": false,
-      "branch": "feature/p6-02-quick-dictionary-ux"
+      "branch": "feature/p6-02-quick-dictionary-ux",
+      "pull_request": "https://github.com/Takuyakou/life-launcher/pull/8",
+      "report": "docs/phase6/workreports/p6-02-report.md"
     },
     "P6.3-00": {
       "status": "BLOCKED_BY_P6.2_APPROVAL",

@@ -2,13 +2,13 @@
 
 ## Status
 
-`IN_PROGRESS`
+`WAITING_HUMAN_APPROVAL`
 
 ## Source
 
 - Base branch: `feature/p6-01-main-decision-reduction`
 - Work branch: `feature/p6-02-quick-dictionary-ux`
-- Pull request: pending
+- Pull request: [#8](https://github.com/Takuyakou/life-launcher/pull/8)
 - Version change: none
 
 ## Quick reveal
@@ -81,4 +81,4 @@ Today3, Main section order, Today Builder, Web Demo, release version, capabiliti
 
 ## Stop gate
 
-P6.3 has not started. This branch will stop after the P6.2 pull request and CI are ready for human review.
+P6.3 has not started. This branch is waiting for human review of P6.2.
