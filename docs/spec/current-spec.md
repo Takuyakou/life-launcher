@@ -7,7 +7,7 @@
 | 文書版 | 1.1-rc |
 | 対象 | Windowsデスクトップ版 Life Launcher |
 | 実装基準 | Public repository `Takuyakou/life-launcher` のPhase 6 stacked candidate |
-| 基準コミット | P6.3 pull requestで固定 |
+| 基準コミット | `baaf90c5a37a9b4dd5a252d5991edc6bb688764a` |
 | 確認日 | 2026-09-05 |
 | UI実装 | Tauri 2 / React 18 / TypeScript / CSS |
 

@@ -27,9 +27,11 @@
       "report": "docs/phase6/workreports/p6-02-report.md"
     },
     "P6.3-00": {
-      "status": "IN_PROGRESS",
+      "status": "WAITING_HUMAN_APPROVAL",
       "human_approved": false,
-      "branch": "chore/p6-03-v11-readiness"
+      "branch": "chore/p6-03-v11-readiness",
+      "pull_request": "https://github.com/Takuyakou/life-launcher/pull/9",
+      "report": "docs/phase6/workreports/p6-03-report.md"
     }
   },
   "resume_instruction": "After human approval, re-read execution-state, previous report, canonical work instructions, and the next stage document. Do not request a new stage prompt.",
