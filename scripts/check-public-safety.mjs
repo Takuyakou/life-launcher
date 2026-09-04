@@ -27,6 +27,10 @@ const allowedUserPathFragments = new Map([
   ["src-tauri/src/commands/icons.rs", ["C:/Users/Me/Desktop/App.lnk", "secret@example.com", "test@example.com"]],
   ["package-lock.json", ["i@izs.me"]],
 ]);
+const allowedInternalArtifactPaths = new Set([
+  "docs/phase6/00-visual-baseline.md",
+  "tests/visual/phase6-baseline.spec.ts",
+]);
 
 function slash(path) {
   return path.replaceAll("\\", "/");
@@ -67,7 +71,10 @@ for (const { absolute, rel } of files) {
   if (segments.some((part) => ["backup", "backups", "logs"].includes(part))) {
     findings.push(`${rel}: runtime data directory is prohibited`);
   }
-  if (/work-report|ui-audit|security-audit|private-screenshot|baseline|before-after/.test(lower)) {
+  if (
+    /work-report|ui-audit|security-audit|private-screenshot|baseline|before-after/.test(lower) &&
+    !allowedInternalArtifactPaths.has(lower)
+  ) {
     findings.push(`${rel}: internal report or historical artifact is prohibited`);
   }
   if (basename === ".env" || (basename.startsWith(".env.") && basename !== ".env.example")) {
@@ -109,6 +116,15 @@ function selfTest() {
   for (const [sample, pattern] of samples) {
     if (!pattern.test(sample)) throw new Error(`Safety detector self-test failed: ${sample}`);
   }
+  if (!allowedInternalArtifactPaths.has("docs/phase6/00-visual-baseline.md")) {
+    throw new Error("Safety detector self-test failed: Phase 6 visual baseline allowlist");
+  }
+  if (!allowedInternalArtifactPaths.has("tests/visual/phase6-baseline.spec.ts")) {
+    throw new Error("Safety detector self-test failed: Phase 6 baseline test allowlist");
+  }
+  if (allowedInternalArtifactPaths.has("docs/other/baseline.md")) {
+    throw new Error("Safety detector self-test failed: internal report allowlist is too broad");
+  }
 }
 
 selfTest();
@@ -118,4 +134,6 @@ if (findings.length > 0) {
   process.exit(1);
 }
 console.log(`Public safety check passed: ${files.length} files scanned, 0 blockers.`);
-console.log("Exact generic path-test exceptions: 2 files; no global scanner exclusions.");
+console.log(
+  "Exact generic path-test exceptions: 2 files; exact internal-artifact exceptions: 2 paths; no global scanner exclusions.",
+);
