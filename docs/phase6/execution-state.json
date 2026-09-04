@@ -13,9 +13,11 @@
       "report": "docs/phase6/workreports/p6-00-report.md"
     },
     "P6.1-00": {
-      "status": "IN_PROGRESS",
+      "status": "WAITING_HUMAN_APPROVAL",
       "human_approved": false,
-      "branch": "feature/p6-01-main-decision-reduction"
+      "branch": "feature/p6-01-main-decision-reduction",
+      "pull_request": "https://github.com/Takuyakou/life-launcher/pull/7",
+      "report": "docs/phase6/workreports/p6-01-report.md"
     },
     "P6.2-00": {
       "status": "BLOCKED_BY_P6.1_APPROVAL",

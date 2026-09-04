@@ -8,7 +8,7 @@
 
 - Base branch: `docs/p6-00-audit-baseline`
 - Work branch: `feature/p6-01-main-decision-reduction`
-- Pull request: pending
+- Pull request: [#7](https://github.com/Takuyakou/life-launcher/pull/7)
 - Version change: none
 
 ## Main order
