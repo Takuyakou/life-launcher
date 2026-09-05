@@ -1134,9 +1134,29 @@ export function DictionaryWindow() {
         event.preventDefault();
         return;
       }
-      if (event.isComposing || parity.blocking) return;
+      if (event.isComposing || parity.blocking || !document.hasFocus()) return;
       const target = event.target instanceof HTMLElement ? event.target : null;
       const searchHasFocus = target === searchInputRef.current;
+      const arrowDirection =
+        event.key === "ArrowLeft"
+          ? "left"
+          : event.key === "ArrowRight"
+            ? "right"
+            : event.key === "ArrowUp"
+              ? "up"
+              : event.key === "ArrowDown"
+                ? "down"
+                : null;
+
+      if (
+        arrowDirection &&
+        !target?.closest("button, input, select, textarea, [contenteditable='true']")
+      ) {
+        event.preventDefault();
+        if (selectedButtonId) moveTileFocus(selectedButtonId, arrowDirection);
+        else focusFirstTile();
+        return;
+      }
 
       if (event.key === "Tab" && event.ctrlKey) {
         event.preventDefault();
@@ -1175,11 +1195,14 @@ export function DictionaryWindow() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [
+    focusFirstTile,
     hideWindow,
+    moveTileFocus,
     runButton,
     searchQuery,
     selectPageByOffset,
     selectedButton,
+    selectedButtonId,
     parity.blocking,
     cancelTilePointer,
   ]);

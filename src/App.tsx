@@ -8081,7 +8081,7 @@ function DashboardApp() {
                                 <option value="inbox">やりたいこと</option>
                               </select>
                               <button
-                                className="primaryButton todayBuilderAddButton"
+                                className="moveTodayButton todayBuilderAddButton"
                                 onClick={() =>
                                   applyTodayBuilderCandidate(
                                     candidate,

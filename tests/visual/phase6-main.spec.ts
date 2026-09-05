@@ -195,6 +195,10 @@ test("Today Builder saves above five, paginates, deletes, and restores after rel
   await page.locator(".todayBuilderDisclosure").click();
   await expect(page.locator("[data-today-builder-index]")).toHaveCount(5);
   await expect(page.locator(".todayBuilderPagination")).toContainText("1 / 2");
+  const candidateAdd = page.locator(".todayBuilderAddButton").first();
+  await expect(candidateAdd).toHaveClass(/moveTodayButton/);
+  await expect(candidateAdd).toBeVisible();
+  await expect(candidateAdd).toHaveCSS("opacity", "1");
 
   const builder = page.locator(".todayBuilderBand");
   await builder.getByRole("button", { name: "今日を組み立てるに次の一手を追加" }).click();

@@ -134,6 +134,8 @@ test("dictionary opens on a tile and arrow keys move immediately", async ({ page
   await expect(tiles.first()).toBeFocused();
   const firstBox = await tiles.first().boundingBox();
   expect(firstBox).not.toBeNull();
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await expect(page.locator(".dictionaryTile:focus")).toHaveCount(0);
   await page.keyboard.press("ArrowRight");
   await expect(tiles.nth(1)).toBeFocused();
   await page.keyboard.press("ArrowDown");

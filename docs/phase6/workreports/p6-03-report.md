@@ -46,7 +46,7 @@ P6.2 Quick and Dictionary reveal eligibility, context-menu ordering, generic err
 
 ## Dictionary keyboard
 
-The dictionary now opens with focus on its first tile, so arrow navigation works immediately without a preparatory click. Category roving focus, Left / Right navigation, Down-to-grid, responsive tile arrows, Enter launch, type-to-search, keyboard context menu, and Escape behavior remain covered. A 120-item synthetic grid verifies bounded interaction under a larger dataset.
+The dictionary now opens with focus on its first tile. While the Dictionary window owns OS focus, arrow navigation also continues from non-interactive blank areas; inputs, tabs, buttons, the Main window, and other applications retain their own keys. Category roving focus, Left / Right navigation, Down-to-grid, responsive tile arrows, Enter launch, type-to-search, keyboard context menu, and Escape behavior remain covered. A 120-item synthetic grid verifies bounded interaction under a larger dataset.
 
 ## Human review corrections
 
@@ -55,6 +55,8 @@ The dictionary now opens with focus on its first tile, so arrow navigation works
 - Restored the detailed NextStep add dialog for the NextStep header, its context menu, and the Today Builder header.
 - Matched the empty `次の一手を書く` label to the size and weight of populated NextStep text.
 - Removed a double focus reset that could cancel the first Dictionary arrow-key move.
+- Kept Dictionary arrow navigation active after its internal tile focus is cleared, without intercepting editable controls or other windows.
+- Matched Today Builder candidate actions to the green `今日へ` control and reduced Today3 card height and internal whitespace.
 
 ## Category bug
 

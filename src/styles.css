@@ -7215,7 +7215,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .todayGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 10px;
 }
 
 .todayGrid > .quietText {
@@ -7223,15 +7223,15 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayRow {
-  min-height: 128px;
+  min-height: 104px;
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr) auto;
   align-items: start;
-  gap: 8px;
+  gap: 6px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 12px;
+  padding: 9px 10px;
   background: var(--surface);
 }
 
@@ -7261,7 +7261,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .todayItemCopy {
   grid-column: 2;
   grid-row: 1;
-  min-height: 68px;
+  min-height: 46px;
   display: flex;
   align-content: start;
   align-items: flex-start;
@@ -7277,9 +7277,9 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .todayTextButton,
 .todayEditInput {
-  min-height: 42px;
+  min-height: 32px;
   flex-basis: 100%;
-  padding-block: 4px;
+  padding-block: 2px;
   font-size: var(--dashboard-font-body);
   font-weight: 650;
 }
@@ -7474,6 +7474,7 @@ input[type="number"]::-webkit-inner-spin-button {
   font-weight: 600;
 }
 
+.todayBuilderActions .moveTodayButton,
 .nextStepRow .moveTodayButton,
 .inboxRow .moveTodayButton {
   opacity: 1;
