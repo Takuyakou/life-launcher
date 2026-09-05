@@ -197,11 +197,15 @@ test("Today Builder saves above five, paginates, deletes, and restores after rel
   await expect(page.locator(".todayBuilderPagination")).toContainText("1 / 2");
 
   const builder = page.locator(".todayBuilderBand");
-  await builder.getByRole("button", { name: "やりたいことを追加" }).click();
-  await builder.getByRole("textbox", { name: "やりたいことに追加" }).fill("6件目以降も残る候補");
-  await builder.getByRole("textbox", { name: "やりたいことに追加" }).press("Enter");
+  await builder.getByRole("button", { name: "今日を組み立てるに次の一手を追加" }).click();
+  const dialog = page.getByRole("dialog", { name: "次の一手を追加" });
+  await dialog.getByRole("textbox", { name: "名前" }).fill("追加したプロジェクト");
+  await dialog.getByRole("textbox", { name: "次の一手", exact: true }).fill("6件目以降も残る候補");
+  await dialog.getByRole("button", { name: "保存" }).click();
   expect(
-    (await currentConfig(page)).inbox.some((item) => item.text === "6件目以降も残る候補"),
+    (await currentConfig(page)).projects.some(
+      (project) => project.nextStep === "6件目以降も残る候補",
+    ),
   ).toBe(true);
 
   await page.getByRole("button", { name: "次のページ" }).click();
@@ -215,7 +219,9 @@ test("Today Builder saves above five, paginates, deletes, and restores after rel
   await page.locator(".todayBuilderDisclosure").click();
   await expect(page.locator(".todayBuilderPagination")).toHaveCount(0);
   expect(
-    (await currentConfig(page)).inbox.some((item) => item.text === "6件目以降も残る候補"),
+    (await currentConfig(page)).projects.some(
+      (project) => project.nextStep === "6件目以降も残る候補",
+    ),
   ).toBe(true);
 });
 
@@ -277,7 +283,7 @@ test("failed Today adoption rolls the optimistic UI back", async ({ page }) => {
   expect((await currentConfig(page)).today.items).toEqual([]);
 });
 
-test("NextStep accordion, inline add, and keyboard context menu are reachable", async ({
+test("NextStep accordion, detailed add dialog, and keyboard context menu are reachable", async ({
   page,
 }) => {
   await prepare(page);
@@ -290,10 +296,11 @@ test("NextStep accordion, inline add, and keyboard context menu are reachable", 
   });
   await disclosure.press("Enter");
 
-  await page.getByRole("button", { name: "次の一手を追加" }).click();
-  await page.getByRole("textbox", { name: "プロジェクト名" }).fill("新しいプロジェクト");
-  await page.getByRole("textbox", { name: "次の一手" }).fill("最初の1行を書く");
-  await page.getByRole("textbox", { name: "次の一手" }).press("Enter");
+  await page.getByRole("button", { name: "次の一手を追加", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "次の一手を追加" });
+  await dialog.getByRole("textbox", { name: "名前" }).fill("新しいプロジェクト");
+  await dialog.getByRole("textbox", { name: "次の一手", exact: true }).fill("最初の1行を書く");
+  await dialog.getByRole("button", { name: "保存" }).click();
   await expect(page.locator(".nextStepRow")).toHaveCount(3);
 
   const row = page.locator(".nextStepRow").first();

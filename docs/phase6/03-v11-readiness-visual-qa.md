@@ -41,7 +41,7 @@
 
 ```text
 npm.cmd run test:visual
-54 passed
+55 passed
 ```
 
 Full command results are recorded in [P6.3 work report](./workreports/p6-03-report.md).

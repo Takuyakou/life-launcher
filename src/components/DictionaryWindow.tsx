@@ -557,6 +557,17 @@ export function DictionaryWindow() {
     });
   }, []);
 
+  const focusFirstTile = useCallback(() => {
+    const firstTile = tileGridRef.current?.querySelector<HTMLButtonElement>(".dictionaryTile");
+    const buttonId = firstTile
+      ?.closest<HTMLElement>("[data-dictionary-button-id]")
+      ?.dataset.dictionaryButtonId;
+    if (!firstTile || !buttonId) return false;
+    setSelectedButtonId(buttonId);
+    firstTile.focus();
+    return true;
+  }, []);
+
   const focusTileFromTab = useCallback(
     (tab: HTMLElement) => {
       const tabCenter = tab.getBoundingClientRect().left + tab.getBoundingClientRect().width / 2;
@@ -1056,13 +1067,13 @@ export function DictionaryWindow() {
     }
     searchFocusFrameRef.current = window.requestAnimationFrame(() => {
       searchFocusFrameRef.current = null;
-      searchInputRef.current?.focus();
+      if (!focusFirstTile()) searchInputRef.current?.focus();
     });
-  }, []);
+  }, [focusFirstTile]);
 
   useEffect(() => {
-    resetSearchAndFocus();
     if (!dictionaryWindow) {
+      resetSearchAndFocus();
       return () => {
         if (searchFocusFrameRef.current !== null) {
           window.cancelAnimationFrame(searchFocusFrameRef.current);
@@ -1087,6 +1098,16 @@ export function DictionaryWindow() {
         .catch(() => undefined);
     };
   }, [dictionaryWindow, resetSearchAndFocus]);
+
+  useEffect(() => {
+    if (searchQuery || selectedButtons.length === 0 || parity.blocking) return;
+    const activeElement = document.activeElement;
+    if (activeElement !== searchInputRef.current && activeElement !== document.body) return;
+    const frame = window.requestAnimationFrame(() => {
+      focusFirstTile();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusFirstTile, parity.blocking, searchQuery, selectedButtons]);
 
   useEffect(() => {
     if (!searchQuery.trim() || selectedResultIndex < 0) return;

@@ -30,7 +30,7 @@ Counts 0 / 1 / 5 / 6 / 10 / 11 verify five candidates per page, pagination, page
 
 ## Add UX parity
 
-Today3, NextStep, and Wishlist add rows share focus, validation, Enter commit, Escape cancel, and persistence behavior. Builder add supports the same Escape cancellation contract.
+Today3 and Wishlist keep their domain-specific compact add rows. NextStep restores the existing detailed add dialog instead of a reduced inline form. Today Builder's header uses the same detailed NextStep dialog, while its duplicated body add row is removed. Focus, validation, Escape cancellation, save, and persistence are automated.
 
 ## NextStep
 
@@ -46,7 +46,15 @@ P6.2 Quick and Dictionary reveal eligibility, context-menu ordering, generic err
 
 ## Dictionary keyboard
 
-Category roving focus, Left / Right navigation, Down-to-grid, responsive tile arrows, Enter launch, editable search behavior, keyboard context menu, and Escape behavior remain covered. A 120-item synthetic grid verifies bounded interaction under a larger dataset.
+The dictionary now opens with focus on its first tile, so arrow navigation works immediately without a preparatory click. Category roving focus, Left / Right navigation, Down-to-grid, responsive tile arrows, Enter launch, type-to-search, keyboard context menu, and Escape behavior remain covered. A 120-item synthetic grid verifies bounded interaction under a larger dataset.
+
+## Human review corrections
+
+- Aligned the Today Builder header add label with the other compact headers.
+- Removed the duplicated Today Builder body add row.
+- Restored the detailed NextStep add dialog for the NextStep header, its context menu, and the Today Builder header.
+- Matched the empty `次の一手を書く` label to the size and weight of populated NextStep text.
+- Removed a double focus reset that could cancel the first Dictionary arrow-key move.
 
 ## Category bug
 
@@ -72,14 +80,14 @@ The required 1280 / 1366 / 1440 / 1920 desktop matrix and supported 860 minimum 
 - `npm.cmd ci`: PASS (173 packages audited, 0 vulnerabilities)
 - `npm.cmd run lint`: PASS
 - `npm.cmd run build`: PASS
-- `npm.cmd run test:visual`: PASS (54/54)
+- `npm.cmd run test:visual`: PASS (55/55)
 - `git diff --check`: PASS
 
 The Visual QA total includes the existing P6.1/P6.2 coverage and 23 P6.3 readiness cases. The package does not define generic `test` or `test:e2e` scripts, so the current repository scripts were used as directed by the stage document.
 
 ## Public safety
 
-`npm.cmd run public:check`: PASS (144 files, 0 blockers). No release, tag, remote, capability, user-data path, telemetry, network call, or personal-data fixture was added. Screenshots use synthetic public fixtures only.
+`npm.cmd run public:check`: PASS (145 files, 0 blockers). No release, tag, remote, capability, user-data path, telemetry, network call, or personal-data fixture was added. Screenshots use synthetic public fixtures only.
 
 ## Remaining issues
 

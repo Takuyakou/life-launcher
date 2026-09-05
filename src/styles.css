@@ -7468,6 +7468,12 @@ input[type="number"]::-webkit-inner-spin-button {
   white-space: nowrap;
 }
 
+.nextStepRow .projectNextStepPlaceholder {
+  color: var(--text) !important;
+  font-size: var(--dashboard-font-body);
+  font-weight: 600;
+}
+
 .nextStepRow .moveTodayButton,
 .inboxRow .moveTodayButton {
   opacity: 1;

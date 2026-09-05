@@ -128,6 +128,20 @@ test("category focus moves independently and selection style is shared", async (
   await expect(page.locator(".dictionaryTile:focus")).toHaveCount(1);
 });
 
+test("dictionary opens on a tile and arrow keys move immediately", async ({ page }) => {
+  await prepare(page, "dictionary", withDictionaryGrid(12));
+  const tiles = page.locator(".dictionaryTile");
+  await expect(tiles.first()).toBeFocused();
+  const firstBox = await tiles.first().boundingBox();
+  expect(firstBox).not.toBeNull();
+  await page.keyboard.press("ArrowRight");
+  await expect(tiles.nth(1)).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect
+    .poll(async () => (await page.locator(".dictionaryTile:focus").boundingBox())?.y ?? 0)
+    .toBeGreaterThan(firstBox!.y);
+});
+
 test("tile arrows follow visual rows and adapt after resize", async ({ page }) => {
   await prepare(page, "dictionary");
   const toolsTab = page.getByRole("tab", { name: /ツール/ });

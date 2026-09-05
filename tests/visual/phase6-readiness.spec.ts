@@ -221,9 +221,7 @@ test("Today Builder can delete to zero and keeps the dismissal after reload", as
   await expect(page.locator("[data-today-builder-index]")).toHaveCount(0);
 });
 
-test("shared add flows expose focus, validation, Escape, Enter, and reload persistence", async ({
-  page,
-}) => {
+test("section add flows use the intended editor and keep reload persistence", async ({ page }) => {
   await prepare(page, withTodayState(0));
 
   await page.getByRole("button", { name: "今日の3件に追加" }).click();
@@ -240,11 +238,16 @@ test("shared add flows expose focus, validation, Escape, Enter, and reload persi
 
   const projects = page.locator(".projectsBand");
   await projects.getByRole("button", { name: "次の一手を追加" }).click();
-  const projectName = projects.getByRole("textbox", { name: "プロジェクト名" });
+  let projectDialog = page.getByRole("dialog", { name: "次の一手を追加" });
+  await expect(projectDialog).toBeVisible();
+  const projectName = projectDialog.getByRole("textbox", { name: "名前" });
   await expect(projectName).toBeFocused();
   await projectName.fill("再起動確認プロジェクト");
-  await projects.getByRole("textbox", { name: "次の一手" }).fill("再起動後も残る一手");
-  await projects.getByRole("textbox", { name: "次の一手" }).press("Enter");
+  await projectDialog
+    .getByRole("textbox", { name: "次の一手", exact: true })
+    .fill("再起動後も残る一手");
+  await projectDialog.getByRole("button", { name: "保存" }).click();
+  await expect(projectDialog).toHaveCount(0);
 
   const wishlist = page.locator(".inboxBand");
   await wishlist.getByRole("button", { name: "やりたいことを追加" }).click();
@@ -254,11 +257,18 @@ test("shared add flows expose focus, validation, Escape, Enter, and reload persi
   await wishlistInput.press("Enter");
 
   const builder = page.locator(".todayBuilderBand");
-  await builder.getByRole("button", { name: "やりたいことを追加" }).click();
-  const builderInput = builder.getByRole("textbox", { name: "やりたいことに追加" });
-  await expect(builderInput).toBeFocused();
-  await builderInput.press("Escape");
-  await expect(builderInput).toHaveCount(0);
+  await builder.locator(".todayBuilderDisclosure").click();
+  await expect(builder.locator(".inboxAddPrompt")).toHaveCount(0);
+  const builderAdd = builder.getByRole("button", {
+    name: "今日を組み立てるに次の一手を追加",
+  });
+  await expect(builderAdd).toContainText("追加");
+  await builderAdd.click();
+  projectDialog = page.getByRole("dialog", { name: "次の一手を追加" });
+  await expect(projectDialog).toBeVisible();
+  await expect(projectDialog.getByRole("textbox", { name: "名前" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(projectDialog).toHaveCount(0);
 
   await page.reload();
   expect(
