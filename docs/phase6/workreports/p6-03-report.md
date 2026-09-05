@@ -8,7 +8,7 @@
 
 - Base branch: `feature/p6-02-quick-dictionary-ux`
 - Work branch: `chore/p6-03-v11-readiness`
-- Implementation commit: `baaf90c5a37a9b4dd5a252d5991edc6bb688764a`
+- Implementation commit: `b6392130edf4792ca3abfce9a4f9dc00737703e7`
 - Pull request: [#9](https://github.com/Takuyakou/life-launcher/pull/9)
 - Version change: none (`package.json` remains `1.0.0`)
 
