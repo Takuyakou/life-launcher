@@ -8,7 +8,7 @@
   "repository": "Takuyakou/life-launcher",
   "target_product_version": "v1.1.0 (planned only)",
   "observed_product_version_from_report": "1.0.0",
-  "current_stage": "P61-03",
+  "current_stage": "P61-04",
   "authoritative_runtime_path": "docs/phase6.1/execution-state.json",
   "report_baseline": {
     "file": "reference/phase6-final-report.md",
@@ -106,11 +106,11 @@
     },
     "P61-03": {
       "document": "stages/P61-03-guide.md",
-      "status": "WAITING_HUMAN_APPROVAL",
-      "human_approved": false,
-      "approval_text": null,
-      "approval_time": null,
-      "approved_commit": null,
+      "status": "APPROVED",
+      "human_approved": true,
+      "approval_text": "次お願いします",
+      "approval_time": "2026-09-06T21:11:28+09:00",
+      "approved_commit": "6ce15dd9dea7f8a7f6514475562b3d48907481d9",
       "base_sha": "bf0e742eaec1ea5c265021a2e7323a7c6b423280",
       "branch": "docs/p61-03-in-app-guide",
       "pr": "https://github.com/Takuyakou/life-launcher/pull/13",
@@ -132,17 +132,31 @@
     },
     "P61-04": {
       "document": "stages/P61-04-final-qa.md",
-      "status": "BLOCKED_BY_PREVIOUS_APPROVAL",
+      "status": "WAITING_HUMAN_APPROVAL",
       "human_approved": false,
       "approval_text": null,
       "approval_time": null,
       "approved_commit": null,
-      "base_sha": null,
-      "branch": null,
-      "pr": null,
-      "verification_commit": null,
-      "workreport": null,
-      "tests": []
+      "base_sha": "6ce15dd9dea7f8a7f6514475562b3d48907481d9",
+      "branch": "chore/p61-04-followup-readiness",
+      "pr": "https://github.com/Takuyakou/life-launcher/pull/14",
+      "verification_commit": "b6715966111c59a8b9c4b04d026216885e1bb060",
+      "workreport": "workreports/P61-04-report.md",
+      "tests": [
+        "PASS npm.cmd ci (173 packages audited, 0 vulnerabilities)",
+        "PASS npm.cmd run public:check (173 files, 0 blockers)",
+        "PASS npm.cmd run lint",
+        "PASS npm.cmd run build",
+        "PASS npm.cmd run test:visual (69/69)",
+        "PASS cargo fmt --manifest-path src-tauri/Cargo.toml -- --check",
+        "PASS cargo check --manifest-path src-tauri/Cargo.toml",
+        "PASS cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --all-features -- -D warnings",
+        "PASS cargo test --manifest-path src-tauri/Cargo.toml (95 unit + 2 capability contract)",
+        "PASS npm.cmd audit --audit-level=low (0 vulnerabilities)",
+        "PASS representative image review (1 before + 4 after)",
+        "PASS git diff --check",
+        "NOT_RUN actual Tauri GUI smoke: no isolated runtime harness; user data untouched"
+      ]
     }
   },
   "decisions": [
@@ -172,5 +186,5 @@
     "modify_real_user_data": false
   },
   "resume_rule": "After explicit user approval, read this state, last report, git state and next stage document; do not request another long start prompt.",
-  "final_status": "P61_03_WAITING_HUMAN_APPROVAL"
+  "final_status": "PHASE_6_1_READY_FOR_HUMAN_REVIEW_STOPPED"
 }
