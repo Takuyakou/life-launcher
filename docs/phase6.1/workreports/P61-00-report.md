@@ -8,7 +8,9 @@
 - Stage: P61-00
 - 判定: WAITING_HUMAN_APPROVAL
 - Base branch / SHA: `main` / `66ff0923203deb6be63dce6600d435843182dfd0`
+- Implementation / verification SHA: `6a4440113e4ccbb594723cedd520973e7f23e189`
 - Branch: `docs/p61-00-delta-audit`
+- PR: [#10](https://github.com/Takuyakou/life-launcher/pull/10)
 - PR base: `main`
 - Phase 6 PR #9: MERGED（merge commit `66ff0923203deb6be63dce6600d435843182dfd0`）
 - Phase 6最終実装 `74f4a9608f3b5e2ef857f580db45dd0abbe270bf` は `origin/main` に含まれる。

@@ -35,8 +35,8 @@
       "approved_commit": null,
       "base_sha": "66ff0923203deb6be63dce6600d435843182dfd0",
       "branch": "docs/p61-00-delta-audit",
-      "pr": null,
-      "verification_commit": null,
+      "pr": "https://github.com/Takuyakou/life-launcher/pull/10",
+      "verification_commit": "6a4440113e4ccbb594723cedd520973e7f23e189",
       "workreport": "workreports/P61-00-report.md",
       "tests": [
         "PASS npm.cmd ci (173 packages audited, 0 vulnerabilities)",
