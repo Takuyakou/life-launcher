@@ -122,8 +122,8 @@ function createConfig(): AppConfig {
       ],
     },
     inbox: [
-      { text: "あとで確認するサンプル" },
-      { text: "週末に試すアイデア", projectId: "sample-learning" },
+      { id: "sample-later", text: "あとで確認するサンプル" },
+      { id: "sample-weekend", text: "週末に試すアイデア", projectId: "sample-learning" },
     ],
     settings: {
       alwaysOnTop: false,

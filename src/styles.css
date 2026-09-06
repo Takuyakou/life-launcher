@@ -7403,6 +7403,10 @@ input[type="number"]::-webkit-inner-spin-button {
   width: auto;
 }
 
+.todayBuilderHeader {
+  grid-template-columns: max-content auto minmax(0, 1fr);
+}
+
 .projectsBand .disclosureDescription,
 .inboxBand .disclosureDescription,
 .todayBuilderHeader .disclosureDescription,
@@ -7445,6 +7449,48 @@ input[type="number"]::-webkit-inner-spin-button {
   max-width: none;
   margin: 0;
 }
+.sectionEmptyActions {
+  grid-column: 1 / -1;
+  min-height: 44px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 6px 2px;
+  color: var(--text-muted-readable);
+  font-size: var(--dashboard-font-meta);
+  line-height: 1.5;
+}
+
+.sectionEmptyActions > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sectionEmptyActions button {
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 5px 10px;
+  background: var(--surface-soft);
+  color: var(--text);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 650;
+}
+
+.sectionEmptyActions button:hover,
+.sectionEmptyActions button:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.sectionEmptyActions--sources {
+  border-bottom: 1px solid var(--line-soft);
+  padding: 8px 10px;
+}
+
 
 .nextStepRow .projectCopy p {
   min-width: 0;
@@ -7468,6 +7514,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .todayBuilderActions .moveTodayButton,
 .nextStepRow .moveTodayButton,
 .inboxRow .moveTodayButton {
+  min-width: 70px;
   opacity: 1;
 }
 

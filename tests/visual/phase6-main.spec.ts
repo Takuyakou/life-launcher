@@ -5,6 +5,7 @@ import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtur
 import { installTauriMock } from "./tauriMock";
 
 const SCREENSHOT_DIR = resolve("docs/phase6/screenshots");
+const P61_SCREENSHOT_DIR = resolve("docs/phase6.1/screenshots");
 
 test.describe.configure({ mode: "serial" });
 
@@ -191,40 +192,54 @@ test("three completed items expose the manual next-batch flow", async ({ page })
   });
 });
 
-test("Today Builder saves above five, paginates, deletes, and restores after reload", async ({
+test("Today Builder is source-only, paginates, and ignores legacy dismiss keys", async ({
   page,
 }) => {
-  await prepare(page);
+  const fixture = createPublicFixture();
+  fixture.config.today.items = [];
+  fixture.config.inbox.push(
+    { id: "extra-1", text: "追加候補 1" },
+    { id: "extra-2", text: "追加候補 2" },
+    { id: "extra-3", text: "追加候補 3" },
+    { id: "extra-4", text: "追加候補 4" },
+  );
+  await prepare(page, fixture);
+  const legacyDismissed = ["project:sample-learning:資料を1ページ読む"];
+  await page.evaluate((keys) => {
+    localStorage.setItem("life-launcher-today-builder-dismissed", JSON.stringify(keys));
+  }, legacyDismissed);
+  await page.reload();
   await page.locator(".todayBuilderDisclosure").click();
   await expect(page.locator("[data-today-builder-index]")).toHaveCount(5);
   await expect(page.locator(".todayBuilderPagination")).toContainText("1 / 2");
-  const candidateAdd = page.locator(".todayBuilderAddButton").first();
-  await expect(candidateAdd).toHaveClass(/moveTodayButton/);
-  await expect(candidateAdd).toBeVisible();
-  await expect(candidateAdd).toHaveCSS("opacity", "1");
+  await expect(page.getByRole("button", { name: "今日を組み立てるに次の一手を追加" })).toHaveCount(0);
+  await expect(page.locator(".todayBuilderDestination")).toHaveCount(0);
+  await expect(page.locator(".todayBuilderSource").filter({ hasText: "最近のnote" })).toHaveCount(0);
+  await expect(page.locator(".todayBuilderSource").filter({ hasText: "昨日の勝利条件" })).toHaveCount(0);
+  expect(
+    await page.evaluate(() => localStorage.getItem("life-launcher-today-builder-dismissed")),
+  ).toBe(JSON.stringify(legacyDismissed));
 
-  const builder = page.locator(".todayBuilderBand");
-  await builder.getByRole("button", { name: "今日を組み立てるに次の一手を追加" }).click();
+  await page.locator(".todayBuilderBand").screenshot({
+    path: resolve(P61_SCREENSHOT_DIR, "p61-01-builder-source-only.png"),
+  });
+  await page.locator("[data-today-builder-index]").first().click({ button: "right" });
+  await expect(page.getByRole("menuitem", { name: "上へ移動" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "削除" })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "次のページ" }).click();
+  await expect(page.locator("[data-today-builder-index]")).toHaveCount(3);
+
+  await page.locator(".projectsBand").getByRole("button", { name: "次の一手を追加" }).click();
   const dialog = page.getByRole("dialog", { name: "次の一手を追加" });
   await dialog.getByRole("textbox", { name: "名前" }).fill("追加したプロジェクト");
   await dialog.getByRole("textbox", { name: "次の一手", exact: true }).fill("6件目以降も残る候補");
   await dialog.getByRole("button", { name: "保存" }).click();
-  expect(
-    (await currentConfig(page)).projects.some(
-      (project) => project.nextStep === "6件目以降も残る候補",
-    ),
-  ).toBe(true);
-
-  await page.getByRole("button", { name: "次のページ" }).click();
-  while ((await page.locator(".todayBuilderPagination").count()) > 0) {
-    await page.locator("[data-today-builder-index]").last().click({ button: "right" });
-    await page.getByRole("menuitem", { name: "削除" }).click();
-  }
-  await expect(page.locator("[data-today-builder-index]")).toHaveCount(5);
+  await expect(page.locator(".todayBuilderHeader .disclosureCount")).toContainText("9件");
 
   await page.reload();
   await page.locator(".todayBuilderDisclosure").click();
-  await expect(page.locator(".todayBuilderPagination")).toHaveCount(0);
+  await expect(page.locator(".todayBuilderPagination")).toContainText("1 / 2");
   expect(
     (await currentConfig(page)).projects.some(
       (project) => project.nextStep === "6件目以降も残る候補",
@@ -272,6 +287,117 @@ test("NextStep and Wishlist use compact non-destructive Today actions", async ({
   await page.locator(".todayActivityBand").screenshot({
     path: resolve(SCREENSHOT_DIR, "p6-01-main-today-activity.png"),
   });
+});
+
+test("same-text Wishlist items keep separate stable identities", async ({ page }) => {
+  const fixture = createPublicFixture();
+  fixture.config.projects = [];
+  fixture.config.today.items = [];
+  fixture.config.inbox = [
+    { id: "same-first", text: "同じ文面" },
+    { id: "same-second", text: "同じ文面" },
+  ];
+  fixture.doNowCandidates = [];
+  await prepare(page, fixture);
+
+  await page.locator(".todayBuilderDisclosure").click();
+  const rows = page.locator(".todayBuilderRow");
+  await expect(rows).toHaveCount(2);
+  await rows.nth(0).getByRole("button", { name: "今日へ" }).click();
+  await expect(rows.nth(0).getByRole("button", { name: "選択済み" })).toBeDisabled();
+  await expect(rows.nth(1).getByRole("button", { name: "今日へ" })).toBeEnabled();
+  await rows.nth(1).getByRole("button", { name: "今日へ" }).click();
+
+  const items = (await currentConfig(page)).today.items;
+  expect(items.map((item) => item.text)).toEqual(["同じ文面", "同じ文面"]);
+  expect(items.map((item) => item.sourceKey)).toEqual([
+    "wishlist:same-first",
+    "wishlist:same-second",
+  ]);
+});
+
+test("legacy same-text Wishlist selection maps to only the first stable item", async ({ page }) => {
+  const fixture = createPublicFixture();
+  fixture.config.projects = [];
+  fixture.config.today.items = [
+    {
+      text: "同じ文面",
+      done: false,
+      sourceKey: "wishlist:none:同じ文面",
+    },
+  ];
+  fixture.config.inbox = [
+    { id: "same-first", text: "同じ文面" },
+    { id: "same-second", text: "同じ文面" },
+  ];
+  fixture.doNowCandidates = [];
+  await prepare(page, fixture);
+
+  await page.locator(".todayBuilderDisclosure").click();
+  const rows = page.locator(".todayBuilderRow");
+  await expect(rows.nth(0).getByRole("button", { name: "選択済み" })).toBeDisabled();
+  await expect(rows.nth(1).getByRole("button", { name: "今日へ" })).toBeEnabled();
+  await rows.nth(1).getByRole("button", { name: "今日へ" }).click();
+  expect((await currentConfig(page)).today.items.map((item) => item.sourceKey)).toEqual([
+    "wishlist:none:同じ文面",
+    "wishlist:same-second",
+  ]);
+});
+
+test("Today adoption snapshots timer, actions, text, and instruction", async ({ page }) => {
+  const fixture = createPublicFixture();
+  fixture.config.today.items = [];
+  fixture.config.projects[0].defaultTimerMinutes = 37;
+  fixture.config.projects[0].shortTimerMinutes = 7;
+  await prepare(page, fixture);
+
+  await page.locator(".projectsBand .nextStepTodayButton").first().click();
+  let item = (await currentConfig(page)).today.items[0];
+  expect(item).toMatchObject({
+    text: "資料を1ページ読む",
+    sourceKey: "project:sample-learning",
+    buttonIds: ["sample-documents"],
+    instructionPath: "C:\\PublicDemo\\Instructions\\guide.md",
+    defaultTimerMinutes: 37,
+    shortTimerMinutes: 7,
+  });
+
+  await page.evaluate(() => {
+    const control = (
+      window as Window & {
+        __LIFE_LAUNCHER_VISUAL_QA__?: {
+          currentConfig: () => AppConfig;
+          updateConfig: (config: AppConfig) => void;
+        };
+      }
+    ).__LIFE_LAUNCHER_VISUAL_QA__;
+    if (!control) throw new Error("Visual QA control is unavailable");
+    const config = control.currentConfig();
+    control.updateConfig({
+      ...config,
+      projects: config.projects.map((project) =>
+        project.id === "sample-learning"
+          ? {
+              ...project,
+              nextStep: "変更後の一手",
+              buttonIds: [],
+              instructionPath: undefined,
+              defaultTimerMinutes: 25,
+              shortTimerMinutes: 5,
+            }
+          : project,
+      ),
+    });
+  });
+
+  const today = page.locator(".todayRow").first();
+  await expect(today.getByRole("button", { name: "資料を1ページ読む" })).toBeVisible();
+  await expect(today.getByRole("button", { name: "短時間タイマー7分で開始" })).toBeVisible();
+  await expect(today.getByRole("button", { name: "通常タイマー37分で開始" })).toBeVisible();
+  item = (await currentConfig(page)).today.items[0];
+  expect(item.buttonIds).toEqual(["sample-documents"]);
+  expect(item.defaultTimerMinutes).toBe(37);
+  expect(item.shortTimerMinutes).toBe(7);
 });
 
 test("failed Today adoption rolls the optimistic UI back", async ({ page }) => {

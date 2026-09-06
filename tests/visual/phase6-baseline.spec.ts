@@ -76,6 +76,10 @@ function createLargeBuilderFixture(): VisualQaFixture {
       colorId: "violet",
     },
   );
+  fixture.config.inbox.push({
+    id: "sample-reading-later",
+    text: "気になる資料をあとで読む",
+  });
   return fixture;
 }
 
@@ -98,7 +102,13 @@ for (const viewport of [
 }
 
 test("capture Today Builder at five candidates", async ({ page }) => {
-  const errors = await prepare(page, "/", "main", { width: 1440, height: 900 });
+  const errors = await prepare(
+    page,
+    "/",
+    "main",
+    { width: 1440, height: 900 },
+    createLargeBuilderFixture(),
+  );
   await page.locator(".todayBuilderDisclosure").click();
   await expect(page.locator("[data-today-builder-index]")).toHaveCount(5);
   await expect(page.locator(".todayBuilderPagination")).toContainText("1 / 2");
@@ -124,7 +134,7 @@ test("capture and reload Today Builder above five candidates", async ({ page }) 
   });
 
   await page.getByRole("button", { name: "次のページ" }).click();
-  await expect(page.locator("[data-today-builder-index]")).toHaveCount(4);
+  await expect(page.locator("[data-today-builder-index]")).toHaveCount(3);
   await page.reload();
   await page.locator(".todayBuilderDisclosure").click();
   await expect(page.locator("[data-today-builder-index]")).toHaveCount(5);

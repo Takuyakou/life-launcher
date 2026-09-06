@@ -66,6 +66,7 @@ function withBuilderCount(count: number): VisualQaFixture {
     items: [],
   };
   fixture.config.inbox = Array.from({ length: count }, (_, index) => ({
+    id: `builder-${index + 1}`,
     text: `候補 ${String(index + 1).padStart(2, "0")}`,
   }));
   fixture.sessionSummary = { ...fixture.sessionSummary, recentSessions: [] };
@@ -95,15 +96,18 @@ test("Main responsibilities keep timer starts in Do Now and Today3 only", async 
 });
 
 for (const activeCount of [0, 1, 2, 3]) {
-  test(`Today3 active count ${activeCount} renders without an escape path`, async ({ page }) => {
+  test(`Today3 active count ${activeCount} renders with the intended selection path`, async ({ page }) => {
     await prepare(page, withTodayState(activeCount));
     await expect(page.locator(".todayRow")).toHaveCount(activeCount);
-    const addButton = page.getByRole("button", { name: "今日の3件に追加" });
-    await expect(addButton).toBeEnabled();
-    if (activeCount === 3) {
-      await addButton.click();
-      await expect(page.locator(".toast").last()).toContainText("3件まで");
-      await expect(page.locator(".todayRow")).toHaveCount(3);
+    await expect(page.getByRole("button", { name: "今日の3件に追加" })).toHaveCount(0);
+    const candidateLink = page.getByRole("button", { name: "今日の候補を見る" });
+    if (activeCount === 0) {
+      await expect(candidateLink).toBeVisible();
+      await candidateLink.click();
+      await expect(page.locator(".todayBuilderDisclosure")).toBeFocused();
+      await expect(page.locator(".todayBuilderDisclosure")).toHaveAttribute("aria-expanded", "true");
+    } else {
+      await expect(candidateLink).toHaveCount(0);
     }
     const completionSummary = page.locator(".todayCompletionSummary");
     if (activeCount === 0) await expect(completionSummary).toHaveCount(0);
@@ -176,15 +180,19 @@ test("manual next batch accepts one, two, and three new items but no fourth", as
     await page
       .locator(".todayBuilderRow")
       .nth(index)
-      .getByRole("button", { name: "追加", exact: true })
+      .getByRole("button", { name: "今日へ", exact: true })
       .click();
     await expect(page.locator(".todayRow")).toHaveCount(index + 1);
   }
-  await page
+  const fourth = page
     .locator(".todayBuilderRow")
     .nth(3)
-    .getByRole("button", { name: "追加", exact: true })
-    .click();
+    .getByRole("button", { name: "今日へ", exact: true });
+  await expect(fourth).toBeDisabled();
+  await expect(fourth).toHaveAttribute("title", "いま選べるのは3件までです");
+
+  await page.locator(".inboxBand .disclosure").click();
+  await page.locator(".inboxRow .moveTodayButton").nth(1).click();
   await expect(page.locator(".toast").last()).toContainText("3件まで");
   expect((await currentConfig(page)).today.items).toHaveLength(3);
 });
@@ -203,7 +211,45 @@ for (const count of [0, 1, 5, 6, 10, 11]) {
   });
 }
 
-test("Today Builder clamps after deleting the final item on the last page and reloads", async ({
+test("Today Builder drag persists only on drop and rerenders the stable order", async ({ page }) => {
+  await prepare(page, withBuilderCount(6));
+  await page.locator(".todayBuilderDisclosure").click();
+  const rows = page.locator(".todayBuilderRow");
+  const source = await rows.nth(0).boundingBox();
+  const target = await rows.nth(2).boundingBox();
+  expect(source).not.toBeNull();
+  expect(target).not.toBeNull();
+
+  const storedOrder = () =>
+    page.evaluate(() => localStorage.getItem("life-launcher-today-builder-order"));
+  expect(await storedOrder()).toBeNull();
+  await page.mouse.move(source!.x + source!.width / 2, source!.y + source!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(source!.x + source!.width / 2 + 12, source!.y + source!.height / 2, {
+    steps: 2,
+  });
+  await page.mouse.move(target!.x + target!.width / 2, target!.y + target!.height - 3, {
+    steps: 5,
+  });
+  await expect(page.locator(".todayBuilderDragGhost")).toBeVisible();
+  expect(await storedOrder()).toBeNull();
+  await page.mouse.up();
+
+  await expect.poll(storedOrder).not.toBeNull();
+  await expect(rows.nth(0)).toContainText("候補 02");
+  await expect(rows.nth(1)).toContainText("候補 03");
+  await expect(rows.nth(2)).toContainText("候補 01");
+
+  const orderAfterDrop = await storedOrder();
+  await page.reload();
+  await page.locator(".todayBuilderDisclosure").click();
+  expect(await storedOrder()).toBe(orderAfterDrop);
+  await expect(page.locator(".todayBuilderRow").nth(0)).toContainText("候補 02");
+  await expect(page.locator(".todayBuilderRow").nth(1)).toContainText("候補 03");
+  await expect(page.locator(".todayBuilderRow").nth(2)).toContainText("候補 01");
+});
+
+test("Today Builder clamps when a source item disappears", async ({
   page,
 }) => {
   await prepare(page, withBuilderCount(11));
@@ -211,8 +257,19 @@ test("Today Builder clamps after deleting the final item on the last page and re
   await page.getByRole("button", { name: "次のページ" }).click();
   await page.getByRole("button", { name: "次のページ" }).click();
   await expect(page.locator(".todayBuilderPagination")).toContainText("3 / 3");
-  await page.locator("[data-today-builder-index]").last().click({ button: "right" });
-  await page.getByRole("menuitem", { name: "削除" }).click();
+  await page.evaluate(() => {
+    const control = (
+      window as Window & {
+        __LIFE_LAUNCHER_VISUAL_QA__?: {
+          currentConfig: () => AppConfig;
+          updateConfig: (config: AppConfig) => void;
+        };
+      }
+    ).__LIFE_LAUNCHER_VISUAL_QA__;
+    if (!control) throw new Error("Visual QA control is unavailable");
+    const config = control.currentConfig();
+    control.updateConfig({ ...config, inbox: config.inbox.slice(0, 10) });
+  });
   await expect(page.locator(".todayBuilderPagination")).toContainText("2 / 2");
   await expect(page.locator(".todayBuilderHeader .disclosureCount")).toContainText("10件");
   await page.reload();
@@ -220,35 +277,34 @@ test("Today Builder clamps after deleting the final item on the last page and re
   await expect(page.locator(".todayBuilderHeader .disclosureCount")).toContainText("10件");
 });
 
-test("Today Builder can delete to zero and keeps the dismissal after reload", async ({ page }) => {
+test("Today Builder retains but ignores legacy dismiss data", async ({ page }) => {
   await prepare(page, withBuilderCount(1));
-  await page.locator(".todayBuilderDisclosure").click();
-  await page.locator("[data-today-builder-index]").click({ button: "right" });
-  await page.getByRole("menuitem", { name: "削除" }).click();
-  await expect(page.locator("[data-today-builder-index]")).toHaveCount(0);
+  const dismissed = ["inbox:none:候補 01"];
+  await page.evaluate((keys) => {
+    localStorage.setItem("life-launcher-today-builder-dismissed", JSON.stringify(keys));
+  }, dismissed);
   await page.reload();
   await page.locator(".todayBuilderDisclosure").click();
-  await expect(page.locator("[data-today-builder-index]")).toHaveCount(0);
+  await expect(page.locator("[data-today-builder-index]")).toHaveCount(1);
+  await page.locator("[data-today-builder-index]").click({ button: "right" });
+  await expect(page.getByRole("menuitem", { name: "削除" })).toHaveCount(0);
+  expect(
+    await page.evaluate(() => localStorage.getItem("life-launcher-today-builder-dismissed")),
+  ).toBe(JSON.stringify(dismissed));
 });
 
-test("section add flows use the intended editor and keep reload persistence", async ({ page }) => {
+test("registration stays in source sections and persists after reload", async ({ page }) => {
   await prepare(page, withTodayState(0));
 
-  await page.getByRole("button", { name: "今日の3件に追加" }).click();
-  const todayInput = page.getByRole("textbox", { name: "今日に追加" });
-  await expect(todayInput).toBeFocused();
-  await expect(
-    page.locator(".todayAddRow").getByRole("button", { name: "追加", exact: true }),
-  ).toBeDisabled();
-  await todayInput.press("Escape");
-  await expect(todayInput).toHaveCount(0);
-  await page.getByRole("button", { name: "今日の3件に追加" }).click();
-  await page.getByRole("textbox", { name: "今日に追加" }).fill("再起動後も残る今日");
-  await page.getByRole("textbox", { name: "今日に追加" }).press("Enter");
+  await expect(page.getByRole("button", { name: "今日の3件に追加" })).toHaveCount(0);
+  await page.getByRole("button", { name: "今日の候補を見る" }).click();
+  await expect(page.locator(".todayBuilderDisclosure")).toBeFocused();
+  await expect(page.getByRole("button", { name: "今日を組み立てるに次の一手を追加" })).toHaveCount(0);
+  await expect(page.locator(".todayBuilderDestination")).toHaveCount(0);
 
   const projects = page.locator(".projectsBand");
   await projects.getByRole("button", { name: "次の一手を追加" }).click();
-  let projectDialog = page.getByRole("dialog", { name: "次の一手を追加" });
+  const projectDialog = page.getByRole("dialog", { name: "次の一手を追加" });
   await expect(projectDialog).toBeVisible();
   const projectName = projectDialog.getByRole("textbox", { name: "名前" });
   await expect(projectName).toBeFocused();
@@ -266,24 +322,7 @@ test("section add flows use the intended editor and keep reload persistence", as
   await wishlistInput.fill("再起動後も残るやりたいこと");
   await wishlistInput.press("Enter");
 
-  const builder = page.locator(".todayBuilderBand");
-  await builder.locator(".todayBuilderDisclosure").click();
-  await expect(builder.locator(".inboxAddPrompt")).toHaveCount(0);
-  const builderAdd = builder.getByRole("button", {
-    name: "今日を組み立てるに次の一手を追加",
-  });
-  await expect(builderAdd).toContainText("追加");
-  await builderAdd.click();
-  projectDialog = page.getByRole("dialog", { name: "次の一手を追加" });
-  await expect(projectDialog).toBeVisible();
-  await expect(projectDialog.getByRole("textbox", { name: "名前" })).toBeFocused();
-  await page.keyboard.press("Escape");
-  await expect(projectDialog).toHaveCount(0);
-
   await page.reload();
-  expect(
-    (await currentConfig(page)).today.items.some((item) => item.text === "再起動後も残る今日"),
-  ).toBe(true);
   expect(
     (await currentConfig(page)).projects.some(
       (project) => project.nextStep === "再起動後も残る一手",
@@ -292,6 +331,12 @@ test("section add flows use the intended editor and keep reload persistence", as
   expect(
     (await currentConfig(page)).inbox.some((item) => item.text === "再起動後も残るやりたいこと"),
   ).toBe(true);
+  expect(
+    (await currentConfig(page)).inbox.find(
+      (item) => item.text === "再起動後も残るやりたいこと",
+    )?.id,
+  ).toBeTruthy();
+  expect((await currentConfig(page)).today.items).toEqual([]);
 });
 
 test("Today3 changes from three to two to one column without horizontal overflow", async ({

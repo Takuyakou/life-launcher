@@ -8,7 +8,7 @@
   "repository": "Takuyakou/life-launcher",
   "target_product_version": "v1.1.0 (planned only)",
   "observed_product_version_from_report": "1.0.0",
-  "current_stage": "P61-00",
+  "current_stage": "P61-01",
   "authoritative_runtime_path": "docs/phase6.1/execution-state.json",
   "report_baseline": {
     "file": "reference/phase6-final-report.md",
@@ -28,11 +28,11 @@
   "stages": {
     "P61-00": {
       "document": "stages/P61-00-audit.md",
-      "status": "WAITING_HUMAN_APPROVAL",
-      "human_approved": false,
-      "approval_text": null,
-      "approval_time": null,
-      "approved_commit": null,
+      "status": "APPROVED",
+      "human_approved": true,
+      "approval_text": "stable IDを追加する。採用時に固定する。でお願いします。仕事中なので作業していってください",
+      "approval_time": "2026-09-06T17:33:32+09:00",
+      "approved_commit": "c2c3d9a142dfefe5b841f06dc0fe8880fcb068a8",
       "base_sha": "66ff0923203deb6be63dce6600d435843182dfd0",
       "branch": "docs/p61-00-delta-audit",
       "pr": "https://github.com/Takuyakou/life-launcher/pull/10",
@@ -54,17 +54,29 @@
     },
     "P61-01": {
       "document": "stages/P61-01-selection-flow.md",
-      "status": "BLOCKED_BY_PREVIOUS_APPROVAL",
+      "status": "WAITING_HUMAN_APPROVAL",
       "human_approved": false,
       "approval_text": null,
       "approval_time": null,
       "approved_commit": null,
-      "base_sha": null,
-      "branch": null,
-      "pr": null,
-      "verification_commit": null,
-      "workreport": null,
-      "tests": []
+      "base_sha": "c2c3d9a142dfefe5b841f06dc0fe8880fcb068a8",
+      "branch": "feature/p61-01-selection-flow",
+      "pr": "https://github.com/Takuyakou/life-launcher/pull/11",
+      "verification_commit": "c89accb0335142e49584112760acffbf94e64302",
+      "workreport": "workreports/P61-01-report.md",
+      "tests": [
+        "PASS npm.cmd ci (173 packages audited, 0 vulnerabilities)",
+        "PASS npm.cmd run public:check (165 files, 0 blockers)",
+        "PASS npm.cmd run lint",
+        "PASS npm.cmd run build",
+        "PASS npm.cmd run test:visual (59/59)",
+        "PASS cargo fmt --manifest-path src-tauri/Cargo.toml -- --check",
+        "PASS cargo check --manifest-path src-tauri/Cargo.toml",
+        "PASS cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --all-features -- -D warnings",
+        "PASS cargo test --manifest-path src-tauri/Cargo.toml (95 unit + 2 capability contract)",
+        "PASS git diff --check",
+        "ENV_BLOCKED representative screenshot view: Windows sandbox ACL error; Playwright rendering assertions passed"
+      ]
     },
     "P61-02": {
       "document": "stages/P61-02-wishlist-modal.md",
@@ -116,8 +128,8 @@
     "PROPOSAL: Today3 and Builder add controls and Builder destination/delete controls are removed in favor of per-row Today adoption.",
     "PROPOSAL: Wishlist add becomes a body-only modal while rich edit remains; NextStep add remains full Project creation with an accurate title.",
     "PROPOSAL: Do Now selection and fourteen-day restart behavior remain unchanged.",
-    "NEEDS_APPROVAL: Add a backward-compatible stable id to Wishlist items and populate missing ids on load.",
-    "NEEDS_APPROVAL: Decide whether adopted Today3 timer minutes remain live Project references or become adoption-time snapshots."
+    "APPROVED: Add a backward-compatible stable id to Wishlist items and populate missing ids on load.",
+    "APPROVED: Freeze Today3 timer minutes as adoption-time snapshots."
   ],
   "blockers": [],
   "permissions": {
@@ -136,5 +148,5 @@
     "modify_real_user_data": false
   },
   "resume_rule": "After explicit user approval, read this state, last report, git state and next stage document; do not request another long start prompt.",
-  "final_status": "P61_00_WAITING_HUMAN_APPROVAL"
+  "final_status": "P61_01_WAITING_HUMAN_APPROVAL"
 }
