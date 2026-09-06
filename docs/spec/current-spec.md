@@ -7,8 +7,8 @@
 | 文書版 | 1.1-rc |
 | 対象 | Windowsデスクトップ版 Life Launcher |
 | 実装基準 | Public repository `Takuyakou/life-launcher` のPhase 6 stacked candidate |
-| 基準コミット | `c876eaa0074a17847ce4cf36197358cd9436e92d` |
-| 確認日 | 2026-09-05 |
+| 基準コミット | `74f4a9608f3b5e2ef857f580db45dd0abbe270bf` |
+| 確認日 | 2026-09-06 |
 | UI実装 | Tauri 2 / React 18 / TypeScript / CSS |
 
 本書は、Life Launcher v1.1候補のUI/UXと主要機能を、Phase 6のコード、型、設定、capability、テストから整理した現行仕様書である。
