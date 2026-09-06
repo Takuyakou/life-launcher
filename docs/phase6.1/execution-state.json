@@ -54,17 +54,29 @@
     },
     "P61-01": {
       "document": "stages/P61-01-selection-flow.md",
-      "status": "IN_PROGRESS",
+      "status": "WAITING_HUMAN_APPROVAL",
       "human_approved": false,
       "approval_text": null,
       "approval_time": null,
       "approved_commit": null,
       "base_sha": "c2c3d9a142dfefe5b841f06dc0fe8880fcb068a8",
       "branch": "feature/p61-01-selection-flow",
-      "pr": null,
-      "verification_commit": null,
-      "workreport": null,
-      "tests": []
+      "pr": "https://github.com/Takuyakou/life-launcher/pull/11",
+      "verification_commit": "c89accb0335142e49584112760acffbf94e64302",
+      "workreport": "workreports/P61-01-report.md",
+      "tests": [
+        "PASS npm.cmd ci (173 packages audited, 0 vulnerabilities)",
+        "PASS npm.cmd run public:check (165 files, 0 blockers)",
+        "PASS npm.cmd run lint",
+        "PASS npm.cmd run build",
+        "PASS npm.cmd run test:visual (59/59)",
+        "PASS cargo fmt --manifest-path src-tauri/Cargo.toml -- --check",
+        "PASS cargo check --manifest-path src-tauri/Cargo.toml",
+        "PASS cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --all-features -- -D warnings",
+        "PASS cargo test --manifest-path src-tauri/Cargo.toml (95 unit + 2 capability contract)",
+        "PASS git diff --check",
+        "ENV_BLOCKED representative screenshot view: Windows sandbox ACL error; Playwright rendering assertions passed"
+      ]
     },
     "P61-02": {
       "document": "stages/P61-02-wishlist-modal.md",
@@ -136,5 +148,5 @@
     "modify_real_user_data": false
   },
   "resume_rule": "After explicit user approval, read this state, last report, git state and next stage document; do not request another long start prompt.",
-  "final_status": "P61_01_IN_PROGRESS"
+  "final_status": "P61_01_WAITING_HUMAN_APPROVAL"
 }
