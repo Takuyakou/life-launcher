@@ -57,6 +57,9 @@ The dictionary now opens with focus on its first tile. While the Dictionary wind
 - Removed a double focus reset that could cancel the first Dictionary arrow-key move.
 - Kept Dictionary arrow navigation active after its internal tile focus is cleared, without intercepting editable controls or other windows.
 - Matched Today Builder candidate actions to the green `今日へ` control and reduced Today3 card height and internal whitespace.
+- Removed the persistent Wishlist body add prompt while keeping its header add action and focused inline form.
+- Split Today3 item count from its visible completion summary and highlighted only the all-complete state.
+- Added the existing project color as a thin top border on linked Today3 cards; unlinked cards keep the neutral border.
 
 ## Category bug
 

@@ -6008,6 +6008,9 @@ function DashboardApp() {
   }
 
   const todayRemaining = TODAY_ITEM_LIMIT - config.today.items.length;
+  const todayCompletedCount = config.today.items.filter((item) => item.done).length;
+  const todayAllCompleted =
+    config.today.items.length > 0 && todayCompletedCount === config.today.items.length;
   const victoryText = config.today.victory.text.trim();
   const victoryDone = Boolean(victoryText && config.today.victory.done);
   const victorySuggestions = uniqueSuggestions(
@@ -7688,9 +7691,18 @@ function DashboardApp() {
                       <UiIcon name="add" size={16} />
                       追加
                     </button>
-                    <span>
-                      {config.today.items.length}/{TODAY_ITEM_LIMIT}
-                    </span>
+                    <span>{config.today.items.length}件</span>
+                    {config.today.items.length > 0 && (
+                      <span
+                        className={
+                          todayAllCompleted
+                            ? "todayCompletionSummary todayCompletionSummary--complete"
+                            : "todayCompletionSummary"
+                        }
+                      >
+                        {todayCompletedCount} / {config.today.items.length} 完了
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="todayGrid">
@@ -7718,6 +7730,11 @@ function DashboardApp() {
                           .filter(Boolean)
                           .join(" ")}
                         data-today-index={index}
+                        data-project-color={
+                          project
+                            ? resolveProjectColorId(project.id, project.colorId)
+                            : undefined
+                        }
                         key={todaySourceKey(item, index)}
                         onContextMenu={(event) => {
                           event.preventDefault();
@@ -8358,7 +8375,7 @@ function DashboardApp() {
 
                 {inboxOpen && (
                   <div className="inboxBody">
-                    {inboxAddOpen ? (
+                    {inboxAddOpen && (
                       <form
                         className="addRow inboxAddRow"
                         onSubmit={(event) => {
@@ -8399,14 +8416,6 @@ function DashboardApp() {
                           <UiIcon name="close" size={16} />
                         </button>
                       </form>
-                    ) : (
-                      <button
-                        className="inboxAddPrompt"
-                        onClick={() => setInboxAddOpen(true)}
-                        type="button"
-                      >
-                        <UiIcon name="add" size={16} /> 追加
-                      </button>
                     )}
                     <div className="inboxList">
                       {config.inbox.map((item, index) => (

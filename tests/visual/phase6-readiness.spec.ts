@@ -105,6 +105,11 @@ for (const activeCount of [0, 1, 2, 3]) {
       await expect(page.locator(".toast").last()).toContainText("3件まで");
       await expect(page.locator(".todayRow")).toHaveCount(3);
     }
+    const completionSummary = page.locator(".todayCompletionSummary");
+    if (activeCount === 0) await expect(completionSummary).toHaveCount(0);
+    else {
+      await expect(completionSummary).toHaveText(`0 / ${activeCount} 完了`);
+    }
     await expect(page.getByRole("button", { name: /次の3件を選ぶ/ })).toHaveCount(0);
   });
 }
@@ -118,6 +123,11 @@ for (const completedCount of [0, 1, 2, 3]) {
     await expect(
       page.locator(".todayCompletionStatus:not(.todayCompletionStatus--complete)"),
     ).toHaveCount(3 - completedCount);
+    const summary = page.locator(".todayCompletionSummary");
+    await expect(summary).toHaveText(`${completedCount} / 3 完了`);
+    await expect(summary).toHaveClass(
+      completedCount === 3 ? /todayCompletionSummary--complete/ : /todayCompletionSummary$/,
+    );
     await expect(page.getByRole("button", { name: /次の3件を選ぶ/ })).toHaveCount(
       completedCount === 3 ? 1 : 0,
     );

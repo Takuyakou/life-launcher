@@ -6794,6 +6794,16 @@ input[type="number"]::-webkit-inner-spin-button {
   font-variant-numeric: tabular-nums;
 }
 
+.sectionHeadingActions > .todayCompletionSummary {
+  color: var(--text-muted-readable);
+  white-space: nowrap;
+}
+
+.sectionHeadingActions > .todayCompletionSummary--complete {
+  color: var(--good);
+  font-weight: 650;
+}
+
 .sectionAddButton {
   min-height: 26px;
   font-size: var(--dashboard-font-meta);
@@ -7003,29 +7013,6 @@ input[type="number"]::-webkit-inner-spin-button {
 .inboxBody {
   display: grid;
   gap: 8px;
-}
-
-.inboxAddPrompt {
-  width: 100%;
-  min-height: 40px;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  border: 1px dashed var(--line);
-  border-radius: var(--radius);
-  padding: 8px 12px;
-  background: transparent;
-  color: var(--muted);
-  font-size: var(--dashboard-font-meta);
-  font-weight: 600;
-  text-align: left;
-}
-
-.inboxAddPrompt:hover,
-.inboxAddPrompt:focus-visible {
-  border-color: var(--muted);
-  background: var(--control-neutral-hover-bg);
-  color: var(--text);
 }
 
 .inboxRow {
@@ -7242,6 +7229,10 @@ input[type="number"]::-webkit-inner-spin-button {
 .todayRow--complete {
   border-color: rgba(117, 196, 143, 0.32);
   background: var(--surface-soft);
+}
+
+.todayRow[data-project-color] {
+  border-top: 2px solid var(--project-color);
 }
 
 .todayCompletionStatus {

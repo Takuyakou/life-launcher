@@ -97,6 +97,9 @@ test("Main hierarchy and Today3 three-column layout match Phase 6", async ({ pag
   expect(
     Math.max(...boxes.map((box) => box.width)) - Math.min(...boxes.map((box) => box.width)),
   ).toBeLessThan(2);
+  await expect(cards.first()).toHaveAttribute("data-project-color", "blue");
+  await expect(cards.first()).toHaveCSS("border-top-color", "rgb(112, 167, 255)");
+  await expect(cards.nth(1)).not.toHaveAttribute("data-project-color");
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
     await page.evaluate(() => document.documentElement.clientWidth),
   );
@@ -247,8 +250,11 @@ test("NextStep and Wishlist use compact non-destructive Today actions", async ({
   await expect(page.locator(".toast").last()).toContainText("既にあります");
   expect((await currentConfig(page)).today.items).toHaveLength(1);
 
-  await page.locator(".inboxBand .disclosure").click();
-  await page.locator(".inboxRow .moveTodayButton").first().click();
+  const wishlist = page.locator(".inboxBand");
+  await wishlist.locator(".disclosure").click();
+  await expect(wishlist.locator(".inboxAddPrompt")).toHaveCount(0);
+  await expect(wishlist.getByRole("button", { name: "やりたいことを追加" })).toBeVisible();
+  await wishlist.locator(".inboxRow .moveTodayButton").first().click();
   await projects.locator(".nextStepTodayButton").nth(1).click();
   config = await currentConfig(page);
   expect(config.today.items).toHaveLength(3);
