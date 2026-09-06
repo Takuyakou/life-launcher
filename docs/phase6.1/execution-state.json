@@ -80,17 +80,29 @@
     },
     "P61-02": {
       "document": "stages/P61-02-wishlist-modal.md",
-      "status": "IN_PROGRESS",
+      "status": "WAITING_HUMAN_APPROVAL",
       "human_approved": false,
       "approval_text": null,
       "approval_time": null,
       "approved_commit": null,
       "base_sha": "3022e77b6ef90dbc2e6217545cc3fb06533ec510",
       "branch": "feature/p61-02-wishlist-modal",
-      "pr": null,
-      "verification_commit": null,
-      "workreport": null,
-      "tests": []
+      "pr": "https://github.com/Takuyakou/life-launcher/pull/12",
+      "verification_commit": "602c2622c51f5f87b54c761a4cb2004a4569bab2",
+      "workreport": "workreports/P61-02-report.md",
+      "tests": [
+        "PASS npm.cmd ci (173 packages audited, 0 vulnerabilities)",
+        "PASS npm.cmd run public:check (169 files, 0 blockers)",
+        "PASS npm.cmd run lint",
+        "PASS npm.cmd run build",
+        "PASS P61-02 related Visual QA (43/43)",
+        "PASS npm.cmd run test:visual (65/65)",
+        "PASS cargo fmt --manifest-path src-tauri/Cargo.toml -- --check",
+        "PASS cargo check --manifest-path src-tauri/Cargo.toml",
+        "PASS cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --all-features -- -D warnings",
+        "PASS cargo test --manifest-path src-tauri/Cargo.toml (95 unit + 2 capability contract)",
+        "PASS git diff --check"
+      ]
     },
     "P61-03": {
       "document": "stages/P61-03-guide.md",
@@ -148,5 +160,5 @@
     "modify_real_user_data": false
   },
   "resume_rule": "After explicit user approval, read this state, last report, git state and next stage document; do not request another long start prompt.",
-  "final_status": "P61_02_IN_PROGRESS"
+  "final_status": "P61_02_WAITING_HUMAN_APPROVAL"
 }
