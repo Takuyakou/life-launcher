@@ -5728,6 +5728,48 @@ input[type="number"]::-webkit-inner-spin-button {
   overflow: auto;
 }
 
+.wishlistAddDialog {
+  width: min(440px, 100%);
+  gap: 14px;
+}
+
+.wishlistAddHeader {
+  display: grid;
+  gap: 4px;
+}
+
+.wishlistAddHeader h2,
+.wishlistAddHeader p {
+  margin: 0;
+}
+
+.wishlistAddHeader h2 {
+  font-size: 20px;
+  line-height: 1.35;
+}
+
+.wishlistAddHeader > p:last-child {
+  color: var(--text-muted-readable);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.wishlistAddForm {
+  display: grid;
+  gap: 18px;
+}
+
+.wishlistAddForm .fieldError {
+  margin-top: -1px;
+}
+
+.dialogLead {
+  margin: 4px 0 0;
+  color: var(--text-muted-readable);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .modalTitleRow {
   display: flex;
   align-items: flex-start;

@@ -303,10 +303,10 @@ test("registration stays in source sections and persists after reload", async ({
   await expect(page.locator(".todayBuilderDestination")).toHaveCount(0);
 
   const projects = page.locator(".projectsBand");
-  await projects.getByRole("button", { name: "次の一手を追加" }).click();
-  const projectDialog = page.getByRole("dialog", { name: "次の一手を追加" });
+  await projects.getByRole("button", { name: "プロジェクトを追加" }).click();
+  const projectDialog = page.getByRole("dialog", { name: "プロジェクトを追加" });
   await expect(projectDialog).toBeVisible();
-  const projectName = projectDialog.getByRole("textbox", { name: "名前" });
+  const projectName = projectDialog.getByRole("textbox", { name: "プロジェクト名" });
   await expect(projectName).toBeFocused();
   await projectName.fill("再起動確認プロジェクト");
   await projectDialog
@@ -317,10 +317,12 @@ test("registration stays in source sections and persists after reload", async ({
 
   const wishlist = page.locator(".inboxBand");
   await wishlist.getByRole("button", { name: "やりたいことを追加" }).click();
-  const wishlistInput = wishlist.getByRole("textbox", { name: "やりたいことに追加" });
+  const wishlistDialog = page.getByRole("dialog", { name: "やりたいことを追加" });
+  const wishlistInput = wishlistDialog.getByRole("textbox", { name: "やりたいこと" });
   await expect(wishlistInput).toBeFocused();
   await wishlistInput.fill("再起動後も残るやりたいこと");
   await wishlistInput.press("Enter");
+  await expect(wishlistDialog).toHaveCount(0);
 
   await page.reload();
   expect(

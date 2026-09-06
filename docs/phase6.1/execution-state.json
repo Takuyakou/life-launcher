@@ -8,7 +8,7 @@
   "repository": "Takuyakou/life-launcher",
   "target_product_version": "v1.1.0 (planned only)",
   "observed_product_version_from_report": "1.0.0",
-  "current_stage": "P61-01",
+  "current_stage": "P61-02",
   "authoritative_runtime_path": "docs/phase6.1/execution-state.json",
   "report_baseline": {
     "file": "reference/phase6-final-report.md",
@@ -54,11 +54,11 @@
     },
     "P61-01": {
       "document": "stages/P61-01-selection-flow.md",
-      "status": "WAITING_HUMAN_APPROVAL",
-      "human_approved": false,
-      "approval_text": null,
-      "approval_time": null,
-      "approved_commit": null,
+      "status": "APPROVED",
+      "human_approved": true,
+      "approval_text": "続きもやっておいてください。まだ終わってないですよね",
+      "approval_time": "2026-09-06T19:20:28+09:00",
+      "approved_commit": "3022e77b6ef90dbc2e6217545cc3fb06533ec510",
       "base_sha": "c2c3d9a142dfefe5b841f06dc0fe8880fcb068a8",
       "branch": "feature/p61-01-selection-flow",
       "pr": "https://github.com/Takuyakou/life-launcher/pull/11",
@@ -80,13 +80,13 @@
     },
     "P61-02": {
       "document": "stages/P61-02-wishlist-modal.md",
-      "status": "BLOCKED_BY_PREVIOUS_APPROVAL",
+      "status": "IN_PROGRESS",
       "human_approved": false,
       "approval_text": null,
       "approval_time": null,
       "approved_commit": null,
-      "base_sha": null,
-      "branch": null,
+      "base_sha": "3022e77b6ef90dbc2e6217545cc3fb06533ec510",
+      "branch": "feature/p61-02-wishlist-modal",
       "pr": null,
       "verification_commit": null,
       "workreport": null,
@@ -148,5 +148,5 @@
     "modify_real_user_data": false
   },
   "resume_rule": "After explicit user approval, read this state, last report, git state and next stage document; do not request another long start prompt.",
-  "final_status": "P61_01_WAITING_HUMAN_APPROVAL"
+  "final_status": "P61_02_IN_PROGRESS"
 }
