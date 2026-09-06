@@ -70,21 +70,19 @@ import {
   ProjectColorId,
   MiniWindowPosition,
   NotesHistoryResponse,
+  InboxItem,
   SessionEntriesResponse,
   SessionEntryRow,
   SessionSummaryResponse,
   WeeklyReviewResponse,
   WeeklyReviewProjectSummary,
+  TodayItem,
 } from "./types";
 import { ConfirmDialog, type ConfirmDialogRequest } from "./components/ConfirmDialog";
 import { ContextMenu, ContextMenuItem } from "./components/ContextMenu";
 import { HelpGuideDialog } from "./components/HelpGuideDialog";
 import { ProjectIdentity } from "./components/ProjectIdentity";
-import {
-  PROJECT_COLOR_IDS,
-  PROJECT_COLOR_LABELS,
-  resolveProjectColorId,
-} from "./projectIdentity";
+import { PROJECT_COLOR_IDS, PROJECT_COLOR_LABELS, resolveProjectColorId } from "./projectIdentity";
 import { TimerPanel } from "./components/TimerPanel";
 import { UiIcon } from "./components/UiIcon";
 import {
@@ -238,11 +236,7 @@ type SettingsCenterDraft = {
 };
 
 type SettingsSectionKey = "basic" | "shortcuts" | "instructions" | "backup" | "maintenance";
-type ShortcutDraftField =
-  | "focusHotkey"
-  | "launcherHotkey"
-  | "miniHotkey"
-  | "instructionHotkey";
+type ShortcutDraftField = "focusHotkey" | "launcherHotkey" | "miniHotkey" | "instructionHotkey";
 
 const SHORTCUT_DRAFT_FIELDS: ReadonlyArray<{
   field: ShortcutDraftField;
@@ -254,26 +248,25 @@ const SHORTCUT_DRAFT_FIELDS: ReadonlyArray<{
   { field: "instructionHotkey", label: "手順書" },
 ];
 
-const TOP_MENU_LABELS =
-  navigator.language.toLocaleLowerCase().startsWith("en")
-    ? {
-        autoStart: "Startup",
-        miniMode: "Mini",
-        records: "Records",
-        dashboard: "Home",
-        instructions: "Instructions",
-        guide: "Guide",
-        settings: "Settings",
-      }
-    : {
-        autoStart: "自動起動",
-        miniMode: "ミニ",
-        records: "記録",
-        dashboard: "メイン",
-        instructions: "手順書",
-        guide: "使い方",
-        settings: "設定",
-      };
+const TOP_MENU_LABELS = navigator.language.toLocaleLowerCase().startsWith("en")
+  ? {
+      autoStart: "Startup",
+      miniMode: "Mini",
+      records: "Records",
+      dashboard: "Home",
+      instructions: "Instructions",
+      guide: "Guide",
+      settings: "Settings",
+    }
+  : {
+      autoStart: "自動起動",
+      miniMode: "ミニ",
+      records: "記録",
+      dashboard: "メイン",
+      instructions: "手順書",
+      guide: "使い方",
+      settings: "設定",
+    };
 const TOP_MENU_GROUP_LABELS = {
   window: `${TOP_MENU_LABELS.autoStart} / ${TOP_MENU_LABELS.miniMode}`,
   work: `${TOP_MENU_LABELS.records} / ${TOP_MENU_LABELS.instructions}`,
@@ -448,7 +441,7 @@ type ProjectDragPreview = {
   targetIndicator?: {
     left: number;
     top: number;
-    height: number;
+    width: number;
   };
 };
 
@@ -553,6 +546,44 @@ const MINI_WINDOW_HEIGHT_PX = 136;
 const MINI_WINDOW_SAFE_MARGIN_PX = 16;
 const NUMBER_INPUT_DRAG_THRESHOLD_PX = 4;
 const NUMBER_INPUT_DRAG_PIXELS_PER_STEP = 8;
+const TODAY_BUILDER_PAGE_SIZE = 5;
+const TODAY_BUILDER_ORDER_STORAGE_KEY = "life-launcher-today-builder-order";
+const TODAY_BUILDER_DISMISSED_STORAGE_KEY = "life-launcher-today-builder-dismissed";
+
+function readStoredStringArray(key: string): string[] {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(key) ?? "[]");
+    return Array.isArray(parsed)
+      ? parsed.filter((value): value is string => typeof value === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeStoredStringArray(key: string, values: string[]) {
+  window.localStorage.setItem(key, JSON.stringify(values));
+}
+
+function createTodaySourceKey(prefix: "manual" | "wishlist"): string {
+  const id =
+    typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  return `${prefix}:${id}`;
+}
+
+function todaySourceKey(item: TodayItem, index: number): string {
+  return item.sourceKey?.trim() || `legacy:${index}:${item.projectId ?? ""}:${item.text}`;
+}
+
+function todayTimerSourceId(item: TodayItem, index: number): string {
+  return `today:${todaySourceKey(item, index)}`;
+}
+
+function wishlistSourceKey(item: InboxItem): string {
+  return `wishlist:${item.projectId ?? "none"}:${item.text.trim()}`;
+}
 
 function formatActionSummary(results: ActionResult[]): { tone: ToastTone; message: string } {
   const failed = results.filter((result) => !result.ok);
@@ -637,10 +668,12 @@ function clearMiniPosition() {
   window.localStorage.removeItem(MINI_POSITION_STORAGE_KEY);
 }
 
-function isFiniteMiniPosition(position: {
-  x?: unknown;
-  y?: unknown;
-} | null): position is MiniWindowPosition {
+function isFiniteMiniPosition(
+  position: {
+    x?: unknown;
+    y?: unknown;
+  } | null,
+): position is MiniWindowPosition {
   return (
     typeof position?.x === "number" &&
     typeof position.y === "number" &&
@@ -713,11 +746,13 @@ function waitForMiniWindowCreated(miniWindow: WebviewWindow): Promise<void> {
     void miniWindow.once("tauri://created", resolveOnce).catch((error) => {
       rejectOnce(error instanceof Error ? error.message : String(error));
     });
-    void miniWindow.once<unknown>("tauri://error", (event) => {
-      rejectOnce(event.payload ? String(event.payload) : "ミニウィンドウの作成に失敗しました");
-    }).catch((error) => {
-      rejectOnce(error instanceof Error ? error.message : String(error));
-    });
+    void miniWindow
+      .once<unknown>("tauri://error", (event) => {
+        rejectOnce(event.payload ? String(event.payload) : "ミニウィンドウの作成に失敗しました");
+      })
+      .catch((error) => {
+        rejectOnce(error instanceof Error ? error.message : String(error));
+      });
   });
 }
 
@@ -1074,7 +1109,9 @@ function formatTodayActivityLog(date: string, entries: SessionEntryRow[]): strin
   } else {
     entries.forEach((entry) => {
       const note = entry.note.trim();
-      lines.push(`- ${entry.startedAt} | プロジェクト・項目: ${entry.label || "未分類"} | ${entry.minutes}分 | 次の一手・作業名: ${note || "記録なし"}`);
+      lines.push(
+        `- ${entry.startedAt} | プロジェクト・項目: ${entry.label || "未分類"} | ${entry.minutes}分 | 次の一手・作業名: ${note || "記録なし"}`,
+      );
     });
   }
 
@@ -1124,11 +1161,10 @@ function firstDroppedUrl(text: string): string | null {
   );
 }
 
-const SHORTCUT_PATTERN = /^(?:(?:Ctrl|Alt|Shift|Super|Command)\+)*(?:[A-Za-z0-9]|F(?:[1-9]|1[0-2])|Space)$/i;
+const SHORTCUT_PATTERN =
+  /^(?:(?:Ctrl|Alt|Shift|Super|Command)\+)*(?:[A-Za-z0-9]|F(?:[1-9]|1[0-2])|Space)$/i;
 
-function shortcutFromKeyboardEvent(
-  event: globalThis.KeyboardEvent,
-): string | null | undefined {
+function shortcutFromKeyboardEvent(event: globalThis.KeyboardEvent): string | null | undefined {
   if (["Control", "Alt", "Shift", "Meta"].includes(event.key)) return undefined;
 
   let key: string | null = null;
@@ -1175,7 +1211,9 @@ function validateShortcutSettings(draft: SettingsCenterDraft): string | null {
     .map((value) => value.trim())
     .filter(Boolean);
   const duplicates = values.find((value, index) =>
-    values.some((other, otherIndex) => otherIndex !== index && other.toLowerCase() === value.toLowerCase()),
+    values.some(
+      (other, otherIndex) => otherIndex !== index && other.toLowerCase() === value.toLowerCase(),
+    ),
   );
   if (duplicates) return `ショートカットが重複しています: ${duplicates}`;
   const invalid = values.find((value) => !SHORTCUT_PATTERN.test(value));
@@ -1217,9 +1255,7 @@ function sidebarDropTargetFromPoint(
   const allButtons = Array.from(
     groupElement.querySelectorAll<HTMLElement>("[data-sidebar-button-id]"),
   );
-  const buttons = allButtons.filter(
-    (element) => element.dataset.sidebarButtonId !== sourceId,
-  );
+  const buttons = allButtons.filter((element) => element.dataset.sidebarButtonId !== sourceId);
   if (buttons.length === 0) return allButtons.length === 0 ? { groupName } : null;
 
   const target = buttons.reduce((closest, candidate) => {
@@ -1291,19 +1327,19 @@ function projectDropTargetFromPoint(
 
   const cardElement = element.closest<HTMLElement>("[data-project-id]");
   if (!cardElement) return nearestProjectDropTargetFromPoint(x, y);
-  return projectDropTargetFromCard(cardElement, x);
+  return projectDropTargetFromCard(cardElement, y);
 }
 
 function projectDropTargetFromCard(
   cardElement: HTMLElement,
-  x: number,
+  y: number,
 ): { id: string; placement: "before" | "after" } | null {
   const id = cardElement.dataset.projectId;
   if (!id) return null;
   const rect = cardElement.getBoundingClientRect();
   return {
     id,
-    placement: x < rect.left + rect.width / 2 ? "before" : "after",
+    placement: y < rect.top + rect.height / 2 ? "before" : "after",
   };
 }
 
@@ -1325,19 +1361,23 @@ function nearestProjectDropTargetFromPoint(
     return best;
   }, null);
 
-  return nearest ? projectDropTargetFromCard(nearest.card, x) : null;
+  return nearest ? projectDropTargetFromCard(nearest.card, y) : null;
 }
 
 function inboxDropTargetFromPoint(
   x: number,
   y: number,
-): { index: number; placement: "before" | "after"; indicator: { left: number; top: number; width: number } } | null {
-  const row = Array.from(
-    document.querySelectorAll<HTMLElement>("[data-inbox-index]"),
-  ).find((candidate) => {
-    const rect = candidate.getBoundingClientRect();
-    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
-  });
+): {
+  index: number;
+  placement: "before" | "after";
+  indicator: { left: number; top: number; width: number };
+} | null {
+  const row = Array.from(document.querySelectorAll<HTMLElement>("[data-inbox-index]")).find(
+    (candidate) => {
+      const rect = candidate.getBoundingClientRect();
+      return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+    },
+  );
   if (!row) return null;
 
   const index = Number(row.dataset.inboxIndex);
@@ -1358,13 +1398,17 @@ function inboxDropTargetFromPoint(
 function todayBuilderDropTargetFromPoint(
   x: number,
   y: number,
-): { index: number; placement: "before" | "after"; indicator: { left: number; top: number; width: number } } | null {
-  const row = Array.from(
-    document.querySelectorAll<HTMLElement>("[data-today-builder-index]"),
-  ).find((candidate) => {
-    const rect = candidate.getBoundingClientRect();
-    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
-  });
+): {
+  index: number;
+  placement: "before" | "after";
+  indicator: { left: number; top: number; width: number };
+} | null {
+  const row = Array.from(document.querySelectorAll<HTMLElement>("[data-today-builder-index]")).find(
+    (candidate) => {
+      const rect = candidate.getBoundingClientRect();
+      return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+    },
+  );
   if (!row) return null;
 
   const index = Number(row.dataset.todayBuilderIndex);
@@ -1385,14 +1429,14 @@ function todayBuilderDropTargetFromPoint(
 function projectDropIndicator(
   id: string,
   placement: "before" | "after",
-): { left: number; top: number; height: number } | undefined {
+): { left: number; top: number; width: number } | undefined {
   const card = document.querySelector<HTMLElement>(`[data-project-id="${CSS.escape(id)}"]`);
   if (!card) return undefined;
   const rect = card.getBoundingClientRect();
   return {
-    left: placement === "before" ? rect.left - 2 : rect.right - 1,
-    top: rect.top + 6,
-    height: Math.max(0, rect.height - 12),
+    left: rect.left + 6,
+    top: placement === "before" ? rect.top - 2 : rect.bottom + 1,
+    width: Math.max(0, rect.width - 12),
   };
 }
 
@@ -1539,6 +1583,8 @@ export default function App() {
 
 function DashboardApp() {
   const [config, setConfig] = useState<AppConfig | null>(null);
+  const configRef = useRef<AppConfig | null>(null);
+  configRef.current = config;
   const [backupPath, setBackupPath] = useState("");
   const [todaySessionMinutes, setTodaySessionMinutes] = useState(0);
   const [morningVictorySuggestion, setMorningVictorySuggestion] = useState<string | null>(null);
@@ -1586,11 +1632,22 @@ function DashboardApp() {
   const [inboxEditInstructionPath, setInboxEditInstructionPath] = useState("");
   const [inboxEditInstructionOpenOnStart, setInboxEditInstructionOpenOnStart] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
+  const [projectsOpen, setProjectsOpen] = useState(true);
+  const [nextStepAddOpen, setNextStepAddOpen] = useState(false);
+  const [nextStepProjectDraft, setNextStepProjectDraft] = useState("");
+  const [nextStepActionDraft, setNextStepActionDraft] = useState("");
   const [todayBuilderOpen, setTodayBuilderOpen] = useState(false);
-  const [todayBuilderDestinations, setTodayBuilderDestinations] = useState<Record<string, string>>({});
+  const [todayBuilderPage, setTodayBuilderPage] = useState(1);
+  const [todayBuilderDismissedKeys, setTodayBuilderDismissedKeys] = useState<string[]>(() =>
+    readStoredStringArray(TODAY_BUILDER_DISMISSED_STORAGE_KEY),
+  );
+  const [todayBuilderDestinations, setTodayBuilderDestinations] = useState<Record<string, string>>(
+    {},
+  );
   const [todayBuilderAddOpen, setTodayBuilderAddOpen] = useState(false);
   const [todayBuilderDraft, setTodayBuilderDraft] = useState("");
-  const [todayBuilderPointerDrag, setTodayBuilderPointerDrag] = useState<TodayBuilderDragPreview | null>(null);
+  const [todayBuilderPointerDrag, setTodayBuilderPointerDrag] =
+    useState<TodayBuilderDragPreview | null>(null);
   const [todayActivityOpen, setTodayActivityOpen] = useState(false);
   const [, setNotesSaveStatus] = useState<NotesSaveStatus>("saved");
   const [launcherOverlayOpen, setLauncherOverlayOpen] = useState(false);
@@ -1633,15 +1690,18 @@ function DashboardApp() {
   const [overlayPageDraft, setOverlayPageDraft] = useState<OverlayPageDraft | null>(null);
   const [overlayPageDragId, setOverlayPageDragId] = useState<string | null>(null);
   const [settingsDraft, setSettingsDraft] = useState<SettingsCenterDraft | null>(null);
-  const [shortcutRecordingField, setShortcutRecordingField] =
-    useState<ShortcutDraftField | null>(null);
+  const [shortcutRecordingField, setShortcutRecordingField] = useState<ShortcutDraftField | null>(
+    null,
+  );
   const [helpGuideOpen, setHelpGuideOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSectionKey>("basic");
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogRequest | null>(null);
   const [manualSessionDraft, setManualSessionDraft] = useState<ManualSessionDraft | null>(null);
   const [sessionEditDraft, setSessionEditDraft] = useState<SessionEditDraft | null>(null);
   const [buttonEditDraft, setButtonEditDraft] = useState<ButtonEditDraft | null>(null);
-  const [buttonEditInitialDraft, setButtonEditInitialDraft] = useState<ButtonEditDraft | null>(null);
+  const [buttonEditInitialDraft, setButtonEditInitialDraft] = useState<ButtonEditDraft | null>(
+    null,
+  );
   const [projectEditDraft, setProjectEditDraft] = useState<ProjectEditDraft | null>(null);
   const [instructionChoices, setInstructionChoices] = useState<InstructionChoice[]>([]);
   const [instructionChoicesLoading, setInstructionChoicesLoading] = useState(false);
@@ -1649,7 +1709,8 @@ function DashboardApp() {
   const [instructionSettingsBusy, setInstructionSettingsBusy] = useState(false);
   const [dailyActivityCopying, setDailyActivityCopying] = useState(false);
   const [sidebarPointerDrag, setSidebarPointerDrag] = useState<SidebarDragPreview | null>(null);
-  const [sidebarGroupPointerDrag, setSidebarGroupPointerDrag] = useState<SidebarGroupDragPreview | null>(null);
+  const [sidebarGroupPointerDrag, setSidebarGroupPointerDrag] =
+    useState<SidebarGroupDragPreview | null>(null);
   const [todayPointerDrag, setTodayPointerDrag] = useState<number | null>(null);
   const [projectPointerDrag, setProjectPointerDrag] = useState<ProjectDragPreview | null>(null);
   const [inboxPointerDrag, setInboxPointerDrag] = useState<InboxDragPreview | null>(null);
@@ -1670,9 +1731,9 @@ function DashboardApp() {
   const projectAutoScrollSpeedRef = useRef(0);
   const numberInputDragRef = useRef<NumberInputDrag | null>(null);
   const toastIdRef = useRef(0);
-  const toastTimersRef = useRef<
-    Map<number, { dismissTimer: number; removeTimer: number | null }>
-  >(new Map());
+  const toastTimersRef = useRef<Map<number, { dismissTimer: number; removeTimer: number | null }>>(
+    new Map(),
+  );
   const lastBackupErrorRef = useRef<string | null>(null);
   const lastSettingsApplyErrorRef = useRef<string | null>(null);
   const shortcutCaptureActiveRef = useRef(false);
@@ -1784,9 +1845,7 @@ function DashboardApp() {
   const staleNextStepProjects = useMemo(() => {
     if (!config) return [];
     const staleIds = new Set(staleNextStepProjectIds);
-    return config.projects.filter(
-      (project) => staleIds.has(project.id) && project.nextStep.trim(),
-    );
+    return config.projects.filter((project) => staleIds.has(project.id) && project.nextStep.trim());
   }, [config, staleNextStepProjectIds]);
 
   const buttonGroups = useMemo<ButtonGroup[]>(() => {
@@ -1865,13 +1924,11 @@ function DashboardApp() {
       overlayPages,
       launcherSearch,
       config?.dictionaryOrder,
-    ).map(
-      (button) => ({
-        groupName: buttonGroupName(button),
-        pageName: getOverlayPageNameForButton(button, overlayPages),
-        button,
-      }),
-    );
+    ).map((button) => ({
+      groupName: buttonGroupName(button),
+      pageName: getOverlayPageNameForButton(button, overlayPages),
+      button,
+    }));
   }, [config?.buttons, config?.dictionaryOrder, launcherSearch, overlayPages]);
   const launcherDisplayedItems = useMemo<LauncherOverlayItem[]>(
     () =>
@@ -1938,48 +1995,45 @@ function DashboardApp() {
     toastTimersRef.current.set(id, { dismissTimer, removeTimer: null });
   }, []);
 
-  const refreshButtonIcon = useCallback(
-    async (button: LauncherButton, force = false) => {
-      if (!buttonHasIconCacheSource(button)) return;
-      if (iconRequestIdsRef.current.has(button.id)) return;
+  const refreshButtonIcon = useCallback(async (button: LauncherButton, force = false) => {
+    if (!buttonHasIconCacheSource(button)) return;
+    if (iconRequestIdsRef.current.has(button.id)) return;
 
-      iconRequestIdsRef.current.add(button.id);
-      try {
-        if (force) {
-          setButtonIconSources((current) => {
-            const next = { ...current };
-            delete next[button.id];
-            return next;
-          });
-          await deleteButtonIconCache(button.id);
-        }
-        const source = await ensureButtonIconCache(button);
-        if (source) {
-          setButtonIconSources((current) => ({
-            ...current,
-            [button.id]: source,
-          }));
-        } else if (force) {
-          setButtonIconSources((current) => {
-            const next = { ...current };
-            delete next[button.id];
-            return next;
-          });
-        }
-      } catch {
-        if (force) {
-          setButtonIconSources((current) => {
-            const next = { ...current };
-            delete next[button.id];
-            return next;
-          });
-        }
-      } finally {
-        iconRequestIdsRef.current.delete(button.id);
+    iconRequestIdsRef.current.add(button.id);
+    try {
+      if (force) {
+        setButtonIconSources((current) => {
+          const next = { ...current };
+          delete next[button.id];
+          return next;
+        });
+        await deleteButtonIconCache(button.id);
       }
-    },
-    [],
-  );
+      const source = await ensureButtonIconCache(button);
+      if (source) {
+        setButtonIconSources((current) => ({
+          ...current,
+          [button.id]: source,
+        }));
+      } else if (force) {
+        setButtonIconSources((current) => {
+          const next = { ...current };
+          delete next[button.id];
+          return next;
+        });
+      }
+    } catch {
+      if (force) {
+        setButtonIconSources((current) => {
+          const next = { ...current };
+          delete next[button.id];
+          return next;
+        });
+      }
+    } finally {
+      iconRequestIdsRef.current.delete(button.id);
+    }
+  }, []);
 
   const refreshDoNow = useCallback(async () => {
     try {
@@ -1996,10 +2050,7 @@ function DashboardApp() {
 
   const refreshSessions = useCallback(async () => {
     try {
-      const [response, doNow] = await Promise.all([
-        loadTodaySessionTotal(),
-        loadDoNowCandidates(),
-      ]);
+      const [response, doNow] = await Promise.all([loadTodaySessionTotal(), loadDoNowCandidates()]);
       setTodaySessionMinutes(response.totalMinutes);
       setDoNowResponse(doNow);
     } catch (error) {
@@ -2032,10 +2083,7 @@ function DashboardApp() {
 
   const refreshWeeklyReview = useCallback(async () => {
     try {
-      const [review, freshness] = await Promise.all([
-        loadWeeklyReview(),
-        loadNextStepFreshness(),
-      ]);
+      const [review, freshness] = await Promise.all([loadWeeklyReview(), loadNextStepFreshness()]);
       applyWeeklyReview(review);
       setStaleNextStepProjectIds(freshness.staleProjectIds);
     } catch (error) {
@@ -2124,10 +2172,7 @@ function DashboardApp() {
           const message = error instanceof Error ? error.message : String(error);
           if (message !== lastSettingsApplyErrorRef.current) {
             lastSettingsApplyErrorRef.current = message;
-            showToast(
-              "warn",
-              `設定は読み込みました。ショートカットを登録できません: ${message}`,
-            );
+            showToast("warn", `設定は読み込みました。ショートカットを登録できません: ${message}`);
           }
         }
         await refreshSessions();
@@ -2240,14 +2285,21 @@ function DashboardApp() {
   const persistConfig = useCallback(
     async (nextConfig: AppConfig) => {
       const safeConfig = limitToday(nextConfig);
+      const previousConfig = configRef.current;
+      configRef.current = safeConfig;
       setConfig(safeConfig);
       try {
         const response = await saveConfig(safeConfig);
+        configRef.current = response.config;
         setConfig(response.config);
         setBanner(null);
         await reapplyDashboardSettings();
         return true;
       } catch (error) {
+        if (configRef.current === safeConfig) {
+          configRef.current = previousConfig;
+          setConfig(previousConfig);
+        }
         const message = error instanceof Error ? error.message : String(error);
         setBanner(message);
         showToast("error", `保存できません: ${message}`);
@@ -2271,61 +2323,64 @@ function DashboardApp() {
     [],
   );
 
-  const ensureMiniWindow = useCallback(async (shouldShow = true) => {
-    const existing = await WebviewWindow.getByLabel(MINI_WINDOW_LABEL);
-    const preferredPosition = configuredMiniPosition();
+  const ensureMiniWindow = useCallback(
+    async (shouldShow = true) => {
+      const existing = await WebviewWindow.getByLabel(MINI_WINDOW_LABEL);
+      const preferredPosition = configuredMiniPosition();
 
-    if (existing) {
-      miniWindowRef.current = existing;
-      const currentPosition = await existing.outerPosition().catch(() => null);
-      const safePosition = await resolveSafeMiniPosition(
-        isFiniteMiniPosition(currentPosition) ? currentPosition : preferredPosition,
-      );
-      if (!sameMiniPosition(currentPosition, safePosition)) {
-        await existing.setPosition(new PhysicalPosition(safePosition.x, safePosition.y));
+      if (existing) {
+        miniWindowRef.current = existing;
+        const currentPosition = await existing.outerPosition().catch(() => null);
+        const safePosition = await resolveSafeMiniPosition(
+          isFiniteMiniPosition(currentPosition) ? currentPosition : preferredPosition,
+        );
+        if (!sameMiniPosition(currentPosition, safePosition)) {
+          await existing.setPosition(new PhysicalPosition(safePosition.x, safePosition.y));
+        }
+        writeMiniPosition(safePosition.x, safePosition.y);
+        if (shouldShow) {
+          await existing.show().catch(() => undefined);
+        }
+        return existing;
       }
+
+      const safePosition = await resolveSafeMiniPosition(preferredPosition);
+      const readyWaiter = await createMiniReadyWaiter();
+      const miniWindow = new WebviewWindow(MINI_WINDOW_LABEL, {
+        url: "/?view=mini",
+        title: "Life Launcher Timer",
+        x: safePosition.x,
+        y: safePosition.y,
+        width: MINI_WINDOW_WIDTH_PX,
+        height: MINI_WINDOW_HEIGHT_PX,
+        minWidth: MINI_WINDOW_WIDTH_PX,
+        minHeight: MINI_WINDOW_HEIGHT_PX,
+        resizable: false,
+        decorations: false,
+        alwaysOnTop: true,
+        skipTaskbar: true,
+        focus: false,
+        focusable: false,
+        visible: false,
+      });
+      try {
+        await Promise.all([waitForMiniWindowCreated(miniWindow), readyWaiter.promise]);
+      } catch (error) {
+        miniWindowRef.current = null;
+        await miniWindow.close().catch(() => undefined);
+        throw error;
+      } finally {
+        readyWaiter.dispose();
+      }
+      miniWindowRef.current = miniWindow;
       writeMiniPosition(safePosition.x, safePosition.y);
       if (shouldShow) {
-        await existing.show().catch(() => undefined);
+        await miniWindow.show();
       }
-      return existing;
-    }
-
-    const safePosition = await resolveSafeMiniPosition(preferredPosition);
-    const readyWaiter = await createMiniReadyWaiter();
-    const miniWindow = new WebviewWindow(MINI_WINDOW_LABEL, {
-      url: "/?view=mini",
-      title: "Life Launcher Timer",
-      x: safePosition.x,
-      y: safePosition.y,
-      width: MINI_WINDOW_WIDTH_PX,
-      height: MINI_WINDOW_HEIGHT_PX,
-      minWidth: MINI_WINDOW_WIDTH_PX,
-      minHeight: MINI_WINDOW_HEIGHT_PX,
-      resizable: false,
-      decorations: false,
-      alwaysOnTop: true,
-      skipTaskbar: true,
-      focus: false,
-      focusable: false,
-      visible: false,
-    });
-    try {
-      await Promise.all([waitForMiniWindowCreated(miniWindow), readyWaiter.promise]);
-    } catch (error) {
-      miniWindowRef.current = null;
-      await miniWindow.close().catch(() => undefined);
-      throw error;
-    } finally {
-      readyWaiter.dispose();
-    }
-    miniWindowRef.current = miniWindow;
-    writeMiniPosition(safePosition.x, safePosition.y);
-    if (shouldShow) {
-      await miniWindow.show();
-    }
-    return miniWindow;
-  }, [configuredMiniPosition]);
+      return miniWindow;
+    },
+    [configuredMiniPosition],
+  );
 
   const openMiniMode = useCallback(async () => {
     if (!config?.settings.miniMode) {
@@ -2448,7 +2503,9 @@ function DashboardApp() {
 
     const setup = async () => {
       const unlistenMain = await listen("main-shortcut-toggle", () => {
-        void returnToMain().catch((error) => console.error("[mini-mode] メイン復帰に失敗しました", error));
+        void returnToMain().catch((error) =>
+          console.error("[mini-mode] メイン復帰に失敗しました", error),
+        );
       });
       const unlistenLauncher = await listen("launcher-shortcut-toggle", () => {
         if (mounted) void toggleDictionaryFromShortcut();
@@ -2557,8 +2614,7 @@ function DashboardApp() {
 
   const saveDefaultTimerMinutes = async (rawValue: string | number) => {
     if (!config) return;
-    const parsed =
-      typeof rawValue === "number" ? rawValue : Number.parseInt(rawValue.trim(), 10);
+    const parsed = typeof rawValue === "number" ? rawValue : Number.parseInt(rawValue.trim(), 10);
     const minutes = normalizeTimerMinutes(
       Number.isFinite(parsed) ? parsed : config.settings.defaultTimerMinutes,
     );
@@ -2594,9 +2650,7 @@ function DashboardApp() {
       if (!navigator.clipboard?.writeText) {
         throw new Error("clipboard API is not available");
       }
-      await navigator.clipboard.writeText(
-        formatTodayActivityLog(sessions.date, sessions.entries),
-      );
+      await navigator.clipboard.writeText(formatTodayActivityLog(sessions.date, sessions.entries));
       showToast("ok", "今日の活動ログをコピーしました");
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -2707,26 +2761,28 @@ function DashboardApp() {
 
   const settingsHaveUnsavedChanges = Boolean(
     config &&
-      settingsDraft &&
-      (settingsDraft.defaultTimerMinutes !== String(config.settings.defaultTimerMinutes) ||
-        settingsDraft.shortTimerMinutes !== String(config.settings.shortTimerMinutes) ||
-        settingsDraft.dayStartHour !== String(config.settings.dayStartHour) ||
-        settingsDraft.focusHotkey !== (config.settings.focusHotkey ?? "") ||
-        settingsDraft.launcherHotkey !== (config.settings.launcherHotkey ?? "") ||
-        settingsDraft.miniHotkey !== (config.settings.miniHotkey ?? "") ||
-        settingsDraft.instructionHotkey !== (config.settings.instructionHotkey ?? "") ||
-        JSON.stringify(settingsDraft.instructionFolders) !==
-          JSON.stringify(config.settings.instructionFolders) ||
-        JSON.stringify(settingsDraft.weeklyFocusProjectIds) !==
-          JSON.stringify(
-            config.projects.filter((project) => project.weeklyFocus === true).map((project) => project.id),
-          ) ||
-        settingsDraft.alwaysOnTop !== config.settings.alwaysOnTop ||
-        settingsDraft.autoStart !== config.settings.autoStart ||
-        settingsDraft.miniMode !== config.settings.miniMode ||
-        settingsDraft.restartShortFirst !== (config.settings.restartShortFirst ?? true) ||
-        settingsDraft.backupFolder !== (config.settings.backupFolder ?? "") ||
-        settingsDraft.backupKeep !== String(config.settings.backupKeep ?? 30)),
+    settingsDraft &&
+    (settingsDraft.defaultTimerMinutes !== String(config.settings.defaultTimerMinutes) ||
+      settingsDraft.shortTimerMinutes !== String(config.settings.shortTimerMinutes) ||
+      settingsDraft.dayStartHour !== String(config.settings.dayStartHour) ||
+      settingsDraft.focusHotkey !== (config.settings.focusHotkey ?? "") ||
+      settingsDraft.launcherHotkey !== (config.settings.launcherHotkey ?? "") ||
+      settingsDraft.miniHotkey !== (config.settings.miniHotkey ?? "") ||
+      settingsDraft.instructionHotkey !== (config.settings.instructionHotkey ?? "") ||
+      JSON.stringify(settingsDraft.instructionFolders) !==
+        JSON.stringify(config.settings.instructionFolders) ||
+      JSON.stringify(settingsDraft.weeklyFocusProjectIds) !==
+        JSON.stringify(
+          config.projects
+            .filter((project) => project.weeklyFocus === true)
+            .map((project) => project.id),
+        ) ||
+      settingsDraft.alwaysOnTop !== config.settings.alwaysOnTop ||
+      settingsDraft.autoStart !== config.settings.autoStart ||
+      settingsDraft.miniMode !== config.settings.miniMode ||
+      settingsDraft.restartShortFirst !== (config.settings.restartShortFirst ?? true) ||
+      settingsDraft.backupFolder !== (config.settings.backupFolder ?? "") ||
+      settingsDraft.backupKeep !== String(config.settings.backupKeep ?? 30)),
   );
 
   const requestCloseSettings = useCallback(() => {
@@ -2837,21 +2893,22 @@ function DashboardApp() {
 
   const hasDismissibleModal = Boolean(
     inboxEditingIndex !== null ||
-      helpGuideOpen ||
-      settingsDraft ||
-      dropDraft ||
-      sessionEditDraft ||
-      manualSessionDraft ||
-      buttonEditDraft ||
-      projectEditDraft ||
-      groupRenameDraft ||
-      overlayPageDraft ||
-      groupDraft !== null,
+    helpGuideOpen ||
+    settingsDraft ||
+    dropDraft ||
+    sessionEditDraft ||
+    manualSessionDraft ||
+    buttonEditDraft ||
+    projectEditDraft ||
+    groupRenameDraft ||
+    overlayPageDraft ||
+    groupDraft !== null,
   );
 
   useEffect(() => {
     const closeOnEscape = (event: globalThis.KeyboardEvent) => {
-      if (event.key !== "Escape" || completionPrompt || confirmDialog || !hasDismissibleModal) return;
+      if (event.key !== "Escape" || completionPrompt || confirmDialog || !hasDismissibleModal)
+        return;
       event.preventDefault();
       dismissNonCriticalModal();
     };
@@ -2861,7 +2918,10 @@ function DashboardApp() {
 
   useEffect(() => {
     const closeOnBackdrop = (event: MouseEvent) => {
-      if (!(event.target instanceof HTMLElement) || !event.target.classList.contains("modalBackdrop")) {
+      if (
+        !(event.target instanceof HTMLElement) ||
+        !event.target.classList.contains("modalBackdrop")
+      ) {
         return;
       }
       if (confirmDialog) return;
@@ -2980,7 +3040,11 @@ function DashboardApp() {
     const min = drag.field === "settingsDayStart" ? 0 : 1;
     const value = Math.min(
       max,
-      Math.max(min, drag.startValue + Math.round((drag.startY - event.clientY) / NUMBER_INPUT_DRAG_PIXELS_PER_STEP)),
+      Math.max(
+        min,
+        drag.startValue +
+          Math.round((drag.startY - event.clientY) / NUMBER_INPUT_DRAG_PIXELS_PER_STEP),
+      ),
     );
     setNumberDragValue(drag.field, value);
     setNumberInputDragging(drag.field);
@@ -2999,7 +3063,11 @@ function DashboardApp() {
     const min = drag.field === "settingsDayStart" ? 0 : 1;
     const value = Math.min(
       max,
-      Math.max(min, drag.startValue + Math.round((drag.startY - event.clientY) / NUMBER_INPUT_DRAG_PIXELS_PER_STEP)),
+      Math.max(
+        min,
+        drag.startValue +
+          Math.round((drag.startY - event.clientY) / NUMBER_INPUT_DRAG_PIXELS_PER_STEP),
+      ),
     );
     if (drag.field === "timer") {
       void saveDefaultTimerMinutes(value);
@@ -3411,10 +3479,7 @@ function DashboardApp() {
         return;
       }
       if (event.payload.url) {
-        void openDropDialog(
-          { kind: "url", value: event.payload.url },
-          event.payload.label,
-        );
+        void openDropDialog({ kind: "url", value: event.payload.url }, event.payload.label);
         return;
       }
       if (event.payload.shellSpecial === "recycle_bin") {
@@ -3472,7 +3537,6 @@ function DashboardApp() {
       unlisten?.();
     };
   }, [handleDroppedPaths, showToast]);
-
 
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
@@ -3757,8 +3821,9 @@ function DashboardApp() {
     if (!(await persistConfig({ ...config, buttons: nextButtons }))) return;
     announceReorder(button.label, index + offset + 1);
     focusAfterReorder(() => {
-      const wrapper = Array.from(document.querySelectorAll<HTMLElement>("[data-sidebar-button-id]"))
-        .find((element) => element.dataset.sidebarButtonId === buttonId);
+      const wrapper = Array.from(
+        document.querySelectorAll<HTMLElement>("[data-sidebar-button-id]"),
+      ).find((element) => element.dataset.sidebarButtonId === buttonId);
       wrapper?.querySelector<HTMLButtonElement>(".quickButton")?.focus();
     });
   };
@@ -3770,7 +3835,10 @@ function DashboardApp() {
     const target = groups[index + offset];
     if (index < 0 || !target) return;
     const nextGroups = [...groups];
-    [nextGroups[index], nextGroups[index + offset]] = [nextGroups[index + offset], nextGroups[index]];
+    [nextGroups[index], nextGroups[index + offset]] = [
+      nextGroups[index + offset],
+      nextGroups[index],
+    ];
 
     if (!(await persistConfig({ ...config, groups: nextGroups }))) return;
     announceReorder(groupName, index + offset + 1);
@@ -3984,7 +4052,7 @@ function DashboardApp() {
     setSidebarGroupPointerDrag(null);
   };
 
-  const startTodayPointerDrag = (event: PointerEvent<HTMLDivElement>, index: number) => {
+  const startTodayPointerDrag = (event: PointerEvent<HTMLElement>, index: number) => {
     if (event.button !== 0 || isReorderBlockedTarget(event.target)) return;
     event.preventDefault();
     event.stopPropagation();
@@ -3997,7 +4065,7 @@ function DashboardApp() {
     };
   };
 
-  const updateTodayPointerDrag = (event: PointerEvent<HTMLDivElement>) => {
+  const updateTodayPointerDrag = (event: PointerEvent<HTMLElement>) => {
     const drag = todayPointerDragRef.current;
     if (!drag) return;
 
@@ -4008,7 +4076,7 @@ function DashboardApp() {
     }
   };
 
-  const finishTodayPointerDrag = (event: PointerEvent<HTMLDivElement>) => {
+  const finishTodayPointerDrag = (event: PointerEvent<HTMLElement>) => {
     const drag = todayPointerDragRef.current;
     todayPointerDragRef.current = null;
     setTodayPointerDrag(null);
@@ -4043,7 +4111,10 @@ function DashboardApp() {
         ? config.settings.defaultTimerMinutes
         : config.settings.shortTimerMinutes;
     const current = Number.parseInt(projectEditDraft[field], 10);
-    const value = Math.min(240, Math.max(1, (Number.isFinite(current) ? current : fallback) + delta));
+    const value = Math.min(
+      240,
+      Math.max(1, (Number.isFinite(current) ? current : fallback) + delta),
+    );
     setProjectEditDraft({ ...projectEditDraft, [field]: String(value) });
   };
 
@@ -4198,8 +4269,7 @@ function DashboardApp() {
       height: drag.height,
       targetIndex: target?.index,
       placement: target?.placement,
-      targetIndicator:
-        target && target.index !== drag.index ? target.indicator : undefined,
+      targetIndicator: target && target.index !== drag.index ? target.indicator : undefined,
     });
   };
 
@@ -4499,15 +4569,14 @@ function DashboardApp() {
     }
     const duplicate = overlayPages.some(
       (page) =>
-        page.id !== pageId &&
-        page.name.trim().toLocaleLowerCase() === trimmed.toLocaleLowerCase(),
+        page.id !== pageId && page.name.trim().toLocaleLowerCase() === trimmed.toLocaleLowerCase(),
     );
     return duplicate ? `${trimmed} はすでにあります` : null;
   };
 
   const openOverlayPageDialog = (page?: OverlayPage, assignToButton = false) => {
     overlayPageDialogOpenerRef.current = page
-      ? launcherPageTabRefs.current.get(overlayCustomPageKey(page.id)) ?? null
+      ? (launcherPageTabRefs.current.get(overlayCustomPageKey(page.id)) ?? null)
       : document.activeElement instanceof HTMLElement
         ? document.activeElement
         : launcherPageAddRef.current;
@@ -4598,8 +4667,7 @@ function DashboardApp() {
           setConfig(previousConfig);
           return false;
         }
-        const deletedPageWasSelected =
-          selectedOverlayPageKey === overlayCustomPageKey(page.id);
+        const deletedPageWasSelected = selectedOverlayPageKey === overlayCustomPageKey(page.id);
         if (deletedPageWasSelected) {
           setSelectedOverlayPageKey(OVERLAY_UNCLASSIFIED_PAGE_KEY);
           setLauncherSelectedIndex(0);
@@ -4648,7 +4716,7 @@ function DashboardApp() {
       showInSidebar: showButtonInSidebar(button),
       showInOverlay: showButtonInOverlay(button),
       overlayPageId: overlayPages.some((page) => page.id === button.overlayPageId)
-        ? button.overlayPageId ?? null
+        ? (button.overlayPageId ?? null)
         : null,
       aliasesInput: aliasesListToInput(button.aliases),
       description: button.description ?? "",
@@ -4698,12 +4766,13 @@ function DashboardApp() {
       group && group !== DEFAULT_BUTTON_GROUP && !config.groups.includes(group)
         ? [...config.groups, group]
         : config.groups;
-    const nextProjects = buttonEditDraft.showInSidebar || buttonEditDraft.showInOverlay
-      ? config.projects
-      : config.projects.map((project) => ({
-          ...project,
-          buttonIds: project.buttonIds.filter((buttonId) => buttonId !== buttonEditDraft.id),
-        }));
+    const nextProjects =
+      buttonEditDraft.showInSidebar || buttonEditDraft.showInOverlay
+        ? config.projects
+        : config.projects.map((project) => ({
+            ...project,
+            buttonIds: project.buttonIds.filter((buttonId) => buttonId !== buttonEditDraft.id),
+          }));
 
     setButtonEditDraft(null);
     setButtonEditInitialDraft(null);
@@ -4872,9 +4941,7 @@ function DashboardApp() {
         void runActions(sourceId, actions);
       }
 
-      const project = projectId
-        ? config.projects.find((item) => item.id === projectId)
-        : undefined;
+      const project = projectId ? config.projects.find((item) => item.id === projectId) : undefined;
       const instructionPath = instructionPathOverride?.trim() || project?.instructionPath;
       const opensInstruction = instructionPathOverride?.trim()
         ? instructionOpenOnStartOverride !== false
@@ -4949,7 +5016,25 @@ function DashboardApp() {
     }
 
     setCompletionPrompt(null);
-    void finishTimer(activeTimer, "complete");
+    const completedTimer = activeTimer;
+    const directSourceKey = completedTimer.sourceId.startsWith("today:")
+      ? completedTimer.sourceId.slice("today:".length)
+      : null;
+    const projectSourceKey = completedTimer.projectId
+      ? `project:${completedTimer.projectId}`
+      : null;
+    const items = config?.today.items.map((item, index) => {
+      const sourceKey = todaySourceKey(item, index);
+      const matches =
+        sourceKey === directSourceKey ||
+        (projectSourceKey !== null && sourceKey === projectSourceKey);
+      return matches ? { ...item, done: true } : item;
+    });
+    const completionSave =
+      config && items?.some((item, index) => item !== config.today.items[index])
+        ? persistConfig({ ...config, today: { ...config.today, items } })
+        : Promise.resolve(true);
+    void completionSave.then(() => finishTimer(completedTimer, "complete"));
   };
 
   const updateCompletionNextStep = (text: string) => {
@@ -4967,9 +5052,7 @@ function DashboardApp() {
     );
     void persistConfig({ ...config, projects }).then((saved) => {
       if (saved) {
-        setStaleNextStepProjectIds((ids) =>
-          ids.filter((id) => id !== completionPrompt.projectId),
-        );
+        setStaleNextStepProjectIds((ids) => ids.filter((id) => id !== completionPrompt.projectId));
       }
     });
   };
@@ -5015,7 +5098,9 @@ function DashboardApp() {
         }
       });
       const unlistenReturn = await listen(MINI_RETURN_EVENT, () => {
-        void returnToMain().catch((error) => console.error("[mini-mode] メイン復帰に失敗しました", error));
+        void returnToMain().catch((error) =>
+          console.error("[mini-mode] メイン復帰に失敗しました", error),
+        );
       });
 
       if (disposed) {
@@ -5113,14 +5198,6 @@ function DashboardApp() {
     void persistConfig({ ...config, today: { ...config.today, items } });
   };
 
-  const toggleTodayDone = (index: number) => {
-    if (!config) return;
-    const items = config.today.items.map((item, itemIndex) =>
-      itemIndex === index ? { ...item, done: !item.done } : item,
-    );
-    void persistConfig({ ...config, today: { ...config.today, items } });
-  };
-
   const removeTodayItem = (index: number) => {
     if (!config) return;
     const items = config.today.items.filter((_, itemIndex) => itemIndex !== index);
@@ -5160,10 +5237,7 @@ function DashboardApp() {
     void persistConfig({ ...config, today: { ...config.today, items } });
   };
 
-  const handleTodayTriggerKeyDown = (
-    event: KeyboardEvent<HTMLInputElement>,
-    index: number,
-  ) => {
+  const handleTodayTriggerKeyDown = (event: KeyboardEvent<HTMLInputElement>, index: number) => {
     if (event.key === "Enter") {
       event.preventDefault();
       commitTodayTriggerEdit(index);
@@ -5179,7 +5253,14 @@ function DashboardApp() {
     if (!config) return;
     const text = todayDraft.trim();
     if (!text || config.today.items.length >= TODAY_ITEM_LIMIT) return;
-    const items = [...config.today.items, { text, done: false }];
+    if (config.today.items.some((item) => item.text.trim() === text)) {
+      showToast("warn", "今日の3件に既にあります");
+      return;
+    }
+    const items = [
+      ...config.today.items,
+      { text, done: false, sourceKey: createTodaySourceKey("manual") },
+    ];
     setTodayDraft("");
     setTodayAddOpen(false);
     void persistConfig({ ...config, today: { ...config.today, items } });
@@ -5354,7 +5435,16 @@ function DashboardApp() {
     if (!item) return;
 
     if (config.today.items.length >= TODAY_ITEM_LIMIT) {
-      showToast("warn", "今日の3件がいっぱいです");
+      showToast("warn", "今日の3件は3件までです");
+      return;
+    }
+    const sourceKey = wishlistSourceKey(item);
+    if (
+      config.today.items.some(
+        (todayItem, todayIndex) => todaySourceKey(todayItem, todayIndex) === sourceKey,
+      )
+    ) {
+      showToast("warn", "今日の3件に既にあります");
       return;
     }
 
@@ -5367,6 +5457,7 @@ function DashboardApp() {
           {
             text: item.text,
             done: false,
+            sourceKey,
             ...(item.projectId ? { projectId: item.projectId } : {}),
             ...(item.buttonIds?.length ? { buttonIds: item.buttonIds } : {}),
             ...(item.instructionPath
@@ -5378,7 +5469,8 @@ function DashboardApp() {
           },
         ],
       },
-      inbox: config.inbox.filter((_, itemIndex) => itemIndex !== index),
+    }).then((saved) => {
+      if (saved) showToast("ok", "今日の3件に追加しました");
     });
   };
 
@@ -5416,29 +5508,6 @@ function DashboardApp() {
     } finally {
       setInstructionChoicesLoading(false);
     }
-  };
-
-  const openProjectAddDialog = () => {
-    if (!config) return;
-    setContextMenu(null);
-    setProjectNextStepSuggestions([]);
-    void refreshInstructionChoices();
-    setProjectEditDraft({
-      id: "",
-      name: "",
-      northStar: "",
-      weeklyFocus: false,
-      nextStep: "",
-      nextStepTrigger: "",
-      buttonIds: [],
-      defaultTimerMinutes: "",
-      shortTimerMinutes: "",
-      startNoteTemplate: "",
-      instructionPath: "",
-      instructionOpenOnStart: false,
-      colorId: "amber",
-      isNew: true,
-    });
   };
 
   const openProjectEditDialog = (project: LauncherProject) => {
@@ -5482,7 +5551,8 @@ function DashboardApp() {
       : undefined;
     if (
       [defaultTimerMinutes, shortTimerMinutes].some(
-        (minutes) => minutes !== undefined && (!Number.isInteger(minutes) || minutes < 1 || minutes > 240),
+        (minutes) =>
+          minutes !== undefined && (!Number.isInteger(minutes) || minutes < 1 || minutes > 240),
       )
     ) {
       showToast("warn", "タイマー分数は1〜240の整数で入力してください");
@@ -5576,9 +5646,7 @@ function DashboardApp() {
     void persistConfig({
       ...config,
       projects: config.projects.map((project) =>
-        project.id === projectId
-          ? { ...project, weeklyFocus: checked || undefined }
-          : project,
+        project.id === projectId ? { ...project, weeklyFocus: checked || undefined } : project,
       ),
     });
   };
@@ -5610,7 +5678,7 @@ function DashboardApp() {
   };
 
   const saveTodayBuilderOrder = (keys: string[]) => {
-    window.localStorage.setItem("life-launcher-today-builder-order", JSON.stringify(keys));
+    writeStoredStringArray(TODAY_BUILDER_ORDER_STORAGE_KEY, keys);
   };
 
   function moveTodayBuilderCandidate(
@@ -5645,6 +5713,43 @@ function DashboardApp() {
     setTodayBuilderDraft("");
     setTodayBuilderAddOpen(false);
   };
+
+  const dismissTodayBuilderCandidate = (candidateKey: string) => {
+    const candidate = todayBuilderCandidates.find((item) => item.key === candidateKey);
+    if (!candidate) return;
+    const nextKeys = Array.from(new Set([...todayBuilderDismissedKeys, candidateKey]));
+    writeStoredStringArray(TODAY_BUILDER_DISMISSED_STORAGE_KEY, nextKeys);
+    setTodayBuilderDismissedKeys(nextKeys);
+    const nextCount = Math.max(0, todayBuilderCandidates.length - 1);
+    setTodayBuilderPage((page) =>
+      Math.min(page, Math.max(1, Math.ceil(nextCount / TODAY_BUILDER_PAGE_SIZE))),
+    );
+    setContextMenu(null);
+    showToast("ok", `「${candidate.text}」を候補から削除しました`);
+  };
+
+  const addNextStepDraft = () => {
+    if (!config) return;
+    const name = nextStepProjectDraft.trim();
+    const nextStep = nextStepActionDraft.trim();
+    if (!name || !nextStep) return;
+    const timestamp = new Date().toISOString();
+    const project: LauncherProject = {
+      id: uniqueProjectId(name, config.projects),
+      name,
+      nextStep,
+      nextStepUpdatedAt: timestamp,
+      nextStepReviewedAt: timestamp,
+      buttonIds: [],
+      colorId: "amber",
+    };
+    setNextStepProjectDraft("");
+    setNextStepActionDraft("");
+    setNextStepAddOpen(false);
+    void persistConfig({ ...config, projects: [...config.projects, project] }).then((saved) => {
+      if (saved) showToast("ok", "次の一手を追加しました");
+    });
+  };
   const openManualSessionDialog = () => {
     if (!config) return;
     setManualSessionDraft({
@@ -5656,10 +5761,23 @@ function DashboardApp() {
     });
   };
 
-  const addTodayBuilderCandidate = (text: string, trigger?: string, projectId?: string) => {
+  const addTodayBuilderCandidate = (
+    text: string,
+    trigger?: string,
+    projectId?: string,
+    sourceKey?: string,
+  ) => {
     if (!config) return;
     if (config.today.items.length >= TODAY_ITEM_LIMIT) {
-      showToast("warn", "今日の3件がいっぱいです");
+      showToast("warn", "今日の3件は3件までです");
+      return;
+    }
+    const resolvedSourceKey =
+      sourceKey ?? (projectId ? `project:${projectId}` : createTodaySourceKey("manual"));
+    if (
+      config.today.items.some((item, index) => todaySourceKey(item, index) === resolvedSourceKey)
+    ) {
+      showToast("warn", "今日の3件に既にあります");
       return;
     }
     void persistConfig({
@@ -5671,6 +5789,7 @@ function DashboardApp() {
           {
             text,
             done: false,
+            sourceKey: resolvedSourceKey,
             ...(trigger?.trim() ? { trigger: trigger.trim() } : {}),
             ...(projectId ? { projectId } : {}),
           },
@@ -5689,17 +5808,11 @@ function DashboardApp() {
     if (!config || config.inbox.some((item) => item.text === text)) return;
     void persistConfig({
       ...config,
-      inbox: [
-        ...config.inbox,
-        { text, ...(projectId ? { projectId } : {}) },
-      ],
+      inbox: [...config.inbox, { text, ...(projectId ? { projectId } : {}) }],
     });
   };
 
-  const applyTodayBuilderCandidate = (
-    candidate: TodayBuilderCandidate,
-    destination: string,
-  ) => {
+  const applyTodayBuilderCandidate = (candidate: TodayBuilderCandidate, destination: string) => {
     if (!config) return;
     const { text } = candidate;
     if (destination === "victory") {
@@ -5715,7 +5828,16 @@ function DashboardApp() {
         showToast("warn", "今日の3件に既にあります");
         return;
       }
-      addTodayBuilderCandidate(text, candidate.trigger, candidate.projectId);
+      addTodayBuilderCandidate(
+        text,
+        candidate.trigger,
+        candidate.projectId,
+        candidate.projectId
+          ? `project:${candidate.projectId}`
+          : candidate.source === "やりたいこと"
+            ? `wishlist:${candidate.key.slice("inbox:".length)}`
+            : createTodaySourceKey("manual"),
+      );
       return;
     }
     if (config.inbox.some((item) => item.text === text)) {
@@ -5728,8 +5850,25 @@ function DashboardApp() {
   const toggleTodayBuilder = () => {
     setTodayBuilderOpen((open) => !open);
     if (!sessionSummary) {
-      void loadSessionSummary().then(setSessionSummary).catch(() => undefined);
+      void loadSessionSummary()
+        .then(setSessionSummary)
+        .catch(() => undefined);
     }
+  };
+
+  const startNextTodayBatch = async () => {
+    if (!config || !allTodayItemsCompleted) return;
+    const saved = await persistConfig({
+      ...config,
+      today: { ...config.today, items: [] },
+    });
+    if (!saved) return;
+    setTodayBuilderOpen(true);
+    setTodayBuilderPage(1);
+    showToast("ok", "次の3件を選べます");
+    window.requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>(".todayBuilderDisclosure")?.focus();
+    });
   };
 
   const saveManualSession = async () => {
@@ -5888,50 +6027,61 @@ function DashboardApp() {
     ],
     5,
   );
-  const unsortedTodayBuilderCandidates = uniqueSuggestions(
-    [
-      morningVictorySuggestion,
-      ...config.projects.map((project) => project.nextStep),
-      config.inbox[0]?.text,
-      ...((sessionSummary?.recentSessions ?? []).map((session) => session.note)),
-    ],
-    8,
-  ).map((text): TodayBuilderCandidate => {
-    const project = config.projects.find((item) => item.nextStep.trim() === text);
-    if (project) {
-      return {
-        key: `project:${project.id}`,
-        text,
-        source: "次の一手",
-        projectId: project.id,
-        ...(project.nextStepTrigger?.trim() ? { trigger: project.nextStepTrigger.trim() } : {}),
-      };
+  const rawTodayBuilderCandidates: TodayBuilderCandidate[] = [
+    ...(morningVictorySuggestion
+      ? [
+          {
+            key: `victory:${morningVictorySuggestion}`,
+            text: morningVictorySuggestion,
+            source: "昨日の勝利条件",
+          },
+        ]
+      : []),
+    ...config.projects.flatMap((project) => {
+      const text = project.nextStep.trim();
+      return text
+        ? [
+            {
+              key: `project:${project.id}:${text}`,
+              text,
+              source: "次の一手",
+              projectId: project.id,
+              ...(project.nextStepTrigger?.trim()
+                ? { trigger: project.nextStepTrigger.trim() }
+                : {}),
+            },
+          ]
+        : [];
+    }),
+    ...config.inbox.flatMap((item) => {
+      const text = item.text.trim();
+      return text
+        ? [
+            {
+              key: `inbox:${item.projectId ?? "none"}:${text}`,
+              text,
+              source: "やりたいこと",
+              ...(item.projectId ? { projectId: item.projectId } : {}),
+            },
+          ]
+        : [];
+    }),
+    ...(sessionSummary?.recentSessions ?? []).flatMap((session) => {
+      const text = session.note.trim();
+      return text ? [{ key: `session:${session.rowKey}:${text}`, text, source: "最近のnote" }] : [];
+    }),
+  ];
+  const seenTodayBuilderText = new Set<string>();
+  const dismissedTodayBuilderKeys = new Set(todayBuilderDismissedKeys);
+  const unsortedTodayBuilderCandidates = rawTodayBuilderCandidates.filter((candidate) => {
+    if (seenTodayBuilderText.has(candidate.text) || dismissedTodayBuilderKeys.has(candidate.key)) {
+      return false;
     }
-    if (text === morningVictorySuggestion) return { key: `victory:${text}`, text, source: "昨日の勝利条件" };
-    const inboxIndex = config.inbox.findIndex((item) => item.text === text);
-    if (inboxIndex >= 0) {
-      const inboxItem = config.inbox[inboxIndex];
-      return {
-        key: `inbox:${text}`,
-        text,
-        source: "やりたいこと",
-        ...(inboxItem.projectId ? { projectId: inboxItem.projectId } : {}),
-      };
-    }
-    return { key: `session:${text}`, text, source: "最近のnote" };
+    seenTodayBuilderText.add(candidate.text);
+    return true;
   });
   const todayBuilderCandidates = (() => {
-    let savedOrder: string[] = [];
-    try {
-      const parsed = JSON.parse(
-        window.localStorage.getItem("life-launcher-today-builder-order") ?? "[]",
-      );
-      if (Array.isArray(parsed)) {
-        savedOrder = parsed.filter((key): key is string => typeof key === "string");
-      }
-    } catch {
-      savedOrder = [];
-    }
+    const savedOrder = readStoredStringArray(TODAY_BUILDER_ORDER_STORAGE_KEY);
     const order = new Map(savedOrder.map((key, index) => [key, index]));
     return [...unsortedTodayBuilderCandidates].sort((left, right) => {
       const leftIndex = order.get(left.key);
@@ -5942,7 +6092,19 @@ function DashboardApp() {
       return leftIndex - rightIndex;
     });
   })();
-  const todayActivityCount = todayActivityDate === config.today.date ? todayActivityEntries.length : 0;
+  const todayBuilderPageCount = Math.max(
+    1,
+    Math.ceil(todayBuilderCandidates.length / TODAY_BUILDER_PAGE_SIZE),
+  );
+  const visibleTodayBuilderPage = Math.min(todayBuilderPage, todayBuilderPageCount);
+  const visibleTodayBuilderCandidates = todayBuilderCandidates.slice(
+    (visibleTodayBuilderPage - 1) * TODAY_BUILDER_PAGE_SIZE,
+    visibleTodayBuilderPage * TODAY_BUILDER_PAGE_SIZE,
+  );
+  const allTodayItemsCompleted =
+    config.today.items.length === TODAY_ITEM_LIMIT && config.today.items.every((item) => item.done);
+  const todayActivityCount =
+    todayActivityDate === config.today.date ? todayActivityEntries.length : 0;
   const timerStatus = completionPrompt
     ? "完了確認中"
     : activeTimer
@@ -5972,12 +6134,12 @@ function DashboardApp() {
     ? doNowRestartPreferred
       ? "14日以上空いているため、短時間から再開できます"
       : doNowCandidateIndex > 0
-      ? "固定ルール順の別候補です"
-      : doNowSelection.candidate.reason === "noToday"
-        ? "今週の重点で、今日はまだ取り組んでいません"
-        : doNowSelection.candidate.reason === "manualOrder"
-          ? "同じ条件の中で、手動の優先順が最も高いプロジェクトです"
-          : "今日の中で最初に取り組んだため、次の候補です"
+        ? "固定ルール順の別候補です"
+        : doNowSelection.candidate.reason === "noToday"
+          ? "今週の重点で、今日はまだ取り組んでいません"
+          : doNowSelection.candidate.reason === "manualOrder"
+            ? "同じ条件の中で、手動の優先順が最も高いプロジェクトです"
+            : "今日の中で最初に取り組んだため、次の候補です"
     : "";
   const doNowDefaultTimerMinutes = doNowSelection
     ? (doNowSelection.project.defaultTimerMinutes ?? config.settings.defaultTimerMinutes)
@@ -6093,21 +6255,20 @@ function DashboardApp() {
     }
   };
 
-
   const skipLinkBlocked = Boolean(
     launcherOverlayOpen ||
-      settingsDraft ||
-      helpGuideOpen ||
-      confirmDialog ||
-      manualSessionDraft ||
-      sessionEditDraft ||
-      buttonEditDraft ||
-      projectEditDraft ||
-      dropDraft ||
-      groupDraft !== null ||
-      groupRenameDraft ||
-      overlayPageDraft ||
-      completionPrompt,
+    settingsDraft ||
+    helpGuideOpen ||
+    confirmDialog ||
+    manualSessionDraft ||
+    sessionEditDraft ||
+    buttonEditDraft ||
+    projectEditDraft ||
+    dropDraft ||
+    groupDraft !== null ||
+    groupRenameDraft ||
+    overlayPageDraft ||
+    completionPrompt,
   );
 
   const focusSkipTarget = () => {
@@ -6116,9 +6277,11 @@ function DashboardApp() {
     const target =
       activeView === "records"
         ? scrollArea.querySelector<HTMLElement>("[data-skip-target='records']")
-        : scrollArea.querySelector<HTMLElement>(".doNowStartPrimary:not(:disabled)") ??
-          scrollArea.querySelector<HTMLElement>("[data-skip-target='main'] button:not(:disabled)") ??
-          scrollArea.querySelector<HTMLElement>("[data-skip-target='main']");
+        : (scrollArea.querySelector<HTMLElement>(".doNowStartPrimary:not(:disabled)") ??
+          scrollArea.querySelector<HTMLElement>(
+            "[data-skip-target='main'] button:not(:disabled)",
+          ) ??
+          scrollArea.querySelector<HTMLElement>("[data-skip-target='main']"));
     if (!target) return;
     target.focus({ preventScroll: true });
     target.scrollIntoView({ block: "start", inline: "nearest" });
@@ -6146,11 +6309,7 @@ function DashboardApp() {
         </a>
       )}
       {dictionaryVisible && (
-        <div
-          aria-hidden="true"
-          className="dictionaryMainScrim"
-          role="presentation"
-        />
+        <div aria-hidden="true" className="dictionaryMainScrim" role="presentation" />
       )}
       <aside
         className="sidebar"
@@ -6177,7 +6336,7 @@ function DashboardApp() {
           <kbd>{config?.settings.launcherHotkey?.trim() || "Ctrl+K"}</kbd>
         </button>
 
-          <div className="quickList app-scrollbar" aria-label="クイック起動">
+        <div className="quickList app-scrollbar" aria-label="クイック起動">
           {visibleSidebarButtonGroups.length === 0 ? (
             <p className="quietText quietText--small">
               サイドバー表示の項目がありません。アプリ、ショートカット、URLをドラッグして追加できます。
@@ -6339,18 +6498,18 @@ function DashboardApp() {
           </div>
         ) : null}
         <TimerPanel
-        active={Boolean(activeTimer)}
-        clock={activeTimer ? timerClock : `${config.settings.defaultTimerMinutes}分`}
-        identity={
-          activeTimerProject ? (
-            <ProjectIdentity
-              colorId={activeTimerProject.colorId}
-              compact
-              name={activeTimerProject.name}
-              projectId={activeTimerProject.id}
-            />
-          ) : undefined
-        }
+          active={Boolean(activeTimer)}
+          clock={activeTimer ? timerClock : `${config.settings.defaultTimerMinutes}分`}
+          identity={
+            activeTimerProject ? (
+              <ProjectIdentity
+                colorId={activeTimerProject.colorId}
+                compact
+                name={activeTimerProject.name}
+                projectId={activeTimerProject.id}
+              />
+            ) : undefined
+          }
           label={activeTimer ? activeTimer.label : "通常タイマー"}
           onFinish={() => {
             if (activeTimer) void finishTimer(activeTimer);
@@ -6447,7 +6606,13 @@ function DashboardApp() {
                 <p className="eyebrow">Launcher</p>
                 <h2>辞書</h2>
               </div>
-              <button aria-label="辞書を閉じる" className="iconButton" onClick={() => closeLauncherOverlay()} title="閉じる" type="button">
+              <button
+                aria-label="辞書を閉じる"
+                className="iconButton"
+                onClick={() => closeLauncherOverlay()}
+                title="閉じる"
+                type="button"
+              >
                 <UiIcon name="close" size={16} />
               </button>
             </header>
@@ -6484,98 +6649,99 @@ function DashboardApp() {
                 }}
                 ref={launcherOverlayTabsRef}
               >
-              <div className="launcherOverlayTabList" role="tablist" aria-label="辞書ページ">
-                {launcherOverlayPageTabs.map((tab, tabIndex) => {
-                const selected = selectedOverlayPageKey === tab.key;
-                const customPageId = overlayPageIdFromKey(tab.key);
-                const customPage = customPageId
-                  ? overlayPages.find((page) => page.id === customPageId)
-                  : undefined;
-                return (
-                  <button
-                    aria-controls="launcher-overlay-panel"
-                    aria-selected={selected}
-                    className={
-                      selected
-                        ? "launcherOverlayTab launcherOverlayTab--selected"
-                        : "launcherOverlayTab"
-                    }
-                    draggable={Boolean(customPage)}
-                    id={`launcher-overlay-tab-${tabIndex}`}
-                    key={tab.key}
-                    onClick={() => {
-                      setSelectedOverlayPageKey(tab.key);
-                      setLauncherSelectedIndex(0);
-                    }}
-                    onContextMenu={(event) => {
-                      if (!customPage) return;
-                      event.preventDefault();
-                      event.stopPropagation();
-                      openContextMenu(
-                        { kind: "overlayPage", page: customPage },
-                        event.clientX,
-                        event.clientY,
-                        event.currentTarget,
-                      );
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        focusOverlayPageTabAt(tabIndex + (event.key === "ArrowLeft" ? -1 : 1));
-                        return;
-                      }
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        setSelectedOverlayPageKey(tab.key);
-                        setLauncherSelectedIndex(0);
-                        return;
-                      }
-                      if (customPage) {
-                        openContextMenuFromKeyboard(event, {
-                          kind: "overlayPage",
-                          page: customPage,
-                        });
-                      }
-                    }}
-                    onDragEnd={() => setOverlayPageDragId(null)}
-                    onDragStart={(event) => {
-                      if (!customPage) {
-                        event.preventDefault();
-                        return;
-                      }
-                      setOverlayPageDragId(customPage.id);
-                      event.dataTransfer.effectAllowed = "move";
-                      event.dataTransfer.setData(OVERLAY_PAGE_DRAG_TYPE, customPage.id);
-                    }}
-                    onDrop={(event) => {
-                      if (!customPage) return;
-                      event.preventDefault();
-                      event.stopPropagation();
-                      const draggedPageId =
-                        event.dataTransfer.getData(OVERLAY_PAGE_DRAG_TYPE) || overlayPageDragId;
-                      if (!draggedPageId || draggedPageId === customPage.id) return;
-                      const rect = event.currentTarget.getBoundingClientRect();
-                      const placement = event.clientX < rect.left + rect.width / 2 ? "before" : "after";
-                      setOverlayPageDragId(null);
-                      void moveOverlayPage(draggedPageId, customPage.id, placement);
-                    }}
-                    ref={(node) => {
-                      if (node) launcherPageTabRefs.current.set(tab.key, node);
-                      else launcherPageTabRefs.current.delete(tab.key);
-                    }}
-                    role="tab"
-                    tabIndex={selected ? 0 : -1}
-                    title={tab.name}
-                    type="button"
-                  >
-                    <span>{tab.name}</span>
-                    <small>{overlayPageCounts.get(tab.key) ?? 0}</small>
-                  </button>
-                );
-                })}
-              </div>
+                <div className="launcherOverlayTabList" role="tablist" aria-label="辞書ページ">
+                  {launcherOverlayPageTabs.map((tab, tabIndex) => {
+                    const selected = selectedOverlayPageKey === tab.key;
+                    const customPageId = overlayPageIdFromKey(tab.key);
+                    const customPage = customPageId
+                      ? overlayPages.find((page) => page.id === customPageId)
+                      : undefined;
+                    return (
+                      <button
+                        aria-controls="launcher-overlay-panel"
+                        aria-selected={selected}
+                        className={
+                          selected
+                            ? "launcherOverlayTab launcherOverlayTab--selected"
+                            : "launcherOverlayTab"
+                        }
+                        draggable={Boolean(customPage)}
+                        id={`launcher-overlay-tab-${tabIndex}`}
+                        key={tab.key}
+                        onClick={() => {
+                          setSelectedOverlayPageKey(tab.key);
+                          setLauncherSelectedIndex(0);
+                        }}
+                        onContextMenu={(event) => {
+                          if (!customPage) return;
+                          event.preventDefault();
+                          event.stopPropagation();
+                          openContextMenu(
+                            { kind: "overlayPage", page: customPage },
+                            event.clientX,
+                            event.clientY,
+                            event.currentTarget,
+                          );
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            focusOverlayPageTabAt(tabIndex + (event.key === "ArrowLeft" ? -1 : 1));
+                            return;
+                          }
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            setSelectedOverlayPageKey(tab.key);
+                            setLauncherSelectedIndex(0);
+                            return;
+                          }
+                          if (customPage) {
+                            openContextMenuFromKeyboard(event, {
+                              kind: "overlayPage",
+                              page: customPage,
+                            });
+                          }
+                        }}
+                        onDragEnd={() => setOverlayPageDragId(null)}
+                        onDragStart={(event) => {
+                          if (!customPage) {
+                            event.preventDefault();
+                            return;
+                          }
+                          setOverlayPageDragId(customPage.id);
+                          event.dataTransfer.effectAllowed = "move";
+                          event.dataTransfer.setData(OVERLAY_PAGE_DRAG_TYPE, customPage.id);
+                        }}
+                        onDrop={(event) => {
+                          if (!customPage) return;
+                          event.preventDefault();
+                          event.stopPropagation();
+                          const draggedPageId =
+                            event.dataTransfer.getData(OVERLAY_PAGE_DRAG_TYPE) || overlayPageDragId;
+                          if (!draggedPageId || draggedPageId === customPage.id) return;
+                          const rect = event.currentTarget.getBoundingClientRect();
+                          const placement =
+                            event.clientX < rect.left + rect.width / 2 ? "before" : "after";
+                          setOverlayPageDragId(null);
+                          void moveOverlayPage(draggedPageId, customPage.id, placement);
+                        }}
+                        ref={(node) => {
+                          if (node) launcherPageTabRefs.current.set(tab.key, node);
+                          else launcherPageTabRefs.current.delete(tab.key);
+                        }}
+                        role="tab"
+                        tabIndex={selected ? 0 : -1}
+                        title={tab.name}
+                        type="button"
+                      >
+                        <span>{tab.name}</span>
+                        <small>{overlayPageCounts.get(tab.key) ?? 0}</small>
+                      </button>
+                    );
+                  })}
+                </div>
                 <button
                   aria-label="辞書ページを追加"
                   className="launcherOverlayTabAdd"
@@ -6624,47 +6790,52 @@ function DashboardApp() {
               {launcherSearch.trim() ? (
                 launcherDisplayedItems.length > 0 ? (
                   <div className="launcherSearchResults" aria-label="全ページの検索結果">
-                  <p className="launcherSearchScope">
-                    <span>全ページの検索結果</span>
-                    <small>{launcherDisplayedItems.length}件</small>
-                  </p>
-                  {launcherDisplayedItems.map((item) => (
-                    <button
-                      className={
-                        launcherDisplayedItems[launcherSelectedIndex]?.button.id === item.button.id
-                          ? "launcherSearchResult launcherSearchResult--selected"
-                          : "launcherSearchResult"
-                      }
-                      key={item.button.id}
-                      onClick={() => runLauncherOverlayItem(item)}
-                      onContextMenu={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        openContextMenu(
-                          { kind: "button", button: item.button },
-                          event.clientX,
-                          event.clientY,
-                          event.currentTarget,
-                        );
-                      }}
-                      onKeyDown={(event) =>
-                        openContextMenuFromKeyboard(event, { kind: "button", button: item.button })
-                      }
-                      title={`${item.button.label} / ${item.pageName} / ${item.groupName}`}
-                      type="button"
-                    >
-                      {renderButtonIcon(item.button, "launcherSearchResultIcon")}
-                      <span className="launcherSearchResultCopy">
-                        <strong>{item.button.label}</strong>
-                        <small>
-                          {item.pageName} ・ {item.groupName} ・ {actionKindLabel(item.button.actions[0])}
-                          {(item.button.aliases ?? []).length > 0
-                            ? ` ・ ${(item.button.aliases ?? []).join(", ")}`
-                            : ""}
-                        </small>
-                      </span>
-                    </button>
-                  ))}
+                    <p className="launcherSearchScope">
+                      <span>全ページの検索結果</span>
+                      <small>{launcherDisplayedItems.length}件</small>
+                    </p>
+                    {launcherDisplayedItems.map((item) => (
+                      <button
+                        className={
+                          launcherDisplayedItems[launcherSelectedIndex]?.button.id ===
+                          item.button.id
+                            ? "launcherSearchResult launcherSearchResult--selected"
+                            : "launcherSearchResult"
+                        }
+                        key={item.button.id}
+                        onClick={() => runLauncherOverlayItem(item)}
+                        onContextMenu={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          openContextMenu(
+                            { kind: "button", button: item.button },
+                            event.clientX,
+                            event.clientY,
+                            event.currentTarget,
+                          );
+                        }}
+                        onKeyDown={(event) =>
+                          openContextMenuFromKeyboard(event, {
+                            kind: "button",
+                            button: item.button,
+                          })
+                        }
+                        title={`${item.button.label} / ${item.pageName} / ${item.groupName}`}
+                        type="button"
+                      >
+                        {renderButtonIcon(item.button, "launcherSearchResultIcon")}
+                        <span className="launcherSearchResultCopy">
+                          <strong>{item.button.label}</strong>
+                          <small>
+                            {item.pageName} ・ {item.groupName} ・{" "}
+                            {actionKindLabel(item.button.actions[0])}
+                            {(item.button.aliases ?? []).length > 0
+                              ? ` ・ ${(item.button.aliases ?? []).join(", ")}`
+                              : ""}
+                          </small>
+                        </span>
+                      </button>
+                    ))}
                   </div>
                 ) : (
                   <div className="launcherOverlayEmptyState">
@@ -6741,1056 +6912,820 @@ function DashboardApp() {
               className="topPillGroup topPillGroup--window"
               role="group"
             >
-            <button
-              className={
-                config.settings.autoStart
-                  ? "viewToggleButton viewToggleButton--active"
-                  : "viewToggleButton"
-              }
-              onClick={() => void toggleAutoStart()}
-              title={config.settings.autoStart ? "Windows自動起動: ON" : "Windows自動起動: OFF"}
-              aria-label={config.settings.autoStart ? "Windows自動起動: ON" : "Windows自動起動: OFF"}
-              type="button"
-            >
-              <UiIcon name="power" size={18} />
-              <span className="viewToggleButtonLabel">{TOP_MENU_LABELS.autoStart}</span>
-            </button>
-            <button
-              className="viewToggleButton"
-              aria-busy={miniTransitioning}
-              disabled={!config.settings.miniMode || miniTransitioning}
-              onClick={() => void toggleMiniMode()}
-              title={
-                miniTransitioning
-                  ? "ミニモードを準備中"
-                  : config.settings.miniMode
-                    ? "ミニモードへ切り替え"
-                    : "設定でミニモードを有効にしてください"
-              }
-              aria-label="ミニモードへ切り替え"
-              type="button"
-            >
-              <UiIcon name="miniMode" size={18} />
-              <span className="viewToggleButtonLabel">{TOP_MENU_LABELS.miniMode}</span>
-            </button>
+              <button
+                className={
+                  config.settings.autoStart
+                    ? "viewToggleButton viewToggleButton--active"
+                    : "viewToggleButton"
+                }
+                onClick={() => void toggleAutoStart()}
+                title={config.settings.autoStart ? "Windows自動起動: ON" : "Windows自動起動: OFF"}
+                aria-label={
+                  config.settings.autoStart ? "Windows自動起動: ON" : "Windows自動起動: OFF"
+                }
+                type="button"
+              >
+                <UiIcon name="power" size={18} />
+                <span className="viewToggleButtonLabel">{TOP_MENU_LABELS.autoStart}</span>
+              </button>
+              <button
+                className="viewToggleButton"
+                aria-busy={miniTransitioning}
+                disabled={!config.settings.miniMode || miniTransitioning}
+                onClick={() => void toggleMiniMode()}
+                title={
+                  miniTransitioning
+                    ? "ミニモードを準備中"
+                    : config.settings.miniMode
+                      ? "ミニモードへ切り替え"
+                      : "設定でミニモードを有効にしてください"
+                }
+                aria-label="ミニモードへ切り替え"
+                type="button"
+              >
+                <UiIcon name="miniMode" size={18} />
+                <span className="viewToggleButtonLabel">{TOP_MENU_LABELS.miniMode}</span>
+              </button>
             </div>
             <div
               aria-label={TOP_MENU_GROUP_LABELS.work}
               className="topPillGroup topPillGroup--work"
               role="group"
             >
-            <button
-              className="viewToggleButton"
-              onClick={() => setActiveView((view) => (view === "records" ? "main" : "records"))}
-              title={activeView === "records" ? "メイン画面に戻る" : "記録ビューを開く"}
-              aria-label={activeView === "records" ? "メイン画面に戻る" : "記録ビューを開く"}
-              type="button"
-            >
-              <UiIcon name={activeView === "records" ? "back" : "records"} size={18} />
-              <span className="viewToggleButtonLabel">
-                {activeView === "records" ? TOP_MENU_LABELS.dashboard : TOP_MENU_LABELS.records}
-              </span>
-            </button>
-            <button
-              aria-label="手順書を開く"
-              className="viewToggleButton"
-              onClick={() => void openInstructionsManually()}
-              title="手順書を開く"
-              type="button"
-            >
-              <UiIcon name="book" size={18} />
-              <span className="viewToggleButtonLabel">{TOP_MENU_LABELS.instructions}</span>
-            </button>
+              <button
+                className="viewToggleButton"
+                onClick={() => setActiveView((view) => (view === "records" ? "main" : "records"))}
+                title={activeView === "records" ? "メイン画面に戻る" : "記録ビューを開く"}
+                aria-label={activeView === "records" ? "メイン画面に戻る" : "記録ビューを開く"}
+                type="button"
+              >
+                <UiIcon name={activeView === "records" ? "back" : "records"} size={18} />
+                <span className="viewToggleButtonLabel">
+                  {activeView === "records" ? TOP_MENU_LABELS.dashboard : TOP_MENU_LABELS.records}
+                </span>
+              </button>
+              <button
+                aria-label="手順書を開く"
+                className="viewToggleButton"
+                onClick={() => void openInstructionsManually()}
+                title="手順書を開く"
+                type="button"
+              >
+                <UiIcon name="book" size={18} />
+                <span className="viewToggleButtonLabel">{TOP_MENU_LABELS.instructions}</span>
+              </button>
             </div>
             <div
               aria-label={TOP_MENU_GROUP_LABELS.support}
               className="topPillGroup topPillGroup--support"
               role="group"
             >
-            <button
-              aria-label="使い方"
-              className="viewToggleButton"
-              onClick={() => setHelpGuideOpen(true)}
-              title="使い方"
-              type="button"
-            >
-              <UiIcon name="help" size={18} />
-              <span className="viewToggleButtonLabel">{TOP_MENU_LABELS.guide}</span>
-            </button>
-            <button
-              className="viewToggleButton"
-              onClick={openSettingsCenter}
-              title="設定を開く"
-              aria-label="設定を開く"
-              type="button"
-            >
-              <UiIcon name="settings" size={18} />
-              <span className="viewToggleButtonLabel">{TOP_MENU_LABELS.settings}</span>
-            </button>
+              <button
+                aria-label="使い方"
+                className="viewToggleButton"
+                onClick={() => setHelpGuideOpen(true)}
+                title="使い方"
+                type="button"
+              >
+                <UiIcon name="help" size={18} />
+                <span className="viewToggleButtonLabel">{TOP_MENU_LABELS.guide}</span>
+              </button>
+              <button
+                className="viewToggleButton"
+                onClick={openSettingsCenter}
+                title="設定を開く"
+                aria-label="設定を開く"
+                type="button"
+              >
+                <UiIcon name="settings" size={18} />
+                <span className="viewToggleButtonLabel">{TOP_MENU_LABELS.settings}</span>
+              </button>
             </div>
           </div>
         </header>
 
         <div className="mainScrollArea app-scrollbar" id="main-content" ref={mainScrollAreaRef}>
-        {banner && (
-          <section className="banner">
-            <span>{banner}</span>
-            {backupPath && (
-              <button className="bannerButton" onClick={openBackupFolder} type="button">
-                バックアップから復元: フォルダを開く
-              </button>
-            )}
-          </section>
-        )}
+          {banner && (
+            <section className="banner">
+              <span>{banner}</span>
+              {backupPath && (
+                <button className="bannerButton" onClick={openBackupFolder} type="button">
+                  バックアップから復元: フォルダを開く
+                </button>
+              )}
+            </section>
+          )}
 
-        {activeView === "main" && weeklyReviewBannerOpen && (
-          <section className="weeklyReviewBanner" aria-label="週次ふりかえりの案内">
-            <span>先週のふりかえりが見られます</span>
-            <div>
-              <button
-                className="weeklyReviewBannerPrimary"
-                onClick={() => {
-                  setWeeklyReviewBannerOpen(false);
-                  setActiveView("records");
-                }}
-                type="button"
-              >
-                見る
-              </button>
-              <button onClick={() => setWeeklyReviewBannerOpen(false)} type="button">
-                閉じる
-              </button>
-            </div>
-          </section>
-        )}
+          {activeView === "main" && weeklyReviewBannerOpen && (
+            <section className="weeklyReviewBanner" aria-label="週次ふりかえりの案内">
+              <span>先週のふりかえりが見られます</span>
+              <div>
+                <button
+                  className="weeklyReviewBannerPrimary"
+                  onClick={() => {
+                    setWeeklyReviewBannerOpen(false);
+                    setActiveView("records");
+                  }}
+                  type="button"
+                >
+                  見る
+                </button>
+                <button onClick={() => setWeeklyReviewBannerOpen(false)} type="button">
+                  閉じる
+                </button>
+              </div>
+            </section>
+          )}
 
-        {activeView === "records" ? (
-          <section className="recordsView" data-skip-target="records" tabIndex={-1}>
-            <section className="weeklyReviewSection" aria-labelledby="weekly-review-title">
-              <div className="sectionHeading">
-                <div>
-                  <h2 id="weekly-review-title">先週のふりかえり</h2>
-                  {weeklyReview && (
-                    <span>
-                      {weeklyReview.previousWeekStart} - {weeklyReview.previousWeekEnd}
-                    </span>
+          {activeView === "records" ? (
+            <section className="recordsView" data-skip-target="records" tabIndex={-1}>
+              <section className="weeklyReviewSection" aria-labelledby="weekly-review-title">
+                <div className="sectionHeading">
+                  <div>
+                    <h2 id="weekly-review-title">先週のふりかえり</h2>
+                    {weeklyReview && (
+                      <span>
+                        {weeklyReview.previousWeekStart} - {weeklyReview.previousWeekEnd}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="weeklyReviewFacts">
+                  <div>
+                    <span>合計時間</span>
+                    <strong>{weeklyReview?.totalMinutes ?? 0}分</strong>
+                  </div>
+                  <div>
+                    <span>活動日数</span>
+                    <strong>{weeklyReview?.activeDays ?? 0}日</strong>
+                  </div>
+                  <div>
+                    <span>動かしたプロジェクト</span>
+                    <strong>{weeklyReviewProjects.length}件</strong>
+                  </div>
+                </div>
+
+                <div className="weeklyReviewBlock">
+                  <h3>動かしたプロジェクト</h3>
+                  {weeklyReviewProjects.length > 0 ? (
+                    <div className="weeklyReviewProjectList">
+                      {weeklyReviewProjects.map(({ summary, project }) => (
+                        <div
+                          className="weeklyReviewProjectRow"
+                          key={summary.projectId ?? `label:${summary.label}`}
+                        >
+                          <div>
+                            {project ? (
+                              <ProjectIdentity
+                                colorId={project.colorId}
+                                name={project.name}
+                                projectId={project.id}
+                              />
+                            ) : (
+                              <strong>{summary.label}</strong>
+                            )}
+                            {project?.northStar && (
+                              <span className="weeklyReviewNorthStar">
+                                北極星: {project.northStar}
+                              </span>
+                            )}
+                          </div>
+                          <span>
+                            {summary.sessionCount}セッション・{summary.totalMinutes}分
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="quietText">先週のセッション記録はありません。</p>
                   )}
                 </div>
-              </div>
 
-              <div className="weeklyReviewFacts">
-                <div>
-                  <span>合計時間</span>
-                  <strong>{weeklyReview?.totalMinutes ?? 0}分</strong>
+                <div className="weeklyReviewBlock">
+                  <div className="weeklyReviewBlockHeading">
+                    <h3>今週の重点</h3>
+                    <span>
+                      {config.projects.filter((project) => project.weeklyFocus === true).length}/
+                      {WEEKLY_FOCUS_LIMIT}
+                    </span>
+                  </div>
+                  <div className="weeklyFocusChecklist">
+                    {config.projects.map((project) => (
+                      <label key={project.id}>
+                        <input
+                          checked={project.weeklyFocus === true}
+                          onChange={(event) =>
+                            setWeeklyReviewProjectFocus(project.id, event.target.checked)
+                          }
+                          type="checkbox"
+                        />
+                        <ProjectIdentity
+                          colorId={project.colorId}
+                          name={project.name}
+                          projectId={project.id}
+                        />
+                      </label>
+                    ))}
+                  </div>
                 </div>
-                <div>
-                  <span>活動日数</span>
-                  <strong>{weeklyReview?.activeDays ?? 0}日</strong>
-                </div>
-                <div>
-                  <span>動かしたプロジェクト</span>
-                  <strong>{weeklyReviewProjects.length}件</strong>
-                </div>
-              </div>
 
-              <div className="weeklyReviewBlock">
-                <h3>動かしたプロジェクト</h3>
-                {weeklyReviewProjects.length > 0 ? (
-                  <div className="weeklyReviewProjectList">
-                    {weeklyReviewProjects.map(({ summary, project }) => (
-                      <div
-                        className="weeklyReviewProjectRow"
-                        key={summary.projectId ?? `label:${summary.label}`}
-                      >
-                        <div>
-                          {project ? (
+                {staleNextStepProjects.length > 0 && (
+                  <div
+                    className="weeklyReviewBlock freshnessReview"
+                    aria-labelledby="freshness-title"
+                  >
+                    <h3 id="freshness-title">鮮度レビュー</h3>
+                    <div className="freshnessReviewList">
+                      {staleNextStepProjects.map((project) => (
+                        <div className="freshnessReviewRow" key={project.id}>
+                          <div className="freshnessReviewCopy">
                             <ProjectIdentity
                               colorId={project.colorId}
                               name={project.name}
                               projectId={project.id}
                             />
-                          ) : (
-                            <strong>{summary.label}</strong>
-                          )}
-                          {project?.northStar && (
-                            <span className="weeklyReviewNorthStar">
-                              北極星: {project.northStar}
-                            </span>
-                          )}
+                            <strong>{project.nextStep}</strong>
+                            <span>次の一手が14日以上同じです</span>
+                          </div>
+                          <div className="freshnessReviewActions">
+                            <button onClick={() => openProjectEditDialog(project)} type="button">
+                              書き直す
+                            </button>
+                            <button
+                              onClick={() => void tryStaleNextStepForShortTime(project)}
+                              type="button"
+                            >
+                              短時間で試す
+                            </button>
+                            <button
+                              onClick={() => void markNextStepReviewed(project.id)}
+                              type="button"
+                            >
+                              このまま
+                            </button>
+                          </div>
                         </div>
-                        <span>
-                          {summary.sessionCount}セッション・{summary.totalMinutes}分
-                        </span>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                ) : (
-                  <p className="quietText">先週のセッション記録はありません。</p>
                 )}
-              </div>
+              </section>
 
-              <div className="weeklyReviewBlock">
-                <div className="weeklyReviewBlockHeading">
-                  <h3>今週の重点</h3>
-                  <span>
-                    {config.projects.filter((project) => project.weeklyFocus === true).length}/
-                    {WEEKLY_FOCUS_LIMIT}
-                  </span>
+              <div className="recordsStats">
+                <div>
+                  <span>今日</span>
+                  <strong>{sessionSummary?.todayMinutes ?? 0}分</strong>
                 </div>
-                <div className="weeklyFocusChecklist">
-                  {config.projects.map((project) => (
-                    <label key={project.id}>
-                      <input
-                        checked={project.weeklyFocus === true}
-                        onChange={(event) =>
-                          setWeeklyReviewProjectFocus(project.id, event.target.checked)
-                        }
-                        type="checkbox"
-                      />
-                      <ProjectIdentity
-                        colorId={project.colorId}
-                        name={project.name}
-                        projectId={project.id}
-                      />
-                    </label>
-                  ))}
+                <div>
+                  <span>今週</span>
+                  <strong>{sessionSummary?.weekMinutes ?? 0}分</strong>
+                </div>
+                <div>
+                  <span>活動日数</span>
+                  <strong>{sessionSummary?.activeDays ?? 0}日</strong>
                 </div>
               </div>
 
-              {staleNextStepProjects.length > 0 && (
-                <div className="weeklyReviewBlock freshnessReview" aria-labelledby="freshness-title">
-                  <h3 id="freshness-title">鮮度レビュー</h3>
-                  <div className="freshnessReviewList">
-                    {staleNextStepProjects.map((project) => (
-                      <div className="freshnessReviewRow" key={project.id}>
-                        <div className="freshnessReviewCopy">
-                          <ProjectIdentity
-                            colorId={project.colorId}
-                            name={project.name}
-                            projectId={project.id}
-                          />
-                          <strong>{project.nextStep}</strong>
-                          <span>次の一手が14日以上同じです</span>
-                        </div>
-                        <div className="freshnessReviewActions">
-                          <button onClick={() => openProjectEditDialog(project)} type="button">
-                            書き直す
-                          </button>
-                          <button
-                            onClick={() => void tryStaleNextStepForShortTime(project)}
-                            type="button"
-                          >
-                            短時間で試す
-                          </button>
-                          <button onClick={() => void markNextStepReviewed(project.id)} type="button">
-                            このまま
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </section>
-
-            <div className="recordsStats">
-              <div>
-                <span>今日</span>
-                <strong>{sessionSummary?.todayMinutes ?? 0}分</strong>
-              </div>
-              <div>
-                <span>今週</span>
-                <strong>{sessionSummary?.weekMinutes ?? 0}分</strong>
-              </div>
-              <div>
-                <span>活動日数</span>
-                <strong>{sessionSummary?.activeDays ?? 0}日</strong>
-              </div>
-            </div>
-
-            <div className="recordsActions">
-              <button className="dataFolderButton" onClick={openManualSessionDialog} type="button">
-                セッションを追加
-              </button>
-            </div>
-
-            <section className="recordsSection">
-              <div className="sectionHeading">
-                <h2>プロジェクト別（今週）</h2>
-                <span>{sessionSummary?.date ?? config.today.date}</span>
-              </div>
-              {sessionSummary && sessionSummary.projects.length > 0 ? (
-                <div className="recordsTable">
-                  {sessionSummary.projects.map((project) => (
-                    <div className="recordsTableRow" key={project.projectId ?? project.label}>
-                      {project.projectId ? (
-                        <ProjectIdentity
-                          colorId={config.projects.find((item) => item.id === project.projectId)?.colorId}
-                          name={project.label}
-                          projectId={project.projectId}
-                        />
-                      ) : (
-                        <span>{project.label}</span>
-                      )}
-                      <strong>{project.totalMinutes}分</strong>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="quietText">今週のセッション記録はありません。</p>
-              )}
-            </section>
-
-            <section className="recordsSection">
-              <div className="sectionHeading">
-                <h2>プロジェクト別累計</h2>
-                <span>すべての記録</span>
-              </div>
-              {sessionSummary && sessionSummary.allTimeProjects.length > 0 ? (
-                <div className="recordsTable">
-                  {sessionSummary.allTimeProjects.map((project) => (
-                    <div
-                      className="recordsTableRow recordsTableRow--allTime"
-                      key={project.projectId ?? project.label}
-                    >
-                      {project.projectId ? (
-                        <ProjectIdentity
-                          colorId={config.projects.find((item) => item.id === project.projectId)?.colorId}
-                          name={project.label}
-                          projectId={project.projectId}
-                        />
-                      ) : (
-                        <span>{project.label}</span>
-                      )}
-                      <div className="recordsTotalMetrics">
-                        <span>{project.activeDays}日</span>
-                        <strong>{project.totalMinutes}分</strong>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="quietText">セッション記録はまだありません。</p>
-              )}
-            </section>
-
-            <section className="recordsSection">
-              <div className="sectionHeading">
-                <h2>最近のセッション</h2>
+              <div className="recordsActions">
                 <button
-                  className="sectionLinkButton"
-                  onClick={openRuntimeDataFolder}
-                  title={sessionEntries?.path || sessionSummary?.path || "sessions.jsonl"}
+                  className="dataFolderButton"
+                  onClick={openManualSessionDialog}
                   type="button"
                 >
-                  保存先を開く
+                  セッションを追加
                 </button>
               </div>
 
-              <div className="recordsFilters">
-                <input
-                  className="textInput"
-                  onChange={(event) => setSessionSearch(event.target.value)}
-                  placeholder="検索"
-                  value={sessionSearch}
-                />
-                <div className="filterGroup" aria-label="期間">
-                  <span>期間</span>
-                  <div className="segmentRow">
-                  {[
-                    ["week", "今週"],
-                    ["today", "今日"],
-                    ["all", "すべて"],
-                  ].map(([value, label]) => (
-                    <button
-                      className={
-                        sessionDateScope === value
-                          ? "segmentButton segmentButton--active"
-                          : "segmentButton"
-                      }
-                      key={value}
-                      onClick={() => setSessionDateScope(value as RecordsDateScope)}
-                      type="button"
-                    >
-                      {label}
-                    </button>
-                  ))}
-                  </div>
+              <section className="recordsSection">
+                <div className="sectionHeading">
+                  <h2>プロジェクト別（今週）</h2>
+                  <span>{sessionSummary?.date ?? config.today.date}</span>
                 </div>
-                <div className="filterGroup" aria-label="プロジェクト">
-                  <span>プロジェクト</span>
-                  <div className="projectFilterRow">
-                  <button
-                    className={
-                      sessionProjectFilter ? "filterChip" : "filterChip filterChip--active"
-                    }
-                    onClick={() => setSessionProjectFilter("")}
-                    type="button"
-                  >
-                    すべて
-                  </button>
-                  {config.projects.map((project) => (
-                    <button
-                      className={
-                        sessionProjectFilter === project.id
-                          ? "filterChip filterChip--active"
-                          : "filterChip"
-                      }
-                      key={project.id}
-                      onClick={() => setSessionProjectFilter(project.id)}
-                      type="button"
-                    >
-                      {project.name}
-                    </button>
-                  ))}
-                  </div>
-                </div>
-              </div>
-
-              {sessionEntries && sessionEntries.entries.length > 0 ? (
-                <div className="recentSessionList">
-                  {sessionEntries.entries.map((session) => (
-                    <div
-                      className="recentSessionRow"
-                      key={session.rowKey}
-                    >
-                      <div className="recentSessionMeta">
-                        <span>{session.date}</span>
-                        <span>{session.startedAt}</span>
-                        {session.projectId ? (
+                {sessionSummary && sessionSummary.projects.length > 0 ? (
+                  <div className="recordsTable">
+                    {sessionSummary.projects.map((project) => (
+                      <div className="recordsTableRow" key={project.projectId ?? project.label}>
+                        {project.projectId ? (
                           <ProjectIdentity
-                            colorId={config.projects.find((item) => item.id === session.projectId)?.colorId}
-                            compact
-                            name={session.label}
-                            projectId={session.projectId}
+                            colorId={
+                              config.projects.find((item) => item.id === project.projectId)?.colorId
+                            }
+                            name={project.label}
+                            projectId={project.projectId}
                           />
                         ) : (
-                          <strong>{session.label}</strong>
+                          <span>{project.label}</span>
                         )}
-                        <span>{session.minutes}分</span>
+                        <strong>{project.totalMinutes}分</strong>
                       </div>
-                      {session.note.trim() ? (
-                        <p>{session.note}</p>
-                      ) : (
-                        <p className="quietText quietText--small">noteなし</p>
-                      )}
-                      <div className="sessionRowActions">
-                        <button
-                          className="secondaryButton"
-                          onClick={() => openSessionEditDialog(session)}
-                          type="button"
-                        >
-                          編集
-                        </button>
-                        <button
-                          className="dangerButton"
-                          onClick={() => requestSessionDelete(session)}
-                          type="button"
-                        >
-                          削除
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="quietText">条件に一致するセッションがありません。検索語またはフィルターを変更してください。</p>
-              )}
-            </section>
-
-            <section className="recordsSection">
-              <div className="sectionHeading">
-                <h2>旧notes履歴</h2>
-                <button
-                  className="sectionLinkButton"
-                  onClick={openRuntimeDataFolder}
-                  title={notesHistory?.path || "notes.json"}
-                  type="button"
-                >
-                  保存先を開く
-                </button>
-              </div>
-              {notesHistory && notesHistory.entries.length > 0 ? (
-                <div className="notesHistoryList">
-                  {notesHistory.entries.map((entry) => (
-                    <div className="notesHistoryDay" key={entry.date}>
-                      <strong>{entry.date}</strong>
-                      <div className="notesList">
-                        {toThreeNoteDraft(entry.items).map((item, index) => (
-                          <input
-                            aria-label={`${entry.date} できたこと ${index + 1}`}
-                            className="textInput"
-                            key={index}
-                            maxLength={120}
-                            onChange={(event) =>
-                              updateHistoryNoteText(entry.date, index, event.target.value)
-                            }
-                            onBlur={() => flushHistoryNotesSave(entry.date)}
-                            value={item}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="quietText">既存のnotes.jsonに旧記録がある場合だけ、ここで確認・編集できます。</p>
-              )}
-            </section>
-
-            <div className="recordsFooter">
-              <button className="dataFolderButton" onClick={openSettingsCenter} type="button">
-                設定
-              </button>
-              <button className="dataFolderButton" onClick={openRuntimeDataFolder} type="button">
-                データフォルダを開く
-              </button>
-            </div>
-          </section>
-        ) : (
-          <>
-            <section
-              className={victoryDone ? "victoryBar victoryBar--done" : "victoryBar"}
-              aria-label="今日の勝利条件"
-            >
-              <span className="victoryIcon" aria-hidden="true">
-                🏆
-              </span>
-              <input
-                aria-label="勝利条件を達成"
-                checked={victoryDone}
-                className="check victoryCheck"
-                disabled={!victoryText}
-                onChange={toggleVictoryDone}
-                type="checkbox"
-              />
-              <div className="victoryContent">
-                <span className="victoryLabel">今日の勝利条件</span>
-                {victoryEditing || !victoryText ? (
-                  <>
-                    <input
-                    aria-label="今日の勝利条件"
-                    className={victoryDone ? "victoryInput victoryInput--done" : "victoryInput"}
-                    maxLength={90}
-                    onBlur={() => setVictoryEditing(false)}
-                    onChange={(event) => updateVictoryText(event.target.value)}
-                    onKeyDown={handleVictoryKeyDown}
-                    placeholder="今日はこれができれば勝ち"
-                    ref={victoryInputRef}
-                      value={config.today.victory.text}
-                    />
-                    {!victoryText && victorySuggestions.length > 0 && (
-                      <div className="victorySuggestions" aria-label="勝利条件の候補">
-                        {victorySuggestions.map((suggestion) => (
-                          <button
-                            className="suggestionChip"
-                            key={suggestion}
-                            onMouseDown={(event) => event.preventDefault()}
-                            onClick={() => applyVictorySuggestion(suggestion)}
-                            type="button"
-                          >
-                            {suggestion}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </>
+                    ))}
+                  </div>
                 ) : (
-                  <button
-                    className={
-                      victoryDone
-                        ? "victoryTextButton victoryTextButton--done"
-                        : "victoryTextButton"
-                    }
-                    onClick={() => setVictoryEditing(true)}
-                    type="button"
-                  >
-                    {config.today.victory.text}
-                  </button>
+                  <p className="quietText">今週のセッション記録はありません。</p>
                 )}
-              </div>
-              {victoryDone && <span className="victoryBadge">達成</span>}
-            </section>
+              </section>
 
-            <section className="doNowBand" aria-labelledby="do-now-title" data-skip-target="main" tabIndex={-1}>
-              {doNowSelection ? (
-                <div className="doNowContent" data-project-color={resolveProjectColorId(doNowSelection.project.id, doNowSelection.project.colorId)}>
-                  <div className="doNowCopy">
-                    <div className="doNowKicker">
-                      <h2 id="do-now-title">
-                        <span aria-hidden="true" className="doNowStatusDot" />
-                        今やる一手
-                      </h2>
-                      <span className="doNowProjectChip">
-                        <ProjectIdentity
-                          colorId={doNowSelection.project.colorId}
-                          compact
-                          name={doNowSelection.project.name}
-                          projectId={doNowSelection.project.id}
-                        />
-                      </span>
-                      {isDoNowRunning && activeTimer && (
-                        <span className={activeTimer.paused ? "runningBadge runningBadge--paused" : "runningBadge runningBadge--running"}>
-                          {activeTimer.paused ? "一時停止" : "実行中"}
-                        </span>
-                      )}
-                    </div>
-                    <strong title={doNowSelection.project.nextStep}>{doNowSelection.project.nextStep}</strong>
-                    <div className="doNowMeta">
-                      <span className="doNowMetaItem doNowMetaTimer">
-                        <UiIcon name="clock" size={16} /> 通常 {doNowDefaultTimerMinutes}分
-                      </span>
-                      {doNowSelection.project.nextStepTrigger?.trim() && (
-                        <span
-                          className="doNowMetaItem doNowTrigger"
-                          title={doNowSelection.project.nextStepTrigger.trim()}
-                        >
-                          <UiIcon name="external" size={16} />
-                          {doNowSelection.project.nextStepTrigger.trim()}
-                        </span>
-                      )}
-                      <span className="doNowReason">{doNowReason}</span>
-                    </div>
-                  </div>
-                  <div className="doNowFooter">
-                    <div className="doNowActions">
-                      {isDoNowRunning && activeTimer ? (
-                        <>
-                          <button
-                            aria-label={activeTimer.paused ? "このセッションを再開" : "このセッションを一時停止"}
-                            className="runningPauseButton"
-                            onClick={togglePause}
-                            type="button"
-                          >
-                            <UiIcon name={activeTimer.paused ? "play" : "pause"} size={16} />
-                            {activeTimer.paused ? "再開" : "一時停止"}
-                          </button>
-                          <button
-                            className="runningStopButton"
-                            onClick={() => void finishTimer(activeTimer)}
-                            type="button"
-                          >
-                            終了
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                      <button
-                        className="doNowStartPrimary"
-                        onClick={() => startDoNowProject(doNowSelection.project, true)}
-                        type="button"
-                      >
-                        <UiIcon name="play" size={16} /> {doNowShortTimerMinutes}分で始める
-                      </button>
-                      <button
-                        className="doNowStartSecondary"
-                        onClick={() => startDoNowProject(doNowSelection.project, false)}
-                        type="button"
-                      >
-                        <UiIcon name="play" size={16} /> 通常 {doNowDefaultTimerMinutes}分
-                      </button>
-                        </>
-                      )}
-                      {doNowInstructionPath && (
-                        <button
-                          aria-label={`${doNowSelection.project.name}の手順書を開く`}
-                          className="doNowInstructionButton"
-                          onClick={() => {
-                            void openInstructionWindow({ path: doNowInstructionPath, focus: true }).catch((error) => {
-                              showToast(
-                                "error",
-                                `手順書を開けません: ${error instanceof Error ? error.message : String(error)}`,
-                              );
-                            });
-                          }}
-                          type="button"
-                        >
-                          <UiIcon name="book" size={16} /> 手順書
-                        </button>
-                      )}
-                    </div>
-                    {doNowCandidates.length > 1 && (
-                      <button
-                        className="doNowAlternateButton"
-                        onClick={() =>
-                          setDoNowCandidateIndex((index) => (index + 1) % doNowCandidates.length)
-                        }
-                        type="button"
-                      >
-                        別の候補 →
-                      </button>
-                    )}
-                  </div>
+              <section className="recordsSection">
+                <div className="sectionHeading">
+                  <h2>プロジェクト別累計</h2>
+                  <span>すべての記録</span>
                 </div>
-              ) : focusedProjects.length > 0 ? (
-                <>
-                  <div className="doNowHeading">
-                    <h2 id="do-now-title">今やる一手</h2>
-                  </div>
-                  <div className="doNowEmpty">
-                    <span>重点プロジェクトに次の一手を設定すると、ここに提案されます。</span>
-                    <button onClick={() => openProjectEditDialog(focusedProjects[0])} type="button">
-                      次の一手を設定
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="doNowHeading">
-                    <h2 id="do-now-title">今やる一手</h2>
-                  </div>
-                  <div className="doNowEmpty">
-                    <span>今週の重点を選ぶと、今やる一手を提案できます。</span>
-                    <button onClick={() => setActiveView("records")} type="button">
-                      重点を選ぶ
-                    </button>
-                  </div>
-                </>
-              )}
-            </section>
-
-            <section className="focusBand">
-              <div className="sectionHeading sectionHeading--compact sectionHeading--inlineActions">
-                <h2>今日の3件</h2>
-                <div className="sectionHeadingActions">
-                  <button
-                    aria-label="今日の3件に追加"
-                    className="sectionAddButton"
-                    disabled={todayRemaining <= 0 || todayAddOpen}
-                    onClick={() => setTodayAddOpen(true)}
-                    title={todayRemaining <= 0 ? "3件まで追加できます" : "今日の3件に追加"}
-                    type="button"
-                  >
-                    <UiIcon name="add" size={16} />
-                    追加
-                  </button>
-                  <span>{config.today.items.length}/{TODAY_ITEM_LIMIT}</span>
-                </div>
-              </div>
-              <div className="todayList">
-                {config.today.items.length === 0 && (
-                  <p className="quietText">今日はまだありません。「今日を組み立てる」から選べます。</p>
-                )}
-                {config.today.items.map((item, index) => (
-                  <div
-                    className={[
-                      "todayRow",
-                      todayPointerDrag === index ? "todayRow--dragging" : "",
-                      activeTimer?.sourceId === `today-${index}` ? "todayRow--running" : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                    data-today-index={index}
-                    key={`${item.text}-${index}`}
-                    onContextMenu={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      openContextMenu(
-                        { kind: "today", index, itemText: item.text },
-                        event.clientX,
-                        event.clientY,
-                        event.currentTarget,
-                      );
-                    }}
-                    onKeyDown={(event) =>
-                      openContextMenuFromKeyboard(event, { kind: "today", index, itemText: item.text })
-                    }
-                    onPointerCancel={cancelTodayPointerDrag}
-                    onPointerDown={(event) => startTodayPointerDrag(event, index)}
-                    onPointerMove={updateTodayPointerDrag}
-                    onPointerUp={finishTodayPointerDrag}
-                    tabIndex={0}
-                  >
-                    <input
-                      aria-label="完了"
-                      checked={item.done}
-                      className="check"
-                      onChange={() => toggleTodayDone(index)}
-                      type="checkbox"
-                    />
-                    <div className="todayItemCopy">
-                      {item.projectId && projectsById.has(item.projectId) && (
-                        <span className="todayProjectIdentity">
+                {sessionSummary && sessionSummary.allTimeProjects.length > 0 ? (
+                  <div className="recordsTable">
+                    {sessionSummary.allTimeProjects.map((project) => (
+                      <div
+                        className="recordsTableRow recordsTableRow--allTime"
+                        key={project.projectId ?? project.label}
+                      >
+                        {project.projectId ? (
                           <ProjectIdentity
-                            colorId={projectsById.get(item.projectId)?.colorId}
-                            compact
-                            name={projectsById.get(item.projectId)?.name ?? ""}
-                            projectId={item.projectId}
+                            colorId={
+                              config.projects.find((item) => item.id === project.projectId)?.colorId
+                            }
+                            name={project.label}
+                            projectId={project.projectId}
                           />
-                        </span>
-                      )}
-                      {todayTriggerEditingIndex === index ? (
-                        <input
-                          aria-label="いつ・何の後にやる？"
-                          autoFocus
-                          className="todayTriggerInput"
-                          maxLength={EXECUTION_TRIGGER_MAX_CHARS}
-                          onBlur={cancelTodayTriggerEdit}
-                          onChange={(event) => setTodayTriggerDraft(event.target.value)}
-                          onKeyDown={(event) => handleTodayTriggerKeyDown(event, index)}
-                          onPointerDown={(event) => event.stopPropagation()}
-                          placeholder="例: 21時 / 夕食後"
-                          value={todayTriggerDraft}
-                        />
-                      ) : item.trigger || todayEditingIndex !== index ? (
-                        <button
-                          className={
-                            item.trigger
-                              ? "todayTriggerButton"
-                              : "todayTriggerButton todayTriggerButton--empty"
-                          }
-                          onClick={() => beginTodayTriggerEdit(index)}
-                          onPointerDown={(event) => event.stopPropagation()}
-                          type="button"
-                        >
-                          {item.trigger ? `${item.trigger} ▸` : "+ きっかけ"}
-                        </button>
-                      ) : null}
-                      {todayEditingIndex === index ? (
-                        <input
-                          aria-label="今日の項目"
-                          autoFocus
-                          className={
-                            item.done ? "todayEditInput todayEditInput--done" : "todayEditInput"
-                          }
-                          maxLength={90}
-                          onBlur={() => setTodayEditingIndex(null)}
-                          onChange={(event) => updateTodayText(index, event.target.value)}
-                          onKeyDown={handleTodayEditKeyDown}
-                          onPointerDown={(event) => event.stopPropagation()}
-                          value={item.text}
-                        />
-                      ) : (
-                        <button
-                          className={
-                            item.done ? "todayTextButton todayTextButton--done" : "todayTextButton"
-                          }
-                          onClick={() => {
-                            cancelTodayTriggerEdit();
-                            setTodayEditingIndex(index);
-                          }}
-                          onPointerDown={(event) => event.stopPropagation()}
-                          type="button"
-                        >
-                          {item.text || "未入力"}
-                        </button>
-                      )}
-                      {activeTimer?.sourceId === `today-${index}` && (
-                        <span
-                          className={
-                            activeTimer.paused
-                              ? "runningBadge runningBadge--paused"
-                              : "runningBadge runningBadge--running"
-                          }
-                        >
-                          {activeTimer.paused ? "一時停止" : "実行中"}
-                        </span>
-                      )}
-                    </div>
-                    {activeTimer?.sourceId === `today-${index}` ? (
-                      <div className="todayTimerActions todayTimerActions--running">
-                        <button
-                          aria-label={
-                            activeTimer.paused
-                              ? "このセッションを再開"
-                              : "このセッションを一時停止"
-                          }
-                          className="runningPauseButton"
-                          onClick={togglePause}
-                          title={activeTimer.paused ? "このセッションを再開" : "このセッションを一時停止"}
-                          type="button"
-                        >
-                          <UiIcon name={activeTimer.paused ? "play" : "pause"} size={16} />
-                          {activeTimer.paused ? "再開" : "一時停止"}
-                        </button>
-                        <button
-                          className="runningStopButton"
-                          onClick={() => void finishTimer(activeTimer)}
-                          title="このセッションを終了"
-                          type="button"
-                        >
-                          終了
-                        </button>
+                        ) : (
+                          <span>{project.label}</span>
+                        )}
+                        <div className="recordsTotalMetrics">
+                          <span>{project.activeDays}日</span>
+                          <strong>{project.totalMinutes}分</strong>
+                        </div>
                       </div>
-                    ) : (
-                      <div className="todayTimerActions">
-                        <button
-                          aria-label={`短時間タイマー${config.settings.shortTimerMinutes}分で開始`}
-                          className="todayStartButton todayStartButton--short"
-                          disabled={!item.text.trim()}
-                          onClick={() =>
-                            void startTimer(
-                              `today-${index}`,
-                              item.projectId && projectsById.has(item.projectId)
-                                ? (projectsById.get(item.projectId)?.name ?? item.text)
-                                : item.text,
-                              item.projectId && projectsById.has(item.projectId) ? item.projectId : null,
-                              (item.buttonIds ?? []).flatMap(
-                                (buttonId) => buttonsById.get(buttonId)?.actions ?? [],
-                              ),
-                              config.settings.shortTimerMinutes,
-                              item.text,
-                              item.instructionPath,
-                              item.instructionOpenOnStart,
-                            )
-                          }
-                          title={`短時間タイマー: ${config.settings.shortTimerMinutes}分`}
-                          type="button"
-                        >
-                          <span aria-hidden="true" className="nextStepStartGlyph">
-                            <UiIcon name="play" size={16} />
-                          </span>
-                          <span aria-hidden="true" className="nextStepStartDuration">
-                            {config.settings.shortTimerMinutes}分
-                          </span>
-                        </button>
-                        <button
-                          aria-label={`通常タイマー${config.settings.defaultTimerMinutes}分で開始`}
-                          className="todayStartButton todayStartButton--normal"
-                          disabled={!item.text.trim()}
-                          onClick={() =>
-                            void startTimer(
-                              `today-${index}`,
-                              item.projectId && projectsById.has(item.projectId)
-                                ? (projectsById.get(item.projectId)?.name ?? item.text)
-                                : item.text,
-                              item.projectId && projectsById.has(item.projectId) ? item.projectId : null,
-                              (item.buttonIds ?? []).flatMap(
-                                (buttonId) => buttonsById.get(buttonId)?.actions ?? [],
-                              ),
-                              config.settings.defaultTimerMinutes,
-                              item.text,
-                              item.instructionPath,
-                              item.instructionOpenOnStart,
-                            )
-                          }
-                          title={`通常タイマー: ${config.settings.defaultTimerMinutes}分`}
-                          type="button"
-                        >
-                          <span aria-hidden="true" className="nextStepStartGlyph">
-                            <UiIcon name="play" size={16} />
-                          </span>
-                          <span aria-hidden="true" className="nextStepStartDuration">
-                            {config.settings.defaultTimerMinutes}分
-                          </span>
-                        </button>
-                      </div>
-                    )}
+                    ))}
                   </div>
-                ))}
-              </div>
+                ) : (
+                  <p className="quietText">セッション記録はまだありません。</p>
+                )}
+              </section>
 
-              {todayRemaining > 0 && todayAddOpen && (
-                <form
-                  className="todayAddRow"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    addTodayItem();
-                  }}
-                >
-                  <input
-                    aria-label="今日に追加"
-                    autoFocus
-                    className="todayEditInput"
-                    maxLength={90}
-                    onChange={(event) => setTodayDraft(event.target.value)}
-                    onKeyDown={handleTodayAddKeyDown}
-                    placeholder={`あと${todayRemaining}件`}
-                    value={todayDraft}
-                  />
-                  <button className="primaryButton" disabled={!todayDraft.trim()} type="submit">
-                    追加
+              <section className="recordsSection">
+                <div className="sectionHeading">
+                  <h2>最近のセッション</h2>
+                  <button
+                    className="sectionLinkButton"
+                    onClick={openRuntimeDataFolder}
+                    title={sessionEntries?.path || sessionSummary?.path || "sessions.jsonl"}
+                    type="button"
+                  >
+                    保存先を開く
                   </button>
-                </form>
-              )}
-            </section>
+                </div>
 
-            <section className="todayBuilderBand">
-              <div className="disclosureHeader todayBuilderHeader">
-                <button
-                  className="disclosure todayBuilderDisclosure"
-                  onClick={toggleTodayBuilder}
-                  type="button"
-                >
-                  <UiIcon name={todayBuilderOpen ? "chevronDown" : "chevronRight"} size={16} />
-                  <span className="disclosureLabel">
-                    <strong>今日を組み立てる</strong>
-                    <span className="disclosureDescription">候補から今日の行動を選ぶ</span>
-                  </span>
-                </button>
-                <button
-                  aria-label="やりたいことを追加"
-                  className="sectionAddButton todayBuilderHeaderAdd"
-                  disabled={todayBuilderAddOpen}
-                  onClick={() => {
-                    setTodayBuilderOpen(true);
-                    setTodayBuilderAddOpen(true);
-                  }}
-                  title="やりたいことを追加"
-                  type="button"
-                >
-                  <UiIcon name="add" size={16} />
-                </button>
-                <span className="disclosureCount">{todayBuilderCandidates.length}</span>
-              </div>
-              {todayBuilderOpen && (
-                <div className="todayBuilderBody">
-                  {todayBuilderAddOpen ? (
-                    <form
-                      className="addRow inboxAddRow todayBuilderAddRow"
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        addTodayBuilderDraft();
-                      }}
-                    >
-                      <input
-                        aria-label="やりたいことに追加"
-                        data-today-builder-add-input
-                        autoFocus
-                        className="textInput"
-                        maxLength={120}
-                        onChange={(event) => setTodayBuilderDraft(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Escape") {
-                            setTodayBuilderDraft("");
-                            setTodayBuilderAddOpen(false);
+                <div className="recordsFilters">
+                  <input
+                    className="textInput"
+                    onChange={(event) => setSessionSearch(event.target.value)}
+                    placeholder="検索"
+                    value={sessionSearch}
+                  />
+                  <div className="filterGroup" aria-label="期間">
+                    <span>期間</span>
+                    <div className="segmentRow">
+                      {[
+                        ["week", "今週"],
+                        ["today", "今日"],
+                        ["all", "すべて"],
+                      ].map(([value, label]) => (
+                        <button
+                          className={
+                            sessionDateScope === value
+                              ? "segmentButton segmentButton--active"
+                              : "segmentButton"
                           }
-                        }}
-                        value={todayBuilderDraft}
-                      />
-                      <button className="primaryButton" disabled={!todayBuilderDraft.trim()} type="submit">
-                        追加
+                          key={value}
+                          onClick={() => setSessionDateScope(value as RecordsDateScope)}
+                          type="button"
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="filterGroup" aria-label="プロジェクト">
+                    <span>プロジェクト</span>
+                    <div className="projectFilterRow">
+                      <button
+                        className={
+                          sessionProjectFilter ? "filterChip" : "filterChip filterChip--active"
+                        }
+                        onClick={() => setSessionProjectFilter("")}
+                        type="button"
+                      >
+                        すべて
                       </button>
-                    </form>
+                      {config.projects.map((project) => (
+                        <button
+                          className={
+                            sessionProjectFilter === project.id
+                              ? "filterChip filterChip--active"
+                              : "filterChip"
+                          }
+                          key={project.id}
+                          onClick={() => setSessionProjectFilter(project.id)}
+                          type="button"
+                        >
+                          {project.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {sessionEntries && sessionEntries.entries.length > 0 ? (
+                  <div className="recentSessionList">
+                    {sessionEntries.entries.map((session) => (
+                      <div className="recentSessionRow" key={session.rowKey}>
+                        <div className="recentSessionMeta">
+                          <span>{session.date}</span>
+                          <span>{session.startedAt}</span>
+                          {session.projectId ? (
+                            <ProjectIdentity
+                              colorId={
+                                config.projects.find((item) => item.id === session.projectId)
+                                  ?.colorId
+                              }
+                              compact
+                              name={session.label}
+                              projectId={session.projectId}
+                            />
+                          ) : (
+                            <strong>{session.label}</strong>
+                          )}
+                          <span>{session.minutes}分</span>
+                        </div>
+                        {session.note.trim() ? (
+                          <p>{session.note}</p>
+                        ) : (
+                          <p className="quietText quietText--small">noteなし</p>
+                        )}
+                        <div className="sessionRowActions">
+                          <button
+                            className="secondaryButton"
+                            onClick={() => openSessionEditDialog(session)}
+                            type="button"
+                          >
+                            編集
+                          </button>
+                          <button
+                            className="dangerButton"
+                            onClick={() => requestSessionDelete(session)}
+                            type="button"
+                          >
+                            削除
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="quietText">
+                    条件に一致するセッションがありません。検索語またはフィルターを変更してください。
+                  </p>
+                )}
+              </section>
+
+              <section className="recordsSection">
+                <div className="sectionHeading">
+                  <h2>旧notes履歴</h2>
+                  <button
+                    className="sectionLinkButton"
+                    onClick={openRuntimeDataFolder}
+                    title={notesHistory?.path || "notes.json"}
+                    type="button"
+                  >
+                    保存先を開く
+                  </button>
+                </div>
+                {notesHistory && notesHistory.entries.length > 0 ? (
+                  <div className="notesHistoryList">
+                    {notesHistory.entries.map((entry) => (
+                      <div className="notesHistoryDay" key={entry.date}>
+                        <strong>{entry.date}</strong>
+                        <div className="notesList">
+                          {toThreeNoteDraft(entry.items).map((item, index) => (
+                            <input
+                              aria-label={`${entry.date} できたこと ${index + 1}`}
+                              className="textInput"
+                              key={index}
+                              maxLength={120}
+                              onChange={(event) =>
+                                updateHistoryNoteText(entry.date, index, event.target.value)
+                              }
+                              onBlur={() => flushHistoryNotesSave(entry.date)}
+                              value={item}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="quietText">
+                    既存のnotes.jsonに旧記録がある場合だけ、ここで確認・編集できます。
+                  </p>
+                )}
+              </section>
+
+              <div className="recordsFooter">
+                <button className="dataFolderButton" onClick={openSettingsCenter} type="button">
+                  設定
+                </button>
+                <button className="dataFolderButton" onClick={openRuntimeDataFolder} type="button">
+                  データフォルダを開く
+                </button>
+              </div>
+            </section>
+          ) : (
+            <>
+              <section
+                className={victoryDone ? "victoryBar victoryBar--done" : "victoryBar"}
+                aria-label="今日の勝利条件"
+              >
+                <span className="victoryIcon" aria-hidden="true">
+                  🏆
+                </span>
+                <input
+                  aria-label="勝利条件を達成"
+                  checked={victoryDone}
+                  className="check victoryCheck"
+                  disabled={!victoryText}
+                  onChange={toggleVictoryDone}
+                  type="checkbox"
+                />
+                <div className="victoryContent">
+                  <span className="victoryLabel">今日の勝利条件</span>
+                  {victoryEditing || !victoryText ? (
+                    <>
+                      <input
+                        aria-label="今日の勝利条件"
+                        className={victoryDone ? "victoryInput victoryInput--done" : "victoryInput"}
+                        maxLength={90}
+                        onBlur={() => setVictoryEditing(false)}
+                        onChange={(event) => updateVictoryText(event.target.value)}
+                        onKeyDown={handleVictoryKeyDown}
+                        placeholder="今日はこれができれば勝ち"
+                        ref={victoryInputRef}
+                        value={config.today.victory.text}
+                      />
+                      {!victoryText && victorySuggestions.length > 0 && (
+                        <div className="victorySuggestions" aria-label="勝利条件の候補">
+                          {victorySuggestions.map((suggestion) => (
+                            <button
+                              className="suggestionChip"
+                              key={suggestion}
+                              onMouseDown={(event) => event.preventDefault()}
+                              onClick={() => applyVictorySuggestion(suggestion)}
+                              type="button"
+                            >
+                              {suggestion}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <button
-                      className="inboxAddPrompt todayBuilderAddPrompt"
-                      onClick={() => setTodayBuilderAddOpen(true)}
+                      className={
+                        victoryDone
+                          ? "victoryTextButton victoryTextButton--done"
+                          : "victoryTextButton"
+                      }
+                      onClick={() => setVictoryEditing(true)}
+                      type="button"
+                    >
+                      {config.today.victory.text}
+                    </button>
+                  )}
+                </div>
+                {victoryDone && <span className="victoryBadge">達成</span>}
+              </section>
+
+              <section
+                className="doNowBand"
+                aria-labelledby="do-now-title"
+                data-skip-target="main"
+                tabIndex={-1}
+              >
+                {doNowSelection ? (
+                  <div
+                    className="doNowContent"
+                    data-project-color={resolveProjectColorId(
+                      doNowSelection.project.id,
+                      doNowSelection.project.colorId,
+                    )}
+                  >
+                    <div className="doNowCopy">
+                      <div className="doNowKicker">
+                        <h2 id="do-now-title">
+                          <span aria-hidden="true" className="doNowStatusDot" />
+                          今やる一手
+                        </h2>
+                        <span className="doNowProjectChip">
+                          <ProjectIdentity
+                            colorId={doNowSelection.project.colorId}
+                            compact
+                            name={doNowSelection.project.name}
+                            projectId={doNowSelection.project.id}
+                          />
+                        </span>
+                        {isDoNowRunning && activeTimer && (
+                          <span
+                            className={
+                              activeTimer.paused
+                                ? "runningBadge runningBadge--paused"
+                                : "runningBadge runningBadge--running"
+                            }
+                          >
+                            {activeTimer.paused ? "一時停止" : "実行中"}
+                          </span>
+                        )}
+                      </div>
+                      <strong title={doNowSelection.project.nextStep}>
+                        {doNowSelection.project.nextStep}
+                      </strong>
+                      <div className="doNowMeta">
+                        <span className="doNowMetaItem doNowMetaTimer">
+                          <UiIcon name="clock" size={16} /> 通常 {doNowDefaultTimerMinutes}分
+                        </span>
+                        {doNowSelection.project.nextStepTrigger?.trim() && (
+                          <span
+                            className="doNowMetaItem doNowTrigger"
+                            title={doNowSelection.project.nextStepTrigger.trim()}
+                          >
+                            <UiIcon name="external" size={16} />
+                            {doNowSelection.project.nextStepTrigger.trim()}
+                          </span>
+                        )}
+                        <span className="doNowReason">{doNowReason}</span>
+                      </div>
+                    </div>
+                    <div className="doNowFooter">
+                      <div className="doNowActions">
+                        {isDoNowRunning && activeTimer ? (
+                          <>
+                            <button
+                              aria-label={
+                                activeTimer.paused
+                                  ? "このセッションを再開"
+                                  : "このセッションを一時停止"
+                              }
+                              className="runningPauseButton"
+                              onClick={togglePause}
+                              type="button"
+                            >
+                              <UiIcon name={activeTimer.paused ? "play" : "pause"} size={16} />
+                              {activeTimer.paused ? "再開" : "一時停止"}
+                            </button>
+                            <button
+                              className="runningStopButton"
+                              onClick={() => void finishTimer(activeTimer)}
+                              type="button"
+                            >
+                              終了
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              className="doNowStartPrimary"
+                              onClick={() => startDoNowProject(doNowSelection.project, true)}
+                              type="button"
+                            >
+                              <UiIcon name="play" size={16} /> {doNowShortTimerMinutes}分で始める
+                            </button>
+                            <button
+                              className="doNowStartSecondary"
+                              onClick={() => startDoNowProject(doNowSelection.project, false)}
+                              type="button"
+                            >
+                              <UiIcon name="play" size={16} /> 通常 {doNowDefaultTimerMinutes}分
+                            </button>
+                          </>
+                        )}
+                        {doNowInstructionPath && (
+                          <button
+                            aria-label={`${doNowSelection.project.name}の手順書を開く`}
+                            className="doNowInstructionButton"
+                            onClick={() => {
+                              void openInstructionWindow({
+                                path: doNowInstructionPath,
+                                focus: true,
+                              }).catch((error) => {
+                                showToast(
+                                  "error",
+                                  `手順書を開けません: ${error instanceof Error ? error.message : String(error)}`,
+                                );
+                              });
+                            }}
+                            type="button"
+                          >
+                            <UiIcon name="book" size={16} /> 手順書
+                          </button>
+                        )}
+                      </div>
+                      {doNowCandidates.length > 1 && (
+                        <button
+                          className="doNowAlternateButton"
+                          onClick={() =>
+                            setDoNowCandidateIndex((index) => (index + 1) % doNowCandidates.length)
+                          }
+                          type="button"
+                        >
+                          別の候補 →
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ) : focusedProjects.length > 0 ? (
+                  <>
+                    <div className="doNowHeading">
+                      <h2 id="do-now-title">今やる一手</h2>
+                    </div>
+                    <div className="doNowEmpty">
+                      <span>重点プロジェクトに次の一手を設定すると、ここに提案されます。</span>
+                      <button
+                        onClick={() => openProjectEditDialog(focusedProjects[0])}
+                        type="button"
+                      >
+                        次の一手を設定
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="doNowHeading">
+                      <h2 id="do-now-title">今やる一手</h2>
+                    </div>
+                    <div className="doNowEmpty">
+                      <span>今週の重点を選ぶと、今やる一手を提案できます。</span>
+                      <button onClick={() => setActiveView("records")} type="button">
+                        重点を選ぶ
+                      </button>
+                    </div>
+                  </>
+                )}
+              </section>
+
+              <section className="focusBand">
+                <div className="sectionHeading sectionHeading--compact sectionHeading--inlineActions">
+                  <h2>今日の3件</h2>
+                  <div className="sectionHeadingActions">
+                    <button
+                      aria-label="今日の3件に追加"
+                      className="sectionAddButton"
+                      disabled={todayAddOpen}
+                      onClick={() => {
+                        if (todayRemaining <= 0) {
+                          showToast("warn", "今日の3件は3件までです");
+                          return;
+                        }
+                        setTodayAddOpen(true);
+                      }}
+                      title={todayRemaining <= 0 ? "3件まで追加できます" : "今日の3件に追加"}
                       type="button"
                     >
                       <UiIcon name="add" size={16} />
                       追加
                     </button>
-                  )}
-                  {todayBuilderCandidates.length === 0 ? (
+                    <span>
+                      {config.today.items.length}/{TODAY_ITEM_LIMIT}
+                    </span>
+                  </div>
+                </div>
+                <div className="todayGrid">
+                  {config.today.items.length === 0 && (
                     <p className="quietText">
-                      候補はまだありません。やりたいことやプロジェクトの次の一手を追加するとここに表示されます。
+                      今日はまだありません。「今日を組み立てる」から選べます。
                     </p>
-                  ) : (
-                    todayBuilderCandidates.map((candidate, index) => (
-                      <div
-                        className={
-                          todayBuilderPointerDrag?.index === index
-                            ? "todayBuilderRow todayBuilderRow--dragging"
-                            : "todayBuilderRow"
-                        }
-                        data-today-builder-index={index}
-                        key={candidate.key}
+                  )}
+                  {config.today.items.map((item, index) => {
+                    const timerSourceId = todayTimerSourceId(item, index);
+                    const isRunningTodayItem = activeTimer?.sourceId === timerSourceId;
+                    const project = item.projectId ? projectsById.get(item.projectId) : undefined;
+                    const shortMinutes =
+                      project?.shortTimerMinutes ?? config.settings.shortTimerMinutes;
+                    const defaultMinutes =
+                      project?.defaultTimerMinutes ?? config.settings.defaultTimerMinutes;
+                    return (
+                      <article
+                        className={[
+                          "todayRow",
+                          todayPointerDrag === index ? "todayRow--dragging" : "",
+                          isRunningTodayItem ? "todayRow--running" : "",
+                          item.done ? "todayRow--complete" : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                        data-today-index={index}
+                        key={todaySourceKey(item, index)}
                         onContextMenu={(event) => {
                           event.preventDefault();
                           event.stopPropagation();
                           openContextMenu(
-                            { kind: "todayBuilder", index, candidateKey: candidate.key },
+                            { kind: "today", index, itemText: item.text },
                             event.clientX,
                             event.clientY,
                             event.currentTarget,
@@ -7798,450 +7733,31 @@ function DashboardApp() {
                         }}
                         onKeyDown={(event) =>
                           openContextMenuFromKeyboard(event, {
-                            kind: "todayBuilder",
+                            kind: "today",
                             index,
-                            candidateKey: candidate.key,
+                            itemText: item.text,
                           })
                         }
-                        onPointerCancel={cancelTodayBuilderPointerDrag}
-                        onPointerDown={(event) => startTodayBuilderPointerDrag(event, index)}
-                        onPointerMove={updateTodayBuilderPointerDrag}
-                        onPointerUp={finishTodayBuilderPointerDrag}
+                        onPointerCancel={cancelTodayPointerDrag}
+                        onPointerDown={(event) => startTodayPointerDrag(event, index)}
+                        onPointerMove={updateTodayPointerDrag}
+                        onPointerUp={finishTodayPointerDrag}
                         tabIndex={0}
                       >
-                        <div>
-                          <span className="todayBuilderSource">{candidate.source}</span>
-                          <strong>{candidate.text}</strong>
-                        </div>
-                        <div className="todayBuilderActions">
-                          <select
-                            aria-label={`${candidate.text}の追加先`}
-                            className="todayBuilderDestination"
-                            onChange={(event) =>
-                              setTodayBuilderDestinations((current) => ({
-                                ...current,
-                                [candidate.text]: event.target.value,
-                              }))
-                            }
-                            value={todayBuilderDestinations[candidate.text] ?? "today"}
-                          >
-                            <option value="today">今日の3件</option>
-                            <option value="victory">勝利条件</option>
-                            <option value="inbox">やりたいこと</option>
-                          </select>
-                          <button
-                            className="primaryButton todayBuilderAddButton"
-                            disabled={
-                              (todayBuilderDestinations[candidate.text] ?? "today") === "today" &&
-                              todayRemaining <= 0
-                            }
-                            onClick={() =>
-                              applyTodayBuilderCandidate(
-                                candidate,
-                                todayBuilderDestinations[candidate.text] ?? "today",
-                              )
-                            }
-                            type="button"
-                          >
-                            追加
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                  {todayBuilderPointerDrag?.targetIndicator && (
-                    <div
-                      aria-hidden="true"
-                      className="todayBuilderDropIndicator"
-                      style={todayBuilderPointerDrag.targetIndicator}
-                    />
-                  )}
-                  {todayBuilderPointerDrag && (
-                    <div
-                      aria-hidden="true"
-                      className="todayBuilderDragGhost"
-                      style={{
-                        height: todayBuilderPointerDrag.height,
-                        left: todayBuilderPointerDrag.pointerX - todayBuilderPointerDrag.offsetX,
-                        top: todayBuilderPointerDrag.pointerY - todayBuilderPointerDrag.offsetY,
-                        width: todayBuilderPointerDrag.width,
-                      }}
-                    >
-                      <span className="todayBuilderSource">
-                        {todayBuilderCandidates[todayBuilderPointerDrag.index]?.source}
-                      </span>
-                      <strong>{todayBuilderCandidates[todayBuilderPointerDrag.index]?.text}</strong>
-                    </div>
-                  )}
-                </div>
-              )}
-            </section>
-
-            <section
-              className="projectsBand"
-              onContextMenu={(event) => {
-                event.preventDefault();
-                openContextMenu({ kind: "projects" }, event.clientX, event.clientY, event.currentTarget);
-              }}
-              tabIndex={-1}
-            >
-              <div
-                className="sectionHeading sectionHeading--inlineActions"
-                onContextMenu={(event) => {
-                  event.preventDefault();
-                  openContextMenu({ kind: "projects" }, event.clientX, event.clientY, event.currentTarget);
-                }}
-                tabIndex={-1}
-              >
-                <h2>次の一手</h2>
-                <div className="sectionHeadingActions">
-                  <button
-                    aria-label="次の一手を追加"
-                    className="sectionAddButton"
-                    onClick={openProjectAddDialog}
-                    title="次の一手を追加"
-                    type="button"
-                  >
-                    <UiIcon name="add" size={16} />
-                    追加
-                  </button>
-                  <span>{config.projects.length}件</span>
-                </div>
-              </div>
-              <div className="projectGrid">
-                {config.projects.map((project) => {
-                  const projectButtons = project.buttonIds
-                    .map((buttonId) => buttonsById.get(buttonId))
-                    .filter((button): button is LauncherButton => Boolean(button));
-                  const actions = projectButtons.flatMap((button) => button.actions);
-                  const hasBrokenButton = project.buttonIds.length > projectButtons.length;
-                  const opensInstructionOnStart = Boolean(
-                    project.instructionPath && project.instructionOpenOnStart !== false,
-                  );
-                  const isRunningProject = activeTimer?.sourceId === project.id;
-                  const projectDefaultTimerMinutes =
-                    project.defaultTimerMinutes ?? config.settings.defaultTimerMinutes;
-                  const projectShortTimerMinutes =
-                    project.shortTimerMinutes ?? config.settings.shortTimerMinutes;
-                  return (
-                    <article
-                      className={
-                        [
-                          "projectCard",
-                          projectPointerDrag?.id === project.id ? "projectCard--dragging" : "",
-                          isRunningProject ? "projectCard--running" : "",
-                        ]
-                          .filter(Boolean)
-                          .join(" ")
-                      }
-                      data-project-color={resolveProjectColorId(project.id, project.colorId)}
-                      data-project-id={project.id}
-                      key={project.id}
-                      onContextMenu={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        openContextMenu(
-                          { kind: "project", project },
-                          event.clientX,
-                          event.clientY,
-                          event.currentTarget,
-                        );
-                      }}
-                      onKeyDown={(event) =>
-                        openContextMenuFromKeyboard(event, { kind: "project", project })
-                      }
-                      onPointerCancel={cancelProjectPointerDrag}
-                      onPointerDown={(event) => startProjectPointerDrag(event, project.id)}
-                      onPointerMove={updateProjectPointerDrag}
-                      onPointerUp={finishProjectPointerDrag}
-                      tabIndex={0}
-                    >
-                      <div className="projectCopy">
-                        <div className="projectTitleRow">
-                          <h3>
-                            <ProjectIdentity
-                              colorId={project.colorId}
-                              name={project.name}
-                              projectId={project.id}
-                            />
-                          </h3>
-                          {isRunningProject && activeTimer && (
-                            <span className={activeTimer.paused ? "runningBadge runningBadge--paused" : "runningBadge runningBadge--running"}>
-                              {activeTimer.paused ? "一時停止" : "実行中"}
-                            </span>
-                          )}
-                          {project.instructionPath && (
-                            <button
-                              aria-label={`${project.name}の手順書を開く`}
-                              className="projectInstructionButton"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                void openInstructionWindow({
-                                  path: project.instructionPath,
-                                  focus: true,
-                                }).catch((error) => {
-                                  showToast(
-                                    "error",
-                                    `手順書を開けません: ${
-                                      error instanceof Error ? error.message : String(error)
-                                    }`,
-                                  );
-                                });
-                              }}
-                              onPointerDown={(event) => event.stopPropagation()}
-                              title="手順書を開く"
-                              type="button"
-                            >
-                              <UiIcon name="book" size={18} />
-                            </button>
-                          )}
-                          <button
-                            aria-label="プロジェクトを編集" className="projectEditButton"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              openProjectEditDialog(project);
-                            }}
-                            title="編集"
-                            type="button"
-                          >
-                            <UiIcon name="edit" size={16} />
-                          </button>
-                        </div>
-                        <p className={project.nextStep.trim() ? "" : "projectNextStepPlaceholder"} title={project.nextStep.trim() || "次の一手を書く"}>
-                          {project.nextStepTrigger?.trim() && (
-                            <span className="projectNextStepTrigger">
-                              {project.nextStepTrigger.trim()} ▸{" "}
-                            </span>
-                          )}
-                          {project.nextStep.trim() || "次の一手を書く"}
-                        </p>
-                      </div>
-                      {isRunningProject && activeTimer && (
-                        <div className="projectActions projectActions--running">
-                          <button
-                            aria-label={activeTimer.paused ? "このセッションを再開" : "このセッションを一時停止"} className="runningPauseButton"
-                            onClick={togglePause}
-                            title={activeTimer.paused ? "このセッションを再開" : "このセッションを一時停止"}
-                            type="button"
-                          >
-                            <><UiIcon name={activeTimer.paused ? "play" : "pause"} size={16} /> {activeTimer.paused ? "再開" : "一時停止"}</>
-                          </button>
-                          <button
-                            className="runningStopButton"
-                            onClick={() => void finishTimer(activeTimer)}
-                            title="このセッションを終了"
-                            type="button"
-                          >
-                            終了
-                          </button>
-                        </div>
-                      )}
-                      {(project.buttonIds.length > 0 || opensInstructionOnStart) &&
-                        !isRunningProject && (
-                        <div className="projectActions">
-                          <button
-                            aria-label={`短時間タイマー${projectShortTimerMinutes}分で開始`}
-                            className="shortStartButton"
-                            disabled={
-                              (!opensInstructionOnStart && actions.length === 0) ||
-                              pendingActionId === project.id
-                            }
-                            onClick={() =>
-                              void startTimer(
-                                project.id,
-                                project.name,
-                                project.id,
-                                actions,
-                                projectShortTimerMinutes,
-                                project.startNoteTemplate,
-                              )
-                            }
-                            title={
-                              hasBrokenButton
-                                ? "buttonIdsに見つからない項目があります"
-                                : `短時間タイマー: ${projectShortTimerMinutes}分`
-                            }
-                            type="button"
-                          >
-                            <span aria-hidden="true" className="nextStepStartGlyph">
-                              <UiIcon name="play" size={18} />
-                            </span>
-                            <span aria-hidden="true" className="nextStepStartDuration">
-                              {projectShortTimerMinutes}分
-                            </span>
-                          </button>
-                          <button
-                            aria-label={
-                              hasBrokenButton
-                                ? "実行ボタンに見つからない項目があります"
-                                : `通常タイマー${projectDefaultTimerMinutes}分で開始`
-                            }
-                            className="startButton"
-                            disabled={
-                              (!opensInstructionOnStart && actions.length === 0) ||
-                              pendingActionId === project.id
-                            }
-                            onClick={() =>
-                              void startTimer(
-                                project.id,
-                                project.name,
-                                project.id,
-                                actions,
-                                projectDefaultTimerMinutes,
-                                project.startNoteTemplate,
-                              )
-                            }
-                            title={
-                              hasBrokenButton
-                                ? "buttonIdsに見つからない項目があります"
-                                : "通常タイマーで開始"
-                            }
-                            type="button"
-                          >
-                            {pendingActionId === project.id ? (
-                              <span className="spinner" />
-                            ) : (
-                              <>
-                                <span aria-hidden="true" className="nextStepStartGlyph">
-                                  <UiIcon name="play" size={18} />
-                                </span>
-                                <span aria-hidden="true" className="nextStepStartDuration">
-                                  {projectDefaultTimerMinutes}分
-                                </span>
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      )}
-                    </article>
-                  );
-                })}
-              </div>
-              {projectPointerDrag?.targetIndicator && (
-                <div
-                  aria-hidden="true"
-                  className="projectDropIndicator"
-                  style={projectPointerDrag.targetIndicator}
-                />
-              )}
-              {projectPointerDrag && (
-                <div
-                  aria-hidden="true"
-                  className="projectDragGhost"
-                  style={{
-                    height: projectPointerDrag.height,
-                    left: projectPointerDrag.pointerX - projectPointerDrag.offsetX,
-                    top: projectPointerDrag.pointerY - projectPointerDrag.offsetY,
-                    width: projectPointerDrag.width,
-                  }}
-                >
-                  {(() => {
-                    const project = config.projects.find((item) => item.id === projectPointerDrag.id);
-                    return project ? (
-                      <>
-                        <ProjectIdentity colorId={project.colorId} compact name={project.name} projectId={project.id} />
-                        <strong>{project.nextStep || "次の一手を書く"}</strong>
-                      </>
-                    ) : null;
-                  })()}
-                </div>
-              )}
-            </section>
-
-            <section className="inboxBand">
-              <div className="disclosureHeader" data-inbox-header>
-                <button
-                  aria-expanded={inboxOpen}
-                  className="disclosure"
-                  onClick={() => setInboxOpen((open) => !open)}
-                  type="button"
-                >
-                  <UiIcon name={inboxOpen ? "chevronDown" : "chevronRight"} size={16} />
-                  <span className="disclosureLabel">
-                    <strong>やりたいこと</strong>
-                    <span className="disclosureDescription">あとで整理する一時置き場</span>
-                  </span>
-                </button>
-                <button
-                  aria-label="やりたいことを追加"
-                  className="sectionAddButton sectionAddButton--icon"
-                  disabled={inboxAddOpen}
-                  onClick={() => {
-                    setInboxOpen(true);
-                    setInboxAddOpen(true);
-                  }}
-                  title="やりたいことを追加"
-                  type="button"
-                >
-                  <UiIcon name="add" size={16} />
-                </button>
-                <span className="disclosureCount">{config.inbox.length}</span>
-              </div>
-
-              {inboxOpen && (
-                <div className="inboxBody">
-                  {inboxAddOpen ? (
-                    <form
-                      className="addRow inboxAddRow"
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        addInboxItem();
-                      }}
-                    >
-                      <input
-                        aria-label="やりたいことに追加"
-                        autoFocus
-                        className="textInput"
-                        maxLength={120}
-                        onChange={(event) => setInboxDraft(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key !== "Escape") return;
-                          setInboxDraft("");
-                          setInboxAddOpen(false);
-                        }}
-                        value={inboxDraft}
-                      />
-                      <button className="primaryButton" disabled={!inboxDraft.trim()} type="submit">
-                        追加
-                      </button>
-                    </form>
-                  ) : (
-                    <button
-                      className="inboxAddPrompt"
-                      onClick={() => setInboxAddOpen(true)}
-                      type="button"
-                    >
-                      <UiIcon name="add" size={16} /> 追加
-                    </button>
-                  )}
-                  <div className="inboxList">
-                    {config.inbox.map((item, index) => (
-                      <div
-                        className={inboxPointerDrag?.index === index ? "inboxRow inboxRow--dragging" : "inboxRow"}
-                        data-inbox-index={index}
-                        key={`${item.text}-${index}`}
-                        onContextMenu={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          openContextMenu(
-                            { kind: "inbox", index, itemText: item.text },
-                            event.clientX,
-                            event.clientY,
-                            event.currentTarget,
-                          );
-                        }}
-                        onKeyDown={(event) =>
-                          openContextMenuFromKeyboard(event, { kind: "inbox", index, itemText: item.text })
-                        }
-                        onPointerCancel={cancelInboxPointerDrag}
-                        onPointerDown={(event) => startInboxPointerDrag(event, index)}
-                        onPointerMove={updateInboxPointerDrag}
-                        onPointerUp={finishInboxPointerDrag}
-                        tabIndex={0}
-                      >
-                        <span className="inboxItemCopy">
+                        <span
+                          aria-label={item.done ? "タイマー満了済み" : "未完了"}
+                          className={
+                            item.done
+                              ? "todayCompletionStatus todayCompletionStatus--complete"
+                              : "todayCompletionStatus"
+                          }
+                          role="status"
+                        >
+                          {item.done ? "✓" : "○"}
+                        </span>
+                        <div className="todayItemCopy">
                           {item.projectId && projectsById.has(item.projectId) && (
-                            <span className="inboxProjectIdentity">
+                            <span className="todayProjectIdentity">
                               <ProjectIdentity
                                 colorId={projectsById.get(item.projectId)?.colorId}
                                 compact
@@ -8250,98 +7766,907 @@ function DashboardApp() {
                               />
                             </span>
                           )}
-                          <span className="inboxItemText">{item.text}</span>
-                        </span>
+                          {todayTriggerEditingIndex === index ? (
+                            <input
+                              aria-label="いつ・何の後にやる？"
+                              autoFocus
+                              className="todayTriggerInput"
+                              maxLength={EXECUTION_TRIGGER_MAX_CHARS}
+                              onBlur={cancelTodayTriggerEdit}
+                              onChange={(event) => setTodayTriggerDraft(event.target.value)}
+                              onKeyDown={(event) => handleTodayTriggerKeyDown(event, index)}
+                              onPointerDown={(event) => event.stopPropagation()}
+                              placeholder="例: 21時 / 夕食後"
+                              value={todayTriggerDraft}
+                            />
+                          ) : item.trigger || todayEditingIndex !== index ? (
+                            <button
+                              className={
+                                item.trigger
+                                  ? "todayTriggerButton"
+                                  : "todayTriggerButton todayTriggerButton--empty"
+                              }
+                              onClick={() => beginTodayTriggerEdit(index)}
+                              onPointerDown={(event) => event.stopPropagation()}
+                              type="button"
+                            >
+                              {item.trigger ? `${item.trigger} ▸` : "+ きっかけ"}
+                            </button>
+                          ) : null}
+                          {todayEditingIndex === index ? (
+                            <input
+                              aria-label="今日の項目"
+                              autoFocus
+                              className={
+                                item.done ? "todayEditInput todayEditInput--done" : "todayEditInput"
+                              }
+                              maxLength={90}
+                              onBlur={() => setTodayEditingIndex(null)}
+                              onChange={(event) => updateTodayText(index, event.target.value)}
+                              onKeyDown={handleTodayEditKeyDown}
+                              onPointerDown={(event) => event.stopPropagation()}
+                              value={item.text}
+                            />
+                          ) : (
+                            <button
+                              className={
+                                item.done
+                                  ? "todayTextButton todayTextButton--done"
+                                  : "todayTextButton"
+                              }
+                              onClick={() => {
+                                cancelTodayTriggerEdit();
+                                setTodayEditingIndex(index);
+                              }}
+                              onPointerDown={(event) => event.stopPropagation()}
+                              type="button"
+                            >
+                              {item.text || "未入力"}
+                            </button>
+                          )}
+                          {isRunningTodayItem && (
+                            <span
+                              className={
+                                activeTimer.paused
+                                  ? "runningBadge runningBadge--paused"
+                                  : "runningBadge runningBadge--running"
+                              }
+                            >
+                              {activeTimer.paused ? "一時停止" : "実行中"}
+                            </span>
+                          )}
+                        </div>
+                        {item.done ? (
+                          <span className="todayCompletedLabel">予定時間まで完了</span>
+                        ) : isRunningTodayItem ? (
+                          <div className="todayTimerActions todayTimerActions--running">
+                            <button
+                              aria-label={
+                                activeTimer.paused
+                                  ? "このセッションを再開"
+                                  : "このセッションを一時停止"
+                              }
+                              className="runningPauseButton"
+                              onClick={togglePause}
+                              title={
+                                activeTimer.paused
+                                  ? "このセッションを再開"
+                                  : "このセッションを一時停止"
+                              }
+                              type="button"
+                            >
+                              <UiIcon name={activeTimer.paused ? "play" : "pause"} size={16} />
+                              {activeTimer.paused ? "再開" : "一時停止"}
+                            </button>
+                            <button
+                              className="runningStopButton"
+                              onClick={() => void finishTimer(activeTimer)}
+                              title="このセッションを終了"
+                              type="button"
+                            >
+                              終了
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="todayTimerActions">
+                            <button
+                              aria-label={`短時間タイマー${shortMinutes}分で開始`}
+                              className="todayStartButton todayStartButton--short"
+                              disabled={!item.text.trim()}
+                              onClick={() =>
+                                void startTimer(
+                                  timerSourceId,
+                                  item.projectId && projectsById.has(item.projectId)
+                                    ? (projectsById.get(item.projectId)?.name ?? item.text)
+                                    : item.text,
+                                  item.projectId && projectsById.has(item.projectId)
+                                    ? item.projectId
+                                    : null,
+                                  (item.buttonIds ?? []).flatMap(
+                                    (buttonId) => buttonsById.get(buttonId)?.actions ?? [],
+                                  ),
+                                  shortMinutes,
+                                  item.text,
+                                  item.instructionPath,
+                                  item.instructionOpenOnStart,
+                                )
+                              }
+                              title={`短時間タイマー: ${shortMinutes}分`}
+                              type="button"
+                            >
+                              <span aria-hidden="true" className="nextStepStartGlyph">
+                                <UiIcon name="play" size={16} />
+                              </span>
+                              <span aria-hidden="true" className="nextStepStartDuration">
+                                {shortMinutes}分
+                              </span>
+                            </button>
+                            <button
+                              aria-label={`通常タイマー${defaultMinutes}分で開始`}
+                              className="todayStartButton todayStartButton--normal"
+                              disabled={!item.text.trim()}
+                              onClick={() =>
+                                void startTimer(
+                                  timerSourceId,
+                                  item.projectId && projectsById.has(item.projectId)
+                                    ? (projectsById.get(item.projectId)?.name ?? item.text)
+                                    : item.text,
+                                  item.projectId && projectsById.has(item.projectId)
+                                    ? item.projectId
+                                    : null,
+                                  (item.buttonIds ?? []).flatMap(
+                                    (buttonId) => buttonsById.get(buttonId)?.actions ?? [],
+                                  ),
+                                  defaultMinutes,
+                                  item.text,
+                                  item.instructionPath,
+                                  item.instructionOpenOnStart,
+                                )
+                              }
+                              title={`通常タイマー: ${defaultMinutes}分`}
+                              type="button"
+                            >
+                              <span aria-hidden="true" className="nextStepStartGlyph">
+                                <UiIcon name="play" size={16} />
+                              </span>
+                              <span aria-hidden="true" className="nextStepStartDuration">
+                                {defaultMinutes}分
+                              </span>
+                            </button>
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
+
+                {allTodayItemsCompleted && (
+                  <div className="todayNextBatch">
+                    <button
+                      className="secondaryButton"
+                      onClick={() => void startNextTodayBatch()}
+                      type="button"
+                    >
+                      <UiIcon name="add" size={16} />
+                      次の3件を選ぶ
+                    </button>
+                    <span>まだやりたいときだけ、次の枠を作れます。</span>
+                  </div>
+                )}
+
+                {todayRemaining > 0 && todayAddOpen && (
+                  <form
+                    className="todayAddRow"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      addTodayItem();
+                    }}
+                  >
+                    <input
+                      aria-label="今日に追加"
+                      autoFocus
+                      className="todayEditInput"
+                      maxLength={90}
+                      onChange={(event) => setTodayDraft(event.target.value)}
+                      onKeyDown={handleTodayAddKeyDown}
+                      placeholder={`あと${todayRemaining}件`}
+                      value={todayDraft}
+                    />
+                    <button className="primaryButton" disabled={!todayDraft.trim()} type="submit">
+                      追加
+                    </button>
+                    <button
+                      aria-label="追加をキャンセル"
+                      className="iconButton sharedAddCancel"
+                      onClick={() => {
+                        setTodayDraft("");
+                        setTodayAddOpen(false);
+                      }}
+                      title="キャンセル"
+                      type="button"
+                    >
+                      <UiIcon name="close" size={16} />
+                    </button>
+                  </form>
+                )}
+              </section>
+
+              <section className="todayBuilderBand">
+                <div className="disclosureHeader todayBuilderHeader">
+                  <button
+                    aria-expanded={todayBuilderOpen}
+                    className="disclosure todayBuilderDisclosure"
+                    onClick={toggleTodayBuilder}
+                    type="button"
+                  >
+                    <UiIcon name={todayBuilderOpen ? "chevronDown" : "chevronRight"} size={16} />
+                    <span className="disclosureLabel">
+                      <strong>今日を組み立てる</strong>
+                    </span>
+                  </button>
+                  <button
+                    aria-label="やりたいことを追加"
+                    className="sectionAddButton todayBuilderHeaderAdd"
+                    disabled={todayBuilderAddOpen}
+                    onClick={() => {
+                      setTodayBuilderOpen(true);
+                      setTodayBuilderAddOpen(true);
+                    }}
+                    title="やりたいことを追加"
+                    type="button"
+                  >
+                    <UiIcon name="add" size={16} />
+                  </button>
+                  <span className="disclosureCount">{todayBuilderCandidates.length}件</span>
+                  <span className="disclosureDescription">候補から今日の行動を選ぶ</span>
+                </div>
+                {todayBuilderOpen && (
+                  <div className="todayBuilderBody">
+                    {todayBuilderAddOpen ? (
+                      <form
+                        className="addRow inboxAddRow todayBuilderAddRow"
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          addTodayBuilderDraft();
+                        }}
+                      >
+                        <input
+                          aria-label="やりたいことに追加"
+                          data-today-builder-add-input
+                          autoFocus
+                          className="textInput"
+                          maxLength={120}
+                          onChange={(event) => setTodayBuilderDraft(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Escape") {
+                              setTodayBuilderDraft("");
+                              setTodayBuilderAddOpen(false);
+                            }
+                          }}
+                          value={todayBuilderDraft}
+                        />
                         <button
-                          className="moveTodayButton"
-                          onClick={() => moveInboxItemToToday(index)}
-                          onPointerDown={(event) => event.stopPropagation()}
-                          title="今日へ"
+                          className="primaryButton"
+                          disabled={!todayBuilderDraft.trim()}
+                          type="submit"
+                        >
+                          追加
+                        </button>
+                        <button
+                          aria-label="追加をキャンセル"
+                          className="iconButton sharedAddCancel"
+                          onClick={() => {
+                            setTodayBuilderDraft("");
+                            setTodayBuilderAddOpen(false);
+                          }}
+                          title="キャンセル"
                           type="button"
                         >
-                          今日へ
+                          <UiIcon name="close" size={16} />
                         </button>
-                      </div>
-                    ))}
-                  </div>
-                  {inboxPointerDrag?.targetIndicator && (
-                    <div aria-hidden="true" className="inboxDropIndicator" style={inboxPointerDrag.targetIndicator} />
-                  )}
-                  {inboxPointerDrag && (
-                    <div
-                      aria-hidden="true"
-                      className="inboxDragGhost"
-                      style={{
-                        height: inboxPointerDrag.height,
-                        left: inboxPointerDrag.pointerX - inboxPointerDrag.offsetX,
-                        top: inboxPointerDrag.pointerY - inboxPointerDrag.offsetY,
-                        width: inboxPointerDrag.width,
-                      }}
-                    >
-                      {config.inbox[inboxPointerDrag.index]?.text}
-                    </div>
-                  )}
-                </div>
-              )}
-            </section>
-
-            <section className="todayActivityBand">
-              <button
-                aria-expanded={todayActivityOpen}
-                className="disclosure disclosure--automatic"
-                onClick={() => setTodayActivityOpen((open) => !open)}
-                type="button"
-              >
-                <UiIcon name={todayActivityOpen ? "chevronDown" : "chevronRight"} size={16} />
-                <span className="disclosureLabel">
-                  <strong>今日の実行</strong>
-                  <span className="disclosureDescription">タイマーで実行した内容</span>
-                </span>
-                <span className="todayActivityAutoBadge">自動</span>
-                <span className="disclosureCount">{todayActivityCount}</span>
-              </button>
-
-              {todayActivityOpen && (
-                <div className="todayActivityBody">
-                  {todayActivityCount > 0 ? (
-                    <div className="todayActivityList">
-                      {todayActivityEntries.map((session) => {
-                        const project = session.projectId
-                          ? config.projects.find((item) => item.id === session.projectId)
-                          : undefined;
+                      </form>
+                    ) : (
+                      <button
+                        className="inboxAddPrompt todayBuilderAddPrompt"
+                        onClick={() => setTodayBuilderAddOpen(true)}
+                        type="button"
+                      >
+                        <UiIcon name="add" size={16} />
+                        追加
+                      </button>
+                    )}
+                    {todayBuilderCandidates.length === 0 ? (
+                      <p className="quietText">
+                        候補はまだありません。やりたいことやプロジェクトの次の一手を追加するとここに表示されます。
+                      </p>
+                    ) : (
+                      visibleTodayBuilderCandidates.map((candidate, pageIndex) => {
+                        const index =
+                          (visibleTodayBuilderPage - 1) * TODAY_BUILDER_PAGE_SIZE + pageIndex;
                         return (
-                          <div className="todayActivityRow" key={session.rowKey}>
-                            <div className="todayActivityIdentity">
-                              {project ? (
-                                <ProjectIdentity
-                                  colorId={project.colorId}
-                                  compact
-                                  name={session.label || project.name}
-                                  projectId={project.id}
-                                />
-                              ) : (
-                                <>
-                                  <span aria-hidden="true" className="todayActivityDot" />
-                                  <span>{session.label || "記録"}</span>
-                                </>
-                              )}
+                          <div
+                            className={
+                              todayBuilderPointerDrag?.index === index
+                                ? "todayBuilderRow todayBuilderRow--dragging"
+                                : "todayBuilderRow"
+                            }
+                            data-today-builder-index={index}
+                            key={candidate.key}
+                            onContextMenu={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              openContextMenu(
+                                { kind: "todayBuilder", index, candidateKey: candidate.key },
+                                event.clientX,
+                                event.clientY,
+                                event.currentTarget,
+                              );
+                            }}
+                            onKeyDown={(event) =>
+                              openContextMenuFromKeyboard(event, {
+                                kind: "todayBuilder",
+                                index,
+                                candidateKey: candidate.key,
+                              })
+                            }
+                            onPointerCancel={cancelTodayBuilderPointerDrag}
+                            onPointerDown={(event) => startTodayBuilderPointerDrag(event, index)}
+                            onPointerMove={updateTodayBuilderPointerDrag}
+                            onPointerUp={finishTodayBuilderPointerDrag}
+                            tabIndex={0}
+                          >
+                            <div>
+                              <span className="todayBuilderSource">{candidate.source}</span>
+                              <strong>{candidate.text}</strong>
                             </div>
-                            <span className="todayActivityStartedAt">{session.startedAt}</span>
-                            <strong>{session.minutes}分</strong>
+                            <div className="todayBuilderActions">
+                              <select
+                                aria-label={`${candidate.text}の追加先`}
+                                className="todayBuilderDestination"
+                                onChange={(event) =>
+                                  setTodayBuilderDestinations((current) => ({
+                                    ...current,
+                                    [candidate.text]: event.target.value,
+                                  }))
+                                }
+                                value={todayBuilderDestinations[candidate.text] ?? "today"}
+                              >
+                                <option value="today">今日の3件</option>
+                                <option value="victory">勝利条件</option>
+                                <option value="inbox">やりたいこと</option>
+                              </select>
+                              <button
+                                className="primaryButton todayBuilderAddButton"
+                                onClick={() =>
+                                  applyTodayBuilderCandidate(
+                                    candidate,
+                                    todayBuilderDestinations[candidate.text] ?? "today",
+                                  )
+                                }
+                                type="button"
+                              >
+                                追加
+                              </button>
+                            </div>
                           </div>
+                        );
+                      })
+                    )}
+                    {todayBuilderPageCount > 1 && (
+                      <nav aria-label="今日を組み立てるのページ" className="todayBuilderPagination">
+                        <button
+                          aria-label="前のページ"
+                          disabled={visibleTodayBuilderPage <= 1}
+                          onClick={() => setTodayBuilderPage(visibleTodayBuilderPage - 1)}
+                          type="button"
+                        >
+                          <UiIcon name="chevronLeft" size={16} />
+                          前へ
+                        </button>
+                        <span>
+                          {visibleTodayBuilderPage} / {todayBuilderPageCount}
+                        </span>
+                        <button
+                          aria-label="次のページ"
+                          disabled={visibleTodayBuilderPage >= todayBuilderPageCount}
+                          onClick={() => setTodayBuilderPage(visibleTodayBuilderPage + 1)}
+                          type="button"
+                        >
+                          次へ
+                          <UiIcon name="chevronRight" size={16} />
+                        </button>
+                      </nav>
+                    )}
+                    {todayBuilderPointerDrag?.targetIndicator && (
+                      <div
+                        aria-hidden="true"
+                        className="todayBuilderDropIndicator"
+                        style={todayBuilderPointerDrag.targetIndicator}
+                      />
+                    )}
+                    {todayBuilderPointerDrag && (
+                      <div
+                        aria-hidden="true"
+                        className="todayBuilderDragGhost"
+                        style={{
+                          height: todayBuilderPointerDrag.height,
+                          left: todayBuilderPointerDrag.pointerX - todayBuilderPointerDrag.offsetX,
+                          top: todayBuilderPointerDrag.pointerY - todayBuilderPointerDrag.offsetY,
+                          width: todayBuilderPointerDrag.width,
+                        }}
+                      >
+                        <span className="todayBuilderSource">
+                          {todayBuilderCandidates[todayBuilderPointerDrag.index]?.source}
+                        </span>
+                        <strong>
+                          {todayBuilderCandidates[todayBuilderPointerDrag.index]?.text}
+                        </strong>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </section>
+
+              <section
+                className="projectsBand"
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  openContextMenu(
+                    { kind: "projects" },
+                    event.clientX,
+                    event.clientY,
+                    event.currentTarget,
+                  );
+                }}
+                tabIndex={-1}
+              >
+                <div
+                  className="disclosureHeader"
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    openContextMenu(
+                      { kind: "projects" },
+                      event.clientX,
+                      event.clientY,
+                      event.currentTarget,
+                    );
+                  }}
+                  tabIndex={-1}
+                >
+                  <button
+                    aria-expanded={projectsOpen}
+                    className="disclosure"
+                    onClick={() => setProjectsOpen((open) => !open)}
+                    type="button"
+                  >
+                    <UiIcon name={projectsOpen ? "chevronDown" : "chevronRight"} size={16} />
+                    <span className="disclosureLabel">
+                      <strong>次の一手</strong>
+                    </span>
+                  </button>
+                  <button
+                    aria-label="次の一手を追加"
+                    className="sectionAddButton nextStepHeaderAdd"
+                    disabled={nextStepAddOpen}
+                    onClick={() => {
+                      setProjectsOpen(true);
+                      setNextStepAddOpen(true);
+                    }}
+                    title="次の一手を追加"
+                    type="button"
+                  >
+                    <UiIcon name="add" size={16} />
+                    追加
+                  </button>
+                  <span className="disclosureCount">{config.projects.length}件</span>
+                  <span className="disclosureDescription">
+                    各プロジェクトの、次回すぐ再開するための一手
+                  </span>
+                </div>
+                {projectsOpen && (
+                  <div className="nextStepBody">
+                    {nextStepAddOpen && (
+                      <form
+                        className="sharedAddForm nextStepAddForm"
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          addNextStepDraft();
+                        }}
+                      >
+                        <input
+                          aria-label="プロジェクト名"
+                          autoFocus
+                          className="textInput"
+                          maxLength={60}
+                          onChange={(event) => setNextStepProjectDraft(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key !== "Escape") return;
+                            setNextStepProjectDraft("");
+                            setNextStepActionDraft("");
+                            setNextStepAddOpen(false);
+                          }}
+                          placeholder="プロジェクト名"
+                          value={nextStepProjectDraft}
+                        />
+                        <input
+                          aria-label="次の一手"
+                          className="textInput"
+                          maxLength={120}
+                          onChange={(event) => setNextStepActionDraft(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key !== "Escape") return;
+                            setNextStepProjectDraft("");
+                            setNextStepActionDraft("");
+                            setNextStepAddOpen(false);
+                          }}
+                          placeholder="次に再開する一手"
+                          value={nextStepActionDraft}
+                        />
+                        <button
+                          className="primaryButton"
+                          disabled={!nextStepProjectDraft.trim() || !nextStepActionDraft.trim()}
+                          type="submit"
+                        >
+                          追加
+                        </button>
+                        <button
+                          aria-label="追加をキャンセル"
+                          className="iconButton sharedAddCancel"
+                          onClick={() => {
+                            setNextStepProjectDraft("");
+                            setNextStepActionDraft("");
+                            setNextStepAddOpen(false);
+                          }}
+                          title="キャンセル"
+                          type="button"
+                        >
+                          <UiIcon name="close" size={16} />
+                        </button>
+                      </form>
+                    )}
+                    <div className="projectGrid">
+                      {config.projects.map((project) => {
+                        return (
+                          <article
+                            className={[
+                              "nextStepRow",
+                              projectPointerDrag?.id === project.id ? "nextStepRow--dragging" : "",
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                            data-project-color={resolveProjectColorId(project.id, project.colorId)}
+                            data-project-id={project.id}
+                            key={project.id}
+                            onContextMenu={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              openContextMenu(
+                                { kind: "project", project },
+                                event.clientX,
+                                event.clientY,
+                                event.currentTarget,
+                              );
+                            }}
+                            onKeyDown={(event) =>
+                              openContextMenuFromKeyboard(event, { kind: "project", project })
+                            }
+                            onPointerCancel={cancelProjectPointerDrag}
+                            onPointerDown={(event) => startProjectPointerDrag(event, project.id)}
+                            onPointerMove={updateProjectPointerDrag}
+                            onPointerUp={finishProjectPointerDrag}
+                            tabIndex={0}
+                          >
+                            <div className="projectCopy">
+                              <div className="projectTitleRow">
+                                <h3>
+                                  <ProjectIdentity
+                                    compact
+                                    colorId={project.colorId}
+                                    name={project.name}
+                                    projectId={project.id}
+                                  />
+                                </h3>
+                              </div>
+                              <p
+                                className={
+                                  project.nextStep.trim() ? "" : "projectNextStepPlaceholder"
+                                }
+                                title={project.nextStep.trim() || "次の一手を書く"}
+                              >
+                                {project.nextStepTrigger?.trim() && (
+                                  <span className="projectNextStepTrigger">
+                                    {project.nextStepTrigger.trim()} ▸{" "}
+                                  </span>
+                                )}
+                                {project.nextStep.trim() || "次の一手を書く"}
+                              </p>
+                            </div>
+                            <button
+                              className="moveTodayButton nextStepTodayButton"
+                              disabled={!project.nextStep.trim()}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                addTodayBuilderCandidate(
+                                  project.nextStep.trim(),
+                                  project.nextStepTrigger,
+                                  project.id,
+                                  `project:${project.id}`,
+                                );
+                              }}
+                              onPointerDown={(event) => event.stopPropagation()}
+                              title="今日へ"
+                              type="button"
+                            >
+                              今日へ
+                            </button>
+                          </article>
                         );
                       })}
                     </div>
-                  ) : (
-                    <p className="quietText">今日はまだ実行記録がありません。</p>
-                  )}
-                </div>
-              )}
-            </section>
-          </>
-        )}
-        </div>
+                    {projectPointerDrag?.targetIndicator && (
+                      <div
+                        aria-hidden="true"
+                        className="projectDropIndicator"
+                        style={projectPointerDrag.targetIndicator}
+                      />
+                    )}
+                    {projectPointerDrag && (
+                      <div
+                        aria-hidden="true"
+                        className="projectDragGhost"
+                        style={{
+                          height: projectPointerDrag.height,
+                          left: projectPointerDrag.pointerX - projectPointerDrag.offsetX,
+                          top: projectPointerDrag.pointerY - projectPointerDrag.offsetY,
+                          width: projectPointerDrag.width,
+                        }}
+                      >
+                        {(() => {
+                          const project = config.projects.find(
+                            (item) => item.id === projectPointerDrag.id,
+                          );
+                          return project ? (
+                            <>
+                              <ProjectIdentity
+                                colorId={project.colorId}
+                                compact
+                                name={project.name}
+                                projectId={project.id}
+                              />
+                              <strong>{project.nextStep || "次の一手を書く"}</strong>
+                            </>
+                          ) : null;
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </section>
 
+              <section className="inboxBand">
+                <div className="disclosureHeader" data-inbox-header>
+                  <button
+                    aria-expanded={inboxOpen}
+                    className="disclosure"
+                    onClick={() => setInboxOpen((open) => !open)}
+                    type="button"
+                  >
+                    <UiIcon name={inboxOpen ? "chevronDown" : "chevronRight"} size={16} />
+                    <span className="disclosureLabel">
+                      <strong>やりたいこと</strong>
+                    </span>
+                  </button>
+                  <button
+                    aria-label="やりたいことを追加"
+                    className="sectionAddButton"
+                    disabled={inboxAddOpen}
+                    onClick={() => {
+                      setInboxOpen(true);
+                      setInboxAddOpen(true);
+                    }}
+                    title="やりたいことを追加"
+                    type="button"
+                  >
+                    <UiIcon name="add" size={16} />
+                    追加
+                  </button>
+                  <span className="disclosureCount">{config.inbox.length}件</span>
+                  <span className="disclosureDescription">あとで整理する一時置き場</span>
+                </div>
+
+                {inboxOpen && (
+                  <div className="inboxBody">
+                    {inboxAddOpen ? (
+                      <form
+                        className="addRow inboxAddRow"
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          addInboxItem();
+                        }}
+                      >
+                        <input
+                          aria-label="やりたいことに追加"
+                          autoFocus
+                          className="textInput"
+                          maxLength={120}
+                          onChange={(event) => setInboxDraft(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key !== "Escape") return;
+                            setInboxDraft("");
+                            setInboxAddOpen(false);
+                          }}
+                          value={inboxDraft}
+                        />
+                        <button
+                          className="primaryButton"
+                          disabled={!inboxDraft.trim()}
+                          type="submit"
+                        >
+                          追加
+                        </button>
+                        <button
+                          aria-label="追加をキャンセル"
+                          className="iconButton sharedAddCancel"
+                          onClick={() => {
+                            setInboxDraft("");
+                            setInboxAddOpen(false);
+                          }}
+                          title="キャンセル"
+                          type="button"
+                        >
+                          <UiIcon name="close" size={16} />
+                        </button>
+                      </form>
+                    ) : (
+                      <button
+                        className="inboxAddPrompt"
+                        onClick={() => setInboxAddOpen(true)}
+                        type="button"
+                      >
+                        <UiIcon name="add" size={16} /> 追加
+                      </button>
+                    )}
+                    <div className="inboxList">
+                      {config.inbox.map((item, index) => (
+                        <div
+                          className={
+                            inboxPointerDrag?.index === index
+                              ? "inboxRow inboxRow--dragging"
+                              : "inboxRow"
+                          }
+                          data-inbox-index={index}
+                          key={`${item.text}-${index}`}
+                          onContextMenu={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            openContextMenu(
+                              { kind: "inbox", index, itemText: item.text },
+                              event.clientX,
+                              event.clientY,
+                              event.currentTarget,
+                            );
+                          }}
+                          onKeyDown={(event) =>
+                            openContextMenuFromKeyboard(event, {
+                              kind: "inbox",
+                              index,
+                              itemText: item.text,
+                            })
+                          }
+                          onPointerCancel={cancelInboxPointerDrag}
+                          onPointerDown={(event) => startInboxPointerDrag(event, index)}
+                          onPointerMove={updateInboxPointerDrag}
+                          onPointerUp={finishInboxPointerDrag}
+                          tabIndex={0}
+                        >
+                          <span className="inboxItemCopy">
+                            {item.projectId && projectsById.has(item.projectId) && (
+                              <span className="inboxProjectIdentity">
+                                <ProjectIdentity
+                                  colorId={projectsById.get(item.projectId)?.colorId}
+                                  compact
+                                  name={projectsById.get(item.projectId)?.name ?? ""}
+                                  projectId={item.projectId}
+                                />
+                              </span>
+                            )}
+                            <span className="inboxItemText">{item.text}</span>
+                          </span>
+                          <button
+                            className="moveTodayButton"
+                            onClick={() => moveInboxItemToToday(index)}
+                            onPointerDown={(event) => event.stopPropagation()}
+                            title="今日へ"
+                            type="button"
+                          >
+                            今日へ
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    {inboxPointerDrag?.targetIndicator && (
+                      <div
+                        aria-hidden="true"
+                        className="inboxDropIndicator"
+                        style={inboxPointerDrag.targetIndicator}
+                      />
+                    )}
+                    {inboxPointerDrag && (
+                      <div
+                        aria-hidden="true"
+                        className="inboxDragGhost"
+                        style={{
+                          height: inboxPointerDrag.height,
+                          left: inboxPointerDrag.pointerX - inboxPointerDrag.offsetX,
+                          top: inboxPointerDrag.pointerY - inboxPointerDrag.offsetY,
+                          width: inboxPointerDrag.width,
+                        }}
+                      >
+                        {config.inbox[inboxPointerDrag.index]?.text}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </section>
+
+              <section className="todayActivityBand">
+                <div className="disclosureHeader">
+                  <button
+                    aria-expanded={todayActivityOpen}
+                    className="disclosure"
+                    onClick={() => setTodayActivityOpen((open) => !open)}
+                    type="button"
+                  >
+                    <UiIcon name={todayActivityOpen ? "chevronDown" : "chevronRight"} size={16} />
+                    <span className="disclosureLabel">
+                      <strong>今日の実行</strong>
+                    </span>
+                  </button>
+                  <span className="disclosureCount">{todayActivityCount}件</span>
+                  <span className="disclosureDescription">タイマーで実行した内容</span>
+                  <span className="todayActivityAutoBadge">自動</span>
+                </div>
+
+                {todayActivityOpen && (
+                  <div className="todayActivityBody">
+                    {todayActivityCount > 0 ? (
+                      <div className="todayActivityList">
+                        {todayActivityEntries.map((session) => {
+                          const project = session.projectId
+                            ? config.projects.find((item) => item.id === session.projectId)
+                            : undefined;
+                          return (
+                            <div className="todayActivityRow" key={session.rowKey}>
+                              <div className="todayActivityIdentity">
+                                {project ? (
+                                  <ProjectIdentity
+                                    colorId={project.colorId}
+                                    compact
+                                    name={session.label || project.name}
+                                    projectId={project.id}
+                                  />
+                                ) : (
+                                  <>
+                                    <span aria-hidden="true" className="todayActivityDot" />
+                                    <span>{session.label || "記録"}</span>
+                                  </>
+                                )}
+                              </div>
+                              <span className="todayActivityStartedAt">{session.startedAt}</span>
+                              <strong>{session.minutes}分</strong>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="quietText">今日はまだ実行記録がありません。</p>
+                    )}
+                  </div>
+                )}
+              </section>
+            </>
+          )}
+        </div>
       </section>
 
       <div aria-live="polite" className="reorderAnnouncement" role="status">
@@ -8389,7 +8714,10 @@ function DashboardApp() {
               >
                 下へ移動
               </ContextMenuItem>
-              <ContextMenuItem onClick={() => openOverlayPageDialog(contextMenu.page)} type="button">
+              <ContextMenuItem
+                onClick={() => openOverlayPageDialog(contextMenu.page)}
+                type="button"
+              >
                 名前を変更
               </ContextMenuItem>
               <ContextMenuItem
@@ -8420,19 +8748,17 @@ function DashboardApp() {
                     上へ移動
                   </ContextMenuItem>
                   <ContextMenuItem
-                    disabled={
-                      (() => {
-                        const groupButtons = (config?.buttons ?? []).filter(
-                          (button) =>
-                            showButtonInSidebar(button) &&
-                            buttonGroupName(button) === buttonGroupName(contextMenu.button),
-                        );
-                        return (
-                          groupButtons.findIndex((button) => button.id === contextMenu.button.id) >=
-                          groupButtons.length - 1
-                        );
-                      })()
-                    }
+                    disabled={(() => {
+                      const groupButtons = (config?.buttons ?? []).filter(
+                        (button) =>
+                          showButtonInSidebar(button) &&
+                          buttonGroupName(button) === buttonGroupName(contextMenu.button),
+                      );
+                      return (
+                        groupButtons.findIndex((button) => button.id === contextMenu.button.id) >=
+                        groupButtons.length - 1
+                      );
+                    })()}
                     onClick={() => void moveSidebarButtonByOffset(contextMenu.button.id, 1)}
                     type="button"
                   >
@@ -8440,7 +8766,10 @@ function DashboardApp() {
                   </ContextMenuItem>
                 </>
               )}
-              <ContextMenuItem onClick={() => openButtonEditDialog(contextMenu.button)} type="button">
+              <ContextMenuItem
+                onClick={() => openButtonEditDialog(contextMenu.button)}
+                type="button"
+              >
                 編集
               </ContextMenuItem>
               <ContextMenuItem
@@ -8494,6 +8823,13 @@ function DashboardApp() {
               >
                 下へ移動
               </ContextMenuItem>
+              <ContextMenuItem
+                className="contextMenuDanger"
+                onClick={() => dismissTodayBuilderCandidate(contextMenu.candidateKey)}
+                type="button"
+              >
+                削除
+              </ContextMenuItem>
             </>
           ) : contextMenu.kind === "inbox" ? (
             <>
@@ -8525,7 +8861,10 @@ function DashboardApp() {
           ) : contextMenu.kind === "project" ? (
             <>
               <ContextMenuItem
-                disabled={config?.projects.findIndex((project) => project.id === contextMenu.project.id) === 0}
+                disabled={
+                  config?.projects.findIndex((project) => project.id === contextMenu.project.id) ===
+                  0
+                }
                 onClick={() => void moveProjectByOffset(contextMenu.project.id, -1)}
                 type="button"
               >
@@ -8541,7 +8880,10 @@ function DashboardApp() {
               >
                 下へ移動
               </ContextMenuItem>
-              <ContextMenuItem onClick={() => openProjectEditDialog(contextMenu.project)} type="button">
+              <ContextMenuItem
+                onClick={() => openProjectEditDialog(contextMenu.project)}
+                type="button"
+              >
                 編集
               </ContextMenuItem>
               <ContextMenuItem
@@ -8553,8 +8895,14 @@ function DashboardApp() {
               </ContextMenuItem>
             </>
           ) : contextMenu.kind === "projects" ? (
-            <ContextMenuItem onClick={openProjectAddDialog} type="button">
-              プロジェクト追加
+            <ContextMenuItem
+              onClick={() => {
+                setProjectsOpen(true);
+                setNextStepAddOpen(true);
+              }}
+              type="button"
+            >
+              次の一手を追加
             </ContextMenuItem>
           ) : (
             <>
@@ -8693,7 +9041,9 @@ function DashboardApp() {
                   {instructionChoicesLoading ? "手順書を読み込み中…" : "手順書なし"}
                 </option>
                 {inboxEditInstructionPath &&
-                  !instructionChoices.some((choice) => choice.path === inboxEditInstructionPath) && (
+                  !instructionChoices.some(
+                    (choice) => choice.path === inboxEditInstructionPath,
+                  ) && (
                     <option value={inboxEditInstructionPath}>
                       現在の設定（登録フォルダ内に見つかりません）
                     </option>
@@ -8754,8 +9104,12 @@ function DashboardApp() {
                   <summary>
                     <span>辞書から選ぶ</span>
                     <span>
-                      {dictionaryOnlyButtons.filter((button) => inboxEditButtonIds.includes(button.id)).length}/
-                      {dictionaryOnlyButtons.length}
+                      {
+                        dictionaryOnlyButtons.filter((button) =>
+                          inboxEditButtonIds.includes(button.id),
+                        ).length
+                      }
+                      /{dictionaryOnlyButtons.length}
                     </span>
                   </summary>
                   <div className="checkList app-scrollbar">
@@ -8822,10 +9176,10 @@ function DashboardApp() {
                   setOverlayPageDraft({ ...overlayPageDraft, name: event.target.value })
                 }
                 onKeyDown={(event) => {
-                  if (event.key === "Enter" && !overlayPageNameError(
-                    overlayPageDraft.name,
-                    overlayPageDraft.pageId,
-                  )) {
+                  if (
+                    event.key === "Enter" &&
+                    !overlayPageNameError(overlayPageDraft.name, overlayPageDraft.pageId)
+                  ) {
                     void saveOverlayPageDraft();
                   }
                   if (event.key === "Escape") closeOverlayPageDialog();
@@ -8842,11 +9196,7 @@ function DashboardApp() {
             </label>
 
             <div className="dialogActions">
-              <button
-                className="secondaryButton"
-                onClick={closeOverlayPageDialog}
-                type="button"
-              >
+              <button className="secondaryButton" onClick={closeOverlayPageDialog} type="button">
                 キャンセル
               </button>
               <button
@@ -8866,7 +9216,13 @@ function DashboardApp() {
 
       {groupDraft !== null && (
         <div className="modalBackdrop" role="presentation">
-          <section aria-label="グループ追加" aria-modal="true" className="dropDialog" role="dialog" tabIndex={-1}>
+          <section
+            aria-label="グループ追加"
+            aria-modal="true"
+            className="dropDialog"
+            role="dialog"
+            tabIndex={-1}
+          >
             <div>
               <p className="eyebrow">Group</p>
               <h2>グループを追加</h2>
@@ -8911,7 +9267,13 @@ function DashboardApp() {
 
       {groupRenameDraft && (
         <div className="modalBackdrop" role="presentation">
-          <section aria-label="グループ名変更" aria-modal="true" className="dropDialog" role="dialog" tabIndex={-1}>
+          <section
+            aria-label="グループ名変更"
+            aria-modal="true"
+            className="dropDialog"
+            role="dialog"
+            tabIndex={-1}
+          >
             <div>
               <p className="eyebrow">Group</p>
               <h2>名前を変更</h2>
@@ -8967,11 +9329,17 @@ function DashboardApp() {
           }}
           role="presentation"
         >
-          <section aria-label="設定" aria-modal="true" className="dropDialog settingsDialog" role="dialog" tabIndex={-1}>
+          <section
+            aria-label="設定"
+            aria-modal="true"
+            className="dropDialog settingsDialog"
+            role="dialog"
+            tabIndex={-1}
+          >
             <div className="modalTitleRow">
               <div>
-              <p className="eyebrow">Settings</p>
-              <h2>設定</h2>
+                <p className="eyebrow">Settings</p>
+                <h2>設定</h2>
               </div>
               <button
                 aria-label="設定を閉じる"
@@ -8994,7 +9362,9 @@ function DashboardApp() {
               ].map(([key, label]) => (
                 <button
                   aria-selected={settingsSection === key}
-                  className={settingsSection === key ? "settingsTab settingsTab--active" : "settingsTab"}
+                  className={
+                    settingsSection === key ? "settingsTab settingsTab--active" : "settingsTab"
+                  }
                   key={key}
                   onClick={() => {
                     if (shortcutRecordingField) {
@@ -9010,7 +9380,13 @@ function DashboardApp() {
               ))}
             </div>
 
-            <div className={settingsSection === "basic" ? "settingsSection app-scrollbar" : "settingsSection settingsSection--hidden app-scrollbar"}>
+            <div
+              className={
+                settingsSection === "basic"
+                  ? "settingsSection app-scrollbar"
+                  : "settingsSection settingsSection--hidden app-scrollbar"
+              }
+            >
               <h3>基本</h3>
               <div className="settingsGrid">
                 <label
@@ -9164,7 +9540,10 @@ function DashboardApp() {
                   <span>長く空いたプロジェクトでは短時間開始を優先表示する</span>
                 </label>
               </div>
-              <section className="settingsWeeklyFocus" aria-labelledby="settings-weekly-focus-title">
+              <section
+                className="settingsWeeklyFocus"
+                aria-labelledby="settings-weekly-focus-title"
+              >
                 <div className="settingsWeeklyFocusHeading">
                   <div>
                     <h4 id="settings-weekly-focus-title">今週の重点</h4>
@@ -9216,7 +9595,13 @@ function DashboardApp() {
               </section>
             </div>
 
-            <div className={settingsSection === "shortcuts" ? "settingsSection app-scrollbar" : "settingsSection settingsSection--hidden app-scrollbar"}>
+            <div
+              className={
+                settingsSection === "shortcuts"
+                  ? "settingsSection app-scrollbar"
+                  : "settingsSection settingsSection--hidden app-scrollbar"
+              }
+            >
               <h3>ショートカット</h3>
               <div className="settingsGrid">
                 {SHORTCUT_DRAFT_FIELDS.map(({ field, label }) => {
@@ -9250,9 +9635,7 @@ function DashboardApp() {
                           aria-label={`${label}のショートカットを解除`}
                           className="shortcutCaptureClear"
                           disabled={!value || recording}
-                          onClick={() =>
-                            setSettingsDraft({ ...settingsDraft, [field]: "" })
-                          }
+                          onClick={() => setSettingsDraft({ ...settingsDraft, [field]: "" })}
                           title="ショートカットを解除"
                           type="button"
                         >
@@ -9270,7 +9653,13 @@ function DashboardApp() {
               </div>
             </div>
 
-            <div className={settingsSection === "instructions" ? "settingsSection app-scrollbar" : "settingsSection settingsSection--hidden app-scrollbar"}>
+            <div
+              className={
+                settingsSection === "instructions"
+                  ? "settingsSection app-scrollbar"
+                  : "settingsSection settingsSection--hidden app-scrollbar"
+              }
+            >
               <h3>手順書</h3>
               <div className="fieldStack">
                 <span>手順書フォルダ（最大5件）</span>
@@ -9306,7 +9695,13 @@ function DashboardApp() {
               </div>
             </div>
 
-            <div className={settingsSection === "backup" ? "settingsSection app-scrollbar" : "settingsSection settingsSection--hidden app-scrollbar"}>
+            <div
+              className={
+                settingsSection === "backup"
+                  ? "settingsSection app-scrollbar"
+                  : "settingsSection settingsSection--hidden app-scrollbar"
+              }
+            >
               <h3>バックアップ</h3>
               <label className="fieldStack">
                 <span>保存先フォルダ</span>
@@ -9361,7 +9756,13 @@ function DashboardApp() {
               </div>
             </div>
 
-            <div className={settingsSection === "maintenance" ? "settingsSection app-scrollbar" : "settingsSection settingsSection--hidden app-scrollbar"}>
+            <div
+              className={
+                settingsSection === "maintenance"
+                  ? "settingsSection app-scrollbar"
+                  : "settingsSection settingsSection--hidden app-scrollbar"
+              }
+            >
               <h3>メンテナンス</h3>
               <div className="settingsButtonRow">
                 <button
@@ -9441,7 +9842,13 @@ function DashboardApp() {
 
       {manualSessionDraft && (
         <div className="modalBackdrop" role="presentation">
-          <section aria-label="手動セッション追加" aria-modal="true" className="dropDialog modalLongForm" role="dialog" tabIndex={-1}>
+          <section
+            aria-label="手動セッション追加"
+            aria-modal="true"
+            className="dropDialog modalLongForm"
+            role="dialog"
+            tabIndex={-1}
+          >
             <div>
               <p className="eyebrow">Session</p>
               <h2>セッションを追加</h2>
@@ -9553,7 +9960,13 @@ function DashboardApp() {
 
       {sessionEditDraft && (
         <div className="modalBackdrop" role="presentation">
-          <section aria-label="セッション編集" aria-modal="true" className="dropDialog editDialog" role="dialog" tabIndex={-1}>
+          <section
+            aria-label="セッション編集"
+            aria-modal="true"
+            className="dropDialog editDialog"
+            role="dialog"
+            tabIndex={-1}
+          >
             <div>
               <p className="eyebrow">Session</p>
               <h2>セッションを編集</h2>
@@ -9591,7 +10004,9 @@ function DashboardApp() {
               >
                 <ProjectIdentity
                   colorId={projectsById.get(sessionEditDraft.projectId)?.colorId}
-                  name={projectsById.get(sessionEditDraft.projectId)?.name ?? sessionEditDraft.label}
+                  name={
+                    projectsById.get(sessionEditDraft.projectId)?.name ?? sessionEditDraft.label
+                  }
                   projectId={sessionEditDraft.projectId}
                 />
               </div>
@@ -9675,7 +10090,13 @@ function DashboardApp() {
 
       {buttonEditDraft && (
         <div className="modalBackdrop" role="presentation">
-          <section aria-label="ボタン編集" aria-modal="true" className="dropDialog editDialog modalLongForm app-scrollbar" role="dialog" tabIndex={-1}>
+          <section
+            aria-label="ボタン編集"
+            aria-modal="true"
+            className="dropDialog editDialog modalLongForm app-scrollbar"
+            role="dialog"
+            tabIndex={-1}
+          >
             <div>
               <p className="eyebrow">Button</p>
               <h2>ボタンを編集</h2>
@@ -9794,7 +10215,7 @@ function DashboardApp() {
                     }
                     value={
                       overlayPages.some((page) => page.id === buttonEditDraft.overlayPageId)
-                        ? buttonEditDraft.overlayPageId ?? ""
+                        ? (buttonEditDraft.overlayPageId ?? "")
                         : ""
                     }
                   >
@@ -9892,14 +10313,14 @@ function DashboardApp() {
                     >
                       <option value="open_app">アプリ</option>
                       <option value="open_folder">フォルダ</option>
-                        <option value="open_file">ファイル</option>
-                        <option value="open_url">URL</option>
-                        <option value="run_script">スクリプト</option>
-                        <option value="open_shell_special">Windows特殊項目</option>
-                      </select>
-                      <input
-                        className="textInput"
-                        disabled={action.type === "open_shell_special"}
+                      <option value="open_file">ファイル</option>
+                      <option value="open_url">URL</option>
+                      <option value="run_script">スクリプト</option>
+                      <option value="open_shell_special">Windows特殊項目</option>
+                    </select>
+                    <input
+                      className="textInput"
+                      disabled={action.type === "open_shell_special"}
                       onChange={(event) =>
                         updateButtonAction(
                           action.draftId,
@@ -9926,7 +10347,11 @@ function DashboardApp() {
                     >
                       ↓
                     </button>
-                    <button aria-label="アクションを削除" className="iconButton" onClick={() => setButtonEditDraft({
+                    <button
+                      aria-label="アクションを削除"
+                      className="iconButton"
+                      onClick={() =>
+                        setButtonEditDraft({
                           ...buttonEditDraft,
                           actions: buttonEditDraft.actions.filter(
                             (item) => item.draftId !== action.draftId,
@@ -9956,11 +10381,7 @@ function DashboardApp() {
             </div>
 
             <div className="dialogActions">
-              <button
-                className="secondaryButton"
-                onClick={requestCloseButtonEdit}
-                type="button"
-              >
+              <button className="secondaryButton" onClick={requestCloseButtonEdit} type="button">
                 キャンセル
               </button>
               <button className="primaryButton" onClick={saveButtonEdit} type="button">
@@ -9973,7 +10394,13 @@ function DashboardApp() {
 
       {projectEditDraft && (
         <div className="modalBackdrop" role="presentation">
-          <section aria-label="プロジェクト編集" aria-modal="true" className="dropDialog editDialog modalLongForm app-scrollbar" role="dialog" tabIndex={-1}>
+          <section
+            aria-label="プロジェクト編集"
+            aria-modal="true"
+            className="dropDialog editDialog modalLongForm app-scrollbar"
+            role="dialog"
+            tabIndex={-1}
+          >
             <div>
               <p className="eyebrow">Project</p>
               <h2>{projectEditDraft.isNew ? "プロジェクト追加" : "プロジェクト編集"}</h2>
@@ -10317,7 +10744,10 @@ function DashboardApp() {
                   className="textInput"
                   maxLength={120}
                   onChange={(event) =>
-                    setProjectEditDraft({ ...projectEditDraft, startNoteTemplate: event.target.value })
+                    setProjectEditDraft({
+                      ...projectEditDraft,
+                      startNoteTemplate: event.target.value,
+                    })
                   }
                   value={projectEditDraft.startNoteTemplate}
                 />
@@ -10407,7 +10837,13 @@ function DashboardApp() {
 
       {completionPrompt && (
         <div className="modalBackdrop" role="presentation">
-          <section aria-label="タイマー満了" aria-modal="true" className="dropDialog timerCompleteDialog" role="dialog" tabIndex={-1}>
+          <section
+            aria-label="タイマー満了"
+            aria-modal="true"
+            className="dropDialog timerCompleteDialog"
+            role="dialog"
+            tabIndex={-1}
+          >
             <div>
               <p className="eyebrow">Timer Complete</p>
               <h2>{completionPrompt.label}</h2>
@@ -10455,7 +10891,13 @@ function DashboardApp() {
 
       {dropDraft && (
         <div className="modalBackdrop" role="presentation">
-          <section aria-label="ボタン登録" aria-modal="true" className="dropDialog modalLongForm" role="dialog" tabIndex={-1}>
+          <section
+            aria-label="ボタン登録"
+            aria-modal="true"
+            className="dropDialog modalLongForm"
+            role="dialog"
+            tabIndex={-1}
+          >
             <div>
               <p className="eyebrow">Drop Register</p>
               <h2>ボタンを追加</h2>
@@ -10543,7 +10985,7 @@ function DashboardApp() {
                   }
                   value={
                     overlayPages.some((page) => page.id === dropDraft.overlayPageId)
-                      ? dropDraft.overlayPageId ?? ""
+                      ? (dropDraft.overlayPageId ?? "")
                       : ""
                   }
                 >
@@ -10571,9 +11013,7 @@ function DashboardApp() {
         </div>
       )}
 
-      {confirmDialog && (
-        <ConfirmDialog {...confirmDialog} onCancel={closeConfirmDialog} open />
-      )}
+      {confirmDialog && <ConfirmDialog {...confirmDialog} onCancel={closeConfirmDialog} open />}
 
       {helpGuideOpen && (
         <HelpGuideDialog

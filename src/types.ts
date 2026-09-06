@@ -94,9 +94,7 @@ const InstructionFolderIdentitySchema = z.object({
   path: InstructionPathSchema,
   // Current configs use FILE_ID_INFO (16 hex digits + 32 hex digits), while existing
   // configs retain the legacy BY_HANDLE_FILE_INFORMATION representation.
-  identity: z
-    .string()
-    .regex(/^(?:[0-9A-F]{8}:[0-9A-F]{16}|[0-9A-F]{16}:[0-9A-F]{32})$/),
+  identity: z.string().regex(/^(?:[0-9A-F]{8}:[0-9A-F]{16}|[0-9A-F]{16}:[0-9A-F]{32})$/),
 });
 
 export const ProjectSchema = z.object({
@@ -120,6 +118,7 @@ export const ProjectSchema = z.object({
 export const TodayItemSchema = z.object({
   text: z.string(),
   done: z.boolean(),
+  sourceKey: z.string().min(1).optional(),
   trigger: z.string().max(EXECUTION_TRIGGER_MAX_CHARS).optional(),
   projectId: z.string().optional(),
   buttonIds: z.array(z.string().min(1)).optional(),
@@ -184,7 +183,9 @@ export const AppConfigSchema = z
     settings: SettingsSchema,
   })
   .superRefine((config, context) => {
-    if (config.projects.filter((project) => project.weeklyFocus === true).length > WEEKLY_FOCUS_LIMIT) {
+    if (
+      config.projects.filter((project) => project.weeklyFocus === true).length > WEEKLY_FOCUS_LIMIT
+    ) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         message: `今週の重点は最大${WEEKLY_FOCUS_LIMIT}件です`,

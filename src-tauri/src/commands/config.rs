@@ -1288,6 +1288,12 @@ fn sanitize_config(mut config: AppConfig) -> (AppConfig, bool, Vec<String>) {
     trim_empty_projects(&mut config.projects, &mut changed, &mut warnings);
     normalize_weekly_focus(&mut config.projects, &mut changed, &mut warnings);
     normalize_today_item_projects(&mut config.today.items, &config.projects, &mut changed);
+    normalize_today_item_source_keys(
+        &mut config.today.items,
+        &config.today.date,
+        &mut changed,
+        &mut warnings,
+    );
     trim_empty_inbox(&mut config.inbox, &mut changed);
     normalize_inbox_projects(&mut config.inbox, &config.projects, &mut changed);
 
@@ -1651,6 +1657,7 @@ fn config_schema_json() -> &'static str {
       "properties": {
         "text": { "type": "string" },
         "done": { "type": "boolean" },
+        "sourceKey": { "type": "string", "minLength": 1 },
         "trigger": { "type": "string", "minLength": 1, "maxLength": 40 },
         "projectId": { "type": "string", "minLength": 1 },
         "buttonIds": {
@@ -1995,6 +2002,51 @@ fn normalize_today_item_triggers(
 ) {
     for item in items {
         normalize_execution_trigger(&mut item.trigger, "today.items.trigger", changed, warnings);
+    }
+}
+
+fn normalize_today_item_source_keys(
+    items: &mut [crate::models::TodayItem],
+    date: &str,
+    changed: &mut bool,
+    warnings: &mut Vec<String>,
+) {
+    let mut seen = HashSet::new();
+    for (index, item) in items.iter_mut().enumerate() {
+        let was_missing = item
+            .source_key
+            .as_deref()
+            .is_none_or(|value| value.trim().is_empty());
+        let base = item
+            .source_key
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_string)
+            .or_else(|| {
+                item.project_id
+                    .as_deref()
+                    .map(|project_id| format!("project:{project_id}"))
+            })
+            .unwrap_or_else(|| format!("legacy:{date}:{}", index + 1));
+        let mut source_key = base.clone();
+        let mut suffix = 2;
+        while !seen.insert(source_key.clone()) {
+            source_key = format!("{base}:{suffix}");
+            suffix += 1;
+        }
+
+        if item.source_key.as_deref() != Some(source_key.as_str()) {
+            item.source_key = Some(source_key);
+            *changed = true;
+        }
+        if was_missing && item.done {
+            item.done = false;
+            *changed = true;
+            warnings.push(
+                "today.items.done: legacy manual completion normalized to incomplete".to_string(),
+            );
+        }
     }
 }
 
@@ -2803,6 +2855,36 @@ mod tests {
         assert!(warnings
             .iter()
             .any(|warning| warning.contains("nextStepTrigger: truncated")));
+    }
+
+    #[test]
+    fn legacy_today_completion_is_reset_when_stable_source_keys_are_added() {
+        let mut config = sample_config();
+        config.today.items[0].done = true;
+        assert!(config
+            .today
+            .items
+            .iter()
+            .all(|item| item.source_key.is_none()));
+
+        let (config, changed, warnings) = sanitize_config(config);
+
+        assert!(changed);
+        assert!(config.today.items.iter().all(|item| !item.done));
+        let source_keys = config
+            .today
+            .items
+            .iter()
+            .map(|item| item.source_key.as_deref().expect("source key"))
+            .collect::<HashSet<_>>();
+        assert_eq!(source_keys.len(), config.today.items.len());
+        assert!(warnings
+            .iter()
+            .any(|warning| warning.contains("legacy manual completion")));
+
+        let (_, changed_again, warnings_again) = sanitize_config(config);
+        assert!(!changed_again);
+        assert!(warnings_again.is_empty());
     }
 
     #[test]

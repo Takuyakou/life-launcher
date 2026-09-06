@@ -14,7 +14,18 @@ export async function installTauriMock(
 ): Promise<void> {
   await page.addInitScript(
     ({ fixture, paths, currentWindowLabel }) => {
-      let currentConfig = fixture.config;
+      const configStorageKey = "life-launcher-visual-qa-config";
+      let currentConfig = (() => {
+        try {
+          const stored = window.sessionStorage.getItem(configStorageKey);
+          return stored ? (JSON.parse(stored) as typeof fixture.config) : fixture.config;
+        } catch {
+          return fixture.config;
+        }
+      })();
+      const persistCurrentConfig = () => {
+        window.sessionStorage.setItem(configStorageKey, JSON.stringify(currentConfig));
+      };
       let callbackId = 1;
       let eventId = 1;
       let executeMode: "success" | "failure" | "delayed" = "success";
@@ -62,6 +73,7 @@ export async function installTauriMock(
         },
         updateConfig: (nextConfig: typeof currentConfig) => {
           currentConfig = nextConfig;
+          persistCurrentConfig();
           dispatchEvent("config-changed");
         },
         emit: (event: string, payload: unknown = null) => {
@@ -111,26 +123,45 @@ export async function installTauriMock(
               case "save_config":
                 if (failSaveConfig) throw new Error("Public demo mock: config save failed");
                 currentConfig = args.config as typeof currentConfig;
+                persistCurrentConfig();
                 dispatchEvent("config-changed");
                 return { config: currentConfig, path: paths.config };
               case "resolve_drop_item": {
-                const input = args.input as { kind: "path" | "url"; value: string; suggestedLabel?: string | null };
+                const input = args.input as {
+                  kind: "path" | "url";
+                  value: string;
+                  suggestedLabel?: string | null;
+                };
                 const isUrl = input.kind === "url";
-                const label = input.suggestedLabel || (isUrl ? "Dropped bookmark" : input.value.split(/[\\/]/).pop()) || "Dropped item";
+                const label =
+                  input.suggestedLabel ||
+                  (isUrl ? "Dropped bookmark" : input.value.split(/[\\/]/).pop()) ||
+                  "Dropped item";
                 return {
                   label,
                   group: null,
                   iconSource: isUrl ? null : input.value,
                   action: isUrl
                     ? { type: "open_url", payload: { url: input.value } }
-                    : { type: input.value.endsWith("\\") ? "open_folder" : "open_file", payload: { path: input.value } },
+                    : {
+                        type: input.value.endsWith("\\") ? "open_folder" : "open_file",
+                        payload: { path: input.value },
+                      },
                   source: input.value,
                 };
               }
               case "load_today_session_total":
-                return { date: fixture.config.today.date, totalMinutes: fixture.todayMinutes, path: paths.sessions };
+                return {
+                  date: fixture.config.today.date,
+                  totalMinutes: fixture.todayMinutes,
+                  path: paths.sessions,
+                };
               case "record_session":
-                return { date: fixture.config.today.date, totalMinutes: fixture.todayMinutes, path: paths.sessions };
+                return {
+                  date: fixture.config.today.date,
+                  totalMinutes: fixture.todayMinutes,
+                  path: paths.sessions,
+                };
               case "record_manual_session":
                 return fixture.sessionSummary;
               case "load_do_now_candidates":
@@ -140,7 +171,9 @@ export async function installTauriMock(
               case "load_today_notes":
                 return { date: fixture.config.today.date, items: currentNotes, path: paths.notes };
               case "save_today_notes":
-                currentNotes = ((args.input as { items?: string[] } | undefined)?.items ?? []).slice();
+                currentNotes = (
+                  (args.input as { items?: string[] } | undefined)?.items ?? []
+                ).slice();
                 return { date: fixture.config.today.date, items: currentNotes, path: paths.notes };
               case "load_notes_history":
                 return { entries: fixture.notesHistory, path: paths.notes };
@@ -177,7 +210,9 @@ export async function installTauriMock(
               case "list_instruction_directory": {
                 const path = String(args.path ?? "");
                 const folders = currentConfig.settings.instructionFolders ?? [];
-                if (!folders.some((folder) => folder.toLocaleLowerCase() === path.toLocaleLowerCase())) {
+                if (
+                  !folders.some((folder) => folder.toLocaleLowerCase() === path.toLocaleLowerCase())
+                ) {
                   return [];
                 }
                 return [
@@ -235,7 +270,15 @@ export async function installTauriMock(
                   : name.endsWith(".md")
                     ? "# Markdown手順書"
                     : "テキスト手順書";
-                return { name, path, content, size: content.length, modifiedAt: 1, extension: name.split(".").at(-1), readOnly: html };
+                return {
+                  name,
+                  path,
+                  content,
+                  size: content.length,
+                  modifiedAt: 1,
+                  extension: name.split(".").at(-1),
+                  readOnly: html,
+                };
               }
               case "ensure_button_icon_cache":
               case "select_backup_folder":
