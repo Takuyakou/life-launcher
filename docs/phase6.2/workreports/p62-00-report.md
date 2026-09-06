@@ -9,7 +9,7 @@
 - Base branch / SHA: `main` / `a6d17d1f0b29a533764c168aeac6a93ea137c722`
 - Audit commit: `49b3fc543f1ce308232a48c4c5f97c7a526e6afb`
 - Branch: `docs/p62-00-gap-audit`
-- PR: 作成後に追記
+- PR: [#17](https://github.com/Takuyakou/life-launcher/pull/17)
 - Product version: `1.0.0`（変更なし）
 
 ## 実施内容

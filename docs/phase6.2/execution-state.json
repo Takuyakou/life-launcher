@@ -19,7 +19,7 @@
       "approved": false,
       "branch": "docs/p62-00-gap-audit",
       "auditCommit": "49b3fc543f1ce308232a48c4c5f97c7a526e6afb",
-      "pr": null
+      "pr": 17
     },
     "P62-01": {
       "status": "BLOCKED_BY_P62-00",
