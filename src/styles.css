@@ -7167,7 +7167,8 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .projectDragGhost,
 .inboxDragGhost,
-.todayBuilderDragGhost {
+.todayBuilderDragGhost,
+.todayDragGhost {
   position: fixed;
   z-index: 75;
   pointer-events: none;
@@ -7215,10 +7216,41 @@ input[type="number"]::-webkit-inner-spin-button {
   justify-content: center;
   gap: 3px;
 }
+.todayDragGhost {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: start;
+  gap: 6px;
+  overflow: hidden;
+  padding: 9px 10px;
+  color: var(--text);
+}
+
+.todayDragGhost[data-project-color] {
+  border-top: 2px solid var(--project-color);
+}
+
+.todayDragGhost .todayProjectIdentity {
+  max-width: 100%;
+  padding-block: 2px;
+  transform: none;
+}
+
+.todayDragGhost strong {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: var(--dashboard-font-body);
+  font-weight: 650;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 
 .projectDropIndicator,
 .inboxDropIndicator,
-.todayBuilderDropIndicator {
+.todayBuilderDropIndicator,
+.todayDropIndicator {
   position: fixed;
   z-index: 80;
   border-radius: 2px;
@@ -7245,6 +7277,7 @@ input[type="number"]::-webkit-inner-spin-button {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
+  padding-inline-end: 10px;
 }
 
 .todayGrid > .quietText {
@@ -7275,6 +7308,21 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .todayRow[data-project-color] {
   border-top: 2px solid var(--project-color);
+}
+.todayRow--dragging {
+  border-color: transparent !important;
+  background: transparent;
+  box-shadow: none;
+  opacity: 1;
+  cursor: grabbing;
+}
+
+.todayRow--dragging > * {
+  visibility: hidden;
+}
+
+.todayDropIndicator {
+  position: fixed;
 }
 
 .todayCompletionStatus {

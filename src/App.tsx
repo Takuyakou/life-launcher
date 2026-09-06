@@ -424,6 +424,28 @@ type TodayPointerDrag = {
   startX: number;
   startY: number;
   hasMoved: boolean;
+  offsetX: number;
+  offsetY: number;
+  width: number;
+  height: number;
+};
+
+type TodayDragPreview = {
+  index: number;
+  pointerX: number;
+  pointerY: number;
+  offsetX: number;
+  offsetY: number;
+  width: number;
+  height: number;
+  targetIndex?: number;
+  placement?: "before" | "after";
+  targetIndicator?: {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  };
 };
 
 type ProjectPointerDrag = {
@@ -1368,18 +1390,51 @@ function sidebarGroupDropTargetFromPoint(
 function todayDropTargetFromPoint(
   x: number,
   y: number,
-): { index: number; placement: "before" | "after" } | null {
-  const element = document.elementFromPoint(x, y);
-  if (!element) return null;
+): {
+  index: number;
+  placement: "before" | "after";
+  indicator: { left: number; top: number; width: number; height: number };
+} | null {
+  const rows = Array.from(document.querySelectorAll<HTMLElement>("[data-today-index]"));
+  const rowElement = rows.find((candidate) => {
+    const rect = candidate.getBoundingClientRect();
+    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+  });
+  if (!rowElement) return null;
 
-  const rowElement = element.closest<HTMLElement>("[data-today-index]");
-  const index = Number(rowElement?.dataset.todayIndex);
-  if (!rowElement || Number.isNaN(index)) return null;
-
+  const index = Number(rowElement.dataset.todayIndex);
+  if (Number.isNaN(index)) return null;
   const rect = rowElement.getBoundingClientRect();
+  const sharesRow = rows.some(
+    (candidate) =>
+      candidate !== rowElement &&
+      Math.abs(candidate.getBoundingClientRect().top - rect.top) < 2,
+  );
+  const placement = sharesRow
+    ? x < rect.left + rect.width / 2
+      ? "before"
+      : "after"
+    : y < rect.top + rect.height / 2
+      ? "before"
+      : "after";
+  const indicator = sharesRow
+    ? {
+        left: placement === "before" ? rect.left - 2 : rect.right + 1,
+        top: rect.top + 6,
+        width: 3,
+        height: Math.max(0, rect.height - 12),
+      }
+    : {
+        left: rect.left + 6,
+        top: placement === "before" ? rect.top - 2 : rect.bottom + 1,
+        width: Math.max(0, rect.width - 12),
+        height: 3,
+      };
+
   return {
     index,
-    placement: y < rect.top + rect.height / 2 ? "before" : "after",
+    placement,
+    indicator,
   };
 }
 
@@ -1766,7 +1821,8 @@ function DashboardApp() {
   const [sidebarPointerDrag, setSidebarPointerDrag] = useState<SidebarDragPreview | null>(null);
   const [sidebarGroupPointerDrag, setSidebarGroupPointerDrag] =
     useState<SidebarGroupDragPreview | null>(null);
-  const [todayPointerDrag, setTodayPointerDrag] = useState<number | null>(null);
+  const [todayPointerDrag, setTodayPointerDrag] =
+    useState<TodayDragPreview | null>(null);
   const [projectPointerDrag, setProjectPointerDrag] = useState<ProjectDragPreview | null>(null);
   const [inboxPointerDrag, setInboxPointerDrag] = useState<InboxDragPreview | null>(null);
   const [miniTransitioning, setMiniTransitioning] = useState(false);
@@ -4135,11 +4191,16 @@ function DashboardApp() {
     event.preventDefault();
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
+    const rect = event.currentTarget.getBoundingClientRect();
     todayPointerDragRef.current = {
       index,
       startX: event.clientX,
       startY: event.clientY,
       hasMoved: false,
+      offsetX: event.clientX - rect.left,
+      offsetY: event.clientY - rect.top,
+      width: rect.width,
+      height: rect.height,
     };
   };
 
@@ -4148,10 +4209,23 @@ function DashboardApp() {
     if (!drag) return;
 
     const distance = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
-    if (!drag.hasMoved && distance >= SIDEBAR_DRAG_THRESHOLD_PX) {
-      drag.hasMoved = true;
-      setTodayPointerDrag(drag.index);
-    }
+    if (!drag.hasMoved && distance >= SIDEBAR_DRAG_THRESHOLD_PX) drag.hasMoved = true;
+    if (!drag.hasMoved) return;
+
+    const target = todayDropTargetFromPoint(event.clientX, event.clientY);
+    setTodayPointerDrag({
+      index: drag.index,
+      pointerX: event.clientX,
+      pointerY: event.clientY,
+      offsetX: drag.offsetX,
+      offsetY: drag.offsetY,
+      width: drag.width,
+      height: drag.height,
+      targetIndex: target?.index,
+      placement: target?.placement,
+      targetIndicator:
+        target && target.index !== drag.index ? target.indicator : undefined,
+    });
   };
 
   const finishTodayPointerDrag = (event: PointerEvent<HTMLElement>) => {
@@ -7684,7 +7758,7 @@ function DashboardApp() {
                       <article
                         className={[
                           "todayRow",
-                          todayPointerDrag === index ? "todayRow--dragging" : "",
+                          todayPointerDrag?.index === index ? "todayRow--dragging" : "",
                           isRunningTodayItem ? "todayRow--running" : "",
                           item.done ? "todayRow--complete" : "",
                         ]
@@ -7914,6 +7988,50 @@ function DashboardApp() {
                       </article>
                     );
                   })}
+                  {todayPointerDrag?.targetIndicator && (
+                    <div
+                      aria-hidden="true"
+                      className="todayDropIndicator"
+                      style={todayPointerDrag.targetIndicator}
+                    />
+                  )}
+                  {todayPointerDrag &&
+                    (() => {
+                      const draggedItem = config.today.items[todayPointerDrag.index];
+                      if (!draggedItem) return null;
+                      const draggedProject = draggedItem.projectId
+                        ? projectsById.get(draggedItem.projectId)
+                        : undefined;
+                      return (
+                        <div
+                          aria-hidden="true"
+                          className="todayDragGhost"
+                          data-project-color={
+                            draggedProject
+                              ? resolveProjectColorId(draggedProject.id, draggedProject.colorId)
+                              : undefined
+                          }
+                          style={{
+                            height: todayPointerDrag.height,
+                            left: todayPointerDrag.pointerX - todayPointerDrag.offsetX,
+                            top: todayPointerDrag.pointerY - todayPointerDrag.offsetY,
+                            width: todayPointerDrag.width,
+                          }}
+                        >
+                          {draggedProject && (
+                            <span className="todayProjectIdentity">
+                              <ProjectIdentity
+                                colorId={draggedProject.colorId}
+                                compact
+                                name={draggedProject.name}
+                                projectId={draggedProject.id}
+                              />
+                            </span>
+                          )}
+                          <strong>{draggedItem.text || "未入力"}</strong>
+                        </div>
+                      );
+                    })()}
                 </div>
 
                 {allTodayItemsCompleted && (

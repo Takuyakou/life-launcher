@@ -32,6 +32,30 @@ async function currentConfig(page: Page): Promise<AppConfig> {
     return control.currentConfig();
   });
 }
+async function saveConfigCount(page: Page): Promise<number> {
+  return page.evaluate(() => {
+    const control = (
+      window as Window & {
+        __LIFE_LAUNCHER_VISUAL_QA__?: { invokeCalls: Array<{ command: string }> };
+      }
+    ).__LIFE_LAUNCHER_VISUAL_QA__;
+    return control?.invokeCalls.filter((call) => call.command === "save_config").length ?? 0;
+  });
+}
+
+async function setSaveConfigFailure(page: Page, failed: boolean) {
+  await page.evaluate((shouldFail) => {
+    const control = (
+      window as Window & {
+        __LIFE_LAUNCHER_VISUAL_QA__?: {
+          setSaveConfigFailure: (value: boolean) => void;
+        };
+      }
+    ).__LIFE_LAUNCHER_VISUAL_QA__;
+    if (!control) throw new Error("Visual QA control is unavailable");
+    control.setSaveConfigFailure(shouldFail);
+  }, failed);
+}
 
 function withThreeTodayItems(): VisualQaFixture {
   const fixture = createPublicFixture();
@@ -98,6 +122,19 @@ test("Main hierarchy and Today3 three-column layout match Phase 6", async ({ pag
   expect(
     Math.max(...boxes.map((box) => box.width)) - Math.min(...boxes.map((box) => box.width)),
   ).toBeLessThan(2);
+  const gridSpacing = await page.locator(".todayGrid").evaluate((grid) => {
+    const gridRect = grid.getBoundingClientRect();
+    const cards = Array.from(grid.querySelectorAll<HTMLElement>(".todayRow"));
+    const firstRect = cards[0].getBoundingClientRect();
+    const secondRect = cards[1].getBoundingClientRect();
+    const lastRect = cards.at(-1)!.getBoundingClientRect();
+    return {
+      cardGap: secondRect.left - firstRect.right,
+      endGap: gridRect.right - lastRect.right,
+    };
+  });
+  expect(gridSpacing.endGap).toBeGreaterThanOrEqual(9);
+  expect(Math.abs(gridSpacing.endGap - gridSpacing.cardGap)).toBeLessThan(1);
   await expect(cards.first()).toHaveAttribute("data-project-color", "blue");
   await expect(cards.first()).toHaveCSS("border-top-color", "rgb(112, 167, 255)");
   await expect(cards.nth(1)).not.toHaveAttribute("data-project-color");
@@ -105,6 +142,80 @@ test("Main hierarchy and Today3 three-column layout match Phase 6", async ({ pag
     await page.evaluate(() => document.documentElement.clientWidth),
   );
   await page.screenshot({ path: resolve(SCREENSHOT_DIR, "p6-01-main-today3-three-cards.png") });
+});
+
+test("Today3 drag shows its position and saves on drop only", async ({
+  page,
+}) => {
+  const fixture = withThreeTodayItems();
+  const originalOrder = fixture.config.today.items.map((item) => item.text);
+  await prepare(page, fixture);
+  const cards = page.locator(".todayRow");
+  const source = await cards.nth(0).boundingBox();
+  const target = await cards.nth(2).boundingBox();
+  expect(source).not.toBeNull();
+  expect(target).not.toBeNull();
+
+  const savesBeforeDrag = await saveConfigCount(page);
+  await page.mouse.move(source!.x + source!.width - 12, source!.y + 12);
+  await page.mouse.down();
+  await page.mouse.move(source!.x + source!.width - 28, source!.y + 12, { steps: 2 });
+  await page.mouse.move(target!.x + target!.width * 0.75, target!.y + 12, {
+    steps: 5,
+  });
+
+  await expect(cards.nth(0)).toHaveClass(/todayRow--dragging/);
+  await expect(page.locator(".todayDragGhost")).toBeVisible();
+  const indicator = page.locator(".todayDropIndicator");
+  await expect(indicator).toBeVisible();
+  await expect(indicator).toHaveCSS("background-color", "rgb(231, 185, 77)");
+  const indicatorBox = await indicator.boundingBox();
+  expect(indicatorBox).not.toBeNull();
+  expect(indicatorBox!.height).toBeGreaterThan(indicatorBox!.width);
+  expect(await saveConfigCount(page)).toBe(savesBeforeDrag);
+  expect((await currentConfig(page)).today.items.map((item) => item.text)).toEqual(originalOrder);
+  await page.screenshot({
+    path: resolve(P61_SCREENSHOT_DIR, "p61-05-today3-drag.png"),
+  });
+  await page.mouse.up();
+
+  const reordered = [originalOrder[1], originalOrder[2], originalOrder[0]];
+  await expect
+    .poll(async () => (await currentConfig(page)).today.items.map((item) => item.text))
+    .toEqual(reordered);
+  expect(await saveConfigCount(page)).toBe(savesBeforeDrag + 1);
+});
+
+test("Today3 drag rolls its optimistic order back when saving fails", async ({ page }) => {
+  const fixture = withThreeTodayItems();
+  const originalOrder = fixture.config.today.items.map((item) => item.text);
+  await prepare(page, fixture);
+  await setSaveConfigFailure(page, true);
+  const cards = page.locator(".todayRow");
+  const source = await cards.nth(0).boundingBox();
+  const target = await cards.nth(2).boundingBox();
+  expect(source).not.toBeNull();
+  expect(target).not.toBeNull();
+  const savesBeforeDrag = await saveConfigCount(page);
+  await page.mouse.move(source!.x + source!.width - 12, source!.y + 12);
+  await page.mouse.down();
+  await page.mouse.move(source!.x + source!.width - 28, source!.y + 12, {
+    steps: 2,
+  });
+  await page.mouse.move(target!.x + target!.width * 0.75, target!.y + 12, { steps: 5 });
+  await expect(page.locator(".todayDragGhost")).toBeVisible();
+  await page.mouse.up();
+
+  await expect
+    .poll(() => saveConfigCount(page))
+    .toBe(savesBeforeDrag + 1);
+  await expect
+    .poll(async () => (await currentConfig(page)).today.items.map((item) => item.text))
+    .toEqual(originalOrder);
+  await expect(cards.nth(0)).toContainText(originalOrder[0]);
+  await expect(cards.nth(1)).toContainText(originalOrder[1]);
+  await expect(cards.nth(2)).toContainText(originalOrder[2]);
+  await setSaveConfigFailure(page, false);
 });
 
 test("Today3 renders a stable two-card layout", async ({ page }) => {
