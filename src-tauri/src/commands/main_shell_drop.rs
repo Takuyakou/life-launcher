@@ -125,8 +125,9 @@ fn first_http_url(text: &str) -> Option<String> {
 }
 
 fn decode_utf16_drop_text(bytes: &[u8]) -> Option<String> {
-    let code_units = bytes
-        .chunks_exact(2)
+    let (pairs, _) = bytes.as_chunks::<2>();
+    let code_units = pairs
+        .iter()
         .map(|pair| u16::from_le_bytes([pair[0], pair[1]]))
         .take_while(|value| *value != 0)
         .collect::<Vec<_>>();
