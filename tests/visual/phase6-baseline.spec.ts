@@ -80,6 +80,7 @@ function createLargeBuilderFixture(): VisualQaFixture {
 }
 
 for (const viewport of [
+  { width: 1280, height: 720 },
   { width: 1366, height: 768 },
   { width: 1440, height: 900 },
   { width: 1920, height: 1080 },

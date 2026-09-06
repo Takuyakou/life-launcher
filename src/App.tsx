@@ -1635,9 +1635,6 @@ function DashboardApp() {
   const [inboxEditInstructionOpenOnStart, setInboxEditInstructionOpenOnStart] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
   const [projectsOpen, setProjectsOpen] = useState(true);
-  const [nextStepAddOpen, setNextStepAddOpen] = useState(false);
-  const [nextStepProjectDraft, setNextStepProjectDraft] = useState("");
-  const [nextStepActionDraft, setNextStepActionDraft] = useState("");
   const [todayBuilderOpen, setTodayBuilderOpen] = useState(false);
   const [todayBuilderPage, setTodayBuilderPage] = useState(1);
   const [todayBuilderDismissedKeys, setTodayBuilderDismissedKeys] = useState<string[]>(() =>
@@ -1646,8 +1643,6 @@ function DashboardApp() {
   const [todayBuilderDestinations, setTodayBuilderDestinations] = useState<Record<string, string>>(
     {},
   );
-  const [todayBuilderAddOpen, setTodayBuilderAddOpen] = useState(false);
-  const [todayBuilderDraft, setTodayBuilderDraft] = useState("");
   const [todayBuilderPointerDrag, setTodayBuilderPointerDrag] =
     useState<TodayBuilderDragPreview | null>(null);
   const [todayActivityOpen, setTodayActivityOpen] = useState(false);
@@ -2213,14 +2208,6 @@ function DashboardApp() {
       notesSaveTimers.clear();
     };
   }, [refreshConfig]);
-
-  useEffect(() => {
-    if (!todayBuilderAddOpen) return;
-    const frame = window.requestAnimationFrame(() => {
-      document.querySelector<HTMLInputElement>("[data-today-builder-add-input]")?.focus();
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [todayBuilderAddOpen]);
 
   useEffect(() => {
     if (activeView === "records") {
@@ -5523,6 +5510,29 @@ function DashboardApp() {
     }
   };
 
+  const openProjectAddDialog = () => {
+    if (!config) return;
+    setContextMenu(null);
+    setProjectNextStepSuggestions([]);
+    void refreshInstructionChoices();
+    setProjectEditDraft({
+      id: "",
+      name: "",
+      northStar: "",
+      weeklyFocus: false,
+      nextStep: "",
+      nextStepTrigger: "",
+      buttonIds: [],
+      defaultTimerMinutes: "",
+      shortTimerMinutes: "",
+      startNoteTemplate: "",
+      instructionPath: "",
+      instructionOpenOnStart: false,
+      colorId: "amber",
+      isNew: true,
+    });
+  };
+
   const openProjectEditDialog = (project: LauncherProject) => {
     setContextMenu(null);
     void refreshNextStepSuggestions(project.id, "project");
@@ -5717,16 +5727,6 @@ function DashboardApp() {
     setContextMenu(null);
   };
 
-  const addTodayBuilderDraft = () => {
-    const text = todayBuilderDraft.trim();
-    if (!config || !text) return;
-    if (!config.inbox.some((item) => item.text === text)) {
-      void persistConfig({ ...config, inbox: [{ text }, ...config.inbox] });
-    }
-    setTodayBuilderDraft("");
-    setTodayBuilderAddOpen(false);
-  };
-
   const dismissTodayBuilderCandidate = (candidateKey: string) => {
     const candidate = todayBuilderCandidates.find((item) => item.key === candidateKey);
     if (!candidate) return;
@@ -5741,28 +5741,6 @@ function DashboardApp() {
     showToast("ok", `「${candidate.text}」を候補から削除しました`);
   };
 
-  const addNextStepDraft = () => {
-    if (!config) return;
-    const name = nextStepProjectDraft.trim();
-    const nextStep = nextStepActionDraft.trim();
-    if (!name || !nextStep) return;
-    const timestamp = new Date().toISOString();
-    const project: LauncherProject = {
-      id: uniqueProjectId(name, config.projects),
-      name,
-      nextStep,
-      nextStepUpdatedAt: timestamp,
-      nextStepReviewedAt: timestamp,
-      buttonIds: [],
-      colorId: "amber",
-    };
-    setNextStepProjectDraft("");
-    setNextStepActionDraft("");
-    setNextStepAddOpen(false);
-    void persistConfig({ ...config, projects: [...config.projects, project] }).then((saved) => {
-      if (saved) showToast("ok", "次の一手を追加しました");
-    });
-  };
   const openManualSessionDialog = () => {
     if (!config) return;
     setManualSessionDraft({
@@ -6030,6 +6008,9 @@ function DashboardApp() {
   }
 
   const todayRemaining = TODAY_ITEM_LIMIT - config.today.items.length;
+  const todayCompletedCount = config.today.items.filter((item) => item.done).length;
+  const todayAllCompleted =
+    config.today.items.length > 0 && todayCompletedCount === config.today.items.length;
   const victoryText = config.today.victory.text.trim();
   const victoryDone = Boolean(victoryText && config.today.victory.done);
   const victorySuggestions = uniqueSuggestions(
@@ -6378,8 +6359,12 @@ function DashboardApp() {
                   key={group.name}
                 >
                   <button
+                    aria-expanded={!collapsed}
                     className="quickGroupHeader"
                     data-sidebar-group-name={group.name}
+                    onClick={(event) => {
+                      if (event.detail === 0) toggleGroupCollapsed(group.name);
+                    }}
                     onContextMenu={(event) => {
                       event.preventDefault();
                       event.stopPropagation();
@@ -6422,6 +6407,9 @@ function DashboardApp() {
                         >
                           <button
                             className="quickButton"
+                            onClick={(event) => {
+                              if (event.detail === 0) void runActions(button.id, button.actions);
+                            }}
                             onContextMenu={(event) => {
                               event.preventDefault();
                               event.stopPropagation();
@@ -7703,9 +7691,18 @@ function DashboardApp() {
                       <UiIcon name="add" size={16} />
                       追加
                     </button>
-                    <span>
-                      {config.today.items.length}/{TODAY_ITEM_LIMIT}
-                    </span>
+                    <span>{config.today.items.length}件</span>
+                    {config.today.items.length > 0 && (
+                      <span
+                        className={
+                          todayAllCompleted
+                            ? "todayCompletionSummary todayCompletionSummary--complete"
+                            : "todayCompletionSummary"
+                        }
+                      >
+                        {todayCompletedCount} / {config.today.items.length} 完了
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="todayGrid">
@@ -7733,6 +7730,11 @@ function DashboardApp() {
                           .filter(Boolean)
                           .join(" ")}
                         data-today-index={index}
+                        data-project-color={
+                          project
+                            ? resolveProjectColorId(project.id, project.colorId)
+                            : undefined
+                        }
                         key={todaySourceKey(item, index)}
                         onContextMenu={(event) => {
                           event.preventDefault();
@@ -8018,76 +8020,23 @@ function DashboardApp() {
                     </span>
                   </button>
                   <button
-                    aria-label="やりたいことを追加"
+                    aria-label="今日を組み立てるに次の一手を追加"
                     className="sectionAddButton todayBuilderHeaderAdd"
-                    disabled={todayBuilderAddOpen}
                     onClick={() => {
                       setTodayBuilderOpen(true);
-                      setTodayBuilderAddOpen(true);
+                      openProjectAddDialog();
                     }}
-                    title="やりたいことを追加"
+                    title="次の一手を追加"
                     type="button"
                   >
                     <UiIcon name="add" size={16} />
+                    追加
                   </button>
                   <span className="disclosureCount">{todayBuilderCandidates.length}件</span>
                   <span className="disclosureDescription">候補から今日の行動を選ぶ</span>
                 </div>
                 {todayBuilderOpen && (
                   <div className="todayBuilderBody">
-                    {todayBuilderAddOpen ? (
-                      <form
-                        className="addRow inboxAddRow todayBuilderAddRow"
-                        onSubmit={(event) => {
-                          event.preventDefault();
-                          addTodayBuilderDraft();
-                        }}
-                      >
-                        <input
-                          aria-label="やりたいことに追加"
-                          data-today-builder-add-input
-                          autoFocus
-                          className="textInput"
-                          maxLength={120}
-                          onChange={(event) => setTodayBuilderDraft(event.target.value)}
-                          onKeyDown={(event) => {
-                            if (event.key === "Escape") {
-                              setTodayBuilderDraft("");
-                              setTodayBuilderAddOpen(false);
-                            }
-                          }}
-                          value={todayBuilderDraft}
-                        />
-                        <button
-                          className="primaryButton"
-                          disabled={!todayBuilderDraft.trim()}
-                          type="submit"
-                        >
-                          追加
-                        </button>
-                        <button
-                          aria-label="追加をキャンセル"
-                          className="iconButton sharedAddCancel"
-                          onClick={() => {
-                            setTodayBuilderDraft("");
-                            setTodayBuilderAddOpen(false);
-                          }}
-                          title="キャンセル"
-                          type="button"
-                        >
-                          <UiIcon name="close" size={16} />
-                        </button>
-                      </form>
-                    ) : (
-                      <button
-                        className="inboxAddPrompt todayBuilderAddPrompt"
-                        onClick={() => setTodayBuilderAddOpen(true)}
-                        type="button"
-                      >
-                        <UiIcon name="add" size={16} />
-                        追加
-                      </button>
-                    )}
                     {todayBuilderCandidates.length === 0 ? (
                       <p className="quietText">
                         候補はまだありません。やりたいことやプロジェクトの次の一手を追加するとここに表示されます。
@@ -8149,7 +8098,7 @@ function DashboardApp() {
                                 <option value="inbox">やりたいこと</option>
                               </select>
                               <button
-                                className="primaryButton todayBuilderAddButton"
+                                className="moveTodayButton todayBuilderAddButton"
                                 onClick={() =>
                                   applyTodayBuilderCandidate(
                                     candidate,
@@ -8260,11 +8209,7 @@ function DashboardApp() {
                   <button
                     aria-label="次の一手を追加"
                     className="sectionAddButton nextStepHeaderAdd"
-                    disabled={nextStepAddOpen}
-                    onClick={() => {
-                      setProjectsOpen(true);
-                      setNextStepAddOpen(true);
-                    }}
+                    onClick={openProjectAddDialog}
                     title="次の一手を追加"
                     type="button"
                   >
@@ -8278,65 +8223,6 @@ function DashboardApp() {
                 </div>
                 {projectsOpen && (
                   <div className="nextStepBody">
-                    {nextStepAddOpen && (
-                      <form
-                        className="sharedAddForm nextStepAddForm"
-                        onSubmit={(event) => {
-                          event.preventDefault();
-                          addNextStepDraft();
-                        }}
-                      >
-                        <input
-                          aria-label="プロジェクト名"
-                          autoFocus
-                          className="textInput"
-                          maxLength={60}
-                          onChange={(event) => setNextStepProjectDraft(event.target.value)}
-                          onKeyDown={(event) => {
-                            if (event.key !== "Escape") return;
-                            setNextStepProjectDraft("");
-                            setNextStepActionDraft("");
-                            setNextStepAddOpen(false);
-                          }}
-                          placeholder="プロジェクト名"
-                          value={nextStepProjectDraft}
-                        />
-                        <input
-                          aria-label="次の一手"
-                          className="textInput"
-                          maxLength={120}
-                          onChange={(event) => setNextStepActionDraft(event.target.value)}
-                          onKeyDown={(event) => {
-                            if (event.key !== "Escape") return;
-                            setNextStepProjectDraft("");
-                            setNextStepActionDraft("");
-                            setNextStepAddOpen(false);
-                          }}
-                          placeholder="次に再開する一手"
-                          value={nextStepActionDraft}
-                        />
-                        <button
-                          className="primaryButton"
-                          disabled={!nextStepProjectDraft.trim() || !nextStepActionDraft.trim()}
-                          type="submit"
-                        >
-                          追加
-                        </button>
-                        <button
-                          aria-label="追加をキャンセル"
-                          className="iconButton sharedAddCancel"
-                          onClick={() => {
-                            setNextStepProjectDraft("");
-                            setNextStepActionDraft("");
-                            setNextStepAddOpen(false);
-                          }}
-                          title="キャンセル"
-                          type="button"
-                        >
-                          <UiIcon name="close" size={16} />
-                        </button>
-                      </form>
-                    )}
                     <div className="projectGrid">
                       {config.projects.map((project) => {
                         return (
@@ -8489,7 +8375,7 @@ function DashboardApp() {
 
                 {inboxOpen && (
                   <div className="inboxBody">
-                    {inboxAddOpen ? (
+                    {inboxAddOpen && (
                       <form
                         className="addRow inboxAddRow"
                         onSubmit={(event) => {
@@ -8530,14 +8416,6 @@ function DashboardApp() {
                           <UiIcon name="close" size={16} />
                         </button>
                       </form>
-                    ) : (
-                      <button
-                        className="inboxAddPrompt"
-                        onClick={() => setInboxAddOpen(true)}
-                        type="button"
-                      >
-                        <UiIcon name="add" size={16} /> 追加
-                      </button>
                     )}
                     <div className="inboxList">
                       {config.inbox.map((item, index) => (
@@ -8916,13 +8794,7 @@ function DashboardApp() {
               </ContextMenuItem>
             </>
           ) : contextMenu.kind === "projects" ? (
-            <ContextMenuItem
-              onClick={() => {
-                setProjectsOpen(true);
-                setNextStepAddOpen(true);
-              }}
-              type="button"
-            >
+            <ContextMenuItem onClick={openProjectAddDialog} type="button">
               次の一手を追加
             </ContextMenuItem>
           ) : (
@@ -10416,7 +10288,7 @@ function DashboardApp() {
       {projectEditDraft && (
         <div className="modalBackdrop" role="presentation">
           <section
-            aria-label="プロジェクト編集"
+            aria-label={projectEditDraft.isNew ? "次の一手を追加" : "プロジェクト編集"}
             aria-modal="true"
             className="dropDialog editDialog modalLongForm app-scrollbar"
             role="dialog"
@@ -10424,13 +10296,14 @@ function DashboardApp() {
           >
             <div>
               <p className="eyebrow">Project</p>
-              <h2>{projectEditDraft.isNew ? "プロジェクト追加" : "プロジェクト編集"}</h2>
+              <h2>{projectEditDraft.isNew ? "次の一手を追加" : "プロジェクト編集"}</h2>
             </div>
 
             <h3 className="formSectionHeading">基本</h3>
             <label className="fieldStack">
               <span>名前</span>
               <input
+                autoFocus={projectEditDraft.isNew}
                 className="textInput"
                 maxLength={48}
                 onChange={(event) =>
