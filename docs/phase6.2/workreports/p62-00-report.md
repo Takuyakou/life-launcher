@@ -55,7 +55,7 @@
 
 | コマンド | 結果 | 備考 |
 |---|---|---|
-| `npm.cmd run public:check` | PASS | 179 files / blocker 0（監査4文書配置時） |
+| `npm.cmd run public:check` | PASS | 181 files / blocker 0（workreport/stateを含む最終差分） |
 | `npm.cmd run lint` | PASS | warning 0 |
 | `npm.cmd run build` | PASS | TypeScript + Vite production build |
 | `npm.cmd run test:visual` | PASS | 71 / 71 |
