@@ -1,0 +1,62 @@
+Life Launcherの追加改善「Phase 6.1」を開始してください。
+
+対象: Takuyakou/life-launcher（Windows本体）
+このStart指示は一度だけ使用します。以後はexecution-stateと各Stage文書を自分で読み、
+ユーザーの短い承認・続行指示を受けて再開してください。Stage別の長文を要求しないこと。
+
+【資料の配置】
+このStartと同じフォルダにあるREADME-FIRST.md、WORKFLOW.md、SPECIFICATION.md、
+SCOPE-AND-DELTA.md、GUIDE-UPDATE.md、TEST-MATRIX.md、stages/、reference/を参照してください。
+フォルダ全体が参照不能なら、推測で進めず、パッケージの所在だけ確認してください。
+
+【最初に読む】
+1. repositoryの適用されるAGENTS.md等
+2. README-FIRST.md / WORKFLOW.md
+3. SCOPE-AND-DELTA.md / reference/phase6-final-report.md
+4. execution-state.json（導入済みならdocs/phase6.1/execution-state.jsonが正）
+5. SPECIFICATION.md
+6. stages/P61-00-audit.md
+
+【今回最初に実行するStage】
+P61-00だけです。旧P6.0〜P6.3を再実行しないでください。
+報告書の最終実装コミット:
+74f4a9608f3b5e2ef857f580db45dd0abbe270bf
+報告書の最終ブランチ:
+chore/p6-03-v11-readiness
+報告書のPR #9はWAITING_HUMAN_APPROVAL。main統合済みと推測しないこと。
+今回はこの実装を参照した追加差分の監査です。旧PRへの承認やマージ許可ではありません。
+
+【今回の追加変更の中心】
+- 入力元は「次の一手 / やりたいこと」。Today BuilderとToday3の新規＋追加を除く。
+- Today Builderは既に派生ビュー。新しい候補DBやstaging保存配列を作らない。
+- Builderの送付先プルダウン（勝利条件等）は除き、候補の操作を「今日へ」に一本化。
+- Builder内の削除/dismissをやめる。旧dismiss値で候補が永久に隠れない互換設計を行う。
+- Builderの候補源は今回の提案ではProjectの次の一手とWishlistに限定。
+  Sessionは実行履歴・補助情報として残し、履歴データは消さない。
+- Today3の空状態と「次の3件を選ぶ」から、削除した追加フォームではなく候補ビューへ導く。
+- Wishlistの追加を小さなモーダルへ。Project固有の北極星・手順書等は持ち込まない。
+- NextStepの詳細Projectフォームは削らない。作成対象に合う見出しを検討する。
+- Guide / 使い方を最終実装と照合して更新。
+
+【維持】
+Today3完了は報告書どおり「Timer満了後の終了確定」。0秒到達だけに変えない。
+手動停止・切替は完了にしない。stable source identity、3列、次batch、
+sourceを残す今日へ、5件ページング、保存失敗復元、Quick/辞書改善は維持。
+Do NowをToday3だけから選ぶ推薦へ、今回勝手に変更しない。
+
+【作業許可と停止】
+専用branch/worktreeの作成、監査資料・テスト・Stage差分のcommit、
+対象feature branchへの通常pushとPR作成は許可します。
+mainへの直接push、merge、force push、remote変更、version変更、tag、Release、
+実ユーザーデータ変更、Web Demo/Cloudflare/Zenn変更は禁止です。
+
+まずP61-00で事実・提案・未確定を分け、実装前にデータ互換とGuideの対象を確認。
+報告書にない事実を補完したり、旧仕様を新仕様と取り違えないこと。
+最終検証の報告上の入口はtest:visualです。存在しないnpm test/test:e2eを要求しないこと。
+
+Stage完了時は自動検証、workreport、execution-state更新、PR作成を行いSTOP。
+ユーザーの明示承認後だけ次Stageへ。承認を自分で生成しないこと。
+末尾は実結果に応じて:
+P61-00 COMPLETE — STOPPED FOR HUMAN REVIEW
+または
+P61-00 BLOCKED — STOPPED
