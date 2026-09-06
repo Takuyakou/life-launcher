@@ -132,11 +132,17 @@ pub struct TodayItem {
     pub instruction_path: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub instruction_open_on_start: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_timer_minutes: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub short_timer_minutes: Option<u32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InboxItem {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
     pub text: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub project_id: Option<String>,
@@ -747,6 +753,8 @@ pub fn sample_config() -> AppConfig {
                     button_ids: Vec::new(),
                     instruction_path: None,
                     instruction_open_on_start: None,
+                    default_timer_minutes: None,
+                    short_timer_minutes: None,
                 },
                 TodayItem {
                     text: "起動ボタンを1つ試す".to_string(),
@@ -757,10 +765,13 @@ pub fn sample_config() -> AppConfig {
                     button_ids: Vec::new(),
                     instruction_path: None,
                     instruction_open_on_start: None,
+                    default_timer_minutes: None,
+                    short_timer_minutes: None,
                 },
             ],
         },
         inbox: vec![InboxItem {
+            id: None,
             text: "よく使うアプリのパスをconfig.jsonに足す".to_string(),
             project_id: None,
             button_ids: Vec::new(),

@@ -313,8 +313,16 @@ type TodayBuilderCandidate = {
   key: string;
   text: string;
   source: string;
+  sourceKey: string;
+  legacyOrderKeys?: string[];
+  sourceAliases?: string[];
   trigger?: string;
   projectId?: string;
+  buttonIds?: string[];
+  instructionPath?: string;
+  instructionOpenOnStart?: boolean;
+  defaultTimerMinutes: number;
+  shortTimerMinutes: number;
 };
 
 type ContextMenuTarget =
@@ -347,7 +355,6 @@ type ContextMenuTarget =
   | {
       kind: "todayBuilder";
       index: number;
-      candidateKey: string;
     }
   | {
       kind: "projects";
@@ -550,7 +557,6 @@ const NUMBER_INPUT_DRAG_THRESHOLD_PX = 4;
 const NUMBER_INPUT_DRAG_PIXELS_PER_STEP = 8;
 const TODAY_BUILDER_PAGE_SIZE = 5;
 const TODAY_BUILDER_ORDER_STORAGE_KEY = "life-launcher-today-builder-order";
-const TODAY_BUILDER_DISMISSED_STORAGE_KEY = "life-launcher-today-builder-dismissed";
 
 function readStoredStringArray(key: string): string[] {
   try {
@@ -567,12 +573,12 @@ function writeStoredStringArray(key: string, values: string[]) {
   window.localStorage.setItem(key, JSON.stringify(values));
 }
 
-function createTodaySourceKey(prefix: "manual" | "wishlist"): string {
-  const id =
+function createStableId(): string {
+  return (
     typeof crypto.randomUUID === "function"
       ? crypto.randomUUID()
-      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-  return `${prefix}:${id}`;
+      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+  );
 }
 
 function todaySourceKey(item: TodayItem, index: number): string {
@@ -583,8 +589,65 @@ function todayTimerSourceId(item: TodayItem, index: number): string {
   return `today:${todaySourceKey(item, index)}`;
 }
 
-function wishlistSourceKey(item: InboxItem): string {
+function wishlistSourceKey(item: InboxItem, index: number): string {
+  return `wishlist:${item.id?.trim() || `legacy-${index + 1}`}`;
+}
+
+function legacyWishlistSourceKey(item: InboxItem): string {
   return `wishlist:${item.projectId ?? "none"}:${item.text.trim()}`;
+}
+
+function projectTodayCandidate(
+  project: LauncherProject,
+  settings: AppConfig["settings"],
+): TodayBuilderCandidate {
+  const text = project.nextStep.trim();
+  return {
+    key: `project:${project.id}`,
+    text,
+    source: "次の一手",
+    sourceKey: `project:${project.id}`,
+    legacyOrderKeys: [`project:${project.id}:${text}`],
+    projectId: project.id,
+    ...(project.nextStepTrigger?.trim() ? { trigger: project.nextStepTrigger.trim() } : {}),
+    ...(project.buttonIds.length ? { buttonIds: [...project.buttonIds] } : {}),
+    ...(project.instructionPath
+      ? {
+          instructionPath: project.instructionPath,
+          instructionOpenOnStart: project.instructionOpenOnStart !== false,
+        }
+      : {}),
+    defaultTimerMinutes: project.defaultTimerMinutes ?? settings.defaultTimerMinutes,
+    shortTimerMinutes: project.shortTimerMinutes ?? settings.shortTimerMinutes,
+  };
+}
+
+function wishlistTodayCandidate(
+  item: InboxItem,
+  index: number,
+  project: LauncherProject | undefined,
+  settings: AppConfig["settings"],
+  includeLegacyAlias: boolean,
+): TodayBuilderCandidate {
+  const text = item.text.trim();
+  return {
+    key: wishlistSourceKey(item, index),
+    text,
+    source: "やりたいこと",
+    sourceKey: wishlistSourceKey(item, index),
+    legacyOrderKeys: [`inbox:${item.projectId ?? "none"}:${text}`],
+    ...(includeLegacyAlias ? { sourceAliases: [legacyWishlistSourceKey(item)] } : {}),
+    ...(item.projectId ? { projectId: item.projectId } : {}),
+    ...(item.buttonIds?.length ? { buttonIds: [...item.buttonIds] } : {}),
+    ...(item.instructionPath
+      ? {
+          instructionPath: item.instructionPath,
+          instructionOpenOnStart: item.instructionOpenOnStart !== false,
+        }
+      : {}),
+    defaultTimerMinutes: project?.defaultTimerMinutes ?? settings.defaultTimerMinutes,
+    shortTimerMinutes: project?.shortTimerMinutes ?? settings.shortTimerMinutes,
+  };
 }
 
 function formatActionSummary(results: ActionResult[]): { tone: ToastTone; message: string } {
@@ -1596,11 +1659,9 @@ function DashboardApp() {
   const [activeView, setActiveView] = useState<ActiveView>("main");
   const [pendingActionId, setPendingActionId] = useState<string | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const [todayDraft, setTodayDraft] = useState("");
   const [todayEditingIndex, setTodayEditingIndex] = useState<number | null>(null);
   const [todayTriggerEditingIndex, setTodayTriggerEditingIndex] = useState<number | null>(null);
   const [todayTriggerDraft, setTodayTriggerDraft] = useState("");
-  const [todayAddOpen, setTodayAddOpen] = useState(false);
 
   useEffect(() => {
     const unlisten = listen<InstructionWindowOpenOptions>(
@@ -1637,12 +1698,7 @@ function DashboardApp() {
   const [projectsOpen, setProjectsOpen] = useState(true);
   const [todayBuilderOpen, setTodayBuilderOpen] = useState(false);
   const [todayBuilderPage, setTodayBuilderPage] = useState(1);
-  const [todayBuilderDismissedKeys, setTodayBuilderDismissedKeys] = useState<string[]>(() =>
-    readStoredStringArray(TODAY_BUILDER_DISMISSED_STORAGE_KEY),
-  );
-  const [todayBuilderDestinations, setTodayBuilderDestinations] = useState<Record<string, string>>(
-    {},
-  );
+  const [, setTodayBuilderOrderRevision] = useState(0);
   const [todayBuilderPointerDrag, setTodayBuilderPointerDrag] =
     useState<TodayBuilderDragPreview | null>(null);
   const [todayActivityOpen, setTodayActivityOpen] = useState(false);
@@ -5249,34 +5305,9 @@ function DashboardApp() {
     }
   };
 
-  const addTodayItem = () => {
-    if (!config) return;
-    const text = todayDraft.trim();
-    if (!text || config.today.items.length >= TODAY_ITEM_LIMIT) return;
-    if (config.today.items.some((item) => item.text.trim() === text)) {
-      showToast("warn", "今日の3件に既にあります");
-      return;
-    }
-    const items = [
-      ...config.today.items,
-      { text, done: false, sourceKey: createTodaySourceKey("manual") },
-    ];
-    setTodayDraft("");
-    setTodayAddOpen(false);
-    void persistConfig({ ...config, today: { ...config.today, items } });
-  };
-
   const handleTodayEditKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
       setTodayEditingIndex(null);
-      event.currentTarget.blur();
-    }
-  };
-
-  const handleTodayAddKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Escape") {
-      setTodayDraft("");
-      setTodayAddOpen(false);
       event.currentTarget.blur();
     }
   };
@@ -5287,7 +5318,7 @@ function DashboardApp() {
     if (!text) return;
     setInboxDraft("");
     setInboxAddOpen(false);
-    void persistConfig({ ...config, inbox: [...config.inbox, { text }] });
+    void persistConfig({ ...config, inbox: [...config.inbox, { id: createStableId(), text }] });
   };
 
   const beginInboxEdit = (index: number) => {
@@ -5316,6 +5347,7 @@ function DashboardApp() {
     const inbox = config.inbox.map((item, index) =>
       index === inboxEditingIndex
         ? {
+            id: item.id ?? createStableId(),
             text,
             ...(inboxEditProjectId ? { projectId: inboxEditProjectId } : {}),
             ...(inboxEditButtonIds.length > 0 ? { buttonIds: inboxEditButtonIds } : {}),
@@ -5429,49 +5461,63 @@ function DashboardApp() {
     });
   };
 
-  const moveInboxItemToToday = (index: number) => {
-    if (!config) return;
-    const item = config.inbox[index];
-    if (!item) return;
-
+  const addCandidateToToday = async (candidate: TodayBuilderCandidate) => {
+    if (!config || !candidate.text.trim()) return false;
     if (config.today.items.length >= TODAY_ITEM_LIMIT) {
-      showToast("warn", "今日の3件は3件までです");
-      return;
+      showToast("warn", "いま選べるのは3件までです。完了後に次の3件を選べます");
+      return false;
     }
-    const sourceKey = wishlistSourceKey(item);
+    const matchingSourceKeys = new Set([candidate.sourceKey, ...(candidate.sourceAliases ?? [])]);
     if (
-      config.today.items.some(
-        (todayItem, todayIndex) => todaySourceKey(todayItem, todayIndex) === sourceKey,
+      config.today.items.some((item, index) =>
+        matchingSourceKeys.has(todaySourceKey(item, index)),
       )
     ) {
       showToast("warn", "今日の3件に既にあります");
-      return;
+      return false;
     }
 
-    void persistConfig({
+    const saved = await persistConfig({
       ...config,
       today: {
         ...config.today,
         items: [
           ...config.today.items,
           {
-            text: item.text,
+            text: candidate.text,
             done: false,
-            sourceKey,
-            ...(item.projectId ? { projectId: item.projectId } : {}),
-            ...(item.buttonIds?.length ? { buttonIds: item.buttonIds } : {}),
-            ...(item.instructionPath
+            sourceKey: candidate.sourceKey,
+            ...(candidate.trigger ? { trigger: candidate.trigger } : {}),
+            ...(candidate.projectId ? { projectId: candidate.projectId } : {}),
+            ...(candidate.buttonIds?.length ? { buttonIds: [...candidate.buttonIds] } : {}),
+            ...(candidate.instructionPath
               ? {
-                  instructionPath: item.instructionPath,
-                  instructionOpenOnStart: item.instructionOpenOnStart !== false,
+                  instructionPath: candidate.instructionPath,
+                  instructionOpenOnStart: candidate.instructionOpenOnStart !== false,
                 }
               : {}),
+            defaultTimerMinutes: candidate.defaultTimerMinutes,
+            shortTimerMinutes: candidate.shortTimerMinutes,
           },
         ],
       },
-    }).then((saved) => {
-      if (saved) showToast("ok", "今日の3件に追加しました");
     });
+    if (saved) showToast("ok", "今日の3件に追加しました");
+    return saved;
+  };
+
+  const moveInboxItemToToday = (index: number) => {
+    if (!config) return;
+    const item = config.inbox[index];
+    if (!item) return;
+    const project = item.projectId ? projectsById.get(item.projectId) : undefined;
+    const legacyKey = legacyWishlistSourceKey(item);
+    const includeLegacyAlias =
+      config.inbox.findIndex((candidate) => legacyWishlistSourceKey(candidate) === legacyKey) ===
+      index;
+    void addCandidateToToday(
+      wishlistTodayCandidate(item, index, project, config.settings, includeLegacyAlias),
+    );
   };
 
   const refreshInstructionChoices = async () => {
@@ -5702,6 +5748,7 @@ function DashboardApp() {
 
   const saveTodayBuilderOrder = (keys: string[]) => {
     writeStoredStringArray(TODAY_BUILDER_ORDER_STORAGE_KEY, keys);
+    setTodayBuilderOrderRevision((revision) => revision + 1);
   };
 
   function moveTodayBuilderCandidate(
@@ -5717,7 +5764,6 @@ function DashboardApp() {
       : toIndex;
     keys.splice(adjustedTargetIndex, 0, key);
     saveTodayBuilderOrder(keys);
-    setTodayBuilderDestinations((current) => ({ ...current }));
   }
 
   const moveTodayBuilderCandidateByOffset = (index: number, offset: -1 | 1) => {
@@ -5725,20 +5771,6 @@ function DashboardApp() {
     if (targetIndex < 0 || targetIndex >= todayBuilderCandidates.length) return;
     moveTodayBuilderCandidate(index, targetIndex);
     setContextMenu(null);
-  };
-
-  const dismissTodayBuilderCandidate = (candidateKey: string) => {
-    const candidate = todayBuilderCandidates.find((item) => item.key === candidateKey);
-    if (!candidate) return;
-    const nextKeys = Array.from(new Set([...todayBuilderDismissedKeys, candidateKey]));
-    writeStoredStringArray(TODAY_BUILDER_DISMISSED_STORAGE_KEY, nextKeys);
-    setTodayBuilderDismissedKeys(nextKeys);
-    const nextCount = Math.max(0, todayBuilderCandidates.length - 1);
-    setTodayBuilderPage((page) =>
-      Math.min(page, Math.max(1, Math.ceil(nextCount / TODAY_BUILDER_PAGE_SIZE))),
-    );
-    setContextMenu(null);
-    showToast("ok", `「${candidate.text}」を候補から削除しました`);
   };
 
   const openManualSessionDialog = () => {
@@ -5752,99 +5784,25 @@ function DashboardApp() {
     });
   };
 
-  const addTodayBuilderCandidate = (
-    text: string,
-    trigger?: string,
-    projectId?: string,
-    sourceKey?: string,
-  ) => {
-    if (!config) return;
-    if (config.today.items.length >= TODAY_ITEM_LIMIT) {
-      showToast("warn", "今日の3件は3件までです");
-      return;
-    }
-    const resolvedSourceKey =
-      sourceKey ?? (projectId ? `project:${projectId}` : createTodaySourceKey("manual"));
-    if (
-      config.today.items.some((item, index) => todaySourceKey(item, index) === resolvedSourceKey)
-    ) {
-      showToast("warn", "今日の3件に既にあります");
-      return;
-    }
-    void persistConfig({
-      ...config,
-      today: {
-        ...config.today,
-        items: [
-          ...config.today.items,
-          {
-            text,
-            done: false,
-            sourceKey: resolvedSourceKey,
-            ...(trigger?.trim() ? { trigger: trigger.trim() } : {}),
-            ...(projectId ? { projectId } : {}),
-          },
-        ],
-      },
-    });
-  };
-
-  const setTodayBuilderVictory = (text: string) => {
-    updateVictoryText(text);
-    setVictoryEditing(false);
-    showToast("ok", "勝利条件にセットしました");
-  };
-
-  const addTodayBuilderInbox = (text: string, projectId?: string) => {
-    if (!config || config.inbox.some((item) => item.text === text)) return;
-    void persistConfig({
-      ...config,
-      inbox: [...config.inbox, { text, ...(projectId ? { projectId } : {}) }],
-    });
-  };
-
-  const applyTodayBuilderCandidate = (candidate: TodayBuilderCandidate, destination: string) => {
-    if (!config) return;
-    const { text } = candidate;
-    if (destination === "victory") {
-      if (config.today.victory.text.trim() && config.today.victory.text.trim() !== text) {
-        showToast("warn", "勝利条件は既に入力されています。編集して変更してください。");
-        return;
-      }
-      setTodayBuilderVictory(text);
-      return;
-    }
-    if (destination === "today") {
-      if (config.today.items.some((item) => item.text === text)) {
-        showToast("warn", "今日の3件に既にあります");
-        return;
-      }
-      addTodayBuilderCandidate(
-        text,
-        candidate.trigger,
-        candidate.projectId,
-        candidate.projectId
-          ? `project:${candidate.projectId}`
-          : candidate.source === "やりたいこと"
-            ? `wishlist:${candidate.key.slice("inbox:".length)}`
-            : createTodaySourceKey("manual"),
-      );
-      return;
-    }
-    if (config.inbox.some((item) => item.text === text)) {
-      showToast("warn", "やりたいことに既にあります");
-      return;
-    }
-    addTodayBuilderInbox(text, candidate.projectId);
-  };
-
   const toggleTodayBuilder = () => {
     setTodayBuilderOpen((open) => !open);
-    if (!sessionSummary) {
-      void loadSessionSummary()
-        .then(setSessionSummary)
-        .catch(() => undefined);
-    }
+  };
+
+  const focusTodayBuilder = () => {
+    setTodayBuilderOpen(true);
+    setTodayBuilderPage(1);
+    window.requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>(".todayBuilderDisclosure")?.focus();
+    });
+  };
+
+  const focusCandidateSource = (source: "project" | "wishlist") => {
+    if (source === "project") setProjectsOpen(true);
+    if (source === "wishlist") setInboxOpen(true);
+    window.requestAnimationFrame(() => {
+      const label = source === "project" ? "次の一手を追加" : "やりたいことを追加";
+      document.querySelector<HTMLElement>(`button[aria-label="${label}"]`)?.focus();
+    });
   };
 
   const startNextTodayBatch = async () => {
@@ -5854,12 +5812,8 @@ function DashboardApp() {
       today: { ...config.today, items: [] },
     });
     if (!saved) return;
-    setTodayBuilderOpen(true);
-    setTodayBuilderPage(1);
     showToast("ok", "次の3件を選べます");
-    window.requestAnimationFrame(() => {
-      document.querySelector<HTMLElement>(".todayBuilderDisclosure")?.focus();
-    });
+    focusTodayBuilder();
   };
 
   const saveManualSession = async () => {
@@ -6007,7 +5961,6 @@ function DashboardApp() {
     );
   }
 
-  const todayRemaining = TODAY_ITEM_LIMIT - config.today.items.length;
   const todayCompletedCount = config.today.items.filter((item) => item.done).length;
   const todayAllCompleted =
     config.today.items.length > 0 && todayCompletedCount === config.today.items.length;
@@ -6021,65 +5974,42 @@ function DashboardApp() {
     ],
     5,
   );
+  const legacyWishlistFirstIndexes = config.inbox.reduce<Map<string, number>>((indexes, item, index) => {
+    const key = legacyWishlistSourceKey(item);
+    if (!indexes.has(key)) indexes.set(key, index);
+    return indexes;
+  }, new Map());
   const rawTodayBuilderCandidates: TodayBuilderCandidate[] = [
-    ...(morningVictorySuggestion
-      ? [
-          {
-            key: `victory:${morningVictorySuggestion}`,
-            text: morningVictorySuggestion,
-            source: "昨日の勝利条件",
-          },
-        ]
-      : []),
     ...config.projects.flatMap((project) => {
       const text = project.nextStep.trim();
-      return text
-        ? [
-            {
-              key: `project:${project.id}:${text}`,
-              text,
-              source: "次の一手",
-              projectId: project.id,
-              ...(project.nextStepTrigger?.trim()
-                ? { trigger: project.nextStepTrigger.trim() }
-                : {}),
-            },
-          ]
-        : [];
+      return text ? [projectTodayCandidate(project, config.settings)] : [];
     }),
-    ...config.inbox.flatMap((item) => {
+    ...config.inbox.flatMap((item, index) => {
       const text = item.text.trim();
+      const project = item.projectId ? projectsById.get(item.projectId) : undefined;
       return text
         ? [
-            {
-              key: `inbox:${item.projectId ?? "none"}:${text}`,
-              text,
-              source: "やりたいこと",
-              ...(item.projectId ? { projectId: item.projectId } : {}),
-            },
+            wishlistTodayCandidate(
+              item,
+              index,
+              project,
+              config.settings,
+              legacyWishlistFirstIndexes.get(legacyWishlistSourceKey(item)) === index,
+            ),
           ]
         : [];
-    }),
-    ...(sessionSummary?.recentSessions ?? []).flatMap((session) => {
-      const text = session.note.trim();
-      return text ? [{ key: `session:${session.rowKey}:${text}`, text, source: "最近のnote" }] : [];
     }),
   ];
-  const seenTodayBuilderText = new Set<string>();
-  const dismissedTodayBuilderKeys = new Set(todayBuilderDismissedKeys);
-  const unsortedTodayBuilderCandidates = rawTodayBuilderCandidates.filter((candidate) => {
-    if (seenTodayBuilderText.has(candidate.text) || dismissedTodayBuilderKeys.has(candidate.key)) {
-      return false;
-    }
-    seenTodayBuilderText.add(candidate.text);
-    return true;
-  });
   const todayBuilderCandidates = (() => {
     const savedOrder = readStoredStringArray(TODAY_BUILDER_ORDER_STORAGE_KEY);
     const order = new Map(savedOrder.map((key, index) => [key, index]));
-    return [...unsortedTodayBuilderCandidates].sort((left, right) => {
-      const leftIndex = order.get(left.key);
-      const rightIndex = order.get(right.key);
+    const orderIndex = (candidate: TodayBuilderCandidate) =>
+      [candidate.key, ...(candidate.legacyOrderKeys ?? [])]
+        .map((key) => order.get(key))
+        .find((index) => index !== undefined);
+    return [...rawTodayBuilderCandidates].sort((left, right) => {
+      const leftIndex = orderIndex(left);
+      const rightIndex = orderIndex(right);
       if (leftIndex === undefined && rightIndex === undefined) return 0;
       if (leftIndex === undefined) return 1;
       if (rightIndex === undefined) return -1;
@@ -7674,23 +7604,6 @@ function DashboardApp() {
                 <div className="sectionHeading sectionHeading--compact sectionHeading--inlineActions">
                   <h2>今日の3件</h2>
                   <div className="sectionHeadingActions">
-                    <button
-                      aria-label="今日の3件に追加"
-                      className="sectionAddButton"
-                      disabled={todayAddOpen}
-                      onClick={() => {
-                        if (todayRemaining <= 0) {
-                          showToast("warn", "今日の3件は3件までです");
-                          return;
-                        }
-                        setTodayAddOpen(true);
-                      }}
-                      title={todayRemaining <= 0 ? "3件まで追加できます" : "今日の3件に追加"}
-                      type="button"
-                    >
-                      <UiIcon name="add" size={16} />
-                      追加
-                    </button>
                     <span>{config.today.items.length}件</span>
                     {config.today.items.length > 0 && (
                       <span
@@ -7707,18 +7620,25 @@ function DashboardApp() {
                 </div>
                 <div className="todayGrid">
                   {config.today.items.length === 0 && (
-                    <p className="quietText">
-                      今日はまだありません。「今日を組み立てる」から選べます。
-                    </p>
+                    <div className="sectionEmptyActions">
+                      <span>まだ決まっていません。候補から今日やるものを選べます。</span>
+                      <button onClick={focusTodayBuilder} type="button">
+                        今日の候補を見る
+                      </button>
+                    </div>
                   )}
                   {config.today.items.map((item, index) => {
                     const timerSourceId = todayTimerSourceId(item, index);
                     const isRunningTodayItem = activeTimer?.sourceId === timerSourceId;
                     const project = item.projectId ? projectsById.get(item.projectId) : undefined;
                     const shortMinutes =
-                      project?.shortTimerMinutes ?? config.settings.shortTimerMinutes;
+                      item.shortTimerMinutes ??
+                      project?.shortTimerMinutes ??
+                      config.settings.shortTimerMinutes;
                     const defaultMinutes =
-                      project?.defaultTimerMinutes ?? config.settings.defaultTimerMinutes;
+                      item.defaultTimerMinutes ??
+                      project?.defaultTimerMinutes ??
+                      config.settings.defaultTimerMinutes;
                     return (
                       <article
                         className={[
@@ -7969,41 +7889,6 @@ function DashboardApp() {
                   </div>
                 )}
 
-                {todayRemaining > 0 && todayAddOpen && (
-                  <form
-                    className="todayAddRow"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      addTodayItem();
-                    }}
-                  >
-                    <input
-                      aria-label="今日に追加"
-                      autoFocus
-                      className="todayEditInput"
-                      maxLength={90}
-                      onChange={(event) => setTodayDraft(event.target.value)}
-                      onKeyDown={handleTodayAddKeyDown}
-                      placeholder={`あと${todayRemaining}件`}
-                      value={todayDraft}
-                    />
-                    <button className="primaryButton" disabled={!todayDraft.trim()} type="submit">
-                      追加
-                    </button>
-                    <button
-                      aria-label="追加をキャンセル"
-                      className="iconButton sharedAddCancel"
-                      onClick={() => {
-                        setTodayDraft("");
-                        setTodayAddOpen(false);
-                      }}
-                      title="キャンセル"
-                      type="button"
-                    >
-                      <UiIcon name="close" size={16} />
-                    </button>
-                  </form>
-                )}
               </section>
 
               <section className="todayBuilderBand">
@@ -8019,32 +7904,39 @@ function DashboardApp() {
                       <strong>今日を組み立てる</strong>
                     </span>
                   </button>
-                  <button
-                    aria-label="今日を組み立てるに次の一手を追加"
-                    className="sectionAddButton todayBuilderHeaderAdd"
-                    onClick={() => {
-                      setTodayBuilderOpen(true);
-                      openProjectAddDialog();
-                    }}
-                    title="次の一手を追加"
-                    type="button"
-                  >
-                    <UiIcon name="add" size={16} />
-                    追加
-                  </button>
                   <span className="disclosureCount">{todayBuilderCandidates.length}件</span>
-                  <span className="disclosureDescription">候補から今日の行動を選ぶ</span>
+                  <span className="disclosureDescription">
+                    次の一手・やりたいことから、今日やるものを選ぶ
+                  </span>
                 </div>
                 {todayBuilderOpen && (
                   <div className="todayBuilderBody">
                     {todayBuilderCandidates.length === 0 ? (
-                      <p className="quietText">
-                        候補はまだありません。やりたいことやプロジェクトの次の一手を追加するとここに表示されます。
-                      </p>
+                      <div className="sectionEmptyActions sectionEmptyActions--sources">
+                        <span>
+                          候補はまだありません。次の一手か、やりたいことを登録できます。
+                        </span>
+                        <div>
+                          <button onClick={() => focusCandidateSource("project")} type="button">
+                            次の一手へ
+                          </button>
+                          <button onClick={() => focusCandidateSource("wishlist")} type="button">
+                            やりたいことへ
+                          </button>
+                        </div>
+                      </div>
                     ) : (
                       visibleTodayBuilderCandidates.map((candidate, pageIndex) => {
                         const index =
                           (visibleTodayBuilderPage - 1) * TODAY_BUILDER_PAGE_SIZE + pageIndex;
+                        const matchingSourceKeys = new Set([
+                          candidate.sourceKey,
+                          ...(candidate.sourceAliases ?? []),
+                        ]);
+                        const isSelected = config.today.items.some((item, todayIndex) =>
+                          matchingSourceKeys.has(todaySourceKey(item, todayIndex)),
+                        );
+                        const isFull = config.today.items.length >= TODAY_ITEM_LIMIT;
                         return (
                           <div
                             className={
@@ -8058,7 +7950,7 @@ function DashboardApp() {
                               event.preventDefault();
                               event.stopPropagation();
                               openContextMenu(
-                                { kind: "todayBuilder", index, candidateKey: candidate.key },
+                                { kind: "todayBuilder", index },
                                 event.clientX,
                                 event.clientY,
                                 event.currentTarget,
@@ -8068,7 +7960,6 @@ function DashboardApp() {
                               openContextMenuFromKeyboard(event, {
                                 kind: "todayBuilder",
                                 index,
-                                candidateKey: candidate.key,
                               })
                             }
                             onPointerCancel={cancelTodayBuilderPointerDrag}
@@ -8082,32 +7973,20 @@ function DashboardApp() {
                               <strong>{candidate.text}</strong>
                             </div>
                             <div className="todayBuilderActions">
-                              <select
-                                aria-label={`${candidate.text}の追加先`}
-                                className="todayBuilderDestination"
-                                onChange={(event) =>
-                                  setTodayBuilderDestinations((current) => ({
-                                    ...current,
-                                    [candidate.text]: event.target.value,
-                                  }))
-                                }
-                                value={todayBuilderDestinations[candidate.text] ?? "today"}
-                              >
-                                <option value="today">今日の3件</option>
-                                <option value="victory">勝利条件</option>
-                                <option value="inbox">やりたいこと</option>
-                              </select>
                               <button
                                 className="moveTodayButton todayBuilderAddButton"
-                                onClick={() =>
-                                  applyTodayBuilderCandidate(
-                                    candidate,
-                                    todayBuilderDestinations[candidate.text] ?? "today",
-                                  )
+                                disabled={isSelected || isFull}
+                                onClick={() => void addCandidateToToday(candidate)}
+                                title={
+                                  isSelected
+                                    ? "今日に選択済み"
+                                    : isFull
+                                      ? "いま選べるのは3件までです"
+                                      : "今日へ"
                                 }
                                 type="button"
                               >
-                                追加
+                                {isSelected ? "選択済み" : "今日へ"}
                               </button>
                             </div>
                           </div>
@@ -8285,12 +8164,7 @@ function DashboardApp() {
                               disabled={!project.nextStep.trim()}
                               onClick={(event) => {
                                 event.stopPropagation();
-                                addTodayBuilderCandidate(
-                                  project.nextStep.trim(),
-                                  project.nextStepTrigger,
-                                  project.id,
-                                  `project:${project.id}`,
-                                );
+                                void addCandidateToToday(projectTodayCandidate(project, config.settings));
                               }}
                               onPointerDown={(event) => event.stopPropagation()}
                               title="今日へ"
@@ -8721,13 +8595,6 @@ function DashboardApp() {
                 type="button"
               >
                 下へ移動
-              </ContextMenuItem>
-              <ContextMenuItem
-                className="contextMenuDanger"
-                onClick={() => dismissTodayBuilderCandidate(contextMenu.candidateKey)}
-                type="button"
-              >
-                削除
               </ContextMenuItem>
             </>
           ) : contextMenu.kind === "inbox" ? (

@@ -1288,6 +1288,12 @@ fn sanitize_config(mut config: AppConfig) -> (AppConfig, bool, Vec<String>) {
     trim_empty_projects(&mut config.projects, &mut changed, &mut warnings);
     normalize_weekly_focus(&mut config.projects, &mut changed, &mut warnings);
     normalize_today_item_projects(&mut config.today.items, &config.projects, &mut changed);
+    normalize_today_item_timer_snapshots(
+        &mut config.today.items,
+        &config.projects,
+        &config.settings,
+        &mut changed,
+    );
     normalize_today_item_source_keys(
         &mut config.today.items,
         &config.today.date,
@@ -1295,6 +1301,7 @@ fn sanitize_config(mut config: AppConfig) -> (AppConfig, bool, Vec<String>) {
         &mut warnings,
     );
     trim_empty_inbox(&mut config.inbox, &mut changed);
+    normalize_inbox_ids(&mut config.inbox, &mut changed);
     normalize_inbox_projects(&mut config.inbox, &config.projects, &mut changed);
 
     (config, changed, warnings)
@@ -1669,7 +1676,9 @@ fn config_schema_json() -> &'static str {
           "minLength": 3,
           "pattern": "^[A-Za-z]:[\\\\/]"
         },
-        "instructionOpenOnStart": { "type": "boolean" }
+        "instructionOpenOnStart": { "type": "boolean" },
+        "defaultTimerMinutes": { "type": "integer", "minimum": 1, "maximum": 240 },
+        "shortTimerMinutes": { "type": "integer", "minimum": 1, "maximum": 240 }
       }
     },
     "inboxItem": {
@@ -1677,6 +1686,7 @@ fn config_schema_json() -> &'static str {
       "additionalProperties": false,
       "required": ["text"],
       "properties": {
+        "id": { "type": "string", "minLength": 1 },
         "text": { "type": "string" },
         "projectId": { "type": "string", "minLength": 1 },
         "buttonIds": {
@@ -1995,6 +2005,41 @@ fn normalize_today_item_projects(
     }
 }
 
+fn normalize_today_item_timer_snapshots(
+    items: &mut [crate::models::TodayItem],
+    projects: &[Project],
+    settings: &crate::models::Settings,
+    changed: &mut bool,
+) {
+    for item in items {
+        let project = item
+            .project_id
+            .as_deref()
+            .and_then(|project_id| projects.iter().find(|project| project.id == project_id));
+        let default_minutes = project
+            .and_then(|project| project.default_timer_minutes)
+            .unwrap_or(settings.default_timer_minutes.into());
+        let short_minutes = project
+            .and_then(|project| project.short_timer_minutes)
+            .unwrap_or(settings.short_timer_minutes.into());
+
+        if item
+            .default_timer_minutes
+            .is_none_or(|minutes| !(1..=240).contains(&minutes))
+        {
+            item.default_timer_minutes = Some(default_minutes);
+            *changed = true;
+        }
+        if item
+            .short_timer_minutes
+            .is_none_or(|minutes| !(1..=240).contains(&minutes))
+        {
+            item.short_timer_minutes = Some(short_minutes);
+            *changed = true;
+        }
+    }
+}
+
 fn normalize_today_item_triggers(
     items: &mut [crate::models::TodayItem],
     changed: &mut bool,
@@ -2083,6 +2128,40 @@ fn trim_empty_inbox(inbox: &mut Vec<InboxItem>, changed: &mut bool) {
     inbox.retain(|item| !item.text.trim().is_empty());
     if inbox.len() != before {
         *changed = true;
+    }
+}
+
+fn normalize_inbox_ids(inbox: &mut [InboxItem], changed: &mut bool) {
+    let reserved = inbox
+        .iter()
+        .filter_map(|item| item.id.as_deref().map(str::trim))
+        .filter(|id| !id.is_empty())
+        .map(str::to_string)
+        .collect::<HashSet<_>>();
+    let mut seen = HashSet::new();
+    for (index, item) in inbox.iter_mut().enumerate() {
+        let existing_id = item
+            .id
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_string);
+        let base = existing_id
+            .clone()
+            .unwrap_or_else(|| format!("legacy-{}", index + 1));
+        let mut id = base.clone();
+        let mut suffix = 2;
+        while seen.contains(&id)
+            || (existing_id.as_deref() != Some(id.as_str()) && reserved.contains(&id))
+        {
+            id = format!("{base}-{suffix}");
+            suffix += 1;
+        }
+        seen.insert(id.clone());
+        if item.id.as_deref() != Some(id.as_str()) {
+            item.id = Some(id);
+            *changed = true;
+        }
     }
 }
 
@@ -2502,11 +2581,98 @@ mod tests {
     }
 
     #[test]
+    fn legacy_inbox_items_get_unique_stable_ids_once() {
+        let mut config = sample_config();
+        config.inbox = vec![
+            InboxItem {
+                id: None,
+                text: "same".to_string(),
+                project_id: None,
+                button_ids: Vec::new(),
+                instruction_path: None,
+                instruction_open_on_start: None,
+            },
+            InboxItem {
+                id: None,
+                text: "same".to_string(),
+                project_id: None,
+                button_ids: Vec::new(),
+                instruction_path: None,
+                instruction_open_on_start: None,
+            },
+            InboxItem {
+                id: Some("legacy-1".to_string()),
+                text: "existing collision".to_string(),
+                project_id: None,
+                button_ids: Vec::new(),
+                instruction_path: None,
+                instruction_open_on_start: None,
+            },
+        ];
+
+        let (config, changed, _) = sanitize_config(config);
+        assert!(changed);
+        assert_eq!(config.inbox[0].id.as_deref(), Some("legacy-1-2"));
+        assert_eq!(config.inbox[1].id.as_deref(), Some("legacy-2"));
+        assert_eq!(config.inbox[2].id.as_deref(), Some("legacy-1"));
+
+        let (config, changed_again, _) = sanitize_config(config);
+        assert!(!changed_again);
+        assert_eq!(config.inbox[0].id.as_deref(), Some("legacy-1-2"));
+        assert_eq!(config.inbox[1].id.as_deref(), Some("legacy-2"));
+        assert_eq!(config.inbox[2].id.as_deref(), Some("legacy-1"));
+    }
+
+    #[test]
+    fn today_timer_minutes_are_snapshotted_once_from_the_project() {
+        let mut config = sample_config();
+        let project_id = config.projects[0].id.clone();
+        config.projects[0].default_timer_minutes = Some(37);
+        config.projects[0].short_timer_minutes = Some(7);
+        config.today.items[0].project_id = Some(project_id);
+        config.today.items[0].default_timer_minutes = None;
+        config.today.items[0].short_timer_minutes = None;
+
+        let (mut config, changed, _) = sanitize_config(config);
+        assert!(changed);
+        assert_eq!(config.today.items[0].default_timer_minutes, Some(37));
+        assert_eq!(config.today.items[0].short_timer_minutes, Some(7));
+
+        config.projects[0].default_timer_minutes = Some(25);
+        config.projects[0].short_timer_minutes = Some(5);
+        let (config, _, _) = sanitize_config(config);
+        assert_eq!(config.today.items[0].default_timer_minutes, Some(37));
+        assert_eq!(config.today.items[0].short_timer_minutes, Some(7));
+    }
+
+    #[test]
+    fn invalid_today_timer_snapshots_fall_back_to_global_settings() {
+        let mut config = sample_config();
+        config.today.items[0].project_id = None;
+        config.today.items[0].default_timer_minutes = Some(0);
+        config.today.items[0].short_timer_minutes = Some(241);
+
+        let expected_default = u32::from(config.settings.default_timer_minutes);
+        let expected_short = u32::from(config.settings.short_timer_minutes);
+        let (config, changed, _) = sanitize_config(config);
+        assert!(changed);
+        assert_eq!(
+            config.today.items[0].default_timer_minutes,
+            Some(expected_default)
+        );
+        assert_eq!(
+            config.today.items[0].short_timer_minutes,
+            Some(expected_short)
+        );
+    }
+
+    #[test]
     fn inbox_project_reference_keeps_valid_id_and_removes_unknown_id_only() {
         let mut config = sample_config();
         let valid_project_id = config.projects[0].id.clone();
         config.inbox = vec![
             InboxItem {
+                id: Some("valid-item".to_string()),
                 text: "valid".to_string(),
                 project_id: Some(valid_project_id.clone()),
                 button_ids: Vec::new(),
@@ -2514,6 +2680,7 @@ mod tests {
                 instruction_open_on_start: None,
             },
             InboxItem {
+                id: Some("unknown-item".to_string()),
                 text: "unknown".to_string(),
                 project_id: Some("missing-project".to_string()),
                 button_ids: Vec::new(),

@@ -124,6 +124,8 @@ export const TodayItemSchema = z.object({
   buttonIds: z.array(z.string().min(1)).optional(),
   instructionPath: InstructionPathSchema.optional(),
   instructionOpenOnStart: z.boolean().optional(),
+  defaultTimerMinutes: z.number().int().min(1).max(240).optional(),
+  shortTimerMinutes: z.number().int().min(1).max(240).optional(),
 });
 
 export const TodayVictorySchema = z
@@ -134,6 +136,7 @@ export const TodayVictorySchema = z
   .default({ text: "", done: false });
 
 export const InboxItemSchema = z.object({
+  id: z.string().min(1).optional(),
   text: z.string(),
   projectId: z.string().min(1).optional(),
   buttonIds: z.array(z.string().min(1)).optional(),
