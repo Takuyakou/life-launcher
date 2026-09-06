@@ -1688,6 +1688,8 @@ function DashboardApp() {
   const [victoryEditing, setVictoryEditing] = useState(false);
   const [inboxDraft, setInboxDraft] = useState("");
   const [inboxAddOpen, setInboxAddOpen] = useState(false);
+  const [inboxAddSaving, setInboxAddSaving] = useState(false);
+  const [inboxAddError, setInboxAddError] = useState<string | null>(null);
   const [inboxEditingIndex, setInboxEditingIndex] = useState<number | null>(null);
   const [inboxEditDraft, setInboxEditDraft] = useState("");
   const [inboxEditProjectId, setInboxEditProjectId] = useState("");
@@ -1779,6 +1781,8 @@ function DashboardApp() {
   const projectPointerDragRef = useRef<ProjectPointerDrag | null>(null);
   const inboxPointerDragRef = useRef<InboxPointerDrag | null>(null);
   const todayBuilderPointerDragRef = useRef<TodayBuilderPointerDrag | null>(null);
+  const inboxAddSavingRef = useRef(false);
+  const inboxAddOpenerRef = useRef<HTMLButtonElement | null>(null);
   const mainScrollAreaRef = useRef<HTMLDivElement | null>(null);
   const projectAutoScrollFrameRef = useRef<number | null>(null);
   const projectAutoScrollSpeedRef = useRef(0);
@@ -2875,7 +2879,22 @@ function DashboardApp() {
     window.requestAnimationFrame(() => opener?.focus());
   }, []);
 
+  const closeInboxAddDialog = useCallback(() => {
+    if (inboxAddSavingRef.current) return;
+    const opener = inboxAddOpenerRef.current;
+    inboxAddOpenerRef.current = null;
+    setInboxAddOpen(false);
+    setInboxDraft("");
+    setInboxAddError(null);
+    setInboxAddSaving(false);
+    window.requestAnimationFrame(() => opener?.focus());
+  }, []);
+
   const dismissNonCriticalModal = useCallback(() => {
+    if (inboxAddOpen) {
+      closeInboxAddDialog();
+      return;
+    }
     if (inboxEditingIndex !== null) {
       setInboxEditingIndex(null);
       setInboxEditDraft("");
@@ -2921,11 +2940,13 @@ function DashboardApp() {
     if (groupDraft !== null) setGroupDraft(null);
   }, [
     buttonEditDraft,
+    closeInboxAddDialog,
     closeOverlayPageDialog,
     dropDraft,
     groupDraft,
     groupRenameDraft,
     helpGuideOpen,
+    inboxAddOpen,
     inboxEditingIndex,
     manualSessionDraft,
     overlayPageDraft,
@@ -2937,6 +2958,7 @@ function DashboardApp() {
   ]);
 
   const hasDismissibleModal = Boolean(
+    inboxAddOpen ||
     inboxEditingIndex !== null ||
     helpGuideOpen ||
     settingsDraft ||
@@ -5312,13 +5334,32 @@ function DashboardApp() {
     }
   };
 
-  const addInboxItem = () => {
-    if (!config) return;
+  const addInboxItem = async () => {
+    if (!config || inboxAddSavingRef.current) return;
     const text = inboxDraft.trim();
-    if (!text) return;
-    setInboxDraft("");
-    setInboxAddOpen(false);
-    void persistConfig({ ...config, inbox: [...config.inbox, { id: createStableId(), text }] });
+    if (!text) {
+      setInboxAddError("やりたいことを入力してください");
+      return;
+    }
+    if (text.length > 120) {
+      setInboxAddError("やりたいことは120文字以内で入力してください");
+      return;
+    }
+
+    inboxAddSavingRef.current = true;
+    setInboxAddSaving(true);
+    setInboxAddError(null);
+    const saved = await persistConfig({
+      ...config,
+      inbox: [...config.inbox, { id: createStableId(), text }],
+    });
+    inboxAddSavingRef.current = false;
+    setInboxAddSaving(false);
+    if (!saved) {
+      setInboxAddError("保存できませんでした。内容を残したまま、もう一度お試しください");
+      return;
+    }
+    closeInboxAddDialog();
   };
 
   const beginInboxEdit = (index: number) => {
@@ -5800,7 +5841,7 @@ function DashboardApp() {
     if (source === "project") setProjectsOpen(true);
     if (source === "wishlist") setInboxOpen(true);
     window.requestAnimationFrame(() => {
-      const label = source === "project" ? "次の一手を追加" : "やりたいことを追加";
+      const label = source === "project" ? "プロジェクトを追加" : "やりたいことを追加";
       document.querySelector<HTMLElement>(`button[aria-label="${label}"]`)?.focus();
     });
   };
@@ -8086,10 +8127,10 @@ function DashboardApp() {
                     </span>
                   </button>
                   <button
-                    aria-label="次の一手を追加"
+                    aria-label="プロジェクトを追加"
                     className="sectionAddButton nextStepHeaderAdd"
                     onClick={openProjectAddDialog}
-                    title="次の一手を追加"
+                    title="プロジェクトを追加"
                     type="button"
                   >
                     <UiIcon name="add" size={16} />
@@ -8233,8 +8274,11 @@ function DashboardApp() {
                     aria-label="やりたいことを追加"
                     className="sectionAddButton"
                     disabled={inboxAddOpen}
-                    onClick={() => {
+                    onClick={(event) => {
+                      inboxAddOpenerRef.current = event.currentTarget;
                       setInboxOpen(true);
+                      setInboxDraft("");
+                      setInboxAddError(null);
                       setInboxAddOpen(true);
                     }}
                     title="やりたいことを追加"
@@ -8249,48 +8293,6 @@ function DashboardApp() {
 
                 {inboxOpen && (
                   <div className="inboxBody">
-                    {inboxAddOpen && (
-                      <form
-                        className="addRow inboxAddRow"
-                        onSubmit={(event) => {
-                          event.preventDefault();
-                          addInboxItem();
-                        }}
-                      >
-                        <input
-                          aria-label="やりたいことに追加"
-                          autoFocus
-                          className="textInput"
-                          maxLength={120}
-                          onChange={(event) => setInboxDraft(event.target.value)}
-                          onKeyDown={(event) => {
-                            if (event.key !== "Escape") return;
-                            setInboxDraft("");
-                            setInboxAddOpen(false);
-                          }}
-                          value={inboxDraft}
-                        />
-                        <button
-                          className="primaryButton"
-                          disabled={!inboxDraft.trim()}
-                          type="submit"
-                        >
-                          追加
-                        </button>
-                        <button
-                          aria-label="追加をキャンセル"
-                          className="iconButton sharedAddCancel"
-                          onClick={() => {
-                            setInboxDraft("");
-                            setInboxAddOpen(false);
-                          }}
-                          title="キャンセル"
-                          type="button"
-                        >
-                          <UiIcon name="close" size={16} />
-                        </button>
-                      </form>
-                    )}
                     <div className="inboxList">
                       {config.inbox.map((item, index) => (
                         <div
@@ -8300,7 +8302,7 @@ function DashboardApp() {
                               : "inboxRow"
                           }
                           data-inbox-index={index}
-                          key={`${item.text}-${index}`}
+                          key={item.id ?? `${item.text}-${index}`}
                           onContextMenu={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
@@ -8662,7 +8664,7 @@ function DashboardApp() {
             </>
           ) : contextMenu.kind === "projects" ? (
             <ContextMenuItem onClick={openProjectAddDialog} type="button">
-              次の一手を追加
+              プロジェクトを追加
             </ContextMenuItem>
           ) : (
             <>
@@ -10152,10 +10154,88 @@ function DashboardApp() {
         </div>
       )}
 
+      {inboxAddOpen && (
+        <div className="modalBackdrop" role="presentation">
+          <section
+            aria-label="やりたいことを追加"
+            aria-modal="true"
+            className="dropDialog wishlistAddDialog"
+            role="dialog"
+            tabIndex={-1}
+          >
+            <div className="wishlistAddHeader">
+              <p className="eyebrow">Wishlist</p>
+              <h2>やりたいことを追加</h2>
+              <p>あとでやりたいことを、ひとまず残しておきます。</p>
+            </div>
+
+            <form
+              className="wishlistAddForm"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void addInboxItem();
+              }}
+            >
+              <label className="fieldStack">
+                <span>やりたいこと</span>
+                <input
+                  aria-describedby={
+                    inboxAddError
+                      ? "wishlist-add-hint wishlist-add-error"
+                      : "wishlist-add-hint"
+                  }
+                  aria-invalid={Boolean(inboxAddError)}
+                  autoFocus
+                  className="textInput"
+                  maxLength={120}
+                  onChange={(event) => {
+                    setInboxDraft(event.target.value);
+                    if (inboxAddError) setInboxAddError(null);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && event.nativeEvent.isComposing) {
+                      event.preventDefault();
+                    }
+                  }}
+                  placeholder="気になっていた本を読む"
+                  value={inboxDraft}
+                />
+                <small className="fieldHint" id="wishlist-add-hint">
+                  120文字まで
+                </small>
+                {inboxAddError && (
+                  <small className="fieldError" id="wishlist-add-error" role="alert">
+                    {inboxAddError}
+                  </small>
+                )}
+              </label>
+
+              <div className="dialogActions">
+                <button
+                  className="secondaryButton"
+                  disabled={inboxAddSaving}
+                  onClick={closeInboxAddDialog}
+                  type="button"
+                >
+                  キャンセル
+                </button>
+                <button
+                  className="primaryButton"
+                  disabled={inboxAddSaving || !inboxDraft.trim()}
+                  type="submit"
+                >
+                  {inboxAddSaving ? "保存中…" : "保存"}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+
       {projectEditDraft && (
         <div className="modalBackdrop" role="presentation">
           <section
-            aria-label={projectEditDraft.isNew ? "次の一手を追加" : "プロジェクト編集"}
+            aria-label={projectEditDraft.isNew ? "プロジェクトを追加" : "プロジェクト編集"}
             aria-modal="true"
             className="dropDialog editDialog modalLongForm app-scrollbar"
             role="dialog"
@@ -10163,12 +10243,15 @@ function DashboardApp() {
           >
             <div>
               <p className="eyebrow">Project</p>
-              <h2>{projectEditDraft.isNew ? "次の一手を追加" : "プロジェクト編集"}</h2>
+              <h2>{projectEditDraft.isNew ? "プロジェクトを追加" : "プロジェクト編集"}</h2>
+              {projectEditDraft.isNew && (
+                <p className="dialogLead">取り組みと、次にやることを登録します。</p>
+              )}
             </div>
 
             <h3 className="formSectionHeading">基本</h3>
             <label className="fieldStack">
-              <span>名前</span>
+              <span>プロジェクト名</span>
               <input
                 autoFocus={projectEditDraft.isNew}
                 className="textInput"
