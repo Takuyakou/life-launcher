@@ -310,6 +310,7 @@ export async function installTauriMock(
               case "open_instruction_in_default_editor":
               case "open_instruction_folder":
               case "reveal_instruction_in_explorer":
+              case "reveal_launcher_item":
                 return "Public demo mock: native action not executed";
               case "plugin:window|get_all_windows":
                 return [currentWindowLabel];

@@ -172,6 +172,10 @@ export async function deleteButtonIconCache(buttonId: string): Promise<void> {
   await invoke("delete_button_icon_cache", { buttonId });
 }
 
+export async function revealLauncherItem(buttonId: string): Promise<string> {
+  return invoke<string>("reveal_launcher_item", { buttonId });
+}
+
 export async function openConfigBackups(): Promise<string> {
   return invoke<string>("open_config_backups");
 }

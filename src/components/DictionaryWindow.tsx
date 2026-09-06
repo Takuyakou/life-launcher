@@ -175,6 +175,7 @@ export function DictionaryWindow() {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [configError, setConfigError] = useState<string | null>(null);
   const [selectedPageKey, setSelectedPageKey] = useState(OVERLAY_ALL_PAGE_KEY);
+  const [focusedPageKey, setFocusedPageKey] = useState(OVERLAY_ALL_PAGE_KEY);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedButtonId, setSelectedButtonId] = useState<string | null>(null);
   const [launchingButtonId, setLaunchingButtonId] = useState<string | null>(null);
@@ -405,6 +406,9 @@ export function DictionaryWindow() {
   const effectiveSelectedPageKey = isOverlayPageKeyAvailable(selectedPageKey, overlayPages)
     ? selectedPageKey
     : OVERLAY_ALL_PAGE_KEY;
+  const effectiveFocusedPageKey = isOverlayPageKeyAvailable(focusedPageKey, overlayPages)
+    ? focusedPageKey
+    : effectiveSelectedPageKey;
   const selectDictionaryPage = useCallback((pageKey: string) => {
     setSelectedPageKey(pageKey);
     setSelectedButtonId(null);
@@ -514,6 +518,7 @@ export function DictionaryWindow() {
       const nextPage = pageTabs[normalizedIndex];
       if (!nextPage) return;
       setSelectedPageKey(nextPage.key);
+      setFocusedPageKey(nextPage.key);
       setSelectedButtonId(null);
       if (focusTab) {
         window.requestAnimationFrame(() => tabRefs.current.get(nextPage.key)?.focus());
@@ -528,6 +533,108 @@ export function DictionaryWindow() {
       selectPageAt(Math.max(0, currentIndex) + offset, focusTab);
     },
     [effectiveSelectedPageKey, pageTabs, selectPageAt],
+  );
+
+  const focusPageAt = useCallback(
+    (index: number) => {
+      if (pageTabs.length === 0) return;
+      const normalizedIndex = (index + pageTabs.length) % pageTabs.length;
+      const nextPage = pageTabs[normalizedIndex];
+      if (!nextPage) return;
+      setFocusedPageKey(nextPage.key);
+      window.requestAnimationFrame(() => tabRefs.current.get(nextPage.key)?.focus());
+    },
+    [pageTabs],
+  );
+
+  const focusTile = useCallback((buttonId: string) => {
+    setSelectedButtonId(buttonId);
+    window.requestAnimationFrame(() => {
+      tileItemRefs.current
+        .get(buttonId)
+        ?.querySelector<HTMLButtonElement>(".dictionaryTile")
+        ?.focus();
+    });
+  }, []);
+
+  const focusTileFromTab = useCallback(
+    (tab: HTMLElement) => {
+      const tabCenter = tab.getBoundingClientRect().left + tab.getBoundingClientRect().width / 2;
+      const candidates = selectedButtons.flatMap((button) => {
+        const element = tileItemRefs.current
+          .get(button.id)
+          ?.querySelector<HTMLButtonElement>(".dictionaryTile");
+        if (!element) return [];
+        const rect = element.getBoundingClientRect();
+        return [{ button, distance: Math.abs(rect.left + rect.width / 2 - tabCenter) }];
+      });
+      candidates.sort((left, right) => left.distance - right.distance);
+      if (candidates[0]) focusTile(candidates[0].button.id);
+    },
+    [focusTile, selectedButtons],
+  );
+
+  const moveTileFocus = useCallback(
+    (buttonId: string, direction: "left" | "right" | "up" | "down") => {
+      const current = tileItemRefs.current
+        .get(buttonId)
+        ?.querySelector<HTMLButtonElement>(".dictionaryTile");
+      if (!current) return;
+      const currentRect = current.getBoundingClientRect();
+      const currentCenter = {
+        x: currentRect.left + currentRect.width / 2,
+        y: currentRect.top + currentRect.height / 2,
+      };
+      const candidates = selectedButtons.flatMap((button) => {
+        if (button.id === buttonId) return [];
+        const element = tileItemRefs.current
+          .get(button.id)
+          ?.querySelector<HTMLButtonElement>(".dictionaryTile");
+        if (!element) return [];
+        const rect = element.getBoundingClientRect();
+        const center = {
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+        };
+        const sameRow =
+          Math.abs(center.y - currentCenter.y) <=
+          Math.max(4, Math.min(rect.height, currentRect.height) * 0.4);
+        const eligible =
+          direction === "left"
+            ? sameRow && center.x < currentCenter.x
+            : direction === "right"
+              ? sameRow && center.x > currentCenter.x
+              : direction === "up"
+                ? center.y < currentCenter.y
+                : center.y > currentCenter.y;
+        if (!eligible) return [];
+        return [
+          {
+            button,
+            crossDistance:
+              direction === "left" || direction === "right"
+                ? Math.abs(center.y - currentCenter.y)
+                : Math.abs(center.x - currentCenter.x),
+            primaryDistance:
+              direction === "left" || direction === "right"
+                ? Math.abs(center.x - currentCenter.x)
+                : Math.abs(center.y - currentCenter.y),
+          },
+        ];
+      });
+      candidates.sort(
+        (left, right) =>
+          left.primaryDistance - right.primaryDistance ||
+          left.crossDistance - right.crossDistance,
+      );
+      if (candidates[0]) {
+        focusTile(candidates[0].button.id);
+      } else if (direction === "up") {
+        setFocusedPageKey(effectiveSelectedPageKey);
+        tabRefs.current.get(effectiveSelectedPageKey)?.focus();
+      }
+    },
+    [effectiveSelectedPageKey, focusTile, selectedButtons],
   );
 
   const runButton = useCallback(
@@ -991,19 +1098,6 @@ export function DictionaryWindow() {
     return () => window.cancelAnimationFrame(frame);
   }, [searchQuery, selectedResultIndex]);
 
-  const moveSelectedButton = useCallback(
-    (offset: -1 | 1) => {
-      if (displayedButtons.length === 0) return;
-      const currentIndex = Math.max(
-        0,
-        displayedButtons.findIndex((button) => button.id === effectiveSelectedButtonId),
-      );
-      const nextIndex = (currentIndex + offset + displayedButtons.length) % displayedButtons.length;
-      setSelectedButtonId(displayedButtons[nextIndex]?.id ?? null);
-    },
-    [displayedButtons, effectiveSelectedButtonId],
-  );
-
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Escape" && cancelTilePointer()) {
@@ -1039,16 +1133,6 @@ export function DictionaryWindow() {
         }
         return;
       }
-      if (searchHasFocus && event.key === "ArrowDown") {
-        event.preventDefault();
-        moveSelectedButton(1);
-        return;
-      }
-      if (searchHasFocus && event.key === "ArrowUp") {
-        event.preventDefault();
-        moveSelectedButton(-1);
-        return;
-      }
       if (searchHasFocus && event.key === "Enter") {
         event.preventDefault();
         void runButton(selectedButton);
@@ -1071,7 +1155,6 @@ export function DictionaryWindow() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [
     hideWindow,
-    moveSelectedButton,
     runButton,
     searchQuery,
     selectPageByOffset,
@@ -1322,12 +1405,20 @@ export function DictionaryWindow() {
                     return;
                   }
                   setSelectedPageKey(tab.key);
+                  setFocusedPageKey(tab.key);
                   setSelectedButtonId(null);
                 }}
+                onFocus={() => setFocusedPageKey(tab.key)}
                 onKeyDown={(event) => {
                   if (customPage) {
                     parity.keyboardMenu(event, { kind: "page", page: customPage });
                     if (event.defaultPrevented) return;
+                  }
+                  if (event.key === "ArrowDown") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    focusTileFromTab(event.currentTarget);
+                    return;
                   }
                   let nextIndex: number | null = null;
                   if (event.key === "ArrowRight") nextIndex = index + 1;
@@ -1337,14 +1428,14 @@ export function DictionaryWindow() {
                   if (nextIndex === null) return;
                   event.preventDefault();
                   event.stopPropagation();
-                  selectPageAt(nextIndex, true);
+                  focusPageAt(nextIndex);
                 }}
                 ref={(node) => {
                   if (node) tabRefs.current.set(tab.key, node);
                   else tabRefs.current.delete(tab.key);
                 }}
                 role="tab"
-                tabIndex={selected ? 0 : -1}
+                tabIndex={effectiveFocusedPageKey === tab.key ? 0 : -1}
                 title={tab.name}
                 type="button"
               >
@@ -1522,6 +1613,7 @@ export function DictionaryWindow() {
                         ? "dictionaryTileItem dictionaryTileItem--placeholder"
                         : "dictionaryTileItem"
                     }
+                    data-dictionary-button-id={button.id}
                     key={button.id}
                     ref={(node) => {
                       if (node) tileItemRefs.current.set(button.id, node);
@@ -1544,7 +1636,24 @@ export function DictionaryWindow() {
                       onClick={(event) => clickTile(event, button)}
                       onContextMenu={(event) => parity.buttonMenu(event, button)}
                       onFocus={() => setSelectedButtonId(button.id)}
-                      onKeyDown={(event) => parity.keyboardMenu(event, { kind: "button", button })}
+                      onKeyDown={(event) => {
+                        parity.keyboardMenu(event, { kind: "button", button });
+                        if (event.defaultPrevented) return;
+                        const direction =
+                          event.key === "ArrowLeft"
+                            ? "left"
+                            : event.key === "ArrowRight"
+                              ? "right"
+                              : event.key === "ArrowUp"
+                                ? "up"
+                                : event.key === "ArrowDown"
+                                  ? "down"
+                                  : null;
+                        if (!direction) return;
+                        event.preventDefault();
+                        event.stopPropagation();
+                        moveTileFocus(button.id, direction);
+                      }}
                       onMouseEnter={() => setSelectedButtonId(button.id)}
                       onPointerDown={(event) => pressTile(event, button)}
                       tabIndex={selected ? 0 : -1}

@@ -338,26 +338,23 @@ body {
 }
 
 .dictionaryPageTab:focus-visible {
-  border-color: var(--accent-strong);
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
   color: var(--text);
 }
 
-.dictionaryPageTab--selected {
+.dictionaryPageTab--selected,
+.dictionaryPageTab--selected:hover,
+.dictionaryPageTab--selected:focus-visible {
   border-color: var(--accent);
   background: var(--dictionary-selected-bg);
   color: var(--text);
   box-shadow: inset 0 -2px 0 var(--accent);
 }
 
-.dictionaryPageTab--fixed.dictionaryPageTab--selected {
-  border-color: var(--line-soft);
-  background: var(--control-neutral-hover-bg);
-  box-shadow: none;
-}
-
-.dictionaryPageTab--fixed:focus-visible {
-  border-color: var(--line);
-  box-shadow: none;
+.dictionaryPageTab--selected:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
 }
 
 .dictionaryPageTab span,
@@ -654,8 +651,8 @@ body {
 }
 
 .dictionaryTile:focus-visible {
-  border-color: var(--accent-strong);
-  outline: none;
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
 }
 
 .dictionaryTile--selected {
@@ -4786,6 +4783,12 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .contextMenuDanger {
   color: #ffb4ad !important;
+}
+
+.contextMenuSeparatorBefore {
+  margin-top: 5px;
+  border-top: 1px solid var(--line-soft) !important;
+  border-radius: 0 0 6px 6px !important;
 }
 
 .contextMenu button.contextMenuDanger:hover:not(:disabled) {

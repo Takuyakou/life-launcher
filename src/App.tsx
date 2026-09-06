@@ -44,6 +44,7 @@ import {
   openConfigBackups,
   openDataFolder,
   reapplyDashboardSettings,
+  revealLauncherItem,
   resumeDashboardShortcuts,
   recordManualSession,
   recordSession,
@@ -83,6 +84,7 @@ import { ContextMenu, ContextMenuItem } from "./components/ContextMenu";
 import { HelpGuideDialog } from "./components/HelpGuideDialog";
 import { ProjectIdentity } from "./components/ProjectIdentity";
 import { PROJECT_COLOR_IDS, PROJECT_COLOR_LABELS, resolveProjectColorId } from "./projectIdentity";
+import { canRevealLauncherButton } from "./launcherReveal";
 import { TimerPanel } from "./components/TimerPanel";
 import { UiIcon } from "./components/UiIcon";
 import {
@@ -3360,6 +3362,17 @@ function DashboardApp() {
         showToast("error", `実行できません: ${message}`);
       } finally {
         setPendingActionId(null);
+      }
+    },
+    [showToast],
+  );
+
+  const revealButtonInExplorer = useCallback(
+    async (button: LauncherButton) => {
+      try {
+        await revealLauncherItem(button.id);
+      } catch {
+        showToast("error", "エクスプローラーで表示できませんでした");
       }
     },
     [showToast],
@@ -8772,8 +8785,16 @@ function DashboardApp() {
               >
                 編集
               </ContextMenuItem>
+              {canRevealLauncherButton(contextMenu.button) ? (
+                <ContextMenuItem
+                  onClick={() => void revealButtonInExplorer(contextMenu.button)}
+                  type="button"
+                >
+                  エクスプローラーで表示する
+                </ContextMenuItem>
+              ) : null}
               <ContextMenuItem
-                className="contextMenuDanger"
+                className="contextMenuDanger contextMenuSeparatorBefore"
                 onClick={() => deleteButton(contextMenu.button)}
                 type="button"
               >

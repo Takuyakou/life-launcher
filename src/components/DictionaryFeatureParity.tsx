@@ -4,6 +4,7 @@ import type { Dispatch, DragEvent, KeyboardEvent, MouseEvent, SetStateAction } f
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_BUTTON_GROUP, OVERLAY_PAGE_NAME_MAX_CHARS } from "../constants";
 import { moveIdToSlot, replaceVisibleOrder } from "../dictionaryTileReorder";
+import { canRevealLauncherButton } from "../launcherReveal";
 import {
   getButtonsForOverlayPage,
   OVERLAY_UNCLASSIFIED_PAGE_KEY,
@@ -13,6 +14,7 @@ import {
 import {
   deleteButtonIconCache,
   enableMainShellDrop,
+  revealLauncherItem,
   resolveDropItem,
   saveConfigAndNotifyDashboard,
 } from "../tauri";
@@ -750,6 +752,16 @@ export function useDictionaryFeatureParity({
       },
     });
   };
+  const revealButton = async (button: LauncherButton) => {
+    setMenu(null);
+    setError(null);
+    try {
+      await revealLauncherItem(button.id);
+      showStatus("エクスプローラーで表示しました");
+    } catch {
+      setError("エクスプローラーで表示できませんでした");
+    }
+  };
   const buttonMenu = (event: MouseEvent<HTMLElement>, button: LauncherButton) => {
     event.preventDefault();
     event.stopPropagation();
@@ -832,6 +844,8 @@ export function useDictionaryFeatureParity({
     pageMenu,
     pages,
     register,
+    revealButton,
+    canRevealButton: canRevealLauncherButton,
     reorderAnnouncement,
     reorderVisibleButtons,
     requestCloseButtonEdit,
