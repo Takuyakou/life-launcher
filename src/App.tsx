@@ -596,11 +596,9 @@ function writeStoredStringArray(key: string, values: string[]) {
 }
 
 function createStableId(): string {
-  return (
-    typeof crypto.randomUUID === "function"
-      ? crypto.randomUUID()
-      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
-  );
+  return typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
 
 function todaySourceKey(item: TodayItem, index: number): string {
@@ -1407,8 +1405,7 @@ function todayDropTargetFromPoint(
   const rect = rowElement.getBoundingClientRect();
   const sharesRow = rows.some(
     (candidate) =>
-      candidate !== rowElement &&
-      Math.abs(candidate.getBoundingClientRect().top - rect.top) < 2,
+      candidate !== rowElement && Math.abs(candidate.getBoundingClientRect().top - rect.top) < 2,
   );
   const placement = sharesRow
     ? x < rect.left + rect.width / 2
@@ -1821,8 +1818,7 @@ function DashboardApp() {
   const [sidebarPointerDrag, setSidebarPointerDrag] = useState<SidebarDragPreview | null>(null);
   const [sidebarGroupPointerDrag, setSidebarGroupPointerDrag] =
     useState<SidebarGroupDragPreview | null>(null);
-  const [todayPointerDrag, setTodayPointerDrag] =
-    useState<TodayDragPreview | null>(null);
+  const [todayPointerDrag, setTodayPointerDrag] = useState<TodayDragPreview | null>(null);
   const [projectPointerDrag, setProjectPointerDrag] = useState<ProjectDragPreview | null>(null);
   const [inboxPointerDrag, setInboxPointerDrag] = useState<InboxDragPreview | null>(null);
   const [miniTransitioning, setMiniTransitioning] = useState(false);
@@ -4223,8 +4219,7 @@ function DashboardApp() {
       height: drag.height,
       targetIndex: target?.index,
       placement: target?.placement,
-      targetIndicator:
-        target && target.index !== drag.index ? target.indicator : undefined,
+      targetIndicator: target && target.index !== drag.index ? target.indicator : undefined,
     });
   };
 
@@ -5584,9 +5579,7 @@ function DashboardApp() {
     }
     const matchingSourceKeys = new Set([candidate.sourceKey, ...(candidate.sourceAliases ?? [])]);
     if (
-      config.today.items.some((item, index) =>
-        matchingSourceKeys.has(todaySourceKey(item, index)),
-      )
+      config.today.items.some((item, index) => matchingSourceKeys.has(todaySourceKey(item, index)))
     ) {
       showToast("warn", "今日の3件に既にあります");
       return false;
@@ -5619,20 +5612,6 @@ function DashboardApp() {
     });
     if (saved) showToast("ok", "今日の3件に追加しました");
     return saved;
-  };
-
-  const moveInboxItemToToday = (index: number) => {
-    if (!config) return;
-    const item = config.inbox[index];
-    if (!item) return;
-    const project = item.projectId ? projectsById.get(item.projectId) : undefined;
-    const legacyKey = legacyWishlistSourceKey(item);
-    const includeLegacyAlias =
-      config.inbox.findIndex((candidate) => legacyWishlistSourceKey(candidate) === legacyKey) ===
-      index;
-    void addCandidateToToday(
-      wishlistTodayCandidate(item, index, project, config.settings, includeLegacyAlias),
-    );
   };
 
   const refreshInstructionChoices = async () => {
@@ -6089,11 +6068,14 @@ function DashboardApp() {
     ],
     5,
   );
-  const legacyWishlistFirstIndexes = config.inbox.reduce<Map<string, number>>((indexes, item, index) => {
-    const key = legacyWishlistSourceKey(item);
-    if (!indexes.has(key)) indexes.set(key, index);
-    return indexes;
-  }, new Map());
+  const legacyWishlistFirstIndexes = config.inbox.reduce<Map<string, number>>(
+    (indexes, item, index) => {
+      const key = legacyWishlistSourceKey(item);
+      if (!indexes.has(key)) indexes.set(key, index);
+      return indexes;
+    },
+    new Map(),
+  );
   const rawTodayBuilderCandidates: TodayBuilderCandidate[] = [
     ...config.projects.flatMap((project) => {
       const text = project.nextStep.trim();
@@ -6116,13 +6098,20 @@ function DashboardApp() {
     }),
   ];
   const todayBuilderCandidates = (() => {
+    const excludedSourceKeys = new Set(config.today.candidateExcludedSourceKeys);
+    const activeCandidates = rawTodayBuilderCandidates.filter(
+      (candidate) =>
+        ![candidate.sourceKey, ...(candidate.sourceAliases ?? [])].some((key) =>
+          excludedSourceKeys.has(key),
+        ),
+    );
     const savedOrder = readStoredStringArray(TODAY_BUILDER_ORDER_STORAGE_KEY);
     const order = new Map(savedOrder.map((key, index) => [key, index]));
     const orderIndex = (candidate: TodayBuilderCandidate) =>
       [candidate.key, ...(candidate.legacyOrderKeys ?? [])]
         .map((key) => order.get(key))
         .find((index) => index !== undefined);
-    return [...rawTodayBuilderCandidates].sort((left, right) => {
+    return [...activeCandidates].sort((left, right) => {
       const leftIndex = orderIndex(left);
       const rightIndex = orderIndex(right);
       if (leftIndex === undefined && rightIndex === undefined) return 0;
@@ -6140,6 +6129,40 @@ function DashboardApp() {
     (visibleTodayBuilderPage - 1) * TODAY_BUILDER_PAGE_SIZE,
     visibleTodayBuilderPage * TODAY_BUILDER_PAGE_SIZE,
   );
+  const isTodayBuilderCandidateActive = (candidate?: TodayBuilderCandidate) => {
+    if (!activeTimer || !candidate) return false;
+    const sourceKeys = [candidate.sourceKey, ...(candidate.sourceAliases ?? [])];
+    return (
+      (candidate.projectId !== undefined && activeTimer.sourceId === candidate.projectId) ||
+      sourceKeys.some((sourceKey) => activeTimer.sourceId === `today:${sourceKey}`)
+    );
+  };
+  const excludeTodayBuilderCandidate = async (index: number) => {
+    const candidate = todayBuilderCandidates[index];
+    if (!candidate) return;
+    if (isTodayBuilderCandidateActive(candidate)) {
+      setContextMenu(null);
+      showToast("warn", "タイマーを停止してから外してください");
+      return;
+    }
+    const matchingSourceKeys = new Set([candidate.sourceKey, ...(candidate.sourceAliases ?? [])]);
+    const saved = await persistConfig({
+      ...config,
+      today: {
+        ...config.today,
+        items: config.today.items.filter(
+          (item, todayIndex) => !matchingSourceKeys.has(todaySourceKey(item, todayIndex)),
+        ),
+        candidateExcludedSourceKeys: Array.from(
+          new Set([...config.today.candidateExcludedSourceKeys, candidate.sourceKey]),
+        ),
+      },
+    });
+    if (saved) {
+      setContextMenu(null);
+      showToast("ok", "今日の候補から外しました");
+    }
+  };
   const allTodayItemsCompleted =
     config.today.items.length === TODAY_ITEM_LIMIT && config.today.items.every((item) => item.done);
   const todayActivityCount =
@@ -7766,9 +7789,7 @@ function DashboardApp() {
                           .join(" ")}
                         data-today-index={index}
                         data-project-color={
-                          project
-                            ? resolveProjectColorId(project.id, project.colorId)
-                            : undefined
+                          project ? resolveProjectColorId(project.id, project.colorId) : undefined
                         }
                         key={todaySourceKey(item, index)}
                         onContextMenu={(event) => {
@@ -8047,7 +8068,6 @@ function DashboardApp() {
                     <span>まだやりたいときだけ、次の枠を作れます。</span>
                   </div>
                 )}
-
               </section>
 
               <section className="todayBuilderBand">
@@ -8072,9 +8092,7 @@ function DashboardApp() {
                   <div className="todayBuilderBody">
                     {todayBuilderCandidates.length === 0 ? (
                       <div className="sectionEmptyActions sectionEmptyActions--sources">
-                        <span>
-                          候補はまだありません。次の一手か、やりたいことを登録できます。
-                        </span>
+                        <span>候補はまだありません。次の一手か、やりたいことを登録できます。</span>
                         <div>
                           <button onClick={() => focusCandidateSource("project")} type="button">
                             次の一手へ
@@ -8097,56 +8115,79 @@ function DashboardApp() {
                         );
                         const isFull = config.today.items.length >= TODAY_ITEM_LIMIT;
                         return (
-                          <div
-                            className={
-                              todayBuilderPointerDrag?.index === index
-                                ? "todayBuilderRow todayBuilderRow--dragging"
-                                : "todayBuilderRow"
-                            }
-                            data-today-builder-index={index}
-                            key={candidate.key}
-                            onContextMenu={(event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              openContextMenu(
-                                { kind: "todayBuilder", index },
-                                event.clientX,
-                                event.clientY,
-                                event.currentTarget,
-                              );
-                            }}
-                            onKeyDown={(event) =>
-                              openContextMenuFromKeyboard(event, {
-                                kind: "todayBuilder",
-                                index,
-                              })
-                            }
-                            onPointerCancel={cancelTodayBuilderPointerDrag}
-                            onPointerDown={(event) => startTodayBuilderPointerDrag(event, index)}
-                            onPointerMove={updateTodayBuilderPointerDrag}
-                            onPointerUp={finishTodayBuilderPointerDrag}
-                            tabIndex={0}
-                          >
-                            <div>
-                              <span className="todayBuilderSource">{candidate.source}</span>
-                              <strong>{candidate.text}</strong>
-                            </div>
-                            <div className="todayBuilderActions">
-                              <button
-                                className="moveTodayButton todayBuilderAddButton"
-                                disabled={isSelected || isFull}
-                                onClick={() => void addCandidateToToday(candidate)}
-                                title={
-                                  isSelected
-                                    ? "今日に選択済み"
-                                    : isFull
-                                      ? "いま選べるのは3件までです"
-                                      : "今日へ"
-                                }
-                                type="button"
-                              >
-                                {isSelected ? "選択済み" : "今日へ"}
-                              </button>
+                          <div className="todayBuilderCandidate" key={candidate.key}>
+                            {(pageIndex === 0 ||
+                              visibleTodayBuilderCandidates[pageIndex - 1]?.source !==
+                                candidate.source) && (
+                              <div className="todayBuilderGroupHeading">
+                                <strong>{candidate.source}</strong>
+                                <span>
+                                  {
+                                    visibleTodayBuilderCandidates.filter(
+                                      (item) => item.source === candidate.source,
+                                    ).length
+                                  }
+                                  件
+                                </span>
+                              </div>
+                            )}
+                            <div
+                              className={
+                                todayBuilderPointerDrag?.index === index
+                                  ? "todayBuilderRow todayBuilderRow--dragging"
+                                  : "todayBuilderRow"
+                              }
+                              data-today-builder-index={index}
+                              onContextMenu={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                openContextMenu(
+                                  { kind: "todayBuilder", index },
+                                  event.clientX,
+                                  event.clientY,
+                                  event.currentTarget,
+                                );
+                              }}
+                              onKeyDown={(event) =>
+                                openContextMenuFromKeyboard(event, {
+                                  kind: "todayBuilder",
+                                  index,
+                                })
+                              }
+                              onPointerCancel={cancelTodayBuilderPointerDrag}
+                              onPointerDown={(event) => startTodayBuilderPointerDrag(event, index)}
+                              onPointerMove={updateTodayBuilderPointerDrag}
+                              onPointerUp={finishTodayBuilderPointerDrag}
+                              tabIndex={0}
+                            >
+                              <div>
+                                {candidate.projectId && projectsById.has(candidate.projectId) && (
+                                  <ProjectIdentity
+                                    colorId={projectsById.get(candidate.projectId)?.colorId}
+                                    compact
+                                    name={projectsById.get(candidate.projectId)?.name ?? ""}
+                                    projectId={candidate.projectId}
+                                  />
+                                )}
+                                <strong>{candidate.text}</strong>
+                              </div>
+                              <div className="todayBuilderActions">
+                                <button
+                                  className="moveTodayButton todayBuilderAddButton"
+                                  disabled={isSelected || isFull}
+                                  onClick={() => void addCandidateToToday(candidate)}
+                                  title={
+                                    isSelected
+                                      ? "今日に選択済み"
+                                      : isFull
+                                        ? "いま選べるのは3件までです"
+                                        : "今日へ"
+                                  }
+                                  type="button"
+                                >
+                                  {isSelected ? "選択済み" : "今日へ"}
+                                </button>
+                              </div>
                             </div>
                           </div>
                         );
@@ -8318,19 +8359,6 @@ function DashboardApp() {
                                 {project.nextStep.trim() || "次の一手を書く"}
                               </p>
                             </div>
-                            <button
-                              className="moveTodayButton nextStepTodayButton"
-                              disabled={!project.nextStep.trim()}
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                void addCandidateToToday(projectTodayCandidate(project, config.settings));
-                              }}
-                              onPointerDown={(event) => event.stopPropagation()}
-                              title="今日へ"
-                              type="button"
-                            >
-                              今日へ
-                            </button>
                           </article>
                         );
                       })}
@@ -8457,15 +8485,6 @@ function DashboardApp() {
                             )}
                             <span className="inboxItemText">{item.text}</span>
                           </span>
-                          <button
-                            className="moveTodayButton"
-                            onClick={() => moveInboxItemToToday(index)}
-                            onPointerDown={(event) => event.stopPropagation()}
-                            title="今日へ"
-                            type="button"
-                          >
-                            今日へ
-                          </button>
                         </div>
                       ))}
                     </div>
@@ -8715,6 +8734,18 @@ function DashboardApp() {
                 type="button"
               >
                 下へ移動
+              </ContextMenuItem>
+              <ContextMenuItem
+                disabled={isTodayBuilderCandidateActive(todayBuilderCandidates[contextMenu.index])}
+                onClick={() => void excludeTodayBuilderCandidate(contextMenu.index)}
+                title={
+                  isTodayBuilderCandidateActive(todayBuilderCandidates[contextMenu.index])
+                    ? "タイマーを停止してから外してください"
+                    : undefined
+                }
+                type="button"
+              >
+                今日の候補から外す
               </ContextMenuItem>
             </>
           ) : contextMenu.kind === "inbox" ? (
@@ -10298,9 +10329,7 @@ function DashboardApp() {
                 <span>やりたいこと</span>
                 <input
                   aria-describedby={
-                    inboxAddError
-                      ? "wishlist-add-hint wishlist-add-error"
-                      : "wishlist-add-hint"
+                    inboxAddError ? "wishlist-add-hint wishlist-add-error" : "wishlist-add-hint"
                   }
                   aria-invalid={Boolean(inboxAddError)}
                   autoFocus

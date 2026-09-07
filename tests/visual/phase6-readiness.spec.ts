@@ -96,7 +96,9 @@ test("Main responsibilities keep timer starts in Do Now and Today3 only", async 
 });
 
 for (const activeCount of [0, 1, 2, 3]) {
-  test(`Today3 active count ${activeCount} renders with the intended selection path`, async ({ page }) => {
+  test(`Today3 active count ${activeCount} renders with the intended selection path`, async ({
+    page,
+  }) => {
     await prepare(page, withTodayState(activeCount));
     await expect(page.locator(".todayRow")).toHaveCount(activeCount);
     await expect(page.getByRole("button", { name: "今日の3件に追加" })).toHaveCount(0);
@@ -105,7 +107,10 @@ for (const activeCount of [0, 1, 2, 3]) {
       await expect(candidateLink).toBeVisible();
       await candidateLink.click();
       await expect(page.locator(".todayBuilderDisclosure")).toBeFocused();
-      await expect(page.locator(".todayBuilderDisclosure")).toHaveAttribute("aria-expanded", "true");
+      await expect(page.locator(".todayBuilderDisclosure")).toHaveAttribute(
+        "aria-expanded",
+        "true",
+      );
     } else {
       await expect(candidateLink).toHaveCount(0);
     }
@@ -192,8 +197,7 @@ test("manual next batch accepts one, two, and three new items but no fourth", as
   await expect(fourth).toHaveAttribute("title", "いま選べるのは3件までです");
 
   await page.locator(".inboxBand .disclosure").click();
-  await page.locator(".inboxRow .moveTodayButton").nth(1).click();
-  await expect(page.locator(".toast").last()).toContainText("3件まで");
+  await expect(page.locator(".inboxRow .moveTodayButton")).toHaveCount(0);
   expect((await currentConfig(page)).today.items).toHaveLength(3);
 });
 
@@ -211,7 +215,9 @@ for (const count of [0, 1, 5, 6, 10, 11]) {
   });
 }
 
-test("Today Builder drag persists only on drop and rerenders the stable order", async ({ page }) => {
+test("Today Builder drag persists only on drop and rerenders the stable order", async ({
+  page,
+}) => {
   await prepare(page, withBuilderCount(6));
   await page.locator(".todayBuilderDisclosure").click();
   const rows = page.locator(".todayBuilderRow");
@@ -249,9 +255,7 @@ test("Today Builder drag persists only on drop and rerenders the stable order", 
   await expect(page.locator(".todayBuilderRow").nth(2)).toContainText("候補 01");
 });
 
-test("Today Builder clamps when a source item disappears", async ({
-  page,
-}) => {
+test("Today Builder clamps when a source item disappears", async ({ page }) => {
   await prepare(page, withBuilderCount(11));
   await page.locator(".todayBuilderDisclosure").click();
   await page.getByRole("button", { name: "次のページ" }).click();
@@ -299,7 +303,9 @@ test("registration stays in source sections and persists after reload", async ({
   await expect(page.getByRole("button", { name: "今日の3件に追加" })).toHaveCount(0);
   await page.getByRole("button", { name: "今日の候補を見る" }).click();
   await expect(page.locator(".todayBuilderDisclosure")).toBeFocused();
-  await expect(page.getByRole("button", { name: "今日を組み立てるに次の一手を追加" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "今日を組み立てるに次の一手を追加" })).toHaveCount(
+    0,
+  );
   await expect(page.locator(".todayBuilderDestination")).toHaveCount(0);
 
   const projects = page.locator(".projectsBand");
@@ -334,9 +340,8 @@ test("registration stays in source sections and persists after reload", async ({
     (await currentConfig(page)).inbox.some((item) => item.text === "再起動後も残るやりたいこと"),
   ).toBe(true);
   expect(
-    (await currentConfig(page)).inbox.find(
-      (item) => item.text === "再起動後も残るやりたいこと",
-    )?.id,
+    (await currentConfig(page)).inbox.find((item) => item.text === "再起動後も残るやりたいこと")
+      ?.id,
   ).toBeTruthy();
   expect((await currentConfig(page)).today.items).toEqual([]);
 });

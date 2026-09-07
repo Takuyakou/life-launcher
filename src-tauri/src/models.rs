@@ -106,6 +106,8 @@ pub struct Today {
     pub victory: TodayVictory,
     #[serde(default)]
     pub items: Vec<TodayItem>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub candidate_excluded_source_keys: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -647,6 +649,7 @@ pub fn initial_config() -> AppConfig {
             date: today_date(DEFAULT_DAY_START_HOUR),
             victory: TodayVictory::default(),
             items: Vec::new(),
+            candidate_excluded_source_keys: Vec::new(),
         },
         inbox: Vec::new(),
         settings: default_settings(),
@@ -743,6 +746,7 @@ pub fn sample_config() -> AppConfig {
         today: Today {
             date: today_date(DEFAULT_DAY_START_HOUR),
             victory: TodayVictory::default(),
+            candidate_excluded_source_keys: Vec::new(),
             items: vec![
                 TodayItem {
                     text: "最初の一手を決める".to_string(),

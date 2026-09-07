@@ -181,6 +181,7 @@ export const AppConfigSchema = z
       date: z.string(),
       victory: TodayVictorySchema,
       items: z.array(TodayItemSchema),
+      candidateExcludedSourceKeys: z.array(z.string()).default([]),
     }),
     inbox: z.array(InboxItemSchema),
     settings: SettingsSchema,

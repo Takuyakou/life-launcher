@@ -1259,6 +1259,7 @@ fn sanitize_config(mut config: AppConfig) -> (AppConfig, bool, Vec<String>) {
         config.today.date = today;
         config.today.items.clear();
         config.today.victory = TodayVictory::default();
+        config.today.candidate_excluded_source_keys.clear();
         changed = true;
     }
 
@@ -1268,6 +1269,20 @@ fn sanitize_config(mut config: AppConfig) -> (AppConfig, bool, Vec<String>) {
         config.today.items.truncate(TODAY_ITEM_LIMIT);
         changed = true;
         warnings.push("today.items: truncated to 3".to_string());
+    }
+    let mut seen_excluded_sources = std::collections::HashSet::new();
+    let normalized_excluded_sources: Vec<String> = config
+        .today
+        .candidate_excluded_source_keys
+        .iter()
+        .map(|key| key.trim())
+        .filter(|key| !key.is_empty())
+        .filter(|key| seen_excluded_sources.insert((*key).to_string()))
+        .map(str::to_string)
+        .collect();
+    if normalized_excluded_sources != config.today.candidate_excluded_source_keys {
+        config.today.candidate_excluded_source_keys = normalized_excluded_sources;
+        changed = true;
     }
     normalize_today_item_triggers(&mut config.today.items, &mut changed, &mut warnings);
 
@@ -3551,6 +3566,43 @@ mod tests {
             std::env::remove_var("APPDATA");
         }
         let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn today_candidate_exclusions_are_backward_compatible_and_normalized() {
+        let mut value = serde_json::to_value(sample_config()).expect("serialize sample config");
+        value
+            .get_mut("today")
+            .and_then(serde_json::Value::as_object_mut)
+            .expect("today object")
+            .remove("candidateExcludedSourceKeys");
+        let legacy: AppConfig = serde_json::from_value(value).expect("legacy config parses");
+        assert!(legacy.today.candidate_excluded_source_keys.is_empty());
+
+        let mut config = legacy;
+        config.today.candidate_excluded_source_keys = vec![
+            " project:compose ".to_string(),
+            "".to_string(),
+            "project:compose".to_string(),
+            "wishlist:item-1".to_string(),
+        ];
+        let (config, changed, _) = sanitize_config(config);
+        assert!(changed);
+        assert_eq!(
+            config.today.candidate_excluded_source_keys,
+            vec!["project:compose".to_string(), "wishlist:item-1".to_string()]
+        );
+    }
+
+    #[test]
+    fn today_candidate_exclusions_reset_with_the_today_boundary() {
+        let mut config = sample_config();
+        config.today.date = "2000-01-01".to_string();
+        config.today.candidate_excluded_source_keys = vec!["project:compose".to_string()];
+
+        let (config, changed, _) = sanitize_config(config);
+        assert!(changed);
+        assert!(config.today.candidate_excluded_source_keys.is_empty());
     }
 
     #[test]
