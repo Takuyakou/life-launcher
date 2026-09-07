@@ -149,7 +149,8 @@ export function ConfirmDialog({
         <div className="confirmDialogHeader">
           <h2 id={titleId}>{title}</h2>
           <button
-            aria-label="確認を閉じる" title="閉じる"
+            aria-label="確認を閉じる"
+            title="閉じる"
             className="confirmDialogClose"
             disabled={processing}
             onClick={onCancel}
@@ -171,15 +172,6 @@ export function ConfirmDialog({
 
         <div className="dialogActions confirmDialogActions">
           <button
-            className="secondaryButton settingsButton--neutral"
-            disabled={processing}
-            onClick={onCancel}
-            ref={cancelRef}
-            type="button"
-          >
-            {cancelLabel}
-          </button>
-          <button
             className={`confirmDialogButton confirmDialogButton--${tone}`}
             disabled={processing}
             onClick={() => void runConfirm()}
@@ -187,6 +179,15 @@ export function ConfirmDialog({
             type="button"
           >
             {processing ? processingLabel : confirmLabel}
+          </button>
+          <button
+            className="secondaryButton settingsButton--neutral"
+            disabled={processing}
+            onClick={onCancel}
+            ref={cancelRef}
+            type="button"
+          >
+            {cancelLabel}
           </button>
         </div>
       </section>

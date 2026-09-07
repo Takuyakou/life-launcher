@@ -8,7 +8,7 @@ import {
   disable as disableAutostart,
   enable as enableAutostart,
 } from "@tauri-apps/plugin-autostart";
-import type { DragEvent, KeyboardEvent, PointerEvent } from "react";
+import type { DragEvent, KeyboardEvent, MouseEvent as ReactMouseEvent, PointerEvent } from "react";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DEFAULT_BUTTON_GROUP,
@@ -617,6 +617,12 @@ function wishlistSourceKey(item: InboxItem, index: number): string {
 
 function legacyWishlistSourceKey(item: InboxItem): string {
   return `wishlist:${item.projectId ?? "none"}:${item.text.trim()}`;
+}
+
+function toggleDisclosureFromBar(event: ReactMouseEvent<HTMLElement>, toggle: () => void) {
+  const target = event.target;
+  if (target instanceof Element && target.closest("button, a, input, select, textarea")) return;
+  toggle();
 }
 
 function projectTodayCandidate(
@@ -8235,7 +8241,10 @@ function DashboardApp() {
               </section>
 
               <section className="todayBuilderBand">
-                <div className="disclosureHeader todayBuilderHeader">
+                <div
+                  className="disclosureHeader todayBuilderHeader"
+                  onClick={(event) => toggleDisclosureFromBar(event, toggleTodayBuilder)}
+                >
                   <button
                     aria-expanded={todayBuilderOpen}
                     className="disclosure todayBuilderDisclosure"
@@ -8427,6 +8436,9 @@ function DashboardApp() {
               >
                 <div
                   className="disclosureHeader"
+                  onClick={(event) =>
+                    toggleDisclosureFromBar(event, () => setProjectsOpen((open) => !open))
+                  }
                   onContextMenu={(event) => {
                     event.preventDefault();
                     openContextMenu(
@@ -8568,7 +8580,13 @@ function DashboardApp() {
               </section>
 
               <section className="inboxBand">
-                <div className="disclosureHeader" data-inbox-header>
+                <div
+                  className="disclosureHeader"
+                  data-inbox-header
+                  onClick={(event) =>
+                    toggleDisclosureFromBar(event, () => setInboxOpen((open) => !open))
+                  }
+                >
                   <button
                     aria-expanded={inboxOpen}
                     className="disclosure"
@@ -8678,7 +8696,12 @@ function DashboardApp() {
               </section>
 
               <section className="todayActivityBand">
-                <div className="disclosureHeader">
+                <div
+                  className="disclosureHeader"
+                  onClick={(event) =>
+                    toggleDisclosureFromBar(event, () => setTodayActivityOpen((open) => !open))
+                  }
+                >
                   <button
                     aria-expanded={todayActivityOpen}
                     className="disclosure"
@@ -8968,6 +8991,28 @@ function DashboardApp() {
             </>
           ) : contextMenu.kind === "project" ? (
             <>
+              <ContextMenuItem
+                disabled={
+                  !contextMenu.project.nextStep.trim() ||
+                  (config?.today.items.length ?? TODAY_ITEM_LIMIT) >= TODAY_ITEM_LIMIT ||
+                  Boolean(
+                    config?.today.items.some(
+                      (item, index) =>
+                        todaySourceKey(item, index) === `project:${contextMenu.project.id}`,
+                    ),
+                  )
+                }
+                onClick={() => {
+                  setContextMenu(null);
+                  if (!config) return;
+                  void addCandidateToToday(
+                    projectTodayCandidate(contextMenu.project, config.settings),
+                  );
+                }}
+                type="button"
+              >
+                今日へ
+              </ContextMenuItem>
               <ContextMenuItem
                 disabled={
                   config?.projects.findIndex((project) => project.id === contextMenu.project.id) ===

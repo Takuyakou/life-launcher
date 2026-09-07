@@ -7055,6 +7055,7 @@ input[type="number"]::-webkit-inner-spin-button {
   border-radius: var(--radius);
   padding-right: 6px;
   background: transparent;
+  cursor: pointer;
 }
 
 .disclosureHeader .disclosure {
@@ -7062,7 +7063,7 @@ input[type="number"]::-webkit-inner-spin-button {
   border-radius: 0;
 }
 
-.disclosureHeader:has(.disclosure:hover),
+.disclosureHeader:hover,
 .disclosureHeader:has(.disclosure:focus-visible) {
   border-color: var(--muted);
   background: var(--control-neutral-hover-bg);
