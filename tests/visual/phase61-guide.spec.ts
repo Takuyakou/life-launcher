@@ -40,19 +40,26 @@ test("Guide states the current registration, selection, and completion flow", as
   await prepare(page);
   const dialog = await openGuide(page);
 
-  await expect(dialog).toContainText("自分で選ぶときは「今日を組み立てる」で候補の「今日へ」を押し");
+  await expect(dialog).toContainText(
+    "自分で選ぶときは「今日を組み立てる」で候補の「今日へ」を押し",
+  );
 
   const today = dialog.locator('[data-help-section-id="today"]');
   await expect(today).toContainText("プロジェクトの次の一手とやりたいことだけを5件ずつ表示");
-  await expect(today).toContainText("新規登録、送付先の選択、候補の削除を行いません");
+  await expect(today).toContainText("新規登録や送付先の選択を行いません");
+  await expect(today).toContainText("今日の候補から外す");
   await expect(today).toContainText("元の次の一手ややりたいことは残ります");
   await expect(today).toContainText("小型ダイアログで追加します");
   await expect(today).toContainText("タイマー満了後に「終わる」で確定した項目だけ完了");
   await expect(today).toContainText("次の3件を選ぶ");
 
   const projects = dialog.locator('[data-help-section-id="projects"]');
-  await expect(projects).toContainText("「プロジェクトを追加」ではプロジェクトと最初の次の一手を登録");
-  await expect(projects).toContainText("次の一手の一覧にはタイマー開始ボタンを置きません");
+  await expect(projects).toContainText(
+    "「プロジェクトを追加」ではプロジェクトと最初の次の一手を登録",
+  );
+  await expect(projects).toContainText(
+    "次の一手の一覧にはタイマー開始ボタンや「今日へ」を置きません",
+  );
 
   const timer = dialog.locator('[data-help-section-id="timer"]');
   await expect(timer).toContainText("続ける(+15分)");
@@ -117,7 +124,9 @@ test("Guide remains bounded at 860px and exposes the collapsed contents below 76
   expect(box!.x + box!.width).toBeLessThanOrEqual(860);
   expect(box!.y + box!.height).toBeLessThanOrEqual(700);
   expect(
-    await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+    ),
   ).toBe(true);
   await dialog.screenshot({ path: resolve(SCREENSHOT_DIR, "p61-03-guide-860.png") });
 
@@ -129,6 +138,8 @@ test("Guide remains bounded at 860px and exposes the collapsed contents below 76
   await toggle.click();
   await expect(dialog.getByRole("navigation", { name: "使い方の目次" })).toBeVisible();
   await expect(
-    page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
+    page.evaluate(
+      () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+    ),
   ).resolves.toBe(true);
 });

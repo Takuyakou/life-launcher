@@ -23,6 +23,7 @@ export type VisualQaFixture = {
     reason: "noToday" | "oldestToday" | "manualOrder";
     restartEligible: boolean;
   }>;
+  staleProjectIds?: string[];
 };
 
 const INSTRUCTION_ROOT = "C:\\PublicDemo\\Instructions";

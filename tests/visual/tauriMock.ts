@@ -167,7 +167,7 @@ export async function installTauriMock(
               case "load_do_now_candidates":
                 return { date: fixture.config.today.date, candidates: fixture.doNowCandidates };
               case "load_next_step_freshness":
-                return { staleProjectIds: [] };
+                return { staleProjectIds: fixture.staleProjectIds ?? [] };
               case "load_today_notes":
                 return { date: fixture.config.today.date, items: currentNotes, path: paths.notes };
               case "save_today_notes":

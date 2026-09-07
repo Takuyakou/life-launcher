@@ -11,8 +11,8 @@
     "rustUnitTests": 95,
     "capabilityContractTests": 2
   },
-  "currentStage": "P62-03",
-  "latestReport": "docs/phase6.2/workreports/p62-03-report.md",
+  "currentStage": "P62-04",
+  "latestReport": "docs/phase6.2/workreports/p62-04-report.md",
   "stages": {
     "P62-00": {
       "status": "MERGED",
@@ -39,17 +39,21 @@
       "mergeCommit": "249c122d38a404b2af8fe000c17ca8e357f81fa2"
     },
     "P62-03": {
-      "status": "COMPLETE_APPROVED_FOR_CONTINUATION",
+      "status": "MERGED",
       "approved": true,
       "branch": "feat/p62-03-quick-picker",
-      "implementationCommit": "03fa299659bba7a0bc0d1e7d320e291d6c68b15a"
+      "implementationCommit": "03fa299659bba7a0bc0d1e7d320e291d6c68b15a",
+      "pr": 20,
+      "mergeCommit": "ccf2e9374c08889f646c67847d4905e8d641c733"
     },
     "P62-04": {
-      "status": "READY_UNDER_USER_APPROVAL",
-      "approved": true
+      "status": "COMPLETE_APPROVED_FOR_CONTINUATION",
+      "approved": true,
+      "branch": "docs/p62-04-records-guide-sync",
+      "implementationCommit": "b4f3c3ad88cce7e4aeb9da7c20ec82c32fa28209"
     },
     "P62-05": {
-      "status": "BLOCKED_BY_P62-04",
+      "status": "READY_UNDER_USER_APPROVAL",
       "approved": true
     },
     "P62-06": {
@@ -61,7 +65,7 @@
     "publicCheck": "PASS",
     "lint": "PASS",
     "build": "PASS",
-    "visual": "PASS_90_OF_90",
+    "visual": "PASS_94_OF_94",
     "rustFmt": "PASS",
     "rustCheck": "PASS",
     "rustClippy": "PASS",
