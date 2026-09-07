@@ -4167,15 +4167,35 @@ input[type="number"]::-webkit-inner-spin-button {
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
+.todayBuilderCandidate {
+  display: contents;
+}
+
+.todayBuilderGroupHeading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 8px 2px;
+  color: var(--text-muted-readable);
+  font-size: var(--dashboard-font-meta);
+}
+
+.todayBuilderGroupHeading > strong {
+  color: var(--text);
+  font-size: var(--dashboard-font-body);
+}
+
 .todayBuilderRow {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 10px;
-  background: var(--surface);
+  gap: 10px;
+  min-height: 38px;
+  border: 0;
+  border-bottom: 1px solid var(--line-soft);
+  border-radius: 0;
+  padding: 5px 8px;
+  background: transparent;
   cursor: grab;
   touch-action: none;
   user-select: none;
@@ -4194,8 +4214,9 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .todayBuilderRow > div:first-child {
   min-width: 0;
-  display: grid;
-  gap: 3px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .todayBuilderRow strong {
@@ -6787,11 +6808,11 @@ input[type="number"]::-webkit-inner-spin-button {
 .todayBuilderRow {
   gap: 10px;
   border-color: var(--line-soft);
-  padding: 8px 10px;
+  padding: 5px 8px;
 }
 
 .todayBuilderRow > div:first-child {
-  gap: 2px;
+  gap: 8px;
 }
 
 .todayBuilderSource {
@@ -7246,7 +7267,6 @@ input[type="number"]::-webkit-inner-spin-button {
   -webkit-line-clamp: 2;
 }
 
-
 .projectDropIndicator,
 .inboxDropIndicator,
 .todayBuilderDropIndicator,
@@ -7580,7 +7600,6 @@ input[type="number"]::-webkit-inner-spin-button {
   border-bottom: 1px solid var(--line-soft);
   padding: 8px 10px;
 }
-
 
 .nextStepRow .projectCopy p {
   min-width: 0;
