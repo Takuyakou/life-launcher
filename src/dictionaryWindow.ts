@@ -2,7 +2,12 @@ import { invoke } from "@tauri-apps/api/core";
 import { PhysicalPosition, PhysicalSize } from "@tauri-apps/api/dpi";
 import { emit, emitTo, listen } from "@tauri-apps/api/event";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { availableMonitors, primaryMonitor, type Monitor } from "@tauri-apps/api/window";
+import {
+  availableMonitors,
+  currentMonitor,
+  primaryMonitor,
+  type Monitor,
+} from "@tauri-apps/api/window";
 
 export const DICTIONARY_WINDOW_LABEL = "dictionary";
 export const DICTIONARY_READY_EVENT = "dictionary-ready";
@@ -25,7 +30,7 @@ function dictionaryUrl(): string {
   return "/?view=dictionary";
 }
 
-function monitorBounds(monitor: Monitor) {
+function monitorBounds(monitor: Pick<Monitor, "workArea">) {
   return {
     left: monitor.workArea.position.x,
     top: monitor.workArea.position.y,
@@ -34,10 +39,54 @@ function monitorBounds(monitor: Monitor) {
   };
 }
 
+type WindowGeometry = {
+  position: { x: number; y: number };
+  size: { width: number; height: number };
+};
+
+export function resolveDictionaryWindowGeometry(
+  position: WindowGeometry["position"],
+  size: WindowGeometry["size"],
+  monitor: Pick<Monitor, "workArea">,
+): WindowGeometry {
+  const bounds = monitorBounds(monitor);
+  const availableWidth = Math.max(1, bounds.right - bounds.left - SAFE_MARGIN * 2);
+  const availableHeight = Math.max(1, bounds.bottom - bounds.top - SAFE_MARGIN * 2);
+  const width = Math.min(size.width, availableWidth);
+  const height = Math.min(size.height, availableHeight);
+  const minX = bounds.left + SAFE_MARGIN;
+  const minY = bounds.top + SAFE_MARGIN;
+  const maxX = Math.max(minX, bounds.right - width - SAFE_MARGIN);
+  const maxY = Math.max(minY, bounds.bottom - height - SAFE_MARGIN);
+  const centerX = position.x + size.width / 2;
+  const centerY = position.y + size.height / 2;
+  const isCenteredOnTarget =
+    centerX >= bounds.left &&
+    centerX < bounds.right &&
+    centerY >= bounds.top &&
+    centerY < bounds.bottom;
+
+  return {
+    position: {
+      x: isCenteredOnTarget
+        ? Math.min(Math.max(position.x, minX), maxX)
+        : Math.round(minX + (maxX - minX) / 2),
+      y: isCenteredOnTarget
+        ? Math.min(Math.max(position.y, minY), maxY)
+        : Math.round(minY + (maxY - minY) / 2),
+    },
+    size: { width, height },
+  };
+}
+
 async function placeDictionaryWindowSafely(dictionaryWindow: WebviewWindow) {
-  const monitors = await availableMonitors();
-  const fallbackMonitor = (await primaryMonitor()) ?? monitors[0];
-  if (!fallbackMonitor) return;
+  const [monitors, ownerMonitor, fallbackMonitor] = await Promise.all([
+    availableMonitors(),
+    currentMonitor().catch(() => null),
+    primaryMonitor().catch(() => null),
+  ]);
+  const targetMonitor = ownerMonitor ?? fallbackMonitor ?? monitors[0];
+  if (!targetMonitor) return;
 
   const [position, size] = await Promise.all([
     dictionaryWindow.outerPosition().catch(() => null),
@@ -45,32 +94,16 @@ async function placeDictionaryWindowSafely(dictionaryWindow: WebviewWindow) {
   ]);
   if (!position || !size) return;
 
-  const currentMonitor = monitors.find((monitor) => {
-    const bounds = monitorBounds(monitor);
-    return (
-      position.x < bounds.right &&
-      position.x + size.width > bounds.left &&
-      position.y < bounds.bottom &&
-      position.y + size.height > bounds.top
-    );
-  });
-  const monitor = currentMonitor ?? fallbackMonitor;
-  const bounds = monitorBounds(monitor);
-  const availableWidth = Math.max(1, bounds.right - bounds.left - SAFE_MARGIN * 2);
-  const availableHeight = Math.max(1, bounds.bottom - bounds.top - SAFE_MARGIN * 2);
-  const width = Math.min(size.width, availableWidth);
-  const height = Math.min(size.height, availableHeight);
+  const geometry = resolveDictionaryWindowGeometry(position, size, targetMonitor);
 
-  if (width !== size.width || height !== size.height) {
-    await dictionaryWindow.setSize(new PhysicalSize(width, height));
+  if (geometry.size.width !== size.width || geometry.size.height !== size.height) {
+    await dictionaryWindow.setSize(new PhysicalSize(geometry.size.width, geometry.size.height));
   }
 
-  const maxX = Math.max(bounds.left + SAFE_MARGIN, bounds.right - width - SAFE_MARGIN);
-  const maxY = Math.max(bounds.top + SAFE_MARGIN, bounds.bottom - height - SAFE_MARGIN);
-  const x = Math.min(Math.max(position.x, bounds.left + SAFE_MARGIN), maxX);
-  const y = Math.min(Math.max(position.y, bounds.top + SAFE_MARGIN), maxY);
-  if (x !== position.x || y !== position.y || !currentMonitor) {
-    await dictionaryWindow.setPosition(new PhysicalPosition(Math.round(x), Math.round(y)));
+  if (geometry.position.x !== position.x || geometry.position.y !== position.y) {
+    await dictionaryWindow.setPosition(
+      new PhysicalPosition(geometry.position.x, geometry.position.y),
+    );
   }
 }
 
@@ -105,12 +138,16 @@ function waitForWindowCreated(dictionaryWindow: WebviewWindow): Promise<void> {
       callback();
     };
 
-    void dictionaryWindow.once("tauri://created", () => finish(resolve)).catch((error) => {
-      finish(() => reject(error));
-    });
+    void dictionaryWindow
+      .once("tauri://created", () => finish(resolve))
+      .catch((error) => {
+        finish(() => reject(error));
+      });
     void dictionaryWindow
       .once<unknown>("tauri://error", (event) => {
-        finish(() => reject(new Error(String(event.payload ?? "Failed to create Dictionary window."))));
+        finish(() =>
+          reject(new Error(String(event.payload ?? "Failed to create Dictionary window."))),
+        );
       })
       .catch((error) => finish(() => reject(error)));
   });
