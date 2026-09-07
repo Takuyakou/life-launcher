@@ -122,6 +122,7 @@ function createConfig(): AppConfig {
         },
       ],
     },
+    sourceCompletions: [],
     inbox: [
       { id: "sample-later", text: "あとで確認するサンプル" },
       { id: "sample-weekend", text: "週末に試すアイデア", projectId: "sample-learning" },

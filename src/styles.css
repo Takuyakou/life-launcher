@@ -7693,3 +7693,28 @@ input[type="number"]::-webkit-inner-spin-button {
     flex-direction: column;
   }
 }
+
+.sourceCompletionList {
+  display: grid;
+  gap: 6px;
+}
+
+.sourceCompletionRow {
+  display: grid;
+  gap: 4px;
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.sourceCompletionMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--text-muted-readable);
+  font-size: var(--dashboard-font-meta);
+}
+
+.sourceCompletionRow > strong {
+  overflow-wrap: anywhere;
+  font-size: var(--dashboard-font-body);
+}

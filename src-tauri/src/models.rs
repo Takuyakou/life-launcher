@@ -29,6 +29,8 @@ pub struct AppConfig {
     pub projects: Vec<Project>,
     pub today: Today,
     pub inbox: Vec<InboxItem>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub source_completions: Vec<SourceCompletion>,
     pub settings: Settings,
 }
 
@@ -108,6 +110,20 @@ pub struct Today {
     pub items: Vec<TodayItem>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub candidate_excluded_source_keys: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SourceCompletion {
+    pub id: String,
+    pub source_type: String,
+    pub source_identity: String,
+    pub text_snapshot: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub project_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub project_name_snapshot: Option<String>,
+    pub completed_at: String,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -652,6 +668,7 @@ pub fn initial_config() -> AppConfig {
             candidate_excluded_source_keys: Vec::new(),
         },
         inbox: Vec::new(),
+        source_completions: Vec::new(),
         settings: default_settings(),
     }
 }
@@ -774,6 +791,7 @@ pub fn sample_config() -> AppConfig {
                 },
             ],
         },
+        source_completions: Vec::new(),
         inbox: vec![InboxItem {
             id: None,
             text: "よく使うアプリのパスをconfig.jsonに足す".to_string(),

@@ -449,6 +449,8 @@ fn load_config_from_disk() -> Result<LoadConfigResponse, String> {
         projects: parse_field(&parsed, "projects", fallback.projects, &mut errors),
         today: parse_field(&parsed, "today", fallback.today, &mut errors),
         inbox,
+        source_completions: parse_optional_field(&parsed, "sourceCompletions", &mut errors)
+            .unwrap_or(fallback.source_completions),
         settings: parse_field(&parsed, "settings", fallback.settings, &mut errors),
     };
     let migrated_overlay_pages =
@@ -3566,6 +3568,17 @@ mod tests {
             std::env::remove_var("APPDATA");
         }
         let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn source_completion_history_is_optional_for_legacy_config() {
+        let mut value = serde_json::to_value(sample_config()).expect("serialize sample config");
+        value
+            .as_object_mut()
+            .expect("config object")
+            .remove("sourceCompletions");
+        let legacy: AppConfig = serde_json::from_value(value).expect("legacy config parses");
+        assert!(legacy.source_completions.is_empty());
     }
 
     #[test]
