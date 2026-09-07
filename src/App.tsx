@@ -7261,7 +7261,10 @@ function DashboardApp() {
                 </div>
 
                 <div className="weeklyReviewBlock">
-                  <h3>動かしたプロジェクト</h3>
+                  <div className="recordsInlineHeading">
+                    <h3>動かしたプロジェクト</h3>
+                    <span>先週のセッションに記録されたプロジェクト</span>
+                  </div>
                   {weeklyReviewProjects.length > 0 ? (
                     <div className="weeklyReviewProjectList">
                       {weeklyReviewProjects.map(({ summary, project }) => (
@@ -7298,7 +7301,10 @@ function DashboardApp() {
 
                 <div className="weeklyReviewBlock">
                   <div className="weeklyReviewBlockHeading">
-                    <h3>今週の重点</h3>
+                    <div className="recordsInlineHeading">
+                      <h3>今週の重点</h3>
+                      <span>今週優先して進めるプロジェクトを最大3件まで選びます</span>
+                    </div>
                     <span>
                       {config.projects.filter((project) => project.weeklyFocus === true).length}/
                       {WEEKLY_FOCUS_LIMIT}
@@ -7329,7 +7335,10 @@ function DashboardApp() {
                     className="weeklyReviewBlock freshnessReview"
                     aria-labelledby="freshness-title"
                   >
-                    <h3 id="freshness-title">鮮度レビュー</h3>
+                    <div className="recordsInlineHeading">
+                      <h3 id="freshness-title">鮮度レビュー</h3>
+                      <span>次の一手を14日以上更新・確認していないプロジェクト</span>
+                    </div>
                     <div className="freshnessReviewList">
                       {staleNextStepProjects.map((project) => (
                         <div className="freshnessReviewRow" key={project.id}>
@@ -7393,7 +7402,10 @@ function DashboardApp() {
 
               <section className="recordsSection sourceCompletionSection">
                 <div className="sectionHeading">
-                  <h2>完了した項目</h2>
+                  <div className="recordsInlineHeading">
+                    <h2>完了した項目</h2>
+                    <span>今後の候補から外した、完了済みの項目</span>
+                  </div>
                   <span>{config.sourceCompletions.length}件</span>
                 </div>
                 {config.sourceCompletions.length > 0 ? (
