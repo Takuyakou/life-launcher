@@ -58,7 +58,7 @@ test("Guide states the current registration, selection, and completion flow", as
     "「プロジェクトを追加」ではプロジェクトと最初の次の一手を登録",
   );
   await expect(projects).toContainText(
-    "次の一手の一覧にはタイマー開始ボタンや「今日へ」を置きません",
+    "次の一手の一覧にはタイマー開始ボタンや常設の「今日へ」を置きません",
   );
 
   const timer = dialog.locator('[data-help-section-id="timer"]');
