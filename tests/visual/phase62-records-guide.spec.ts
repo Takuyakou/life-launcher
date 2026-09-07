@@ -96,6 +96,7 @@ test("Guide describes the Phase 6.2 lifecycle and remains bounded", async ({ pag
   await expect(today).toContainText("翌日に候補へ戻ります");
   const projects = guide.locator('[data-help-section-id="projects"]');
   await expect(projects).toContainText("完了にする");
+  await expect(projects).toContainText("右クリックして「今日へ」");
   await expect(projects).toContainText("開始環境は検索できる選択画面で最大2件");
   const records = guide.locator('[data-help-section-id="records"]');
   await expect(records).toContainText("今日の3件の完了やSessionとは別の履歴");
@@ -111,13 +112,14 @@ test("Guide describes the Phase 6.2 lifecycle and remains bounded", async ({ pag
   await guide.screenshot({ path: resolve(SCREENSHOT_DIR, "p62-04-guide-860.png") });
 });
 
-test("Canonical spec contains current labels and no stale direct-Today path", async () => {
+test("Canonical spec contains current labels and the NextStep context Today path", async () => {
   const spec = await readFile(resolve("docs/spec/current-spec.md"), "utf8");
   expect(spec).toContain("今日の候補から外す");
   expect(spec).toContain("辞書に移動");
   expect(spec).toContain("サイドバーに移動");
   expect(spec).toContain("完了snapshot");
   expect(spec).toContain("最大2件");
+  expect(spec).toContain("行の右クリックにある「今日へ」");
   expect(spec).not.toContain("サイドバーへ追加");
   expect(spec).not.toContain("「今日へ」で今日の3件へ移せる");
 });
