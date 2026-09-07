@@ -55,6 +55,7 @@
 - QuickとDictionary間の移動でactionを保持し、save failure時にrollbackする。
 - Explorer reveal、keyboard context menu、Dictionary arrow navigation、既存D&D永続化を再確認した。
 - Start Environment Pickerは検索、順序、最大2件、save / cancel、focus return、narrow幅、legacy over-limit保持を再確認した。
+- CIで露見したQuick/Dictionary rollback testのmock状態依存を除き、Dictionary-only fixtureを明示して再現性を固定した。
 
 ## 全検証
 
