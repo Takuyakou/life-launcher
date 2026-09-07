@@ -11,8 +11,8 @@
     "rustUnitTests": 95,
     "capabilityContractTests": 2
   },
-  "currentStage": "P62-04",
-  "latestReport": "docs/phase6.2/workreports/p62-04-report.md",
+  "currentStage": "P62-06",
+  "latestReport": "docs/phase6.2/workreports/p62-06-report.md",
   "stages": {
     "P62-00": {
       "status": "MERGED",
@@ -47,22 +47,36 @@
       "mergeCommit": "ccf2e9374c08889f646c67847d4905e8d641c733"
     },
     "P62-04": {
-      "status": "COMPLETE_APPROVED_FOR_CONTINUATION",
+      "status": "MERGED",
       "approved": true,
       "branch": "docs/p62-04-records-guide-sync",
-      "implementationCommit": "b4f3c3ad88cce7e4aeb9da7c20ec82c32fa28209"
+      "implementationCommit": "b4f3c3ad88cce7e4aeb9da7c20ec82c32fa28209",
+      "pr": 21,
+      "mergeCommit": "b2c4a8e86449dcdb67ead7ff5ec46f85973d9f35"
     },
     "P62-05": {
-      "status": "READY_UNDER_USER_APPROVAL",
-      "approved": true
+      "status": "MERGED",
+      "approved": true,
+      "repository": "Takuyakou/life-launcher-web",
+      "branch": "feat/p62-05-phase62-demo-sync",
+      "pr": 4,
+      "mergeCommit": "e08d69a3975632611177a0166661116ed274b597",
+      "report": "docs/phase6.2/workreports/p62-05-report.md",
+      "githubVerify": "PASS",
+      "cloudflareWorkersBuild": "KNOWN_EXTERNAL_CHECK_FAILURE"
     },
     "P62-06": {
-      "status": "BLOCKED_BY_P62-05",
-      "approved": true
+      "status": "READY_FOR_V1_1_RELEASE_PREP",
+      "approved": true,
+      "branch": "chore/p62-06-regression-readiness",
+      "baseCommit": "b2c4a8e86449dcdb67ead7ff5ec46f85973d9f35",
+      "report": "docs/phase6.2/workreports/p62-06-report.md",
+      "tauriSmoke": "PASS_ISOLATED_IDENTIFIER_AND_APPDATA"
     }
   },
   "validation": {
-    "publicCheck": "PASS",
+    "npmCi": "PASS_173_PACKAGES_0_VULNERABILITIES",
+    "publicCheck": "PASS_197_FILES_0_BLOCKERS",
     "lint": "PASS",
     "build": "PASS",
     "visual": "PASS_94_OF_94",
@@ -70,7 +84,11 @@
     "rustCheck": "PASS",
     "rustClippy": "PASS",
     "rustTests": "PASS_98_PLUS_2",
+    "npmAudit": "PASS_0_VULNERABILITIES",
+    "npmProductionAudit": "PASS_0_VULNERABILITIES",
+    "tauriSmoke": "PASS",
     "diffCheck": "PASS"
   },
-  "releaseAllowed": false
+  "releaseAllowed": false,
+  "finalStatus": "READY_FOR_V1_1_RELEASE_PREP"
 }

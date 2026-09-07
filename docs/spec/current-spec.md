@@ -7,8 +7,8 @@
 | 文書版 | 1.1-rc |
 | 対象 | Windowsデスクトップ版 Life Launcher |
 | 実装基準 | Public repository `Takuyakou/life-launcher` のPhase 6 stacked candidate |
-| 基準コミット | `74f4a9608f3b5e2ef857f580db45dd0abbe270bf` |
-| 確認日 | 2026-09-06 |
+| 基準コミット | `b2c4a8e86449dcdb67ead7ff5ec46f85973d9f35` |
+| 確認日 | 2026-09-07 |
 | UI実装 | Tauri 2 / React 18 / TypeScript / CSS |
 
 本書は、Life Launcher v1.1候補のUI/UXと主要機能を、Phase 6のコード、型、設定、capability、テストから整理した現行仕様書である。
@@ -622,7 +622,17 @@ URLはWindowsの既定ブラウザで開き、登録ごとのブラウザ指定�
 - `notes.json` は互換目的で残るが、「今日の実行」は `sessions.jsonl` から生成する。
 - アプリ内自動アップデーターは現行仕様に含まれない。
 
-## 27. 仕様確認の主要ソース
+## 27. Web Demo companion
+
+- Web Demoは別repository `Takuyakou/life-launcher-web`で管理する静的SPAであり、Windows製品版の完全移植ではない。
+- Demoの中心フローは、Project NextStepまたはWishlistへ候補を登録し、Today Builderの`今日へ`で最大3件を選び、Today3から実行する。
+- `今日へ`はBuilderだけに置き、登録元のProject / Wishlistへ重複配置しない。
+- 候補とToday3はstable source IDで対応し、同じ文面のWishlistも別項目として扱う。
+- 候補除外は元sourceを保持したままmatching Today snapshotを外し、localStorageへ保存する。既存schema v2は読み込み時に後方互換補完する。
+- native Explorer、実ランチャー起動、Tauri権限、Rust推薦はDemoへ再実装しない。
+- backend、認証、analytics、外部APIを使用せず、入力はブラウザのlocalStorageだけに保存する。
+
+## 28. 仕様確認の主要ソース
 
 - `src/App.tsx`
 - `src/components/InstructionViewer.tsx`
@@ -643,6 +653,10 @@ URLはWindowsの既定ブラウザで開き、登録ごとのブラウザ指定�
 - `tests/visual/phase6-main.spec.ts`
 - `tests/visual/phase6-dictionary.spec.ts`
 - `tests/visual/phase6-readiness.spec.ts`
+- `tests/visual/phase62-today-layer.spec.ts`
+- `tests/visual/phase62-source-lifecycle.spec.ts`
+- `tests/visual/phase62-quick-picker.spec.ts`
+- `tests/visual/phase62-records-guide.spec.ts`
 - `docs/v1.3.0-ui-ux-spec.md`
 - `docs/ui-audit/UI-UX-MASTER-AUDIT.md`
 - P1.40 / P1.50以降の各作業報告書
