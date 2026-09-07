@@ -75,6 +75,7 @@ import {
   SessionEntriesResponse,
   SessionEntryRow,
   SessionSummaryResponse,
+  SourceCompletion,
   WeeklyReviewResponse,
   WeeklyReviewProjectSummary,
   TodayItem,
@@ -5488,21 +5489,86 @@ function DashboardApp() {
     setInboxEditInstructionOpenOnStart(false);
   };
 
+  const isTimerActiveForSource = (sourceKeys: string[], projectId?: string) => {
+    if (!activeTimer) return false;
+    return (
+      (projectId !== undefined && activeTimer.sourceId === projectId) ||
+      sourceKeys.some((sourceKey) => activeTimer.sourceId === `today:${sourceKey}`)
+    );
+  };
+
+  const withoutSourceFromToday = (currentConfig: AppConfig, sourceKeys: string[]) => {
+    const matchingSourceKeys = new Set(sourceKeys);
+    return {
+      ...currentConfig.today,
+      items: currentConfig.today.items.filter(
+        (item, todayIndex) => !matchingSourceKeys.has(todaySourceKey(item, todayIndex)),
+      ),
+      candidateExcludedSourceKeys: currentConfig.today.candidateExcludedSourceKeys.filter(
+        (sourceKey) => !matchingSourceKeys.has(sourceKey),
+      ),
+    };
+  };
+
+  const completeInboxItem = (index: number) => {
+    if (!config) return;
+    const item = config.inbox[index];
+    if (!item) return;
+    const sourceKeys = [wishlistSourceKey(item, index), legacyWishlistSourceKey(item)];
+    if (isTimerActiveForSource(sourceKeys)) {
+      setContextMenu(null);
+      showToast("warn", "タイマーを停止してから完了してください");
+      return;
+    }
+    const project = item.projectId ? projectsById.get(item.projectId) : undefined;
+    setContextMenu(null);
+    requestConfirmation({
+      title: "完了にしますか？",
+      subject: `「${item.text}」`,
+      message: "この項目は今後の候補から外れます。これまでの実行記録は残ります。",
+      confirmLabel: "完了にする",
+      processingLabel: "完了にしています…",
+      onConfirm: async () => {
+        const completion: SourceCompletion = {
+          id: createStableId(),
+          sourceType: "wishlist",
+          sourceIdentity: sourceKeys[0],
+          textSnapshot: item.text,
+          ...(project ? { projectId: project.id, projectNameSnapshot: project.name } : {}),
+          completedAt: new Date().toISOString(),
+        };
+        return persistConfig({
+          ...config,
+          today: withoutSourceFromToday(config, sourceKeys),
+          inbox: config.inbox.filter((_, itemIndex) => itemIndex !== index),
+          sourceCompletions: [...config.sourceCompletions, completion],
+        });
+      },
+    });
+  };
+
   const deleteInboxItem = (index: number) => {
     if (!config) return;
     const item = config.inbox[index];
     if (!item) return;
+    const sourceKeys = [wishlistSourceKey(item, index), legacyWishlistSourceKey(item)];
+    if (isTimerActiveForSource(sourceKeys)) {
+      setContextMenu(null);
+      showToast("warn", "タイマーを停止してから削除してください");
+      return;
+    }
     setContextMenu(null);
     requestConfirmation({
-      title: "やりたいことから削除しますか？",
+      title: "削除しますか？",
       subject: `「${item.text}」`,
-      message: "この操作は元に戻せません。",
-      confirmLabel: "削除する",
+      message: "この登録を削除します。完了としては記録されません。",
+      confirmLabel: "削除",
       processingLabel: "削除しています…",
       tone: "danger",
       onConfirm: async () =>
         persistConfig({
           ...config,
+          today: withoutSourceFromToday(config, sourceKeys),
           inbox: config.inbox.filter((_, itemIndex) => itemIndex !== index),
         }),
     });
@@ -5814,27 +5880,74 @@ function DashboardApp() {
     });
   };
 
+  const completeProjectNextStep = (project: LauncherProject) => {
+    if (!config || !project.nextStep.trim()) return;
+    const sourceKeys = [`project:${project.id}`];
+    if (isTimerActiveForSource(sourceKeys, project.id)) {
+      setContextMenu(null);
+      showToast("warn", "タイマーを停止してから完了してください");
+      return;
+    }
+    requestConfirmation({
+      title: "完了にしますか？",
+      subject: `「${project.nextStep}」`,
+      message: "この項目は今後の候補から外れます。これまでの実行記録は残ります。",
+      confirmLabel: "完了にする",
+      processingLabel: "完了にしています…",
+      onConfirm: async () => {
+        const completion: SourceCompletion = {
+          id: createStableId(),
+          sourceType: "nextStep",
+          sourceIdentity: sourceKeys[0],
+          textSnapshot: project.nextStep,
+          projectId: project.id,
+          projectNameSnapshot: project.name,
+          completedAt: new Date().toISOString(),
+        };
+        return persistConfig({
+          ...config,
+          today: withoutSourceFromToday(config, sourceKeys),
+          projects: config.projects.map((item) =>
+            item.id === project.id
+              ? {
+                  ...item,
+                  nextStep: "",
+                  nextStepTrigger: undefined,
+                  nextStepUpdatedAt: undefined,
+                  nextStepReviewedAt: undefined,
+                }
+              : item,
+          ),
+          sourceCompletions: [...config.sourceCompletions, completion],
+        });
+      },
+    });
+  };
+
   const deleteProject = (project: LauncherProject) => {
     if (!config) return;
+    const sourceKeys = [`project:${project.id}`];
+    if (isTimerActiveForSource(sourceKeys, project.id)) {
+      setContextMenu(null);
+      showToast("warn", "タイマーを停止してから削除してください");
+      return;
+    }
     requestConfirmation({
-      title: "プロジェクトを削除しますか？",
+      title: "削除しますか？",
       subject: `「${project.name}」`,
-      message: "この操作は元に戻せません。",
-      confirmLabel: "削除する",
+      message: "この登録を削除します。完了としては記録されません。",
+      confirmLabel: "削除",
       processingLabel: "削除しています…",
       tone: "danger",
       onConfirm: async () => {
         const saved = await persistConfig({
           ...config,
+          today: withoutSourceFromToday(config, sourceKeys),
           projects: config.projects.filter((item) => item.id !== project.id),
         });
-        if (!saved) {
-          setConfig(config);
-          return false;
-        }
+        if (!saved) return false;
         setContextMenu(null);
         showToast("ok", `${project.name} を削除しました`);
-
         return true;
       },
     });
@@ -6129,14 +6242,13 @@ function DashboardApp() {
     (visibleTodayBuilderPage - 1) * TODAY_BUILDER_PAGE_SIZE,
     visibleTodayBuilderPage * TODAY_BUILDER_PAGE_SIZE,
   );
-  const isTodayBuilderCandidateActive = (candidate?: TodayBuilderCandidate) => {
-    if (!activeTimer || !candidate) return false;
-    const sourceKeys = [candidate.sourceKey, ...(candidate.sourceAliases ?? [])];
-    return (
-      (candidate.projectId !== undefined && activeTimer.sourceId === candidate.projectId) ||
-      sourceKeys.some((sourceKey) => activeTimer.sourceId === `today:${sourceKey}`)
-    );
-  };
+  const isTodayBuilderCandidateActive = (candidate?: TodayBuilderCandidate) =>
+    candidate
+      ? isTimerActiveForSource(
+          [candidate.sourceKey, ...(candidate.sourceAliases ?? [])],
+          candidate.sourceKey.startsWith("project:") ? candidate.projectId : undefined,
+        )
+      : false;
   const excludeTodayBuilderCandidate = async (index: number) => {
     const candidate = todayBuilderCandidates[index];
     if (!candidate) return;
@@ -7265,6 +7377,33 @@ function DashboardApp() {
                   セッションを追加
                 </button>
               </div>
+
+              <section className="recordsSection sourceCompletionSection">
+                <div className="sectionHeading">
+                  <h2>完了した項目</h2>
+                  <span>{config.sourceCompletions.length}件</span>
+                </div>
+                {config.sourceCompletions.length > 0 ? (
+                  <div className="sourceCompletionList">
+                    {[...config.sourceCompletions].reverse().map((completion) => (
+                      <div className="sourceCompletionRow" key={completion.id}>
+                        <div className="sourceCompletionMeta">
+                          <span>{completion.completedAt.slice(0, 10)}</span>
+                          <span>
+                            {completion.sourceType === "nextStep" ? "次の一手" : "やりたいこと"}
+                          </span>
+                          {completion.projectNameSnapshot && (
+                            <span>{completion.projectNameSnapshot}</span>
+                          )}
+                        </div>
+                        <strong>{completion.textSnapshot}</strong>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="quietText">完了した項目はまだありません。</p>
+                )}
+              </section>
 
               <section className="recordsSection">
                 <div className="sectionHeading">
@@ -8768,7 +8907,27 @@ function DashboardApp() {
                 編集
               </ContextMenuItem>
               <ContextMenuItem
+                disabled={
+                  !config?.inbox[contextMenu.index] ||
+                  isTimerActiveForSource([
+                    wishlistSourceKey(config.inbox[contextMenu.index], contextMenu.index),
+                    legacyWishlistSourceKey(config.inbox[contextMenu.index]),
+                  ])
+                }
+                onClick={() => completeInboxItem(contextMenu.index)}
+                type="button"
+              >
+                完了にする
+              </ContextMenuItem>
+              <ContextMenuItem
                 className="contextMenuDanger"
+                disabled={
+                  !config?.inbox[contextMenu.index] ||
+                  isTimerActiveForSource([
+                    wishlistSourceKey(config.inbox[contextMenu.index], contextMenu.index),
+                    legacyWishlistSourceKey(config.inbox[contextMenu.index]),
+                  ])
+                }
                 onClick={() => deleteInboxItem(contextMenu.index)}
                 type="button"
               >
@@ -8804,7 +8963,24 @@ function DashboardApp() {
                 編集
               </ContextMenuItem>
               <ContextMenuItem
+                disabled={
+                  !contextMenu.project.nextStep.trim() ||
+                  isTimerActiveForSource(
+                    [`project:${contextMenu.project.id}`],
+                    contextMenu.project.id,
+                  )
+                }
+                onClick={() => completeProjectNextStep(contextMenu.project)}
+                type="button"
+              >
+                完了にする
+              </ContextMenuItem>
+              <ContextMenuItem
                 className="contextMenuDanger"
+                disabled={isTimerActiveForSource(
+                  [`project:${contextMenu.project.id}`],
+                  contextMenu.project.id,
+                )}
                 onClick={() => deleteProject(contextMenu.project)}
                 type="button"
               >

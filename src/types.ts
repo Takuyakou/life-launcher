@@ -144,6 +144,16 @@ export const InboxItemSchema = z.object({
   instructionOpenOnStart: z.boolean().optional(),
 });
 
+export const SourceCompletionSchema = z.object({
+  id: z.string().min(1),
+  sourceType: z.enum(["nextStep", "wishlist"]),
+  sourceIdentity: z.string().min(1),
+  textSnapshot: z.string().min(1),
+  projectId: z.string().min(1).optional(),
+  projectNameSnapshot: z.string().min(1).optional(),
+  completedAt: z.string().datetime({ offset: true }),
+});
+
 export const MiniWindowPositionSchema = z.object({
   x: z.number().int(),
   y: z.number().int(),
@@ -184,6 +194,7 @@ export const AppConfigSchema = z
       candidateExcludedSourceKeys: z.array(z.string()).default([]),
     }),
     inbox: z.array(InboxItemSchema),
+    sourceCompletions: z.array(SourceCompletionSchema).default([]),
     settings: SettingsSchema,
   })
   .superRefine((config, context) => {
@@ -206,6 +217,7 @@ export type LauncherProject = z.infer<typeof ProjectSchema>;
 export type TodayItem = z.infer<typeof TodayItemSchema>;
 export type TodayVictory = z.infer<typeof TodayVictorySchema>;
 export type InboxItem = z.infer<typeof InboxItemSchema>;
+export type SourceCompletion = z.infer<typeof SourceCompletionSchema>;
 export type MiniWindowPosition = z.infer<typeof MiniWindowPositionSchema>;
 export type AppConfig = z.infer<typeof AppConfigSchema>;
 
