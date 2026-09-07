@@ -71,7 +71,9 @@
       "branch": "chore/p62-06-regression-readiness",
       "baseCommit": "b2c4a8e86449dcdb67ead7ff5ec46f85973d9f35",
       "report": "docs/phase6.2/workreports/p62-06-report.md",
-      "tauriSmoke": "PASS_ISOLATED_IDENTIFIER_AND_APPDATA"
+      "tauriSmoke": "PASS_ISOLATED_IDENTIFIER_AND_APPDATA",
+      "pr": 22,
+      "validationRecordCommit": "e9aa8f9"
     }
   },
   "validation": {

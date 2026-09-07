@@ -6,6 +6,8 @@
 - 最終判定: `READY FOR v1.1 RELEASE PREP`
 - Regression source: `b2c4a8e86449dcdb67ead7ff5ec46f85973d9f35`
 - Branch: `chore/p62-06-regression-readiness`
+- PR: [life-launcher #22](https://github.com/Takuyakou/life-launcher/pull/22)
+- Validation record commit: `e9aa8f9`
 - Product version: `1.0.0`（変更なし）
 - version / tag / Release / 配布binary: 変更なし
 - 実ユーザーデータ: 変更なし
