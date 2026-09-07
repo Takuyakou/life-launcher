@@ -353,7 +353,7 @@ export function useDictionaryFeatureParity({
               : item,
           ),
         },
-        `${button.label} をサイドバーに追加しました`,
+        `${button.label} をサイドバーに移動しました`,
       );
     },
     [persist],

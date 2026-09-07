@@ -153,7 +153,7 @@ export function DictionaryFeatureParityUi({ c }: { c: DictionaryFeatureParityCon
                 disabled={menu.button.showInSidebar !== false}
                 onClick={() => void addButtonToSidebar(menu.button.id)}
               >
-                サイドバーに追加
+                サイドバーに移動
               </ContextMenuItem>
               <ContextMenuItem onClick={() => editButton(menu.button)}>編集</ContextMenuItem>
               {canRevealButton(menu.button) ? (

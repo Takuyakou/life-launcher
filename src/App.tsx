@@ -84,6 +84,7 @@ import { ConfirmDialog, type ConfirmDialogRequest } from "./components/ConfirmDi
 import { ContextMenu, ContextMenuItem } from "./components/ContextMenu";
 import { HelpGuideDialog } from "./components/HelpGuideDialog";
 import { ProjectIdentity } from "./components/ProjectIdentity";
+import { StartEnvironmentPicker } from "./StartEnvironmentPicker";
 import { PROJECT_COLOR_IDS, PROJECT_COLOR_LABELS, resolveProjectColorId } from "./projectIdentity";
 import { canRevealLauncherButton } from "./launcherReveal";
 import { TimerPanel } from "./components/TimerPanel";
@@ -1986,17 +1987,6 @@ function DashboardApp() {
         }))
         .filter((group) => group.buttons.length > 0),
     [buttonGroups],
-  );
-  const visibleSidebarButtons = useMemo(
-    () => visibleSidebarButtonGroups.flatMap((group) => group.buttons),
-    [visibleSidebarButtonGroups],
-  );
-  const dictionaryOnlyButtons = useMemo(
-    () =>
-      (config?.buttons ?? []).filter(
-        (button) => showButtonInOverlay(button) && !showButtonInSidebar(button),
-      ),
-    [config?.buttons],
   );
   const projectSelectableButtons = useMemo(
     () =>
@@ -4852,6 +4842,29 @@ function DashboardApp() {
       return;
     }
     showToast("ok", "辞書ページの順番を保存しました");
+  };
+
+  const moveSidebarButtonToDictionary = async (button: LauncherButton) => {
+    if (!config || !showButtonInSidebar(button)) return;
+    const previousConfig = config;
+    setContextMenu(null);
+    const dictionaryOrder =
+      config.dictionaryOrder ?? config.buttons.filter(showButtonInOverlay).map((item) => item.id);
+    const nextDictionaryOrder = dictionaryOrder.includes(button.id)
+      ? dictionaryOrder
+      : [...dictionaryOrder, button.id];
+    const saved = await persistConfig({
+      ...config,
+      dictionaryOrder: nextDictionaryOrder,
+      buttons: config.buttons.map((item) =>
+        item.id === button.id ? { ...item, showInSidebar: false, showInOverlay: true } : item,
+      ),
+    });
+    if (!saved) {
+      setConfig(previousConfig);
+      return;
+    }
+    showToast("ok", `${button.label} を辞書に移動しました`);
   };
 
   const openButtonEditDialog = (button: LauncherButton) => {
@@ -8824,6 +8837,13 @@ function DashboardApp() {
                 </ContextMenuItem>
               ) : null}
               <ContextMenuItem
+                className="contextMenuSeparatorBefore"
+                onClick={() => void moveSidebarButtonToDictionary(contextMenu.button)}
+                type="button"
+              >
+                辞書に移動
+              </ContextMenuItem>
+              <ContextMenuItem
                 className="contextMenuDanger contextMenuSeparatorBefore"
                 onClick={() => deleteButton(contextMenu.button)}
                 type="button"
@@ -9160,67 +9180,13 @@ function DashboardApp() {
               </label>
             </div>
 
-            <h3 className="formSectionHeading">開始環境</h3>
-            <div className="fieldStack inboxStartEnvironmentSection">
-              <span>実行ボタン</span>
-              <span className="quietText">タイマー開始時に一緒に実行します</span>
-              <div className="checkList app-scrollbar">
-                {visibleSidebarButtons.length === 0 && (
-                  <span className="quietText">サイドバーに実行ボタンがありません</span>
-                )}
-                {visibleSidebarButtons.map((button) => (
-                  <label className="checkListItem" key={button.id}>
-                    <input
-                      checked={inboxEditButtonIds.includes(button.id)}
-                      onChange={(event) =>
-                        setInboxEditButtonIds((current) =>
-                          event.target.checked
-                            ? [...current, button.id]
-                            : current.filter((id) => id !== button.id),
-                        )
-                      }
-                      type="checkbox"
-                    />
-                    <span>{button.icon ?? "◇"}</span>
-                    <strong>{button.label}</strong>
-                  </label>
-                ))}
-              </div>
-              {dictionaryOnlyButtons.length > 0 && (
-                <details className="projectDictionaryButtons">
-                  <summary>
-                    <span>辞書から選ぶ</span>
-                    <span>
-                      {
-                        dictionaryOnlyButtons.filter((button) =>
-                          inboxEditButtonIds.includes(button.id),
-                        ).length
-                      }
-                      /{dictionaryOnlyButtons.length}
-                    </span>
-                  </summary>
-                  <div className="checkList app-scrollbar">
-                    {dictionaryOnlyButtons.map((button) => (
-                      <label className="checkListItem" key={button.id}>
-                        <input
-                          checked={inboxEditButtonIds.includes(button.id)}
-                          onChange={(event) =>
-                            setInboxEditButtonIds((current) =>
-                              event.target.checked
-                                ? [...current, button.id]
-                                : current.filter((id) => id !== button.id),
-                            )
-                          }
-                          type="checkbox"
-                        />
-                        <span>{button.icon ?? "◇"}</span>
-                        <strong>{button.label}</strong>
-                      </label>
-                    ))}
-                  </div>
-                </details>
-              )}
-            </div>
+            <StartEnvironmentPicker
+              buttons={projectSelectableButtons}
+              onChange={setInboxEditButtonIds}
+              overlayPages={overlayPages}
+              renderIcon={renderButtonIcon}
+              selectedIds={inboxEditButtonIds}
+            />
 
             <div className="dialogActions">
               <button className="secondaryButton" onClick={cancelInboxEdit} type="button">
@@ -10921,65 +10887,13 @@ function DashboardApp() {
               </label>
             </div>
 
-            <h3 className="formSectionHeading">開始環境</h3>
-            <div className="fieldStack">
-              <span>実行ボタン</span>
-              <span className="quietText">サイドバーのボタン</span>
-              <div className="checkList app-scrollbar">
-                {visibleSidebarButtons.length === 0 && (
-                  <span className="quietText">サイドバーに実行ボタンがありません</span>
-                )}
-                {visibleSidebarButtons.map((button) => (
-                  <label className="checkListItem" key={button.id}>
-                    <input
-                      checked={projectEditDraft.buttonIds.includes(button.id)}
-                      onChange={(event) => {
-                        const buttonIds = event.target.checked
-                          ? [...projectEditDraft.buttonIds, button.id]
-                          : projectEditDraft.buttonIds.filter((id) => id !== button.id);
-                        setProjectEditDraft({ ...projectEditDraft, buttonIds });
-                      }}
-                      type="checkbox"
-                    />
-                    <span>{button.icon ?? "●"}</span>
-                    <strong>{button.label}</strong>
-                  </label>
-                ))}
-              </div>
-              {dictionaryOnlyButtons.length > 0 ? (
-                <details className="projectDictionaryButtons">
-                  <summary>
-                    <span>辞書から選ぶ</span>
-                    <span>
-                      {
-                        dictionaryOnlyButtons.filter((button) =>
-                          projectEditDraft.buttonIds.includes(button.id),
-                        ).length
-                      }
-                      /{dictionaryOnlyButtons.length}
-                    </span>
-                  </summary>
-                  <div className="checkList app-scrollbar">
-                    {dictionaryOnlyButtons.map((button) => (
-                      <label className="checkListItem" key={button.id}>
-                        <input
-                          checked={projectEditDraft.buttonIds.includes(button.id)}
-                          onChange={(event) => {
-                            const buttonIds = event.target.checked
-                              ? [...projectEditDraft.buttonIds, button.id]
-                              : projectEditDraft.buttonIds.filter((id) => id !== button.id);
-                            setProjectEditDraft({ ...projectEditDraft, buttonIds });
-                          }}
-                          type="checkbox"
-                        />
-                        <span>{button.icon ?? "●"}</span>
-                        <strong>{button.label}</strong>
-                      </label>
-                    ))}
-                  </div>
-                </details>
-              ) : null}
-            </div>
+            <StartEnvironmentPicker
+              buttons={projectSelectableButtons}
+              onChange={(buttonIds) => setProjectEditDraft({ ...projectEditDraft, buttonIds })}
+              overlayPages={overlayPages}
+              renderIcon={renderButtonIcon}
+              selectedIds={projectEditDraft.buttonIds}
+            />
 
             <div className="dialogActions">
               <button
