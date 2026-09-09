@@ -3684,17 +3684,10 @@ input[type="number"]::-webkit-inner-spin-button {
   transform: translateY(-50%);
 }
 
-.todayRow:hover .todayTriggerButton--empty,
-.todayRow:focus-visible .todayTriggerButton--empty,
-.todayRow:has(.todayTriggerButton--empty:focus) .todayTriggerButton--empty {
+.todayTriggerZone:hover .todayTriggerButton--empty,
+.todayTriggerZone:focus-within .todayTriggerButton--empty {
   opacity: 1;
   pointer-events: auto;
-}
-
-.todayRow:hover .todayTriggerButton--empty + .todayTextButton,
-.todayRow:focus-visible .todayTriggerButton--empty + .todayTextButton,
-.todayRow:has(.todayTriggerButton--empty:focus) .todayTriggerButton--empty + .todayTextButton {
-  padding-left: 82px;
 }
 
 .todayTriggerInput {
@@ -7400,12 +7393,6 @@ input[type="number"]::-webkit-inner-spin-button {
   transform: none;
 }
 
-.todayRow:hover .todayTriggerButton--empty + .todayTextButton,
-.todayRow:focus-visible .todayTriggerButton--empty + .todayTextButton,
-.todayRow:has(.todayTriggerButton--empty:focus) .todayTriggerButton--empty + .todayTextButton {
-  padding-left: 0;
-}
-
 .todayTimerActions,
 .todayCompletedLabel {
   grid-column: 1 / -1;
@@ -7418,6 +7405,73 @@ input[type="number"]::-webkit-inner-spin-button {
   color: var(--good);
   font-size: var(--dashboard-font-meta);
   font-weight: 650;
+}
+
+.todayCardFooter {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.todayTimerCluster {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+  width: 160px;
+  max-width: 100%;
+  margin-left: auto;
+}
+
+.todayTriggerZone {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  width: 100%;
+  min-height: 34px;
+}
+
+.todayTriggerZone .todayTriggerButton,
+.todayTriggerZone .todayTriggerInput {
+  max-width: 100%;
+}
+
+.todayTriggerZone .todayTriggerInput {
+  width: 100%;
+}
+
+.todayTimerCluster .todayTimerActions,
+.todayTimerCluster .todayCompletedLabel {
+  grid-column: auto;
+  grid-row: auto;
+}
+
+.todayRow .todayRemoveButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 34px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.todayRow .todayRemoveButton:hover:not(:disabled) {
+  background: var(--surface-soft);
+  color: var(--text);
+}
+
+.todayRow .todayRemoveButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .todayNextBatch {
