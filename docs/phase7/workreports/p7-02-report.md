@@ -39,6 +39,8 @@ Web確認画面を1366/1440/1920/390pxで検査し、1440/390px画像を目視�
 
 ## Stop / Remaining
 
+提出PR: [Product #32](https://github.com/Takuyakou/life-launcher/pull/32) / [Web #10](https://github.com/Takuyakou/life-launcher-web/pull/10)。作成直後のGitHub Actionsは両方pending。Webの接続済みWorkers BuildsはPASS。手動deployは実行していない。
+
 - ProductとWebのPRを分離し、人間レビュー待ちで停止する。P7.3へ自動進行しない。
 - P7.2のmerge、Web deploy、EXE生成、version変更、tag、Releaseは行わない。
 - 既存の未コミット報告書と、自動テストで更新された過去Phaseの画像は今回のPRへ含めない。削除・復元も行わない。

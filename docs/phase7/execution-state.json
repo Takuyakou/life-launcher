@@ -23,6 +23,8 @@
       "status": "COMPLETE_AWAITING_HUMAN_REVIEW",
       "approved": false,
       "base_commit": "d2b52739c82e3934174f54aafa29f6f9e30b27ac",
+      "pr": 32,
+      "web_pr": "https://github.com/Takuyakou/life-launcher-web/pull/10",
       "product_branch": "docs/p7-02-guide-spec-sync",
       "web_branch": "feature/p7-02-early-completion-demo"
     },
