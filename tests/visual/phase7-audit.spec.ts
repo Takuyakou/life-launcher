@@ -51,7 +51,7 @@ test("P7 audit: actual Today schema accepts 1..240 integer minutes, not invalid 
   }
 });
 
-// These characterize v1.1, not the future P7.1 early-completion dialog.
+// P7.0 boundary fixtures now exercise the implemented P7.1 manual-stop flow.
 const boundaries = [
   { short: 3, planned: 25, elapsed: [179, 180, 1499, 1500] },
   { short: 5, planned: 25, elapsed: [299, 300, 1499, 1500] },
@@ -79,10 +79,16 @@ for (const { short, planned, elapsed } of boundaries) {
       } else {
         await expect(page.getByRole("dialog")).toHaveCount(0);
         await card.getByRole("button", { name: "終了", exact: true }).click();
+        if (seconds >= Math.min(5, short) * 60) {
+          await expect(
+            page.getByRole("dialog", { name: "今日の分は完了にしますか？" }),
+          ).toBeVisible();
+          await page.getByRole("button", { name: "未完了のまま終了", exact: true }).click();
+        }
       }
       await expect(
         card.getByRole("status", {
-          name: reachedPlanned ? "タイマー満了済み" : "未完了",
+          name: reachedPlanned ? "今日の分は完了" : "未完了",
           exact: true,
         }),
       ).toBeVisible();
@@ -126,6 +132,7 @@ test("P7 baseline: a wall-clock jump counts as elapsed unless paused", async ({ 
   await page.clock.setSystemTime(new Date(new Date(FIXTURE_NOW).getTime() + 600_000));
   await page.clock.runFor(1_000);
   await card.getByRole("button", { name: "終了", exact: true }).click();
+  await page.getByRole("button", { name: "未完了のまま終了", exact: true }).click();
   const records = (await state(page)).calls.filter((c) => c.command === "record_session");
   expect(records).toHaveLength(1);
   expect(records[0].args.session).toMatchObject({ minutes: 10 });

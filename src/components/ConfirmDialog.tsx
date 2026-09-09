@@ -75,6 +75,15 @@ export function ConfirmDialog({
     if (!open) return;
 
     const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      const dialogs = document.querySelectorAll('[role="dialog"][aria-modal="true"]');
+      if (dialogs.item(dialogs.length - 1) !== dialogRef.current) return;
+      if (event.isComposing || event.keyCode === 229) {
+        if (event.key === "Enter" || event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        return;
+      }
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();

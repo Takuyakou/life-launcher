@@ -237,7 +237,7 @@ test("planned completion from a Today card marks only the linked item complete",
   await page.clock.runFor(60_500);
   await expect(page.getByRole("dialog", { name: "タイマー満了" })).toBeVisible();
   await page.getByRole("button", { name: "終わる" }).click();
-  await expect(card.getByRole("status", { name: "タイマー満了済み" })).toBeVisible();
+  await expect(card.getByRole("status", { name: "今日の分は完了" })).toBeVisible();
   expect((await currentConfig(page)).today.items[0].done).toBe(true);
 });
 
@@ -273,7 +273,7 @@ test("planned completion started from Do Now completes the linked Today item", a
   await page.clock.runFor(60_500);
   await page.getByRole("button", { name: "終わる" }).click();
   await expect(
-    page.locator(".todayRow").getByRole("status", { name: "タイマー満了済み" }),
+    page.locator(".todayRow").getByRole("status", { name: "今日の分は完了" }),
   ).toBeVisible();
 });
 

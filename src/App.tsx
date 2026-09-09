@@ -81,6 +81,7 @@ import {
   TodayItem,
 } from "./types";
 import { ConfirmDialog, type ConfirmDialogRequest } from "./components/ConfirmDialog";
+import { earlyCompletionItem } from "./earlyCompletion";
 import { ContextMenu, ContextMenuItem } from "./components/ContextMenu";
 import { HelpGuideDialog } from "./components/HelpGuideDialog";
 import { ProjectIdentity } from "./components/ProjectIdentity";
@@ -134,6 +135,7 @@ type WeeklyReviewDisplayProject = {
 };
 
 type ActiveTimer = {
+  instanceId: number;
   sourceId: string;
   projectId: string | null;
   label: string;
@@ -1792,6 +1794,16 @@ function DashboardApp() {
   const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(null);
   const timerStartRequestRef = useRef(0);
   const activeTimerRef = useRef<ActiveTimer | null>(null);
+  const finishingTimerRef = useRef<number | null>(null);
+  const plannedCommitRef = useRef(false);
+  const earlyStopRef = useRef<{
+    timer: ActiveTimer;
+    sourceKey: string;
+    stoppedAt: number;
+    recorded: boolean;
+  } | null>(null);
+  const [earlyStop, setEarlyStop] = useState<typeof earlyStopRef.current>(null);
+  const [earlyStopSaving, setEarlyStopSaving] = useState(false);
   const [completionPrompt, setCompletionPrompt] = useState<TimerCompletionPrompt | null>(null);
   const [now, setNow] = useState(Date.now());
   const [collapsedGroups, setCollapsedGroups] =
@@ -3023,14 +3035,20 @@ function DashboardApp() {
 
   useEffect(() => {
     const closeOnEscape = (event: globalThis.KeyboardEvent) => {
-      if (event.key !== "Escape" || completionPrompt || confirmDialog || !hasDismissibleModal)
+      if (
+        event.key !== "Escape" ||
+        completionPrompt ||
+        confirmDialog ||
+        earlyStop ||
+        !hasDismissibleModal
+      )
         return;
       event.preventDefault();
       dismissNonCriticalModal();
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [completionPrompt, confirmDialog, dismissNonCriticalModal, hasDismissibleModal]);
+  }, [completionPrompt, confirmDialog, earlyStop, dismissNonCriticalModal, hasDismissibleModal]);
 
   useEffect(() => {
     const closeOnBackdrop = (event: MouseEvent) => {
@@ -3040,16 +3058,17 @@ function DashboardApp() {
       ) {
         return;
       }
-      if (confirmDialog) return;
+      if (confirmDialog || earlyStop) return;
       if (!completionPrompt) dismissNonCriticalModal();
     };
     document.addEventListener("click", closeOnBackdrop);
     return () => document.removeEventListener("click", closeOnBackdrop);
-  }, [completionPrompt, confirmDialog, dismissNonCriticalModal]);
+  }, [completionPrompt, confirmDialog, earlyStop, dismissNonCriticalModal]);
 
   useEffect(() => {
     if (
       confirmDialog ||
+      earlyStop ||
       helpGuideOpen ||
       (!hasDismissibleModal && !completionPrompt && !launcherOverlayOpen)
     ) {
@@ -3104,7 +3123,14 @@ function DashboardApp() {
       document.removeEventListener("keydown", trapFocus, true);
       opener?.focus();
     };
-  }, [completionPrompt, confirmDialog, hasDismissibleModal, helpGuideOpen, launcherOverlayOpen]);
+  }, [
+    completionPrompt,
+    confirmDialog,
+    earlyStop,
+    hasDismissibleModal,
+    helpGuideOpen,
+    launcherOverlayOpen,
+  ]);
 
   const setNumberDragValue = (field: NumberInputDragField, value: number) => {
     if (field === "timer") {
@@ -5000,20 +5026,15 @@ function DashboardApp() {
     });
   };
 
-  const finishTimer = useCallback(
-    async (timer: ActiveTimer, reason: "manual" | "switch" | "complete" = "manual") => {
-      setCompletionPrompt((current) => (current?.sourceId === timer.sourceId ? null : current));
-      if (activeTimerRef.current?.sourceId === timer.sourceId) {
-        activeTimerRef.current = null;
-      }
-      setActiveTimer((current) => (current?.sourceId === timer.sourceId ? null : current));
-      const minutes = sessionMinutes(timer, Date.now());
+  const recordTimerSession = useCallback(
+    async (timer: ActiveTimer, stoppedAt: number, reason: "manual" | "switch" | "complete") => {
+      const minutes = sessionMinutes(timer, stoppedAt);
 
       if (minutes < 1) {
         if (reason === "manual") {
           showToast("warn", "1分未満なので記録しませんでした");
         }
-        return;
+        return true;
       }
 
       try {
@@ -5025,19 +5046,123 @@ function DashboardApp() {
           note: timer.note,
         });
         setTodaySessionMinutes(response.totalMinutes);
-        await refreshDoNow();
-        await refreshTodayActivity();
-        showToast("ok", `${timer.label} ${minutes}分を記録しました`);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         showToast("error", `記録できません: ${message}`);
+        return false;
       }
+      // A refresh error after append must never cause a second Session append.
+      try {
+        await refreshDoNow();
+        await refreshTodayActivity();
+      } catch {
+        showToast("warn", "記録は保存しましたが、表示を更新できませんでした");
+      }
+      showToast("ok", `${timer.label} ${minutes}分を記録しました`);
+      return true;
     },
     [refreshDoNow, refreshTodayActivity, showToast],
   );
 
+  const finishTimer = useCallback(
+    async (requested: ActiveTimer, reason: "manual" | "switch" | "complete" = "manual") => {
+      const timer = activeTimerRef.current;
+      if (
+        !timer ||
+        timer.instanceId !== requested.instanceId ||
+        finishingTimerRef.current !== null ||
+        earlyStopRef.current ||
+        (plannedCommitRef.current && reason !== "complete")
+      )
+        return false;
+      const stoppedAt = Date.now();
+      const metrics = timerMetrics(timer, stoppedAt);
+      if (reason === "manual" && metrics.remainingSeconds <= 0) {
+        setCompletionPrompt({
+          sourceId: timer.sourceId,
+          projectId: timer.projectId,
+          targetMinutes: timer.targetMinutes,
+          label: timer.label,
+        });
+        return false;
+      }
+      const item =
+        reason === "manual"
+          ? earlyCompletionItem(configRef.current?.today.items ?? [], timer, metrics.elapsedSeconds)
+          : undefined;
+      if (item?.sourceKey) {
+        const pending = { timer, sourceKey: item.sourceKey.trim(), stoppedAt, recorded: false };
+        earlyStopRef.current = pending;
+        setEarlyStop(pending);
+        const frozen = timer.paused
+          ? timer
+          : { ...timer, paused: true, pausedStartedAtMs: stoppedAt };
+        activeTimerRef.current = frozen;
+        setActiveTimer(frozen);
+        void focusDashboardWindow().catch(() => undefined);
+        return false;
+      }
+      finishingTimerRef.current = timer.instanceId;
+      try {
+        const saved = await recordTimerSession(timer, stoppedAt, reason);
+        if (saved && activeTimerRef.current?.instanceId === timer.instanceId) {
+          activeTimerRef.current = null;
+          setActiveTimer(null);
+          setCompletionPrompt(null);
+        }
+        return saved;
+      } finally {
+        finishingTimerRef.current = null;
+      }
+    },
+    [recordTimerSession],
+  );
+
+  const resolveEarlyStop = async (complete: boolean) => {
+    const pending = earlyStopRef.current;
+    if (
+      !pending ||
+      finishingTimerRef.current !== null ||
+      activeTimerRef.current?.instanceId !== pending.timer.instanceId
+    )
+      return false;
+    finishingTimerRef.current = pending.timer.instanceId;
+    setEarlyStopSaving(true);
+    try {
+      if (!pending.recorded) {
+        if (!(await recordTimerSession(pending.timer, pending.stoppedAt, "manual"))) return false;
+        pending.recorded = true;
+      }
+      // Session is durable before updating Today3; a failed config write rolls back only Today3.
+      if (complete) {
+        const current = configRef.current;
+        if (current) {
+          const items = current.today.items.map((item) =>
+            item.sourceKey?.trim() === pending.sourceKey ? { ...item, done: true } : item,
+          );
+          await persistConfig({ ...current, today: { ...current.today, items } });
+        }
+      }
+      earlyStopRef.current = null;
+      setEarlyStop(null);
+      activeTimerRef.current = null;
+      setActiveTimer(null);
+      return true;
+    } finally {
+      finishingTimerRef.current = null;
+      setEarlyStopSaving(false);
+    }
+  };
+
   useEffect(() => {
-    if (!activeTimer || activeTimer.paused || !currentTimerMetrics) return;
+    if (
+      !activeTimer ||
+      activeTimer.paused ||
+      !currentTimerMetrics ||
+      finishingTimerRef.current !== null ||
+      plannedCommitRef.current
+    )
+      return;
     if (currentTimerMetrics.remainingSeconds <= 0) {
       if (
         completionPrompt?.sourceId === activeTimer.sourceId &&
@@ -5069,12 +5194,19 @@ function DashboardApp() {
       instructionOpenOnStartOverride?: boolean,
     ) => {
       const cleanLabel = label.trim();
-      if (!config || !cleanLabel) return;
+      if (
+        !config ||
+        !cleanLabel ||
+        earlyStopRef.current ||
+        finishingTimerRef.current !== null ||
+        plannedCommitRef.current
+      )
+        return;
 
       const requestId = ++timerStartRequestRef.current;
       const previousTimer = activeTimerRef.current;
       if (previousTimer) {
-        await finishTimer(previousTimer, "switch");
+        if (!(await finishTimer(previousTimer, "switch"))) return;
       }
 
       if (requestId !== timerStartRequestRef.current) return;
@@ -5088,6 +5220,7 @@ function DashboardApp() {
       const note = noteOverride?.trim() || fallbackNote;
       setNow(start.getTime());
       const nextTimer: ActiveTimer = {
+        instanceId: requestId,
         sourceId,
         projectId,
         label: cleanLabel,
@@ -5157,7 +5290,8 @@ function DashboardApp() {
   };
 
   const continueCompletedTimer = () => {
-    if (!completionPrompt) return;
+    if (!completionPrompt || plannedCommitRef.current || finishingTimerRef.current !== null) return;
+    if (!activeTimer || activeTimerRef.current?.instanceId !== activeTimer.instanceId) return;
     setCompletionPrompt(null);
     setNow(Date.now());
     setActiveTimer((timer) => {
@@ -5169,20 +5303,25 @@ function DashboardApp() {
         return timer;
       }
 
-      return {
+      const extended = {
         ...timer,
         targetMinutes: timer.targetMinutes + 15,
       };
+      activeTimerRef.current = extended;
+      return extended;
     });
   };
 
   const finishCompletedTimer = () => {
+    if (plannedCommitRef.current || finishingTimerRef.current !== null || earlyStopRef.current)
+      return;
+    if (!activeTimer || activeTimerRef.current?.instanceId !== activeTimer.instanceId) return;
     if (!activeTimer || !completionPrompt || activeTimer.sourceId !== completionPrompt.sourceId) {
       setCompletionPrompt(null);
       return;
     }
 
-    setCompletionPrompt(null);
+    plannedCommitRef.current = true;
     const completedTimer = activeTimer;
     const directSourceKey = completedTimer.sourceId.startsWith("today:")
       ? completedTimer.sourceId.slice("today:".length)
@@ -5201,7 +5340,11 @@ function DashboardApp() {
       config && items?.some((item, index) => item !== config.today.items[index])
         ? persistConfig({ ...config, today: { ...config.today, items } })
         : Promise.resolve(true);
-    void completionSave.then(() => finishTimer(completedTimer, "complete"));
+    void completionSave
+      .then(() => finishTimer(completedTimer, "complete"))
+      .finally(() => {
+        plannedCommitRef.current = false;
+      });
   };
 
   const updateCompletionNextStep = (text: string) => {
@@ -5225,6 +5368,8 @@ function DashboardApp() {
   };
 
   const togglePause = useCallback(() => {
+    if (earlyStopRef.current || finishingTimerRef.current !== null || plannedCommitRef.current)
+      return;
     setActiveTimer((timer) => {
       if (!timer) return timer;
       const current = Date.now();
@@ -6469,6 +6614,7 @@ function DashboardApp() {
     settingsDraft ||
     helpGuideOpen ||
     confirmDialog ||
+    earlyStop ||
     manualSessionDraft ||
     sessionEditDraft ||
     buttonEditDraft ||
@@ -8002,7 +8148,7 @@ function DashboardApp() {
                         tabIndex={0}
                       >
                         <span
-                          aria-label={item.done ? "タイマー満了済み" : "未完了"}
+                          aria-label={item.done ? "今日の分は完了" : "未完了"}
                           className={
                             item.done
                               ? "todayCompletionStatus todayCompletionStatus--complete"
@@ -8113,7 +8259,7 @@ function DashboardApp() {
                               ) : null}
                             </div>
                             {item.done ? (
-                              <span className="todayCompletedLabel">予定時間まで完了</span>
+                              <span className="todayCompletedLabel">今日の分は完了</span>
                             ) : isRunningTodayItem ? (
                               <div className="todayTimerActions todayTimerActions--running">
                                 <button
@@ -11201,7 +11347,6 @@ function DashboardApp() {
       )}
 
       {confirmDialog && <ConfirmDialog {...confirmDialog} onCancel={closeConfirmDialog} open />}
-
       {helpGuideOpen && (
         <HelpGuideDialog
           onClose={() => setHelpGuideOpen(false)}
@@ -11213,6 +11358,21 @@ function DashboardApp() {
                 : "コピーできませんでした。テキストを選択してコピーしてください。",
             )
           }
+        />
+      )}
+      {earlyStop && (
+        <ConfirmDialog
+          open
+          title="今日の分は完了にしますか？"
+          message="ここまでの実行は記録されます。"
+          confirmLabel="今日の分は完了"
+          cancelLabel="未完了のまま終了"
+          initialFocus="cancel"
+          isProcessing={earlyStopSaving}
+          onConfirm={() => resolveEarlyStop(true)}
+          onCancel={() => {
+            void resolveEarlyStop(false);
+          }}
         />
       )}
     </main>

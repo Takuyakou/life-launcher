@@ -31,6 +31,7 @@ export async function installTauriMock(
       let executeMode: "success" | "failure" | "delayed" = "success";
       let failWindowHide = false;
       let failSaveConfig = false;
+      let failRecordSession = false;
       let instructionRootChoices: Array<{
         name: string;
         path: string;
@@ -63,6 +64,9 @@ export async function installTauriMock(
         },
         setSaveConfigFailure: (shouldFail: boolean) => {
           failSaveConfig = shouldFail;
+        },
+        setRecordSessionFailure: (shouldFail: boolean) => {
+          failRecordSession = shouldFail;
         },
         setInstructionRootChoices: (choices: typeof instructionRootChoices) => {
           instructionRootChoices = [...choices];
@@ -157,6 +161,7 @@ export async function installTauriMock(
                   path: paths.sessions,
                 };
               case "record_session":
+                if (failRecordSession) throw new Error("Synthetic Session failure");
                 return {
                   date: fixture.config.today.date,
                   totalMinutes: fixture.todayMinutes,
