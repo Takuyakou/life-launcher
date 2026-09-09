@@ -3,11 +3,20 @@
   "target_version": "v1.2",
   "theme": "Dynamic Early Completion Escape Hatch",
   "workflow": "single-start-human-gated",
-  "current_stage": "P7.0",
+  "current_stage": "P7.1",
   "baseline_commit": "978474564b0ab2b9002b387057e6eaa684027301",
   "stages": {
-    "P7.0": { "status": "COMPLETE_AWAITING_HUMAN_REVIEW", "approved": false },
-    "P7.1": { "status": "BLOCKED_BY_P7.0", "approved": false },
+    "P7.0": {
+      "status": "MERGED",
+      "approved": true,
+      "pr": 30,
+      "merge_commit": "aa0a9756f009cebe5656ef424cd4e657a9886046"
+    },
+    "P7.1": {
+      "status": "COMPLETE_AWAITING_HUMAN_REVIEW",
+      "approved": false,
+      "base_commit": "aa0a9756f009cebe5656ef424cd4e657a9886046"
+    },
     "P7.2": { "status": "BLOCKED_BY_P7.1", "approved": false },
     "P7.3": { "status": "BLOCKED_BY_P7.2", "approved": false }
   },
