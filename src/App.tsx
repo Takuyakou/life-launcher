@@ -86,6 +86,7 @@ import { ContextMenu, ContextMenuItem } from "./components/ContextMenu";
 import { HelpGuideDialog } from "./components/HelpGuideDialog";
 import { ProjectIdentity } from "./components/ProjectIdentity";
 import { StartEnvironmentPicker } from "./StartEnvironmentPicker";
+import { canonicalSourceKey, timerSourceKey, resnapshotSource, SOURCE_EDIT_TIMER_REASON } from "./sourceEdit";
 import { PROJECT_COLOR_IDS, PROJECT_COLOR_LABELS, resolveProjectColorId } from "./projectIdentity";
 import { canRevealLauncherButton } from "./launcherReveal";
 import { TimerPanel } from "./components/TimerPanel";
@@ -1753,6 +1754,9 @@ function DashboardApp() {
   const [inboxAddSaving, setInboxAddSaving] = useState(false);
   const [inboxAddError, setInboxAddError] = useState<string | null>(null);
   const [inboxEditingIndex, setInboxEditingIndex] = useState<number | null>(null);
+  const inboxEditingIdRef = useRef<string | null>(null);
+  const sourceEditBusyRef = useRef<string | null>(null);
+  const [sourceEditSaving, setSourceEditSaving] = useState(false);
   const [inboxEditDraft, setInboxEditDraft] = useState("");
   const [inboxEditProjectId, setInboxEditProjectId] = useState("");
   const [inboxEditButtonIds, setInboxEditButtonIds] = useState<string[]>([]);
@@ -2952,6 +2956,7 @@ function DashboardApp() {
   }, []);
 
   const dismissNonCriticalModal = useCallback(() => {
+    if (sourceEditBusyRef.current) return;
     if (inboxAddOpen) {
       closeInboxAddDialog();
       return;
@@ -5197,6 +5202,8 @@ function DashboardApp() {
       if (
         !config ||
         !cleanLabel ||
+        (sourceEditBusyRef.current !== null &&
+          timerSourceKey(configRef.current ?? config, sourceId) === sourceEditBusyRef.current) ||
         earlyStopRef.current ||
         finishingTimerRef.current !== null ||
         plannedCommitRef.current
@@ -5349,6 +5356,10 @@ function DashboardApp() {
 
   const updateCompletionNextStep = (text: string) => {
     if (!config || !completionPrompt?.projectId) return;
+    if (sourceEditBlocked(`project:${completionPrompt.projectId}`)) {
+      showToast("warn", SOURCE_EDIT_TIMER_REASON);
+      return;
+    }
     const timestamp = new Date().toISOString();
     const projects = config.projects.map((project) =>
       project.id === completionPrompt.projectId
@@ -5360,7 +5371,7 @@ function DashboardApp() {
           }
         : project,
     );
-    void persistConfig({ ...config, projects }).then((saved) => {
+    void saveSourceEdit(config, { ...config, projects }, `project:${completionPrompt.projectId}`).then((saved) => {
       if (saved) {
         setStaleNextStepProjectIds((ids) => ids.filter((id) => id !== completionPrompt.projectId));
       }
@@ -5612,9 +5623,38 @@ function DashboardApp() {
     closeInboxAddDialog();
   };
 
+  const sourceEditBlocked = (key: string) => {
+    const current = configRef.current;
+    return sourceEditBusyRef.current !== null || Boolean(current && activeTimerRef.current &&
+      timerSourceKey(current, activeTimerRef.current.sourceId) === key);
+  };
+
+  const saveSourceEdit = async (previous: AppConfig, next: AppConfig, key: string) => {
+    if (sourceEditBlocked(key)) {
+      showToast("warn", SOURCE_EDIT_TIMER_REASON);
+      return false;
+    }
+    sourceEditBusyRef.current = key;
+    setSourceEditSaving(true);
+    try {
+      return await persistConfig(resnapshotSource(previous, next, key));
+    } catch (error) {
+      showToast("error", error instanceof Error ? error.message : String(error));
+      return false;
+    } finally {
+      sourceEditBusyRef.current = null;
+      setSourceEditSaving(false);
+    }
+  };
+
   const beginInboxEdit = (index: number) => {
-    const item = config?.inbox[index];
+    const item = configRef.current?.inbox[index];
     if (!item) return;
+    if (!item.id || sourceEditBlocked(`wishlist:${item.id}`)) {
+      showToast("warn", SOURCE_EDIT_TIMER_REASON);
+      return;
+    }
+    inboxEditingIdRef.current = item.id;
     setContextMenu(null);
     setInboxOpen(true);
     setInboxEditingIndex(index);
@@ -5628,15 +5668,25 @@ function DashboardApp() {
     void refreshInstructionChoices();
   };
 
-  const commitInboxEdit = () => {
+  const commitInboxEdit = async () => {
+    const config = configRef.current;
     if (!config || inboxEditingIndex === null) return;
+    const editingId = inboxEditingIdRef.current;
+    if (!editingId || !config.inbox.some(item => item.id === editingId)) {
+      showToast("warn", "元の登録が見つかりません");
+      return;
+    }
+    if (sourceEditBlocked(`wishlist:${editingId}`)) {
+      showToast("warn", SOURCE_EDIT_TIMER_REASON);
+      return;
+    }
     const text = inboxEditDraft.trim();
     if (!text) {
       cancelInboxEdit();
       return;
     }
-    const inbox = config.inbox.map((item, index) =>
-      index === inboxEditingIndex
+    const inbox = config.inbox.map((item) =>
+      item.id === editingId
         ? {
             id: item.id ?? createStableId(),
             text,
@@ -5651,16 +5701,18 @@ function DashboardApp() {
           }
         : item,
     );
+    if (!(await saveSourceEdit(config, { ...config, inbox }, `wishlist:${editingId}`))) return;
     setInboxEditingIndex(null);
     setInboxEditDraft("");
     setInboxEditProjectId("");
     setInboxEditButtonIds([]);
     setInboxEditInstructionPath("");
     setInboxEditInstructionOpenOnStart(false);
-    void persistConfig({ ...config, inbox });
+    showToast("ok", "やりたいことを保存しました");
   };
 
   const cancelInboxEdit = () => {
+    if (sourceEditBusyRef.current) return;
     setInboxEditingIndex(null);
     setInboxEditDraft("");
     setInboxEditProjectId("");
@@ -5920,6 +5972,10 @@ function DashboardApp() {
   };
 
   const openProjectEditDialog = (project: LauncherProject) => {
+    if (sourceEditBlocked(`project:${project.id}`)) {
+      showToast("warn", SOURCE_EDIT_TIMER_REASON);
+      return;
+    }
     setContextMenu(null);
     void refreshNextStepSuggestions(project.id, "project");
     void refreshInstructionChoices();
@@ -5945,8 +6001,17 @@ function DashboardApp() {
     });
   };
 
-  const saveProjectEdit = () => {
+  const saveProjectEdit = async () => {
+    const config = configRef.current;
     if (!config || !projectEditDraft) return;
+    if (!projectEditDraft.isNew && !config.projects.some(p => p.id === projectEditDraft.id)) {
+      showToast("warn", "元の登録が見つかりません");
+      return;
+    }
+    if (sourceEditBlocked(`project:${projectEditDraft.id}`)) {
+      showToast("warn", SOURCE_EDIT_TIMER_REASON);
+      return;
+    }
     const name = projectEditDraft.name.trim();
     if (!name) {
       showToast("warn", "プロジェクト名を入力してください");
@@ -6021,12 +6086,9 @@ function DashboardApp() {
       ? [...config.projects, project]
       : config.projects.map((item) => (item.id === project.id ? project : item));
 
+    if (!(await saveSourceEdit(config, { ...config, projects }, `project:${project.id}`))) return;
     setProjectEditDraft(null);
-    void persistConfig({ ...config, projects }).then((saved) => {
-      if (saved && nextStepChanged) {
-        setStaleNextStepProjectIds((ids) => ids.filter((id) => id !== project.id));
-      }
-    });
+    if (nextStepChanged) setStaleNextStepProjectIds((ids) => ids.filter((id) => id !== project.id));
     showToast("ok", `${name} を保存しました`);
   };
 
@@ -9072,6 +9134,26 @@ function DashboardApp() {
           ) : contextMenu.kind === "today" ? (
             <>
               <ContextMenuItem
+                disabled={!config.today.items[contextMenu.index]?.sourceKey ||
+                  !canonicalSourceKey(config, config.today.items[contextMenu.index].sourceKey!) ||
+                  sourceEditBlocked(canonicalSourceKey(config, config.today.items[contextMenu.index].sourceKey!) ?? "")}
+                title={SOURCE_EDIT_TIMER_REASON}
+                onClick={() => {
+                  const current = configRef.current;
+                  const item = current?.today.items[contextMenu.index];
+                  if (!current || !item?.sourceKey) return;
+                  const key = canonicalSourceKey(current, item.sourceKey);
+                  if (!key || sourceEditBlocked(key)) return;
+                  const project = current.projects.find(p => `project:${p.id}` === key);
+                  if (project) openProjectEditDialog(project);
+                  else {
+                    const index = current.inbox.findIndex(i => `wishlist:${i.id}` === key);
+                    if (index >= 0) beginInboxEdit(index);
+                  }
+                }}
+                type="button"
+              >編集</ContextMenuItem>
+              <ContextMenuItem
                 disabled={contextMenu.index <= 0}
                 onClick={() => void moveTodayItemByOffset(contextMenu.index, -1)}
                 type="button"
@@ -9153,7 +9235,7 @@ function DashboardApp() {
               >
                 下へ移動
               </ContextMenuItem>
-              <ContextMenuItem onClick={() => beginInboxEdit(contextMenu.index)} type="button">
+              <ContextMenuItem disabled={sourceEditBlocked(`wishlist:${config.inbox[contextMenu.index]?.id}`)} title={SOURCE_EDIT_TIMER_REASON} onClick={() => beginInboxEdit(contextMenu.index)} type="button">
                 編集
               </ContextMenuItem>
               <ContextMenuItem
@@ -9230,6 +9312,8 @@ function DashboardApp() {
               </ContextMenuItem>
               <ContextMenuItem
                 onClick={() => openProjectEditDialog(contextMenu.project)}
+                disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
+                title={SOURCE_EDIT_TIMER_REASON}
                 type="button"
               >
                 編集
@@ -9446,7 +9530,7 @@ function DashboardApp() {
               </button>
               <button
                 className="primaryButton"
-                disabled={!inboxEditDraft.trim()}
+                disabled={!inboxEditDraft.trim() || sourceEditSaving}
                 onClick={commitInboxEdit}
                 type="button"
               >
@@ -11150,14 +11234,15 @@ function DashboardApp() {
             <div className="dialogActions">
               <button
                 className="secondaryButton"
-                onClick={() => setProjectEditDraft(null)}
+                disabled={sourceEditSaving}
+                onClick={() => { if (!sourceEditBusyRef.current) setProjectEditDraft(null); }}
                 type="button"
               >
                 キャンセル
               </button>
               <button
                 className="primaryButton"
-                disabled={!projectEditDraft.name.trim()}
+                disabled={!projectEditDraft.name.trim() || sourceEditSaving}
                 onClick={saveProjectEdit}
                 type="button"
               >
