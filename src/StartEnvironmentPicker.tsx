@@ -40,6 +40,7 @@ export function StartEnvironmentPicker({
   const [query, setQuery] = useState("");
   const openerRef = useRef<HTMLButtonElement | null>(null);
   const searchRef = useRef<HTMLInputElement | null>(null);
+  const cancelRef = useRef<HTMLButtonElement | null>(null);
   const buttonById = useMemo(
     () => new Map(buttons.map((button) => [button.id, button])),
     [buttons],
@@ -89,7 +90,7 @@ export function StartEnvironmentPicker({
 
   useEffect(() => {
     if (!open) return;
-    window.requestAnimationFrame(() => searchRef.current?.focus());
+    window.requestAnimationFrame(() => cancelRef.current?.focus());
   }, [open]);
 
   const toggleDraft = (buttonId: string) => {
@@ -267,9 +268,6 @@ export function StartEnvironmentPicker({
             </div>
 
             <div className="dialogActions">
-              <button className="secondaryButton" onClick={closePicker} type="button">
-                キャンセル
-              </button>
               <button
                 className="primaryButton"
                 onClick={() => {
@@ -280,6 +278,9 @@ export function StartEnvironmentPicker({
                 type="button"
               >
                 選択を反映
+              </button>
+              <button className="secondaryButton" onClick={closePicker} ref={cancelRef} type="button">
+                キャンセル
               </button>
             </div>
           </section>
