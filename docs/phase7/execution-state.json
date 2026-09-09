@@ -3,7 +3,7 @@
   "target_version": "v1.2",
   "theme": "Dynamic Early Completion Escape Hatch",
   "workflow": "single-start-human-gated",
-  "current_stage": "P7.1",
+  "current_stage": "P7.2",
   "baseline_commit": "978474564b0ab2b9002b387057e6eaa684027301",
   "stages": {
     "P7.0": {
@@ -13,11 +13,19 @@
       "merge_commit": "aa0a9756f009cebe5656ef424cd4e657a9886046"
     },
     "P7.1": {
-      "status": "COMPLETE_AWAITING_HUMAN_REVIEW",
-      "approved": false,
+      "status": "MERGED",
+      "approved": true,
+      "pr": 31,
+      "merge_commit": "d2b52739c82e3934174f54aafa29f6f9e30b27ac",
       "base_commit": "aa0a9756f009cebe5656ef424cd4e657a9886046"
     },
-    "P7.2": { "status": "BLOCKED_BY_P7.1", "approved": false },
+    "P7.2": {
+      "status": "COMPLETE_AWAITING_HUMAN_REVIEW",
+      "approved": false,
+      "base_commit": "d2b52739c82e3934174f54aafa29f6f9e30b27ac",
+      "product_branch": "docs/p7-02-guide-spec-sync",
+      "web_branch": "feature/p7-02-early-completion-demo"
+    },
     "P7.3": { "status": "BLOCKED_BY_P7.2", "approved": false }
   },
   "non_goals": [
