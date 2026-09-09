@@ -5365,14 +5365,30 @@ function DashboardApp() {
     void persistConfig({ ...config, today: { ...config.today, items } });
   };
 
-  const removeTodayItem = (index: number) => {
-    if (!config) return;
-    const items = config.today.items.filter((_, itemIndex) => itemIndex !== index);
-    if (todayEditingIndex === index) {
-      setTodayEditingIndex(null);
+  const removeTodayItem = async (sourceKey: string) => {
+    const current = configRef.current;
+    if (!current) return;
+    const index = current.today.items.findIndex(
+      (item, itemIndex) => todaySourceKey(item, itemIndex) === sourceKey,
+    );
+    if (index < 0) return;
+    if (
+      activeTimerRef.current?.sourceId === todayTimerSourceId(current.today.items[index], index)
+    ) {
+      showToast("warn", "タイマーを停止してから外してください");
+      return;
     }
+    // Keep legacy timer identities stable when an earlier card is removed.
+    const items = current.today.items
+      .map((item, itemIndex) =>
+        item.sourceKey?.trim() ? item : { ...item, sourceKey: todaySourceKey(item, itemIndex) },
+      )
+      .filter((_, itemIndex) => itemIndex !== index);
+    setTodayEditingIndex(null);
     setTodayTriggerEditingIndex(null);
-    void persistConfig({ ...config, today: { ...config.today, items } });
+    if (await persistConfig({ ...current, today: { ...current.today, items } })) {
+      showToast("ok", "今日の3件から外しました");
+    }
   };
 
   const beginTodayTriggerEdit = (index: number) => {
@@ -8077,105 +8093,121 @@ function DashboardApp() {
                             </span>
                           )}
                         </div>
-                        {item.done ? (
-                          <span className="todayCompletedLabel">予定時間まで完了</span>
-                        ) : isRunningTodayItem ? (
-                          <div className="todayTimerActions todayTimerActions--running">
-                            <button
-                              aria-label={
-                                activeTimer.paused
-                                  ? "このセッションを再開"
-                                  : "このセッションを一時停止"
-                              }
-                              className="runningPauseButton"
-                              onClick={togglePause}
-                              title={
-                                activeTimer.paused
-                                  ? "このセッションを再開"
-                                  : "このセッションを一時停止"
-                              }
-                              type="button"
-                            >
-                              <UiIcon name={activeTimer.paused ? "play" : "pause"} size={16} />
-                              {activeTimer.paused ? "再開" : "一時停止"}
-                            </button>
-                            <button
-                              className="runningStopButton"
-                              onClick={() => void finishTimer(activeTimer)}
-                              title="このセッションを終了"
-                              type="button"
-                            >
-                              終了
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="todayTimerActions">
-                            <button
-                              aria-label={`短時間タイマー${shortMinutes}分で開始`}
-                              className="todayStartButton todayStartButton--short"
-                              disabled={!item.text.trim()}
-                              onClick={() =>
-                                void startTimer(
-                                  timerSourceId,
-                                  item.projectId && projectsById.has(item.projectId)
-                                    ? (projectsById.get(item.projectId)?.name ?? item.text)
-                                    : item.text,
-                                  item.projectId && projectsById.has(item.projectId)
-                                    ? item.projectId
-                                    : null,
-                                  (item.buttonIds ?? []).flatMap(
-                                    (buttonId) => buttonsById.get(buttonId)?.actions ?? [],
-                                  ),
-                                  shortMinutes,
-                                  item.text,
-                                  item.instructionPath,
-                                  item.instructionOpenOnStart,
-                                )
-                              }
-                              title={`短時間タイマー: ${shortMinutes}分`}
-                              type="button"
-                            >
-                              <span aria-hidden="true" className="nextStepStartGlyph">
-                                <UiIcon name="play" size={16} />
-                              </span>
-                              <span aria-hidden="true" className="nextStepStartDuration">
-                                {shortMinutes}分
-                              </span>
-                            </button>
-                            <button
-                              aria-label={`通常タイマー${defaultMinutes}分で開始`}
-                              className="todayStartButton todayStartButton--normal"
-                              disabled={!item.text.trim()}
-                              onClick={() =>
-                                void startTimer(
-                                  timerSourceId,
-                                  item.projectId && projectsById.has(item.projectId)
-                                    ? (projectsById.get(item.projectId)?.name ?? item.text)
-                                    : item.text,
-                                  item.projectId && projectsById.has(item.projectId)
-                                    ? item.projectId
-                                    : null,
-                                  (item.buttonIds ?? []).flatMap(
-                                    (buttonId) => buttonsById.get(buttonId)?.actions ?? [],
-                                  ),
-                                  defaultMinutes,
-                                  item.text,
-                                  item.instructionPath,
-                                  item.instructionOpenOnStart,
-                                )
-                              }
-                              title={`通常タイマー: ${defaultMinutes}分`}
-                              type="button"
-                            >
-                              <span aria-hidden="true" className="nextStepStartGlyph">
-                                <UiIcon name="play" size={16} />
-                              </span>
-                              <span aria-hidden="true" className="nextStepStartDuration">
-                                {defaultMinutes}分
-                              </span>
-                            </button>
-                          </div>
-                        )}
+                        <div className="todayCardFooter">
+                          <button
+                            className="todayRemoveButton"
+                            disabled={isRunningTodayItem}
+                            onClick={() => void removeTodayItem(todaySourceKey(item, index))}
+                            onPointerDown={(event) => event.stopPropagation()}
+                            title={
+                              isRunningTodayItem
+                                ? "タイマーを停止してから外してください"
+                                : undefined
+                            }
+                            type="button"
+                          >
+                            今日の3件から外す
+                          </button>
+                          {item.done ? (
+                            <span className="todayCompletedLabel">予定時間まで完了</span>
+                          ) : isRunningTodayItem ? (
+                            <div className="todayTimerActions todayTimerActions--running">
+                              <button
+                                aria-label={
+                                  activeTimer.paused
+                                    ? "このセッションを再開"
+                                    : "このセッションを一時停止"
+                                }
+                                className="runningPauseButton"
+                                onClick={togglePause}
+                                title={
+                                  activeTimer.paused
+                                    ? "このセッションを再開"
+                                    : "このセッションを一時停止"
+                                }
+                                type="button"
+                              >
+                                <UiIcon name={activeTimer.paused ? "play" : "pause"} size={16} />
+                                {activeTimer.paused ? "再開" : "一時停止"}
+                              </button>
+                              <button
+                                className="runningStopButton"
+                                onClick={() => void finishTimer(activeTimer)}
+                                title="このセッションを終了"
+                                type="button"
+                              >
+                                終了
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="todayTimerActions">
+                              <button
+                                aria-label={`短時間タイマー${shortMinutes}分で開始`}
+                                className="todayStartButton todayStartButton--short"
+                                disabled={!item.text.trim()}
+                                onClick={() =>
+                                  void startTimer(
+                                    timerSourceId,
+                                    item.projectId && projectsById.has(item.projectId)
+                                      ? (projectsById.get(item.projectId)?.name ?? item.text)
+                                      : item.text,
+                                    item.projectId && projectsById.has(item.projectId)
+                                      ? item.projectId
+                                      : null,
+                                    (item.buttonIds ?? []).flatMap(
+                                      (buttonId) => buttonsById.get(buttonId)?.actions ?? [],
+                                    ),
+                                    shortMinutes,
+                                    item.text,
+                                    item.instructionPath,
+                                    item.instructionOpenOnStart,
+                                  )
+                                }
+                                title={`短時間タイマー: ${shortMinutes}分`}
+                                type="button"
+                              >
+                                <span aria-hidden="true" className="nextStepStartGlyph">
+                                  <UiIcon name="play" size={16} />
+                                </span>
+                                <span aria-hidden="true" className="nextStepStartDuration">
+                                  {shortMinutes}分
+                                </span>
+                              </button>
+                              <button
+                                aria-label={`通常タイマー${defaultMinutes}分で開始`}
+                                className="todayStartButton todayStartButton--normal"
+                                disabled={!item.text.trim()}
+                                onClick={() =>
+                                  void startTimer(
+                                    timerSourceId,
+                                    item.projectId && projectsById.has(item.projectId)
+                                      ? (projectsById.get(item.projectId)?.name ?? item.text)
+                                      : item.text,
+                                    item.projectId && projectsById.has(item.projectId)
+                                      ? item.projectId
+                                      : null,
+                                    (item.buttonIds ?? []).flatMap(
+                                      (buttonId) => buttonsById.get(buttonId)?.actions ?? [],
+                                    ),
+                                    defaultMinutes,
+                                    item.text,
+                                    item.instructionPath,
+                                    item.instructionOpenOnStart,
+                                  )
+                                }
+                                title={`通常タイマー: ${defaultMinutes}分`}
+                                type="button"
+                              >
+                                <span aria-hidden="true" className="nextStepStartGlyph">
+                                  <UiIcon name="play" size={16} />
+                                </span>
+                                <span aria-hidden="true" className="nextStepStartDuration">
+                                  {defaultMinutes}分
+                                </span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </article>
                     );
                   })}
@@ -8903,14 +8935,26 @@ function DashboardApp() {
                 下へ移動
               </ContextMenuItem>
               <ContextMenuItem
-                className="contextMenuDanger"
+                disabled={
+                  !!config?.today.items[contextMenu.index] &&
+                  activeTimer?.sourceId ===
+                    todayTimerSourceId(config.today.items[contextMenu.index], contextMenu.index)
+                }
+                title={
+                  config?.today.items[contextMenu.index] &&
+                  activeTimer?.sourceId ===
+                    todayTimerSourceId(config.today.items[contextMenu.index], contextMenu.index)
+                    ? "タイマーを停止してから外してください"
+                    : undefined
+                }
                 onClick={() => {
                   setContextMenu(null);
-                  removeTodayItem(contextMenu.index);
+                  const item = config?.today.items[contextMenu.index];
+                  if (item) void removeTodayItem(todaySourceKey(item, contextMenu.index));
                 }}
                 type="button"
               >
-                削除
+                今日の3件から外す
               </ContextMenuItem>
             </>
           ) : contextMenu.kind === "todayBuilder" ? (

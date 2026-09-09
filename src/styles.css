@@ -7420,6 +7420,43 @@ input[type="number"]::-webkit-inner-spin-button {
   font-weight: 650;
 }
 
+.todayCardFooter {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.todayCardFooter .todayTimerActions,
+.todayCardFooter .todayCompletedLabel {
+  margin-left: auto;
+}
+
+.todayRow .todayRemoveButton {
+  min-height: 34px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.todayRow .todayRemoveButton:hover:not(:disabled) {
+  background: var(--surface-soft);
+  color: var(--text);
+}
+
+.todayRow .todayRemoveButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .todayNextBatch {
   display: flex;
   align-items: center;
