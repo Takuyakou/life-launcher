@@ -6,7 +6,7 @@
 
 Life Launcherは、迷っているときに「今やる一手」を1つ示し、必要な環境を開いて、開始まで連れていくlocal-firstのWindowsデスクトップアプリです。
 
-[Windows版をダウンロード](https://github.com/Takuyakou/life-launcher/releases/tag/v1.0.0)
+[Windows版をダウンロード](https://github.com/Takuyakou/life-launcher/releases/latest)
 
 ![Life Launcher メインダッシュボード](docs/screenshots/main-dashboard.png)
 
@@ -18,7 +18,9 @@ Life Launcherは、迷っているときに「今やる一手」を1つ示し、
 
 <img src="docs/screenshots/web-demo.png" alt="Life Launcher Web Demo" width="720">
 
-Web Demoではsynthetic dataを使用し、変更した状態をブラウザのlocalStorageに保存します。Windows版のアプリ・ファイル・URL起動は実際には行わず、「開始すると環境が揃う」流れをDemo演出として確認できます。※Windows製品版の完全移植ではありません。
+Web Demoでは合成データを使い、今日の候補選択・タイマー・「今日の3件から外す」など、v1.1の中心的な流れを体験できます。変更した状態はブラウザのlocalStorageに保存します。Windows版のアプリ・ファイル・URL起動は実際には行わず、演出として確認できます。
+
+※Windows製品版の完全移植ではありません。
 
 ## 主な機能
 
@@ -26,13 +28,19 @@ Web Demoではsynthetic dataを使用し、変更した状態をブラウザのl
   今週の重点から、説明可能な固定ルールで「今やる一手」を1件だけ提示します。
 
 - **今日の勝利条件 / 今日の3件**
-  今日の基準を1つ決め、取り組む項目は最大3件に絞ります。
+  今日の基準を1つ決め、取り組む項目は最大3件に絞ります。プロジェクト色付きのカードから開始し、予定時間の満了後に終了を確定すると完了になります。3件すべて完了したら、自分で次の3件を選びます。
+
+- **今日を組み立てる / やりたいこと**
+  次の一手・やりたいことから候補を5件ずつ表示し、「今日へ」で採用します。採用時の本文・手順書・開始環境の参照・タイマー分数を保持するため、後で登録元を編集しても今日の予定を維持できます。
+
+- **今日の3件から外す**
+  カード左下または右クリックから、今日への採用だけを確認ダイアログなしで解除できます。元の登録・候補・実行記録は残ります。対象のタイマー実行中・一時停止中・満了確認中は解除できません。
 
 - **Quick Launcher / 辞書**
-  アプリ・フォルダ・ファイル・URLを登録し、サイドバーや`Ctrl+K`検索から呼び出せます。
+  アプリ・フォルダ・ファイル・URLを登録し、サイドバーや`Ctrl+K`検索から呼び出せます。辞書は矢印キーで移動でき、複数モニターでは本体がある画面に開きます。
 
 - **タイマー / セッション記録**
-  短時間または通常タイマーで開始し、1分以上の実行内容をローカルに記録します。
+  短時間または通常タイマーで開始し、1分以上の実行内容をローカルに記録します。途中終了では今日の項目を完了にせず、登録そのものの「完了にする」「削除」とも区別します。
 
 - **手順書ビューア**
   登録フォルダ内のMarkdown・テキスト・サニタイズ済みHTMLを別ウィンドウで参照できます。
@@ -49,29 +57,39 @@ Web Demoではsynthetic dataを使用し、変更した状態をブラウザのl
 
 ## Download
 
-Life Launcherは、[GitHub Releases](https://github.com/Takuyakou/life-launcher/releases/tag/v1.0.0)からダウンロードできます。
+Life Launcherは、[GitHub Releases](https://github.com/Takuyakou/life-launcher/releases/latest)からダウンロードできます。現在の正式リリースは **v1.1.0** です。
 
 ### Installer - Recommended
 
 通常はこちらを利用してください。
 
-`Life-Launcher-v1.0.0-windows-x64-setup.exe`
+`Life-Launcher-v1.1.0-windows-x64-setup.exe`
 
 ### Standalone EXE
 
 インストールせず直接起動できます。
 
-`Life-Launcher-v1.0.0-windows-x64.exe`
+`Life-Launcher-v1.1.0-windows-x64.exe`
 
 ### Portable ZIP
 
 ZIPを展開して利用できます。
 
-`Life-Launcher-v1.0.0-windows-x64-portable.zip`
+`Life-Launcher-v1.1.0-windows-x64-portable.zip`
+
+ZIP版もユーザーデータは`%APPDATA%\life-launcher`へ保存します。USBなどへデータごと持ち運ぶ方式ではありません。
 
 > 現在のWindowsバイナリはコード署名されていないため、Windows SmartScreenの警告が表示される場合があります。Microsoft Edge WebView2 Runtimeが必要です。
 
 配布ファイルの整合性はReleaseに含まれる`SHA256SUMS.txt`で確認できます。
+
+## v1.0からの更新
+
+更新前にLife Launcherを完全終了し、`%APPDATA%\life-launcher`フォルダーを別の場所へコピーしてバックアップしてください。自動アップデーターはありません。
+
+v1.0の今日の3件で識別用のsource keyがない項目は、移行時に「完了」が「未完了」に戻ります。Sessionの実行記録は削除しません。この移行だけでは、設定を書き換える前の自動バックアップは保証されません。
+
+詳しくは [v1.1.0 Release notes](docs/releases/v1.1.0.md) と [CHANGELOG](CHANGELOG.md) を参照してください。機能の全体像は [OVERVIEW](docs/OVERVIEW.md)、詳細は [現行仕様書](docs/spec/current-spec.md) にまとめています。
 
 ## 動作要件
 
@@ -129,7 +147,7 @@ Life Launcherはアカウントや専用サーバーを必要としません。�
 
 ## 公開ソースについて
 
-このリポジトリはLife Launcher v1.0.0から、クリーンな公開履歴で始まっています。非公開の開発履歴、内部の計画書・報告書、実際の実行データ、非公開スクリーンショット、ビルド成果物、リリースバイナリは意図的に除外しています。
+このリポジトリはLife Launcher v1.0.0から、クリーンな公開履歴で始まっています。元の非公開開発履歴や実際のユーザーデータは含めず、公開後の仕様・検証記録をこのリポジトリで管理しています。配布バイナリはGitHub Releasesに置いています。
 
 ## ライセンス
 

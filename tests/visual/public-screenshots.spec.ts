@@ -80,7 +80,7 @@ test("create public screenshot contact sheet", async ({ page }) => {
     figure{margin:0;padding:12px;background:#1c1b17;border:1px solid #403d32;border-radius:6px}
     figure:first-child{grid-column:1/-1}img{display:block;width:100%;height:auto;border:1px solid #302e27}
     figcaption{margin-top:10px;font-weight:600}
-  </style></head><body><h1>Life Launcher v1.0.0 public screenshots</h1><div class="grid">
+  </style></head><body><h1>Life Launcher public screenshots</h1><div class="grid">
     ${items.map((item) => `<figure><img src="${item.source}" alt=""><figcaption>${item.label}</figcaption></figure>`).join("")}
   </div></body></html>`);
   await page.screenshot({ path: resolve(SCREENSHOT_DIR, "contact-sheet.png"), fullPage: true });

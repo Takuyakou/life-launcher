@@ -14,8 +14,8 @@ npm.cmd run screenshot:public
 | `dictionary.png` | Dictionary, 1000 x 640 | PASS - synthetic launcher entries only |
 | `instruction-viewer.png` | Instruction Viewer, 1080 x 680 | PASS - synthetic instruction tree and content only |
 | `contact-sheet.png` | Combined Windows product review sheet | PASS - contains only the three Windows product images above |
-| `web-demo.png` | Web Demo landing page, 1440 x 900 | PASS - synthetic public landing page only |
+| `web-demo.png` | Web Demo v1.1 dashboard, including Today3 removal | PASS - synthetic public demo data only |
 
 The Windows screenshot test fixes the date and time, installs a Tauri API mock before navigation, disables animation and caret rendering, uses a dedicated local Vite port, and never reads real application data.
 
-`web-demo.png` is copied from the public `docs/screenshots/web-demo.png` asset in [Takuyakou/life-launcher-web](https://github.com/Takuyakou/life-launcher-web). That asset is produced and reviewed through the Web Demo repository's Playwright Visual QA workflow.
+The Windows images were regenerated for the v1.1 README update. `web-demo.png` is copied from the public `docs/screenshots/web-demo-v1.1.png` asset in [Takuyakou/life-launcher-web](https://github.com/Takuyakou/life-launcher-web). That asset is produced and reviewed through the Web Demo repository's Playwright Visual QA workflow.
