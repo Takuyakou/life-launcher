@@ -1,0 +1,21 @@
+{
+  "phase": "P7",
+  "target_version": "v1.2",
+  "theme": "Dynamic Early Completion Escape Hatch",
+  "workflow": "single-start-human-gated",
+  "current_stage": "P7.0",
+  "baseline_commit": "978474564b0ab2b9002b387057e6eaa684027301",
+  "stages": {
+    "P7.0": { "status": "COMPLETE_AWAITING_HUMAN_REVIEW", "approved": false },
+    "P7.1": { "status": "BLOCKED_BY_P7.0", "approved": false },
+    "P7.2": { "status": "BLOCKED_BY_P7.1", "approved": false },
+    "P7.3": { "status": "BLOCKED_BY_P7.2", "approved": false }
+  },
+  "non_goals": [
+    "partial Today3 auto-refill",
+    "2-of-3 refill",
+    "80-percent completion rule",
+    "automatic completion at threshold"
+  ],
+  "release_allowed": false
+}

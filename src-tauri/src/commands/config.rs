@@ -2684,6 +2684,36 @@ mod tests {
     }
 
     #[test]
+    fn p7_short_snapshot_boundary_fixtures_survive_project_changes() {
+        for short in [1, 2, 3, 5, 10, 240] {
+            let mut config = sample_config();
+            config.today.items[0].project_id = Some(config.projects[0].id.clone());
+            config.today.items[0].short_timer_minutes = Some(short);
+            config.projects[0].short_timer_minutes = Some(7);
+            let (mut config, _, _) = sanitize_config(config);
+            assert_eq!(config.today.items[0].short_timer_minutes, Some(short));
+            config.projects[0].short_timer_minutes = Some(2);
+            let (config, _, _) = sanitize_config(config);
+            let snapshot = config.today.items[0].short_timer_minutes.unwrap();
+            assert_eq!(snapshot, short);
+            // Proposed P7 threshold is derived from the preserved snapshot, not Project.
+            assert_eq!(snapshot.min(5) * 60, short.min(5) * 60);
+        }
+    }
+
+    #[test]
+    fn p7_missing_and_invalid_snapshot_migration_precedes_threshold_fallback() {
+        for short in [None, Some(0), Some(241)] {
+            let mut config = sample_config();
+            config.today.items[0].project_id = Some(config.projects[0].id.clone());
+            config.today.items[0].short_timer_minutes = short;
+            config.projects[0].short_timer_minutes = Some(3);
+            let (config, _, _) = sanitize_config(config);
+            assert_eq!(config.today.items[0].short_timer_minutes, Some(3));
+        }
+    }
+
+    #[test]
     fn inbox_project_reference_keeps_valid_id_and_removes_unknown_id_only() {
         let mut config = sample_config();
         let valid_project_id = config.projects[0].id.clone();
