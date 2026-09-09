@@ -53,6 +53,10 @@ test("P71 matrix preserves identity/history and clears removed snapshot fields",
   expect(timerSourceKey(before,`today:${key}`)).toBe(key);
   expect(canonicalSourceKey(before,"wishlist:none:同じ文")).toBeNull();
   expect(canonicalSourceKey(before,"legacy:unknown")).toBeNull();
+  const legacy=structuredClone(before);
+  legacy.inbox=legacy.inbox.slice(0,1);
+  legacy.today.items[1].sourceKey="wishlist:none:同じ文";
+  expect(()=>resnapshotSource(legacy,legacy,"wishlist:p71-w1")).toThrow("旧形式");
 });
 
 test("P71 Wishlist identity, relink, done and no-linked case",()=>{
@@ -119,4 +123,55 @@ test("P71 running/paused blocks Today and source edit, other source stays editab
   await card.getByRole("button",{name:"終了",exact:true}).click();
   await edit(page);
   await expect(page.getByRole("dialog",{name:"プロジェクト編集",exact:true})).toBeVisible();
+});
+
+test("P71 source editor changes the next early threshold without changing history",async({page})=>{
+  await prepare(page);
+  await page.locator(".nextStepRow").first().click({button:"right"});
+  await page.getByRole("menuitem",{name:"編集",exact:true}).click();
+  const editor=page.getByRole("dialog",{name:"プロジェクト編集",exact:true});
+  await editor.getByRole("spinbutton",{name:"プロジェクトの短時間タイマー分数"}).fill("2");
+  await editor.getByRole("button",{name:"保存",exact:true}).click();
+  await expect(editor).toHaveCount(0);
+  expect((await current(page)).today.items[0].shortTimerMinutes).toBe(2);
+  const card=page.locator(".todayRow").first();
+  await card.getByRole("button",{name:"通常タイマー25分で開始"}).click();
+  await page.clock.fastForward(120_000);
+  await card.getByRole("button",{name:"終了",exact:true}).click();
+  await expect(page.getByRole("dialog",{name:"今日の分は完了にしますか？"})).toBeVisible();
+});
+
+test("P71 Today Wishlist editing and source-side editing share the same snapshot",async({page})=>{
+  await prepare(page);
+  await edit(page,1);
+  const editor=page.getByRole("dialog",{name:"やりたいこと編集"});
+  await editor.getByRole("textbox").first().fill("Wishlist更新");
+  await editor.getByRole("button",{name:"保存",exact:true}).click();
+  await expect(editor).toHaveCount(0);
+  const config=await current(page);
+  expect(config.inbox[0].text).toBe("Wishlist更新");
+  expect(config.inbox[1].text).toBe("同じ文");
+  expect(config.today.items[1]).toMatchObject({text:"Wishlist更新",done:true,sourceKey:"wishlist:p71-w1"});
+  await page.locator(".inboxRow").first().click({button:"right"});
+  await page.getByRole("menuitem",{name:"編集",exact:true}).click();
+  await editor.getByRole("textbox").first().fill("元から更新");
+  await editor.getByRole("button",{name:"保存",exact:true}).click();
+  await expect(editor).toHaveCount(0);
+  expect((await current(page)).today.items[1].text).toBe("元から更新");
+});
+
+test("P71 direct save is rejected if the same timer starts after editor opens",async({page})=>{
+  await prepare(page);
+  await edit(page);
+  const editor=page.getByRole("dialog",{name:"プロジェクト編集",exact:true});
+  await editor.getByRole("textbox",{name:/^次の一手/}).fill("保存してはいけない");
+  await page.locator(".todayRow").first().getByRole("button",{name:"通常タイマー25分で開始"}).evaluate(node=>{
+    const props=Object.keys(node).find(k=>k.startsWith("__reactProps$"));
+    if(!props) throw new Error("React props unavailable");
+    (node as unknown as Record<string,{onClick:()=>void}>)[props].onClick();
+  });
+  await editor.getByRole("button",{name:"保存",exact:true}).click();
+  await expect(page.locator(".toast").last()).toContainText("タイマーを停止してから編集してください");
+  await expect(editor).toBeVisible();
+  expect((await current(page)).projects[0].nextStep).toBe(seed().config.projects[0].nextStep);
 });

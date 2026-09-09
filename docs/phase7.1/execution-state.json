@@ -2,13 +2,15 @@
   "phase": "P71",
   "target_version": "v1.2",
   "workflow": "single-start-human-gated",
-  "current_stage": "P71-00",
+  "current_stage": "P71-03",
+  "implementation_continuation_authorized": true,
+  "merge_authorized": false,
   "baseline_commit": "d2b52739c82e3934174f54aafa29f6f9e30b27ac",
   "stages": {
     "P71-00": { "status": "COMPLETE_AWAITING_HUMAN_REVIEW", "approved": false },
-    "P71-01": { "status": "BLOCKED_BY_P71-00", "approved": false },
-    "P71-02": { "status": "BLOCKED_BY_P71-01", "approved": false },
-    "P71-03": { "status": "BLOCKED_BY_P71-02", "approved": false }
+    "P71-01": { "status": "COMPLETE_AWAITING_HUMAN_REVIEW", "approved": false, "pr": 34 },
+    "P71-02": { "status": "COMPLETE_AWAITING_HUMAN_REVIEW", "approved": false, "pr": 35 },
+    "P71-03": { "status": "COMPLETE_AWAITING_HUMAN_REVIEW", "approved": false }
   },
   "release_allowed": false
 }
