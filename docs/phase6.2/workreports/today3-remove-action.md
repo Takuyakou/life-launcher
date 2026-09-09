@@ -39,3 +39,10 @@ active timerは最新refでも確認し、ネイティブdisabledの迂回や古
 同じProjectからDo Nowを開始した場合は、Today3由来のtimerとは異なる既存source IDを維持する。今回のdisabledは対象Today3のtimer source一致に基づく。
 既存persistConfigの並行保存制御自体は今回のscope外で、保存契約を変更していない。
 mainへのマージ、Web Demoへの反映は行わず、報告して停止する。
+
+## EXE確認後のUI調整
+
+- 解除ボタンに既存backアイコンを追加し、文字をやや強めたghost表現へ調整。
+- きっかけ編集UIをTimerの上へ移動。未設定時は専用領域hover/focusのみで表示し、カード全体hoverでは表示しない。設定済みのきっかけは常時表示。
+- レイアウト領域を予約し、表示前後のTimer位置が変わらないことを追加試験で確認。
+- 標準lint/build PASS、全Playwright 109件PASS（追加の局所hover・keyboard・保存試験を含む）。

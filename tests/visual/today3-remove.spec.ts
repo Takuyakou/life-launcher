@@ -150,6 +150,38 @@ test("removing preceding legacy card does not change another active timer identi
   await expect(page.locator(".todayRemoveButton").first()).toBeDisabled();
 });
 
+test("trigger appears only over its timer-top region or keyboard focus without layout movement", async ({
+  page,
+}) => {
+  await prepare(page);
+  const card = page.locator(".todayRow").first();
+  const trigger = card.locator(".todayTriggerButton--empty");
+  const timers = card.locator(".todayTimerActions");
+  await card.locator(".todayTextButton").hover();
+  await expect(trigger).toHaveCSS("opacity", "0");
+  await card.locator(".todayRemoveButton").hover();
+  await expect(trigger).toHaveCSS("opacity", "0");
+  const before = await timers.boundingBox();
+  await card.locator(".todayTriggerZone").hover();
+  await expect(trigger).toHaveCSS("opacity", "1");
+  expect(await timers.boundingBox()).toEqual(before);
+  const a = await trigger.boundingBox();
+  expect(a!.y + a!.height).toBeLessThanOrEqual(before!.y);
+  await page.mouse.move(0, 0);
+  await expect(trigger).toHaveCSS("opacity", "0");
+  await card.locator(".todayRemoveButton").focus();
+  await page.keyboard.press("Tab");
+  await expect(trigger).toBeFocused();
+  await expect(trigger).toHaveCSS("opacity", "1");
+  await page.keyboard.press("Enter");
+  const input = card.getByRole("textbox", { name: "いつ・何の後にやる？" });
+  await input.fill("夕食後");
+  await input.press("Enter");
+  await page.mouse.move(0, 0);
+  await expect(card.locator(".todayTriggerZone")).toContainText("夕食後");
+  expect((await state(page)).config.today.items[0].trigger).toBe("夕食後");
+});
+
 for (const [width, columns] of [
   [1440, 3],
   [1000, 2],
