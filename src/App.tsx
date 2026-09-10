@@ -616,6 +616,24 @@ const MINI_WINDOW_SAFE_MARGIN_PX = 16;
 const NUMBER_INPUT_DRAG_THRESHOLD_PX = 4;
 const NUMBER_INPUT_DRAG_PIXELS_PER_STEP = 8;
 const TODAY_BUILDER_PAGE_SIZE = 5;
+const SOURCE_LIST_COMPACT_LIMIT = 5;
+const SOURCE_LIST_PAGINATION_THRESHOLD = 20;
+const SOURCE_LIST_PAGE_SIZE = 10;
+
+function sourceListRange(total: number, expanded: boolean, page: number) {
+  if (total < SOURCE_LIST_PAGINATION_THRESHOLD) {
+    return {
+      start: 0,
+      end: total <= SOURCE_LIST_COMPACT_LIMIT || expanded ? total : SOURCE_LIST_COMPACT_LIMIT,
+      page: 1,
+      pageCount: 1,
+    };
+  }
+  const pageCount = Math.max(1, Math.ceil(total / SOURCE_LIST_PAGE_SIZE));
+  const safePage = Math.min(Math.max(1, page), pageCount);
+  const start = (safePage - 1) * SOURCE_LIST_PAGE_SIZE;
+  return { start, end: Math.min(total, start + SOURCE_LIST_PAGE_SIZE), page: safePage, pageCount };
+}
 const TODAY_BUILDER_ORDER_STORAGE_KEY = "life-launcher-today-builder-order";
 
 function readStoredStringArray(key: string): string[] {
@@ -1799,6 +1817,10 @@ function DashboardApp() {
   const [inboxEditInstructionOpenOnStart, setInboxEditInstructionOpenOnStart] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
   const [projectsOpen, setProjectsOpen] = useState(true);
+  const [projectsListExpanded, setProjectsListExpanded] = useState(false);
+  const [projectsListPage, setProjectsListPage] = useState(1);
+  const [inboxListExpanded, setInboxListExpanded] = useState(false);
+  const [inboxListPage, setInboxListPage] = useState(1);
   const [todayBuilderOpen, setTodayBuilderOpen] = useState(false);
   const [todayBuilderPage, setTodayBuilderPage] = useState(1);
   const [, setTodayBuilderOrderRevision] = useState(0);
@@ -1895,6 +1917,8 @@ function DashboardApp() {
   const inboxAddSavingRef = useRef(false);
   const inboxAddOpenerRef = useRef<HTMLButtonElement | null>(null);
   const sourceEditOriginRef = useRef<"source" | "today" | "builder">("source");
+  const projectListAnchorRef = useRef<{ id: string; index: number } | null>(null);
+  const inboxListAnchorRef = useRef<{ id: string; index: number } | null>(null);
   const mainScrollAreaRef = useRef<HTMLDivElement | null>(null);
   const projectAutoScrollFrameRef = useRef<number | null>(null);
   const projectAutoScrollSpeedRef = useRef(0);
@@ -6690,6 +6714,52 @@ function DashboardApp() {
     });
   };
 
+  useEffect(() => {
+    const projects = config?.projects ?? [];
+    const pageCount = Math.max(1, Math.ceil(projects.length / SOURCE_LIST_PAGE_SIZE));
+    setProjectsListPage((page) => Math.min(Math.max(1, page), pageCount));
+    const anchor = projectListAnchorRef.current;
+    if (!anchor || projects.length === 0) return;
+    let index = projects.findIndex((project) => project.id === anchor.id);
+    if (index < 0) index = Math.min(anchor.index, projects.length - 1);
+    const project = projects[index];
+    if (!project) return;
+    projectListAnchorRef.current = { id: project.id, index };
+    if (projects.length >= SOURCE_LIST_PAGINATION_THRESHOLD) {
+      setProjectsListPage(Math.floor(index / SOURCE_LIST_PAGE_SIZE) + 1);
+    } else if (projects.length > SOURCE_LIST_COMPACT_LIMIT && index >= SOURCE_LIST_COMPACT_LIMIT) {
+      setProjectsListExpanded(true);
+    }
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        document.querySelector<HTMLElement>(`[data-project-id="${CSS.escape(project.id)}"]`)?.focus();
+      });
+    });
+  }, [config?.projects]);
+
+  useEffect(() => {
+    const items = config?.inbox ?? [];
+    const pageCount = Math.max(1, Math.ceil(items.length / SOURCE_LIST_PAGE_SIZE));
+    setInboxListPage((page) => Math.min(Math.max(1, page), pageCount));
+    const anchor = inboxListAnchorRef.current;
+    if (!anchor || items.length === 0) return;
+    let index = items.findIndex((item) => item.id === anchor.id);
+    if (index < 0) index = Math.min(anchor.index, items.length - 1);
+    const item = items[index];
+    if (!item?.id) return;
+    inboxListAnchorRef.current = { id: item.id, index };
+    if (items.length >= SOURCE_LIST_PAGINATION_THRESHOLD) {
+      setInboxListPage(Math.floor(index / SOURCE_LIST_PAGE_SIZE) + 1);
+    } else if (items.length > SOURCE_LIST_COMPACT_LIMIT && index >= SOURCE_LIST_COMPACT_LIMIT) {
+      setInboxListExpanded(true);
+    }
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        document.querySelector<HTMLElement>(`[data-inbox-id="${CSS.escape(item.id ?? "")}"]`)?.focus();
+      });
+    });
+  }, [config?.inbox]);
+
   if (loading) {
     return (
       <main className="appShell appShell--loading">
@@ -6707,6 +6777,16 @@ function DashboardApp() {
   }
 
   const todayCompletedCount = config.today.items.filter((item) => item.done).length;
+  const projectListRange = sourceListRange(
+    config.projects.length,
+    projectsListExpanded,
+    projectsListPage,
+  );
+  const visibleProjects = config.projects.slice(projectListRange.start, projectListRange.end);
+  const inboxListRange = sourceListRange(config.inbox.length, inboxListExpanded, inboxListPage);
+  const visibleInboxEntries = config.inbox
+    .map((item, index) => ({ item, index }))
+    .slice(inboxListRange.start, inboxListRange.end);
   const todayAllCompleted =
     config.today.items.length > 0 && todayCompletedCount === config.today.items.length;
   const victoryText = config.today.victory.text.trim();
@@ -9141,7 +9221,7 @@ function DashboardApp() {
                 {projectsOpen && (
                   <div className="nextStepBody">
                     <div className="projectGrid">
-                      {config.projects.map((project) => {
+                      {visibleProjects.map((project) => {
                         return (
                           <article
                             className={[
@@ -9153,6 +9233,10 @@ function DashboardApp() {
                             data-project-color={resolveProjectColorId(project.id, project.colorId)}
                             data-project-id={project.id}
                             key={project.id}
+                            onFocus={() => {
+                              const index = config.projects.findIndex((item) => item.id === project.id);
+                              projectListAnchorRef.current = { id: project.id, index };
+                            }}
                             onContextMenu={(event) => {
                               event.preventDefault();
                               event.stopPropagation();
@@ -9214,6 +9298,47 @@ function DashboardApp() {
                         );
                       })}
                     </div>
+                    {config.projects.length > SOURCE_LIST_COMPACT_LIMIT &&
+                      config.projects.length < SOURCE_LIST_PAGINATION_THRESHOLD && (
+                        <div className="sourceListControls">
+                          <button
+                            onClick={() => {
+                              projectListAnchorRef.current = null;
+                              setProjectsListExpanded((expanded) => !expanded);
+                            }}
+                            type="button"
+                          >
+                            {projectsListExpanded
+                              ? "5件だけ表示"
+                              : `残り${config.projects.length - SOURCE_LIST_COMPACT_LIMIT}件をもっと見る`}
+                          </button>
+                        </div>
+                      )}
+                    {config.projects.length >= SOURCE_LIST_PAGINATION_THRESHOLD && (
+                      <nav aria-label="次の一手のページ" className="sourceListPagination">
+                        <button
+                          disabled={projectListRange.page <= 1}
+                          onClick={() => {
+                            projectListAnchorRef.current = null;
+                            setProjectsListPage((page) => Math.max(1, page - 1));
+                          }}
+                          type="button"
+                        >
+                          <UiIcon name="chevronLeft" size={16} /> 前へ
+                        </button>
+                        <span>{projectListRange.page} / {projectListRange.pageCount}</span>
+                        <button
+                          disabled={projectListRange.page >= projectListRange.pageCount}
+                          onClick={() => {
+                            projectListAnchorRef.current = null;
+                            setProjectsListPage((page) => Math.min(projectListRange.pageCount, page + 1));
+                          }}
+                          type="button"
+                        >
+                          次へ <UiIcon name="chevronRight" size={16} />
+                        </button>
+                      </nav>
+                    )}
                     {projectPointerDrag?.targetIndicator && (
                       <div
                         aria-hidden="true"
@@ -9297,7 +9422,7 @@ function DashboardApp() {
                 {inboxOpen && (
                   <div className="inboxBody">
                     <div className="inboxList">
-                      {config.inbox.map((item, index) => (
+                      {visibleInboxEntries.map(({ item, index }) => (
                         <div
                           className={
                             inboxPointerDrag?.index === index
@@ -9305,7 +9430,11 @@ function DashboardApp() {
                               : "inboxRow sourceListRow"
                           }
                           data-inbox-index={index}
+                          data-inbox-id={item.id}
                           key={item.id ?? `${item.text}-${index}`}
+                          onFocus={() => {
+                            if (item.id) inboxListAnchorRef.current = { id: item.id, index };
+                          }}
                           onContextMenu={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
@@ -9358,6 +9487,47 @@ function DashboardApp() {
                         </div>
                       ))}
                     </div>
+                    {config.inbox.length > SOURCE_LIST_COMPACT_LIMIT &&
+                      config.inbox.length < SOURCE_LIST_PAGINATION_THRESHOLD && (
+                        <div className="sourceListControls">
+                          <button
+                            onClick={() => {
+                              inboxListAnchorRef.current = null;
+                              setInboxListExpanded((expanded) => !expanded);
+                            }}
+                            type="button"
+                          >
+                            {inboxListExpanded
+                              ? "5件だけ表示"
+                              : `残り${config.inbox.length - SOURCE_LIST_COMPACT_LIMIT}件をもっと見る`}
+                          </button>
+                        </div>
+                      )}
+                    {config.inbox.length >= SOURCE_LIST_PAGINATION_THRESHOLD && (
+                      <nav aria-label="やりたいことのページ" className="sourceListPagination">
+                        <button
+                          disabled={inboxListRange.page <= 1}
+                          onClick={() => {
+                            inboxListAnchorRef.current = null;
+                            setInboxListPage((page) => Math.max(1, page - 1));
+                          }}
+                          type="button"
+                        >
+                          <UiIcon name="chevronLeft" size={16} /> 前へ
+                        </button>
+                        <span>{inboxListRange.page} / {inboxListRange.pageCount}</span>
+                        <button
+                          disabled={inboxListRange.page >= inboxListRange.pageCount}
+                          onClick={() => {
+                            inboxListAnchorRef.current = null;
+                            setInboxListPage((page) => Math.min(inboxListRange.pageCount, page + 1));
+                          }}
+                          type="button"
+                        >
+                          次へ <UiIcon name="chevronRight" size={16} />
+                        </button>
+                      </nav>
+                    )}
                     {inboxPointerDrag?.targetIndicator && (
                       <div
                         aria-hidden="true"
