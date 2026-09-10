@@ -28,12 +28,18 @@ for (const width of [1440, 860]) {
       };
     });
     const a = await metrics(project), b = await metrics(inbox);
+    expect(a.height).toBe(48);
+    await expect(page.locator(".inboxList")).toHaveCSS("border-left-color", "rgba(0, 0, 0, 0)");
     expect(a.height).toBe(b.height);
     expect(a.textX).toBe(b.textX);
     expect(b.overflow).toBe(false);
     const builderToggle = page.locator(".todayBuilderHeader .disclosure");
     if (await builderToggle.getAttribute("aria-expanded") !== "true") await builderToggle.click();
     const builder = page.locator(".todayBuilderRow").first();
+    const heading = page.locator(".todayBuilderGroupHeading > strong").first();
+    const todayHeading = page.locator(".sectionHeading h2").filter({ hasText: "今日の3件" });
+    await expect(heading).toHaveCSS("color", await todayHeading.evaluate(el => getComputedStyle(el).color));
+    await expect(heading).toHaveCSS("font-size", "13px");
     const c = await metrics(builder);
     expect(c.height).toBe(a.height);
     expect(c.textX).toBe(a.textX);
