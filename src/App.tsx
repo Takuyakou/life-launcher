@@ -488,6 +488,9 @@ type TodayDragPreview = {
 
 type ProjectPointerDrag = {
   id: string;
+  sourceKey: string;
+  origin: "nextStep";
+  dayKey: string;
   startX: number;
   startY: number;
   hasMoved: boolean;
@@ -512,10 +515,14 @@ type ProjectDragPreview = {
     top: number;
     width: number;
   };
+  restoreTarget: boolean;
 };
 
 type InboxPointerDrag = {
   index: number;
+  sourceKey: string;
+  origin: "wishlist";
+  dayKey: string;
   startX: number;
   startY: number;
   hasMoved: boolean;
@@ -527,6 +534,7 @@ type InboxPointerDrag = {
 
 type InboxDragPreview = {
   index: number;
+  sourceKey: string;
   pointerX: number;
   pointerY: number;
   offsetX: number;
@@ -540,10 +548,14 @@ type InboxDragPreview = {
     top: number;
     width: number;
   };
+  restoreTarget: boolean;
 };
 
 type TodayBuilderPointerDrag = {
   index: number;
+  sourceKey: string;
+  origin: "todayBuilder";
+  dayKey: string;
   startX: number;
   startY: number;
   hasMoved: boolean;
@@ -555,6 +567,7 @@ type TodayBuilderPointerDrag = {
 
 type TodayBuilderDragPreview = {
   index: number;
+  sourceKey: string;
   pointerX: number;
   pointerY: number;
   offsetX: number;
@@ -567,6 +580,13 @@ type TodayBuilderDragPreview = {
     left: number;
     top: number;
     width: number;
+  };
+  todayTargetIndex?: number;
+  todayTargetIndicator?: {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
   };
 };
 
@@ -1497,6 +1517,85 @@ function todayDropTargetFromPoint(
   };
 }
 
+function todayAdoptionDropTargetFromPoint(
+  x: number,
+  y: number,
+): {
+  insertionIndex: number;
+  indicator: { left: number; top: number; width: number; height: number };
+} | null {
+  const grid = document.querySelector<HTMLElement>(".todayGrid");
+  if (!grid) return null;
+  const gridRect = grid.getBoundingClientRect();
+  if (x < gridRect.left || x > gridRect.right || y < gridRect.top || y > gridRect.bottom) {
+    return null;
+  }
+  const direct = todayDropTargetFromPoint(x, y);
+  if (direct) {
+    return {
+      insertionIndex: direct.index + (direct.placement === "after" ? 1 : 0),
+      indicator: direct.indicator,
+    };
+  }
+  const rows = Array.from(document.querySelectorAll<HTMLElement>("[data-today-index]"));
+  if (rows.length === 0) {
+    return {
+      insertionIndex: 0,
+      indicator: {
+        left: gridRect.left + 8,
+        top: gridRect.top + 8,
+        width: Math.max(0, gridRect.width - 16),
+        height: 3,
+      },
+    };
+  }
+  const nearest = rows.reduce((best, row) => {
+    const rect = row.getBoundingClientRect();
+    const dx = Math.max(rect.left - x, 0, x - rect.right);
+    const dy = Math.max(rect.top - y, 0, y - rect.bottom);
+    const distance = Math.hypot(dx, dy);
+    return !best || distance < best.distance ? { row, distance } : best;
+  }, null as { row: HTMLElement; distance: number } | null);
+  if (!nearest) return null;
+  const rect = nearest.row.getBoundingClientRect();
+  const index = Number(nearest.row.dataset.todayIndex);
+  if (Number.isNaN(index)) return null;
+  const sharesRow = rows.some(
+    (row) => row !== nearest.row && Math.abs(row.getBoundingClientRect().top - rect.top) < 2,
+  );
+  const after = sharesRow ? x >= rect.left + rect.width / 2 : y >= rect.top + rect.height / 2;
+  return {
+    insertionIndex: index + (after ? 1 : 0),
+    indicator: sharesRow
+      ? {
+          left: after ? rect.right + 1 : rect.left - 2,
+          top: rect.top + 6,
+          width: 3,
+          height: Math.max(0, rect.height - 12),
+        }
+      : {
+          left: rect.left + 6,
+          top: after ? rect.bottom + 1 : rect.top - 2,
+          width: Math.max(0, rect.width - 12),
+          height: 3,
+        },
+  };
+}
+
+function builderRestoreTargetFromPoint(x: number, y: number): boolean {
+  const band = document.querySelector<HTMLElement>(".todayBuilderBand");
+  if (!band) return false;
+  const rect = band.getBoundingClientRect();
+  return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+}
+
+function pointWithinSelector(x: number, y: number, selector: string): boolean {
+  const element = document.querySelector<HTMLElement>(selector);
+  if (!element) return false;
+  const rect = element.getBoundingClientRect();
+  return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+}
+
 function projectDropTargetFromPoint(
   x: number,
   y: number,
@@ -1826,6 +1925,7 @@ function DashboardApp() {
   const [, setTodayBuilderOrderRevision] = useState(0);
   const [todayBuilderPointerDrag, setTodayBuilderPointerDrag] =
     useState<TodayBuilderDragPreview | null>(null);
+  const [builderRestoreTargetActive, setBuilderRestoreTargetActive] = useState(false);
   const [todayActivityOpen, setTodayActivityOpen] = useState(false);
   const [, setNotesSaveStatus] = useState<NotesSaveStatus>("saved");
   const [launcherOverlayOpen, setLauncherOverlayOpen] = useState(false);
@@ -1914,6 +2014,10 @@ function DashboardApp() {
   const projectPointerDragRef = useRef<ProjectPointerDrag | null>(null);
   const inboxPointerDragRef = useRef<InboxPointerDrag | null>(null);
   const todayBuilderPointerDragRef = useRef<TodayBuilderPointerDrag | null>(null);
+  const builderAutoOpenTimerRef = useRef<number | null>(null);
+  const builderTemporarilyOpenedRef = useRef(false);
+  const todayBuilderOpenRef = useRef(todayBuilderOpen);
+  todayBuilderOpenRef.current = todayBuilderOpen;
   const inboxAddSavingRef = useRef(false);
   const inboxAddOpenerRef = useRef<HTMLButtonElement | null>(null);
   const sourceEditOriginRef = useRef<"source" | "today" | "builder">("source");
@@ -4537,14 +4641,86 @@ function DashboardApp() {
     return draggedIndex < targetIndex ? "after" : "before";
   };
 
+  const clearBuilderRestoreHover = (keepTemporaryOpen = false) => {
+    if (builderAutoOpenTimerRef.current !== null) {
+      window.clearTimeout(builderAutoOpenTimerRef.current);
+      builderAutoOpenTimerRef.current = null;
+    }
+    setBuilderRestoreTargetActive(false);
+    if (builderTemporarilyOpenedRef.current) {
+      if (!keepTemporaryOpen) setTodayBuilderOpen(false);
+      builderTemporarilyOpenedRef.current = false;
+    }
+  };
+
+  const updateBuilderRestoreHover = (x: number, y: number, eligible: boolean) => {
+    const overBuilder = eligible && builderRestoreTargetFromPoint(x, y);
+    setBuilderRestoreTargetActive(overBuilder);
+    if (!overBuilder) {
+      clearBuilderRestoreHover();
+      return false;
+    }
+    if (!todayBuilderOpenRef.current && builderAutoOpenTimerRef.current === null) {
+      builderAutoOpenTimerRef.current = window.setTimeout(() => {
+        builderAutoOpenTimerRef.current = null;
+        builderTemporarilyOpenedRef.current = true;
+        setTodayBuilderOpen(true);
+      }, 500);
+    }
+    return true;
+  };
+
+  const sourceCanReturnToBuilder = (sourceKey: string, dayKey: string) => {
+    const current = configRef.current;
+    if (!current || current.today.date !== dayKey) return false;
+    if (!current.today.candidateExcludedSourceKeys.includes(sourceKey)) return false;
+    if (sourceKey.startsWith("project:")) {
+      const id = sourceKey.slice("project:".length);
+      return current.projects.some((project) => project.id === id && project.nextStep.trim());
+    }
+    if (sourceKey.startsWith("wishlist:")) {
+      const id = sourceKey.slice("wishlist:".length);
+      return current.inbox.some((item) => item.id === id && item.text.trim());
+    }
+    return false;
+  };
+
+  const finishBuilderRestoreDrop = (sourceKey: string, dayKey: string, x: number, y: number) => {
+    const valid =
+      builderRestoreTargetFromPoint(x, y) && sourceCanReturnToBuilder(sourceKey, dayKey);
+    if (!valid) {
+      clearBuilderRestoreHover();
+      return false;
+    }
+    setBuilderRestoreTargetActive(false);
+    if (builderAutoOpenTimerRef.current !== null) {
+      window.clearTimeout(builderAutoOpenTimerRef.current);
+      builderAutoOpenTimerRef.current = null;
+    }
+    void restoreTodayBuilderCandidate(sourceKey).then((result) => {
+      if (result) {
+        setTodayBuilderOpen(true);
+        builderTemporarilyOpenedRef.current = false;
+      } else {
+        clearBuilderRestoreHover();
+      }
+    });
+    return true;
+  };
+
   const startProjectPointerDrag = (event: PointerEvent<HTMLElement>, projectId: string) => {
     if (event.button !== 0 || isReorderBlockedTarget(event.target)) return;
+    const current = configRef.current;
+    if (!current) return;
     event.preventDefault();
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
     const rect = event.currentTarget.getBoundingClientRect();
     projectPointerDragRef.current = {
       id: projectId,
+      sourceKey: `project:${projectId}`,
+      origin: "nextStep",
+      dayKey: current.today.date,
       startX: event.clientX,
       startY: event.clientY,
       hasMoved: false,
@@ -4564,7 +4740,15 @@ function DashboardApp() {
       drag.hasMoved = true;
     }
     if (drag.hasMoved) {
-      const target = projectDropTargetFromPoint(event.clientX, event.clientY);
+      const overBuilder = builderRestoreTargetFromPoint(event.clientX, event.clientY);
+      const restoreTarget = updateBuilderRestoreHover(
+        event.clientX,
+        event.clientY,
+        sourceCanReturnToBuilder(drag.sourceKey, drag.dayKey),
+      );
+      const target = overBuilder
+        ? null
+        : projectDropTargetFromPoint(event.clientX, event.clientY);
       const placement = target ? resolveProjectDropPlacement(drag.id, target) : undefined;
       setProjectPointerDrag({
         id: drag.id,
@@ -4574,12 +4758,13 @@ function DashboardApp() {
         offsetY: drag.offsetY,
         width: drag.width,
         height: drag.height,
-        targetId: target?.id,
-        placement,
+        targetId: restoreTarget ? undefined : target?.id,
+        placement: restoreTarget ? undefined : placement,
         targetIndicator:
-          target && target.id !== drag.id && placement
+          !restoreTarget && target && target.id !== drag.id && placement
             ? projectDropIndicator(target.id, placement)
             : undefined,
+        restoreTarget,
       });
       updateProjectAutoScroll(event.clientY);
     }
@@ -4596,25 +4781,39 @@ function DashboardApp() {
     event.stopPropagation();
     if (!drag.hasMoved) return;
 
+    if (finishBuilderRestoreDrop(drag.sourceKey, drag.dayKey, event.clientX, event.clientY)) {
+      return;
+    }
+    clearBuilderRestoreHover();
+    if (builderRestoreTargetFromPoint(event.clientX, event.clientY)) return;
+
     const target = projectDropTargetFromPoint(event.clientX, event.clientY);
     if (!target) return;
     moveProject(drag.id, target.id, resolveProjectDropPlacement(drag.id, target));
   };
 
   const cancelProjectPointerDrag = () => {
+    if (!projectPointerDragRef.current) return;
     projectPointerDragRef.current = null;
     setProjectPointerDrag(null);
     stopProjectAutoScroll();
+    clearBuilderRestoreHover();
   };
 
   const startInboxPointerDrag = (event: PointerEvent<HTMLDivElement>, index: number) => {
     if (event.button !== 0 || isReorderBlockedTarget(event.target)) return;
+    const current = configRef.current;
+    const item = current?.inbox[index];
+    if (!current || !item?.id) return;
     event.preventDefault();
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
     const rect = event.currentTarget.getBoundingClientRect();
     inboxPointerDragRef.current = {
       index,
+      sourceKey: `wishlist:${item.id}`,
+      origin: "wishlist",
+      dayKey: current.today.date,
       startX: event.clientX,
       startY: event.clientY,
       hasMoved: false,
@@ -4628,23 +4827,41 @@ function DashboardApp() {
   const updateInboxPointerDrag = (event: PointerEvent<HTMLDivElement>) => {
     const drag = inboxPointerDragRef.current;
     if (!drag) return;
+    const current = configRef.current;
+    const sourceId = drag.sourceKey.slice("wishlist:".length);
+    const sourceIndex = current?.inbox.findIndex((item) => item.id === sourceId) ?? -1;
+    if (sourceIndex < 0) {
+      cancelInboxPointerDrag();
+      return;
+    }
     const distance = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
     if (!drag.hasMoved && distance >= SIDEBAR_DRAG_THRESHOLD_PX) drag.hasMoved = true;
     if (!drag.hasMoved) return;
 
-    const target = inboxDropTargetFromPoint(event.clientX, event.clientY);
+    const restoreTarget = updateBuilderRestoreHover(
+      event.clientX,
+      event.clientY,
+      sourceCanReturnToBuilder(drag.sourceKey, drag.dayKey),
+    );
+    const target = builderRestoreTargetFromPoint(event.clientX, event.clientY)
+      ? null
+      : inboxDropTargetFromPoint(event.clientX, event.clientY);
     setInboxPointerDrag({
-      index: drag.index,
+      index: sourceIndex,
+      sourceKey: drag.sourceKey,
       pointerX: event.clientX,
       pointerY: event.clientY,
       offsetX: drag.offsetX,
       offsetY: drag.offsetY,
       width: drag.width,
       height: drag.height,
-      targetIndex: target?.index,
-      placement: target?.placement,
-      targetIndicator: target && target.index !== drag.index ? target.indicator : undefined,
+      targetIndex: restoreTarget ? undefined : target?.index,
+      placement: restoreTarget ? undefined : target?.placement,
+      targetIndicator:
+        !restoreTarget && target && target.index !== drag.index ? target.indicator : undefined,
+      restoreTarget,
     });
+    updateProjectAutoScroll(event.clientY);
   };
 
   const finishInboxPointerDrag = (event: PointerEvent<HTMLDivElement>) => {
@@ -4656,30 +4873,52 @@ function DashboardApp() {
     event.stopPropagation();
     if (!drag.hasMoved) return;
 
+    if (finishBuilderRestoreDrop(drag.sourceKey, drag.dayKey, event.clientX, event.clientY)) {
+      return;
+    }
+    clearBuilderRestoreHover();
+    stopProjectAutoScroll();
+    if (builderRestoreTargetFromPoint(event.clientX, event.clientY)) return;
+
+    const current = configRef.current;
+    const sourceIndex =
+      current?.inbox.findIndex(
+        (item) => item.id === drag.sourceKey.slice("wishlist:".length),
+      ) ?? -1;
+    if (sourceIndex < 0) return;
     const target = inboxDropTargetFromPoint(event.clientX, event.clientY);
     if (!target) return;
     const placement =
-      drag.index === target.index
+      sourceIndex === target.index
         ? target.placement
-        : drag.index < target.index
+        : sourceIndex < target.index
           ? "after"
           : "before";
-    moveInboxItem(drag.index, target.index, placement);
+    moveInboxItem(sourceIndex, target.index, placement);
   };
 
   const cancelInboxPointerDrag = () => {
+    if (!inboxPointerDragRef.current) return;
     inboxPointerDragRef.current = null;
     setInboxPointerDrag(null);
+    stopProjectAutoScroll();
+    clearBuilderRestoreHover();
   };
 
   const startTodayBuilderPointerDrag = (event: PointerEvent<HTMLDivElement>, index: number) => {
     if (event.button !== 0 || isReorderBlockedTarget(event.target)) return;
+    const candidate = todayBuilderCandidates[index];
+    const current = configRef.current;
+    if (!candidate || !current) return;
     event.preventDefault();
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
     const rect = event.currentTarget.getBoundingClientRect();
     todayBuilderPointerDragRef.current = {
       index,
+      sourceKey: candidate.sourceKey,
+      origin: "todayBuilder",
+      dayKey: current.today.date,
       startX: event.clientX,
       startY: event.clientY,
       hasMoved: false,
@@ -4697,19 +4936,45 @@ function DashboardApp() {
     if (!drag.hasMoved && distance >= SIDEBAR_DRAG_THRESHOLD_PX) drag.hasMoved = true;
     if (!drag.hasMoved) return;
 
+    const sourceIndex = todayBuilderCandidates.findIndex(
+      (candidate) =>
+        candidate.sourceKey === drag.sourceKey ||
+        candidate.sourceAliases?.includes(drag.sourceKey),
+    );
+    const candidate = sourceIndex >= 0 ? todayBuilderCandidates[sourceIndex] : undefined;
+    const current = configRef.current;
+    const matchingKeys = candidate
+      ? new Set([candidate.sourceKey, ...(candidate.sourceAliases ?? [])])
+      : new Set<string>();
+    const canAdopt = Boolean(
+      candidate &&
+        current &&
+        current.today.date === drag.dayKey &&
+        current.today.items.length < TODAY_ITEM_LIMIT &&
+        !current.today.items.some((item, index) => matchingKeys.has(todaySourceKey(item, index))) &&
+        !isTodayBuilderCandidateActive(candidate),
+    );
+    const todayTarget = canAdopt
+      ? todayAdoptionDropTargetFromPoint(event.clientX, event.clientY)
+      : null;
     const target = todayBuilderDropTargetFromPoint(event.clientX, event.clientY);
     setTodayBuilderPointerDrag({
-      index: drag.index,
+      index: sourceIndex >= 0 ? sourceIndex : drag.index,
+      sourceKey: drag.sourceKey,
       pointerX: event.clientX,
       pointerY: event.clientY,
       offsetX: drag.offsetX,
       offsetY: drag.offsetY,
       width: drag.width,
       height: drag.height,
-      targetIndex: target?.index,
-      placement: target?.placement,
-      targetIndicator: target && target.index !== drag.index ? target.indicator : undefined,
+      targetIndex: todayTarget ? undefined : target?.index,
+      placement: todayTarget ? undefined : target?.placement,
+      targetIndicator:
+        !todayTarget && target && target.index !== drag.index ? target.indicator : undefined,
+      todayTargetIndex: todayTarget?.insertionIndex,
+      todayTargetIndicator: todayTarget?.indicator,
     });
+    updateProjectAutoScroll(event.clientY);
   };
 
   const finishTodayBuilderPointerDrag = (event: PointerEvent<HTMLDivElement>) => {
@@ -4721,14 +4986,40 @@ function DashboardApp() {
     event.stopPropagation();
     if (!drag.hasMoved) return;
 
+    const sourceIndex = todayBuilderCandidates.findIndex(
+      (candidate) =>
+        candidate.sourceKey === drag.sourceKey ||
+        candidate.sourceAliases?.includes(drag.sourceKey),
+    );
+    const candidate = sourceIndex >= 0 ? todayBuilderCandidates[sourceIndex] : undefined;
+    const current = configRef.current;
+    const todayTarget = todayAdoptionDropTargetFromPoint(event.clientX, event.clientY);
+    if (
+      candidate &&
+      current &&
+      current.today.date === drag.dayKey &&
+      todayTarget &&
+      current.today.items.length < TODAY_ITEM_LIMIT &&
+      !isTodayBuilderCandidateActive(candidate)
+    ) {
+      void addCandidateToToday(candidate, todayTarget.insertionIndex);
+      stopProjectAutoScroll();
+      return;
+    }
+    stopProjectAutoScroll();
+    if (pointWithinSelector(event.clientX, event.clientY, ".todayGrid")) return;
     const target = todayBuilderDropTargetFromPoint(event.clientX, event.clientY);
     if (!target) return;
-    moveTodayBuilderCandidate(drag.index, target.index, target.placement);
+    if (sourceIndex >= 0) {
+      moveTodayBuilderCandidate(sourceIndex, target.index, target.placement);
+    }
   };
 
   const cancelTodayBuilderPointerDrag = () => {
+    if (!todayBuilderPointerDragRef.current) return;
     todayBuilderPointerDragRef.current = null;
     setTodayBuilderPointerDrag(null);
+    stopProjectAutoScroll();
   };
 
   const confirmDropRegistration = () => {
@@ -6163,45 +6454,52 @@ function DashboardApp() {
     });
   };
 
-  const addCandidateToToday = async (candidate: TodayBuilderCandidate) => {
-    if (!config || !candidate.text.trim()) return false;
-    if (config.today.items.length >= TODAY_ITEM_LIMIT) {
+  const addCandidateToToday = async (
+    candidate: TodayBuilderCandidate,
+    insertionIndex?: number,
+  ) => {
+    const current = configRef.current;
+    if (!current || !candidate.text.trim()) return false;
+    if (current.today.items.length >= TODAY_ITEM_LIMIT) {
       showToast("warn", "いま選べるのは3件までです。完了後に次の3件を選べます");
       return false;
     }
     const matchingSourceKeys = new Set([candidate.sourceKey, ...(candidate.sourceAliases ?? [])]);
     if (
-      config.today.items.some((item, index) => matchingSourceKeys.has(todaySourceKey(item, index)))
+      current.today.items.some((item, index) => matchingSourceKeys.has(todaySourceKey(item, index)))
     ) {
       showToast("warn", "今日の3件に既にあります");
       return false;
     }
 
-    const selectionMutationTokens = { ...config.today.selectionMutationTokens };
+    const selectionMutationTokens = { ...current.today.selectionMutationTokens };
     delete selectionMutationTokens[candidate.sourceKey];
+    const items = [...current.today.items];
+    items.splice(
+      Math.min(Math.max(0, insertionIndex ?? items.length), items.length),
+      0,
+      {
+        text: candidate.text,
+        done: false,
+        sourceKey: candidate.sourceKey,
+        ...(candidate.trigger ? { trigger: candidate.trigger } : {}),
+        ...(candidate.projectId ? { projectId: candidate.projectId } : {}),
+        ...(candidate.buttonIds?.length ? { buttonIds: [...candidate.buttonIds] } : {}),
+        ...(candidate.instructionPath
+          ? {
+              instructionPath: candidate.instructionPath,
+              instructionOpenOnStart: candidate.instructionOpenOnStart !== false,
+            }
+          : {}),
+        defaultTimerMinutes: candidate.defaultTimerMinutes,
+        shortTimerMinutes: candidate.shortTimerMinutes,
+      },
+    );
     const saved = await persistConfig({
-      ...config,
+      ...current,
       today: {
-        ...config.today,
-        items: [
-          ...config.today.items,
-          {
-            text: candidate.text,
-            done: false,
-            sourceKey: candidate.sourceKey,
-            ...(candidate.trigger ? { trigger: candidate.trigger } : {}),
-            ...(candidate.projectId ? { projectId: candidate.projectId } : {}),
-            ...(candidate.buttonIds?.length ? { buttonIds: [...candidate.buttonIds] } : {}),
-            ...(candidate.instructionPath
-              ? {
-                  instructionPath: candidate.instructionPath,
-                  instructionOpenOnStart: candidate.instructionOpenOnStart !== false,
-                }
-              : {}),
-            defaultTimerMinutes: candidate.defaultTimerMinutes,
-            shortTimerMinutes: candidate.shortTimerMinutes,
-          },
-        ],
+        ...current.today,
+        items,
         selectionMutationTokens,
       },
     });
@@ -6760,6 +7058,49 @@ function DashboardApp() {
     });
   }, [config?.inbox]);
 
+  useEffect(() => {
+    const cancelPointerDrag = (event?: globalThis.KeyboardEvent) => {
+      if (event && event.key !== "Escape") return;
+      const hadDrag = Boolean(
+        todayPointerDragRef.current ||
+          projectPointerDragRef.current ||
+          inboxPointerDragRef.current ||
+          todayBuilderPointerDragRef.current,
+      );
+      if (!hadDrag) return;
+      event?.preventDefault();
+      todayPointerDragRef.current = null;
+      projectPointerDragRef.current = null;
+      inboxPointerDragRef.current = null;
+      todayBuilderPointerDragRef.current = null;
+      setTodayPointerDrag(null);
+      setProjectPointerDrag(null);
+      setInboxPointerDrag(null);
+      setTodayBuilderPointerDrag(null);
+      setBuilderRestoreTargetActive(false);
+      if (builderAutoOpenTimerRef.current !== null) {
+        window.clearTimeout(builderAutoOpenTimerRef.current);
+        builderAutoOpenTimerRef.current = null;
+      }
+      if (builderTemporarilyOpenedRef.current) {
+        builderTemporarilyOpenedRef.current = false;
+        setTodayBuilderOpen(false);
+      }
+      projectAutoScrollSpeedRef.current = 0;
+      if (projectAutoScrollFrameRef.current !== null) {
+        window.cancelAnimationFrame(projectAutoScrollFrameRef.current);
+        projectAutoScrollFrameRef.current = null;
+      }
+    };
+    const onBlur = () => cancelPointerDrag();
+    window.addEventListener("keydown", cancelPointerDrag);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      window.removeEventListener("keydown", cancelPointerDrag);
+      window.removeEventListener("blur", onBlur);
+    };
+  }, []);
+
   if (loading) {
     return (
       <main className="appShell appShell--loading">
@@ -6828,10 +7169,38 @@ function DashboardApp() {
         : [];
     }),
   ];
-  const explicitlyExcludedCandidate = (sourceKey: string) => {
-    const candidate = rawTodayBuilderCandidates.find((item) => item.sourceKey === sourceKey);
+  const candidateFromConfig = (current: AppConfig, sourceKey: string) => {
+    if (sourceKey.startsWith("project:")) {
+      const project = current.projects.find(
+        (item) => item.id === sourceKey.slice("project:".length),
+      );
+      return project?.nextStep.trim() ? projectTodayCandidate(project, current.settings) : undefined;
+    }
+    if (sourceKey.startsWith("wishlist:")) {
+      const id = sourceKey.slice("wishlist:".length);
+      const index = current.inbox.findIndex((item) => item.id === id);
+      const item = current.inbox[index];
+      if (!item?.text.trim()) return undefined;
+      const firstLegacyIndex = current.inbox.findIndex(
+        (entry) => legacyWishlistSourceKey(entry) === legacyWishlistSourceKey(item),
+      );
+      const project = item.projectId
+        ? current.projects.find((entry) => entry.id === item.projectId)
+        : undefined;
+      return wishlistTodayCandidate(
+        item,
+        index,
+        project,
+        current.settings,
+        firstLegacyIndex === index,
+      );
+    }
+    return undefined;
+  };
+  const explicitlyExcludedCandidate = (sourceKey: string, current = config) => {
+    const candidate = candidateFromConfig(current, sourceKey);
     if (!candidate) return undefined;
-    const excludedSourceKeys = new Set(config.today.candidateExcludedSourceKeys);
+    const excludedSourceKeys = new Set(current.today.candidateExcludedSourceKeys);
     return [candidate.sourceKey, ...(candidate.sourceAliases ?? [])].some((key) =>
       excludedSourceKeys.has(key),
     )
@@ -6839,16 +7208,18 @@ function DashboardApp() {
       : undefined;
   };
   const restoreTodayBuilderCandidate = async (sourceKey: string) => {
-    const candidate = explicitlyExcludedCandidate(sourceKey);
-    if (!candidate) return null;
+    const current = configRef.current;
+    if (!current) return null;
+    const candidate = explicitlyExcludedCandidate(sourceKey, current);
+    if (!candidate || current.today.date !== config.today.date) return null;
     const matchingSourceKeys = new Set([candidate.sourceKey, ...(candidate.sourceAliases ?? [])]);
-    const selectionMutationTokens = { ...config.today.selectionMutationTokens };
+    const selectionMutationTokens = { ...current.today.selectionMutationTokens };
     delete selectionMutationTokens[candidate.sourceKey];
     const saved = await persistConfig({
-      ...config,
+      ...current,
       today: {
-        ...config.today,
-        candidateExcludedSourceKeys: config.today.candidateExcludedSourceKeys.filter(
+        ...current.today,
+        candidateExcludedSourceKeys: current.today.candidateExcludedSourceKeys.filter(
           (key) => !matchingSourceKeys.has(key),
         ),
         selectionMutationTokens,
@@ -8961,7 +9332,14 @@ function DashboardApp() {
                 )}
               </section>
 
-              <section className="todayBuilderBand">
+              <section
+                className={
+                  builderRestoreTargetActive
+                    ? "todayBuilderBand todayBuilderBand--restoreTarget"
+                    : "todayBuilderBand"
+                }
+                data-today-builder-drop-target
+              >
                 <div
                   className="disclosureHeader todayBuilderHeader"
                   onClick={(event) => toggleDisclosureFromBar(event, toggleTodayBuilder)}
@@ -8982,6 +9360,12 @@ function DashboardApp() {
                     次の一手・やりたいことから、今日やるものを選ぶ
                   </span>
                 </div>
+                {builderRestoreTargetActive && (
+                  <div className="todayBuilderRestoreDropZone">
+                    <span aria-hidden="true">↓</span>
+                    <span>ここにドロップして今日の候補に戻す</span>
+                  </div>
+                )}
                 {todayBuilderOpen && (
                   <div className="todayBuilderBody">
                     {todayBuilderCandidates.length === 0 ? (
@@ -9140,22 +9524,40 @@ function DashboardApp() {
                         style={todayBuilderPointerDrag.targetIndicator}
                       />
                     )}
+                    {todayBuilderPointerDrag?.todayTargetIndicator && (
+                      <div
+                        aria-hidden="true"
+                        className="todayDropIndicator"
+                        style={todayBuilderPointerDrag.todayTargetIndicator}
+                      />
+                    )}
                     {todayBuilderPointerDrag && (
                       <div
                         aria-hidden="true"
-                        className="todayBuilderDragGhost"
+                        className={
+                          todayBuilderPointerDrag.todayTargetIndex === undefined
+                            ? "todayBuilderDragGhost"
+                            : "todayBuilderDragGhost todayBuilderDragGhost--today"
+                        }
                         style={{
-                          height: todayBuilderPointerDrag.height,
                           left: todayBuilderPointerDrag.pointerX - todayBuilderPointerDrag.offsetX,
                           top: todayBuilderPointerDrag.pointerY - todayBuilderPointerDrag.offsetY,
-                          width: todayBuilderPointerDrag.width,
+                          width: Math.min(360, todayBuilderPointerDrag.width),
                         }}
                       >
                         <span className="todayBuilderSource">
-                          {todayBuilderCandidates[todayBuilderPointerDrag.index]?.source}
+                          {todayBuilderCandidates.find(
+                            (candidate) =>
+                              candidate.sourceKey === todayBuilderPointerDrag.sourceKey ||
+                              candidate.sourceAliases?.includes(todayBuilderPointerDrag.sourceKey),
+                          )?.source}
                         </span>
                         <strong>
-                          {todayBuilderCandidates[todayBuilderPointerDrag.index]?.text}
+                          {todayBuilderCandidates.find(
+                            (candidate) =>
+                              candidate.sourceKey === todayBuilderPointerDrag.sourceKey ||
+                              candidate.sourceAliases?.includes(todayBuilderPointerDrag.sourceKey),
+                          )?.text}
                         </strong>
                       </div>
                     )}
@@ -9349,12 +9751,15 @@ function DashboardApp() {
                     {projectPointerDrag && (
                       <div
                         aria-hidden="true"
-                        className="projectDragGhost"
+                        className={
+                          projectPointerDrag.restoreTarget
+                            ? "projectDragGhost projectDragGhost--restore"
+                            : "projectDragGhost"
+                        }
                         style={{
-                          height: projectPointerDrag.height,
                           left: projectPointerDrag.pointerX - projectPointerDrag.offsetX,
                           top: projectPointerDrag.pointerY - projectPointerDrag.offsetY,
-                          width: projectPointerDrag.width,
+                          width: Math.min(360, projectPointerDrag.width),
                         }}
                       >
                         {(() => {
@@ -9536,18 +9941,42 @@ function DashboardApp() {
                       />
                     )}
                     {inboxPointerDrag && (
-                      <div
-                        aria-hidden="true"
-                        className="inboxDragGhost"
-                        style={{
-                          height: inboxPointerDrag.height,
-                          left: inboxPointerDrag.pointerX - inboxPointerDrag.offsetX,
-                          top: inboxPointerDrag.pointerY - inboxPointerDrag.offsetY,
-                          width: inboxPointerDrag.width,
-                        }}
-                      >
-                        {config.inbox[inboxPointerDrag.index]?.text}
-                      </div>
+                      (() => {
+                        const item = config.inbox.find(
+                          (entry) =>
+                            entry.id === inboxPointerDrag.sourceKey.slice("wishlist:".length),
+                        );
+                        const project = item?.projectId ? projectsById.get(item.projectId) : undefined;
+                        return item ? (
+                          <div
+                            aria-hidden="true"
+                            className={
+                              inboxPointerDrag.restoreTarget
+                                ? "inboxDragGhost inboxDragGhost--restore"
+                                : "inboxDragGhost"
+                            }
+                            style={{
+                              left: inboxPointerDrag.pointerX - inboxPointerDrag.offsetX,
+                              top: inboxPointerDrag.pointerY - inboxPointerDrag.offsetY,
+                              width: Math.min(360, inboxPointerDrag.width),
+                            }}
+                          >
+                            <span className="inboxProjectIdentity">
+                              {project ? (
+                                <ProjectIdentity
+                                  colorId={project.colorId}
+                                  compact
+                                  name={project.name}
+                                  projectId={project.id}
+                                />
+                              ) : (
+                                <span className="sourceProjectNone">プロジェクトなし</span>
+                              )}
+                            </span>
+                            <strong>{item.text}</strong>
+                          </div>
+                        ) : null;
+                      })()
                     )}
                   </div>
                 )}
