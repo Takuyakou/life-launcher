@@ -85,7 +85,7 @@
       "instruction": "stages/P72-04-dnd.md",
       "branch": "feature/p72-04-cross-section-dnd",
       "pr": null,
-      "head_sha": null,
+      "head_sha": "d8978e7",
       "ci_sha": null,
       "ci_status": null,
       "human_approved": true,
