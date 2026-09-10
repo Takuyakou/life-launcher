@@ -8413,3 +8413,203 @@ input[type="number"]::-webkit-inner-spin-button {
     align-items: flex-start;
   }
 }
+
+/* P72-05 completion feedback: transient only; saved completion state remains above. */
+.victoryBar {
+  position: relative;
+  overflow: hidden;
+}
+
+.victoryBar--reward {
+  border-color: rgba(231, 185, 77, 0.78);
+  background: rgba(231, 185, 77, 0.1);
+  animation: completion-gold-pulse 850ms ease-out;
+}
+
+.victoryRewardSweep {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 20%,
+    rgba(255, 226, 132, 0.18) 48%,
+    transparent 73%
+  );
+  transform: translateX(-110%);
+  animation: completion-sweep 850ms ease-out forwards;
+}
+
+.victoryBar--reward > :not(.victoryRewardSweep) {
+  position: relative;
+  z-index: 1;
+}
+
+.victoryRewardLabel {
+  color: var(--accent-strong);
+  font-size: 13px;
+  font-weight: 800;
+  animation: completion-label-in 360ms ease-out;
+}
+
+.todayRow--justCompleted {
+  border-color: rgba(111, 207, 151, 0.58);
+  background: rgba(111, 207, 151, 0.07);
+  animation: completion-card-pop 460ms cubic-bezier(0.2, 1.35, 0.35, 1);
+}
+
+.todayRow--justCompleted .todayCompletionStatus--complete {
+  animation: completion-check-pop 420ms cubic-bezier(0.2, 1.45, 0.35, 1);
+}
+
+.todayGrid--allCompleteReward {
+  animation: completion-grid-glow 1000ms ease-out;
+}
+
+.todayAllCompletionReward {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: 9px 10px 0 0;
+  border: 1px solid rgba(231, 185, 77, 0.42);
+  border-radius: var(--radius);
+  background: rgba(231, 185, 77, 0.08);
+  color: var(--accent-strong);
+  font-size: var(--dashboard-font-body);
+  font-weight: 800;
+  pointer-events: none;
+  animation: completion-label-in 480ms cubic-bezier(0.2, 1.2, 0.3, 1);
+}
+
+.doNowCompletionEcho {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border: 1px solid rgba(111, 207, 151, 0.34);
+  border-radius: var(--radius);
+  background: rgba(111, 207, 151, 0.06);
+  color: var(--good);
+  pointer-events: none;
+  animation: completion-label-in 300ms ease-out;
+}
+
+.doNowCompletionCheck {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  flex: 0 0 24px;
+  place-items: center;
+  border: 1px solid rgba(111, 207, 151, 0.42);
+  border-radius: 50%;
+  background: rgba(111, 207, 151, 0.08);
+  font-weight: 800;
+}
+
+.doNowCompletionEcho > span:last-child {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.doNowCompletionEcho strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: var(--dashboard-font-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.doNowCompletionEcho small {
+  font-size: var(--dashboard-font-meta);
+  font-weight: 700;
+}
+
+.completionParticleLayer {
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.completionParticle {
+  position: absolute;
+  left: 50%;
+  top: 20%;
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+  background: var(--accent-strong);
+  opacity: 0;
+  animation: completion-particle 900ms ease-out forwards;
+}
+
+.completionParticle:nth-child(1) { --completion-x: -96px; --completion-y: -38px; }
+.completionParticle:nth-child(2) { --completion-x: -62px; --completion-y: 42px; animation-delay: 35ms; }
+.completionParticle:nth-child(3) { --completion-x: -24px; --completion-y: -58px; animation-delay: 60ms; }
+.completionParticle:nth-child(4) { --completion-x: 28px; --completion-y: -52px; animation-delay: 25ms; }
+.completionParticle:nth-child(5) { --completion-x: 68px; --completion-y: 38px; animation-delay: 70ms; }
+.completionParticle:nth-child(6) { --completion-x: 102px; --completion-y: -30px; animation-delay: 45ms; }
+
+@keyframes completion-sweep {
+  to { transform: translateX(110%); }
+}
+
+@keyframes completion-gold-pulse {
+  0%, 100% { box-shadow: none; }
+  42% { box-shadow: 0 0 16px rgba(231, 185, 77, 0.13); }
+}
+
+@keyframes completion-card-pop {
+  0%, 100% { transform: scale(1); }
+  42% { transform: scale(1.012); }
+}
+
+@keyframes completion-check-pop {
+  0% { opacity: 0; transform: scale(0.7); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes completion-grid-glow {
+  0%, 100% { filter: none; }
+  40% { filter: drop-shadow(0 0 12px rgba(231, 185, 77, 0.14)); }
+}
+
+@keyframes completion-label-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes completion-particle {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(0.65); }
+  14% { opacity: 1; }
+  100% {
+    opacity: 0;
+    transform: translate(var(--completion-x), var(--completion-y)) rotate(170deg) scale(0.8);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .victoryBar--reward,
+  .victoryRewardSweep,
+  .victoryRewardLabel,
+  .todayRow--justCompleted,
+  .todayRow--justCompleted .todayCompletionStatus--complete,
+  .todayGrid--allCompleteReward,
+  .todayAllCompletionReward,
+  .doNowCompletionEcho,
+  .completionParticle {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .victoryRewardSweep,
+  .completionParticleLayer {
+    display: none;
+  }
+}
