@@ -192,6 +192,7 @@ export const AppConfigSchema = z
       victory: TodayVictorySchema,
       items: z.array(TodayItemSchema),
       candidateExcludedSourceKeys: z.array(z.string()).default([]),
+      selectionMutationTokens: z.record(z.string(), z.string()).default({}),
     }),
     inbox: z.array(InboxItemSchema),
     sourceCompletions: z.array(SourceCompletionSchema).default([]),
@@ -216,6 +217,16 @@ export type ProjectColorId = z.infer<typeof ProjectColorIdSchema>;
 export type LauncherProject = z.infer<typeof ProjectSchema>;
 export type TodayItem = z.infer<typeof TodayItemSchema>;
 export type TodayVictory = z.infer<typeof TodayVictorySchema>;
+export type UndoTodaySelectionInput = {
+  operationId: string;
+  dayKey: string;
+  sourceKey: string;
+  item: TodayItem | null;
+  previousSourceKey: string | null;
+  nextSourceKey: string | null;
+  sourceSnapshot: unknown | null;
+  restoreExclusion: boolean;
+};
 export type InboxItem = z.infer<typeof InboxItemSchema>;
 export type SourceCompletion = z.infer<typeof SourceCompletionSchema>;
 export type MiniWindowPosition = z.infer<typeof MiniWindowPositionSchema>;

@@ -7,7 +7,7 @@ use commands::actions::execute_actions;
 use commands::config::{
     backup_config_before_instruction_change, load_config, load_next_step_freshness,
     open_config_backups, open_data_folder, restore_backup, save_config, select_backup_folder,
-    select_backup_zip, update_instruction_references,
+    select_backup_zip, undo_today_selection, update_instruction_references,
 };
 use commands::drop::resolve_drop_item;
 use commands::explorer::reveal_launcher_item;
@@ -153,6 +153,7 @@ pub fn run() {
             load_config,
             load_next_step_freshness,
             save_config,
+            undo_today_selection,
             backup_config_before_instruction_change,
             update_instruction_references,
             open_config_backups,

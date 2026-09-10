@@ -8,7 +8,14 @@ import {
   disable as disableAutostart,
   enable as enableAutostart,
 } from "@tauri-apps/plugin-autostart";
-import type { DragEvent, KeyboardEvent, MouseEvent as ReactMouseEvent, PointerEvent } from "react";
+import type {
+  CSSProperties,
+  DragEvent,
+  FocusEvent as ReactFocusEvent,
+  KeyboardEvent,
+  MouseEvent as ReactMouseEvent,
+  PointerEvent,
+} from "react";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DEFAULT_BUTTON_GROUP,
@@ -18,6 +25,7 @@ import {
   TIMER_TICK_MS,
   TODAY_ITEM_LIMIT,
   TOAST_TIMEOUT_MS,
+  TOAST_UNDO_TIMEOUT_MS,
   WEEKLY_FOCUS_LIMIT,
   WEEKLY_REVIEW_SEEN_STORAGE_KEY,
 } from "./constants";
@@ -57,6 +65,7 @@ import {
   suspendDashboardShortcuts,
   updateSessionEntry,
   updateInstructionReferences,
+  undoTodaySelection,
 } from "./tauri";
 import {
   ActionResult,
@@ -127,7 +136,31 @@ type Toast = {
   id: number;
   tone: ToastTone;
   message: string;
+  detail?: string;
+  actionLabel?: string;
+  onAction?: () => Promise<boolean>;
+  actionPending: boolean;
+  durationMs: number;
+  queued: boolean;
+  paused: boolean;
   leaving: boolean;
+};
+
+type ToastOptions = {
+  detail?: string;
+  actionLabel?: string;
+  onAction?: () => Promise<boolean>;
+  durationMs?: number;
+};
+
+type ToastTimerState = {
+  dismissTimer: number | null;
+  removeTimer: number | null;
+  remainingMs: number;
+  startedAt: number | null;
+  pointerInside: boolean;
+  focusInside: boolean;
+  documentHidden: boolean;
 };
 
 type WeeklyReviewDisplayProject = {
@@ -1722,6 +1755,8 @@ function DashboardApp() {
   const [activeView, setActiveView] = useState<ActiveView>("main");
   const [pendingActionId, setPendingActionId] = useState<string | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const toastsRef = useRef<Toast[]>([]);
+  toastsRef.current = toasts;
   const [todayEditingIndex, setTodayEditingIndex] = useState<number | null>(null);
   const [todayTriggerEditingIndex, setTodayTriggerEditingIndex] = useState<number | null>(null);
   const [todayTriggerDraft, setTodayTriggerDraft] = useState("");
@@ -1859,14 +1894,14 @@ function DashboardApp() {
   const todayBuilderPointerDragRef = useRef<TodayBuilderPointerDrag | null>(null);
   const inboxAddSavingRef = useRef(false);
   const inboxAddOpenerRef = useRef<HTMLButtonElement | null>(null);
+  const sourceEditOriginRef = useRef<"source" | "today" | "builder">("source");
   const mainScrollAreaRef = useRef<HTMLDivElement | null>(null);
   const projectAutoScrollFrameRef = useRef<number | null>(null);
   const projectAutoScrollSpeedRef = useRef(0);
   const numberInputDragRef = useRef<NumberInputDrag | null>(null);
   const toastIdRef = useRef(0);
-  const toastTimersRef = useRef<Map<number, { dismissTimer: number; removeTimer: number | null }>>(
-    new Map(),
-  );
+  const toastTimersRef = useRef<Map<number, ToastTimerState>>(new Map());
+  const toastActionLocksRef = useRef<Set<number>>(new Set());
   const lastBackupErrorRef = useRef<string | null>(null);
   const lastSettingsApplyErrorRef = useRef<string | null>(null);
   const shortcutCaptureActiveRef = useRef(false);
@@ -2097,25 +2132,165 @@ function DashboardApp() {
   }, [activeTimer, config?.projects, now]);
   miniSnapshotRef.current = miniSnapshot;
 
-  const showToast = useCallback((tone: ToastTone, message: string) => {
-    toastIdRef.current += 1;
-    const id = toastIdRef.current;
-    setToasts((current) => [...current, { id, tone, message, leaving: false }]);
-
-    const dismissTimer = window.setTimeout(() => {
-      setToasts((current) =>
-        current.map((toast) => (toast.id === id ? { ...toast, leaving: true } : toast)),
-      );
-      const removeTimer = window.setTimeout(() => {
-        setToasts((current) => current.filter((toast) => toast.id !== id));
-        toastTimersRef.current.delete(id);
-      }, 200);
-      const timers = toastTimersRef.current.get(id);
-      if (timers) timers.removeTimer = removeTimer;
-    }, TOAST_TIMEOUT_MS);
-
-    toastTimersRef.current.set(id, { dismissTimer, removeTimer: null });
+  const dismissToast = useCallback((id: number) => {
+    const timers = toastTimersRef.current.get(id);
+    if (timers?.dismissTimer !== null && timers?.dismissTimer !== undefined) {
+      window.clearTimeout(timers.dismissTimer);
+      timers.dismissTimer = null;
+    }
+    setToasts((current) =>
+      current.map((toast) => (toast.id === id ? { ...toast, leaving: true } : toast)),
+    );
+    const removeTimer = window.setTimeout(() => {
+      toastTimersRef.current.delete(id);
+      toastActionLocksRef.current.delete(id);
+      setToasts((current) => {
+        const remaining = current.filter((toast) => toast.id !== id);
+        const visibleCount = remaining.filter((toast) => !toast.queued && !toast.leaving).length;
+        let available = Math.max(0, 3 - visibleCount);
+        return remaining.map((toast) => {
+          if (!toast.queued || available <= 0) return toast;
+          available -= 1;
+          return { ...toast, queued: false };
+        });
+      });
+    }, 180);
+    if (timers) timers.removeTimer = removeTimer;
   }, []);
+
+  useEffect(() => {
+    for (const toast of toasts) {
+      if (toast.queued || toast.leaving || toastTimersRef.current.has(toast.id)) continue;
+      const timerState: ToastTimerState = {
+        dismissTimer: null,
+        removeTimer: null,
+        remainingMs: toast.durationMs,
+        startedAt: Date.now(),
+        pointerInside: false,
+        focusInside: false,
+        documentHidden: document.hidden,
+      };
+      if (!document.hidden) {
+        timerState.dismissTimer = window.setTimeout(
+          () => dismissToast(toast.id),
+          toast.durationMs,
+        );
+      } else {
+        timerState.startedAt = null;
+      }
+      toastTimersRef.current.set(toast.id, timerState);
+      if (document.hidden) {
+        setToasts((current) =>
+          current.map((item) => (item.id === toast.id ? { ...item, paused: true } : item)),
+        );
+      }
+    }
+  }, [dismissToast, toasts]);
+
+  const pauseToast = useCallback(
+    (id: number, reason: "pointer" | "focus" | "document", paused: boolean) => {
+      const timers = toastTimersRef.current.get(id);
+      if (!timers) return;
+      if (reason === "pointer") timers.pointerInside = paused;
+      if (reason === "focus") timers.focusInside = paused;
+      if (reason === "document") timers.documentHidden = paused;
+      const shouldPause = timers.pointerInside || timers.focusInside || timers.documentHidden;
+      if (shouldPause && timers.startedAt !== null) {
+        timers.remainingMs = Math.max(0, timers.remainingMs - (Date.now() - timers.startedAt));
+        timers.startedAt = null;
+        if (timers.dismissTimer !== null) window.clearTimeout(timers.dismissTimer);
+        timers.dismissTimer = null;
+      } else if (!shouldPause && timers.startedAt === null && timers.remainingMs > 0) {
+        timers.startedAt = Date.now();
+        timers.dismissTimer = window.setTimeout(
+          () => dismissToast(id),
+          timers.remainingMs,
+        );
+      }
+      setToasts((current) =>
+        current.map((toast) => (toast.id === id ? { ...toast, paused: shouldPause } : toast)),
+      );
+    },
+    [dismissToast],
+  );
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      toastTimersRef.current.forEach((_timers, id) => pauseToast(id, "document", document.hidden));
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [pauseToast]);
+
+  const showToast = useCallback(
+    (tone: ToastTone, message: string, options: ToastOptions = {}) => {
+      toastIdRef.current += 1;
+      const id = toastIdRef.current;
+      const durationMs =
+        options.durationMs ??
+        (options.onAction ? TOAST_UNDO_TIMEOUT_MS : tone === "error" ? 8000 : TOAST_TIMEOUT_MS);
+      setToasts((current) => {
+        if (
+          !options.onAction &&
+          current.some(
+            (toast) =>
+              !toast.leaving &&
+              !toast.onAction &&
+              toast.tone === tone &&
+              toast.message === message,
+          )
+        ) {
+          return current;
+        }
+        const visibleCount = current.filter((toast) => !toast.queued && !toast.leaving).length;
+        const next: Toast = {
+          id,
+          tone,
+          message,
+          detail: options.detail,
+          actionLabel: options.actionLabel,
+          onAction: options.onAction,
+          actionPending: false,
+          durationMs,
+          queued: visibleCount >= 3,
+          paused: false,
+          leaving: false,
+        };
+        const combined = [...current, next];
+        if (combined.length <= 24) return combined;
+        const removableIndex = combined.findIndex((toast) => toast.queued && !toast.onAction);
+        return removableIndex >= 0
+          ? combined.filter((_, index) => index !== removableIndex)
+          : combined;
+      });
+      return id;
+    },
+    [],
+  );
+
+  const runToastAction = async (id: number) => {
+    const toast = toastsRef.current.find((item) => item.id === id);
+    if (!toast?.onAction || toastActionLocksRef.current.has(id)) return;
+    toastActionLocksRef.current.add(id);
+    pauseToast(id, "focus", true);
+    setToasts((current) =>
+      current.map((item) => (item.id === id ? { ...item, actionPending: true } : item)),
+    );
+    const succeeded = await toast.onAction();
+    if (succeeded) {
+      dismissToast(id);
+      showToast("ok", "元に戻しました");
+      return;
+    }
+    toastActionLocksRef.current.delete(id);
+    setToasts((current) =>
+      current.map((item) => (item.id === id ? { ...item, actionPending: false } : item)),
+    );
+    window.requestAnimationFrame(() => {
+      const toastElement = document.querySelector<HTMLElement>(`[data-toast-id="${id}"]`);
+      pauseToast(id, "focus", Boolean(toastElement?.contains(document.activeElement)));
+    });
+  };
 
   const refreshButtonIcon = useCallback(async (button: LauncherButton, force = false) => {
     if (!buttonHasIconCacheSource(button)) return;
@@ -2325,7 +2500,7 @@ function DashboardApp() {
     return () => {
       unlisten.then((dispose) => dispose()).catch(() => undefined);
       toastTimers.forEach(({ dismissTimer, removeTimer }) => {
-        window.clearTimeout(dismissTimer);
+        if (dismissTimer !== null) window.clearTimeout(dismissTimer);
         if (removeTimer !== null) window.clearTimeout(removeTimer);
       });
       toastTimers.clear();
@@ -5521,6 +5696,52 @@ function DashboardApp() {
     void persistConfig({ ...config, today: { ...config.today, items } });
   };
 
+  const sourceSnapshotForUndo = (current: AppConfig, sourceKey: string): unknown | null => {
+    if (sourceKey.startsWith("project:")) {
+      return (
+        current.projects.find((project) => `project:${project.id}` === sourceKey) ?? null
+      );
+    }
+    if (sourceKey.startsWith("wishlist:")) {
+      return current.inbox.find((item) => `wishlist:${item.id}` === sourceKey) ?? null;
+    }
+    return null;
+  };
+
+  const undoTodaySelectionOperation = async (input: {
+    operationId: string;
+    dayKey: string;
+    sourceKey: string;
+    item: TodayItem | null;
+    previousSourceKey: string | null;
+    nextSourceKey: string | null;
+    sourceSnapshot: unknown | null;
+    restoreExclusion: boolean;
+  }) => {
+    const current = configRef.current;
+    if (!current) return false;
+    if (
+      activeTimerRef.current?.sourceId === `today:${input.sourceKey}` ||
+      (input.sourceKey.startsWith("project:") &&
+        activeTimerRef.current?.sourceId === input.sourceKey.slice("project:".length))
+    ) {
+      showToast("warn", "タイマーを停止してから元に戻してください");
+      return false;
+    }
+    try {
+      const response = await undoTodaySelection(input);
+      configRef.current = response.config;
+      setConfig(response.config);
+      setBanner(null);
+      await reapplyDashboardSettings();
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      showToast("error", `元に戻せません: ${message}`);
+      return false;
+    }
+  };
+
   const removeTodayItem = async (sourceKey: string) => {
     const current = configRef.current;
     if (!current) return;
@@ -5535,15 +5756,45 @@ function DashboardApp() {
       return;
     }
     // Keep legacy timer identities stable when an earlier card is removed.
-    const items = current.today.items
+    const stableItems = current.today.items
       .map((item, itemIndex) =>
         item.sourceKey?.trim() ? item : { ...item, sourceKey: todaySourceKey(item, itemIndex) },
-      )
-      .filter((_, itemIndex) => itemIndex !== index);
+      );
+    const removedItem = stableItems[index];
+    const operationId = createStableId();
+    const previousSourceKey = index > 0 ? stableItems[index - 1]?.sourceKey ?? null : null;
+    const nextSourceKey = stableItems[index + 1]?.sourceKey ?? null;
+    const items = stableItems.filter((_, itemIndex) => itemIndex !== index);
     setTodayEditingIndex(null);
     setTodayTriggerEditingIndex(null);
-    if (await persistConfig({ ...current, today: { ...current.today, items } })) {
-      showToast("ok", "今日の3件から外しました");
+    if (
+      await persistConfig({
+        ...current,
+        today: {
+          ...current.today,
+          items,
+          selectionMutationTokens: {
+            ...current.today.selectionMutationTokens,
+            [sourceKey]: operationId,
+          },
+        },
+      })
+    ) {
+      showToast("ok", "今日の3件から外しました", {
+        detail: "元の次の一手・やりたいことは残ります",
+        actionLabel: "元に戻す",
+        onAction: () =>
+          undoTodaySelectionOperation({
+            operationId,
+            dayKey: current.today.date,
+            sourceKey,
+            item: removedItem,
+            previousSourceKey,
+            nextSourceKey,
+            sourceSnapshot: sourceSnapshotForUndo(current, sourceKey),
+            restoreExclusion: false,
+          }),
+      });
     }
   };
 
@@ -5632,22 +5883,30 @@ function DashboardApp() {
   const saveSourceEdit = async (previous: AppConfig, next: AppConfig, key: string) => {
     if (sourceEditBlocked(key)) {
       showToast("warn", SOURCE_EDIT_TIMER_REASON);
-      return false;
+      return null;
     }
     sourceEditBusyRef.current = key;
     setSourceEditSaving(true);
     try {
-      return await persistConfig(resnapshotSource(previous, next, key));
+      const todayUpdated = previous.today.items.some(
+        (item, index) => canonicalSourceKey(previous, todaySourceKey(item, index)) === key,
+      );
+      return (await persistConfig(resnapshotSource(previous, next, key)))
+        ? { todayUpdated }
+        : null;
     } catch (error) {
       showToast("error", error instanceof Error ? error.message : String(error));
-      return false;
+      return null;
     } finally {
       sourceEditBusyRef.current = null;
       setSourceEditSaving(false);
     }
   };
 
-  const beginInboxEdit = (index: number) => {
+  const beginInboxEdit = (
+    index: number,
+    origin: "source" | "today" | "builder" = "source",
+  ) => {
     const item = configRef.current?.inbox[index];
     if (!item) return;
     if (!item.id || sourceEditBlocked(`wishlist:${item.id}`)) {
@@ -5655,6 +5914,7 @@ function DashboardApp() {
       return;
     }
     inboxEditingIdRef.current = item.id;
+    sourceEditOriginRef.current = origin;
     setContextMenu(null);
     setInboxOpen(true);
     setInboxEditingIndex(index);
@@ -5701,14 +5961,21 @@ function DashboardApp() {
           }
         : item,
     );
-    if (!(await saveSourceEdit(config, { ...config, inbox }, `wishlist:${editingId}`))) return;
+    const result = await saveSourceEdit(config, { ...config, inbox }, `wishlist:${editingId}`);
+    if (!result) return;
     setInboxEditingIndex(null);
     setInboxEditDraft("");
     setInboxEditProjectId("");
     setInboxEditButtonIds([]);
     setInboxEditInstructionPath("");
     setInboxEditInstructionOpenOnStart(false);
-    showToast("ok", "やりたいことを保存しました");
+    const detail =
+      sourceEditOriginRef.current === "source"
+        ? result.todayUpdated
+          ? "今日の3件にも反映しました"
+          : undefined
+        : "元の「やりたいこと」にも反映しました";
+    showToast("ok", "変更を保存しました", { detail });
   };
 
   const cancelInboxEdit = () => {
@@ -5731,6 +5998,8 @@ function DashboardApp() {
 
   const withoutSourceFromToday = (currentConfig: AppConfig, sourceKeys: string[]) => {
     const matchingSourceKeys = new Set(sourceKeys);
+    const selectionMutationTokens = { ...currentConfig.today.selectionMutationTokens };
+    sourceKeys.forEach((sourceKey) => delete selectionMutationTokens[sourceKey]);
     return {
       ...currentConfig.today,
       items: currentConfig.today.items.filter(
@@ -5739,6 +6008,7 @@ function DashboardApp() {
       candidateExcludedSourceKeys: currentConfig.today.candidateExcludedSourceKeys.filter(
         (sourceKey) => !matchingSourceKeys.has(sourceKey),
       ),
+      selectionMutationTokens,
     };
   };
 
@@ -5883,6 +6153,8 @@ function DashboardApp() {
       return false;
     }
 
+    const selectionMutationTokens = { ...config.today.selectionMutationTokens };
+    delete selectionMutationTokens[candidate.sourceKey];
     const saved = await persistConfig({
       ...config,
       today: {
@@ -5906,6 +6178,7 @@ function DashboardApp() {
             shortTimerMinutes: candidate.shortTimerMinutes,
           },
         ],
+        selectionMutationTokens,
       },
     });
     if (saved) showToast("ok", "今日の3件に追加しました");
@@ -5971,11 +6244,15 @@ function DashboardApp() {
     });
   };
 
-  const openProjectEditDialog = (project: LauncherProject) => {
+  const openProjectEditDialog = (
+    project: LauncherProject,
+    origin: "source" | "today" | "builder" = "source",
+  ) => {
     if (sourceEditBlocked(`project:${project.id}`)) {
       showToast("warn", SOURCE_EDIT_TIMER_REASON);
       return;
     }
+    sourceEditOriginRef.current = origin;
     setContextMenu(null);
     void refreshNextStepSuggestions(project.id, "project");
     void refreshInstructionChoices();
@@ -6086,10 +6363,25 @@ function DashboardApp() {
       ? [...config.projects, project]
       : config.projects.map((item) => (item.id === project.id ? project : item));
 
-    if (!(await saveSourceEdit(config, { ...config, projects }, `project:${project.id}`))) return;
+    const result = await saveSourceEdit(
+      config,
+      { ...config, projects },
+      `project:${project.id}`,
+    );
+    if (!result) return;
     setProjectEditDraft(null);
     if (nextStepChanged) setStaleNextStepProjectIds((ids) => ids.filter((id) => id !== project.id));
-    showToast("ok", `${name} を保存しました`);
+    if (projectEditDraft.isNew) {
+      showToast("ok", `${name} を保存しました`);
+    } else {
+      const detail =
+        sourceEditOriginRef.current === "source"
+          ? result.todayUpdated
+            ? "今日の3件にも反映しました"
+            : undefined
+          : "元の「次の一手」にも反映しました";
+      showToast("ok", "変更を保存しました", { detail });
+    }
   };
 
   const setProjectWeeklyFocus = (checked: boolean) => {
@@ -6262,7 +6554,7 @@ function DashboardApp() {
     if (!config || !allTodayItemsCompleted) return;
     const saved = await persistConfig({
       ...config,
-      today: { ...config.today, items: [] },
+      today: { ...config.today, items: [], selectionMutationTokens: {} },
     });
     if (!saved) return;
     showToast("ok", "次の3件を選べます");
@@ -6470,6 +6762,8 @@ function DashboardApp() {
     const candidate = explicitlyExcludedCandidate(sourceKey);
     if (!candidate) return null;
     const matchingSourceKeys = new Set([candidate.sourceKey, ...(candidate.sourceAliases ?? [])]);
+    const selectionMutationTokens = { ...config.today.selectionMutationTokens };
+    delete selectionMutationTokens[candidate.sourceKey];
     const saved = await persistConfig({
       ...config,
       today: {
@@ -6477,6 +6771,7 @@ function DashboardApp() {
         candidateExcludedSourceKeys: config.today.candidateExcludedSourceKeys.filter(
           (key) => !matchingSourceKeys.has(key),
         ),
+        selectionMutationTokens,
       },
     });
     if (!saved) return null;
@@ -6497,11 +6792,11 @@ function DashboardApp() {
     }
     const project = config.projects.find((item) => `project:${item.id}` === key);
     if (project) {
-      openProjectEditDialog(project);
+      openProjectEditDialog(project, "builder");
       return;
     }
     const inboxIndex = config.inbox.findIndex((item) => `wishlist:${item.id}` === key);
-    if (inboxIndex >= 0) beginInboxEdit(inboxIndex);
+    if (inboxIndex >= 0) beginInboxEdit(inboxIndex, "builder");
   };
   const todayBuilderCandidates = (() => {
     const excludedSourceKeys = new Set(config.today.candidateExcludedSourceKeys);
@@ -6544,28 +6839,59 @@ function DashboardApp() {
       : false;
   const excludeTodayBuilderCandidate = async (index: number) => {
     const candidate = todayBuilderCandidates[index];
-    if (!candidate) return;
+    const current = configRef.current;
+    if (!candidate || !current) return;
     if (isTodayBuilderCandidateActive(candidate)) {
       setContextMenu(null);
       showToast("warn", "タイマーを停止してから外してください");
       return;
     }
     const matchingSourceKeys = new Set([candidate.sourceKey, ...(candidate.sourceAliases ?? [])]);
+    const stableItems = current.today.items.map((item, itemIndex) =>
+      item.sourceKey?.trim() ? item : { ...item, sourceKey: todaySourceKey(item, itemIndex) },
+    );
+    const removedIndex = stableItems.findIndex((item) =>
+      matchingSourceKeys.has(item.sourceKey ?? ""),
+    );
+    const removedItem = removedIndex >= 0 ? stableItems[removedIndex] : null;
+    const previousSourceKey =
+      removedIndex > 0 ? stableItems[removedIndex - 1]?.sourceKey ?? null : null;
+    const nextSourceKey =
+      removedIndex >= 0 ? stableItems[removedIndex + 1]?.sourceKey ?? null : null;
+    const operationId = createStableId();
     const saved = await persistConfig({
-      ...config,
+      ...current,
       today: {
-        ...config.today,
-        items: config.today.items.filter(
-          (item, todayIndex) => !matchingSourceKeys.has(todaySourceKey(item, todayIndex)),
+        ...current.today,
+        items: stableItems.filter(
+          (item) => !matchingSourceKeys.has(item.sourceKey ?? ""),
         ),
         candidateExcludedSourceKeys: Array.from(
-          new Set([...config.today.candidateExcludedSourceKeys, candidate.sourceKey]),
+          new Set([...current.today.candidateExcludedSourceKeys, candidate.sourceKey]),
         ),
+        selectionMutationTokens: {
+          ...current.today.selectionMutationTokens,
+          [candidate.sourceKey]: operationId,
+        },
       },
     });
     if (saved) {
       setContextMenu(null);
-      showToast("ok", "今日の候補から外しました");
+      showToast("ok", "今日の候補から外しました", {
+        detail: "元の次の一手・やりたいことは残ります",
+        actionLabel: "元に戻す",
+        onAction: () =>
+          undoTodaySelectionOperation({
+            operationId,
+            dayKey: current.today.date,
+            sourceKey: candidate.sourceKey,
+            item: removedItem,
+            previousSourceKey,
+            nextSourceKey,
+            sourceSnapshot: sourceSnapshotForUndo(current, candidate.sourceKey),
+            restoreExclusion: true,
+          }),
+      });
     }
   };
   const allTodayItemsCompleted =
@@ -9126,15 +9452,55 @@ function DashboardApp() {
         {reorderAnnouncement}
       </div>
 
-      {toasts.length > 0 && (
-        <div aria-live="polite" className="toastStack">
-          {toasts.map((toast) => (
+      {toasts.some((toast) => !toast.queued) && (
+        <div aria-live="polite" aria-relevant="additions text" className="toastStack">
+          {toasts.filter((toast) => !toast.queued).map((toast) => (
             <div
-              className={`toast toast--${toast.tone}${toast.leaving ? " toast--leaving" : ""}`}
+              className={`toast toast--${toast.tone}${toast.leaving ? " toast--leaving" : ""}${toast.paused ? " toast--paused" : ""}`}
+              data-toast-id={toast.id}
               key={toast.id}
+              onBlurCapture={(event: ReactFocusEvent<HTMLDivElement>) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                  pauseToast(toast.id, "focus", false);
+                }
+              }}
+              onFocusCapture={() => pauseToast(toast.id, "focus", true)}
+              onPointerEnter={() => pauseToast(toast.id, "pointer", true)}
+              onPointerLeave={() => pauseToast(toast.id, "pointer", false)}
               role="status"
+              style={{ "--toast-duration": `${toast.durationMs}ms` } as CSSProperties}
             >
-              {toast.message}
+              <span aria-hidden="true" className="toastAccent" />
+              <span aria-hidden="true" className="toastIconBadge">
+                <UiIcon
+                  name={toast.tone === "ok" ? "play" : toast.tone === "error" ? "close" : "clock"}
+                  size={16}
+                />
+              </span>
+              <div className="toastCopy">
+                <strong>{toast.message}</strong>
+                {toast.detail && <span>{toast.detail}</span>}
+              </div>
+              {toast.onAction && (
+                <button
+                  className="toastAction"
+                  disabled={toast.actionPending}
+                  onClick={() => void runToastAction(toast.id)}
+                  type="button"
+                >
+                  <UiIcon name="back" size={16} />
+                  {toast.actionPending ? "処理中…" : toast.actionLabel ?? "元に戻す"}
+                </button>
+              )}
+              <button
+                aria-label="通知を閉じる"
+                className="toastClose"
+                onClick={() => dismissToast(toast.id)}
+                type="button"
+              >
+                <UiIcon name="close" size={16} />
+              </button>
+              <span aria-hidden="true" className="toastLifetime" />
             </div>
           ))}
         </div>
@@ -9262,10 +9628,10 @@ function DashboardApp() {
                   const key = canonicalSourceKey(current, item.sourceKey);
                   if (!key || sourceEditBlocked(key)) return;
                   const project = current.projects.find(p => `project:${p.id}` === key);
-                  if (project) openProjectEditDialog(project);
+                  if (project) openProjectEditDialog(project, "today");
                   else {
                     const index = current.inbox.findIndex(i => `wishlist:${i.id}` === key);
-                    if (index >= 0) beginInboxEdit(index);
+                    if (index >= 0) beginInboxEdit(index, "today");
                   }
                 }}
                 type="button"

@@ -42,7 +42,7 @@ test("removes only Today adoption, preserves both sources, candidates and sessio
   await prepare(page, fixture);
   const before = await state(page);
   await page.locator(".todayRemoveButton").first().click();
-  await expect(page.locator(".toast").last()).toHaveText("今日の3件から外しました");
+  await expect(page.locator(".toast").last()).toContainText("今日の3件から外しました");
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await page.locator(".todayRemoveButton").first().click();
   await expect(page.locator(".todayRow")).toHaveCount(1);

@@ -10,7 +10,7 @@
   "template_only": false,
   "runtime_path": "docs/phase7.2/execution-state.json",
   "workflow": "single-start-authorized-through-p72-06",
-  "current_stage": "P72-01",
+  "current_stage": "P72-02",
   "baseline": {
     "reported_main": "c7c28ea4f29c62e738e15e369705a71cb35ae109",
     "verified_current_main": "873219cc099514fef5be292a01f97aa50d3e3468",
@@ -42,7 +42,7 @@
       "report": "docs/phase7.2/workreports/p72-00-report.md"
     },
     "P72-01": {
-      "status": "READY_TO_MERGE",
+      "status": "MERGED",
       "instruction": "stages/P72-01-selection-edit-menus.md",
       "branch": "feature/p72-01-selection-edit-menus",
       "pr": "https://github.com/Takuyakou/life-launcher/pull/43",
@@ -51,21 +51,21 @@
       "ci_status": "SUCCESS",
       "human_approved": true,
       "approval_text": "P72-01以降作業していってください。Phase 7.2 終了したら教えてください。",
-      "merge_sha": null,
+      "merge_sha": "c2b5ab99dcef99a7d99a4425133a791202aae5c1",
       "report": "docs/phase7.2/workreports/p72-01-report.md"
     },
     "P72-02": {
-      "status": "WAITING_PREVIOUS_STAGE",
+      "status": "READY_FOR_REVIEW",
       "instruction": "stages/P72-02-toast-undo.md",
-      "branch": null,
+      "branch": "feature/p72-02-toast-undo",
       "pr": null,
       "head_sha": null,
       "ci_sha": null,
       "ci_status": null,
-      "human_approved": false,
-      "approval_text": null,
+      "human_approved": true,
+      "approval_text": "P72-01以降作業していってください。Phase 7.2 終了したら教えてください。",
       "merge_sha": null,
-      "report": null
+      "report": "docs/phase7.2/workreports/p72-02-report.md"
     },
     "P72-03": {
       "status": "WAITING_PREVIOUS_STAGE",

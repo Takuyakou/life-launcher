@@ -18,8 +18,8 @@ use crate::models::{
     default_backup_keep, default_day_start_hour, default_timer_minutes, initial_config,
     short_timer_minutes, today_date, AppConfig, InboxItem, InstructionReferenceUpdateResponse,
     LauncherButton, LoadConfigResponse, NextStepFreshnessResponse, OverlayPage, Project,
-    SaveConfigResponse, Settings, TodayVictory, CONFIG_VERSION, EXECUTION_TRIGGER_MAX_CHARS,
-    OVERLAY_PAGE_NAME_MAX_CHARS, TODAY_ITEM_LIMIT, WEEKLY_FOCUS_LIMIT,
+    SaveConfigResponse, Settings, TodayVictory, UndoTodaySelectionInput, CONFIG_VERSION,
+    EXECUTION_TRIGGER_MAX_CHARS, OVERLAY_PAGE_NAME_MAX_CHARS, TODAY_ITEM_LIMIT, WEEKLY_FOCUS_LIMIT,
 };
 use crate::state::AppState;
 
@@ -92,6 +92,128 @@ pub fn save_config(
         Some(Instant::now() + Duration::from_millis(900));
     write_config(&path, &config)?;
     let _ = app;
+    Ok(SaveConfigResponse {
+        config,
+        path: path.to_string_lossy().to_string(),
+    })
+}
+
+fn current_source_snapshot(config: &AppConfig, source_key: &str) -> Option<Value> {
+    if let Some(project_id) = source_key.strip_prefix("project:") {
+        return config
+            .projects
+            .iter()
+            .find(|project| project.id == project_id)
+            .and_then(|project| serde_json::to_value(project).ok());
+    }
+    if let Some(wishlist_id) = source_key.strip_prefix("wishlist:") {
+        return config
+            .inbox
+            .iter()
+            .find(|item| item.id.as_deref() == Some(wishlist_id))
+            .and_then(|item| serde_json::to_value(item).ok());
+    }
+    None
+}
+
+fn today_item_source_key(item: &crate::models::TodayItem) -> Option<&str> {
+    item.source_key
+        .as_deref()
+        .filter(|key| !key.trim().is_empty())
+}
+
+fn apply_undo_today_selection(
+    mut config: AppConfig,
+    input: &UndoTodaySelectionInput,
+) -> Result<AppConfig, String> {
+    if config.today.date != input.day_key {
+        return Err("日付または今日の枠が変わったため元に戻せません".to_string());
+    }
+    if config
+        .today
+        .selection_mutation_tokens
+        .get(&input.source_key)
+        .map(String::as_str)
+        != Some(input.operation_id.as_str())
+    {
+        return Err("対象はこの後に変更されたため元に戻せません".to_string());
+    }
+    let is_stable_source =
+        input.source_key.starts_with("project:") || input.source_key.starts_with("wishlist:");
+    let current_snapshot = current_source_snapshot(&config, &input.source_key);
+    if is_stable_source && current_snapshot != input.source_snapshot {
+        return Err("元の次の一手・やりたいことが変更されたため元に戻せません".to_string());
+    }
+    if config
+        .today
+        .items
+        .iter()
+        .any(|item| today_item_source_key(item) == Some(input.source_key.as_str()))
+    {
+        return Err("対象はすでに今日の3件へ戻っています".to_string());
+    }
+    if let Some(item) = input.item.clone() {
+        if config.today.items.len() >= TODAY_ITEM_LIMIT {
+            return Err("今日の3件が埋まっているため元に戻せません".to_string());
+        }
+        let insertion_index = input
+            .next_source_key
+            .as_deref()
+            .and_then(|key| {
+                config
+                    .today
+                    .items
+                    .iter()
+                    .position(|entry| today_item_source_key(entry) == Some(key))
+            })
+            .or_else(|| {
+                input.previous_source_key.as_deref().and_then(|key| {
+                    config
+                        .today
+                        .items
+                        .iter()
+                        .position(|entry| today_item_source_key(entry) == Some(key))
+                        .map(|index| index + 1)
+                })
+            })
+            .unwrap_or(config.today.items.len());
+        config.today.items.insert(insertion_index, item);
+    }
+    if input.restore_exclusion {
+        config
+            .today
+            .candidate_excluded_source_keys
+            .retain(|key| key != &input.source_key);
+    }
+    config
+        .today
+        .selection_mutation_tokens
+        .remove(&input.source_key);
+    Ok(config)
+}
+
+#[tauri::command]
+pub fn undo_today_selection(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    input: UndoTodaySelectionInput,
+) -> Result<SaveConfigResponse, String> {
+    let _write_guard = state
+        .config_write_lock
+        .lock()
+        .map_err(|_| "failed to lock config writes".to_string())?;
+    let config = apply_undo_today_selection(load_config_internal(&app)?.config, &input)?;
+    let (mut config, _changed, _warnings) = sanitize_config(config);
+    reconcile_config_instruction_roots(&mut config);
+    let path = config_path()?;
+    ensure_config_schema_file()?;
+    backup_existing_config(&path)?;
+    *state
+        .suppress_reload_until
+        .lock()
+        .map_err(|_| "failed to lock reload state".to_string())? =
+        Some(Instant::now() + Duration::from_millis(900));
+    write_config(&path, &config)?;
     Ok(SaveConfigResponse {
         config,
         path: path.to_string_lossy().to_string(),
@@ -1262,6 +1384,7 @@ fn sanitize_config(mut config: AppConfig) -> (AppConfig, bool, Vec<String>) {
         config.today.items.clear();
         config.today.victory = TodayVictory::default();
         config.today.candidate_excluded_source_keys.clear();
+        config.today.selection_mutation_tokens.clear();
         changed = true;
     }
 
@@ -2283,7 +2406,7 @@ fn normalize_settings(settings: &mut Settings, changed: &mut bool) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::sample_config;
+    use crate::models::{sample_config, TodayItem};
     use std::sync::Mutex;
     use std::time::Duration;
 
@@ -3635,6 +3758,15 @@ mod tests {
             config.today.candidate_excluded_source_keys,
             vec!["project:compose".to_string(), "wishlist:item-1".to_string()]
         );
+
+        let mut value = serde_json::to_value(sample_config()).expect("serialize sample config");
+        value
+            .get_mut("today")
+            .and_then(serde_json::Value::as_object_mut)
+            .expect("today object")
+            .remove("selectionMutationTokens");
+        let legacy: AppConfig = serde_json::from_value(value).expect("legacy config parses");
+        assert!(legacy.today.selection_mutation_tokens.is_empty());
     }
 
     #[test]
@@ -3642,10 +3774,127 @@ mod tests {
         let mut config = sample_config();
         config.today.date = "2000-01-01".to_string();
         config.today.candidate_excluded_source_keys = vec!["project:compose".to_string()];
+        config
+            .today
+            .selection_mutation_tokens
+            .insert("project:compose".to_string(), "old-op".to_string());
 
         let (config, changed, _) = sanitize_config(config);
         assert!(changed);
         assert!(config.today.candidate_excluded_source_keys.is_empty());
+        assert!(config.today.selection_mutation_tokens.is_empty());
+    }
+
+    #[test]
+    fn undo_today_selection_restores_only_the_target_delta_at_its_neighbor() {
+        let mut config = sample_config();
+        let source_key = "project:compose".to_string();
+        let item = TodayItem {
+            text: "資料を1ページ読む".to_string(),
+            done: true,
+            source_key: Some(source_key.clone()),
+            trigger: Some("朝".to_string()),
+            project_id: Some("compose".to_string()),
+            button_ids: vec!["music-web".to_string()],
+            instruction_path: None,
+            instruction_open_on_start: None,
+            default_timer_minutes: Some(25),
+            short_timer_minutes: Some(5),
+        };
+        config.today.items = vec![
+            TodayItem {
+                source_key: Some("manual:later".to_string()),
+                text: "後から追加".to_string(),
+                ..config.today.items[0].clone()
+            },
+            TodayItem {
+                source_key: Some("manual:next".to_string()),
+                text: "次の隣".to_string(),
+                ..config.today.items[1].clone()
+            },
+        ];
+        config
+            .today
+            .selection_mutation_tokens
+            .insert(source_key.clone(), "op-1".to_string());
+        config.settings.backup_keep = 17;
+        let input = UndoTodaySelectionInput {
+            operation_id: "op-1".to_string(),
+            day_key: config.today.date.clone(),
+            source_key: source_key.clone(),
+            item: Some(item.clone()),
+            previous_source_key: None,
+            next_source_key: Some("manual:next".to_string()),
+            source_snapshot: current_source_snapshot(&config, &source_key),
+            restore_exclusion: false,
+        };
+
+        let result = apply_undo_today_selection(config, &input).expect("target undo succeeds");
+        assert_eq!(result.today.items[1], item);
+        assert_eq!(result.today.items[0].text, "後から追加");
+        assert_eq!(result.today.items[2].text, "次の隣");
+        assert_eq!(result.settings.backup_keep, 17);
+        assert!(!result
+            .today
+            .selection_mutation_tokens
+            .contains_key(&source_key));
+    }
+
+    #[test]
+    fn undo_today_selection_rejects_a_stale_token_or_edited_source() {
+        let mut config = sample_config();
+        let source_key = "project:compose".to_string();
+        config.today.items.clear();
+        config
+            .today
+            .selection_mutation_tokens
+            .insert(source_key.clone(), "newer-op".to_string());
+        let mut input = UndoTodaySelectionInput {
+            operation_id: "old-op".to_string(),
+            day_key: config.today.date.clone(),
+            source_key: source_key.clone(),
+            item: None,
+            previous_source_key: None,
+            next_source_key: None,
+            source_snapshot: current_source_snapshot(&config, &source_key),
+            restore_exclusion: true,
+        };
+        assert!(apply_undo_today_selection(config.clone(), &input).is_err());
+
+        input.operation_id = "newer-op".to_string();
+        input.source_snapshot = Some(serde_json::json!({"stale": true}));
+        assert!(apply_undo_today_selection(config, &input).is_err());
+    }
+
+    #[test]
+    fn undo_candidate_exclusion_does_not_adopt_when_it_removed_no_today_item() {
+        let mut config = sample_config();
+        let source_key = "project:compose".to_string();
+        config.today.items.clear();
+        config
+            .today
+            .candidate_excluded_source_keys
+            .push(source_key.clone());
+        config
+            .today
+            .selection_mutation_tokens
+            .insert(source_key.clone(), "exclude-op".to_string());
+        let input = UndoTodaySelectionInput {
+            operation_id: "exclude-op".to_string(),
+            day_key: config.today.date.clone(),
+            source_key: source_key.clone(),
+            item: None,
+            previous_source_key: None,
+            next_source_key: None,
+            source_snapshot: current_source_snapshot(&config, &source_key),
+            restore_exclusion: true,
+        };
+        let result = apply_undo_today_selection(config, &input).expect("exclusion undo succeeds");
+        assert!(result.today.items.is_empty());
+        assert!(!result
+            .today
+            .candidate_excluded_source_keys
+            .contains(&source_key));
     }
 
     #[test]
