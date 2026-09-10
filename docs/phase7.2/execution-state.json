@@ -98,7 +98,7 @@
       "instruction": "stages/P72-05-completion-reward.md",
       "branch": "feature/p72-05-completion-reward",
       "pr": null,
-      "head_sha": null,
+      "head_sha": "54ca107",
       "ci_sha": null,
       "ci_status": null,
       "human_approved": true,
