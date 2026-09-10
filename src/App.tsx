@@ -9126,6 +9126,11 @@ function DashboardApp() {
                     .filter(Boolean)
                     .join(" ")}
                 >
+                  {todayBuilderPointerDrag?.todayGuidanceActive && (
+                    <div aria-hidden="true" className="todayDropGuidanceOverlay">
+                      ↓ ここにドロップして「今日の3件」に追加
+                    </div>
+                  )}
                   {config.today.items.length === 0 && (
                     <div className="sectionEmptyActions">
                       <span>今日やるものを選びましょう</span>

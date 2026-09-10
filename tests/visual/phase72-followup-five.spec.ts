@@ -178,15 +178,40 @@ test("follow-up: valid Builder candidate reveals Today guidance before target ho
   await prepare(page);
   await page.locator(".todayBuilderDisclosure").click();
   const source = page.locator(".todayBuilderRow", { hasText: "5分だけ体を動かす" });
+  const todayGrid = page.locator(".todayGrid");
+  const gridBefore = await todayGrid.boundingBox();
   const before = await saveCount(page);
   await beginDrag(page, source, 8);
   await expect(page.locator(".todayBuilderDragGhost")).toBeVisible();
   await expect(page.locator(".todayBuilderDragGhost button")).toHaveCount(0);
-  await expect(page.locator(".todayGrid--dropGuidance")).toBeVisible();
+  await expect(todayGrid).toHaveClass(/todayGrid--dropGuidance/);
+  const guidance = page.locator(".todayDropGuidanceOverlay");
+  await expect(guidance).toBeVisible();
+  await expect(guidance).toHaveText(/ここにドロップして「今日の3件」に追加/);
+  const guidanceStyle = await guidance.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      backgroundColor: style.backgroundColor,
+      borderStyle: style.borderStyle,
+      display: style.display,
+    };
+  });
+  expect(guidanceStyle).toMatchObject({
+    borderStyle: "dashed",
+    display: "flex",
+  });
+  expect(guidanceStyle.backgroundColor).toMatch(/^rgba\(231, 185, 77, 0\.0/);
+  const gridAfter = await todayGrid.boundingBox();
+  expect(gridAfter).toEqual(gridBefore);
   await expect(page.locator(".todayGrid--dropTarget")).toHaveCount(0);
   await expect(page.locator(".todayDropIndicator")).toHaveCount(0);
   expect(await saveCount(page)).toBe(before);
+  await page.screenshot({
+    path: "dist/visual-qa/followup-builder-to-today-guidance-1440.png",
+    fullPage: true,
+  });
   await page.mouse.up();
+  await expect(page.locator(".todayDropGuidanceOverlay")).toHaveCount(0);
   expect(await saveCount(page)).toBe(before);
 });
 
@@ -198,6 +223,7 @@ test("follow-up: full Today suppresses destination guidance", async ({ page }) =
   await beginDrag(page, page.locator(".todayBuilderRow", { hasText: "5分だけ体を動かす" }), 8);
   await expect(page.locator(".todayBuilderDragGhost")).toBeVisible();
   await expect(page.locator(".todayGrid--dropGuidance")).toHaveCount(0);
+  await expect(page.locator(".todayDropGuidanceOverlay")).toHaveCount(0);
   await page.mouse.up();
 });
 
@@ -207,6 +233,7 @@ test("follow-up: duplicate Today source suppresses destination guidance", async 
   await beginDrag(page, page.locator(".todayBuilderRow", { hasText: "資料を1ページ読む" }), 8);
   await expect(page.locator(".todayBuilderDragGhost")).toBeVisible();
   await expect(page.locator(".todayGrid--dropGuidance")).toHaveCount(0);
+  await expect(page.locator(".todayDropGuidanceOverlay")).toHaveCount(0);
   await page.mouse.up();
 });
 

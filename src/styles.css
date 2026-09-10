@@ -7514,6 +7514,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayGrid {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
@@ -7522,14 +7523,31 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .todayGrid--dropGuidance {
   border-radius: var(--radius);
-  outline: 1px solid rgba(231, 185, 77, 0.64);
-  outline-offset: 5px;
-  background: rgba(231, 185, 77, 0.035);
+  outline: 2px solid rgba(231, 185, 77, 0.58);
+  outline-offset: 3px;
+  background: rgba(231, 185, 77, 0.055);
 }
 
 .todayGrid--dropTarget {
   outline-color: var(--accent);
-  background: rgba(231, 185, 77, 0.075);
+  background: rgba(231, 185, 77, 0.09);
+}
+
+.todayDropGuidanceOverlay {
+  position: absolute;
+  inset: 0 10px 0 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  border: 1px dashed var(--accent);
+  border-radius: var(--radius);
+  background: rgba(231, 185, 77, 0.065);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+  pointer-events: none;
 }
 
 .todayGrid > .quietText {
