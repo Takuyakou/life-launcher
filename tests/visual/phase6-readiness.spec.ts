@@ -102,11 +102,13 @@ for (const activeCount of [0, 1, 2, 3]) {
     await prepare(page, withTodayState(activeCount));
     await expect(page.locator(".todayRow")).toHaveCount(activeCount);
     await expect(page.getByRole("button", { name: "今日の3件に追加" })).toHaveCount(0);
-    const candidateLink = page.getByRole("button", { name: "今日の候補を見る" });
+    const candidateLink = page
+      .locator(".focusBand .sectionEmptyActions")
+      .getByRole("button", { name: "今日を組み立てる" });
     if (activeCount === 0) {
       await expect(candidateLink).toBeVisible();
       await candidateLink.click();
-      await expect(page.locator(".todayBuilderDisclosure")).toBeFocused();
+      await expect(page.locator(".todayBuilderRow").first()).toBeFocused();
       await expect(page.locator(".todayBuilderDisclosure")).toHaveAttribute(
         "aria-expanded",
         "true",
@@ -301,8 +303,11 @@ test("registration stays in source sections and persists after reload", async ({
   await prepare(page, withTodayState(0));
 
   await expect(page.getByRole("button", { name: "今日の3件に追加" })).toHaveCount(0);
-  await page.getByRole("button", { name: "今日の候補を見る" }).click();
-  await expect(page.locator(".todayBuilderDisclosure")).toBeFocused();
+  await page
+    .locator(".focusBand .sectionEmptyActions")
+    .getByRole("button", { name: "今日を組み立てる" })
+    .click();
+  await expect(page.locator(".todayBuilderRow").first()).toBeFocused();
   await expect(page.getByRole("button", { name: "今日を組み立てるに次の一手を追加" })).toHaveCount(
     0,
   );

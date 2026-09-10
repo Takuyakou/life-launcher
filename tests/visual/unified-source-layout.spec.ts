@@ -49,7 +49,8 @@ for (const width of [1440, 860]) {
     await builder.focus();
     await expect(builder).toBeFocused();
     await page.locator(".todayBuilderBody").screenshot({ path: info.outputPath("builder-hover-focus.png") });
-    await expect(builder.getByRole("button")).toBeVisible();
+    await expect(builder.locator(".todayBuilderAddButton")).toBeVisible();
+    await expect(builder.locator(".sourceRowMenu")).toBeVisible();
     await inbox.hover();
     expect((await metrics(inbox)).background).not.toBe(b.background);
     await expect(inbox.locator(".sourceRowMenu")).toHaveCSS("opacity", "1");

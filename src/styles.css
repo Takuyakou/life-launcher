@@ -3589,6 +3589,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayRow {
+  position: relative;
   grid-template-columns: 32px minmax(0, 1fr) auto;
   min-height: 48px;
   border-bottom: 1px solid var(--line-soft);
@@ -3596,6 +3597,18 @@ input[type="number"]::-webkit-inner-spin-button {
   cursor: grab;
   touch-action: none;
   user-select: none;
+}
+
+.todayRowMenu {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 1;
+}
+
+.todayRow:hover .todayRowMenu,
+.todayRow:focus-within .todayRowMenu {
+  opacity: 1;
 }
 
 .todayRow--dragging,
@@ -7652,7 +7665,14 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayBuilderRow.sourceListRow {
-  grid-template-columns: minmax(0, 1fr) 70px;
+  grid-template-columns: minmax(0, 1fr) 110px;
+}
+
+.todayBuilderActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
 }
 
 .todayBuilderRow .todayBuilderAddButton {

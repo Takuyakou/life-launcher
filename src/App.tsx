@@ -6241,7 +6241,11 @@ function DashboardApp() {
     setTodayBuilderOpen(true);
     setTodayBuilderPage(1);
     window.requestAnimationFrame(() => {
-      document.querySelector<HTMLElement>(".todayBuilderDisclosure")?.focus();
+      const target =
+        document.querySelector<HTMLElement>(".todayBuilderRow") ??
+        document.querySelector<HTMLElement>(".todayBuilderDisclosure");
+      target?.scrollIntoView({ block: "nearest" });
+      target?.focus();
     });
   };
 
@@ -6452,6 +6456,53 @@ function DashboardApp() {
         : [];
     }),
   ];
+  const explicitlyExcludedCandidate = (sourceKey: string) => {
+    const candidate = rawTodayBuilderCandidates.find((item) => item.sourceKey === sourceKey);
+    if (!candidate) return undefined;
+    const excludedSourceKeys = new Set(config.today.candidateExcludedSourceKeys);
+    return [candidate.sourceKey, ...(candidate.sourceAliases ?? [])].some((key) =>
+      excludedSourceKeys.has(key),
+    )
+      ? candidate
+      : undefined;
+  };
+  const restoreTodayBuilderCandidate = async (sourceKey: string) => {
+    const candidate = explicitlyExcludedCandidate(sourceKey);
+    if (!candidate) return null;
+    const matchingSourceKeys = new Set([candidate.sourceKey, ...(candidate.sourceAliases ?? [])]);
+    const saved = await persistConfig({
+      ...config,
+      today: {
+        ...config.today,
+        candidateExcludedSourceKeys: config.today.candidateExcludedSourceKeys.filter(
+          (key) => !matchingSourceKeys.has(key),
+        ),
+      },
+    });
+    if (!saved) return null;
+    setContextMenu(null);
+    showToast("ok", "今日の候補に戻しました");
+    return {
+      operationId: createStableId(),
+      sourceKey: candidate.sourceKey,
+      syncedTargets: ["todayBuilder"] as const,
+    };
+  };
+  const editTodayBuilderCandidate = (candidate?: TodayBuilderCandidate) => {
+    if (!candidate) return;
+    const key = canonicalSourceKey(config, candidate.sourceKey);
+    if (!key || sourceEditBlocked(key)) {
+      if (key) showToast("warn", SOURCE_EDIT_TIMER_REASON);
+      return;
+    }
+    const project = config.projects.find((item) => `project:${item.id}` === key);
+    if (project) {
+      openProjectEditDialog(project);
+      return;
+    }
+    const inboxIndex = config.inbox.findIndex((item) => `wishlist:${item.id}` === key);
+    if (inboxIndex >= 0) beginInboxEdit(inboxIndex);
+  };
   const todayBuilderCandidates = (() => {
     const excludedSourceKeys = new Set(config.today.candidateExcludedSourceKeys);
     const activeCandidates = rawTodayBuilderCandidates.filter(
@@ -8153,9 +8204,9 @@ function DashboardApp() {
                 <div className="todayGrid">
                   {config.today.items.length === 0 && (
                     <div className="sectionEmptyActions">
-                      <span>まだ決まっていません。候補から今日やるものを選べます。</span>
+                      <span>今日やるものを選びましょう</span>
                       <button onClick={focusTodayBuilder} type="button">
-                        今日の候補を見る
+                        今日を組み立てる
                       </button>
                     </div>
                   )}
@@ -8209,6 +8260,25 @@ function DashboardApp() {
                         onPointerUp={finishTodayPointerDrag}
                         tabIndex={0}
                       >
+                        <button
+                          aria-label={`${item.text || "未入力"}の操作`}
+                          aria-haspopup="menu"
+                          className="sourceRowMenu todayRowMenu"
+                          onClick={(event) => {
+                            const rect = event.currentTarget.getBoundingClientRect();
+                            openContextMenu(
+                              { kind: "today", index, itemText: item.text },
+                              rect.left,
+                              rect.bottom,
+                              event.currentTarget,
+                            );
+                          }}
+                          onPointerDown={(event) => event.stopPropagation()}
+                          title="操作メニュー"
+                          type="button"
+                        >
+                          <span aria-hidden="true">⋯</span>
+                        </button>
                         <span
                           aria-label={item.done ? "今日の分は完了" : "未完了"}
                           className={
@@ -8606,6 +8676,25 @@ function DashboardApp() {
                                   type="button"
                                 >
                                   {isSelected ? "選択済み" : "今日へ"}
+                                </button>
+                                <button
+                                  aria-label={`${candidate.text}の操作`}
+                                  aria-haspopup="menu"
+                                  className="sourceRowMenu"
+                                  onClick={(event) => {
+                                    const rect = event.currentTarget.getBoundingClientRect();
+                                    openContextMenu(
+                                      { kind: "todayBuilder", index },
+                                      rect.left,
+                                      rect.bottom,
+                                      event.currentTarget,
+                                    );
+                                  }}
+                                  onPointerDown={(event) => event.stopPropagation()}
+                                  title="操作メニュー"
+                                  type="button"
+                                >
+                                  <span aria-hidden="true">⋯</span>
                                 </button>
                               </div>
                             </div>
@@ -9221,6 +9310,17 @@ function DashboardApp() {
           ) : contextMenu.kind === "todayBuilder" ? (
             <>
               <ContextMenuItem
+                disabled={
+                  !todayBuilderCandidates[contextMenu.index] ||
+                  sourceEditBlocked(todayBuilderCandidates[contextMenu.index]?.sourceKey ?? "")
+                }
+                onClick={() => editTodayBuilderCandidate(todayBuilderCandidates[contextMenu.index])}
+                title={SOURCE_EDIT_TIMER_REASON}
+                type="button"
+              >
+                編集
+              </ContextMenuItem>
+              <ContextMenuItem
                 disabled={contextMenu.index <= 0}
                 onClick={() => moveTodayBuilderCandidateByOffset(contextMenu.index, -1)}
                 type="button"
@@ -9249,6 +9349,19 @@ function DashboardApp() {
             </>
           ) : contextMenu.kind === "inbox" ? (
             <>
+              {config?.inbox[contextMenu.index]?.id &&
+                explicitlyExcludedCandidate(`wishlist:${config.inbox[contextMenu.index].id}`) && (
+                  <ContextMenuItem
+                    onClick={() =>
+                      void restoreTodayBuilderCandidate(
+                        `wishlist:${config.inbox[contextMenu.index].id}`,
+                      )
+                    }
+                    type="button"
+                  >
+                    今日の候補に戻す
+                  </ContextMenuItem>
+                )}
               <ContextMenuItem
                 disabled={contextMenu.index <= 0}
                 onClick={() => void moveInboxItemByOffset(contextMenu.index, -1)}
@@ -9296,28 +9409,16 @@ function DashboardApp() {
             </>
           ) : contextMenu.kind === "project" ? (
             <>
-              <ContextMenuItem
-                disabled={
-                  !contextMenu.project.nextStep.trim() ||
-                  (config?.today.items.length ?? TODAY_ITEM_LIMIT) >= TODAY_ITEM_LIMIT ||
-                  Boolean(
-                    config?.today.items.some(
-                      (item, index) =>
-                        todaySourceKey(item, index) === `project:${contextMenu.project.id}`,
-                    ),
-                  )
-                }
-                onClick={() => {
-                  setContextMenu(null);
-                  if (!config) return;
-                  void addCandidateToToday(
-                    projectTodayCandidate(contextMenu.project, config.settings),
-                  );
-                }}
-                type="button"
-              >
-                今日へ
-              </ContextMenuItem>
+              {explicitlyExcludedCandidate(`project:${contextMenu.project.id}`) && (
+                <ContextMenuItem
+                  onClick={() =>
+                    void restoreTodayBuilderCandidate(`project:${contextMenu.project.id}`)
+                  }
+                  type="button"
+                >
+                  今日の候補に戻す
+                </ContextMenuItem>
+              )}
               <ContextMenuItem
                 disabled={
                   config?.projects.findIndex((project) => project.id === contextMenu.project.id) ===
