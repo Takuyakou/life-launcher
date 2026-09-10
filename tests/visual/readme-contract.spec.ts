@@ -55,3 +55,11 @@ test("release metadata and notes share the package version", () => {
     expect(releaseNotes).toContain(`Life-Launcher-v${version}-windows-x64${suffix}`);
   }
 });
+
+test("release candidate hashing does not depend on Get-FileHash availability", () => {
+  const script = readFileSync("scripts/prepare-release-candidate.ps1", "utf8");
+  expect(script).toContain("[System.Security.Cryptography.SHA256]::Create()");
+  expect(script).toContain("Get-Sha256Hex (Join-Path $CandidateRoot $name)");
+  expect(script).not.toContain("Get-FileHash");
+  expect(script).not.toContain("$LASTEXITCODE");
+});
