@@ -10,7 +10,7 @@
   "template_only": false,
   "runtime_path": "docs/phase7.2/execution-state.json",
   "workflow": "single-start-authorized-through-p72-06",
-  "current_stage": "P72-06",
+  "current_stage": "COMPLETE",
   "baseline": {
     "reported_main": "c7c28ea4f29c62e738e15e369705a71cb35ae109",
     "verified_current_main": "873219cc099514fef5be292a01f97aa50d3e3468",
@@ -107,16 +107,16 @@
       "report": "docs/phase7.2/workreports/p72-05-report.md"
     },
     "P72-06": {
-      "status": "READY_FOR_REVIEW",
+      "status": "MERGED",
       "instruction": "stages/P72-06-guide-regression.md",
       "branch": "docs/p72-06-guide-regression",
-      "pr": null,
-      "head_sha": "0ef94f6be215572c206a26d89684273161580ebe",
-      "ci_sha": null,
-      "ci_status": null,
+      "pr": "https://github.com/Takuyakou/life-launcher/pull/48",
+      "head_sha": "4ce97bfc3959ee9239138081b20dd94efab3163f",
+      "ci_sha": "4ce97bfc3959ee9239138081b20dd94efab3163f",
+      "ci_status": "SUCCESS",
       "human_approved": true,
       "approval_text": "P72-01以降作業していってください。Phase 7.2 終了したら教えてください。",
-      "merge_sha": null,
+      "merge_sha": "4dc39eee8f2b844218646d22eaa5fe6c23586ac0",
       "report": "docs/phase7.2/workreports/p72-final-report.md"
     }
   },
