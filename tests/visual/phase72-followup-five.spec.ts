@@ -137,9 +137,13 @@ test("follow-up: excluded source reveals Builder guidance only after the 6px thr
   fixture.config.today.candidateExcludedSourceKeys = ["project:sample-stretch"];
   await prepare(page, fixture);
   const source = page.locator(".nextStepRow", { hasText: "5分だけ体を動かす" });
+  const builder = page.locator(".todayBuilderBand");
   const before = await saveCount(page);
   const box = await source.boundingBox();
+  const builderBoxBefore = await builder.boundingBox();
+  const pageHeightBefore = await page.evaluate(() => document.documentElement.scrollHeight);
   expect(box).not.toBeNull();
+  expect(builderBoxBefore).not.toBeNull();
 
   await beginDrag(page, source, 4);
   await expect(page.locator(".projectDragGhost")).toHaveCount(0);
@@ -151,6 +155,9 @@ test("follow-up: excluded source reveals Builder guidance only after the 6px thr
     /ここにドロップして今日の候補に戻す/,
   );
   await expect(page.locator(".todayBuilderBand--restoreHover")).toHaveCount(0);
+  expect(await builder.boundingBox()).toEqual(builderBoxBefore);
+  expect(await source.boundingBox()).toEqual(box);
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(pageHeightBefore);
   expect(await saveCount(page)).toBe(before);
   await page.screenshot({
     path: "dist/visual-qa/followup-dnd-guidance-1440.png",
