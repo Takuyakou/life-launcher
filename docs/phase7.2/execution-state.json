@@ -42,13 +42,13 @@
       "report": "docs/phase7.2/workreports/p72-00-report.md"
     },
     "P72-01": {
-      "status": "IMPLEMENTED_AWAITING_FULL_VALIDATION",
+      "status": "READY_TO_MERGE",
       "instruction": "stages/P72-01-selection-edit-menus.md",
       "branch": "feature/p72-01-selection-edit-menus",
-      "pr": null,
-      "head_sha": null,
-      "ci_sha": null,
-      "ci_status": null,
+      "pr": "https://github.com/Takuyakou/life-launcher/pull/43",
+      "head_sha": "533d015",
+      "ci_sha": "533d015",
+      "ci_status": "SUCCESS",
       "human_approved": true,
       "approval_text": "P72-01以降作業していってください。Phase 7.2 終了したら教えてください。",
       "merge_sha": null,
