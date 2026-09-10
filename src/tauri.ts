@@ -32,6 +32,7 @@ import {
   UpdateSessionEntryInput,
   TodayNotesInput,
   TodayNotesResponse,
+  UndoTodaySelectionInput,
   WeeklyReviewResponse,
 } from "./types";
 
@@ -45,6 +46,16 @@ export async function loadConfig(): Promise<LoadConfigResponse> {
 
 export async function saveConfig(config: AppConfig): Promise<SaveConfigResponse> {
   const response = await invoke<SaveConfigResponse>("save_config", { config });
+  return {
+    ...response,
+    config: AppConfigSchema.parse(response.config),
+  };
+}
+
+export async function undoTodaySelection(
+  input: UndoTodaySelectionInput,
+): Promise<SaveConfigResponse> {
+  const response = await invoke<SaveConfigResponse>("undo_today_selection", { input });
   return {
     ...response,
     config: AppConfigSchema.parse(response.config),

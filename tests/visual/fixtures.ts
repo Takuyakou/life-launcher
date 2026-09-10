@@ -109,6 +109,7 @@ function createConfig(): AppConfig {
       date: FIXTURE_DATE,
       victory: { text: "最優先の一手を始める", done: false },
       candidateExcludedSourceKeys: [],
+      selectionMutationTokens: {},
       items: [
         {
           text: "資料を1ページ読む",

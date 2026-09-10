@@ -130,6 +130,81 @@ export async function installTauriMock(
                 persistCurrentConfig();
                 dispatchEvent("config-changed");
                 return { config: currentConfig, path: paths.config };
+              case "undo_today_selection": {
+                if (failSaveConfig) throw new Error("Public demo mock: config save failed");
+                const input = args.input as {
+                  operationId: string;
+                  dayKey: string;
+                  sourceKey: string;
+                  item: (typeof currentConfig.today.items)[number] | null;
+                  previousSourceKey: string | null;
+                  nextSourceKey: string | null;
+                  sourceSnapshot: unknown | null;
+                  restoreExclusion: boolean;
+                };
+                if (currentConfig.today.date !== input.dayKey) {
+                  throw new Error("日付または今日の枠が変わったため元に戻せません");
+                }
+                if (
+                  currentConfig.today.selectionMutationTokens[input.sourceKey] !==
+                  input.operationId
+                ) {
+                  throw new Error("対象はこの後に変更されたため元に戻せません");
+                }
+                const currentSource = input.sourceKey.startsWith("project:")
+                  ? currentConfig.projects.find(
+                      (project) => `project:${project.id}` === input.sourceKey,
+                    ) ?? null
+                  : input.sourceKey.startsWith("wishlist:")
+                    ? currentConfig.inbox.find(
+                        (item) => `wishlist:${item.id}` === input.sourceKey,
+                      ) ?? null
+                    : null;
+                if (
+                  (input.sourceKey.startsWith("project:") ||
+                    input.sourceKey.startsWith("wishlist:")) &&
+                  JSON.stringify(currentSource) !== JSON.stringify(input.sourceSnapshot)
+                ) {
+                  throw new Error("元の次の一手・やりたいことが変更されたため元に戻せません");
+                }
+                if (
+                  currentConfig.today.items.some((item) => item.sourceKey === input.sourceKey)
+                ) {
+                  throw new Error("対象はすでに今日の3件へ戻っています");
+                }
+                if (input.item) {
+                  if (currentConfig.today.items.length >= 3) {
+                    throw new Error("今日の3件が埋まっているため元に戻せません");
+                  }
+                  const nextIndex = input.nextSourceKey
+                    ? currentConfig.today.items.findIndex(
+                        (item) => item.sourceKey === input.nextSourceKey,
+                      )
+                    : -1;
+                  const previousIndex = input.previousSourceKey
+                    ? currentConfig.today.items.findIndex(
+                        (item) => item.sourceKey === input.previousSourceKey,
+                      )
+                    : -1;
+                  const insertionIndex =
+                    nextIndex >= 0
+                      ? nextIndex
+                      : previousIndex >= 0
+                        ? previousIndex + 1
+                        : currentConfig.today.items.length;
+                  currentConfig.today.items.splice(insertionIndex, 0, input.item);
+                }
+                if (input.restoreExclusion) {
+                  currentConfig.today.candidateExcludedSourceKeys =
+                    currentConfig.today.candidateExcludedSourceKeys.filter(
+                      (key) => key !== input.sourceKey,
+                    );
+                }
+                delete currentConfig.today.selectionMutationTokens[input.sourceKey];
+                persistCurrentConfig();
+                dispatchEvent("config-changed");
+                return { config: currentConfig, path: paths.config };
+              }
               case "resolve_drop_item": {
                 const input = args.input as {
                   kind: "path" | "url";

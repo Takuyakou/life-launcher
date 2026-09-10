@@ -110,6 +110,8 @@ pub struct Today {
     pub items: Vec<TodayItem>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub candidate_excluded_source_keys: Vec<String>,
+    #[serde(default, skip_serializing_if = "std::collections::HashMap::is_empty")]
+    pub selection_mutation_tokens: std::collections::HashMap<String, String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -133,7 +135,7 @@ pub struct TodayVictory {
     pub done: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct TodayItem {
     pub text: String,
@@ -154,6 +156,19 @@ pub struct TodayItem {
     pub default_timer_minutes: Option<u32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub short_timer_minutes: Option<u32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UndoTodaySelectionInput {
+    pub operation_id: String,
+    pub day_key: String,
+    pub source_key: String,
+    pub item: Option<TodayItem>,
+    pub previous_source_key: Option<String>,
+    pub next_source_key: Option<String>,
+    pub source_snapshot: Option<serde_json::Value>,
+    pub restore_exclusion: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -666,6 +681,7 @@ pub fn initial_config() -> AppConfig {
             victory: TodayVictory::default(),
             items: Vec::new(),
             candidate_excluded_source_keys: Vec::new(),
+            selection_mutation_tokens: std::collections::HashMap::new(),
         },
         inbox: Vec::new(),
         source_completions: Vec::new(),
@@ -764,6 +780,7 @@ pub fn sample_config() -> AppConfig {
             date: today_date(DEFAULT_DAY_START_HOUR),
             victory: TodayVictory::default(),
             candidate_excluded_source_keys: Vec::new(),
+            selection_mutation_tokens: std::collections::HashMap::new(),
             items: vec![
                 TodayItem {
                     text: "最初の一手を決める".to_string(),
