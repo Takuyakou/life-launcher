@@ -8552,8 +8552,8 @@ function DashboardApp() {
                             <div
                               className={
                                 todayBuilderPointerDrag?.index === index
-                                  ? "todayBuilderRow todayBuilderRow--dragging"
-                                  : "todayBuilderRow"
+                                  ? "todayBuilderRow sourceListRow todayBuilderRow--dragging"
+                                  : "todayBuilderRow sourceListRow"
                               }
                               data-today-builder-index={index}
                               onContextMenu={(event) => {
@@ -8578,16 +8578,18 @@ function DashboardApp() {
                               onPointerUp={finishTodayBuilderPointerDrag}
                               tabIndex={0}
                             >
-                              <div>
-                                {candidate.projectId && projectsById.has(candidate.projectId) && (
+                              <div className="sourceListCopy">
+                                <span className="inboxProjectIdentity">
+                                {candidate.projectId && projectsById.has(candidate.projectId) ? (
                                   <ProjectIdentity
                                     colorId={projectsById.get(candidate.projectId)?.colorId}
                                     compact
                                     name={projectsById.get(candidate.projectId)?.name ?? ""}
                                     projectId={candidate.projectId}
                                   />
-                                )}
-                                <strong>{candidate.text}</strong>
+                                ) : <span className="sourceProjectNone">プロジェクトなし</span>}
+                                </span>
+                                <strong title={candidate.text}>{candidate.text}</strong>
                               </div>
                               <div className="todayBuilderActions">
                                 <button
