@@ -36,20 +36,6 @@ async function currentConfig(page: Page): Promise<AppConfig> {
   });
 }
 
-async function setCurrentConfig(page: Page, config: AppConfig) {
-  await page.evaluate((nextConfig) => {
-    const control = (
-      window as Window & {
-        __LIFE_LAUNCHER_VISUAL_QA__?: {
-          updateConfig: (config: AppConfig) => void;
-        };
-      }
-    ).__LIFE_LAUNCHER_VISUAL_QA__;
-    if (!control) throw new Error("Visual QA control is unavailable");
-    control.updateConfig(nextConfig);
-  }, config);
-}
-
 async function setSaveFailure(page: Page, failed: boolean) {
   await page.evaluate((value) => {
     const control = (
@@ -122,11 +108,16 @@ test("Quick to Dictionary move rolls the display back when saving fails", async 
   await expect(quick).toBeVisible();
   const button = buttonSnapshot(await currentConfig(page), "sample-editor");
   expect(button).toMatchObject({ showInSidebar: true, showInOverlay: true });
+  await setSaveFailure(page, false);
+});
 
+test("Dictionary to Quick move rolls the display back when saving fails", async ({ page }) => {
+  const fixture = createPublicFixture();
+  await prepare(page, fixture);
   await page.goto("/?view=dictionary");
-  await setCurrentConfig(page, fixture.config);
   await setSaveFailure(page, true);
   const dictionaryOnlyTile = page.locator(".dictionaryTile", { hasText: "参考サイト" });
+  await expect(dictionaryOnlyTile).toBeVisible();
   await dictionaryOnlyTile.focus();
   await dictionaryOnlyTile.press("Shift+F10");
   const moveToSidebar = page.getByRole("menuitem", { name: "サイドバーに移動" });
