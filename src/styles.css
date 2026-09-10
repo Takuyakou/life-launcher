@@ -4174,8 +4174,10 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayBuilderGroupHeading > strong {
-  color: var(--text);
+  color: var(--muted);
   font-size: var(--dashboard-font-body);
+  font-weight: 650;
+  line-height: 1.35;
 }
 
 .todayBuilderRow {
@@ -7634,18 +7636,14 @@ input[type="number"]::-webkit-inner-spin-button {
   padding-left: 8px;
 }
 
-.inboxList {
-  border-left-color: color-mix(in srgb, var(--accent) 22%, transparent);
-}
-
 .nextStepRow.sourceListRow,
 .inboxRow.sourceListRow,
 .todayBuilderRow.sourceListRow {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 32px;
   gap: 12px;
-  min-height: 52px;
-  padding: 7px 10px;
+  min-height: 48px;
+  padding: 5px 10px;
   border: 0;
   border-bottom: 1px solid var(--line-soft);
   border-radius: var(--radius);
