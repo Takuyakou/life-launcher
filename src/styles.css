@@ -7620,6 +7620,92 @@ input[type="number"]::-webkit-inner-spin-button {
   max-width: none;
   margin: 0;
 }
+
+.projectsBand .disclosureHeader,
+.inboxBand .disclosureHeader {
+  grid-template-columns: max-content max-content max-content minmax(0, 1fr);
+  min-height: 48px;
+}
+
+.projectGrid,
+.inboxList {
+  border-left: 2px solid transparent;
+  padding-left: 8px;
+}
+
+.inboxList {
+  border-left-color: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.nextStepRow.sourceListRow,
+.inboxRow.sourceListRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 32px;
+  gap: 12px;
+  min-height: 52px;
+  padding: 7px 10px;
+  border: 0;
+  border-bottom: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  background: transparent;
+}
+
+.sourceListRow .sourceListCopy {
+  display: grid;
+  grid-template-columns: minmax(110px, 180px) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.sourceListRow .inboxItemText {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: var(--dashboard-font-body);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.sourceProjectNone {
+  color: var(--muted);
+  font-size: var(--dashboard-font-meta);
+}
+
+.sourceListRow:not(.nextStepRow--dragging):not(.inboxRow--dragging):hover,
+.sourceListRow:not(.nextStepRow--dragging):not(.inboxRow--dragging):focus-within {
+  background: var(--control-neutral-hover-bg);
+  border-bottom-color: var(--line);
+}
+
+.sourceRowMenu {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: 20px;
+  opacity: 0;
+}
+
+.sourceListRow:hover .sourceRowMenu,
+.sourceListRow:focus-within .sourceRowMenu {
+  opacity: 1;
+}
+
+.sourceRowMenu:hover,
+.sourceRowMenu:focus-visible {
+  color: var(--accent);
+  border-color: var(--line);
+}
+
+@media (hover: none) {
+  .sourceRowMenu { opacity: 1; }
+}
 .sectionEmptyActions {
   grid-column: 1 / -1;
   min-height: 44px;
@@ -7744,7 +7830,7 @@ input[type="number"]::-webkit-inner-spin-button {
     grid-template-columns: minmax(0, 1fr) 82px 36px;
   }
 
-  .nextStepRow .projectCopy {
+  .sourceListRow .sourceListCopy {
     grid-template-columns: minmax(0, 1fr);
     gap: 3px;
   }

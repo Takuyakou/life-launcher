@@ -8728,7 +8728,7 @@ function DashboardApp() {
                         return (
                           <article
                             className={[
-                              "nextStepRow",
+                              "nextStepRow sourceListRow",
                               projectPointerDrag?.id === project.id ? "nextStepRow--dragging" : "",
                             ]
                               .filter(Boolean)
@@ -8755,7 +8755,7 @@ function DashboardApp() {
                             onPointerUp={finishProjectPointerDrag}
                             tabIndex={0}
                           >
-                            <div className="projectCopy">
+                            <div className="projectCopy sourceListCopy">
                               <div className="projectTitleRow">
                                 <h3>
                                   <ProjectIdentity
@@ -8780,6 +8780,19 @@ function DashboardApp() {
                                 {project.nextStep.trim() || "次の一手を書く"}
                               </p>
                             </div>
+                            <button
+                              aria-label={`${project.name}の操作`}
+                              aria-haspopup="menu"
+                              className="sourceRowMenu"
+                              title="操作メニュー"
+                              type="button"
+                              onClick={(event) => {
+                                const rect = event.currentTarget.getBoundingClientRect();
+                                openContextMenu({ kind: "project", project }, rect.left, rect.bottom, event.currentTarget);
+                              }}
+                            >
+                              <span aria-hidden="true">⋯</span>
+                            </button>
                           </article>
                         );
                       })}
@@ -8871,8 +8884,8 @@ function DashboardApp() {
                         <div
                           className={
                             inboxPointerDrag?.index === index
-                              ? "inboxRow inboxRow--dragging"
-                              : "inboxRow"
+                              ? "inboxRow sourceListRow inboxRow--dragging"
+                              : "inboxRow sourceListRow"
                           }
                           data-inbox-index={index}
                           key={item.id ?? `${item.text}-${index}`}
@@ -8899,19 +8912,32 @@ function DashboardApp() {
                           onPointerUp={finishInboxPointerDrag}
                           tabIndex={0}
                         >
-                          <span className="inboxItemCopy">
-                            {item.projectId && projectsById.has(item.projectId) && (
-                              <span className="inboxProjectIdentity">
+                          <span className="inboxItemCopy sourceListCopy">
+                            <span className="inboxProjectIdentity">
+                              {item.projectId && projectsById.has(item.projectId) ? (
                                 <ProjectIdentity
                                   colorId={projectsById.get(item.projectId)?.colorId}
                                   compact
                                   name={projectsById.get(item.projectId)?.name ?? ""}
                                   projectId={item.projectId}
                                 />
-                              </span>
-                            )}
-                            <span className="inboxItemText">{item.text}</span>
+                              ) : <span className="sourceProjectNone">プロジェクトなし</span>}
+                            </span>
+                            <span className="inboxItemText" title={item.text}>{item.text}</span>
                           </span>
+                          <button
+                            aria-label={`${item.text}の操作`}
+                            aria-haspopup="menu"
+                            className="sourceRowMenu"
+                            title="操作メニュー"
+                            type="button"
+                            onClick={(event) => {
+                              const rect = event.currentTarget.getBoundingClientRect();
+                              openContextMenu({ kind: "inbox", index, itemText: item.text }, rect.left, rect.bottom, event.currentTarget);
+                            }}
+                          >
+                            <span aria-hidden="true">⋯</span>
+                          </button>
                         </div>
                       ))}
                     </div>
