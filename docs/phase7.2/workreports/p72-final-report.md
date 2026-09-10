@@ -1,16 +1,15 @@
 # Phase 7.2 最終作業報告
 
-日付: 2026-09-10。判定: **READY FOR PHASE 7.2 FINAL REVIEW**。
+日付: 2026-09-10。判定: **PHASE 7.2 MERGED AND VERIFIED**。
 
 ## 1. 対象と状態
 
 - repository: `Takuyakou/life-launcher`
 - P71最終参照SHA: `c7c28ea4f29c62e738e15e369705a71cb35ae109`
 - P72監査開始時main: `873219cc099514fef5be292a01f97aa50d3e3468`
-- 現在のmain: `f60714280d2ae14a5d9e2884bd36e05e45edcdc4`（P72-05まで統合済み）
-- ローカル最終検証候補: `0ef94f6be215572c206a26d89684273161580ebe`
-- branch: `docs/p72-06-guide-regression`
-- P72-02〜05: PR / CI / merge完了。P72-06はローカル検証済みでPR待ち
+- Phase 7.2 product merge: `4dc39eee8f2b844218646d22eaa5fe6c23586ac0`
+- merged main最終検証対象: `4dc39eee8f2b844218646d22eaa5fe6c23586ac0`
+- P72-00〜06: PR / CI / merge完了
 
 | Stage | 内容SHA | PR / CI | merge |
 | --- | --- | --- | --- |
@@ -20,7 +19,7 @@
 | P72-03 | `39e24d5` | #45 / SUCCESS | `aa34874` |
 | P72-04 | `2b6fcf9` | #46 / SUCCESS | `27c803f` |
 | P72-05 | `6c5221c` | #47 / SUCCESS | `f607142` |
-| P72-06 | `0ef94f6` | 未作成 | 未merge |
+| P72-06 | `4ce97bf` | #48 / SUCCESS | `4dc39ee` |
 
 PR #32はP72-00で差分を確認し、`CLOSED_UNMERGED`のまま取り込んでいない。Guide/specは現在のmainとP72実装を基準に更新した。
 
@@ -47,15 +46,15 @@ PR #32はP72-00で差分を確認し、`CLOSED_UNMERGED`のまま取り込んで
 
 ## 4. 検証結果
 
-最終候補 `0ef94f6` で実行。
+P72-06のローカル候補 `0ef94f6` に加え、全stage統合後のmerged main `4dc39ee` で再実行した。
 
 | Gate | 結果 |
 | --- | --- |
 | `npm.cmd ci` | PASS、172 packages、0 vulnerabilities |
-| `npm.cmd run public:check` | PASS、278 files / 0 blockers |
+| `npm.cmd run public:check` | PASS、merged mainは279 files / 0 blockers |
 | `npm.cmd run lint` | PASS |
 | `npm.cmd run build` | PASS |
-| `npm.cmd run test:visual` | **237/237 PASS**、1.7分 |
+| `npm.cmd run test:visual` | **238/238 PASS**、merged mainで1.9分 |
 | Rust fmt / check / clippy `-D warnings` | PASS |
 | Rust tests | 103 unit + 2 capability PASS |
 | npm audit 全依存 / production | 両方0 vulnerabilities |
@@ -91,10 +90,10 @@ Native smokeは専用temporary APPDATA / LOCALAPPDATAで実行した。生成は
 - アプリ宣言versionは`1.1.0`のまま。tag、Release、配布asset、確認用EXEを作成・更新していない。
 - P71既知制約のうち、旧文面依存Wishlist identity、multi-window stale config、保存fallbackのcrash耐性、開始環境action内容の独立snapshotは今回の対象外。Undoだけは限定command内の最新config再検証で保護した。
 
-## 8. 残作業
+## 8. 完了状態
 
-- P72-06を公開repositoryへpushし、PR / CI / mergeする。
-- merge後のmain同一SHAで全gateを再実行して初めて `PHASE 7.2 MERGED AND VERIFIED` とする。
-- 正式リリースでは確定mainから再ビルドし、移行、配布asset、SHA256、署名、Defender、fresh-folder smokeを別工程で確認する。
+- P72-00〜06はすべてCI成功後にmainへmerge済み。
+- merged main `4dc39ee` で全自動gateを再実行し、すべてPASSした。
+- Phase 7.2としての実装・文書・回帰確認に残作業はない。正式リリースasset、署名、Defender、fresh-folder smokeは別工程とする。
 
-**READY FOR PHASE 7.2 FINAL REVIEW**
+**PHASE 7.2 MERGED AND VERIFIED**
