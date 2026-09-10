@@ -1,19 +1,19 @@
-# Life Launcher v1.1候補 UI/UX・機能仕様書
+# Life Launcher v1.2 UI/UX・機能仕様書
 
 ## 0. 文書情報
 
 | 項目 | 内容 |
 | --- | --- |
-| 文書版 | 1.1-rc |
+| 文書版 | 1.2 |
 | 対象 | Windowsデスクトップ版 Life Launcher |
-| 実装基準 | Public repository `Takuyakou/life-launcher` のPhase 6 stacked candidate |
-| 基準コミット | `b2c4a8e86449dcdb67ead7ff5ec46f85973d9f35` |
-| 確認日 | 2026-09-07 |
+| 実装基準 | Public repository `Takuyakou/life-launcher` のPhase 7.2 + follow-up main |
+| 基準コミット | `f67a305df4533963da421269c21828f8f3d37492` |
+| 確認日 | 2026-09-11 |
 | UI実装 | Tauri 2 / React 18 / TypeScript / CSS |
 
-本書は、Life Launcher v1.1候補のUI/UXと主要機能を、Phase 6のコード、型、設定、capability、テストから整理した現行仕様書である。
+本書は、Life Launcher v1.2のUI/UXと主要機能を、Phase 7.2までのコード、型、設定、capability、テストから整理した現行仕様書である。
 
-Public repository内の `package.json` と `src-tauri/tauri.conf.json` は、release prep前のためバージョン `1.0.0` を保持している。最新機能の入口は [Overview](../OVERVIEW.md) を参照する。
+Public repository内の製品バージョンは`1.2.0`、config schemaはv1.1と同じ`2`である。最新機能の入口は [Overview](../OVERVIEW.md) を参照する。
 
 ## 1. プロダクト概要
 

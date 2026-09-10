@@ -57,25 +57,25 @@ The screenshots are generated from synthetic data. They do not contain real user
 
 ## Download
 
-Download Life Launcher from [GitHub Releases](https://github.com/Takuyakou/life-launcher/releases/latest). The current stable release is **v1.1.0**.
+Download Life Launcher from [GitHub Releases](https://github.com/Takuyakou/life-launcher/releases/latest). The current stable release is **v1.2.0**.
 
 ### Installer - Recommended
 
 Use this for the standard installation flow.
 
-`Life-Launcher-v1.1.0-windows-x64-setup.exe`
+`Life-Launcher-v1.2.0-windows-x64-setup.exe`
 
 ### Standalone EXE
 
 Run the app directly without installing it.
 
-`Life-Launcher-v1.1.0-windows-x64.exe`
+`Life-Launcher-v1.2.0-windows-x64.exe`
 
 ### Portable ZIP
 
 Extract the ZIP archive and run the app.
 
-`Life-Launcher-v1.1.0-windows-x64-portable.zip`
+`Life-Launcher-v1.2.0-windows-x64-portable.zip`
 
 The ZIP edition also stores user data in `%APPDATA%\life-launcher`. It does not carry your data alongside the executable on a USB drive.
 
@@ -83,13 +83,13 @@ The ZIP edition also stores user data in `%APPDATA%\life-launcher`. It does not 
 
 You can verify the release files with the included `SHA256SUMS.txt`.
 
-## Updating From v1.0
+## Updating
 
 Fully exit Life Launcher and back up the `%APPDATA%\life-launcher` folder to another location before updating. There is no automatic updater.
 
-Legacy Today's Three items without a source key revert from completed to incomplete during migration. Session records are not deleted. This migration alone does not guarantee an automatic backup before configuration is rewritten.
+Updating from v1.1 to v1.2 does not change the config schema. Legacy v1.0 Today's Three items without a source key revert from completed to incomplete during migration. Session records are not deleted.
 
-See the [v1.1.0 release notes](docs/releases/v1.1.0.md) and [changelog](CHANGELOG.md) for details. The [overview](docs/OVERVIEW.md) and [current specification](docs/spec/current-spec.md) cover the wider feature set. These detailed documents are currently in Japanese.
+See the [v1.2.0 release notes](docs/releases/v1.2.0.md) and [changelog](CHANGELOG.md) for details. The [overview](docs/OVERVIEW.md) and [current specification](docs/spec/current-spec.md) cover the wider feature set. These detailed documents are currently in Japanese.
 
 ## Runtime Requirements
 

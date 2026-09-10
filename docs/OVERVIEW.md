@@ -84,6 +84,8 @@ Life Launcher
 
 | Version | 概要 |
 | --- | --- |
+| 1.2.0 | 動的早期完了、登録元との編集同期、Undo Toast、一覧制御、cross-section D&D、完了フィードバックを追加 |
+| 1.1.0 | Today3と候補選択、登録完了履歴、開始環境Picker、辞書操作を整理 |
 | 1.0.0 | 最初のPublicリリース。Quick、辞書、今日の実行支援、タイマー、記録、手順書を収録 |
 
 以降の変更は [CHANGELOG](../CHANGELOG.md) を更新し、この表は大きな節目だけを追記します。
