@@ -10,7 +10,7 @@
   "template_only": false,
   "runtime_path": "docs/phase7.2/execution-state.json",
   "workflow": "single-start-authorized-through-p72-06",
-  "current_stage": "P72-04",
+  "current_stage": "P72-05",
   "baseline": {
     "reported_main": "c7c28ea4f29c62e738e15e369705a71cb35ae109",
     "verified_current_main": "873219cc099514fef5be292a01f97aa50d3e3468",
@@ -94,17 +94,17 @@
       "report": "docs/phase7.2/workreports/p72-04-report.md"
     },
     "P72-05": {
-      "status": "WAITING_PREVIOUS_STAGE",
+      "status": "READY_FOR_REVIEW",
       "instruction": "stages/P72-05-completion-reward.md",
-      "branch": null,
+      "branch": "feature/p72-05-completion-reward",
       "pr": null,
-      "head_sha": null,
+      "head_sha": "54ca107",
       "ci_sha": null,
       "ci_status": null,
-      "human_approved": false,
-      "approval_text": null,
+      "human_approved": true,
+      "approval_text": "P72-01以降作業していってください。Phase 7.2 終了したら教えてください。",
       "merge_sha": null,
-      "report": null
+      "report": "docs/phase7.2/workreports/p72-05-report.md"
     },
     "P72-06": {
       "status": "WAITING_PREVIOUS_STAGE",

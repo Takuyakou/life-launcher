@@ -347,6 +347,13 @@ type TimerCompletionPrompt = {
   label: string;
 };
 
+type CompletionFeedback = {
+  key: string;
+  kind: "victory" | "today" | "todayAll" | "doNow";
+  label: string;
+  sourceKey?: string;
+};
+
 type TodayBuilderCandidate = {
   key: string;
   text: string;
@@ -1966,6 +1973,7 @@ function DashboardApp() {
   const [earlyStop, setEarlyStop] = useState<typeof earlyStopRef.current>(null);
   const [earlyStopSaving, setEarlyStopSaving] = useState(false);
   const [completionPrompt, setCompletionPrompt] = useState<TimerCompletionPrompt | null>(null);
+  const [completionFeedback, setCompletionFeedback] = useState<CompletionFeedback | null>(null);
   const [now, setNow] = useState(Date.now());
   const [collapsedGroups, setCollapsedGroups] =
     useState<Record<string, boolean>>(readCollapsedGroups);
@@ -2030,6 +2038,8 @@ function DashboardApp() {
   const toastIdRef = useRef(0);
   const toastTimersRef = useRef<Map<number, ToastTimerState>>(new Map());
   const toastActionLocksRef = useRef<Set<number>>(new Set());
+  const completionFeedbackTimerRef = useRef<number | null>(null);
+  const seenCompletionFeedbackRef = useRef<Set<string>>(new Set());
   const lastBackupErrorRef = useRef<string | null>(null);
   const lastSettingsApplyErrorRef = useRef<string | null>(null);
   const shortcutCaptureActiveRef = useRef(false);
@@ -2053,6 +2063,28 @@ function DashboardApp() {
   const requestConfirmation = useCallback((request: ConfirmDialogRequest) => {
     setConfirmDialog((current) => current ?? request);
   }, []);
+
+  const showCompletionFeedback = useCallback((feedback: CompletionFeedback) => {
+    if (document.hidden || seenCompletionFeedbackRef.current.has(feedback.key)) return;
+    seenCompletionFeedbackRef.current.add(feedback.key);
+    if (completionFeedbackTimerRef.current !== null) {
+      window.clearTimeout(completionFeedbackTimerRef.current);
+    }
+    setCompletionFeedback(feedback);
+    completionFeedbackTimerRef.current = window.setTimeout(() => {
+      completionFeedbackTimerRef.current = null;
+      setCompletionFeedback((current) => (current?.key === feedback.key ? null : current));
+    }, 1000);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (completionFeedbackTimerRef.current !== null) {
+        window.clearTimeout(completionFeedbackTimerRef.current);
+      }
+    },
+    [],
+  );
 
   const dismissContextMenu = useCallback((restoreFocus = true) => {
     const returnTarget = contextMenuReturnFocusRef.current;
@@ -5613,6 +5645,32 @@ function DashboardApp() {
     [recordTimerSession],
   );
 
+  const showTimerCompletionFeedback = (
+    timer: ActiveTimer,
+    current: AppConfig,
+    nextItems: AppConfig["today"]["items"],
+    completedSourceKey: string | null,
+    wasDoNow: boolean,
+  ) => {
+    const key = `timer:${current.today.date}:${timer.instanceId}`;
+    if (completedSourceKey && nextItems.length === 3 && nextItems.every((item) => item.done)) {
+      showCompletionFeedback({ key, kind: "todayAll", label: timer.note || timer.label });
+      return;
+    }
+    if (completedSourceKey) {
+      showCompletionFeedback({
+        key,
+        kind: "today",
+        label: timer.note || timer.label,
+        sourceKey: completedSourceKey,
+      });
+      return;
+    }
+    if (wasDoNow) {
+      showCompletionFeedback({ key, kind: "doNow", label: timer.note || timer.label });
+    }
+  };
+
   const resolveEarlyStop = async (complete: boolean) => {
     const pending = earlyStopRef.current;
     if (
@@ -5623,6 +5681,7 @@ function DashboardApp() {
       return false;
     finishingTimerRef.current = pending.timer.instanceId;
     setEarlyStopSaving(true);
+    const wasDoNow = doNowSelection?.project.id === pending.timer.projectId;
     try {
       if (!pending.recorded) {
         if (!(await recordTimerSession(pending.timer, pending.stoppedAt, "manual"))) return false;
@@ -5632,10 +5691,22 @@ function DashboardApp() {
       if (complete) {
         const current = configRef.current;
         if (current) {
-          const items = current.today.items.map((item) =>
-            item.sourceKey?.trim() === pending.sourceKey ? { ...item, done: true } : item,
+          let completedSourceKey: string | null = null;
+          const items = current.today.items.map((item, index) =>
+            todaySourceKey(item, index) === pending.sourceKey && !item.done
+              ? ((completedSourceKey = pending.sourceKey), { ...item, done: true })
+              : item,
           );
-          await persistConfig({ ...current, today: { ...current.today, items } });
+          const saved = await persistConfig({ ...current, today: { ...current.today, items } });
+          if (saved && completedSourceKey) {
+            showTimerCompletionFeedback(
+              pending.timer,
+              current,
+              items,
+              completedSourceKey,
+              wasDoNow,
+            );
+          }
         }
       }
       earlyStopRef.current = null;
@@ -5820,25 +5891,42 @@ function DashboardApp() {
 
     plannedCommitRef.current = true;
     const completedTimer = activeTimer;
+    const current = configRef.current;
+    const wasDoNow = doNowSelection?.project.id === completedTimer.projectId;
     const directSourceKey = completedTimer.sourceId.startsWith("today:")
       ? completedTimer.sourceId.slice("today:".length)
       : null;
     const projectSourceKey = completedTimer.projectId
       ? `project:${completedTimer.projectId}`
       : null;
-    const items = config?.today.items.map((item, index) => {
+    let completedSourceKey: string | null = null;
+    const items = current?.today.items.map((item, index) => {
       const sourceKey = todaySourceKey(item, index);
       const matches =
         sourceKey === directSourceKey ||
         (projectSourceKey !== null && sourceKey === projectSourceKey);
-      return matches ? { ...item, done: true } : item;
+      if (!matches || item.done) return item;
+      completedSourceKey = sourceKey;
+      return { ...item, done: true };
     });
     const completionSave =
-      config && items?.some((item, index) => item !== config.today.items[index])
-        ? persistConfig({ ...config, today: { ...config.today, items } })
+      current && items?.some((item, index) => item !== current.today.items[index])
+        ? persistConfig({ ...current, today: { ...current.today, items } })
         : Promise.resolve(true);
     void completionSave
-      .then(() => finishTimer(completedTimer, "complete"))
+      .then(async (saved) => {
+        const finished = await finishTimer(completedTimer, "complete");
+        if (saved && finished && current && items) {
+          showTimerCompletionFeedback(
+            completedTimer,
+            current,
+            items,
+            completedSourceKey,
+            wasDoNow,
+          );
+        }
+        return finished;
+      })
       .finally(() => {
         plannedCommitRef.current = false;
       });
@@ -5983,18 +6071,27 @@ function DashboardApp() {
   };
 
   const toggleVictoryDone = () => {
-    if (!config) return;
-    const text = config.today.victory.text.trim();
+    const current = configRef.current;
+    if (!current) return;
+    const text = current.today.victory.text.trim();
     if (!text) {
       showToast("warn", "勝利条件を入力してください");
       return;
     }
 
     const victory = {
-      ...config.today.victory,
-      done: !config.today.victory.done,
+      ...current.today.victory,
+      done: !current.today.victory.done,
     };
-    void persistConfig({ ...config, today: { ...config.today, victory } });
+    void persistConfig({ ...current, today: { ...current.today, victory } }).then((saved) => {
+      if (saved && victory.done) {
+        showCompletionFeedback({
+          key: `victory:${current.today.date}`,
+          kind: "victory",
+          label: text,
+        });
+      }
+    });
   };
 
   const handleVictoryKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -8732,9 +8829,18 @@ function DashboardApp() {
           ) : (
             <>
               <section
-                className={victoryDone ? "victoryBar victoryBar--done" : "victoryBar"}
+                className={[
+                  "victoryBar",
+                  victoryDone ? "victoryBar--done" : "",
+                  completionFeedback?.kind === "victory" ? "victoryBar--reward" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
                 aria-label="今日の勝利条件"
               >
+                {completionFeedback?.kind === "victory" && (
+                  <span aria-hidden="true" className="victoryRewardSweep" />
+                )}
                 <span className="victoryIcon" aria-hidden="true">
                   🏆
                 </span>
@@ -8791,7 +8897,13 @@ function DashboardApp() {
                     </button>
                   )}
                 </div>
-                {victoryDone && <span className="victoryBadge">達成</span>}
+                {completionFeedback?.kind === "victory" ? (
+                  <span className="victoryRewardLabel" role="status">
+                    今日の勝利、達成
+                  </span>
+                ) : victoryDone ? (
+                  <span className="victoryBadge">達成</span>
+                ) : null}
               </section>
 
               <section
@@ -8958,6 +9070,15 @@ function DashboardApp() {
                     </div>
                   </>
                 )}
+                {completionFeedback?.kind === "doNow" && (
+                  <div className="doNowCompletionEcho" role="status">
+                    <span className="doNowCompletionCheck" aria-hidden="true">✓</span>
+                    <span>
+                      <strong>{completionFeedback.label}</strong>
+                      <small>一手進みました</small>
+                    </span>
+                  </div>
+                )}
               </section>
 
               <section className="focusBand">
@@ -8978,7 +9099,13 @@ function DashboardApp() {
                     )}
                   </div>
                 </div>
-                <div className="todayGrid">
+                <div
+                  className={
+                    completionFeedback?.kind === "todayAll"
+                      ? "todayGrid todayGrid--allCompleteReward"
+                      : "todayGrid"
+                  }
+                >
                   {config.today.items.length === 0 && (
                     <div className="sectionEmptyActions">
                       <span>今日やるものを選びましょう</span>
@@ -9006,6 +9133,10 @@ function DashboardApp() {
                           todayPointerDrag?.index === index ? "todayRow--dragging" : "",
                           isRunningTodayItem ? "todayRow--running" : "",
                           item.done ? "todayRow--complete" : "",
+                          completionFeedback?.kind === "today" &&
+                          completionFeedback.sourceKey === todaySourceKey(item, index)
+                            ? "todayRow--justCompleted"
+                            : "",
                         ]
                           .filter(Boolean)
                           .join(" ")}
@@ -9317,6 +9448,13 @@ function DashboardApp() {
                     })()}
                 </div>
 
+                {completionFeedback?.kind === "todayAll" && (
+                  <div className="todayAllCompletionReward" role="status">
+                    <span aria-hidden="true">✓</span>
+                    今日の3件、完了！
+                  </div>
+                )}
+
                 {allTodayItemsCompleted && (
                   <div className="todayNextBatch">
                     <button
@@ -9360,6 +9498,7 @@ function DashboardApp() {
                     次の一手・やりたいことから、今日やるものを選ぶ
                   </span>
                 </div>
+
                 {builderRestoreTargetActive && (
                   <div className="todayBuilderRestoreDropZone">
                     <span aria-hidden="true">↓</span>
@@ -10050,6 +10189,15 @@ function DashboardApp() {
       <div aria-live="polite" className="reorderAnnouncement" role="status">
         {reorderAnnouncement}
       </div>
+
+      {(completionFeedback?.kind === "victory" ||
+        completionFeedback?.kind === "todayAll") && (
+        <div aria-hidden="true" className="completionParticleLayer">
+          {Array.from({ length: 6 }, (_, index) => (
+            <span className="completionParticle" key={index} />
+          ))}
+        </div>
+      )}
 
       {toasts.some((toast) => !toast.queued) && (
         <div aria-live="polite" aria-relevant="additions text" className="toastStack">
