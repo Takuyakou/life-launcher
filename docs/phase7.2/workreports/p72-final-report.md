@@ -7,19 +7,19 @@
 - repository: `Takuyakou/life-launcher`
 - P71最終参照SHA: `c7c28ea4f29c62e738e15e369705a71cb35ae109`
 - P72監査開始時main: `873219cc099514fef5be292a01f97aa50d3e3468`
-- 現在のmain: `c2b5ab99dcef99a7d99a4425133a791202aae5c1`（P72-01まで統合済み）
+- 現在のmain: `f60714280d2ae14a5d9e2884bd36e05e45edcdc4`（P72-05まで統合済み）
 - ローカル最終検証候補: `0ef94f6be215572c206a26d89684273161580ebe`
 - branch: `docs/p72-06-guide-regression`
-- P72-02〜06: ローカルstack完成、未push・PRなし・未merge
+- P72-02〜05: PR / CI / merge完了。P72-06はローカル検証済みでPR待ち
 
 | Stage | 内容SHA | PR / CI | merge |
 | --- | --- | --- | --- |
 | P72-00 | `7421292` | #42 / SUCCESS | `96bbf39` |
 | P72-01 | `533d015` | #43 / SUCCESS | `c2b5ab9` |
-| P72-02 | `b3d2e14` | 未作成 | 未merge |
-| P72-03 | `39e24d5` | 未作成 | 未merge |
-| P72-04 | `d8978e7` | 未作成 | 未merge |
-| P72-05 | `54ca107` | 未作成 | 未merge |
+| P72-02 | `b3d2e14` | #44 / SUCCESS | `1134f9f` |
+| P72-03 | `39e24d5` | #45 / SUCCESS | `aa34874` |
+| P72-04 | `2b6fcf9` | #46 / SUCCESS | `27c803f` |
+| P72-05 | `6c5221c` | #47 / SUCCESS | `f607142` |
 | P72-06 | `0ef94f6` | 未作成 | 未merge |
 
 PR #32はP72-00で差分を確認し、`CLOSED_UNMERGED`のまま取り込んでいない。Guide/specは現在のmainとP72実装を基準に更新した。
@@ -82,6 +82,7 @@ Native smokeは専用temporary APPDATA / LOCALAPPDATAで実行した。生成は
 - P72-03初回は量fixtureが重点最大3件制約に抵触して9件失敗し、fixtureを修正した。
 - P72-05初回は保存失敗checkbox操作と3/3装飾文字の厳密一致で2件失敗し、実契約を検証するselectorへ修正した。
 - P72-05途中の全Visualで既存Quickキーボード1件が一度失敗し3件未実行。対象4件は直後4/4 PASS、P72-06の最終全237件は初回PASS。既知の順序依存フレーク候補として残す。
+- PR #47のCIでもQuick / Dictionary保存失敗を1テスト内で連続実行するケースが2回失敗した。両方向を独立テストへ分けて状態を隔離し、対象6/6 PASS、更新後CI全gate PASSを確認した。
 
 ## 7. Web・安全性・対象外
 
@@ -92,7 +93,7 @@ Native smokeは専用temporary APPDATA / LOCALAPPDATAで実行した。生成は
 
 ## 8. 残作業
 
-- P72-02〜06を公開repositoryへpushし、依存順にPR / CI / mergeするには公開送信の明示承認が必要。
+- P72-06を公開repositoryへpushし、PR / CI / mergeする。
 - merge後のmain同一SHAで全gateを再実行して初めて `PHASE 7.2 MERGED AND VERIFIED` とする。
 - 正式リリースでは確定mainから再ビルドし、移行、配布asset、SHA256、署名、Defender、fresh-folder smokeを別工程で確認する。
 
