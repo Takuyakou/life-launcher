@@ -7573,9 +7573,17 @@ input[type="number"]::-webkit-inner-spin-button {
   display: grid;
   justify-items: end;
   gap: 4px;
-  width: 160px;
+  width: 188px;
   max-width: 100%;
   margin-left: auto;
+}
+
+.todayTimerCluster .todayTimerActions:not(.todayTimerActions--running) {
+  grid-template-columns: 90px 90px;
+}
+
+.todayTimerCluster .todayStartButton {
+  width: 90px;
 }
 
 .todayTriggerZone {
@@ -7697,6 +7705,49 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .todayBuilderPagination span {
   min-width: 48px;
+  color: var(--muted);
+  font-size: var(--dashboard-font-meta);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.sourceListControls,
+.sourceListPagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 6px 10px 2px;
+}
+
+.sourceListControls button,
+.sourceListPagination button {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 4px 9px;
+  background: var(--surface-soft);
+  color: var(--text-muted-readable);
+  font-size: var(--dashboard-font-meta);
+}
+
+.sourceListControls button:hover,
+.sourceListControls button:focus-visible,
+.sourceListPagination button:hover:not(:disabled),
+.sourceListPagination button:focus-visible {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.sourceListPagination button:disabled {
+  opacity: 0.4;
+}
+
+.sourceListPagination span {
+  min-width: 50px;
   color: var(--muted);
   font-size: var(--dashboard-font-meta);
   font-variant-numeric: tabular-nums;
