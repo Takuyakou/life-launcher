@@ -48,10 +48,17 @@ test("Guide states the current registration, selection, and completion flow", as
   await expect(today).toContainText("プロジェクトの次の一手とやりたいことだけを5件ずつ表示");
   await expect(today).toContainText("新規登録や送付先の選択を行いません");
   await expect(today).toContainText("今日の候補から外す");
+  await expect(today).toContainText("今日の候補に戻す");
+  await expect(today).toContainText("今日の3件から外す");
+  await expect(today).toContainText("8秒間「元に戻す」");
   await expect(today).toContainText("元の次の一手ややりたいことは残ります");
   await expect(today).toContainText("小型ダイアログで追加します");
-  await expect(today).toContainText("どちら側から編集して保存しても");
+  await expect(today).toContainText("今日の3件、今日を組み立てる、登録元のどこから");
+  await expect(today).toContainText("6〜19件は「残りN件をもっと見る」");
+  await expect(today).toContainText("20件以上は10件ずつのページ");
   await expect(today).toContainText("未完了のまま終了");
+  await expect(today).toContainText("今日の3件、完了！");
+  await expect(today).toContainText("再読込や元に戻すでは再表示しません");
   await expect(today).toContainText("次の3件を選ぶ");
 
   const projects = dialog.locator('[data-help-section-id="projects"]');
