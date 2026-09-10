@@ -66,14 +66,19 @@ test("dashboard disclosure bars toggle from their count and description areas", 
   }
 });
 
-test("a NextStep context menu can add that source to Today3", async ({ page }) => {
+test("a NextStep context menu routes Today adoption through Builder", async ({ page }) => {
   await prepare(page);
   const row = page.locator(".nextStepRow", { hasText: "5分だけ体を動かす" });
 
   await row.click({ button: "right" });
-  const addToToday = page.getByRole("menuitem", { name: "今日へ" });
-  await expect(addToToday).toBeEnabled();
-  await addToToday.click();
+  await expect(page.getByRole("menuitem", { name: "今日へ", exact: true })).toHaveCount(0);
+  await page.getByRole("menuitem", { name: "編集", exact: true }).focus();
+  await page.keyboard.press("Escape");
+  await page.locator(".todayBuilderDisclosure").click();
+  await page
+    .locator(".todayBuilderRow", { hasText: "5分だけ体を動かす" })
+    .getByRole("button", { name: "今日へ", exact: true })
+    .click();
 
   const config = await currentConfig(page);
   expect(config.today.items).toContainEqual(

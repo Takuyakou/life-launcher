@@ -155,9 +155,9 @@ test("Today3 drag shows its position and saves on drop only", async ({ page }) =
   expect(target).not.toBeNull();
 
   const savesBeforeDrag = await saveConfigCount(page);
-  await page.mouse.move(source!.x + source!.width - 12, source!.y + 12);
+  await page.mouse.move(source!.x + source!.width * 0.5, source!.y + 12);
   await page.mouse.down();
-  await page.mouse.move(source!.x + source!.width - 28, source!.y + 12, { steps: 2 });
+  await page.mouse.move(source!.x + source!.width * 0.5 - 16, source!.y + 12, { steps: 2 });
   await page.mouse.move(target!.x + target!.width * 0.75, target!.y + 12, {
     steps: 5,
   });
@@ -195,9 +195,9 @@ test("Today3 drag rolls its optimistic order back when saving fails", async ({ p
   expect(source).not.toBeNull();
   expect(target).not.toBeNull();
   const savesBeforeDrag = await saveConfigCount(page);
-  await page.mouse.move(source!.x + source!.width - 12, source!.y + 12);
+  await page.mouse.move(source!.x + source!.width * 0.5, source!.y + 12);
   await page.mouse.down();
-  await page.mouse.move(source!.x + source!.width - 28, source!.y + 12, {
+  await page.mouse.move(source!.x + source!.width * 0.5 - 16, source!.y + 12, {
     steps: 2,
   });
   await page.mouse.move(target!.x + target!.width * 0.75, target!.y + 12, { steps: 5 });
@@ -501,7 +501,7 @@ test("Today adoption snapshots timer, actions, text, and instruction", async ({ 
   });
 
   const today = page.locator(".todayRow").first();
-  await expect(today.getByRole("button", { name: "資料を1ページ読む" })).toBeVisible();
+  await expect(today.getByRole("button", { name: "資料を1ページ読む", exact: true })).toBeVisible();
   await expect(today.getByRole("button", { name: "短時間タイマー7分で開始" })).toBeVisible();
   await expect(today.getByRole("button", { name: "通常タイマー37分で開始" })).toBeVisible();
   item = (await currentConfig(page)).today.items[0];
