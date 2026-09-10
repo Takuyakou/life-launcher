@@ -30,6 +30,15 @@ const allowedUserPathFragments = new Map([
 const allowedInternalArtifactPaths = new Set([
   "docs/phase6/00-visual-baseline.md",
   "tests/visual/phase6-baseline.spec.ts",
+  "docs/phase7.2/00-baseline.md",
+  "docs/phase7.2/00-timer-size-baseline.md",
+  // User-approved exact synthetic outputs; content checks still run below.
+  ...[1920, 1440, 1366, 1000, 860].flatMap((width) => [
+    `docs/phase7.2/screenshots/baseline/timer-${width}.json`,
+    ...["idle", "hover", "focus", "running"].map(
+      (state) => `docs/phase7.2/screenshots/baseline/timer-${width}-${state}.png`,
+    ),
+  ]),
 ]);
 
 function slash(path) {
@@ -125,6 +134,14 @@ function selfTest() {
   if (allowedInternalArtifactPaths.has("docs/other/baseline.md")) {
     throw new Error("Safety detector self-test failed: internal report allowlist is too broad");
   }
+  if (
+    allowedInternalArtifactPaths.size !== 29 ||
+    !allowedInternalArtifactPaths.has("docs/phase7.2/screenshots/baseline/timer-1440-hover.png") ||
+    allowedInternalArtifactPaths.has("docs/phase7.2/screenshots/baseline/private-screenshot.png") ||
+    allowedInternalArtifactPaths.has("docs/phase7.2/screenshots/baseline/timer-1440-secrets.json")
+  ) {
+    throw new Error("Safety detector self-test failed: P72 exact synthetic outputs");
+  }
 }
 
 selfTest();
@@ -135,5 +152,5 @@ if (findings.length > 0) {
 }
 console.log(`Public safety check passed: ${files.length} files scanned, 0 blockers.`);
 console.log(
-  "Exact generic path-test exceptions: 2 files; exact internal-artifact exceptions: 2 paths; no global scanner exclusions.",
+  `Exact generic path-test exceptions: 2 files; exact internal-artifact exceptions: ${allowedInternalArtifactPaths.size} paths; no global scanner exclusions.`,
 );
