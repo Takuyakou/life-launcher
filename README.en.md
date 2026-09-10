@@ -31,7 +31,7 @@ Note: it is not a complete port of the Windows product.
   Define one condition for a successful day and limit today's work to at most three items. Start from project-colored cards; an item is completed after its planned timer expires and you confirm the session. Once all three are complete, choose the next three yourself.
 
 - **Today Builder / Wishlist**
-  Browse next-step and wishlist candidates five at a time, then add them to today. Each adopted item retains its text, instruction reference, launch-environment references, and timer durations, keeping today's plan stable when its source is edited later.
+  Browse next-step and wishlist candidates five at a time, then add them to today. Each adopted item retains its text, instruction reference, launch-environment references, and timer durations; explicitly saving a source edit also updates its current Today's Three snapshot.
 
 - **Remove from Today's Three**
   Use the card's lower-left button or context menu to remove only its adoption into today, without a confirmation dialog. The original source, candidate, and session records remain. Removal is blocked while that item's timer is running, paused, or awaiting expiry confirmation.

@@ -697,6 +697,7 @@ URLはWindowsの既定ブラウザで開き、登録ごとのブラウザ指定�
 - 候補除外は元sourceを保持したままmatching Today snapshotを外し、localStorageへ保存する。既存schema v2は読み込み時に後方互換補完する。
 - native Explorer、実ランチャー起動、Tauri権限、Rust推薦はDemoへ再実装しない。
 - backend、認証、analytics、外部APIを使用せず、入力はブラウザのlocalStorageだけに保存する。
+- Windows本体Phase 7.2との差分と将来の同期条件は [Web Demo Phase 7.2 Follow-up](../phase7.2/web-demo-followup.md) に記録する。
 
 ## 28. 仕様確認の主要ソース
 
