@@ -17,7 +17,7 @@ for (const width of [1440, 860]) {
     const normal=editor.getByRole("spinbutton",{name:"プロジェクトの通常タイマー分数"});
     await short.scrollIntoViewIfNeeded();
     const a=await short.boundingBox(),b=await normal.boundingBox();
-    expect(a && b && (a.y < b.y || a.x < b.x)).toBeTruthy();
+    expect(a && b && (width <= 900 ? a.y < b.y : a.x < b.x)).toBeTruthy();
     await editor.screenshot({path:info.outputPath("timer-order.png")});
     await editor.getByRole("button",{name:"開始環境を選ぶ",exact:true}).click();
     const picker=page.getByRole("dialog",{name:"開始環境を選ぶ",exact:true});

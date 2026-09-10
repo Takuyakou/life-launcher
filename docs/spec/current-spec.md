@@ -252,12 +252,24 @@ Main Window
 - 短時間は緑、通常は青。
 - 実行中は一時停止と終了、一時停止中は再開と終了へ切り替える。
 - プロジェクト、ランチャー、手順書が紐づく場合は開始時に同じ実行環境を利用する。
-- 採用時に項目名、きっかけ、開始環境、手順書、短時間・通常タイマー分数をToday項目へ保存する。後から候補元を編集しても採用済み項目は変えない。
-- 完了は予定時間へ到達した後、完了ダイアログで確定した項目だけに付与する。
-- 1分未満または予定時間前の手動終了は今日の項目を完了扱いにしない。
+- 採用時に項目名、きっかけ、開始環境、手順書、短時間・通常タイマー分数をToday項目へ保存する。元の登録を明示編集保存した場合は現在のToday3も再snapshotする。常時live bindingではない。
+- 完了は予定時間到達後の確定、または動的な早期終了確認で「今日の分は完了」を選んだ場合に付与する。
+- 1分未満、早期基準未満、または「未完了のまま終了」では今日の項目を完了扱いにしない。
 - 3件すべてが完了した場合だけ「次の3件を選ぶ」を表示する。手動操作で現在の枠を空にし、Builderを展開してフォーカスする。
 
 ## 11. プロジェクトの次の一手
+
+### Today3との編集同期
+
+- canonicalはNextStep(Project.id) / Wishlist(stable inbox.id)。Today3右クリック「編集」は元editorを開く。曖昧な旧aliasや元データなしは編集不可。
+- 明示保存時だけ、text/trigger/projectId/buttonIds/instructionPath/instructionOpenOnStart/defaultTimerMinutes/shortTimerMinutesを再snapshotする。解除した任意値は残さない。[詳細matrix](../phase7.1/00-field-sync-matrix.md)。
+- 現在のToday3のsourceKey、done、配列順、個数、date、勝利条件は保持する。完了済みの現在カードもdoneを維持して更新し、Session/今日の実行/sourceCompletionsは書き換えない。部分補充なし。
+- Project編集はそのProject sourceだけ更新し、同じprojectIdを持つ別Wishlistは自動更新しない。Wishlist自身の編集保存時に関連Projectの現在の分数を解決する。
+- 同sourceのrunning/paused/満了確認/早期終了確認中はUI・直接handler双方で拒否する。別source Timerは編集を妨げない。保存中は同source開始も拒否し、実行中の分数・開始環境を変更しない。
+- sourceとToday3を一つのconfigとして保存し、成功後だけeditorを閉じる。失敗時は既存rollbackにより表示を戻しdraftを残す。ファイル置換のcrash atomic性と他writer競合の制約は監査文書を参照。
+- Project/Wishlist追加・編集footerは左保存、右キャンセル。初期入力focusは既存を維持。Start Environment Pickerは左選択を反映、右キャンセルで初期focusも右。Pickerの反映は親draftのみ変更する。
+- Project/SettingsのTimer入力順は短時間→通常。狭幅は同じ順で縦積み。分数の単位・継承・validation・増減操作は変更しない。
+- 早期完了基準は有効なToday3短時間snapshotと5分の小さい方。整数1..240以外は5分fallback。基準以上・予定時間未満の手動終了だけ確認し、予定時間到達は満了が優先する。停止中編集後の新snapshotは次回から適用し、実行中には変えない。
 
 - 次回すぐ再開する内容を、プロジェクト色・名称・次の一手・任意の開始トリガーを持つcompact rowで表示する。
 - このセクションには短時間・通常タイマー、完了チェック、常設編集ボタン、常設「今日へ」ボタンを置かない。
@@ -514,7 +526,7 @@ URLはWindowsの既定ブラウザで開き、登録ごとのブラウザ指定�
 - メイン上部の「使い方」から、オフラインで読める静的な日本語Guideを開く。
 - Guideは「今やる一手」から始める経路と、ProjectまたはWishlistへ登録し、Builderの「今日へ」でToday3へ採用して開始する経路を区別して説明する。
 - Builder候補はProject.nextStepとWishlistだけで、5件ずつ表示し、新規追加や送付先selectを持たないことを案内する。当日だけ候補から外す操作と、登録の完了・削除は区別する。
-- Today3は一度に最大3件で、満了後に「終わる」で確定した項目だけ完了し、3件完了後は手動で「次の3件を選ぶ」ことを説明する。
+- Today3は一度に最大3件で、満了確定または早期終了時の明示選択で完了し、3件完了後は手動で「次の3件を選ぶ」ことを説明する。
 - Wishlistの追加は本文専用の小型ダイアログ、Projectの追加は詳細Project登録であることを実画面ラベルに合わせる。
 - 目次から各節へ移動でき、移動先見出しへfocusする。狭幅では目次を開閉でき、ダイアログ内でTabを循環する。
 - 公開済みREADMEやReleaseへ未公開版の操作説明を先行反映しない。

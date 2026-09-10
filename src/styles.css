@@ -6028,6 +6028,12 @@ input[type="number"]::-webkit-inner-spin-button {
   gap: 10px;
 }
 
+@media (max-width: 900px) {
+  .projectTimerGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .projectTimerSetting {
   min-width: 0;
   display: grid;

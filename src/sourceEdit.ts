@@ -21,6 +21,9 @@ export function resnapshotSource(previous: AppConfig, next: AppConfig, key: stri
     item.sourceKey && canonicalSourceKey(previous, item.sourceKey) === key ? [index] : []);
   if (indices.length > 1) throw new Error("同じ登録に対応する今日の項目が複数あります");
   if (!indices.length) return next;
+  if (previous.today.items[indices[0]].sourceKey !== key) {
+    throw new Error("旧形式の採用項目です。今日の3件から外して再度選んでください");
+  }
   const project = next.projects.find(p => `project:${p.id}` === key);
   const inbox = next.inbox.find(i => `wishlist:${i.id}` === key);
   if (!project && !inbox) throw new Error("元の登録が見つかりません");

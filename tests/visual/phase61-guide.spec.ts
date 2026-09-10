@@ -50,7 +50,8 @@ test("Guide states the current registration, selection, and completion flow", as
   await expect(today).toContainText("今日の候補から外す");
   await expect(today).toContainText("元の次の一手ややりたいことは残ります");
   await expect(today).toContainText("小型ダイアログで追加します");
-  await expect(today).toContainText("タイマー満了後に「終わる」で確定した項目だけ完了");
+  await expect(today).toContainText("どちら側から編集して保存しても");
+  await expect(today).toContainText("未完了のまま終了");
   await expect(today).toContainText("次の3件を選ぶ");
 
   const projects = dialog.locator('[data-help-section-id="projects"]');
@@ -63,7 +64,7 @@ test("Guide states the current registration, selection, and completion flow", as
 
   const timer = dialog.locator('[data-help-section-id="timer"]');
   await expect(timer).toContainText("続ける(+15分)");
-  await expect(timer).toContainText("予定時間前の手動終了は記録だけを残し");
+  await expect(timer).toContainText("初期フォーカスとEscapeは右");
 
   await expect(dialog).not.toContainText("通常の次の一手カードからも開始できます");
   await expect(dialog).not.toContainText("昨日の勝利条件");
