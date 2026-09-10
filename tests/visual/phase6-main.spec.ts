@@ -501,7 +501,7 @@ test("Today adoption snapshots timer, actions, text, and instruction", async ({ 
   });
 
   const today = page.locator(".todayRow").first();
-  await expect(today.getByRole("button", { name: "資料を1ページ読む", exact: true })).toBeVisible();
+  await expect(today.locator(".todayTextButton", { hasText: "資料を1ページ読む" })).toBeVisible();
   await expect(today.getByRole("button", { name: "短時間タイマー7分で開始" })).toBeVisible();
   await expect(today.getByRole("button", { name: "通常タイマー37分で開始" })).toBeVisible();
   item = (await currentConfig(page)).today.items[0];

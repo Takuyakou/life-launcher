@@ -75,6 +75,7 @@ for (const width of [1920, 1000, 860]) {
     await drag(page, source, target, 0.2, 0.35, width === 860);
     await expect(page.locator(".todayBuilderDragGhost--today")).toBeVisible();
     await expect(page.locator(".todayBuilderDragGhost button")).toHaveCount(0);
+    await expect(page.locator(".todayGrid--dropTarget")).toBeVisible();
     await expect(page.locator(".todayDropIndicator")).toBeVisible();
     expect(await saveCount(page)).toBe(before);
     await page.mouse.up();
@@ -94,6 +95,8 @@ test("P72-04 excluded source restores to a closed Builder after 500ms and saves 
   const before = await saveCount(page);
   await drag(page, source, target);
   await expect(page.locator(".todayBuilderBand--restoreTarget")).toBeVisible();
+  await expect(page.locator(".todayBuilderBand--restoreHover")).toBeVisible();
+  await expect(page.locator(".todayBuilderRestoreDropZone--active")).toBeVisible();
   await expect(page.locator(".todayBuilderRestoreDropZone")).toHaveText(
     /ここにドロップして今日の候補に戻す/,
   );
@@ -235,6 +238,7 @@ test("P72-04 active Timer source rejects Builder adoption", async ({ page }) => 
   await expect(todayRow).toHaveClass(/todayRow--running/);
   const before = await saveCount(page);
   await drag(page, builderRow, page.locator(".todayRow").first());
+  await expect(page.locator(".todayGrid--dropGuidance")).toHaveCount(0);
   await expect(page.locator(".todayDropIndicator")).toHaveCount(0);
   await page.mouse.up();
   expect(await saveCount(page)).toBe(before);
