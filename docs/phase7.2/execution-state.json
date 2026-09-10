@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "safety_artifact_approval": {
+    "approved": true,
+    "text": "許可 します",
+    "scope": "27 exact P72 audit artifact paths only; content checks unchanged; not approval of P72-01"
+  },
+  "phase": "P72",
+  "target_product_version": "v1.2 (not a version-bump instruction)",
+  "template_only": false,
+  "runtime_path": "docs/phase7.2/execution-state.json",
+  "workflow": "single-start-human-gated",
+  "current_stage": "P72-00",
+  "baseline": {
+    "reported_main": "c7c28ea4f29c62e738e15e369705a71cb35ae109",
+    "verified_current_main": "873219cc099514fef5be292a01f97aa50d3e3468",
+    "report": "reference/phase71-consolidated-report.md",
+    "pr32_status_at_execution": "CLOSED_UNMERGED"
+  },
+  "permissions": {
+    "windows_product_changes": "after stage audit approval",
+    "other_prs_merge": false,
+    "web_repo_write": false,
+    "web_deploy": false,
+    "version_bump": false,
+    "tag_or_release": false,
+    "binary_distribution": false,
+    "user_data_write": false
+  },
+  "stages": {
+    "P72-00": {
+      "status": "AWAITING_PR_CI",
+      "instruction": "stages/P72-00-audit.md",
+      "branch": "docs/p72-00-audit",
+      "pr": null,
+      "head_sha": null,
+      "ci_sha": null,
+      "ci_status": "PENDING",
+      "human_approved": false,
+      "approval_text": null,
+      "merge_sha": null,
+      "report": "docs/phase7.2/workreports/p72-00-report.md"
+    },
+    "P72-01": {
+      "status": "WAITING_PREVIOUS_STAGE",
+      "instruction": "stages/P72-01-selection-edit-menus.md",
+      "branch": null,
+      "pr": null,
+      "head_sha": null,
+      "ci_sha": null,
+      "ci_status": null,
+      "human_approved": false,
+      "approval_text": null,
+      "merge_sha": null,
+      "report": null
+    },
+    "P72-02": {
+      "status": "WAITING_PREVIOUS_STAGE",
+      "instruction": "stages/P72-02-toast-undo.md",
+      "branch": null,
+      "pr": null,
+      "head_sha": null,
+      "ci_sha": null,
+      "ci_status": null,
+      "human_approved": false,
+      "approval_text": null,
+      "merge_sha": null,
+      "report": null
+    },
+    "P72-03": {
+      "status": "WAITING_PREVIOUS_STAGE",
+      "instruction": "stages/P72-03-lists-and-timer-size.md",
+      "branch": null,
+      "pr": null,
+      "head_sha": null,
+      "ci_sha": null,
+      "ci_status": null,
+      "human_approved": false,
+      "approval_text": null,
+      "merge_sha": null,
+      "report": null
+    },
+    "P72-04": {
+      "status": "WAITING_PREVIOUS_STAGE",
+      "instruction": "stages/P72-04-dnd.md",
+      "branch": null,
+      "pr": null,
+      "head_sha": null,
+      "ci_sha": null,
+      "ci_status": null,
+      "human_approved": false,
+      "approval_text": null,
+      "merge_sha": null,
+      "report": null
+    },
+    "P72-05": {
+      "status": "WAITING_PREVIOUS_STAGE",
+      "instruction": "stages/P72-05-completion-reward.md",
+      "branch": null,
+      "pr": null,
+      "head_sha": null,
+      "ci_sha": null,
+      "ci_status": null,
+      "human_approved": false,
+      "approval_text": null,
+      "merge_sha": null,
+      "report": null
+    },
+    "P72-06": {
+      "status": "WAITING_PREVIOUS_STAGE",
+      "instruction": "stages/P72-06-guide-regression.md",
+      "branch": null,
+      "pr": null,
+      "head_sha": null,
+      "ci_sha": null,
+      "ci_status": null,
+      "human_approved": false,
+      "approval_text": null,
+      "merge_sha": null,
+      "report": null
+    }
+  },
+  "resume_rule": "Use runtime state if it exists; never overwrite it with this seed.",
+  "packet_location": "../Life Launcher/docs/life-launcher-phase7.2",
+  "packet_location_basis": "Relative to repository root; external instruction packet, not distributed"
+}

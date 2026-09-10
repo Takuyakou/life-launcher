@@ -1,0 +1,492 @@
+{
+  "idle": {
+    "viewport": {
+      "width": 1366,
+      "height": 900,
+      "dpr": 1
+    },
+    "columns": "348px 348px 348px",
+    "overflow": false,
+    "cards": [
+      {
+        "x": 268,
+        "y": 390.0625,
+        "width": 348,
+        "height": 164.984375
+      },
+      {
+        "x": 626,
+        "y": 390.0625,
+        "width": 348,
+        "height": 164.984375
+      },
+      {
+        "x": 984,
+        "y": 390.0625,
+        "width": 348,
+        "height": 164.984375
+      }
+    ],
+    "buttons": [
+      {
+        "rect": {
+          "x": 501,
+          "y": 509.046875,
+          "width": 48,
+          "height": 36
+        },
+        "label": "短時間タイマー5分で開始",
+        "title": "短時間タイマー: 5分",
+        "disabled": false,
+        "color": "rgb(111, 207, 151)",
+        "background": "rgb(39, 52, 43)",
+        "border": "rgba(117, 196, 143, 0.36)",
+        "font": "16px / 16px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "radius": "8px",
+        "duration": "5分",
+        "durationFont": "850 11px / 11px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "durationOpacity": "0",
+        "glyphOpacity": "1",
+        "transition": "all",
+        "focusVisible": false
+      },
+      {
+        "rect": {
+          "x": 557,
+          "y": 509.046875,
+          "width": 48,
+          "height": 36
+        },
+        "label": "通常タイマー135分で開始",
+        "title": "通常タイマー: 135分",
+        "disabled": false,
+        "color": "rgb(169, 208, 255)",
+        "background": "rgb(37, 45, 56)",
+        "border": "rgb(74, 70, 57)",
+        "font": "16px / 16px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "radius": "8px",
+        "duration": "135分",
+        "durationFont": "850 11px / 11px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "durationOpacity": "0",
+        "glyphOpacity": "1",
+        "transition": "all",
+        "focusVisible": false
+      },
+      {
+        "rect": {
+          "x": 859,
+          "y": 509.046875,
+          "width": 48,
+          "height": 36
+        },
+        "label": "短時間タイマー15分で開始",
+        "title": "短時間タイマー: 15分",
+        "disabled": false,
+        "color": "rgb(111, 207, 151)",
+        "background": "rgb(39, 52, 43)",
+        "border": "rgba(117, 196, 143, 0.36)",
+        "font": "16px / 16px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "radius": "8px",
+        "duration": "15分",
+        "durationFont": "850 11px / 11px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "durationOpacity": "0",
+        "glyphOpacity": "1",
+        "transition": "all",
+        "focusVisible": false
+      },
+      {
+        "rect": {
+          "x": 915,
+          "y": 509.046875,
+          "width": 48,
+          "height": 36
+        },
+        "label": "通常タイマー35分で開始",
+        "title": "通常タイマー: 35分",
+        "disabled": false,
+        "color": "rgb(169, 208, 255)",
+        "background": "rgb(37, 45, 56)",
+        "border": "rgb(74, 70, 57)",
+        "font": "16px / 16px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "radius": "8px",
+        "duration": "35分",
+        "durationFont": "850 11px / 11px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "durationOpacity": "0",
+        "glyphOpacity": "1",
+        "transition": "all",
+        "focusVisible": false
+      },
+      {
+        "rect": {
+          "x": 1217,
+          "y": 509.046875,
+          "width": 48,
+          "height": 36
+        },
+        "label": "短時間タイマー5分で開始",
+        "title": "短時間タイマー: 5分",
+        "disabled": true,
+        "color": "rgb(111, 207, 151)",
+        "background": "rgb(39, 52, 43)",
+        "border": "rgba(117, 196, 143, 0.36)",
+        "font": "16px / 16px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "radius": "8px",
+        "duration": "5分",
+        "durationFont": "850 11px / 11px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "durationOpacity": "0",
+        "glyphOpacity": "1",
+        "transition": "all",
+        "focusVisible": false
+      },
+      {
+        "rect": {
+          "x": 1273,
+          "y": 509.046875,
+          "width": 48,
+          "height": 36
+        },
+        "label": "通常タイマー25分で開始",
+        "title": "通常タイマー: 25分",
+        "disabled": true,
+        "color": "rgb(169, 208, 255)",
+        "background": "rgb(37, 45, 56)",
+        "border": "rgb(74, 70, 57)",
+        "font": "16px / 16px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "radius": "8px",
+        "duration": "25分",
+        "durationFont": "850 11px / 11px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "durationOpacity": "0",
+        "glyphOpacity": "1",
+        "transition": "all",
+        "focusVisible": false
+      }
+    ]
+  },
+  "hover": {
+    "viewport": {
+      "width": 1366,
+      "height": 900,
+      "dpr": 1
+    },
+    "columns": "348px 348px 348px",
+    "overflow": false,
+    "cards": [
+      {
+        "x": 268,
+        "y": 390.0625,
+        "width": 348,
+        "height": 164.984375
+      },
+      {
+        "x": 626,
+        "y": 390.0625,
+        "width": 348,
+        "height": 164.984375
+      },
+      {
+        "x": 984,
+        "y": 390.0625,
+        "width": 348,
+        "height": 164.984375
+      }
+    ],
+    "buttons": [
+      {
+        "rect": {
+          "x": 501,
+          "y": 509.046875,
+          "width": 48,
+          "height": 36
+        },
+        "label": "短時間タイマー5分で開始",
+        "title": "短時間タイマー: 5分",
+        "disabled": false,
+        "color": "rgb(111, 207, 151)",
+        "background": "rgb(39, 52, 43)",
+        "border": "rgba(117, 196, 143, 0.36)",
+        "font": "16px / 16px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "radius": "8px",
+        "duration": "5分",
+        "durationFont": "850 11px / 11px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "durationOpacity": "0",
+        "glyphOpacity": "1",
+        "transition": "all",
+        "focusVisible": false
+      },
+      {
+        "rect": {
+          "x": 557,
+          "y": 509.046875,
+          "width": 48,
+          "height": 36
+        },
+        "label": "通常タイマー135分で開始",
+        "title": "通常タイマー: 135分",
+        "disabled": false,
+        "color": "rgb(169, 208, 255)",
+        "background": "rgb(48, 59, 74)",
+        "border": "rgba(169, 208, 255, 0.7)",
+        "font": "16px / 16px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "radius": "8px",
+        "duration": "135分",
+        "durationFont": "850 11px / 11px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "durationOpacity": "1",
+        "glyphOpacity": "0",
+        "transition": "all",
+        "focusVisible": false
+      },
+      {
+        "rect": {
+          "x": 859,
+          "y": 509.046875,
+          "width": 48,
+          "height": 36
+        },
+        "label": "短時間タイマー15分で開始",
+        "title": "短時間タイマー: 15分",
+        "disabled": false,
+        "color": "rgb(111, 207, 151)",
+        "background": "rgb(39, 52, 43)",
+        "border": "rgba(117, 196, 143, 0.36)",
+        "font": "16px / 16px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "radius": "8px",
+        "duration": "15分",
+        "durationFont": "850 11px / 11px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "durationOpacity": "0",
+        "glyphOpacity": "1",
+        "transition": "all",
+        "focusVisible": false
+      },
+      {
+        "rect": {
+          "x": 915,
+          "y": 509.046875,
+          "width": 48,
+          "height": 36
+        },
+        "label": "通常タイマー35分で開始",
+        "title": "通常タイマー: 35分",
+        "disabled": false,
+        "color": "rgb(169, 208, 255)",
+        "background": "rgb(37, 45, 56)",
+        "border": "rgb(74, 70, 57)",
+        "font": "16px / 16px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "radius": "8px",
+        "duration": "35分",
+        "durationFont": "850 11px / 11px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "durationOpacity": "0",
+        "glyphOpacity": "1",
+        "transition": "all",
+        "focusVisible": false
+      },
+      {
+        "rect": {
+          "x": 1217,
+          "y": 509.046875,
+          "width": 48,
+          "height": 36
+        },
+        "label": "短時間タイマー5分で開始",
+        "title": "短時間タイマー: 5分",
+        "disabled": true,
+        "color": "rgb(111, 207, 151)",
+        "background": "rgb(39, 52, 43)",
+        "border": "rgba(117, 196, 143, 0.36)",
+        "font": "16px / 16px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "radius": "8px",
+        "duration": "5分",
+        "durationFont": "850 11px / 11px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "durationOpacity": "0",
+        "glyphOpacity": "1",
+        "transition": "all",
+        "focusVisible": false
+      },
+      {
+        "rect": {
+          "x": 1273,
+          "y": 509.046875,
+          "width": 48,
+          "height": 36
+        },
+        "label": "通常タイマー25分で開始",
+        "title": "通常タイマー: 25分",
+        "disabled": true,
+        "color": "rgb(169, 208, 255)",
+        "background": "rgb(37, 45, 56)",
+        "border": "rgb(74, 70, 57)",
+        "font": "16px / 16px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "radius": "8px",
+        "duration": "25分",
+        "durationFont": "850 11px / 11px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "durationOpacity": "0",
+        "glyphOpacity": "1",
+        "transition": "all",
+        "focusVisible": false
+      }
+    ]
+  },
+  "focus": {
+    "viewport": {
+      "width": 1366,
+      "height": 900,
+      "dpr": 1
+    },
+    "columns": "348px 348px 348px",
+    "overflow": false,
+    "cards": [
+      {
+        "x": 268,
+        "y": 390.0625,
+        "width": 348,
+        "height": 164.984375
+      },
+      {
+        "x": 626,
+        "y": 390.0625,
+        "width": 348,
+        "height": 164.984375
+      },
+      {
+        "x": 984,
+        "y": 390.0625,
+        "width": 348,
+        "height": 164.984375
+      }
+    ],
+    "buttons": [
+      {
+        "rect": {
+          "x": 501,
+          "y": 509.046875,
+          "width": 48,
+          "height": 36
+        },
+        "label": "短時間タイマー5分で開始",
+        "title": "短時間タイマー: 5分",
+        "disabled": false,
+        "color": "rgb(111, 207, 151)",
+        "background": "rgb(39, 52, 43)",
+        "border": "rgba(117, 196, 143, 0.36)",
+        "font": "16px / 16px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "radius": "8px",
+        "duration": "5分",
+        "durationFont": "850 11px / 11px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "durationOpacity": "0",
+        "glyphOpacity": "1",
+        "transition": "all",
+        "focusVisible": false
+      },
+      {
+        "rect": {
+          "x": 557,
+          "y": 509.046875,
+          "width": 48,
+          "height": 36
+        },
+        "label": "通常タイマー135分で開始",
+        "title": "通常タイマー: 135分",
+        "disabled": false,
+        "color": "rgb(169, 208, 255)",
+        "background": "rgb(37, 45, 56)",
+        "border": "rgb(74, 70, 57)",
+        "font": "16px / 16px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "radius": "8px",
+        "duration": "135分",
+        "durationFont": "850 11px / 11px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "durationOpacity": "1",
+        "glyphOpacity": "0",
+        "transition": "all",
+        "focusVisible": true
+      },
+      {
+        "rect": {
+          "x": 859,
+          "y": 509.046875,
+          "width": 48,
+          "height": 36
+        },
+        "label": "短時間タイマー15分で開始",
+        "title": "短時間タイマー: 15分",
+        "disabled": false,
+        "color": "rgb(111, 207, 151)",
+        "background": "rgb(39, 52, 43)",
+        "border": "rgba(117, 196, 143, 0.36)",
+        "font": "16px / 16px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "radius": "8px",
+        "duration": "15分",
+        "durationFont": "850 11px / 11px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "durationOpacity": "0",
+        "glyphOpacity": "1",
+        "transition": "all",
+        "focusVisible": false
+      },
+      {
+        "rect": {
+          "x": 915,
+          "y": 509.046875,
+          "width": 48,
+          "height": 36
+        },
+        "label": "通常タイマー35分で開始",
+        "title": "通常タイマー: 35分",
+        "disabled": false,
+        "color": "rgb(169, 208, 255)",
+        "background": "rgb(37, 45, 56)",
+        "border": "rgb(74, 70, 57)",
+        "font": "16px / 16px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "radius": "8px",
+        "duration": "35分",
+        "durationFont": "850 11px / 11px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "durationOpacity": "0",
+        "glyphOpacity": "1",
+        "transition": "all",
+        "focusVisible": false
+      },
+      {
+        "rect": {
+          "x": 1217,
+          "y": 509.046875,
+          "width": 48,
+          "height": 36
+        },
+        "label": "短時間タイマー5分で開始",
+        "title": "短時間タイマー: 5分",
+        "disabled": true,
+        "color": "rgb(111, 207, 151)",
+        "background": "rgb(39, 52, 43)",
+        "border": "rgba(117, 196, 143, 0.36)",
+        "font": "16px / 16px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "radius": "8px",
+        "duration": "5分",
+        "durationFont": "850 11px / 11px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "durationOpacity": "0",
+        "glyphOpacity": "1",
+        "transition": "all",
+        "focusVisible": false
+      },
+      {
+        "rect": {
+          "x": 1273,
+          "y": 509.046875,
+          "width": 48,
+          "height": 36
+        },
+        "label": "通常タイマー25分で開始",
+        "title": "通常タイマー: 25分",
+        "disabled": true,
+        "color": "rgb(169, 208, 255)",
+        "background": "rgb(37, 45, 56)",
+        "border": "rgb(74, 70, 57)",
+        "font": "16px / 16px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "radius": "8px",
+        "duration": "25分",
+        "durationFont": "850 11px / 11px \"Segoe UI\", \"Yu Gothic UI\", Meiryo, system-ui, sans-serif",
+        "durationOpacity": "0",
+        "glyphOpacity": "1",
+        "transition": "all",
+        "focusVisible": false
+      }
+    ]
+  },
+  "running": "Start buttons replaced with pause/stop; remove disabled"
+}
