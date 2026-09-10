@@ -150,7 +150,7 @@ test("Project picker preserves order, enforces two selections, and restores focu
   await opener.click();
 
   let picker = page.getByRole("dialog", { name: "開始環境を選ぶ" });
-  await expect(picker.getByRole("searchbox", { name: "開始環境を検索" })).toBeFocused();
+  await expect(picker.getByRole("button", { name: "キャンセル", exact: true })).toBeFocused();
   await picker.getByRole("searchbox", { name: "開始環境を検索" }).fill("参考サイト");
   const referenceOption = picker.getByRole("option", { name: /参考サイト/ });
   await referenceOption.press("Enter");

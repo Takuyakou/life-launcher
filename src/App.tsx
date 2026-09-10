@@ -9525,9 +9525,6 @@ function DashboardApp() {
             />
 
             <div className="dialogActions">
-              <button className="secondaryButton" onClick={cancelInboxEdit} type="button">
-                キャンセル
-              </button>
               <button
                 className="primaryButton"
                 disabled={!inboxEditDraft.trim() || sourceEditSaving}
@@ -9535,6 +9532,9 @@ function DashboardApp() {
                 type="button"
               >
                 保存
+              </button>
+              <button className="secondaryButton" onClick={cancelInboxEdit} type="button">
+                キャンセル
               </button>
             </div>
           </section>
@@ -9780,42 +9780,6 @@ function DashboardApp() {
               <div className="settingsGrid">
                 <label
                   className={
-                    numberInputDragging === "settingsDefault"
-                      ? "fieldStack fieldStack--numberDrag fieldStack--numberDragging"
-                      : "fieldStack fieldStack--numberDrag"
-                  }
-                  onPointerCancel={cancelNumberInputDrag}
-                  onPointerDown={(event) =>
-                    startNumberInputDrag(
-                      event,
-                      "settingsDefault",
-                      Number.parseInt(settingsDraft.defaultTimerMinutes, 10) || 25,
-                    )
-                  }
-                  onPointerMove={updateNumberInputDrag}
-                  onPointerUp={finishNumberInputDrag}
-                  title="上下にドラッグして分数を調整"
-                >
-                  <span>通常タイマー分数</span>
-                  <span className="numberDragInput">
-                    <input
-                      className="textInput"
-                      max={240}
-                      min={1}
-                      onChange={(event) =>
-                        setSettingsDraft({
-                          ...settingsDraft,
-                          defaultTimerMinutes: event.target.value,
-                        })
-                      }
-                      type="number"
-                      value={settingsDraft.defaultTimerMinutes}
-                    />
-                    <span aria-hidden="true" className="numberDragAffordance" />
-                  </span>
-                </label>
-                <label
-                  className={
                     numberInputDragging === "settingsShort"
                       ? "fieldStack fieldStack--numberDrag fieldStack--numberDragging"
                       : "fieldStack fieldStack--numberDrag"
@@ -9846,6 +9810,42 @@ function DashboardApp() {
                       }
                       type="number"
                       value={settingsDraft.shortTimerMinutes}
+                    />
+                    <span aria-hidden="true" className="numberDragAffordance" />
+                  </span>
+                </label>
+                <label
+                  className={
+                    numberInputDragging === "settingsDefault"
+                      ? "fieldStack fieldStack--numberDrag fieldStack--numberDragging"
+                      : "fieldStack fieldStack--numberDrag"
+                  }
+                  onPointerCancel={cancelNumberInputDrag}
+                  onPointerDown={(event) =>
+                    startNumberInputDrag(
+                      event,
+                      "settingsDefault",
+                      Number.parseInt(settingsDraft.defaultTimerMinutes, 10) || 25,
+                    )
+                  }
+                  onPointerMove={updateNumberInputDrag}
+                  onPointerUp={finishNumberInputDrag}
+                  title="上下にドラッグして分数を調整"
+                >
+                  <span>通常タイマー分数</span>
+                  <span className="numberDragInput">
+                    <input
+                      className="textInput"
+                      max={240}
+                      min={1}
+                      onChange={(event) =>
+                        setSettingsDraft({
+                          ...settingsDraft,
+                          defaultTimerMinutes: event.target.value,
+                        })
+                      }
+                      type="number"
+                      value={settingsDraft.defaultTimerMinutes}
                     />
                     <span aria-hidden="true" className="numberDragAffordance" />
                   </span>
@@ -10837,19 +10837,19 @@ function DashboardApp() {
 
               <div className="dialogActions">
                 <button
+                  className="primaryButton"
+                  disabled={inboxAddSaving || !inboxDraft.trim()}
+                  type="submit"
+                >
+                  {inboxAddSaving ? "保存中…" : "保存"}
+                </button>
+                <button
                   className="secondaryButton"
                   disabled={inboxAddSaving}
                   onClick={closeInboxAddDialog}
                   type="button"
                 >
                   キャンセル
-                </button>
-                <button
-                  className="primaryButton"
-                  disabled={inboxAddSaving || !inboxDraft.trim()}
-                  type="submit"
-                >
-                  {inboxAddSaving ? "保存中…" : "保存"}
                 </button>
               </div>
             </form>
@@ -11025,83 +11025,6 @@ function DashboardApp() {
               <span>開始レシピ</span>
               <div className="projectTimerGrid">
                 <div className="projectTimerSetting">
-                  <span>通常タイマー</span>
-                  <div className="projectTimerControl">
-                    <button
-                      aria-label="通常タイマーを1分減らす"
-                      className="projectTimerStepButton"
-                      onClick={() => stepProjectTimer("defaultTimerMinutes", -1)}
-                      type="button"
-                    >
-                      −
-                    </button>
-                    <label
-                      className={
-                        numberInputDragging === "projectDefault"
-                          ? "projectTimerInput fieldStack--numberDrag fieldStack--numberDragging"
-                          : "projectTimerInput fieldStack--numberDrag"
-                      }
-                      onPointerCancel={cancelNumberInputDrag}
-                      onPointerDown={(event) =>
-                        startNumberInputDrag(
-                          event,
-                          "projectDefault",
-                          Number.parseInt(projectEditDraft.defaultTimerMinutes, 10) ||
-                            config.settings.defaultTimerMinutes,
-                        )
-                      }
-                      onPointerMove={updateNumberInputDrag}
-                      onPointerUp={finishNumberInputDrag}
-                      title="上下にドラッグして分数を調整"
-                    >
-                      <span className="numberDragInput">
-                        <input
-                          aria-label="プロジェクトの通常タイマー分数"
-                          className="textInput"
-                          inputMode="numeric"
-                          max="240"
-                          min="1"
-                          onChange={(event) =>
-                            setProjectEditDraft({
-                              ...projectEditDraft,
-                              defaultTimerMinutes: event.target.value,
-                            })
-                          }
-                          placeholder={String(config.settings.defaultTimerMinutes)}
-                          type="number"
-                          value={projectEditDraft.defaultTimerMinutes}
-                        />
-                        <span aria-hidden="true" className="numberDragAffordance" />
-                      </span>
-                    </label>
-                    <button
-                      aria-label="通常タイマーを1分増やす"
-                      className="projectTimerStepButton"
-                      onClick={() => stepProjectTimer("defaultTimerMinutes", 1)}
-                      type="button"
-                    >
-                      +
-                    </button>
-                  </div>
-                  <div className="projectTimerFooter">
-                    <span>
-                      {projectEditDraft.defaultTimerMinutes
-                        ? `${projectEditDraft.defaultTimerMinutes}分を使用`
-                        : `全体設定 ${config.settings.defaultTimerMinutes}分を使用`}
-                    </span>
-                    <button
-                      disabled={!projectEditDraft.defaultTimerMinutes}
-                      onClick={() =>
-                        setProjectEditDraft({ ...projectEditDraft, defaultTimerMinutes: "" })
-                      }
-                      type="button"
-                    >
-                      全体設定に戻す
-                    </button>
-                  </div>
-                </div>
-
-                <div className="projectTimerSetting">
                   <span>短時間タイマー</span>
                   <div className="projectTimerControl">
                     <button
@@ -11177,6 +11100,82 @@ function DashboardApp() {
                     </button>
                   </div>
                 </div>
+                <div className="projectTimerSetting">
+                  <span>通常タイマー</span>
+                  <div className="projectTimerControl">
+                    <button
+                      aria-label="通常タイマーを1分減らす"
+                      className="projectTimerStepButton"
+                      onClick={() => stepProjectTimer("defaultTimerMinutes", -1)}
+                      type="button"
+                    >
+                      −
+                    </button>
+                    <label
+                      className={
+                        numberInputDragging === "projectDefault"
+                          ? "projectTimerInput fieldStack--numberDrag fieldStack--numberDragging"
+                          : "projectTimerInput fieldStack--numberDrag"
+                      }
+                      onPointerCancel={cancelNumberInputDrag}
+                      onPointerDown={(event) =>
+                        startNumberInputDrag(
+                          event,
+                          "projectDefault",
+                          Number.parseInt(projectEditDraft.defaultTimerMinutes, 10) ||
+                            config.settings.defaultTimerMinutes,
+                        )
+                      }
+                      onPointerMove={updateNumberInputDrag}
+                      onPointerUp={finishNumberInputDrag}
+                      title="上下にドラッグして分数を調整"
+                    >
+                      <span className="numberDragInput">
+                        <input
+                          aria-label="プロジェクトの通常タイマー分数"
+                          className="textInput"
+                          inputMode="numeric"
+                          max="240"
+                          min="1"
+                          onChange={(event) =>
+                            setProjectEditDraft({
+                              ...projectEditDraft,
+                              defaultTimerMinutes: event.target.value,
+                            })
+                          }
+                          placeholder={String(config.settings.defaultTimerMinutes)}
+                          type="number"
+                          value={projectEditDraft.defaultTimerMinutes}
+                        />
+                        <span aria-hidden="true" className="numberDragAffordance" />
+                      </span>
+                    </label>
+                    <button
+                      aria-label="通常タイマーを1分増やす"
+                      className="projectTimerStepButton"
+                      onClick={() => stepProjectTimer("defaultTimerMinutes", 1)}
+                      type="button"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <div className="projectTimerFooter">
+                    <span>
+                      {projectEditDraft.defaultTimerMinutes
+                        ? `${projectEditDraft.defaultTimerMinutes}分を使用`
+                        : `全体設定 ${config.settings.defaultTimerMinutes}分を使用`}
+                    </span>
+                    <button
+                      disabled={!projectEditDraft.defaultTimerMinutes}
+                      onClick={() =>
+                        setProjectEditDraft({ ...projectEditDraft, defaultTimerMinutes: "" })
+                      }
+                      type="button"
+                    >
+                      全体設定に戻す
+                    </button>
+                  </div>
+                </div>
               </div>
               <h3 className="formSectionHeading">見た目</h3>
               <div className="fieldStack">
@@ -11233,20 +11232,20 @@ function DashboardApp() {
 
             <div className="dialogActions">
               <button
-                className="secondaryButton"
-                disabled={sourceEditSaving}
-                onClick={() => { if (!sourceEditBusyRef.current) setProjectEditDraft(null); }}
-                type="button"
-              >
-                キャンセル
-              </button>
-              <button
                 className="primaryButton"
                 disabled={!projectEditDraft.name.trim() || sourceEditSaving}
                 onClick={saveProjectEdit}
                 type="button"
               >
                 保存
+              </button>
+              <button
+                className="secondaryButton"
+                disabled={sourceEditSaving}
+                onClick={() => { if (!sourceEditBusyRef.current) setProjectEditDraft(null); }}
+                type="button"
+              >
+                キャンセル
               </button>
             </div>
           </section>
