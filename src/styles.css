@@ -3373,6 +3373,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .doNowCopy > strong {
   display: -webkit-box;
+  margin-inline-start: 15px;
   overflow: hidden;
   overflow-wrap: anywhere;
   font-size: 17px;
