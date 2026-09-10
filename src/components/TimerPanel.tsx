@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { PointerEventHandler, ReactNode } from "react";
 import { UiIcon } from "./UiIcon";
 
 export type TimerPanelVariant = "sidebar" | "mini";
@@ -17,6 +17,12 @@ type TimerPanelProps = {
   onFinish: () => void;
   waitingContent?: ReactNode;
   identity?: ReactNode;
+  clockAdjustable?: boolean;
+  clockDragging?: boolean;
+  onClockPointerCancel?: PointerEventHandler<HTMLDivElement>;
+  onClockPointerDown?: PointerEventHandler<HTMLDivElement>;
+  onClockPointerMove?: PointerEventHandler<HTMLDivElement>;
+  onClockPointerUp?: PointerEventHandler<HTMLDivElement>;
 };
 
 export function TimerPanel({
@@ -32,6 +38,12 @@ export function TimerPanel({
   onFinish,
   waitingContent,
   identity,
+  clockAdjustable = false,
+  clockDragging = false,
+  onClockPointerCancel,
+  onClockPointerDown,
+  onClockPointerMove,
+  onClockPointerUp,
 }: TimerPanelProps) {
   const stateClass =
     state === "complete"
@@ -55,7 +67,23 @@ export function TimerPanel({
       <div className="timerStateRow">
         <span className={stateClass}>{status}</span>
       </div>
-      <div className={paused ? "timerClock timerClock--paused" : "timerClock"}>{clock}</div>
+      <div
+        className={[
+          "timerClock",
+          paused ? "timerClock--paused" : "",
+          clockAdjustable ? "timerClock--adjustable" : "",
+          clockDragging ? "timerClock--dragging" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        onPointerCancel={onClockPointerCancel}
+        onPointerDown={onClockPointerDown}
+        onPointerMove={onClockPointerMove}
+        onPointerUp={onClockPointerUp}
+        title={clockAdjustable ? "上下にドラッグして分数を変更" : undefined}
+      >
+        {clock}
+      </div>
       <div className="timerProgress" aria-hidden="true">
         <span style={{ width: `${progressPercent}%` }} />
       </div>

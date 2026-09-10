@@ -523,6 +523,7 @@ type ProjectDragPreview = {
     width: number;
   };
   restoreTarget: boolean;
+  restoreEligible: boolean;
 };
 
 type InboxPointerDrag = {
@@ -556,6 +557,7 @@ type InboxDragPreview = {
     width: number;
   };
   restoreTarget: boolean;
+  restoreEligible: boolean;
 };
 
 type TodayBuilderPointerDrag = {
@@ -595,6 +597,7 @@ type TodayBuilderDragPreview = {
     width: number;
     height: number;
   };
+  todayGuidanceActive: boolean;
 };
 
 type NumberInputDragField =
@@ -1881,7 +1884,6 @@ function DashboardApp() {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastsRef = useRef<Toast[]>([]);
   toastsRef.current = toasts;
-  const [todayEditingIndex, setTodayEditingIndex] = useState<number | null>(null);
   const [todayTriggerEditingIndex, setTodayTriggerEditingIndex] = useState<number | null>(null);
   const [todayTriggerDraft, setTodayTriggerDraft] = useState("");
 
@@ -2010,6 +2012,9 @@ function DashboardApp() {
   const [todayPointerDrag, setTodayPointerDrag] = useState<TodayDragPreview | null>(null);
   const [projectPointerDrag, setProjectPointerDrag] = useState<ProjectDragPreview | null>(null);
   const [inboxPointerDrag, setInboxPointerDrag] = useState<InboxDragPreview | null>(null);
+  const builderRestoreGuidanceActive = Boolean(
+    projectPointerDrag?.restoreEligible || inboxPointerDrag?.restoreEligible,
+  );
   const [miniTransitioning, setMiniTransitioning] = useState(false);
   const [numberInputDragging, setNumberInputDragging] = useState<NumberInputDragField | null>(null);
   const [actionDragId, setActionDragId] = useState<string | null>(null);
@@ -3496,7 +3501,7 @@ function DashboardApp() {
   };
 
   const startNumberInputDrag = (
-    event: PointerEvent<HTMLLabelElement>,
+    event: PointerEvent<HTMLElement>,
     field: NumberInputDragField,
     value: number,
   ) => {
@@ -3511,7 +3516,7 @@ function DashboardApp() {
     event.currentTarget.setPointerCapture(event.pointerId);
   };
 
-  const updateNumberInputDrag = (event: PointerEvent<HTMLLabelElement>) => {
+  const updateNumberInputDrag = (event: PointerEvent<HTMLElement>) => {
     const drag = numberInputDragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     const distance = Math.abs(event.clientY - drag.startY);
@@ -3533,7 +3538,7 @@ function DashboardApp() {
     event.preventDefault();
   };
 
-  const finishNumberInputDrag = (event: PointerEvent<HTMLLabelElement>) => {
+  const finishNumberInputDrag = (event: PointerEvent<HTMLElement>) => {
     const drag = numberInputDragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     numberInputDragRef.current = null;
@@ -3556,7 +3561,7 @@ function DashboardApp() {
     }
   };
 
-  const cancelNumberInputDrag = (event: PointerEvent<HTMLLabelElement>) => {
+  const cancelNumberInputDrag = (event: PointerEvent<HTMLElement>) => {
     const drag = numberInputDragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     numberInputDragRef.current = null;
@@ -4773,10 +4778,11 @@ function DashboardApp() {
     }
     if (drag.hasMoved) {
       const overBuilder = builderRestoreTargetFromPoint(event.clientX, event.clientY);
+      const restoreEligible = sourceCanReturnToBuilder(drag.sourceKey, drag.dayKey);
       const restoreTarget = updateBuilderRestoreHover(
         event.clientX,
         event.clientY,
-        sourceCanReturnToBuilder(drag.sourceKey, drag.dayKey),
+        restoreEligible,
       );
       const target = overBuilder
         ? null
@@ -4797,6 +4803,7 @@ function DashboardApp() {
             ? projectDropIndicator(target.id, placement)
             : undefined,
         restoreTarget,
+        restoreEligible,
       });
       updateProjectAutoScroll(event.clientY);
     }
@@ -4870,10 +4877,11 @@ function DashboardApp() {
     if (!drag.hasMoved && distance >= SIDEBAR_DRAG_THRESHOLD_PX) drag.hasMoved = true;
     if (!drag.hasMoved) return;
 
+    const restoreEligible = sourceCanReturnToBuilder(drag.sourceKey, drag.dayKey);
     const restoreTarget = updateBuilderRestoreHover(
       event.clientX,
       event.clientY,
-      sourceCanReturnToBuilder(drag.sourceKey, drag.dayKey),
+      restoreEligible,
     );
     const target = builderRestoreTargetFromPoint(event.clientX, event.clientY)
       ? null
@@ -4892,6 +4900,7 @@ function DashboardApp() {
       targetIndicator:
         !restoreTarget && target && target.index !== drag.index ? target.indicator : undefined,
       restoreTarget,
+      restoreEligible,
     });
     updateProjectAutoScroll(event.clientY);
   };
@@ -5005,6 +5014,7 @@ function DashboardApp() {
         !todayTarget && target && target.index !== drag.index ? target.indicator : undefined,
       todayTargetIndex: todayTarget?.insertionIndex,
       todayTargetIndicator: todayTarget?.indicator,
+      todayGuidanceActive: canAdopt,
     });
     updateProjectAutoScroll(event.clientY);
   };
@@ -6100,14 +6110,6 @@ function DashboardApp() {
     }
   };
 
-  const updateTodayText = (index: number, text: string) => {
-    if (!config) return;
-    const items = config.today.items.map((item, itemIndex) =>
-      itemIndex === index ? { ...item, text } : item,
-    );
-    void persistConfig({ ...config, today: { ...config.today, items } });
-  };
-
   const sourceSnapshotForUndo = (current: AppConfig, sourceKey: string): unknown | null => {
     if (sourceKey.startsWith("project:")) {
       return (
@@ -6177,7 +6179,6 @@ function DashboardApp() {
     const previousSourceKey = index > 0 ? stableItems[index - 1]?.sourceKey ?? null : null;
     const nextSourceKey = stableItems[index + 1]?.sourceKey ?? null;
     const items = stableItems.filter((_, itemIndex) => itemIndex !== index);
-    setTodayEditingIndex(null);
     setTodayTriggerEditingIndex(null);
     if (
       await persistConfig({
@@ -6212,7 +6213,6 @@ function DashboardApp() {
 
   const beginTodayTriggerEdit = (index: number) => {
     if (!config) return;
-    setTodayEditingIndex(null);
     setTodayTriggerDraft(config.today.items[index]?.trigger ?? "");
     setTodayTriggerEditingIndex(index);
   };
@@ -6247,13 +6247,6 @@ function DashboardApp() {
     } else if (event.key === "Escape") {
       event.preventDefault();
       cancelTodayTriggerEdit();
-      event.currentTarget.blur();
-    }
-  };
-
-  const handleTodayEditKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter") {
-      setTodayEditingIndex(null);
       event.currentTarget.blur();
     }
   };
@@ -7848,7 +7841,16 @@ function DashboardApp() {
         ) : null}
         <TimerPanel
           active={Boolean(activeTimer)}
-          clock={activeTimer ? timerClock : `${config.settings.defaultTimerMinutes}分`}
+          clock={
+            activeTimer
+              ? timerClock
+              : String(
+                  Number.parseInt(defaultTimerDraft, 10) ||
+                    config.settings.defaultTimerMinutes,
+                ) + "分"
+          }
+          clockAdjustable={!activeTimer}
+          clockDragging={numberInputDragging === "timer"}
           identity={
             activeTimerProject ? (
               <ProjectIdentity
@@ -7863,6 +7865,15 @@ function DashboardApp() {
           onFinish={() => {
             if (activeTimer) void finishTimer(activeTimer);
           }}
+          onClockPointerCancel={!activeTimer ? cancelNumberInputDrag : undefined}
+          onClockPointerDown={
+            !activeTimer
+              ? (event) =>
+                  startNumberInputDrag(event, "timer", config.settings.defaultTimerMinutes)
+              : undefined
+          }
+          onClockPointerMove={!activeTimer ? updateNumberInputDrag : undefined}
+          onClockPointerUp={!activeTimer ? finishNumberInputDrag : undefined}
           onPause={togglePause}
           paused={Boolean(activeTimer?.paused)}
           progressPercent={timerProgressPercent}
@@ -9100,11 +9111,20 @@ function DashboardApp() {
                   </div>
                 </div>
                 <div
-                  className={
+                  className={[
+                    "todayGrid",
                     completionFeedback?.kind === "todayAll"
-                      ? "todayGrid todayGrid--allCompleteReward"
-                      : "todayGrid"
-                  }
+                      ? "todayGrid--allCompleteReward"
+                      : "",
+                    todayBuilderPointerDrag?.todayGuidanceActive
+                      ? "todayGrid--dropGuidance"
+                      : "",
+                    todayBuilderPointerDrag?.todayTargetIndicator
+                      ? "todayGrid--dropTarget"
+                      : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
                 >
                   {config.today.items.length === 0 && (
                     <div className="sectionEmptyActions">
@@ -9209,37 +9229,16 @@ function DashboardApp() {
                               />
                             </span>
                           )}
-                          {todayEditingIndex === index ? (
-                            <input
-                              aria-label="今日の項目"
-                              autoFocus
-                              className={
-                                item.done ? "todayEditInput todayEditInput--done" : "todayEditInput"
-                              }
-                              maxLength={90}
-                              onBlur={() => setTodayEditingIndex(null)}
-                              onChange={(event) => updateTodayText(index, event.target.value)}
-                              onKeyDown={handleTodayEditKeyDown}
-                              onPointerDown={(event) => event.stopPropagation()}
-                              value={item.text}
-                            />
-                          ) : (
-                            <button
-                              className={
-                                item.done
-                                  ? "todayTextButton todayTextButton--done"
-                                  : "todayTextButton"
-                              }
-                              onClick={() => {
-                                cancelTodayTriggerEdit();
-                                setTodayEditingIndex(index);
-                              }}
-                              onPointerDown={(event) => event.stopPropagation()}
-                              type="button"
-                            >
-                              {item.text || "未入力"}
-                            </button>
-                          )}
+                          <span
+                            className={
+                              item.done
+                                ? "todayTextButton todayTextButton--done"
+                                : "todayTextButton"
+                            }
+                            title={item.text || "未入力"}
+                          >
+                            {item.text || "未入力"}
+                          </span>
                           {isRunningTodayItem && (
                             <span
                               className={
@@ -9283,7 +9282,7 @@ function DashboardApp() {
                                   placeholder="例: 21時 / 夕食後"
                                   value={todayTriggerDraft}
                                 />
-                              ) : item.trigger || todayEditingIndex !== index ? (
+                              ) : (
                                 <button
                                   className={
                                     item.trigger
@@ -9296,7 +9295,7 @@ function DashboardApp() {
                                 >
                                   {item.trigger ? `${item.trigger} ▸` : "+ きっかけ"}
                                 </button>
-                              ) : null}
+                              )}
                             </div>
                             {item.done ? (
                               <span className="todayCompletedLabel">今日の分は完了</span>
@@ -9471,11 +9470,13 @@ function DashboardApp() {
               </section>
 
               <section
-                className={
-                  builderRestoreTargetActive
-                    ? "todayBuilderBand todayBuilderBand--restoreTarget"
-                    : "todayBuilderBand"
-                }
+                className={[
+                  "todayBuilderBand",
+                  builderRestoreGuidanceActive ? "todayBuilderBand--restoreTarget" : "",
+                  builderRestoreTargetActive ? "todayBuilderBand--restoreHover" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
                 data-today-builder-drop-target
               >
                 <div
@@ -9499,8 +9500,14 @@ function DashboardApp() {
                   </span>
                 </div>
 
-                {builderRestoreTargetActive && (
-                  <div className="todayBuilderRestoreDropZone">
+                {builderRestoreGuidanceActive && (
+                  <div
+                    className={
+                      builderRestoreTargetActive
+                        ? "todayBuilderRestoreDropZone todayBuilderRestoreDropZone--active"
+                        : "todayBuilderRestoreDropZone"
+                    }
+                  >
                     <span aria-hidden="true">↓</span>
                     <span>ここにドロップして今日の候補に戻す</span>
                   </div>
@@ -9671,34 +9678,52 @@ function DashboardApp() {
                       />
                     )}
                     {todayBuilderPointerDrag && (
-                      <div
-                        aria-hidden="true"
-                        className={
-                          todayBuilderPointerDrag.todayTargetIndex === undefined
-                            ? "todayBuilderDragGhost"
-                            : "todayBuilderDragGhost todayBuilderDragGhost--today"
-                        }
-                        style={{
-                          left: todayBuilderPointerDrag.pointerX - todayBuilderPointerDrag.offsetX,
-                          top: todayBuilderPointerDrag.pointerY - todayBuilderPointerDrag.offsetY,
-                          width: Math.min(360, todayBuilderPointerDrag.width),
-                        }}
-                      >
-                        <span className="todayBuilderSource">
-                          {todayBuilderCandidates.find(
-                            (candidate) =>
-                              candidate.sourceKey === todayBuilderPointerDrag.sourceKey ||
-                              candidate.sourceAliases?.includes(todayBuilderPointerDrag.sourceKey),
-                          )?.source}
-                        </span>
-                        <strong>
-                          {todayBuilderCandidates.find(
-                            (candidate) =>
-                              candidate.sourceKey === todayBuilderPointerDrag.sourceKey ||
-                              candidate.sourceAliases?.includes(todayBuilderPointerDrag.sourceKey),
-                          )?.text}
-                        </strong>
-                      </div>
+                      (() => {
+                        const candidate = todayBuilderCandidates.find(
+                          (item) =>
+                            item.sourceKey === todayBuilderPointerDrag.sourceKey ||
+                            item.sourceAliases?.includes(todayBuilderPointerDrag.sourceKey),
+                        );
+                        const project = candidate?.projectId
+                          ? projectsById.get(candidate.projectId)
+                          : undefined;
+                        return (
+                          <div
+                            aria-hidden="true"
+                            className={
+                              todayBuilderPointerDrag.todayTargetIndex === undefined
+                                ? "todayBuilderDragGhost"
+                                : "todayBuilderDragGhost todayBuilderDragGhost--today"
+                            }
+                            data-project-color={
+                              project
+                                ? resolveProjectColorId(project.id, project.colorId)
+                                : undefined
+                            }
+                            style={{
+                              left:
+                                todayBuilderPointerDrag.pointerX -
+                                todayBuilderPointerDrag.offsetX,
+                              top:
+                                todayBuilderPointerDrag.pointerY -
+                                todayBuilderPointerDrag.offsetY,
+                              width: Math.min(300, todayBuilderPointerDrag.width),
+                            }}
+                          >
+                            {project ? (
+                              <ProjectIdentity
+                                colorId={project.colorId}
+                                compact
+                                name={project.name}
+                                projectId={project.id}
+                              />
+                            ) : (
+                              <span className="sourceProjectNone">プロジェクトなし</span>
+                            )}
+                            <strong>{candidate?.text}</strong>
+                          </div>
+                        );
+                      })()
                     )}
                   </div>
                 )}
@@ -9898,7 +9923,7 @@ function DashboardApp() {
                         style={{
                           left: projectPointerDrag.pointerX - projectPointerDrag.offsetX,
                           top: projectPointerDrag.pointerY - projectPointerDrag.offsetY,
-                          width: Math.min(360, projectPointerDrag.width),
+                          width: Math.min(300, projectPointerDrag.width),
                         }}
                       >
                         {(() => {
@@ -10097,7 +10122,7 @@ function DashboardApp() {
                             style={{
                               left: inboxPointerDrag.pointerX - inboxPointerDrag.offsetX,
                               top: inboxPointerDrag.pointerY - inboxPointerDrag.offsetY,
-                              width: Math.min(360, inboxPointerDrag.width),
+                              width: Math.min(300, inboxPointerDrag.width),
                             }}
                           >
                             <span className="inboxProjectIdentity">
