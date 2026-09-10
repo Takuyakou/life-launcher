@@ -70,6 +70,10 @@
 
 ローカルコミット: `da8e12480cc559523cd94d4f6e75eab9817452c2`。
 GitHubへの初回pushは送信先と35ファイルの明示承認が必要として自動承認で拒否され、送信されなかった。その後ユーザーが公開先Takuyakou/life-launcherのdocs/p72-00-auditブランチへの送信とmain向けPR作成を承認したため再開。mainへのマージ許可ではない。
-現在状態: **AWAITING_PR_CI**。P72-01以降は引き続き未承認。
+現在状態: **COMPLETE_AWAITING_HUMAN_REVIEW**。P72-01以降は引き続き未承認。
 
 監査PR: [#42](https://github.com/Takuyakou/life-launcher/pull/42)。base main / head docs/p72-00-audit。上記head_shaはPRリンクを記録する直前の監査内容commitで、次のmetadata commitはCIで別途確認する。
+
+GitHub CI run [34436038731](https://github.com/Takuyakou/life-launcher/actions/runs/34436038731): commit `823f02298bd5ac93bc8ba964da4ca7b2f09b4be8`、verify SUCCESS（4分59秒）。CIのnpm ci / public:check / lint / build / 全Visual QA / Rust fmt・check・clippy・tests / npm audit 2種がすべてPASS。actions/checkout@v4とsetup-node@v4のNode 20 deprecation警告1件は非blockingのCI基盤警告。
+
+このCI結果を記録するmetadata commitだけ追加し、その最終commitのCIも外部PR上で確認して終了する。自己参照を避けるためstateのhead_sha/ci_shaは、監査内容とPRリンクを含む直前の検証済みcommitを示す。

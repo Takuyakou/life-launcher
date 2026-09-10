@@ -29,13 +29,13 @@
   },
   "stages": {
     "P72-00": {
-      "status": "AWAITING_PR_CI",
+      "status": "COMPLETE_AWAITING_HUMAN_REVIEW",
       "instruction": "stages/P72-00-audit.md",
       "branch": "docs/p72-00-audit",
       "pr": "https://github.com/Takuyakou/life-launcher/pull/42",
-      "head_sha": "981808d9a7f49fa66294c79ad667d37ea4b57f93",
-      "ci_sha": null,
-      "ci_status": "PENDING",
+      "head_sha": "823f02298bd5ac93bc8ba964da4ca7b2f09b4be8",
+      "ci_sha": "823f02298bd5ac93bc8ba964da4ca7b2f09b4be8",
+      "ci_status": "SUCCESS",
       "human_approved": false,
       "approval_text": null,
       "merge_sha": null,
