@@ -22,6 +22,17 @@ function Assert-PathInsideRepo([string]$Path) {
   }
 }
 
+function Get-Sha256Hex([string]$Path) {
+  $stream = [System.IO.File]::OpenRead($Path)
+  $sha256 = [System.Security.Cryptography.SHA256]::Create()
+  try {
+    return ([System.BitConverter]::ToString($sha256.ComputeHash($stream))).Replace("-", "")
+  } finally {
+    $sha256.Dispose()
+    $stream.Dispose()
+  }
+}
+
 Assert-PathInsideRepo $CandidateRoot
 Set-Location $RepoRoot
 
@@ -35,13 +46,13 @@ if ($SkipBuild) {
 } else {
   & (Join-Path $PSScriptRoot "package-windows-installer.ps1") -CandidateRoot $CandidateRoot
 }
-if ($LASTEXITCODE -ne 0) {
-  throw "Installer packaging failed with exit code $LASTEXITCODE"
+if (-not $?) {
+  throw "Installer packaging failed"
 }
 
 & (Join-Path $PSScriptRoot "package-windows.ps1") -SkipBuild -CandidateRoot $CandidateRoot
-if ($LASTEXITCODE -ne 0) {
-  throw "Standalone packaging failed with exit code $LASTEXITCODE"
+if (-not $?) {
+  throw "Standalone packaging failed"
 }
 
 if (-not (Test-Path $ReleaseNotesSource)) {
@@ -58,7 +69,7 @@ foreach ($name in $ArtifactNames) {
 }
 
 $ChecksumLines = foreach ($name in $ArtifactNames) {
-  $hash = (Get-FileHash -LiteralPath (Join-Path $CandidateRoot $name) -Algorithm SHA256).Hash
+  $hash = Get-Sha256Hex (Join-Path $CandidateRoot $name)
   "$hash  $name"
 }
 Set-Content -LiteralPath (Join-Path $CandidateRoot $ChecksumName) -Value $ChecksumLines -Encoding ASCII

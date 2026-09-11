@@ -34,3 +34,32 @@ test("Japanese and English READMEs share the same downloads and images", () => {
   };
   expect(extract(readmes[0])).toEqual(extract(readmes[1]));
 });
+
+test("release metadata and notes share the package version", () => {
+  const cargoManifest = readFileSync("src-tauri/Cargo.toml", "utf8");
+  const cargoLock = readFileSync("src-tauri/Cargo.lock", "utf8");
+  const tauriConfig = JSON.parse(readFileSync("src-tauri/tauri.conf.json", "utf8"));
+  const changelog = readFileSync("CHANGELOG.md", "utf8");
+  const releaseNotesPath = `docs/releases/v${version}.md`;
+
+  expect(cargoManifest).toMatch(new RegExp(`^version = "${version}"$`, "m"));
+  expect(cargoLock).toMatch(
+    new RegExp(`name = "life-launcher"\\r?\\nversion = "${version}"`),
+  );
+  expect(tauriConfig.version).toBe(version);
+  expect(changelog).toContain(`## ${version} -`);
+  expect(existsSync(releaseNotesPath)).toBe(true);
+
+  const releaseNotes = readFileSync(releaseNotesPath, "utf8");
+  for (const suffix of ["-setup.exe", ".exe", "-portable.zip"]) {
+    expect(releaseNotes).toContain(`Life-Launcher-v${version}-windows-x64${suffix}`);
+  }
+});
+
+test("release candidate hashing does not depend on Get-FileHash availability", () => {
+  const script = readFileSync("scripts/prepare-release-candidate.ps1", "utf8");
+  expect(script).toContain("[System.Security.Cryptography.SHA256]::Create()");
+  expect(script).toContain("Get-Sha256Hex (Join-Path $CandidateRoot $name)");
+  expect(script).not.toContain("Get-FileHash");
+  expect(script).not.toContain("$LASTEXITCODE");
+});

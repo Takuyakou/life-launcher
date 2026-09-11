@@ -57,25 +57,25 @@ Web Demoでは合成データを使い、今日の候補選択・タイマー・
 
 ## Download
 
-Life Launcherは、[GitHub Releases](https://github.com/Takuyakou/life-launcher/releases/latest)からダウンロードできます。現在の正式リリースは **v1.1.0** です。
+Life Launcherは、[GitHub Releases](https://github.com/Takuyakou/life-launcher/releases/latest)からダウンロードできます。現在の正式リリースは **v1.2.0** です。
 
 ### Installer - Recommended
 
 通常はこちらを利用してください。
 
-`Life-Launcher-v1.1.0-windows-x64-setup.exe`
+`Life-Launcher-v1.2.0-windows-x64-setup.exe`
 
 ### Standalone EXE
 
 インストールせず直接起動できます。
 
-`Life-Launcher-v1.1.0-windows-x64.exe`
+`Life-Launcher-v1.2.0-windows-x64.exe`
 
 ### Portable ZIP
 
 ZIPを展開して利用できます。
 
-`Life-Launcher-v1.1.0-windows-x64-portable.zip`
+`Life-Launcher-v1.2.0-windows-x64-portable.zip`
 
 ZIP版もユーザーデータは`%APPDATA%\life-launcher`へ保存します。USBなどへデータごと持ち運ぶ方式ではありません。
 
@@ -83,13 +83,13 @@ ZIP版もユーザーデータは`%APPDATA%\life-launcher`へ保存します。U
 
 配布ファイルの整合性はReleaseに含まれる`SHA256SUMS.txt`で確認できます。
 
-## v1.0からの更新
+## 更新について
 
 更新前にLife Launcherを完全終了し、`%APPDATA%\life-launcher`フォルダーを別の場所へコピーしてバックアップしてください。自動アップデーターはありません。
 
-v1.0の今日の3件で識別用のsource keyがない項目は、移行時に「完了」が「未完了」に戻ります。Sessionの実行記録は削除しません。この移行だけでは、設定を書き換える前の自動バックアップは保証されません。
+v1.1からv1.2への更新ではconfig schemaを変更していません。v1.0の今日の3件で識別用のsource keyがない項目は、移行時に「完了」が「未完了」に戻ります。Sessionの実行記録は削除しません。
 
-詳しくは [v1.1.0 Release notes](docs/releases/v1.1.0.md) と [CHANGELOG](CHANGELOG.md) を参照してください。機能の全体像は [OVERVIEW](docs/OVERVIEW.md)、詳細は [現行仕様書](docs/spec/current-spec.md) にまとめています。
+詳しくは [v1.2.0 Release notes](docs/releases/v1.2.0.md) と [CHANGELOG](CHANGELOG.md) を参照してください。機能の全体像は [OVERVIEW](docs/OVERVIEW.md)、詳細は [現行仕様書](docs/spec/current-spec.md) にまとめています。
 
 ## 動作要件
 
