@@ -841,24 +841,18 @@ mod tests {
     }
 
     #[test]
-    fn date_key_uses_previous_day_before_day_start_hour() {
+    fn date_key_changes_at_the_configured_day_start_hour() {
         let timezone = FixedOffset::east_opt(9 * 60 * 60).expect("timezone");
         let before_start = timezone
             .with_ymd_and_hms(2026, 7, 5, 3, 59, 0)
             .single()
             .expect("datetime");
-
-        assert_eq!(date_key_at(before_start, 4), "2026-07-04");
-    }
-
-    #[test]
-    fn date_key_uses_current_day_at_day_start_hour() {
-        let timezone = FixedOffset::east_opt(9 * 60 * 60).expect("timezone");
         let at_start = timezone
             .with_ymd_and_hms(2026, 7, 5, 4, 0, 0)
             .single()
             .expect("datetime");
 
+        assert_eq!(date_key_at(before_start, 4), "2026-07-04");
         assert_eq!(date_key_at(at_start, 4), "2026-07-05");
     }
 

@@ -32,14 +32,14 @@ async function prepare(
   return errors;
 }
 
-test("capture public main dashboard", async ({ page }) => {
+test("@manual capture public main dashboard", async ({ page }) => {
   const errors = await prepare(page, "/", "main", { width: 1366, height: 768 });
   await expect(page.getByText("最優先の一手を始める", { exact: true })).toBeVisible();
   await page.screenshot({ path: resolve(SCREENSHOT_DIR, "main-dashboard.png") });
   expect(errors).toEqual([]);
 });
 
-test("capture public dictionary", async ({ page }) => {
+test("@manual capture public dictionary", async ({ page }) => {
   const errors = await prepare(page, "/?view=dictionary", "dictionary", {
     width: 1000,
     height: 640,
@@ -50,7 +50,7 @@ test("capture public dictionary", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test("capture public instruction viewer", async ({ page }) => {
+test("@manual capture public instruction viewer", async ({ page }) => {
   const errors = await prepare(page, "/?view=instruction", "life-launcher-instruction", {
     width: 1080,
     height: 680,
@@ -64,7 +64,7 @@ test("capture public instruction viewer", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test("create public screenshot contact sheet", async ({ page }) => {
+test("@manual create public screenshot contact sheet", async ({ page }) => {
   const items = [
     ["Main dashboard", "main-dashboard.png"],
     ["Dictionary", "dictionary.png"],

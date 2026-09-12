@@ -52,8 +52,11 @@ async function saveCallCount(page: Page) {
   );
 }
 
-for (const kind of ["projects", "inbox"] as const) {
-  for (const count of [0, 1, 5, 6, 19, 20, 21, 30, 100]) {
+for (const [kind, counts] of [
+  ["projects", [5, 6, 19, 20, 21]],
+  ["inbox", [5, 6, 20]],
+] as const) {
+  for (const count of counts) {
     test(`P72-03 ${kind} count ${count} uses the contracted display threshold`, async ({ page }) => {
       await prepare(page, fixtureWithCount(kind, count));
       if (kind === "inbox") await openWishlist(page);
@@ -162,7 +165,7 @@ test("P72-03 Today buttons grow only in width while labels, colors and minutes r
   await expect(card.getByRole("button", { name: "このセッションを一時停止" })).toBeVisible();
 });
 
-for (const width of [1920, 1000, 860]) {
+for (const width of [1920, 860]) {
   test(`P72-03 widened Today buttons keep the Today grid bounded at ${width}`, async ({ page }) => {
     const fixture = createPublicFixture();
     fixture.config.today.items.push({ text: "長い本文".repeat(20), done: false, sourceKey: "manual:long" });

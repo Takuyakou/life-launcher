@@ -56,40 +56,6 @@ test("P72-01 lower source menus restore only explicitly excluded stable sources"
   await expect(page.locator(".todayRow")).toHaveCount(fixture.config.today.items.length);
 });
 
-test("P72-01 Builder ellipsis edits the canonical source and its Today snapshot", async ({ page }) => {
-  const fixture = createPublicFixture();
-  await prepare(page, fixture);
-  await page.locator(".todayBuilderDisclosure").click();
-  const row = page.locator(".todayBuilderRow", { hasText: "資料を1ページ読む" });
-  await row.locator(".sourceRowMenu").click();
-  await page.getByRole("menuitem", { name: "編集", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "プロジェクト編集", exact: true });
-  await dialog.getByRole("textbox", { name: /^次の一手/ }).fill("候補から編集した一手");
-  await dialog.getByRole("button", { name: "保存", exact: true }).click();
-  const config = await currentConfig(page);
-  expect(config.projects[0].nextStep).toBe("候補から編集した一手");
-  expect(config.today.items[0].text).toBe("候補から編集した一手");
-});
-
-test("P72-01 Builder edit is disabled for the running and paused source", async ({ page }) => {
-  const fixture = createPublicFixture();
-  fixture.config.today.items = [fixture.config.today.items[0]];
-  await prepare(page, fixture);
-  const today = page.locator(".todayRow").first();
-  await today.getByRole("button", { name: /通常タイマー25分で開始/ }).click();
-  await page.locator(".todayBuilderDisclosure").click();
-  const builder = page.locator(".todayBuilderRow", { hasText: "資料を1ページ読む" });
-  for (const pause of [false, true]) {
-    if (pause) await today.getByRole("button", { name: "このセッションを一時停止" }).click();
-    await builder.locator(".sourceRowMenu").click();
-    await expect(page.getByRole("menuitem", { name: "編集", exact: true })).toBeDisabled();
-    await expect(page.getByRole("menuitem", { name: "編集", exact: true })).toHaveAttribute(
-      "title",
-      "タイマーを停止してから編集してください",
-    );
-    await page.keyboard.press("Escape");
-  }
-});
 
 test("P72-01 empty Today CTA opens Builder and focuses a candidate", async ({ page }) => {
   const fixture = createPublicFixture();

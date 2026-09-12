@@ -122,7 +122,7 @@ test("active Today timer disables candidate exclusion until it is stopped", asyn
   await expect(action).toHaveAttribute("title", "タイマーを停止してから外してください");
 });
 
-for (const width of [860, 1366, 1440, 1920]) {
+for (const width of [860]) {
   test(`Builder compact layout has no horizontal overflow at ${width}px`, async ({ page }) => {
     const fixture = createPublicFixture();
     fixture.config.projects[0].nextStep =

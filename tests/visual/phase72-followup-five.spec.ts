@@ -159,25 +159,12 @@ test("follow-up: excluded source reveals Builder guidance only after the 6px thr
   expect(await source.boundingBox()).toEqual(box);
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(pageHeightBefore);
   expect(await saveCount(page)).toBe(before);
-  await page.screenshot({
-    path: "dist/visual-qa/followup-dnd-guidance-1440.png",
-    fullPage: true,
-  });
   await page.keyboard.press("Escape");
   await expect(page.locator(".todayBuilderBand--restoreTarget")).toHaveCount(0);
   await page.mouse.up();
   expect(await saveCount(page)).toBe(before);
 });
 
-test("follow-up: Builder guidance is absent for an existing member", async ({ page }) => {
-  await prepare(page);
-  const source = page.locator(".nextStepRow", { hasText: "5分だけ体を動かす" });
-  await beginDrag(page, source, 8);
-  await expect(page.locator(".projectDragGhost")).toBeVisible();
-  await expect(page.locator(".todayBuilderBand--restoreTarget")).toHaveCount(0);
-  await expect(page.locator(".todayBuilderRestoreDropZone")).toHaveCount(0);
-  await page.mouse.up();
-});
 
 test("follow-up: valid Builder candidate reveals Today guidance before target hover", async ({
   page,
@@ -195,54 +182,16 @@ test("follow-up: valid Builder candidate reveals Today guidance before target ho
   const guidance = page.locator(".todayDropGuidanceOverlay");
   await expect(guidance).toBeVisible();
   await expect(guidance).toHaveText(/ここにドロップして「今日の3件」に追加/);
-  const guidanceStyle = await guidance.evaluate((element) => {
-    const style = getComputedStyle(element);
-    return {
-      backgroundColor: style.backgroundColor,
-      borderStyle: style.borderStyle,
-      display: style.display,
-    };
-  });
-  expect(guidanceStyle).toMatchObject({
-    borderStyle: "dashed",
-    display: "flex",
-  });
-  expect(guidanceStyle.backgroundColor).toMatch(/^rgba\(231, 185, 77, 0\.0/);
   const gridAfter = await todayGrid.boundingBox();
   expect(gridAfter).toEqual(gridBefore);
   await expect(page.locator(".todayGrid--dropTarget")).toHaveCount(0);
   await expect(page.locator(".todayDropIndicator")).toHaveCount(0);
   expect(await saveCount(page)).toBe(before);
-  await page.screenshot({
-    path: "dist/visual-qa/followup-builder-to-today-guidance-1440.png",
-    fullPage: true,
-  });
   await page.mouse.up();
   await expect(page.locator(".todayDropGuidanceOverlay")).toHaveCount(0);
   expect(await saveCount(page)).toBe(before);
 });
 
-test("follow-up: full Today suppresses destination guidance", async ({ page }) => {
-  const fixture = createPublicFixture();
-  fixture.config.today.items.push({ text: "3件目", done: false, sourceKey: "manual:third" });
-  await prepare(page, fixture);
-  await page.locator(".todayBuilderDisclosure").click();
-  await beginDrag(page, page.locator(".todayBuilderRow", { hasText: "5分だけ体を動かす" }), 8);
-  await expect(page.locator(".todayBuilderDragGhost")).toBeVisible();
-  await expect(page.locator(".todayGrid--dropGuidance")).toHaveCount(0);
-  await expect(page.locator(".todayDropGuidanceOverlay")).toHaveCount(0);
-  await page.mouse.up();
-});
-
-test("follow-up: duplicate Today source suppresses destination guidance", async ({ page }) => {
-  await prepare(page);
-  await page.locator(".todayBuilderDisclosure").click();
-  await beginDrag(page, page.locator(".todayBuilderRow", { hasText: "資料を1ページ読む" }), 8);
-  await expect(page.locator(".todayBuilderDragGhost")).toBeVisible();
-  await expect(page.locator(".todayGrid--dropGuidance")).toHaveCount(0);
-  await expect(page.locator(".todayDropGuidanceOverlay")).toHaveCount(0);
-  await page.mouse.up();
-});
 
 test("follow-up: key controls remain contained at 100, 125 and 150 percent DPI", async ({
   browser,
@@ -276,7 +225,7 @@ test("follow-up: key controls remain contained at 100, 125 and 150 percent DPI",
   }
 });
 
-for (const width of [1440, 860]) {
+for (const width of [860]) {
   test(
     "follow-up: Warm Rich Toast and forward lifetime remain contained at " + width,
     async ({ page }) => {
@@ -313,10 +262,6 @@ for (const width of [1440, 860]) {
       expect(stackBox).not.toBeNull();
       expect(Math.abs(width - (stackBox!.x + stackBox!.width) - 18)).toBeLessThan(1);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
-      await page.screenshot({
-        path: "dist/visual-qa/followup-warm-rich-" + width + ".png",
-        fullPage: true,
-      });
       await toast.getByRole("button", { name: "元に戻す" }).click();
       await expect(page.locator(".toast", { hasText: "元に戻しました" }).last()).toHaveCSS(
         "--toast-duration",

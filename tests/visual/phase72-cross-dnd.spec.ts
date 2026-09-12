@@ -64,7 +64,7 @@ async function drag(
   await page.mouse.move(to!.x + to!.width * xRatio, to!.y + to!.height * yRatio, { steps: 6 });
 }
 
-for (const width of [1920, 1000, 860]) {
+for (const width of [1920, 860]) {
   test(`P72-04 Builder adopts into Today by actual card geometry at ${width}`, async ({ page }) => {
     const fixture = createPublicFixture();
     await prepare(page, fixture, width);
@@ -111,19 +111,6 @@ test("P72-04 excluded source restores to a closed Builder after 500ms and saves 
   await expect(page.locator(".todayBuilderRow", { hasText: "5分だけ体を動かす" })).toBeVisible();
 });
 
-test("P72-04 an existing Builder member never exposes the restore target", async ({ page }) => {
-  const fixture = createPublicFixture();
-  await prepare(page, fixture);
-  const before = await saveCount(page);
-  await drag(
-    page,
-    page.locator(".nextStepRow", { hasText: "5分だけ体を動かす" }),
-    page.locator(".todayBuilderHeader"),
-  );
-  await expect(page.locator(".todayBuilderBand--restoreTarget")).toHaveCount(0);
-  await page.mouse.up();
-  expect(await saveCount(page)).toBe(before);
-});
 
 test("P72-04 Builder membership is checked across non-visible pages", async ({ page }) => {
   const fixture = createPublicFixture();

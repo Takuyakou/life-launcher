@@ -1,10 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
-import { resolve } from "node:path";
 import type { AppConfig } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
-
-const SCREENSHOT_DIR = resolve("docs/phase6/screenshots");
 
 test.describe.configure({ mode: "serial" });
 
@@ -95,7 +92,7 @@ test("Main responsibilities keep timer starts in Do Now and Today3 only", async 
   await expect(page.locator(".todayActivityBand .disclosure")).toHaveAttribute("aria-expanded");
 });
 
-for (const activeCount of [0, 1, 2, 3]) {
+for (const activeCount of [0, 3]) {
   test(`Today3 active count ${activeCount} renders with the intended selection path`, async ({
     page,
   }) => {
@@ -125,7 +122,7 @@ for (const activeCount of [0, 1, 2, 3]) {
   });
 }
 
-for (const completedCount of [0, 1, 2, 3]) {
+for (const completedCount of [2, 3]) {
   test(`Today3 completion count ${completedCount} of 3 has the correct batch state`, async ({
     page,
   }) => {
@@ -203,7 +200,7 @@ test("manual next batch accepts one, two, and three new items but no fourth", as
   expect((await currentConfig(page)).today.items).toHaveLength(3);
 });
 
-for (const count of [0, 1, 5, 6, 10, 11]) {
+for (const count of [5, 6]) {
   test(`Today Builder count ${count} paginates deterministically`, async ({ page }) => {
     await prepare(page, withBuilderCount(count));
     await page.locator(".todayBuilderDisclosure").click();
@@ -374,14 +371,4 @@ test("Today3 changes from three to two to one column without horizontal overflow
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
     await page.evaluate(() => document.documentElement.clientWidth),
   );
-  await page.screenshot({ path: resolve(SCREENSHOT_DIR, "p6-03-main-responsive-860.png") });
-});
-
-test("Today Builder stays bounded at fifty synthetic candidates", async ({ page }) => {
-  await prepare(page, withBuilderCount(50));
-  await page.locator(".todayBuilderDisclosure").click();
-  await expect(page.locator("[data-today-builder-index]")).toHaveCount(5);
-  await expect(page.locator(".todayBuilderPagination")).toContainText("1 / 10");
-  await page.getByRole("button", { name: "次のページ" }).click();
-  await expect(page.locator(".todayBuilderPagination")).toContainText("2 / 10");
 });

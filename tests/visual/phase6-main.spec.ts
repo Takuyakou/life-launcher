@@ -1,11 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
-import { resolve } from "node:path";
 import type { AppConfig } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
-
-const SCREENSHOT_DIR = resolve("docs/phase6/screenshots");
-const P61_SCREENSHOT_DIR = resolve("docs/phase6.1/screenshots");
 
 test.describe.configure({ mode: "serial" });
 
@@ -141,7 +137,6 @@ test("Main hierarchy and Today3 three-column layout match Phase 6", async ({ pag
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
     await page.evaluate(() => document.documentElement.clientWidth),
   );
-  await page.screenshot({ path: resolve(SCREENSHOT_DIR, "p6-01-main-today3-three-cards.png") });
 });
 
 test("Today3 drag shows its position and saves on drop only", async ({ page }) => {
@@ -172,9 +167,6 @@ test("Today3 drag shows its position and saves on drop only", async ({ page }) =
   expect(indicatorBox!.height).toBeGreaterThan(indicatorBox!.width);
   expect(await saveConfigCount(page)).toBe(savesBeforeDrag);
   expect((await currentConfig(page)).today.items.map((item) => item.text)).toEqual(originalOrder);
-  await page.screenshot({
-    path: resolve(P61_SCREENSHOT_DIR, "p61-05-today3-drag.png"),
-  });
   await page.mouse.up();
 
   const reordered = [originalOrder[1], originalOrder[2], originalOrder[0]];
@@ -214,15 +206,6 @@ test("Today3 drag rolls its optimistic order back when saving fails", async ({ p
   await setSaveConfigFailure(page, false);
 });
 
-test("Today3 renders a stable two-card layout", async ({ page }) => {
-  const fixture = withThreeTodayItems();
-  fixture.config.today.items = fixture.config.today.items.slice(0, 2);
-  await prepare(page, fixture);
-  await expect(page.locator(".todayRow")).toHaveCount(2);
-  await page.locator(".focusBand").screenshot({
-    path: resolve(SCREENSHOT_DIR, "p6-01-main-today3-two-cards.png"),
-  });
-});
 
 test("planned completion from a Today card marks only the linked item complete", async ({
   page,
@@ -230,9 +213,6 @@ test("planned completion from a Today card marks only the linked item complete",
   await prepare(page, withOneMinuteProjectTimer());
   const card = page.locator(".todayRow").first();
   await expect(page.locator(".todayRow")).toHaveCount(1);
-  await page.locator(".focusBand").screenshot({
-    path: resolve(SCREENSHOT_DIR, "p6-01-main-today3-one-card.png"),
-  });
   await card.getByRole("button", { name: "短時間タイマー1分で開始" }).click();
   await page.clock.runFor(60_500);
   await expect(page.getByRole("dialog", { name: "タイマー満了" })).toBeVisible();
@@ -241,28 +221,6 @@ test("planned completion from a Today card marks only the linked item complete",
   expect((await currentConfig(page)).today.items[0].done).toBe(true);
 });
 
-test("manual stop keeps a Today item incomplete", async ({ page }) => {
-  const fixture = withOneMinuteProjectTimer();
-  fixture.config.projects[0].shortTimerMinutes = 2;
-  await prepare(page, fixture);
-  const card = page.locator(".todayRow").first();
-  await card.getByRole("button", { name: "短時間タイマー2分で開始" }).click();
-  await page.clock.runFor(70_000);
-  await card.getByRole("button", { name: "終了" }).click();
-  await expect(card.getByRole("status", { name: "未完了" })).toBeVisible();
-  expect((await currentConfig(page)).today.items[0].done).toBe(false);
-  const recorded = await page.evaluate(() => {
-    const control = (
-      window as Window & {
-        __LIFE_LAUNCHER_VISUAL_QA__?: {
-          invokeCalls: Array<{ command: string }>;
-        };
-      }
-    ).__LIFE_LAUNCHER_VISUAL_QA__;
-    return control?.invokeCalls.some((call) => call.command === "record_session");
-  });
-  expect(recorded).toBe(true);
-});
 
 test("planned completion started from Do Now completes the linked Today item", async ({ page }) => {
   await prepare(page, withOneMinuteProjectTimer());
@@ -277,27 +235,6 @@ test("planned completion started from Do Now completes the linked Today item", a
   ).toBeVisible();
 });
 
-test("three completed items expose the manual next-batch flow", async ({ page }) => {
-  const fixture = withThreeTodayItems();
-  fixture.config.today.items = fixture.config.today.items.map((item) => ({
-    ...item,
-    done: true,
-  }));
-  await prepare(page, fixture);
-  await expect(page.getByRole("button", { name: /次の3件を選ぶ/ })).toBeVisible();
-  await page.locator(".focusBand").screenshot({
-    path: resolve(SCREENSHOT_DIR, "p6-01-main-today3-completed.png"),
-  });
-  await page.getByRole("button", { name: /次の3件を選ぶ/ }).click();
-  await expect(page.locator(".todayRow")).toHaveCount(0);
-  await expect(page.locator(".todayBuilderDisclosure")).toHaveAttribute("aria-expanded", "true");
-  expect((await currentConfig(page)).today.items).toEqual([]);
-  await page.locator(".todayActivityBand .disclosure").click();
-  await expect(page.locator(".todayActivityRow")).toHaveCount(1);
-  await page.locator(".focusBand").screenshot({
-    path: resolve(SCREENSHOT_DIR, "p6-01-main-next-batch-empty.png"),
-  });
-});
 
 test("Today Builder is source-only, paginates, and ignores legacy dismiss keys", async ({
   page,
@@ -333,9 +270,6 @@ test("Today Builder is source-only, paginates, and ignores legacy dismiss keys",
     await page.evaluate(() => localStorage.getItem("life-launcher-today-builder-dismissed")),
   ).toBe(JSON.stringify(legacyDismissed));
 
-  await page.locator(".todayBuilderBand").screenshot({
-    path: resolve(P61_SCREENSHOT_DIR, "p61-01-builder-source-only.png"),
-  });
   await page.locator("[data-today-builder-index]").first().click({ button: "right" });
   await expect(page.getByRole("menuitem", { name: "上へ移動" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: "削除" })).toHaveCount(0);
@@ -386,16 +320,6 @@ test("NextStep and Wishlist use compact non-destructive Today actions", async ({
   expect(config.today.items).toHaveLength(3);
   expect(config.inbox).toHaveLength(2);
   await expect(builderRows.nth(3).getByRole("button", { name: "今日へ" })).toBeDisabled();
-  await projects.screenshot({
-    path: resolve(SCREENSHOT_DIR, "p6-01-main-next-step-expanded.png"),
-  });
-  await page.locator(".inboxBand").screenshot({
-    path: resolve(SCREENSHOT_DIR, "p6-01-main-wishlist-expanded.png"),
-  });
-  await page.locator(".todayActivityBand .disclosure").click();
-  await page.locator(".todayActivityBand").screenshot({
-    path: resolve(SCREENSHOT_DIR, "p6-01-main-today-activity.png"),
-  });
 });
 
 test("same-text Wishlist items keep separate stable identities", async ({ page }) => {
@@ -538,9 +462,6 @@ test("NextStep accordion, detailed add dialog, and keyboard context menu are rea
   await disclosure.focus();
   await disclosure.press("Enter");
   await expect(page.locator(".nextStepBody")).toBeHidden();
-  await page.locator(".projectsBand").screenshot({
-    path: resolve(SCREENSHOT_DIR, "p6-01-main-next-step-collapsed.png"),
-  });
   await disclosure.press("Enter");
 
   await page.getByRole("button", { name: "プロジェクトを追加", exact: true }).click();

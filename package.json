@@ -13,8 +13,8 @@
     "package:windows:rc": "powershell -ExecutionPolicy Bypass -File scripts/prepare-release-candidate.ps1",
     "lint": "set ESLINT_USE_FLAT_CONFIG=false&& eslint . --ext ts,tsx --max-warnings=0",
     "format": "prettier --write .",
-    "test:visual": "playwright test",
-    "screenshot:public": "playwright test tests/visual/public-screenshots.spec.ts",
+    "test:visual": "playwright test --grep-invert \"@manual\"",
+    "screenshot:public": "playwright test tests/visual/public-screenshots.spec.ts --grep \"@manual\"",
     "public:check": "node scripts/check-public-safety.mjs"
   },
   "dependencies": {

@@ -1,10 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
-import { resolve } from "node:path";
 import type { AppConfig, LauncherButton } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
-
-const SCREENSHOT_DIR = resolve("docs/phase6/screenshots");
 
 test.describe.configure({ mode: "serial" });
 
@@ -120,9 +117,6 @@ test("category focus moves independently and selection style is shared", async (
   await expect(toolsTab).toBeFocused();
   await expect(toolsTab).toHaveCSS("outline-style", "solid");
   expect((await tabStyle(toolsTab)).backgroundColor).toBe(allSelected.backgroundColor);
-  await page.screenshot({
-    path: resolve(SCREENSHOT_DIR, "p6-02-dictionary-selected-focus.png"),
-  });
 
   await page.keyboard.press("ArrowDown");
   await expect(page.locator(".dictionaryTile:focus")).toHaveCount(1);
@@ -185,10 +179,8 @@ test("tile arrows follow visual rows and adapt after resize", async ({ page }) =
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
     await page.evaluate(() => document.documentElement.clientWidth),
   );
-  await page.screenshot({ path: resolve(SCREENSHOT_DIR, "p6-02-dictionary-narrow.png") });
 
   await page.setViewportSize({ width: 1200, height: 700 });
-  await page.screenshot({ path: resolve(SCREENSHOT_DIR, "p6-02-dictionary-wide.png") });
 });
 
 test("Enter launches a tile while search input keeps native arrow behavior", async ({ page }) => {
@@ -220,9 +212,6 @@ test("Dictionary keyboard menu reveals local items but not URLs", async ({ page 
   await expect(page.getByRole("menuitem", { name: "編集" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: "削除" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: "エクスプローラーで表示する" })).toBeVisible();
-  await page.screenshot({
-    path: resolve(SCREENSHOT_DIR, "p6-02-dictionary-context-menu.png"),
-  });
   await page.getByRole("menuitem", { name: "エクスプローラーで表示する" }).click();
   await expect
     .poll(async () =>
@@ -251,7 +240,6 @@ test("Quick keyboard menu uses the same reveal command and hides it for URLs", a
   await expect(page.getByRole("menuitem", { name: "編集" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: "削除" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: "エクスプローラーで表示する" })).toBeVisible();
-  await page.screenshot({ path: resolve(SCREENSHOT_DIR, "p6-02-quick-context-menu.png") });
   await page.getByRole("menuitem", { name: "エクスプローラーで表示する" }).click();
   await expect
     .poll(async () =>

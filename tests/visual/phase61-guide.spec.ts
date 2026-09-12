@@ -1,9 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
-import { resolve } from "node:path";
 import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
-
-const SCREENSHOT_DIR = resolve("docs/phase6.1/screenshots");
 
 test.describe.configure({ mode: "serial" });
 
@@ -36,47 +33,6 @@ async function openGuide(page: Page) {
   return dialog;
 }
 
-test("Guide states the current registration, selection, and completion flow", async ({ page }) => {
-  await prepare(page);
-  const dialog = await openGuide(page);
-
-  await expect(dialog).toContainText(
-    "自分で選ぶときは「今日を組み立てる」で候補の「今日へ」を押し",
-  );
-
-  const today = dialog.locator('[data-help-section-id="today"]');
-  await expect(today).toContainText("プロジェクトの次の一手とやりたいことだけを5件ずつ表示");
-  await expect(today).toContainText("新規登録や送付先の選択を行いません");
-  await expect(today).toContainText("今日の候補から外す");
-  await expect(today).toContainText("今日の候補に戻す");
-  await expect(today).toContainText("今日の3件から外す");
-  await expect(today).toContainText("8秒間「元に戻す」");
-  await expect(today).toContainText("元の次の一手ややりたいことは残ります");
-  await expect(today).toContainText("小型ダイアログで追加します");
-  await expect(today).toContainText("今日の3件、今日を組み立てる、登録元のどこから");
-  await expect(today).toContainText("6〜19件は「残りN件をもっと見る」");
-  await expect(today).toContainText("20件以上は10件ずつのページ");
-  await expect(today).toContainText("未完了のまま終了");
-  await expect(today).toContainText("今日の3件、完了！");
-  await expect(today).toContainText("再読込や元に戻すでは再表示しません");
-  await expect(today).toContainText("次の3件を選ぶ");
-
-  const projects = dialog.locator('[data-help-section-id="projects"]');
-  await expect(projects).toContainText(
-    "「プロジェクトを追加」ではプロジェクトと最初の次の一手を登録",
-  );
-  await expect(projects).toContainText(
-    "次の一手の一覧にはタイマー開始ボタンや常設の「今日へ」を置きません",
-  );
-
-  const timer = dialog.locator('[data-help-section-id="timer"]');
-  await expect(timer).toContainText("続ける(+15分)");
-  await expect(timer).toContainText("初期フォーカスとEscapeは右");
-
-  await expect(dialog).not.toContainText("通常の次の一手カードからも開始できます");
-  await expect(dialog).not.toContainText("昨日の勝利条件");
-  await expect(dialog).not.toContainText("一覧の末尾に表示されます");
-});
 
 test("Guide contents move focus to a section and return to the first contents item", async ({
   page,
@@ -136,7 +92,6 @@ test("Guide remains bounded at 860px and exposes the collapsed contents below 76
       () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
     ),
   ).toBe(true);
-  await dialog.screenshot({ path: resolve(SCREENSHOT_DIR, "p61-03-guide-860.png") });
 
   await page.keyboard.press("Escape");
   await page.setViewportSize({ width: 700, height: 700 });

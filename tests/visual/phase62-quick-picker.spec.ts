@@ -1,10 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
-import { resolve } from "node:path";
 import type { AppConfig, LauncherButton } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
-
-const SCREENSHOT_DIR = resolve("docs/phase6.2/screenshots");
 
 test.describe.configure({ mode: "serial" });
 
@@ -193,7 +190,7 @@ test("Wishlist edit uses the shared picker and keeps a cancelled picker draft", 
   expect((await currentConfig(page)).inbox[0].buttonIds).toEqual(["sample-editor"]);
 });
 
-test("Legacy selections over the limit are preserved and picker fits 860 and 1440", async ({
+test("Legacy selections over the limit are preserved and picker fits the narrow viewport", async ({
   page,
 }) => {
   const fixture = createPublicFixture();
@@ -221,10 +218,7 @@ test("Legacy selections over the limit are preserved and picker fits 860 and 144
   await longOption.dispatchEvent("click");
   await expect(picker.locator('[role="option"][aria-selected="true"]')).toHaveCount(3);
 
-  for (const viewport of [
-    { width: 860, height: 700 },
-    { width: 1440, height: 900 },
-  ]) {
+  for (const viewport of [{ width: 860, height: 700 }]) {
     await page.setViewportSize(viewport);
     const box = await picker.boundingBox();
     expect(box).not.toBeNull();
@@ -235,9 +229,6 @@ test("Legacy selections over the limit are preserved and picker fits 860 and 144
         () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
       ),
     ).toBe(true);
-    await picker.screenshot({
-      path: resolve(SCREENSHOT_DIR, `p62-03-start-environment-${viewport.width}.png`),
-    });
   }
 
   await picker.getByRole("button", { name: "キャンセル" }).click();

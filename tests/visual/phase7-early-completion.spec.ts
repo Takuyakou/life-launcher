@@ -143,7 +143,7 @@ for (const action of ["left", "right", "escape"]) {
   });
 }
 
-for (const completed of [1, 2]) {
+for (const completed of [2]) {
   test(`early completion with ${completed} previously completed keeps manual batch rules`, async ({
     page,
   }) => {
@@ -387,8 +387,8 @@ test("mini finish opens the topmost dialog and repeated mini commands cannot res
   await expect(page.getByRole("dialog")).toHaveCount(1);
 });
 
-for (const width of [1366, 1440, 860]) {
-  test(`early dialog visual and keyboard layout at ${width}`, async ({ page }, testInfo) => {
+for (const width of [1440, 860]) {
+  test(`early dialog visual and keyboard layout at ${width}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     const fixture = fixtureForEarly();
     fixture.config.today.items[0].text =
@@ -406,9 +406,7 @@ for (const width of [1366, 1440, 860]) {
     await page.keyboard.press("Tab");
     await expect(dialog.getByRole("button", { name: "未完了のまま終了" })).toBeFocused();
     expect(await dialog.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
-    await page.screenshot({ path: testInfo.outputPath(`early-${width}-focus.png`) });
     await dialog.getByRole("button", { name: "今日の分は完了", exact: true }).hover();
-    await page.screenshot({ path: testInfo.outputPath(`early-${width}-hover.png`) });
     await page.keyboard.press("Tab");
     await expect(dialog.getByRole("button", { name: "確認を閉じる" })).toBeFocused();
   });

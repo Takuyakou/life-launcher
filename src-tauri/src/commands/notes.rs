@@ -198,31 +198,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn sanitizes_empty_notes_to_no_items() {
-        let items = vec!["".to_string(), "  ".to_string()];
-
-        assert!(sanitize_note_items(&items).is_empty());
-    }
-
-    #[test]
-    fn sanitizes_single_note() {
-        let items = vec![" 1つできた ".to_string()];
-
-        assert_eq!(sanitize_note_items(&items), vec!["1つできた".to_string()]);
-    }
-
-    #[test]
-    fn sanitizes_notes_to_max_three_items() {
-        let items = vec![
-            "1".to_string(),
-            "2".to_string(),
-            "3".to_string(),
-            "4".to_string(),
+    fn sanitizes_note_items() {
+        let cases = [
+            (vec!["", "  "], Vec::<&str>::new()),
+            (vec![" 1つできた "], vec!["1つできた"]),
+            (vec!["1", "2", "3", "4"], vec!["1", "2", "3"]),
         ];
 
-        assert_eq!(
-            sanitize_note_items(&items),
-            vec!["1".to_string(), "2".to_string(), "3".to_string()]
-        );
+        for (input, expected) in cases {
+            let input = input.into_iter().map(str::to_string).collect::<Vec<_>>();
+            let expected = expected.into_iter().map(str::to_string).collect::<Vec<_>>();
+            assert_eq!(sanitize_note_items(&input), expected);
+        }
     }
 }

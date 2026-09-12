@@ -187,9 +187,7 @@ for (const [width, columns] of [
   [1000, 2],
   [860, 1],
 ]) {
-  test(`remove action layout, long text, hover, focus and running at ${width}`, async ({
-    page,
-  }, testInfo) => {
+  test(`remove action layout, long text, hover, focus and running at ${width}`, async ({ page }) => {
     const fixture = fixture3();
     fixture.config.today.items[0].text =
       "長い行動文でも短時間と通常のタイマーおよび今日の3件から外すボタンが重ならず操作できることを確認する";
@@ -201,20 +199,17 @@ for (const [width, columns] of [
     ).toBe(columns);
     const remove = page.locator(".todayRemoveButton").first();
     await remove.hover();
-    await page.screenshot({ path: testInfo.outputPath(`today-remove-${width}-hover.png`) });
     await remove.focus();
     await page.keyboard.press("Shift+Tab");
     await page.keyboard.press("Tab");
     await expect(remove).toBeFocused();
     expect(await remove.evaluate((node) => node.matches(":focus-visible"))).toBe(true);
-    await page.screenshot({ path: testInfo.outputPath(`today-remove-${width}-focus.png`) });
     await page
       .locator(".todayRow")
       .first()
       .getByRole("button", { name: "短時間タイマー5分で開始" })
       .click();
     await expect(remove).toBeDisabled();
-    await page.screenshot({ path: testInfo.outputPath(`today-remove-${width}-running.png`) });
     for (const card of await page.locator(".todayRow").all()) {
       const footer = card.locator(".todayCardFooter");
       expect(await footer.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);

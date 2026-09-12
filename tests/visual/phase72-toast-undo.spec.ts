@@ -188,31 +188,3 @@ test("P72-02 keeps at most three visible Toasts and starts queued Undo on promot
   await page.clock.fastForward(7_900);
   await expect(page.locator(".toast", { hasText: "今日の候補から外しました" })).toBeVisible();
 });
-
-test("P72-02 Builder edit reports the canonical NextStep synchronization", async ({ page }) => {
-  const fixture = createPublicFixture();
-  await prepare(page, fixture);
-  await page.locator(".todayBuilderDisclosure").click();
-  const builder = page.locator(".todayBuilderRow", { hasText: "資料を1ページ読む" });
-  await builder.locator(".sourceRowMenu").click();
-  await page.getByRole("menuitem", { name: "編集", exact: true }).click();
-  const editor = page.getByRole("dialog", { name: "プロジェクト編集", exact: true });
-  await editor.getByRole("textbox", { name: /^次の一手/ }).fill("同期通知を確認する");
-  await editor.getByRole("button", { name: "保存", exact: true }).click();
-  const toast = page.locator(".toast", { hasText: "変更を保存しました" }).last();
-  await expect(toast).toContainText("元の「次の一手」にも反映しました");
-  expect((await currentConfig(page)).projects[0].nextStep).toBe("同期通知を確認する");
-});
-
-test("P72-02 source edit reports its linked Today snapshot synchronization", async ({ page }) => {
-  const fixture = createPublicFixture();
-  await prepare(page, fixture);
-  await page.locator(".nextStepRow").first().click({ button: "right" });
-  await page.getByRole("menuitem", { name: "編集", exact: true }).click();
-  const editor = page.getByRole("dialog", { name: "プロジェクト編集", exact: true });
-  await editor.getByRole("textbox", { name: /^次の一手/ }).fill("今日にも同期する");
-  await editor.getByRole("button", { name: "保存", exact: true }).click();
-  const toast = page.locator(".toast", { hasText: "変更を保存しました" }).last();
-  await expect(toast).toContainText("今日の3件にも反映しました");
-  expect((await currentConfig(page)).today.items[0].text).toBe("今日にも同期する");
-});

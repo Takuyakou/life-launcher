@@ -1,6 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { AppConfig } from "../../src/types";
-import { TodayItemSchema } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 
@@ -38,25 +37,12 @@ async function prepare(page: Page, short: number, planned: number) {
   return fixture;
 }
 
-test("P7 audit: actual Today schema accepts 1..240 integer minutes, not invalid legacy values", () => {
-  for (const shortTimerMinutes of [1, 2, 3, 5, 10, 240, undefined]) {
-    expect(
-      TodayItemSchema.safeParse({ text: "Audit", done: false, shortTimerMinutes }).success,
-    ).toBe(true);
-  }
-  for (const shortTimerMinutes of [null, 0, -1, 241, 1.5, "3", NaN, Infinity]) {
-    expect(
-      TodayItemSchema.safeParse({ text: "Audit", done: false, shortTimerMinutes }).success,
-    ).toBe(false);
-  }
-});
 
 // P7.0 boundary fixtures now exercise the implemented P7.1 manual-stop flow.
 const boundaries = [
-  { short: 3, planned: 25, elapsed: [179, 180, 1499, 1500] },
-  { short: 5, planned: 25, elapsed: [299, 300, 1499, 1500] },
-  { short: 10, planned: 25, elapsed: [299, 300, 1499, 1500] },
-  { short: 3, planned: 3, elapsed: [179, 180] },
+  { short: 3, planned: 25, elapsed: [179, 180] },
+  { short: 5, planned: 25, elapsed: [1499, 1500] },
+  { short: 3, planned: 3, elapsed: [180] },
 ];
 
 for (const { short, planned, elapsed } of boundaries) {

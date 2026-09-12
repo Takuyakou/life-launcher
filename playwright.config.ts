@@ -13,7 +13,7 @@ export default defineConfig({
     locale: "ja-JP",
     timezoneId: "Asia/Tokyo",
     reducedMotion: "reduce",
-    screenshot: "off",
+    screenshot: "only-on-failure",
   },
   webServer: {
     command: "npm.cmd run dev -- --port 1437 --strictPort",

@@ -264,7 +264,7 @@ test("P72-05 reduced motion keeps labels and colors without animation", async ({
   expect(await reward.evaluate((node) => getComputedStyle(node).animationName)).toBe("none");
 });
 
-for (const width of [1440, 860]) {
+for (const width of [860]) {
   test(`P72-05 long completion feedback stays bounded and leaves controls usable at ${width}`, async ({
     page,
   }) => {

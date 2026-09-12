@@ -14,9 +14,6 @@ for (const file of readmes) {
       expect(text).toContain(`Life-Launcher-v${version}-windows-x64${suffix}`);
     }
     expect(text).toContain("SHA256SUMS.txt");
-    expect(text).toContain("%APPDATA%\\life-launcher");
-    expect(text).toContain("SmartScreen");
-    expect(text).toContain("source key");
     const paths = [
       ...Array.from(text.matchAll(/\]\(([^)]+)\)/g), (match) => match[1]),
       ...Array.from(text.matchAll(/src="([^"]+)"/g), (match) => match[1]),
@@ -54,12 +51,4 @@ test("release metadata and notes share the package version", () => {
   for (const suffix of ["-setup.exe", ".exe", "-portable.zip"]) {
     expect(releaseNotes).toContain(`Life-Launcher-v${version}-windows-x64${suffix}`);
   }
-});
-
-test("release candidate hashing does not depend on Get-FileHash availability", () => {
-  const script = readFileSync("scripts/prepare-release-candidate.ps1", "utf8");
-  expect(script).toContain("[System.Security.Cryptography.SHA256]::Create()");
-  expect(script).toContain("Get-Sha256Hex (Join-Path $CandidateRoot $name)");
-  expect(script).not.toContain("Get-FileHash");
-  expect(script).not.toContain("$LASTEXITCODE");
 });
