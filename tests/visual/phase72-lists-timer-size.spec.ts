@@ -156,11 +156,11 @@ test("P72-03 Today buttons grow only in width and reveal play on hover", async (
   })));
   expect(sizes[0].width).toBeGreaterThanOrEqual(88);
   expect(sizes[1].width).toBeGreaterThanOrEqual(88);
-  expect(sizes[0].height).toBe(36);
-  expect(sizes[1].height).toBe(36);
+  expect(sizes[0].height).toBe(38);
+  expect(sizes[1].height).toBe(38);
   expect(sizes[0].color).not.toBe(sizes[1].color);
   await short.hover();
-  await expect(short.locator(".nextStepStartDuration")).toHaveCSS("opacity", "0");
+  await expect(short.locator(".nextStepStartDuration")).toHaveCSS("opacity", "1");
   await expect(short.locator(".nextStepStartGlyph")).toHaveCSS("opacity", "1");
   await short.click();
   await expect(card.getByRole("button", { name: "このセッションを一時停止" })).toBeVisible();

@@ -138,7 +138,7 @@ test("v1.3 Do Now hides alternate actions when there is no other candidate", asy
   await expect(page.getByRole("menuitem", { name: "他の一手", exact: true })).toHaveCount(0);
 });
 
-test("timer actions keep equal sizes and reveal play only on hover or focus", async ({ page }) => {
+test("timer actions keep time centered and slide play in from the left", async ({ page }) => {
   const fixture = createPublicFixture();
   await prepare(page, fixture);
   const doNowShort = page.locator(".doNowStartPrimary");
@@ -146,11 +146,28 @@ test("timer actions keep equal sizes and reveal play only on hover or focus", as
   await expect(doNowShort.locator(".timerStartDuration")).toHaveText("5分");
   await expect(doNowNormal.locator(".timerStartDuration")).toHaveText("25分");
   expect((await doNowShort.boundingBox())?.width).toBe((await doNowNormal.boundingBox())?.width);
+  expect((await doNowShort.boundingBox())?.width).toBe(104);
+  expect((await doNowShort.boundingBox())?.height).toBe(38);
   await expect(doNowShort.locator(".timerStartDuration")).toHaveCSS("opacity", "1");
   await expect(doNowShort.locator(".timerStartHoverGlyph")).toHaveCSS("opacity", "0");
+  const doNowBefore = await doNowShort.boundingBox();
+  const doNowTimeBefore = await doNowShort.locator(".timerStartDuration").boundingBox();
+  const doNowPlayBefore = await doNowShort.locator(".timerStartHoverGlyph").boundingBox();
   await doNowShort.hover();
-  await expect(doNowShort.locator(".timerStartDuration")).toHaveCSS("opacity", "0");
+  await expect(doNowShort.locator(".timerStartDuration")).toHaveCSS("opacity", "1");
   await expect(doNowShort.locator(".timerStartHoverGlyph")).toHaveCSS("opacity", "1");
+  const doNowAfter = await doNowShort.boundingBox();
+  const doNowTimeAfter = await doNowShort.locator(".timerStartDuration").boundingBox();
+  const doNowPlayAfter = await doNowShort.locator(".timerStartHoverGlyph").boundingBox();
+  expect(doNowBefore && doNowAfter && doNowTimeBefore && doNowTimeAfter).toBeTruthy();
+  expect(Math.abs(doNowTimeBefore!.x + doNowTimeBefore!.width / 2 - (doNowBefore!.x + doNowBefore!.width / 2))).toBeLessThanOrEqual(0.5);
+  expect(Math.abs(doNowTimeAfter!.x + doNowTimeAfter!.width / 2 - (doNowAfter!.x + doNowAfter!.width / 2))).toBeLessThanOrEqual(0.5);
+  expect(doNowPlayAfter!.x).toBeGreaterThan(doNowPlayBefore!.x);
+  expect(doNowAfter!.y).toBeLessThan(doNowBefore!.y);
+  await page.mouse.move(0, 0);
+  await doNowNormal.focus();
+  await expect(doNowNormal.locator(".timerStartDuration")).toHaveCSS("opacity", "1");
+  await expect(doNowNormal.locator(".timerStartHoverGlyph")).toHaveCSS("opacity", "1");
 
   const todayShort = page.locator(".todayRow").first().getByRole("button", {
     name: "短時間タイマー5分で開始",
@@ -159,9 +176,19 @@ test("timer actions keep equal sizes and reveal play only on hover or focus", as
   expect((await doNowShort.boundingBox())?.height).toBe((await todayShort.boundingBox())?.height);
   await expect(todayShort.locator(".nextStepStartDuration")).toHaveCSS("opacity", "1");
   await expect(todayShort.locator(".nextStepStartGlyph")).toHaveCSS("opacity", "0");
+  const todayBefore = await todayShort.boundingBox();
+  const todayTimeBefore = await todayShort.locator(".nextStepStartDuration").boundingBox();
   await todayShort.hover();
-  await expect(todayShort.locator(".nextStepStartDuration")).toHaveCSS("opacity", "0");
+  await expect(todayShort.locator(".nextStepStartDuration")).toHaveCSS("opacity", "1");
   await expect(todayShort.locator(".nextStepStartGlyph")).toHaveCSS("opacity", "1");
+  const todayAfter = await todayShort.boundingBox();
+  const todayTimeAfter = await todayShort.locator(".nextStepStartDuration").boundingBox();
+  expect(todayBefore && todayAfter && todayTimeBefore && todayTimeAfter).toBeTruthy();
+  expect(Math.abs(todayTimeBefore!.x + todayTimeBefore!.width / 2 - (todayBefore!.x + todayBefore!.width / 2))).toBeLessThanOrEqual(0.5);
+  expect(Math.abs(todayTimeAfter!.x + todayTimeAfter!.width / 2 - (todayAfter!.x + todayAfter!.width / 2))).toBeLessThanOrEqual(0.5);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(todayShort).toHaveCSS("transform", "none");
+  await expect(todayShort.locator(".nextStepStartGlyph")).toHaveCSS("transition-duration", "0s");
   await todayShort.click();
   const row = page.locator(".todayRow").first();
   const pause = row.getByRole("button", { name: "このセッションを一時停止" });

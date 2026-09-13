@@ -3461,42 +3461,55 @@ input[type="number"]::-webkit-inner-spin-button {
   font-weight: 850;
 }
 
-.doNowStartPrimary {
-  border-color: rgba(111, 207, 151, 0.45) !important;
+.doNowActions .doNowStartPrimary {
+  border-color: rgba(111, 207, 151, 0.45);
   background: var(--dashboard-action-start-bg);
   color: var(--good);
   font-size: 12px;
 }
 
-.doNowStartPrimary,
-.doNowStartSecondary {
+.doNowActions .doNowStartPrimary,
+.doNowActions .doNowStartSecondary {
   position: relative;
-  width: 90px;
-  min-width: 90px;
-  height: 36px;
-  min-height: 36px;
-  padding: 0 10px;
-  display: grid;
-  place-items: center;
+  width: 104px;
+  min-width: 104px;
+  height: 38px;
+  min-height: 38px;
+  overflow: hidden;
+  padding: 0;
+  transition:
+    background-color 130ms ease,
+    border-color 130ms ease,
+    transform 130ms ease,
+    box-shadow 130ms ease;
 }
 
-.timerStartDuration,
-.timerStartHoverGlyph {
-  grid-area: 1 / 1;
+.timerStartDuration {
+  position: absolute;
+  top: 50%;
+  left: 50%;
   display: grid;
   place-items: center;
+  transform: translate(-50%, -50%);
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .timerStartHoverGlyph {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  width: 16px;
+  display: grid;
+  place-items: center;
   opacity: 0;
+  transform: translate(-3px, -50%);
+  transition:
+    opacity 130ms ease,
+    transform 130ms ease;
   pointer-events: none;
-}
-
-.doNowStartPrimary:hover:not(:disabled) .timerStartDuration,
-.doNowStartPrimary:focus-visible .timerStartDuration,
-.doNowStartSecondary:hover:not(:disabled) .timerStartDuration,
-.doNowStartSecondary:focus-visible .timerStartDuration {
-  opacity: 0;
 }
 
 .doNowStartPrimary:hover:not(:disabled) .timerStartHoverGlyph,
@@ -3504,10 +3517,11 @@ input[type="number"]::-webkit-inner-spin-button {
 .doNowStartSecondary:hover:not(:disabled) .timerStartHoverGlyph,
 .doNowStartSecondary:focus-visible .timerStartHoverGlyph {
   opacity: 1;
+  transform: translate(0, -50%);
 }
 
-.doNowStartSecondary {
-  border-color: rgba(169, 208, 255, 0.38) !important;
+.doNowActions .doNowStartSecondary {
+  border-color: rgba(169, 208, 255, 0.38);
   background: var(--control-short-bg);
   color: #a9d0ff;
   font-size: 12px;
@@ -4052,7 +4066,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .todayTimerActions {
   display: grid;
-  grid-template-columns: 48px 48px;
+  grid-template-columns: 104px 104px;
   align-items: center;
   gap: 8px;
 }
@@ -4062,15 +4076,20 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayStartButton {
-  width: 48px;
-  height: 36px;
-  display: grid;
-  place-items: center;
+  position: relative;
+  width: 104px;
+  height: 38px;
+  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--control-short-bg);
   color: #a9d0ff;
   line-height: 1;
+  transition:
+    background-color 130ms ease,
+    border-color 130ms ease,
+    transform 130ms ease,
+    box-shadow 130ms ease;
 }
 
 .todayStartButton--short {
@@ -4085,20 +4104,48 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayStartButton .nextStepStartDuration {
+  position: absolute;
+  top: 50%;
+  left: 50%;
   opacity: 1;
+  transform: translate(-50%, -50%);
   font-size: 11px;
+  line-height: 1;
   white-space: nowrap;
 }
 
 .todayStartButton .nextStepStartGlyph {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  width: 16px;
+  display: grid;
+  place-items: center;
   opacity: 0;
+  transform: translate(-3px, -50%);
+  transition:
+    opacity 130ms ease,
+    transform 130ms ease;
+  pointer-events: none;
+}
+
+.todayStartButton:hover:not(:disabled) .nextStepStartGlyph,
+.todayStartButton:focus-visible .nextStepStartGlyph {
+  opacity: 1;
+  transform: translate(0, -50%);
 }
 
 .todayTimerActions--running .runningPauseButton,
 .todayTimerActions--running .runningStopButton {
   width: 90px;
-  height: 36px;
-  min-height: 36px;
+  height: 38px;
+  min-height: 38px;
+}
+
+.doNowActions .runningPauseButton,
+.doNowActions .runningStopButton {
+  height: 38px;
+  min-height: 38px;
 }
 
 .sectionHeading {
@@ -4518,18 +4565,14 @@ input[type="number"]::-webkit-inner-spin-button {
 .startButton:hover:not(:disabled) .nextStepStartGlyph,
 .startButton:focus-visible .nextStepStartGlyph,
 .shortStartButton:hover:not(:disabled) .nextStepStartGlyph,
-.shortStartButton:focus-visible .nextStepStartGlyph,
-.todayStartButton:hover:not(:disabled) .nextStepStartGlyph,
-.todayStartButton:focus-visible .nextStepStartGlyph {
+.shortStartButton:focus-visible .nextStepStartGlyph {
   opacity: 1;
 }
 
 .startButton:hover:not(:disabled) .nextStepStartDuration,
 .startButton:focus-visible .nextStepStartDuration,
 .shortStartButton:hover:not(:disabled) .nextStepStartDuration,
-.shortStartButton:focus-visible .nextStepStartDuration,
-.todayStartButton:hover:not(:disabled) .nextStepStartDuration,
-.todayStartButton:focus-visible .nextStepStartDuration {
+.shortStartButton:focus-visible .nextStepStartDuration {
   opacity: 0;
 }
 
@@ -4597,6 +4640,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .miniStartButton:hover:not(:disabled),
 .moveTodayButton:hover:not(:disabled),
 .shortStartButton:hover:not(:disabled),
+.doNowStartPrimary:hover:not(:disabled),
 .runningPauseButton:hover:not(:disabled) {
   border-color: var(--control-positive-hover-border);
   background: var(--control-positive-hover-bg);
@@ -4605,6 +4649,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .miniStartButton:active:not(:disabled),
 .moveTodayButton:active:not(:disabled),
 .shortStartButton:active:not(:disabled),
+.doNowStartPrimary:active:not(:disabled),
 .runningPauseButton:active:not(:disabled) {
   border-color: var(--control-positive-active-border);
   background: var(--control-positive-active-bg);
@@ -4623,6 +4668,18 @@ input[type="number"]::-webkit-inner-spin-button {
   background: var(--control-positive-hover-bg);
 }
 
+.doNowStartPrimary:focus-visible,
+.todayStartButton--short:focus-visible {
+  border-color: var(--control-positive-hover-border);
+  background: var(--control-positive-hover-bg);
+}
+
+.doNowStartSecondary:focus-visible,
+.todayStartButton--normal:focus-visible {
+  border-color: var(--control-short-hover-border);
+  background: var(--control-short-hover-bg);
+}
+
 .startButton:active:not(:disabled),
 .doNowStartSecondary:active:not(:disabled),
 .todayStartButton--normal:active:not(:disabled) {
@@ -4635,6 +4692,25 @@ input[type="number"]::-webkit-inner-spin-button {
   border-color: var(--control-positive-active-border);
   background: var(--control-positive-active-bg);
   box-shadow: var(--control-press-shadow);
+}
+
+.doNowStartPrimary:hover:not(:disabled),
+.doNowStartPrimary:focus-visible,
+.doNowStartSecondary:hover:not(:disabled),
+.doNowStartSecondary:focus-visible,
+.todayStartButton:hover:not(:disabled),
+.todayStartButton:focus-visible {
+  transform: translateY(-1px);
+  box-shadow:
+    0 7px 16px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.doNowStartPrimary:active:not(:disabled),
+.doNowStartSecondary:active:not(:disabled),
+.todayStartButton:active:not(:disabled) {
+  transform: translateY(0) scale(0.985);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.18);
 }
 
 .runningStopButton:hover:not(:disabled) {
@@ -7729,17 +7805,17 @@ input[type="number"]::-webkit-inner-spin-button {
   display: grid;
   justify-items: end;
   gap: 4px;
-  width: 188px;
+  width: 216px;
   max-width: 100%;
   margin-left: auto;
 }
 
 .todayTimerCluster .todayTimerActions:not(.todayTimerActions--running) {
-  grid-template-columns: 90px 90px;
+  grid-template-columns: 104px 104px;
 }
 
 .todayTimerCluster .todayStartButton {
-  width: 90px;
+  width: 104px;
 }
 
 .todayTriggerZone {
@@ -8841,6 +8917,26 @@ input[type="number"]::-webkit-inner-spin-button {
   .victoryRewardSweep,
   .completionParticleLayer {
     display: none;
+  }
+
+  .doNowStartPrimary,
+  .doNowStartSecondary,
+  .todayStartButton,
+  .timerStartHoverGlyph,
+  .todayStartButton .nextStepStartGlyph {
+    transition: none !important;
+  }
+
+  .doNowStartPrimary:hover:not(:disabled),
+  .doNowStartPrimary:focus-visible,
+  .doNowStartSecondary:hover:not(:disabled),
+  .doNowStartSecondary:focus-visible,
+  .todayStartButton:hover:not(:disabled),
+  .todayStartButton:focus-visible,
+  .doNowStartPrimary:active:not(:disabled),
+  .doNowStartSecondary:active:not(:disabled),
+  .todayStartButton:active:not(:disabled) {
+    transform: none;
   }
 }
 

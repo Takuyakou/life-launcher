@@ -9268,14 +9268,13 @@ function DashboardApp() {
                         const isFull = config.today.items.length >= TODAY_ITEM_LIMIT;
                         return (
                           <div className="todayBuilderCandidate" key={candidate.key}>
-                            {(pageIndex === 0 ||
-                              visibleTodayBuilderCandidates[pageIndex - 1]?.source !==
-                                candidate.source) && (
+                            {(index === 0 ||
+                              todayBuilderCandidates[index - 1]?.source !== candidate.source) && (
                               <div className="todayBuilderGroupHeading">
                                 <strong>{candidate.source}</strong>
                                 <span>
                                   {
-                                    visibleTodayBuilderCandidates.filter(
+                                    todayBuilderCandidates.filter(
                                       (item) => item.source === candidate.source,
                                     ).length
                                   }

@@ -46,6 +46,23 @@ test("Builder is the only persistent Today adoption surface and groups its sourc
 }) => {
   const fixture = createPublicFixture();
   fixture.config.today.items = [];
+  fixture.config.projects.push(
+    {
+      ...fixture.config.projects[0],
+      id: "sample-writing",
+      name: "サンプル執筆",
+      nextStep: "見出しを1つ書く",
+      weeklyFocus: false,
+    },
+    {
+      ...fixture.config.projects[1],
+      id: "sample-review",
+      name: "サンプル振り返り",
+      nextStep: "メモを1つ見返す",
+      weeklyFocus: false,
+    },
+  );
+  fixture.config.inbox.push({ id: "sample-idea", text: "新しい案を試す" });
   await prepare(page, fixture);
 
   await page.evaluate(() => {
@@ -56,6 +73,9 @@ test("Builder is the only persistent Today adoption surface and groups its sourc
         "wishlist:sample-later",
         "project:sample-stretch",
         "wishlist:sample-weekend",
+        "project:sample-writing",
+        "wishlist:sample-idea",
+        "project:sample-review",
       ]),
     );
   });
@@ -66,14 +86,21 @@ test("Builder is the only persistent Today adoption surface and groups its sourc
   await page.locator(".inboxBand .disclosure").click();
   await expect(page.locator(".inboxBand .moveTodayButton")).toHaveCount(0);
   await expect(page.locator(".todayBuilderGroupHeading")).toHaveText([
-    "次の一手2件",
-    "やりたいこと2件",
+    "次の一手4件",
+    "やりたいこと3件",
   ]);
   await expect(page.getByRole("button", { name: "今日の候補を追加" })).toHaveCount(0);
-  await expect(page.locator(".todayBuilderRow .projectIdentity")).toHaveCount(3);
+  await expect(page.locator(".todayBuilderRow .projectIdentity")).toHaveCount(4);
   await expect(
     page.locator(".todayBuilderRow").getByRole("button", { name: "今日へ" }),
-  ).toHaveCount(4);
+  ).toHaveCount(5);
+  await page.getByRole("button", { name: "次のページ" }).click();
+  await expect(page.locator(".todayBuilderGroupHeading")).toHaveCount(0);
+  await expect(page.locator(".todayBuilderRow")).toHaveCount(2);
+  await expect(page.locator(".todayBuilderRow .projectIdentity")).toHaveCount(1);
+  await expect(
+    page.locator(".todayBuilderRow").getByRole("button", { name: "今日へ" }),
+  ).toHaveCount(2);
 });
 
 test("excluding a candidate keeps its source, removes linked Today3, and survives reload", async ({
