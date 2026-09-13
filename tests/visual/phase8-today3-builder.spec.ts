@@ -66,20 +66,18 @@ test("P8 Builder selection is a status and not a toggle", async ({ page }) => {
   await expect(selected.getByRole("button", { name: "今日へ" })).toHaveCount(0);
 });
 
-test("P8 Builder add is independent and routes to existing source forms", async ({ page }) => {
+test("P8 Builder omits registration while source bars keep their add actions", async ({ page }) => {
   await prepare(page, createPublicFixture(), 860);
   const disclosure = page.locator(".todayBuilderDisclosure");
-  const add = page.getByRole("button", { name: "今日の候補を追加" });
   await expect(disclosure).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByRole("button", { name: "今日の候補を追加" })).toHaveCount(0);
 
-  await add.click();
+  await page.getByRole("button", { name: "次の一手を追加", exact: true }).click();
   await expect(disclosure).toHaveAttribute("aria-expanded", "false");
-  await page.getByRole("menuitem", { name: "次の一手を追加" }).click();
   await expect(page.getByRole("dialog", { name: "次の一手を追加" })).toBeVisible();
   await page.keyboard.press("Escape");
 
-  await add.click();
-  await page.getByRole("menuitem", { name: "やりたいことを追加" }).click();
+  await page.getByRole("button", { name: "やりたいことを追加", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "やりたいことを追加" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });

@@ -119,7 +119,7 @@ test("v1.3 Do Now switches candidates from the action row and context menu", asy
   await expect(alternate).toBeVisible();
   const labels = await actions.getByRole("button").allTextContents();
   expect(labels[0]?.trim()).toBe("他の一手");
-  expect(labels[1]).toContain("短時間 5分");
+  expect(labels[1]?.trim()).toBe("5分");
 
   await alternate.click();
   await expect(band.locator(".doNowCopy > strong")).toHaveText("5分だけ体を動かす");
@@ -143,7 +143,8 @@ test("timer actions keep equal sizes and reveal play only on hover or focus", as
   await prepare(page, fixture);
   const doNowShort = page.locator(".doNowStartPrimary");
   const doNowNormal = page.locator(".doNowStartSecondary");
-  await expect(doNowShort.locator(".timerStartDuration")).toHaveText("短時間 5分");
+  await expect(doNowShort.locator(".timerStartDuration")).toHaveText("5分");
+  await expect(doNowNormal.locator(".timerStartDuration")).toHaveText("25分");
   expect((await doNowShort.boundingBox())?.width).toBe((await doNowNormal.boundingBox())?.width);
   await expect(doNowShort.locator(".timerStartDuration")).toHaveCSS("opacity", "1");
   await expect(doNowShort.locator(".timerStartHoverGlyph")).toHaveCSS("opacity", "0");
@@ -154,6 +155,8 @@ test("timer actions keep equal sizes and reveal play only on hover or focus", as
   const todayShort = page.locator(".todayRow").first().getByRole("button", {
     name: "短時間タイマー5分で開始",
   });
+  expect((await doNowShort.boundingBox())?.width).toBe((await todayShort.boundingBox())?.width);
+  expect((await doNowShort.boundingBox())?.height).toBe((await todayShort.boundingBox())?.height);
   await expect(todayShort.locator(".nextStepStartDuration")).toHaveCSS("opacity", "1");
   await expect(todayShort.locator(".nextStepStartGlyph")).toHaveCSS("opacity", "0");
   await todayShort.hover();
