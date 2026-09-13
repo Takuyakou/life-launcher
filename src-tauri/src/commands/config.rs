@@ -116,6 +116,21 @@ fn current_source_snapshot(config: &AppConfig, source_key: &str) -> Option<Value
     None
 }
 
+fn normalized_source_snapshot(source_key: &str, snapshot: &Option<Value>) -> Option<Value> {
+    let value = snapshot.as_ref()?.clone();
+    if source_key.starts_with("project:") {
+        return serde_json::from_value::<Project>(value)
+            .ok()
+            .and_then(|project| serde_json::to_value(project).ok());
+    }
+    if source_key.starts_with("wishlist:") {
+        return serde_json::from_value::<InboxItem>(value)
+            .ok()
+            .and_then(|item| serde_json::to_value(item).ok());
+    }
+    None
+}
+
 fn today_item_source_key(item: &crate::models::TodayItem) -> Option<&str> {
     item.source_key
         .as_deref()
@@ -141,7 +156,9 @@ fn apply_undo_today_selection(
     let is_stable_source =
         input.source_key.starts_with("project:") || input.source_key.starts_with("wishlist:");
     let current_snapshot = current_source_snapshot(&config, &input.source_key);
-    if is_stable_source && current_snapshot != input.source_snapshot {
+    let input_snapshot = normalized_source_snapshot(&input.source_key, &input.source_snapshot);
+    let input_snapshot_is_invalid = input.source_snapshot.is_some() && input_snapshot.is_none();
+    if is_stable_source && (input_snapshot_is_invalid || current_snapshot != input_snapshot) {
         return Err("元の次の一手・やりたいことが変更されたため元に戻せません".to_string());
     }
     if config
@@ -3834,6 +3851,47 @@ mod tests {
         input.operation_id = "newer-op".to_string();
         input.source_snapshot = Some(serde_json::json!({"stale": true}));
         assert!(apply_undo_today_selection(config, &input).is_err());
+    }
+
+    #[test]
+    fn undo_today_selection_accepts_frontend_defaulted_source_snapshot() {
+        let mut config = sample_config();
+        let source_key = "project:compose".to_string();
+        config
+            .projects
+            .iter_mut()
+            .find(|project| project.id == "compose")
+            .expect("project exists")
+            .button_ids
+            .clear();
+        config.today.items.clear();
+        config
+            .today
+            .selection_mutation_tokens
+            .insert(source_key.clone(), "op-defaulted".to_string());
+        let mut source_snapshot = current_source_snapshot(&config, &source_key)
+            .expect("project snapshot")
+            .as_object()
+            .expect("project object")
+            .clone();
+        source_snapshot.insert("buttonIds".to_string(), serde_json::json!([]));
+        let input = UndoTodaySelectionInput {
+            operation_id: "op-defaulted".to_string(),
+            day_key: config.today.date.clone(),
+            source_key: source_key.clone(),
+            item: None,
+            previous_source_key: None,
+            next_source_key: None,
+            source_snapshot: Some(Value::Object(source_snapshot)),
+            restore_exclusion: true,
+        };
+
+        let result = apply_undo_today_selection(config, &input)
+            .expect("defaulted frontend snapshot is the same source");
+        assert!(!result
+            .today
+            .selection_mutation_tokens
+            .contains_key(&source_key));
     }
 
     #[test]

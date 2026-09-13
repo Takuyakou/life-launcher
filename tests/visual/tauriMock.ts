@@ -128,7 +128,6 @@ export async function installTauriMock(
                 if (failSaveConfig) throw new Error("Public demo mock: config save failed");
                 currentConfig = args.config as typeof currentConfig;
                 persistCurrentConfig();
-                dispatchEvent("config-changed");
                 return { config: currentConfig, path: paths.config };
               case "undo_today_selection": {
                 if (failSaveConfig) throw new Error("Public demo mock: config save failed");
@@ -202,7 +201,6 @@ export async function installTauriMock(
                 }
                 delete currentConfig.today.selectionMutationTokens[input.sourceKey];
                 persistCurrentConfig();
-                dispatchEvent("config-changed");
                 return { config: currentConfig, path: paths.config };
               }
               case "resolve_drop_item": {

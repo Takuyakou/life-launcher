@@ -402,6 +402,9 @@ type ContextMenuTarget =
       index: number;
     }
   | {
+      kind: "doNow";
+    }
+  | {
       kind: "projects";
     };
 
@@ -7500,6 +7503,10 @@ function DashboardApp() {
       project.startNoteTemplate,
     );
   };
+  const showNextDoNowCandidate = () => {
+    if (doNowCandidates.length <= 1) return;
+    setDoNowCandidateIndex((index) => (index + 1) % doNowCandidates.length);
+  };
   const renderButtonIcon = (button: LauncherButton, className: string) => {
     const source = buttonIconSources[button.id];
     if (source) {
@@ -8930,6 +8937,23 @@ function DashboardApp() {
                       doNowSelection.project.id,
                       doNowSelection.project.colorId,
                     )}
+                    onContextMenu={(event) => {
+                      if (doNowCandidates.length <= 1) return;
+                      event.preventDefault();
+                      event.stopPropagation();
+                      openContextMenu(
+                        { kind: "doNow" },
+                        event.clientX,
+                        event.clientY,
+                        event.currentTarget,
+                      );
+                    }}
+                    onKeyDown={(event) => {
+                      if (doNowCandidates.length > 1) {
+                        openContextMenuFromKeyboard(event, { kind: "doNow" });
+                      }
+                    }}
+                    tabIndex={doNowCandidates.length > 1 ? 0 : undefined}
                   >
                     <div className="doNowCopy">
                       <div className="doNowKicker">
@@ -8978,6 +9002,15 @@ function DashboardApp() {
                     </div>
                     <div className="doNowFooter">
                       <div className="doNowActions">
+                        {doNowCandidates.length > 1 && (
+                          <button
+                            className="doNowAlternateButton"
+                            onClick={showNextDoNowCandidate}
+                            type="button"
+                          >
+                            他の一手
+                          </button>
+                        )}
                         {isDoNowRunning && activeTimer ? (
                           <>
                             <button
@@ -9040,17 +9073,6 @@ function DashboardApp() {
                           </button>
                         )}
                       </div>
-                      {doNowCandidates.length > 1 && (
-                        <button
-                          className="doNowAlternateButton"
-                          onClick={() =>
-                            setDoNowCandidateIndex((index) => (index + 1) % doNowCandidates.length)
-                          }
-                          type="button"
-                        >
-                          別の候補 →
-                        </button>
-                      )}
                     </div>
                   </div>
                 ) : focusedProjects.length > 0 ? (
@@ -10291,7 +10313,11 @@ function DashboardApp() {
           x={contextMenu.x}
           y={contextMenu.y}
         >
-          {contextMenu.kind === "overlayPage" ? (
+          {contextMenu.kind === "doNow" ? (
+            <ContextMenuItem onClick={showNextDoNowCandidate} type="button">
+              他の一手
+            </ContextMenuItem>
+          ) : contextMenu.kind === "overlayPage" ? (
             <>
               <ContextMenuItem
                 disabled={overlayPages.findIndex((page) => page.id === contextMenu.page.id) <= 0}

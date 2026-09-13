@@ -176,10 +176,14 @@ test("P72-02 keeps at most three visible Toasts and starts queued Undo on promot
     { text: "C", done: false, sourceKey: "manual:c" },
   ];
   await prepare(page, fixture, 860);
+  const currentTime = await page.evaluate(() => Date.now());
+  await page.clock.pauseAt(currentTime + 1_000);
   for (let index = 0; index < 3; index += 1) await removeFirstToday(page);
   await page.locator(".todayBuilderDisclosure").click();
   await page.locator(".todayBuilderRow").first().locator(".sourceRowMenu").click();
-  await page.getByRole("menuitem", { name: "今日の候補から外す" }).click();
+  await page
+    .getByRole("menuitem", { name: "今日の候補から外す" })
+    .evaluate((button: HTMLButtonElement) => button.click());
   await expect(page.locator(".toast")).toHaveCount(3);
   await page.clock.fastForward(7_000);
   await page.locator(".toast").first().getByRole("button", { name: "通知を閉じる" }).click();

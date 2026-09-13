@@ -3311,12 +3311,16 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .doNowAlternateButton {
-  margin-left: auto;
-  border: 0;
-  padding: 6px 0;
+  border-color: var(--line-soft) !important;
   background: transparent;
   color: var(--muted);
   font-size: 12px;
+}
+
+.doNowAlternateButton:hover,
+.doNowAlternateButton:focus-visible {
+  border-color: var(--accent) !important;
+  color: var(--accent-strong);
 }
 
 .doNowContent {
@@ -3434,8 +3438,7 @@ input[type="number"]::-webkit-inner-spin-button {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  flex-direction: row-reverse;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 10px 16px;
 }
 
@@ -3513,11 +3516,6 @@ input[type="number"]::-webkit-inner-spin-button {
 
   .doNowFooter {
     align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .doNowAlternateButton {
-    margin-left: 0;
   }
 }
 .focusBand,
@@ -8037,6 +8035,10 @@ input[type="number"]::-webkit-inner-spin-button {
   color: var(--text-muted-readable);
   font-size: var(--dashboard-font-meta);
   line-height: 1.5;
+}
+
+.focusBand .sectionEmptyActions > span {
+  padding-inline-start: 12px;
 }
 
 .sectionEmptyActions > div {

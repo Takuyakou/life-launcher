@@ -109,3 +109,31 @@ test("P72-01 failed restore keeps exclusion and does not show success", async ({
   ]);
   await expect(page.getByText("今日の候補に戻しました", { exact: true })).toHaveCount(0);
 });
+
+test("v1.3 Do Now switches candidates from the action row and context menu", async ({ page }) => {
+  const fixture = createPublicFixture();
+  await prepare(page, fixture);
+  const band = page.locator(".doNowContent");
+  const actions = band.locator(".doNowActions");
+  const alternate = actions.getByRole("button", { name: "他の一手", exact: true });
+  await expect(alternate).toBeVisible();
+  const labels = await actions.getByRole("button").allTextContents();
+  expect(labels[0]?.trim()).toBe("他の一手");
+  expect(labels[1]).toContain("5分で始める");
+
+  await alternate.click();
+  await expect(band.locator(".doNowCopy > strong")).toHaveText("5分だけ体を動かす");
+  await band.click({ button: "right" });
+  await page.getByRole("menuitem", { name: "他の一手", exact: true }).click();
+  await expect(band.locator(".doNowCopy > strong")).toHaveText("資料を1ページ読む");
+});
+
+test("v1.3 Do Now hides alternate actions when there is no other candidate", async ({ page }) => {
+  const fixture = createPublicFixture();
+  fixture.doNowCandidates = fixture.doNowCandidates.slice(0, 1);
+  await prepare(page, fixture);
+  const band = page.locator(".doNowContent");
+  await expect(band.getByRole("button", { name: "他の一手", exact: true })).toHaveCount(0);
+  await band.click({ button: "right" });
+  await expect(page.getByRole("menuitem", { name: "他の一手", exact: true })).toHaveCount(0);
+});
