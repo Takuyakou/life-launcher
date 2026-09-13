@@ -8890,17 +8890,6 @@ function DashboardApp() {
                           >
                             {item.text || "未入力"}
                           </span>
-                          {isRunningTodayItem && (
-                            <span
-                              className={
-                                activeTimer.paused
-                                  ? "runningBadge runningBadge--paused"
-                                  : "runningBadge runningBadge--running"
-                              }
-                            >
-                              {activeTimer.paused ? "一時停止" : "実行中"}
-                            </span>
-                          )}
                         </div>
                         <div className="todayCardFooter">
                           <div className="todayCardSecondaryActions">
@@ -8944,6 +8933,17 @@ function DashboardApp() {
                           </div>
                           <div className="todayTimerCluster">
                             <div className="todayTriggerZone">
+                              {isRunningTodayItem && (
+                                <span
+                                  className={
+                                    activeTimer.paused
+                                      ? "runningBadge runningBadge--paused"
+                                      : "runningBadge runningBadge--running"
+                                  }
+                                >
+                                  {activeTimer.paused ? "一時停止" : "実行中"}
+                                </span>
+                              )}
                               {todayTriggerEditingIndex === index ? (
                                 <input
                                   aria-label="いつ・何の後にやる？"
@@ -9467,7 +9467,7 @@ function DashboardApp() {
                   </button>
                   <button
                     aria-label="次の一手を追加"
-                    className="sectionAddButton nextStepHeaderAdd"
+                    className="sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd"
                     onPointerDown={(event) => event.stopPropagation()}
                     onClick={(event) => {
                       event.stopPropagation();
@@ -9680,7 +9680,7 @@ function DashboardApp() {
                   </button>
                   <button
                     aria-label="やりたいことを追加"
-                    className="sectionAddButton"
+                    className="sectionAddButton sectionAddButton--barHitTarget"
                     disabled={inboxAddOpen}
                     onPointerDown={(event) => event.stopPropagation()}
                     onClick={(event) => {
@@ -11836,7 +11836,7 @@ function DashboardApp() {
       {projectEditDraft && (
         <div className="modalBackdrop" role="presentation">
           <section
-            aria-label={projectEditDraft.isNew ? "次の一手を追加" : "取り組みを編集"}
+            aria-label={projectEditDraft.isNew ? "次の一手を追加" : "次の一手を編集"}
             aria-modal="true"
             className="dropDialog editDialog modalLongForm app-scrollbar"
             role="dialog"
@@ -11844,7 +11844,7 @@ function DashboardApp() {
           >
             <div>
               <p className="eyebrow">Undertaking</p>
-              <h2>{projectEditDraft.isNew ? "次の一手を追加" : "取り組みを編集"}</h2>
+              <h2>{projectEditDraft.isNew ? "次の一手を追加" : "次の一手を編集"}</h2>
               {projectEditDraft.isNew && (
                 <p className="dialogLead">何に取り組むか、次に何をするか、始めるときに必要なものを登録します。</p>
               )}

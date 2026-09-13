@@ -226,7 +226,7 @@ test("Project add labels describe the real target and editing preserves unrelate
   expect(before).toBeTruthy();
   await page.locator('[data-project-id="sample-learning"]').click({ button: "right" });
   await page.getByRole("menuitem", { name: "編集" }).click();
-  projectDialog = page.getByRole("dialog", { name: "取り組みを編集" });
+  projectDialog = page.getByRole("dialog", { name: "次の一手を編集" });
   await projectDialog.getByRole("textbox", { name: /^次にやること/ }).fill("更新した一手");
   await projectDialog.getByRole("button", { name: "保存" }).click();
   const after = (await currentConfig(page)).projects.find(

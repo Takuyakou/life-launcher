@@ -220,18 +220,24 @@ for (const [width, columns] of [
     expect(
       await grid.evaluate((node) => getComputedStyle(node).gridTemplateColumns.split(" ").length),
     ).toBe(columns);
-    const remove = page.locator(".todayRemoveButton").first();
+    const card = page.locator(".todayRow").first();
+    const remove = card.locator(".todayRemoveButton");
+    const idleHeight = (await card.boundingBox())?.height;
     await remove.hover();
     await remove.focus();
     await page.keyboard.press("Shift+Tab");
     await page.keyboard.press("Tab");
     await expect(remove).toBeFocused();
     expect(await remove.evaluate((node) => node.matches(":focus-visible"))).toBe(true);
-    await page
-      .locator(".todayRow")
-      .first()
-      .getByRole("button", { name: "短時間タイマー5分で開始" })
-      .click();
+    await card.getByRole("button", { name: "短時間タイマー5分で開始" }).click();
+    await expect(card.locator(".runningBadge")).toHaveText("実行中");
+    expect((await card.boundingBox())?.height).toBe(idleHeight);
+    await card.getByRole("button", { name: "このセッションを一時停止" }).click();
+    await expect(card.locator(".runningBadge")).toHaveText("一時停止");
+    expect((await card.boundingBox())?.height).toBe(idleHeight);
+    await card.getByRole("button", { name: "このセッションを再開" }).click();
+    await expect(card.locator(".runningBadge")).toHaveText("実行中");
+    expect((await card.boundingBox())?.height).toBe(idleHeight);
     await expect(remove).toBeDisabled();
     for (const card of await page.locator(".todayRow").all()) {
       const footer = card.locator(".todayCardFooter");

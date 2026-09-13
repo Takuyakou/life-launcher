@@ -4051,7 +4051,8 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .todayTimerActions--running .runningPauseButton,
 .todayTimerActions--running .runningStopButton {
-  min-height: 38px;
+  height: 36px;
+  min-height: 36px;
 }
 
 .sectionHeading {
@@ -4101,6 +4102,16 @@ input[type="number"]::-webkit-inner-spin-button {
   color: var(--muted);
   font-size: 12px;
   font-weight: 750;
+}
+
+.sectionAddButton--barHitTarget {
+  position: relative;
+}
+
+.sectionAddButton--barHitTarget::before {
+  position: absolute;
+  inset: -10px 0;
+  content: "";
 }
 
 .sectionAddButton:hover,
@@ -7695,8 +7706,14 @@ input[type="number"]::-webkit-inner-spin-button {
   display: flex;
   justify-content: flex-end;
   align-items: center;
+  gap: 4px;
   width: 100%;
   min-height: 34px;
+}
+
+.todayTriggerZone .runningBadge {
+  flex: 0 0 auto;
+  line-height: 1.2;
 }
 
 .todayTriggerZone .todayTriggerButton,

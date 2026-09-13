@@ -17,6 +17,28 @@ async function config(page: Page): Promise<AppConfig> {
   }).__LIFE_LAUNCHER_VISUAL_QA__.currentConfig());
 }
 
+async function expectBarEdgeClick(
+  page: Page,
+  headerSelector: string,
+  buttonName: string,
+  dialogName: string,
+) {
+  const header = page.locator(headerSelector);
+  const button = page.getByRole("button", { name: buttonName, exact: true });
+  for (const edge of ["top", "bottom"] as const) {
+    const headerBox = await header.boundingBox();
+    const buttonBox = await button.boundingBox();
+    if (!headerBox || !buttonBox) throw new Error("Header add action is not measurable");
+    await page.mouse.click(
+      buttonBox.x + buttonBox.width / 2,
+      edge === "top" ? headerBox.y + 2 : headerBox.y + headerBox.height - 2,
+    );
+    const dialog = page.getByRole("dialog", { name: dialogName });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "キャンセル", exact: true }).click();
+  }
+}
+
 test("P8 entry form uses user vocabulary and preserves schema fields", async ({ page }) => {
   await prepare(page);
   await page.getByRole("button", { name: "次の一手を追加", exact: true }).click();
@@ -46,7 +68,7 @@ test("P8 instruction picker searches, applies and cancels a draft", async ({ pag
   await prepare(page);
   await page.locator('[data-project-id="sample-learning"]').click({ button: "right" });
   await page.getByRole("menuitem", { name: "編集", exact: true }).click();
-  const editor = page.getByRole("dialog", { name: "取り組みを編集" });
+  const editor = page.getByRole("dialog", { name: "次の一手を編集" });
   await editor.getByRole("button", { name: "手順書を選ぶ" }).click();
   let picker = page.getByRole("dialog", { name: "手順書を選ぶ" });
   await expect(picker.getByRole("searchbox", { name: "手順書を検索" })).toBeFocused();
@@ -84,6 +106,13 @@ test("P8 add actions are independent and available from bars and rows", async ({
   const projectDisclosure = page.locator(".projectsBand .disclosure");
   const projectAdd = page.getByRole("button", { name: "次の一手を追加", exact: true });
   await expect(projectDisclosure).toHaveAttribute("aria-expanded", "true");
+  await expectBarEdgeClick(
+    page,
+    ".projectsBand .disclosureHeader",
+    "次の一手を追加",
+    "次の一手を追加",
+  );
+  await expect(projectDisclosure).toHaveAttribute("aria-expanded", "true");
   await projectAdd.click();
   await expect(projectDisclosure).toHaveAttribute("aria-expanded", "true");
   await page.getByRole("dialog", { name: "次の一手を追加" }).getByRole("button", { name: "キャンセル" }).click();
@@ -98,6 +127,13 @@ test("P8 add actions are independent and available from bars and rows", async ({
 
   const wishlistDisclosure = page.locator(".inboxBand .disclosure");
   await expect(wishlistDisclosure).toHaveAttribute("aria-expanded", "false");
+  await expectBarEdgeClick(
+    page,
+    ".inboxBand .disclosureHeader",
+    "やりたいことを追加",
+    "やりたいことを追加",
+  );
+  await expect(wishlistDisclosure).toHaveAttribute("aria-expanded", "true");
   await page.locator("[data-inbox-header]").click({ button: "right" });
   await page.getByRole("menuitem", { name: "やりたいことを追加" }).click();
   await expect(page.getByRole("dialog", { name: "やりたいことを追加" })).toBeVisible();
