@@ -3471,8 +3471,11 @@ input[type="number"]::-webkit-inner-spin-button {
 .doNowStartPrimary,
 .doNowStartSecondary {
   position: relative;
-  width: 112px;
-  min-width: 112px;
+  width: 90px;
+  min-width: 90px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0 10px;
   display: grid;
   place-items: center;
 }
@@ -4226,10 +4229,6 @@ input[type="number"]::-webkit-inner-spin-button {
   flex: 1;
   border: 0;
   border-radius: 0;
-}
-
-.todayBuilderHeaderAdd {
-  flex: 0 0 auto;
 }
 
 .todayBuilderBody {
@@ -7996,11 +7995,6 @@ input[type="number"]::-webkit-inner-spin-button {
 .todayEmptyStateContent > button:focus-visible {
   border-color: var(--accent);
   background: var(--surface-strong);
-}
-
-.todayBuilderHeaderAdd {
-  min-height: 32px;
-  white-space: nowrap;
 }
 
 .todayBuilderRow--selected {

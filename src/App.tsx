@@ -413,9 +413,6 @@ type ContextMenuTarget =
       kind: "inboxes";
     }
   | {
-      kind: "todayBuilderAdd";
-    }
-  | {
       kind: "session";
       session: SessionEntryRow;
     };
@@ -7416,6 +7413,10 @@ function DashboardApp() {
         .map((key) => order.get(key))
         .find((index) => index !== undefined);
     return [...activeCandidates].sort((left, right) => {
+      const sourceOrder = (candidate: TodayBuilderCandidate) =>
+        candidate.source === "次の一手" ? 0 : 1;
+      const sourceDifference = sourceOrder(left) - sourceOrder(right);
+      if (sourceDifference !== 0) return sourceDifference;
       const leftIndex = orderIndex(left);
       const rightIndex = orderIndex(right);
       if (leftIndex === undefined && rightIndex === undefined) return 0;
@@ -8693,9 +8694,7 @@ function DashboardApp() {
                               onClick={() => startDoNowProject(doNowSelection.project, true)}
                               type="button"
                             >
-                              <span className="timerStartDuration">
-                                短時間 {doNowShortTimerMinutes}分
-                              </span>
+                              <span className="timerStartDuration">{doNowShortTimerMinutes}分</span>
                               <span aria-hidden="true" className="timerStartHoverGlyph">
                                 <UiIcon name="play" size={16} />
                               </span>
@@ -8706,9 +8705,7 @@ function DashboardApp() {
                               onClick={() => startDoNowProject(doNowSelection.project, false)}
                               type="button"
                             >
-                              <span className="timerStartDuration">
-                                通常 {doNowDefaultTimerMinutes}分
-                              </span>
+                              <span className="timerStartDuration">{doNowDefaultTimerMinutes}分</span>
                               <span aria-hidden="true" className="timerStartHoverGlyph">
                                 <UiIcon name="play" size={16} />
                               </span>
@@ -9225,25 +9222,6 @@ function DashboardApp() {
                   <span className="disclosureDescription">
                     次の一手・やりたいことから、今日やるものを選ぶ
                   </span>
-                  <button
-                    aria-label="今日の候補を追加"
-                    className="sectionAddButton todayBuilderHeaderAdd"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      const rect = event.currentTarget.getBoundingClientRect();
-                      openContextMenu(
-                        { kind: "todayBuilderAdd" },
-                        rect.left,
-                        rect.bottom,
-                        event.currentTarget,
-                      );
-                    }}
-                    onPointerDown={(event) => event.stopPropagation()}
-                    type="button"
-                  >
-                    <UiIcon name="add" size={16} />
-                    追加
-                  </button>
                 </div>
 
                 {builderRestoreGuidanceActive && (
@@ -10399,15 +10377,6 @@ function DashboardApp() {
             >
               やりたいことを追加
             </ContextMenuItem>
-          ) : contextMenu.kind === "todayBuilderAdd" ? (
-            <>
-              <ContextMenuItem onClick={openProjectAddDialog} type="button">
-                次の一手を追加
-              </ContextMenuItem>
-              <ContextMenuItem onClick={() => openInboxAddDialog()} type="button">
-                やりたいことを追加
-              </ContextMenuItem>
-            </>
           ) : contextMenu.kind === "session" ? (
             <>
               <ContextMenuItem

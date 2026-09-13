@@ -48,6 +48,19 @@ test("Builder is the only persistent Today adoption surface and groups its sourc
   fixture.config.today.items = [];
   await prepare(page, fixture);
 
+  await page.evaluate(() => {
+    localStorage.setItem(
+      "life-launcher-today-builder-order",
+      JSON.stringify([
+        "project:sample-learning",
+        "wishlist:sample-later",
+        "project:sample-stretch",
+        "wishlist:sample-weekend",
+      ]),
+    );
+  });
+  await page.reload();
+
   await page.locator(".todayBuilderDisclosure").click();
   await expect(page.locator(".projectsBand .nextStepTodayButton")).toHaveCount(0);
   await page.locator(".inboxBand .disclosure").click();
@@ -56,6 +69,7 @@ test("Builder is the only persistent Today adoption surface and groups its sourc
     "次の一手2件",
     "やりたいこと2件",
   ]);
+  await expect(page.getByRole("button", { name: "今日の候補を追加" })).toHaveCount(0);
   await expect(page.locator(".todayBuilderRow .projectIdentity")).toHaveCount(3);
   await expect(
     page.locator(".todayBuilderRow").getByRole("button", { name: "今日へ" }),
