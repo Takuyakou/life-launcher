@@ -147,6 +147,7 @@ test("a deleted remembered item falls back to the first valid tile", async ({ pa
   await removeButton(page, "focus-item-81");
 
   await page.clock.runFor(300);
+  await expect(removed).toHaveCount(0);
   await emitDictionaryShown(page);
 
   await expect(toolsTab).toHaveAttribute("aria-selected", "true");
