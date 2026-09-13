@@ -47,12 +47,14 @@
     "P8-05": {
       "status": "COMPLETE_AWAITING_REVIEW",
       "approved": false,
-      "report": "docs/phase8/workreports/p8-05-report.md"
+      "report": "docs/phase8/workreports/p8-05-report.md",
+      "pull_request": "https://github.com/Takuyakou/life-launcher/pull/59"
     },
     "P8-06": {
       "status": "COMPLETE_AWAITING_REVIEW",
       "approved": false,
-      "report": "docs/phase8/workreports/p8-06-report.md"
+      "report": "docs/phase8/workreports/p8-06-report.md",
+      "pull_request": "https://github.com/Takuyakou/life-launcher/pull/60"
     }
   },
   "release_allowed": false

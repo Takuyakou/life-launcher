@@ -19,7 +19,7 @@
 | P8-03 | #57 | MERGED |
 | P8-04 | #58 | CI PASS / review待ち |
 | P8-05 | #59 | CI PASS / review待ち |
-| P8-06 | このbranchのPR | 最終gate PASS / PR作成待ち |
+| P8-06 | #60 | 最終gate PASS / CIはPR checks参照 |
 ## 2. 実装済み
 
 - P8-01: 取り組み登録フォームの表示語、情報順、手順書Picker、保存/キャンセル配置、追加導線を整理。
@@ -88,11 +88,11 @@ clean install後の初回full Visualでは既存Quick keyboard testが1件timeou
 - `src-tauri/icons/icon.ico`はGit追跡済みで9,204 bytes。過去報告の単純なico欠落は現行treeで再現しない。
 - NSIS Installer bundleはPhase 8対象外のため未生成。Release Prepでclean Installer buildとicon表示を再確認する。
 - version bump、tag、Release、配布asset、EXE更新、Web Demo同期は行っていない。
-- #58、#59、P8-06 PRは下からmergeする必要がある。現在の`origin/main`はP8-04以降未統合。
+- #58、#59、PR #60は下からmergeする必要がある。現在の`origin/main`はP8-04以降未統合。
 
 ## 9. 判定
 
 統合候補treeの機能・保存契約・公開安全・frontend/Rust回帰・Native起動にrelease-prepを妨げる製品blockerはない。
-PR #58 → #59 → P8-06をmergeした後、Installer clean buildを含むv1.3 Release Prepへ進める。
+PR #58 → #59 → #60をmergeした後、Installer clean buildを含むv1.3 Release Prepへ進める。
 
 **READY FOR v1.3 RELEASE PREP**
