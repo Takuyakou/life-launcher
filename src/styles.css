@@ -8693,3 +8693,104 @@ input[type="number"]::-webkit-inner-spin-button {
     display: none;
   }
 }
+
+.formSectionDescription {
+  margin: -4px 0 2px;
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.formDialogActions .primaryButton {
+  border-color: var(--good);
+  background: var(--control-positive-bg);
+  color: var(--good);
+}
+
+.formDialogActions .dialogCancelButton {
+  border-color: rgba(255, 128, 120, 0.42);
+  background: var(--control-danger-bg);
+  color: #ffb4ad;
+}
+
+.instructionPicker {
+  display: grid;
+  gap: 9px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 11px;
+  background: var(--surface-soft);
+}
+
+.instructionPickerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.instructionPickerHeader > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.instructionPickerHeader strong {
+  font-size: 13px;
+}
+
+.instructionPickerHeader span {
+  color: var(--text-muted-readable);
+  font-size: 11px;
+}
+
+.instructionPickerOpen {
+  min-width: 116px;
+}
+
+.instructionPickerSelection {
+  min-width: 0;
+  min-height: 36px;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 4px 5px 4px 9px;
+  color: var(--text-muted-readable);
+}
+
+.instructionPickerSelection > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.instructionPickerSelection > button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+.instructionPickerSelection > button:hover,
+.instructionPickerSelection > button:focus-visible {
+  color: var(--text);
+}
+
+.instructionPickerDialog {
+  width: min(620px, 100%);
+  max-height: min(76vh, 660px);
+  grid-template-rows: auto auto minmax(120px, 1fr) auto;
+}
+
+@media (max-width: 620px) {
+  .instructionPickerHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

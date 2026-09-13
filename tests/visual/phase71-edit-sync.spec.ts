@@ -77,8 +77,8 @@ test("P71 Today Project editor saves both in one call; failure retains draft",as
   await prepare(page);
   const before=await current(page);
   await edit(page);
-  const dialog=page.getByRole("dialog",{name:"プロジェクト編集",exact:true});
-  await dialog.getByRole("textbox",{name:/^次の一手/}).fill("同期した次の一手");
+  const dialog=page.getByRole("dialog",{name:"取り組みを編集",exact:true});
+  await dialog.getByRole("textbox",{name:/^次にやること/}).fill("同期した次の一手");
   await page.evaluate(()=>{
     (window as Window & {__LIFE_LAUNCHER_VISUAL_QA__: {setSaveConfigFailure:(v:boolean)=>void}}).__LIFE_LAUNCHER_VISUAL_QA__.setSaveConfigFailure(true);
   });
@@ -122,15 +122,15 @@ test("P71 running/paused blocks Today and source edit, other source stays editab
   await page.getByRole("dialog").getByRole("button",{name:"キャンセル",exact:true}).click();
   await card.getByRole("button",{name:"終了",exact:true}).click();
   await edit(page);
-  await expect(page.getByRole("dialog",{name:"プロジェクト編集",exact:true})).toBeVisible();
+  await expect(page.getByRole("dialog",{name:"取り組みを編集",exact:true})).toBeVisible();
 });
 
 test("P71 source editor changes the next early threshold without changing history",async({page})=>{
   await prepare(page);
   await page.locator(".nextStepRow").first().click({button:"right"});
   await page.getByRole("menuitem",{name:"編集",exact:true}).click();
-  const editor=page.getByRole("dialog",{name:"プロジェクト編集",exact:true});
-  await editor.getByRole("spinbutton",{name:"プロジェクトの短時間タイマー分数"}).fill("2");
+  const editor=page.getByRole("dialog",{name:"取り組みを編集",exact:true});
+  await editor.getByRole("spinbutton",{name:"取り組みの短時間タイマー分数"}).fill("2");
   await editor.getByRole("button",{name:"保存",exact:true}).click();
   await expect(editor).toHaveCount(0);
   expect((await current(page)).today.items[0].shortTimerMinutes).toBe(2);
@@ -163,8 +163,8 @@ test("P71 Today Wishlist editing and source-side editing share the same snapshot
 test("P71 direct save is rejected if the same timer starts after editor opens",async({page})=>{
   await prepare(page);
   await edit(page);
-  const editor=page.getByRole("dialog",{name:"プロジェクト編集",exact:true});
-  await editor.getByRole("textbox",{name:/^次の一手/}).fill("保存してはいけない");
+  const editor=page.getByRole("dialog",{name:"取り組みを編集",exact:true});
+  await editor.getByRole("textbox",{name:/^次にやること/}).fill("保存してはいけない");
   await page.locator(".todayRow").first().getByRole("button",{name:"通常タイマー25分で開始"}).evaluate(node=>{
     const props=Object.keys(node).find(k=>k.startsWith("__reactProps$"));
     if(!props) throw new Error("React props unavailable");

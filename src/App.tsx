@@ -95,6 +95,7 @@ import { ContextMenu, ContextMenuItem } from "./components/ContextMenu";
 import { HelpGuideDialog } from "./components/HelpGuideDialog";
 import { ProjectIdentity } from "./components/ProjectIdentity";
 import { StartEnvironmentPicker } from "./StartEnvironmentPicker";
+import { InstructionPicker } from "./InstructionPicker";
 import { canonicalSourceKey, timerSourceKey, resnapshotSource, SOURCE_EDIT_TIMER_REASON } from "./sourceEdit";
 import { PROJECT_COLOR_IDS, PROJECT_COLOR_LABELS, resolveProjectColorId } from "./projectIdentity";
 import { canRevealLauncherButton } from "./launcherReveal";
@@ -406,6 +407,9 @@ type ContextMenuTarget =
     }
   | {
       kind: "projects";
+    }
+  | {
+      kind: "inboxes";
     };
 
 type ContextMenuState = ContextMenuTarget & {
@@ -6636,6 +6640,16 @@ function DashboardApp() {
     }
   };
 
+  const openInboxAddDialog = (opener?: HTMLButtonElement) => {
+    if (inboxAddSaving) return;
+    if (opener) inboxAddOpenerRef.current = opener;
+    setContextMenu(null);
+    setInboxOpen(true);
+    setInboxDraft("");
+    setInboxAddError(null);
+    setInboxAddOpen(true);
+  };
+
   const openProjectAddDialog = () => {
     if (!config) return;
     setContextMenu(null);
@@ -6706,7 +6720,7 @@ function DashboardApp() {
     }
     const name = projectEditDraft.name.trim();
     if (!name) {
-      showToast("warn", "プロジェクト名を入力してください");
+      showToast("warn", "取り組み名を入力してください");
       return;
     }
     const defaultTimerMinutes = projectEditDraft.defaultTimerMinutes.trim()
@@ -6960,7 +6974,7 @@ function DashboardApp() {
     if (source === "project") setProjectsOpen(true);
     if (source === "wishlist") setInboxOpen(true);
     window.requestAnimationFrame(() => {
-      const label = source === "project" ? "プロジェクトを追加" : "やりたいことを追加";
+      const label = source === "project" ? "取り組みを追加" : "やりたいことを追加";
       document.querySelector<HTMLElement>(`button[aria-label="${label}"]`)?.focus();
     });
   };
@@ -9797,10 +9811,14 @@ function DashboardApp() {
                     </span>
                   </button>
                   <button
-                    aria-label="プロジェクトを追加"
+                    aria-label="取り組みを追加"
                     className="sectionAddButton nextStepHeaderAdd"
-                    onClick={openProjectAddDialog}
-                    title="プロジェクトを追加"
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      openProjectAddDialog();
+                    }}
+                    title="取り組みを追加"
                     type="button"
                   >
                     <UiIcon name="add" size={16} />
@@ -9979,6 +9997,17 @@ function DashboardApp() {
                 <div
                   className="disclosureHeader"
                   data-inbox-header
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    openContextMenu(
+                      { kind: "inboxes" },
+                      event.clientX,
+                      event.clientY,
+                      event.currentTarget,
+                    );
+                  }}
+                  onKeyDown={(event) => openContextMenuFromKeyboard(event, { kind: "inboxes" })}
+                  tabIndex={-1}
                   onClick={(event) =>
                     toggleDisclosureFromBar(event, () => setInboxOpen((open) => !open))
                   }
@@ -9998,12 +10027,10 @@ function DashboardApp() {
                     aria-label="やりたいことを追加"
                     className="sectionAddButton"
                     disabled={inboxAddOpen}
+                    onPointerDown={(event) => event.stopPropagation()}
                     onClick={(event) => {
-                      inboxAddOpenerRef.current = event.currentTarget;
-                      setInboxOpen(true);
-                      setInboxDraft("");
-                      setInboxAddError(null);
-                      setInboxAddOpen(true);
+                      event.stopPropagation();
+                      openInboxAddDialog(event.currentTarget);
                     }}
                     title="やりたいことを追加"
                     type="button"
@@ -10518,6 +10545,12 @@ function DashboardApp() {
             </>
           ) : contextMenu.kind === "inbox" ? (
             <>
+              <ContextMenuItem
+                onClick={() => openInboxAddDialog()}
+                type="button"
+              >
+                やりたいことを追加
+              </ContextMenuItem>
               {config?.inbox[contextMenu.index]?.id &&
                 explicitlyExcludedCandidate(`wishlist:${config.inbox[contextMenu.index].id}`) && (
                   <ContextMenuItem
@@ -10578,6 +10611,9 @@ function DashboardApp() {
             </>
           ) : contextMenu.kind === "project" ? (
             <>
+              <ContextMenuItem onClick={openProjectAddDialog} type="button">
+                取り組みを追加
+              </ContextMenuItem>
               {explicitlyExcludedCandidate(`project:${contextMenu.project.id}`) && (
                 <ContextMenuItem
                   onClick={() =>
@@ -10643,7 +10679,14 @@ function DashboardApp() {
             </>
           ) : contextMenu.kind === "projects" ? (
             <ContextMenuItem onClick={openProjectAddDialog} type="button">
-              プロジェクトを追加
+              取り組みを追加
+            </ContextMenuItem>
+          ) : contextMenu.kind === "inboxes" ? (
+            <ContextMenuItem
+              onClick={() => openInboxAddDialog()}
+              type="button"
+            >
+              やりたいことを追加
             </ContextMenuItem>
           ) : (
             <>
@@ -10731,7 +10774,7 @@ function DashboardApp() {
             </label>
 
             <fieldset className="inboxProjectChoices">
-              <legend>プロジェクト</legend>
+              <legend>取り組み</legend>
               <label>
                 <input
                   checked={!inboxEditProjectId}
@@ -10739,7 +10782,7 @@ function DashboardApp() {
                   onChange={() => setInboxEditProjectId("")}
                   type="radio"
                 />
-                <span>プロジェクトなし</span>
+                <span>取り組みなし</span>
               </label>
               {config.projects.map((project) => (
                 <label key={project.id}>
@@ -10759,70 +10802,25 @@ function DashboardApp() {
               ))}
             </fieldset>
 
-            <h3 className="formSectionHeading">手順書</h3>
-            <div className="fieldStack inboxStartEnvironmentSection">
-              <select
-                aria-label="手順書を選択"
-                className="textInput"
-                disabled={instructionChoicesLoading}
-                onChange={(event) => {
-                  const instructionPath = event.target.value;
-                  setInboxEditInstructionPath(instructionPath);
-                  setInboxEditInstructionOpenOnStart(
-                    instructionPath
-                      ? inboxEditInstructionPath
-                        ? inboxEditInstructionOpenOnStart
-                        : true
-                      : false,
-                  );
-                }}
-                value={inboxEditInstructionPath}
-              >
-                <option value="">
-                  {instructionChoicesLoading ? "手順書を読み込み中…" : "手順書なし"}
-                </option>
-                {inboxEditInstructionPath &&
-                  !instructionChoices.some(
-                    (choice) => choice.path === inboxEditInstructionPath,
-                  ) && (
-                    <option value={inboxEditInstructionPath}>
-                      現在の設定（登録フォルダ内に見つかりません）
-                    </option>
-                  )}
-                {instructionChoices.map((choice) => (
-                  <option key={choice.path} value={choice.path}>
-                    {choice.label}
-                  </option>
-                ))}
-              </select>
-              {instructionChoicesError && (
-                <div className="projectInstructionLoadError" role="status">
-                  <small>一覧を読み込めません: {instructionChoicesError}</small>
-                  <button onClick={() => void refreshInstructionChoices()} type="button">
-                    再読込
-                  </button>
-                </div>
-              )}
-              <label className="projectWeeklyFocusToggle projectInstructionStartToggle">
-                <input
-                  checked={inboxEditInstructionOpenOnStart}
-                  disabled={!inboxEditInstructionPath}
-                  onChange={(event) => setInboxEditInstructionOpenOnStart(event.target.checked)}
-                  type="checkbox"
-                />
-                <span>タイマー開始時に手順書を開く</span>
-              </label>
-            </div>
-
-            <StartEnvironmentPicker
-              buttons={projectSelectableButtons}
-              onChange={setInboxEditButtonIds}
-              overlayPages={overlayPages}
-              renderIcon={renderButtonIcon}
-              selectedIds={inboxEditButtonIds}
+            <h3 className="formSectionHeading">開始環境</h3>
+            <p className="formSectionDescription">一緒に使う道具や、開始時に確認する手順を設定します。</p>
+            <StartEnvironmentPicker buttons={projectSelectableButtons} onChange={setInboxEditButtonIds} overlayPages={overlayPages} renderIcon={renderButtonIcon} selectedIds={inboxEditButtonIds} />
+            <InstructionPicker
+              choices={instructionChoices}
+              error={instructionChoicesError}
+              loading={instructionChoicesLoading}
+              onChange={(instructionPath) => {
+                setInboxEditInstructionPath(instructionPath);
+                setInboxEditInstructionOpenOnStart(instructionPath ? (inboxEditInstructionPath ? inboxEditInstructionOpenOnStart : true) : false);
+              }}
+              onRetry={() => void refreshInstructionChoices()}
+              selectedPath={inboxEditInstructionPath}
             />
-
-            <div className="dialogActions">
+            <label className="projectWeeklyFocusToggle projectInstructionStartToggle">
+              <input checked={inboxEditInstructionOpenOnStart} disabled={!inboxEditInstructionPath} onChange={(event) => setInboxEditInstructionOpenOnStart(event.target.checked)} type="checkbox" />
+              <span>開始時に手順書を開く</span>
+            </label>
+            <div className="dialogActions formDialogActions">
               <button
                 className="primaryButton"
                 disabled={!inboxEditDraft.trim() || sourceEditSaving}
@@ -10831,7 +10829,7 @@ function DashboardApp() {
               >
                 保存
               </button>
-              <button className="secondaryButton" onClick={cancelInboxEdit} type="button">
+              <button className="secondaryButton dialogCancelButton" onClick={cancelInboxEdit} type="button">
                 キャンセル
               </button>
             </div>
@@ -12133,7 +12131,7 @@ function DashboardApp() {
                 )}
               </label>
 
-              <div className="dialogActions">
+              <div className="dialogActions formDialogActions">
                 <button
                   className="primaryButton"
                   disabled={inboxAddSaving || !inboxDraft.trim()}
@@ -12142,7 +12140,7 @@ function DashboardApp() {
                   {inboxAddSaving ? "保存中…" : "保存"}
                 </button>
                 <button
-                  className="secondaryButton"
+                  className="secondaryButton dialogCancelButton"
                   disabled={inboxAddSaving}
                   onClick={closeInboxAddDialog}
                   type="button"
@@ -12158,23 +12156,23 @@ function DashboardApp() {
       {projectEditDraft && (
         <div className="modalBackdrop" role="presentation">
           <section
-            aria-label={projectEditDraft.isNew ? "プロジェクトを追加" : "プロジェクト編集"}
+            aria-label={projectEditDraft.isNew ? "取り組みを追加" : "取り組みを編集"}
             aria-modal="true"
             className="dropDialog editDialog modalLongForm app-scrollbar"
             role="dialog"
             tabIndex={-1}
           >
             <div>
-              <p className="eyebrow">Project</p>
-              <h2>{projectEditDraft.isNew ? "プロジェクトを追加" : "プロジェクト編集"}</h2>
+              <p className="eyebrow">Undertaking</p>
+              <h2>{projectEditDraft.isNew ? "取り組みを追加" : "取り組みを編集"}</h2>
               {projectEditDraft.isNew && (
-                <p className="dialogLead">取り組みと、次にやることを登録します。</p>
+                <p className="dialogLead">何に取り組むか、次に何をするか、始めるときに必要なものを登録します。</p>
               )}
             </div>
 
             <h3 className="formSectionHeading">基本</h3>
             <label className="fieldStack">
-              <span>プロジェクト名</span>
+              <span>取り組み名</span>
               <input
                 autoFocus={projectEditDraft.isNew}
                 className="textInput"
@@ -12187,7 +12185,7 @@ function DashboardApp() {
             </label>
 
             <label className="fieldStack">
-              <span>北極星（任意）</span>
+              <span>目標（任意）</span>
               <input
                 className="textInput"
                 maxLength={60}
@@ -12198,7 +12196,7 @@ function DashboardApp() {
                 value={projectEditDraft.northStar}
               />
               <small className="fieldHint">
-                このプロジェクトで長期的に実現したいことを1行で書きます。
+                この取り組みで実現したい目標を1行で書きます。
               </small>
             </label>
 
@@ -12211,9 +12209,10 @@ function DashboardApp() {
               <span>今週の重点にする</span>
             </label>
 
-            <h3 className="formSectionHeading">計画</h3>
+            <h3 className="formSectionHeading">次にやること</h3>
+            <p className="formSectionDescription">次にこの取り組みを開いたとき、最初にやる1つだけ決めます。</p>
             <label className="fieldStack">
-              <span>次の一手</span>
+              <span>次にやること</span>
               <input
                 className="textInput"
                 maxLength={120}
@@ -12241,7 +12240,7 @@ function DashboardApp() {
             </label>
 
             <label className="fieldStack">
-              <span>いつ・何の後にやる？（任意）</span>
+              <span>始めるきっかけ（任意）</span>
               <input
                 className="textInput"
                 maxLength={EXECUTION_TRIGGER_MAX_CHARS}
@@ -12256,68 +12255,25 @@ function DashboardApp() {
               />
             </label>
 
-            <h3 className="formSectionHeading">手順書</h3>
-            <div className="fieldStack projectInstructionSetting">
-              <span>手順書（任意）</span>
-              <select
-                aria-label="プロジェクトの手順書"
-                className="textInput"
-                disabled={instructionChoicesLoading}
-                onChange={(event) => {
-                  const instructionPath = event.target.value;
-                  setProjectEditDraft({
-                    ...projectEditDraft,
-                    instructionPath,
-                    instructionOpenOnStart: instructionPath
-                      ? projectEditDraft.instructionPath
-                        ? projectEditDraft.instructionOpenOnStart
-                        : true
-                      : false,
-                  });
-                }}
-                value={projectEditDraft.instructionPath}
-              >
-                <option value="">
-                  {instructionChoicesLoading ? "手順書を読み込み中…" : "手順書なし"}
-                </option>
-                {projectEditDraft.instructionPath &&
-                  !instructionChoices.some(
-                    (choice) => choice.path === projectEditDraft.instructionPath,
-                  ) && (
-                    <option value={projectEditDraft.instructionPath}>
-                      現在の設定（登録フォルダ内に見つかりません）
-                    </option>
-                  )}
-                {instructionChoices.map((choice) => (
-                  <option key={choice.path} value={choice.path}>
-                    {choice.label}
-                  </option>
-                ))}
-              </select>
-              {instructionChoicesError && (
-                <div className="projectInstructionLoadError" role="status">
-                  <small>一覧を読み込めません: {instructionChoicesError}</small>
-                  <button onClick={() => void refreshInstructionChoices()} type="button">
-                    再読込
-                  </button>
-                </div>
-              )}
-              <label className="projectWeeklyFocusToggle projectInstructionStartToggle">
-                <input
-                  checked={projectEditDraft.instructionOpenOnStart}
-                  disabled={!projectEditDraft.instructionPath}
-                  onChange={(event) =>
-                    setProjectEditDraft({
-                      ...projectEditDraft,
-                      instructionOpenOnStart: event.target.checked,
-                    })
-                  }
-                  type="checkbox"
-                />
-                <span>プロジェクト開始時に手順書を開く</span>
-              </label>
-            </div>
-
+            <h3 className="formSectionHeading">開始環境</h3>
+            <p className="formSectionDescription">この取り組みを始めるとき、一緒に使う道具や手順を設定します。</p>
+            <StartEnvironmentPicker buttons={projectSelectableButtons} onChange={(buttonIds) => setProjectEditDraft({ ...projectEditDraft, buttonIds })} overlayPages={overlayPages} renderIcon={renderButtonIcon} selectedIds={projectEditDraft.buttonIds} />
+            <InstructionPicker
+              choices={instructionChoices}
+              error={instructionChoicesError}
+              loading={instructionChoicesLoading}
+              onChange={(instructionPath) => setProjectEditDraft({
+                ...projectEditDraft,
+                instructionPath,
+                instructionOpenOnStart: instructionPath ? (projectEditDraft.instructionPath ? projectEditDraft.instructionOpenOnStart : true) : false,
+              })}
+              onRetry={() => void refreshInstructionChoices()}
+              selectedPath={projectEditDraft.instructionPath}
+            />
+            <label className="projectWeeklyFocusToggle projectInstructionStartToggle">
+              <input checked={projectEditDraft.instructionOpenOnStart} disabled={!projectEditDraft.instructionPath} onChange={(event) => setProjectEditDraft({ ...projectEditDraft, instructionOpenOnStart: event.target.checked })} type="checkbox" />
+              <span>開始時に手順書を開く</span>
+            </label>
             <h3 className="formSectionHeading">タイマー</h3>
             <div className="fieldStack">
               <span>開始レシピ</span>
@@ -12354,7 +12310,7 @@ function DashboardApp() {
                     >
                       <span className="numberDragInput">
                         <input
-                          aria-label="プロジェクトの短時間タイマー分数"
+                          aria-label="取り組みの短時間タイマー分数"
                           className="textInput"
                           inputMode="numeric"
                           max="240"
@@ -12430,7 +12386,7 @@ function DashboardApp() {
                     >
                       <span className="numberDragInput">
                         <input
-                          aria-label="プロジェクトの通常タイマー分数"
+                          aria-label="取り組みの通常タイマー分数"
                           className="textInput"
                           inputMode="numeric"
                           max="240"
@@ -12477,9 +12433,9 @@ function DashboardApp() {
               </div>
               <h3 className="formSectionHeading">見た目</h3>
               <div className="fieldStack">
-                <span>プロジェクトカラー</span>
+                <span>取り組みカラー</span>
                 <div
-                  aria-label="プロジェクトカラー"
+                  aria-label="取り組みカラー"
                   className="projectColorPalette"
                   role="radiogroup"
                 >
@@ -12505,7 +12461,7 @@ function DashboardApp() {
                 </div>
               </div>
               <label className="fieldStack">
-                <span>開始noteテンプレート（空欄は次の一手）</span>
+                <span>開始noteテンプレート（任意）</span>
                 <input
                   className="textInput"
                   maxLength={120}
@@ -12520,15 +12476,8 @@ function DashboardApp() {
               </label>
             </div>
 
-            <StartEnvironmentPicker
-              buttons={projectSelectableButtons}
-              onChange={(buttonIds) => setProjectEditDraft({ ...projectEditDraft, buttonIds })}
-              overlayPages={overlayPages}
-              renderIcon={renderButtonIcon}
-              selectedIds={projectEditDraft.buttonIds}
-            />
 
-            <div className="dialogActions">
+            <div className="dialogActions formDialogActions">
               <button
                 className="primaryButton"
                 disabled={!projectEditDraft.name.trim() || sourceEditSaving}
@@ -12538,7 +12487,7 @@ function DashboardApp() {
                 保存
               </button>
               <button
-                className="secondaryButton"
+                className="secondaryButton dialogCancelButton"
                 disabled={sourceEditSaving}
                 onClick={() => { if (!sourceEditBusyRef.current) setProjectEditDraft(null); }}
                 type="button"
@@ -12568,7 +12517,7 @@ function DashboardApp() {
 
             {completionProject && (
               <label className="fieldStack">
-                <span>次の一手</span>
+                <span>次にやること</span>
                 <input
                   className="textInput"
                   onChange={(event) => updateCompletionNextStep(event.target.value)}

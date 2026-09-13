@@ -277,10 +277,10 @@ test("Today Builder is source-only, paginates, and ignores legacy dismiss keys",
   await page.getByRole("button", { name: "次のページ" }).click();
   await expect(page.locator("[data-today-builder-index]")).toHaveCount(3);
 
-  await page.locator(".projectsBand").getByRole("button", { name: "プロジェクトを追加" }).click();
-  const dialog = page.getByRole("dialog", { name: "プロジェクトを追加" });
-  await dialog.getByRole("textbox", { name: "プロジェクト名" }).fill("追加したプロジェクト");
-  await dialog.getByRole("textbox", { name: "次の一手", exact: true }).fill("6件目以降も残る候補");
+  await page.locator(".projectsBand").getByRole("button", { name: "取り組みを追加" }).click();
+  const dialog = page.getByRole("dialog", { name: "取り組みを追加" });
+  await dialog.getByRole("textbox", { name: "取り組み名" }).fill("追加したプロジェクト");
+  await dialog.getByRole("textbox", { name: "次にやること", exact: true }).fill("6件目以降も残る候補");
   await dialog.getByRole("button", { name: "保存" }).click();
   await expect(page.locator(".todayBuilderHeader .disclosureCount")).toContainText("9件");
 
@@ -464,10 +464,10 @@ test("NextStep accordion, detailed add dialog, and keyboard context menu are rea
   await expect(page.locator(".nextStepBody")).toBeHidden();
   await disclosure.press("Enter");
 
-  await page.getByRole("button", { name: "プロジェクトを追加", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "プロジェクトを追加" });
-  await dialog.getByRole("textbox", { name: "プロジェクト名" }).fill("新しいプロジェクト");
-  await dialog.getByRole("textbox", { name: "次の一手", exact: true }).fill("最初の1行を書く");
+  await page.getByRole("button", { name: "取り組みを追加", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "取り組みを追加" });
+  await dialog.getByRole("textbox", { name: "取り組み名" }).fill("新しいプロジェクト");
+  await dialog.getByRole("textbox", { name: "次にやること", exact: true }).fill("最初の1行を書く");
   await dialog.getByRole("button", { name: "保存" }).click();
   await expect(page.locator(".nextStepRow")).toHaveCount(3);
 

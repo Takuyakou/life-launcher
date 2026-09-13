@@ -211,13 +211,13 @@ test("Wishlist modal stays within the narrow viewport without horizontal overflo
 
 test("Project add labels describe the real target and editing preserves unrelated fields", async ({ page }) => {
   await prepare(page);
-  const projectOpener = page.getByRole("button", { name: "プロジェクトを追加" });
+  const projectOpener = page.getByRole("button", { name: "取り組みを追加" });
   await projectOpener.click();
-  let projectDialog = page.getByRole("dialog", { name: "プロジェクトを追加" });
-  await expect(projectDialog).toContainText("取り組みと、次にやることを登録します。");
-  await expect(projectDialog.getByRole("textbox", { name: "プロジェクト名" })).toBeFocused();
-  await expect(projectDialog.getByRole("textbox", { name: "次の一手", exact: true })).toBeVisible();
-  await expect(projectDialog.getByRole("spinbutton", { name: "プロジェクトの短時間タイマー分数" })).toBeVisible();
+  let projectDialog = page.getByRole("dialog", { name: "取り組みを追加" });
+  await expect(projectDialog).toContainText("何に取り組むか、次に何をするか、始めるときに必要なものを登録します。");
+  await expect(projectDialog.getByRole("textbox", { name: "取り組み名" })).toBeFocused();
+  await expect(projectDialog.getByRole("textbox", { name: "次にやること", exact: true })).toBeVisible();
+  await expect(projectDialog.getByRole("spinbutton", { name: "取り組みの短時間タイマー分数" })).toBeVisible();
   await projectDialog.getByRole("button", { name: "キャンセル" }).click();
 
   const before = (await currentConfig(page)).projects.find(
@@ -226,8 +226,8 @@ test("Project add labels describe the real target and editing preserves unrelate
   expect(before).toBeTruthy();
   await page.locator('[data-project-id="sample-learning"]').click({ button: "right" });
   await page.getByRole("menuitem", { name: "編集" }).click();
-  projectDialog = page.getByRole("dialog", { name: "プロジェクト編集" });
-  await projectDialog.getByRole("textbox", { name: /^次の一手/ }).fill("更新した一手");
+  projectDialog = page.getByRole("dialog", { name: "取り組みを編集" });
+  await projectDialog.getByRole("textbox", { name: /^次にやること/ }).fill("更新した一手");
   await projectDialog.getByRole("button", { name: "保存" }).click();
   const after = (await currentConfig(page)).projects.find(
     (project) => project.id === "sample-learning",
