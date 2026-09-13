@@ -139,7 +139,7 @@ test("P72-03 stable focus follows a source across 19-to-20 and deletion clamp", 
   await expect(page.locator('[data-project-id="project-20"]')).toBeFocused();
 });
 
-test("P72-03 Today buttons grow only in width while labels, colors and minutes remain unchanged", async ({ page }) => {
+test("P72-03 Today buttons grow only in width and reveal play on hover", async ({ page }) => {
   const fixture = createPublicFixture();
   fixture.config.today.items[0].shortTimerMinutes = 120;
   fixture.config.today.items[0].defaultTimerMinutes = 240;
@@ -160,7 +160,8 @@ test("P72-03 Today buttons grow only in width while labels, colors and minutes r
   expect(sizes[1].height).toBe(36);
   expect(sizes[0].color).not.toBe(sizes[1].color);
   await short.hover();
-  await expect(short.locator(".nextStepStartDuration")).toHaveCSS("opacity", "1");
+  await expect(short.locator(".nextStepStartDuration")).toHaveCSS("opacity", "0");
+  await expect(short.locator(".nextStepStartGlyph")).toHaveCSS("opacity", "1");
   await short.click();
   await expect(card.getByRole("button", { name: "このセッションを一時停止" })).toBeVisible();
 });

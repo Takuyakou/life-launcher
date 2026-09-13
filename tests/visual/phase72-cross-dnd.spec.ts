@@ -232,6 +232,92 @@ test("P72-04 active Timer source rejects Builder adoption", async ({ page }) => 
   expect((await config(page)).today.items).toHaveLength(2);
 });
 
+test("Today3 drag highlights Builder, removes only the adoption, and Undo restores it", async ({
+  page,
+}) => {
+  const fixture = createPublicFixture();
+  const sourceKey = fixture.config.today.items[0].sourceKey;
+  const projectCount = fixture.config.projects.length;
+  const inboxCount = fixture.config.inbox.length;
+  await prepare(page, fixture);
+  const source = page.locator(".todayRow").first();
+  const sourceBox = await source.boundingBox();
+  const target = page.locator(".todayBuilderHeader");
+  const targetBox = await target.boundingBox();
+  expect(sourceBox).not.toBeNull();
+  expect(targetBox).not.toBeNull();
+
+  await page.mouse.move(sourceBox!.x + 80, sourceBox!.y + 45);
+  await page.mouse.down();
+  await page.mouse.move(sourceBox!.x + 88, sourceBox!.y + 45);
+  await expect(page.locator(".todayBuilderBand--restoreTarget")).toBeVisible();
+  await expect(page.locator(".todayBuilderRestoreDropZone")).toContainText(
+    "ここにドロップして今日の3件から外す",
+  );
+  await page.mouse.move(targetBox!.x + targetBox!.width / 2, targetBox!.y + targetBox!.height / 2, {
+    steps: 5,
+  });
+  await page.mouse.up();
+
+  await expect(page.locator(".todayRow")).toHaveCount(fixture.config.today.items.length - 1);
+  let current = await config(page);
+  expect(current.today.items.some((item) => item.sourceKey === sourceKey)).toBe(false);
+  expect(current.projects).toHaveLength(projectCount);
+  expect(current.inbox).toHaveLength(inboxCount);
+  await page.locator(".todayBuilderDisclosure").click();
+  await expect(page.locator(".todayBuilderRow").filter({ hasText: fixture.config.today.items[0].text }))
+    .toBeVisible();
+  expect(
+    await page.evaluate(() =>
+      (
+        window as Window & {
+          __LIFE_LAUNCHER_VISUAL_QA__: { invokeCalls: Array<{ command: string }> };
+        }
+      ).__LIFE_LAUNCHER_VISUAL_QA__.invokeCalls.filter(
+        (call) => call.command === "record_session" || call.command === "delete_session",
+      ).length,
+    ),
+  ).toBe(0);
+  const toast = page.locator(".toast").filter({ hasText: "今日の3件から外しました" });
+  await expect(toast).toBeVisible();
+  await toast.getByRole("button", { name: "元に戻す" }).click();
+  await expect(page.locator(".todayRow")).toHaveCount(fixture.config.today.items.length);
+  current = await config(page);
+  expect(current.today.items.some((item) => item.sourceKey === sourceKey)).toBe(true);
+});
+
+test("Today3 active Timer is not a valid Builder removal target", async ({ page }) => {
+  const fixture = createPublicFixture();
+  await prepare(page, fixture);
+  const source = page.locator(".todayRow").first();
+  await source.getByRole("button", { name: /短時間タイマー5分で開始/ }).click();
+  const sourceBox = await source.boundingBox();
+  expect(sourceBox).not.toBeNull();
+  await page.mouse.move(sourceBox!.x + 80, sourceBox!.y + 45);
+  await page.mouse.down();
+  await page.mouse.move(sourceBox!.x + 88, sourceBox!.y + 45);
+  await expect(page.locator(".todayBuilderBand--restoreTarget")).toHaveCount(0);
+  await page.mouse.up();
+  expect((await config(page)).today.items).toHaveLength(fixture.config.today.items.length);
+});
+
+test("Today3 Builder removal save failure rolls the card back", async ({ page }) => {
+  const fixture = createPublicFixture();
+  await prepare(page, fixture);
+  await page.evaluate(() =>
+    (
+      window as Window & {
+        __LIFE_LAUNCHER_VISUAL_QA__: { setSaveConfigFailure: (value: boolean) => void };
+      }
+    ).__LIFE_LAUNCHER_VISUAL_QA__.setSaveConfigFailure(true),
+  );
+  await drag(page, page.locator(".todayRow").first(), page.locator(".todayBuilderHeader"));
+  await page.mouse.up();
+  await expect(page.locator(".toast").last()).toContainText("保存できません");
+  expect((await config(page)).today.items).toHaveLength(fixture.config.today.items.length);
+  await expect(page.getByText("今日の3件から外しました", { exact: true })).toHaveCount(0);
+});
+
 test("P72-04 date change at drop rejects a stale drag", async ({ page }) => {
   const fixture = createPublicFixture();
   await prepare(page, fixture);

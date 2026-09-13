@@ -101,6 +101,25 @@ test("P72-05 failed Victory save never rewards", async ({ page }) => {
   expect((await currentConfig(page)).today.victory.done).toBe(false);
 });
 
+test("Victory completion rewards again after the completed text is cleared and replaced", async ({
+  page,
+}) => {
+  const fixture = createPublicFixture();
+  await prepare(page, fixture);
+  const checkbox = page.getByRole("checkbox", { name: "勝利条件を達成" });
+  await checkbox.check();
+  await page.clock.fastForward(1_200);
+  await page.locator(".victoryTextButton").click();
+  const input = page.getByRole("textbox", { name: "今日の勝利条件" });
+  await input.fill("");
+  await expect(checkbox).not.toBeChecked();
+  await input.fill("新しく入力した勝利条件");
+  await input.press("Enter");
+  await checkbox.check();
+  await expect(page.locator(".victoryRewardLabel")).toHaveText("今日の勝利、達成");
+  await expect(page.locator(".completionParticle")).toHaveCount(6);
+});
+
 test("P72-05 a new day may reward its own first saved Victory completion", async ({ page }) => {
   const fixture = createPublicFixture();
   await prepare(page, fixture);
@@ -131,7 +150,7 @@ test("P72-05 existing completed state on initial load is static", async ({ page 
   fixture.config.today.victory.done = true;
   fixture.config.today.items = fixture.config.today.items.map((item) => ({ ...item, done: true }));
   await prepare(page, fixture);
-  await expect(page.locator(".victoryBadge")).toHaveText("達成");
+  await expect(page.locator(".victoryBadge")).toHaveText("✓ 今日の勝利、達成");
   await expect(page.locator(".victoryRewardLabel, .todayAllCompletionReward, .completionParticle"))
     .toHaveCount(0);
 });
@@ -227,6 +246,7 @@ test("P72-05 Do Now-only completion uses a separate snapshot echo", async ({ pag
   await page.clock.runFor(60_500);
   await page.getByRole("button", { name: "終わる" }).click();
   const echo = page.locator(".doNowCompletionEcho");
+  await expect(page.locator(".doNowContent")).toHaveClass(/doNowContent--reward/);
   await expect(echo).toContainText("一手進みました");
   await expect(echo).toContainText(fixture.config.projects[0].nextStep);
   await expect(page.locator(".todayRow--justCompleted, .todayAllCompletionReward"))

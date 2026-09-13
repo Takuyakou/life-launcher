@@ -24,6 +24,7 @@ export type UiIconName =
   | "records"
   | "refresh"
   | "settings"
+  | "stop"
   | "unlock";
 
 type UiIconProps = Omit<SVGProps<SVGSVGElement>, "children"> & {
@@ -126,6 +127,8 @@ export function UiIcon({ name, size = 18, className, ...props }: UiIconProps) {
         <path {...common} d="M4 4v5h5M4 12a8 8 0 0 0 14.4 4.8L20 15" />
         <path {...common} d="M20 20v-5h-5" />
       </>
+    ) : name === "stop" ? (
+      <rect {...common} height="12" rx="1.5" width="12" x="6" y="6" />
     ) : name === "unlock" ? (
       <>
         <rect {...common} height="10" rx="2" width="14" x="5" y="10" />

@@ -3175,8 +3175,10 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .victoryBar--done {
-  border-color: rgba(111, 207, 151, 0.6);
-  background: #1f2a22;
+  border-color: rgba(231, 185, 77, 0.72);
+  background:
+    linear-gradient(120deg, rgba(231, 185, 77, 0.1), rgba(231, 185, 77, 0.025) 48%, transparent 75%),
+    var(--surface);
 }
 
 .victoryIcon {
@@ -3281,7 +3283,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .victoryBadge {
-  color: var(--good);
+  color: var(--accent-strong);
   font-size: 13px;
   font-weight: 800;
 }
@@ -3464,6 +3466,41 @@ input[type="number"]::-webkit-inner-spin-button {
   background: var(--dashboard-action-start-bg);
   color: var(--good);
   font-size: 12px;
+}
+
+.doNowStartPrimary,
+.doNowStartSecondary {
+  position: relative;
+  width: 112px;
+  min-width: 112px;
+  display: grid;
+  place-items: center;
+}
+
+.timerStartDuration,
+.timerStartHoverGlyph {
+  grid-area: 1 / 1;
+  display: grid;
+  place-items: center;
+}
+
+.timerStartHoverGlyph {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.doNowStartPrimary:hover:not(:disabled) .timerStartDuration,
+.doNowStartPrimary:focus-visible .timerStartDuration,
+.doNowStartSecondary:hover:not(:disabled) .timerStartDuration,
+.doNowStartSecondary:focus-visible .timerStartDuration {
+  opacity: 0;
+}
+
+.doNowStartPrimary:hover:not(:disabled) .timerStartHoverGlyph,
+.doNowStartPrimary:focus-visible .timerStartHoverGlyph,
+.doNowStartSecondary:hover:not(:disabled) .timerStartHoverGlyph,
+.doNowStartSecondary:focus-visible .timerStartHoverGlyph {
+  opacity: 1;
 }
 
 .doNowStartSecondary {
@@ -4045,12 +4082,18 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayStartButton .nextStepStartDuration {
+  opacity: 1;
   font-size: 11px;
   white-space: nowrap;
 }
 
+.todayStartButton .nextStepStartGlyph {
+  opacity: 0;
+}
+
 .todayTimerActions--running .runningPauseButton,
 .todayTimerActions--running .runningStopButton {
+  width: 90px;
   height: 36px;
   min-height: 36px;
 }
@@ -4479,7 +4522,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .shortStartButton:focus-visible .nextStepStartGlyph,
 .todayStartButton:hover:not(:disabled) .nextStepStartGlyph,
 .todayStartButton:focus-visible .nextStepStartGlyph {
-  opacity: 0;
+  opacity: 1;
 }
 
 .startButton:hover:not(:disabled) .nextStepStartDuration,
@@ -4488,13 +4531,18 @@ input[type="number"]::-webkit-inner-spin-button {
 .shortStartButton:focus-visible .nextStepStartDuration,
 .todayStartButton:hover:not(:disabled) .nextStepStartDuration,
 .todayStartButton:focus-visible .nextStepStartDuration {
-  opacity: 1;
+  opacity: 0;
 }
 
 .runningPauseButton,
 .runningStopButton {
-  min-width: 70px;
+  width: 90px;
+  min-width: 90px;
   min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   border-radius: var(--radius);
   font-size: 13px;
   font-weight: 850;
@@ -5634,23 +5682,6 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .helpGuideExamples p {
   margin: 8px 0 0;
-}
-
-.helpGuideBackToToc {
-  justify-self: start;
-  border: 0;
-  padding: 3px 0;
-  background: transparent;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 750;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.helpGuideBackToToc:hover,
-.helpGuideBackToToc:focus-visible {
-  color: var(--text);
 }
 
 .helpGuideFooter {
@@ -8624,6 +8655,12 @@ input[type="number"]::-webkit-inner-spin-button {
   animation: completion-gold-pulse 850ms ease-out;
 }
 
+.doNowContent--reward {
+  border-color: rgba(111, 207, 151, 0.58);
+  background: rgba(111, 207, 151, 0.07);
+  animation: completion-card-pop 460ms cubic-bezier(0.2, 1.35, 0.35, 1);
+}
+
 .victoryRewardSweep {
   position: absolute;
   inset: 0;
@@ -8793,6 +8830,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .doNowContent--reward,
   .victoryBar--reward,
   .victoryRewardSweep,
   .victoryRewardLabel,
