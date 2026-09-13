@@ -96,6 +96,7 @@ import { HelpGuideDialog } from "./components/HelpGuideDialog";
 import { ProjectIdentity } from "./components/ProjectIdentity";
 import { StartEnvironmentPicker } from "./StartEnvironmentPicker";
 import { InstructionPicker } from "./InstructionPicker";
+import { RecordsView } from "./RecordsView";
 import { canonicalSourceKey, timerSourceKey, resnapshotSource, SOURCE_EDIT_TIMER_REASON } from "./sourceEdit";
 import { PROJECT_COLOR_IDS, PROJECT_COLOR_LABELS, resolveProjectColorId } from "./projectIdentity";
 import { canRevealLauncherButton } from "./launcherReveal";
@@ -413,6 +414,10 @@ type ContextMenuTarget =
     }
   | {
       kind: "todayBuilderAdd";
+    }
+  | {
+      kind: "session";
+      session: SessionEntryRow;
     };
 
 type ContextMenuState = ContextMenuTarget & {
@@ -1963,6 +1968,8 @@ function DashboardApp() {
   const [doNowResponse, setDoNowResponse] = useState<DoNowResponse | null>(null);
   const [doNowCandidateIndex, setDoNowCandidateIndex] = useState(0);
   const [sessionEntries, setSessionEntries] = useState<SessionEntriesResponse | null>(null);
+  const [recordsWeekSessions, setRecordsWeekSessions] = useState<SessionEntryRow[]>([]);
+  const [recordsAllSessions, setRecordsAllSessions] = useState<SessionEntryRow[]>([]);
   const [todayActivityEntries, setTodayActivityEntries] = useState<SessionEntryRow[]>([]);
   const [todayActivityDate, setTodayActivityDate] = useState("");
   const [sessionSearch, setSessionSearch] = useState("");
@@ -2527,7 +2534,7 @@ function DashboardApp() {
       setDoNowResponse(doNow);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      showToast("error", `セッションを読めません: ${message}`);
+      showToast("error", `実行記録を読めません: ${message}`);
     }
   }, [showToast]);
 
@@ -2566,19 +2573,24 @@ function DashboardApp() {
 
   const refreshRecords = useCallback(async () => {
     try {
-      const [summary, entries, history, review, freshness] = await Promise.all([
-        loadSessionSummary(),
-        loadSessionEntries({
-          query: sessionSearch,
-          projectId: sessionProjectFilter || null,
-          dateScope: sessionDateScope,
-        }),
-        loadNotesHistory(),
-        loadWeeklyReview(),
-        loadNextStepFreshness(),
-      ]);
+      const [summary, entries, weekEntries, allEntries, history, review, freshness] =
+        await Promise.all([
+          loadSessionSummary(),
+          loadSessionEntries({
+            query: sessionSearch,
+            projectId: sessionProjectFilter || null,
+            dateScope: sessionDateScope,
+          }),
+          loadSessionEntries({ dateScope: "week" }),
+          loadSessionEntries({ dateScope: "all" }),
+          loadNotesHistory(),
+          loadWeeklyReview(),
+          loadNextStepFreshness(),
+        ]);
       setSessionSummary(summary);
       setSessionEntries(entries);
+      setRecordsWeekSessions(weekEntries.entries);
+      setRecordsAllSessions(allEntries.entries);
       setNotesHistory(history);
       applyWeeklyReview(review);
       setStaleNextStepProjectIds(freshness.staleProjectIds);
@@ -7009,7 +7021,7 @@ function DashboardApp() {
     const project = manualSessionDraft.projectId
       ? config.projects.find((item) => item.id === manualSessionDraft.projectId)
       : null;
-    const label = project?.name ?? "手動セッション";
+    const label = project?.name ?? "手動の実行記録";
 
     try {
       const summary = await recordManualSession({
@@ -7027,10 +7039,10 @@ function DashboardApp() {
         await refreshRecords();
       }
       setManualSessionDraft(null);
-      showToast("ok", "セッションを追加しました");
+      showToast("ok", "実行記録を追加しました");
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      showToast("error", `セッションを追加できません: ${message}`);
+      showToast("error", `実行記録を追加できません: ${message}`);
     }
   };
 
@@ -7084,10 +7096,10 @@ function DashboardApp() {
       await refreshSessions();
       await refreshRecords();
       setSessionEditDraft(null);
-      showToast("ok", "セッションを更新しました");
+      showToast("ok", "実行記録を更新しました");
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      showToast("error", `セッションを更新できません: ${message}`);
+      showToast("error", `実行記録を更新できません: ${message}`);
     }
   };
 
@@ -7101,18 +7113,18 @@ function DashboardApp() {
       }
       await refreshSessions();
       await refreshRecords();
-      showToast("ok", "セッションを削除しました");
+      showToast("ok", "実行記録を削除しました");
       return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      showToast("error", `セッションを削除できません: ${message}`);
+      showToast("error", `実行記録を削除できません: ${message}`);
       return false;
     }
   };
 
   const requestSessionDelete = (session: SessionEntryRow) => {
     requestConfirmation({
-      title: "セッションを削除しますか？",
+      title: "実行記録を削除しますか？",
       subject: `${session.date} ${session.startedAt} / ${session.label} / ${session.minutes}分`,
       message: "この操作は元に戻せません。",
       confirmLabel: "削除する",
@@ -8422,446 +8434,34 @@ function DashboardApp() {
           )}
 
           {activeView === "records" ? (
-            <section className="recordsView" data-skip-target="records" tabIndex={-1}>
-              <section className="weeklyReviewSection" aria-labelledby="weekly-review-title">
-                <div className="sectionHeading">
-                  <div>
-                    <h2 id="weekly-review-title">先週のふりかえり</h2>
-                    {weeklyReview && (
-                      <span>
-                        {weeklyReview.previousWeekStart} - {weeklyReview.previousWeekEnd}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="weeklyReviewFacts">
-                  <div>
-                    <span>合計時間</span>
-                    <strong>{weeklyReview?.totalMinutes ?? 0}分</strong>
-                  </div>
-                  <div>
-                    <span>活動日数</span>
-                    <strong>{weeklyReview?.activeDays ?? 0}日</strong>
-                  </div>
-                  <div>
-                    <span>動かしたプロジェクト</span>
-                    <strong>{weeklyReviewProjects.length}件</strong>
-                  </div>
-                </div>
-
-                <div className="weeklyReviewBlock">
-                  <div className="recordsInlineHeading">
-                    <h3>動かしたプロジェクト</h3>
-                    <span>先週のセッションに記録されたプロジェクト</span>
-                  </div>
-                  {weeklyReviewProjects.length > 0 ? (
-                    <div className="weeklyReviewProjectList">
-                      {weeklyReviewProjects.map(({ summary, project }) => (
-                        <div
-                          className="weeklyReviewProjectRow"
-                          key={summary.projectId ?? `label:${summary.label}`}
-                        >
-                          <div>
-                            {project ? (
-                              <ProjectIdentity
-                                colorId={project.colorId}
-                                name={project.name}
-                                projectId={project.id}
-                              />
-                            ) : (
-                              <strong>{summary.label}</strong>
-                            )}
-                            {project?.northStar && (
-                              <span className="weeklyReviewNorthStar">
-                                北極星: {project.northStar}
-                              </span>
-                            )}
-                          </div>
-                          <span>
-                            {summary.sessionCount}セッション・{summary.totalMinutes}分
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="quietText">先週のセッション記録はありません。</p>
-                  )}
-                </div>
-
-                <div className="weeklyReviewBlock">
-                  <div className="weeklyReviewBlockHeading">
-                    <div className="recordsInlineHeading">
-                      <h3>今週の重点</h3>
-                      <span>今週優先して進めるプロジェクトを最大3件まで選びます</span>
-                    </div>
-                    <span>
-                      {config.projects.filter((project) => project.weeklyFocus === true).length}/
-                      {WEEKLY_FOCUS_LIMIT}
-                    </span>
-                  </div>
-                  <div className="weeklyFocusChecklist">
-                    {config.projects.map((project) => (
-                      <label key={project.id}>
-                        <input
-                          checked={project.weeklyFocus === true}
-                          onChange={(event) =>
-                            setWeeklyReviewProjectFocus(project.id, event.target.checked)
-                          }
-                          type="checkbox"
-                        />
-                        <ProjectIdentity
-                          colorId={project.colorId}
-                          name={project.name}
-                          projectId={project.id}
-                        />
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {staleNextStepProjects.length > 0 && (
-                  <div
-                    className="weeklyReviewBlock freshnessReview"
-                    aria-labelledby="freshness-title"
-                  >
-                    <div className="recordsInlineHeading">
-                      <h3 id="freshness-title">鮮度レビュー</h3>
-                      <span>次の一手を14日以上更新・確認していないプロジェクト</span>
-                    </div>
-                    <div className="freshnessReviewList">
-                      {staleNextStepProjects.map((project) => (
-                        <div className="freshnessReviewRow" key={project.id}>
-                          <div className="freshnessReviewCopy">
-                            <ProjectIdentity
-                              colorId={project.colorId}
-                              name={project.name}
-                              projectId={project.id}
-                            />
-                            <strong>{project.nextStep}</strong>
-                            <span>次の一手が14日以上同じです</span>
-                          </div>
-                          <div className="freshnessReviewActions">
-                            <button onClick={() => openProjectEditDialog(project)} type="button">
-                              書き直す
-                            </button>
-                            <button
-                              onClick={() => void tryStaleNextStepForShortTime(project)}
-                              type="button"
-                            >
-                              短時間で試す
-                            </button>
-                            <button
-                              onClick={() => void markNextStepReviewed(project.id)}
-                              type="button"
-                            >
-                              このまま
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </section>
-
-              <div className="recordsStats">
-                <div>
-                  <span>今日</span>
-                  <strong>{sessionSummary?.todayMinutes ?? 0}分</strong>
-                </div>
-                <div>
-                  <span>今週</span>
-                  <strong>{sessionSummary?.weekMinutes ?? 0}分</strong>
-                </div>
-                <div>
-                  <span>活動日数</span>
-                  <strong>{sessionSummary?.activeDays ?? 0}日</strong>
-                </div>
-              </div>
-
-              <div className="recordsActions">
-                <button
-                  className="dataFolderButton"
-                  onClick={openManualSessionDialog}
-                  type="button"
-                >
-                  セッションを追加
-                </button>
-              </div>
-
-              <section className="recordsSection sourceCompletionSection">
-                <div className="sectionHeading">
-                  <div className="recordsInlineHeading">
-                    <h2>完了した項目</h2>
-                    <span>今後の候補から外した、完了済みの項目</span>
-                  </div>
-                  <span>{config.sourceCompletions.length}件</span>
-                </div>
-                {config.sourceCompletions.length > 0 ? (
-                  <div className="sourceCompletionList">
-                    {[...config.sourceCompletions].reverse().map((completion) => (
-                      <div className="sourceCompletionRow" key={completion.id}>
-                        <div className="sourceCompletionMeta">
-                          <span>{completion.completedAt.slice(0, 10)}</span>
-                          <span>
-                            {completion.sourceType === "nextStep" ? "次の一手" : "やりたいこと"}
-                          </span>
-                          {completion.projectNameSnapshot && (
-                            <span>{completion.projectNameSnapshot}</span>
-                          )}
-                        </div>
-                        <strong>{completion.textSnapshot}</strong>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="quietText">完了した項目はまだありません。</p>
-                )}
-              </section>
-
-              <section className="recordsSection">
-                <div className="sectionHeading">
-                  <h2>プロジェクト別（今週）</h2>
-                  <span>{sessionSummary?.date ?? config.today.date}</span>
-                </div>
-                {sessionSummary && sessionSummary.projects.length > 0 ? (
-                  <div className="recordsTable">
-                    {sessionSummary.projects.map((project) => (
-                      <div className="recordsTableRow" key={project.projectId ?? project.label}>
-                        {project.projectId ? (
-                          <ProjectIdentity
-                            colorId={
-                              config.projects.find((item) => item.id === project.projectId)?.colorId
-                            }
-                            name={project.label}
-                            projectId={project.projectId}
-                          />
-                        ) : (
-                          <span>{project.label}</span>
-                        )}
-                        <strong>{project.totalMinutes}分</strong>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="quietText">今週のセッション記録はありません。</p>
-                )}
-              </section>
-
-              <section className="recordsSection">
-                <div className="sectionHeading">
-                  <h2>プロジェクト別累計</h2>
-                  <span>すべての記録</span>
-                </div>
-                {sessionSummary && sessionSummary.allTimeProjects.length > 0 ? (
-                  <div className="recordsTable">
-                    {sessionSummary.allTimeProjects.map((project) => (
-                      <div
-                        className="recordsTableRow recordsTableRow--allTime"
-                        key={project.projectId ?? project.label}
-                      >
-                        {project.projectId ? (
-                          <ProjectIdentity
-                            colorId={
-                              config.projects.find((item) => item.id === project.projectId)?.colorId
-                            }
-                            name={project.label}
-                            projectId={project.projectId}
-                          />
-                        ) : (
-                          <span>{project.label}</span>
-                        )}
-                        <div className="recordsTotalMetrics">
-                          <span>{project.activeDays}日</span>
-                          <strong>{project.totalMinutes}分</strong>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="quietText">セッション記録はまだありません。</p>
-                )}
-              </section>
-
-              <section className="recordsSection">
-                <div className="sectionHeading">
-                  <h2>最近のセッション</h2>
-                  <button
-                    className="sectionLinkButton"
-                    onClick={openRuntimeDataFolder}
-                    title={sessionEntries?.path || sessionSummary?.path || "sessions.jsonl"}
-                    type="button"
-                  >
-                    保存先を開く
-                  </button>
-                </div>
-
-                <div className="recordsFilters">
-                  <input
-                    className="textInput"
-                    onChange={(event) => setSessionSearch(event.target.value)}
-                    placeholder="検索"
-                    value={sessionSearch}
-                  />
-                  <div className="filterGroup" aria-label="期間">
-                    <span>期間</span>
-                    <div className="segmentRow">
-                      {[
-                        ["week", "今週"],
-                        ["today", "今日"],
-                        ["all", "すべて"],
-                      ].map(([value, label]) => (
-                        <button
-                          className={
-                            sessionDateScope === value
-                              ? "segmentButton segmentButton--active"
-                              : "segmentButton"
-                          }
-                          key={value}
-                          onClick={() => setSessionDateScope(value as RecordsDateScope)}
-                          type="button"
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="filterGroup" aria-label="プロジェクト">
-                    <span>プロジェクト</span>
-                    <div className="projectFilterRow">
-                      <button
-                        className={
-                          sessionProjectFilter ? "filterChip" : "filterChip filterChip--active"
-                        }
-                        onClick={() => setSessionProjectFilter("")}
-                        type="button"
-                      >
-                        すべて
-                      </button>
-                      {config.projects.map((project) => (
-                        <button
-                          className={
-                            sessionProjectFilter === project.id
-                              ? "filterChip filterChip--active"
-                              : "filterChip"
-                          }
-                          key={project.id}
-                          onClick={() => setSessionProjectFilter(project.id)}
-                          type="button"
-                        >
-                          {project.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {sessionEntries && sessionEntries.entries.length > 0 ? (
-                  <div className="recentSessionList">
-                    {sessionEntries.entries.map((session) => (
-                      <div className="recentSessionRow" key={session.rowKey}>
-                        <div className="recentSessionMeta">
-                          <span>{session.date}</span>
-                          <span>{session.startedAt}</span>
-                          {session.projectId ? (
-                            <ProjectIdentity
-                              colorId={
-                                config.projects.find((item) => item.id === session.projectId)
-                                  ?.colorId
-                              }
-                              compact
-                              name={session.label}
-                              projectId={session.projectId}
-                            />
-                          ) : (
-                            <strong>{session.label}</strong>
-                          )}
-                          <span>{session.minutes}分</span>
-                        </div>
-                        {session.note.trim() ? (
-                          <p>{session.note}</p>
-                        ) : (
-                          <p className="quietText quietText--small">noteなし</p>
-                        )}
-                        <div className="sessionRowActions">
-                          <button
-                            className="secondaryButton"
-                            onClick={() => openSessionEditDialog(session)}
-                            type="button"
-                          >
-                            編集
-                          </button>
-                          <button
-                            className="dangerButton"
-                            onClick={() => requestSessionDelete(session)}
-                            type="button"
-                          >
-                            削除
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="quietText">
-                    条件に一致するセッションがありません。検索語またはフィルターを変更してください。
-                  </p>
-                )}
-              </section>
-
-              <section className="recordsSection">
-                <div className="sectionHeading">
-                  <h2>旧notes履歴</h2>
-                  <button
-                    className="sectionLinkButton"
-                    onClick={openRuntimeDataFolder}
-                    title={notesHistory?.path || "notes.json"}
-                    type="button"
-                  >
-                    保存先を開く
-                  </button>
-                </div>
-                {notesHistory && notesHistory.entries.length > 0 ? (
-                  <div className="notesHistoryList">
-                    {notesHistory.entries.map((entry) => (
-                      <div className="notesHistoryDay" key={entry.date}>
-                        <strong>{entry.date}</strong>
-                        <div className="notesList">
-                          {toThreeNoteDraft(entry.items).map((item, index) => (
-                            <input
-                              aria-label={`${entry.date} できたこと ${index + 1}`}
-                              className="textInput"
-                              key={index}
-                              maxLength={120}
-                              onChange={(event) =>
-                                updateHistoryNoteText(entry.date, index, event.target.value)
-                              }
-                              onBlur={() => flushHistoryNotesSave(entry.date)}
-                              value={item}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="quietText">
-                    既存のnotes.jsonに旧記録がある場合だけ、ここで確認・編集できます。
-                  </p>
-                )}
-              </section>
-
-              <div className="recordsFooter">
-                <button className="dataFolderButton" onClick={openSettingsCenter} type="button">
-                  設定
-                </button>
-                <button className="dataFolderButton" onClick={openRuntimeDataFolder} type="button">
-                  データフォルダを開く
-                </button>
-              </div>
-            </section>
-          ) : (
+            <RecordsView
+              allSessions={recordsAllSessions}
+              config={config}
+              filteredSessions={sessionEntries}
+              notesHistory={notesHistory}
+              onAddSession={openManualSessionDialog}
+              onBack={() => setActiveView("main")}
+              onDateScopeChange={setSessionDateScope}
+              onEditProject={openProjectEditDialog}
+              onHistoryNoteBlur={flushHistoryNotesSave}
+              onHistoryNoteChange={updateHistoryNoteText}
+              onMarkReviewed={(projectId) => void markNextStepReviewed(projectId)}
+              onOpenSessionMenu={(session, x, y, opener) =>
+                openContextMenu({ kind: "session", session }, x, y, opener)
+              }
+              onProjectFilterChange={setSessionProjectFilter}
+              onSearchChange={setSessionSearch}
+              onTryShort={(project) => void tryStaleNextStepForShortTime(project)}
+              onWeeklyFocusChange={setWeeklyReviewProjectFocus}
+              sessionDateScope={sessionDateScope}
+              sessionProjectFilter={sessionProjectFilter}
+              sessionSearch={sessionSearch}
+              sessionSummary={sessionSummary}
+              staleNextStepProjects={staleNextStepProjects}
+              weekSessions={recordsWeekSessions}
+              weeklyReview={weeklyReview}
+              weeklyReviewProjects={weeklyReviewProjects}
+            />          ) : (
             <>
               <section
                 className={[
@@ -10726,6 +10326,22 @@ function DashboardApp() {
                 やりたいことを追加
               </ContextMenuItem>
             </>
+          ) : contextMenu.kind === "session" ? (
+            <>
+              <ContextMenuItem
+                onClick={() => openSessionEditDialog(contextMenu.session)}
+                type="button"
+              >
+                編集
+              </ContextMenuItem>
+              <ContextMenuItem
+                className="contextMenuDanger"
+                onClick={() => requestSessionDelete(contextMenu.session)}
+                type="button"
+              >
+                削除
+              </ContextMenuItem>
+            </>
           ) : (
             <>
               <ContextMenuItem onClick={openGroupDialog} type="button">
@@ -11566,7 +11182,7 @@ function DashboardApp() {
       {manualSessionDraft && (
         <div className="modalBackdrop" role="presentation">
           <section
-            aria-label="手動セッション追加"
+            aria-label="実行記録を追加"
             aria-modal="true"
             className="dropDialog modalLongForm"
             role="dialog"
@@ -11574,11 +11190,11 @@ function DashboardApp() {
           >
             <div>
               <p className="eyebrow">Session</p>
-              <h2>セッションを追加</h2>
+              <h2>実行記録を追加</h2>
             </div>
 
             <label className="fieldStack">
-              <span>プロジェクト</span>
+              <span>取り組み</span>
               <select
                 className="textInput"
                 onChange={(event) =>
@@ -11655,7 +11271,7 @@ function DashboardApp() {
             </div>
 
             <label className="fieldStack">
-              <span>note</span>
+              <span>実行内容</span>
               <input
                 className="textInput"
                 onChange={(event) =>
@@ -11665,16 +11281,16 @@ function DashboardApp() {
               />
             </label>
 
-            <div className="dialogActions">
+            <div className="dialogActions formDialogActions">
+              <button className="primaryButton" onClick={saveManualSession} type="button">
+                追加
+              </button>
               <button
-                className="secondaryButton"
+                className="secondaryButton dialogCancelButton"
                 onClick={() => setManualSessionDraft(null)}
                 type="button"
               >
                 キャンセル
-              </button>
-              <button className="primaryButton" onClick={saveManualSession} type="button">
-                追加
               </button>
             </div>
           </section>
@@ -11684,7 +11300,7 @@ function DashboardApp() {
       {sessionEditDraft && (
         <div className="modalBackdrop" role="presentation">
           <section
-            aria-label="セッション編集"
+            aria-label="実行記録を編集"
             aria-modal="true"
             className="dropDialog editDialog"
             role="dialog"
@@ -11692,11 +11308,11 @@ function DashboardApp() {
           >
             <div>
               <p className="eyebrow">Session</p>
-              <h2>セッションを編集</h2>
+              <h2>実行記録を編集</h2>
             </div>
 
             <label className="fieldStack">
-              <span>プロジェクト</span>
+              <span>取り組み</span>
               <select
                 className="textInput"
                 onChange={(event) => {
@@ -11785,7 +11401,7 @@ function DashboardApp() {
             </div>
 
             <label className="fieldStack">
-              <span>note</span>
+              <span>実行内容</span>
               <input
                 className="textInput"
                 onChange={(event) =>
@@ -11795,16 +11411,16 @@ function DashboardApp() {
               />
             </label>
 
-            <div className="dialogActions">
+            <div className="dialogActions formDialogActions">
+              <button className="primaryButton" onClick={saveSessionEdit} type="button">
+                保存
+              </button>
               <button
-                className="secondaryButton"
+                className="secondaryButton dialogCancelButton"
                 onClick={() => setSessionEditDraft(null)}
                 type="button"
               >
                 キャンセル
-              </button>
-              <button className="primaryButton" onClick={saveSessionEdit} type="button">
-                保存
               </button>
             </div>
           </section>

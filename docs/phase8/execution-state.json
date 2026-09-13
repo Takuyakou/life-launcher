@@ -2,9 +2,9 @@
   "phase": "P8",
   "target": "v1.3",
   "workflow": "single-start-human-gated",
-  "current_stage": "P8-02",
+  "current_stage": "P8-03",
   "baseline_commit": "265dafebc8ef0e6a6a2d1ac5196a4765d13bd313",
-  "branch": "feature/p8-02-today3-builder",
+  "branch": "feature/p8-03-records-redesign",
   "precursor": {
     "status": "verified_already_implemented",
     "items": [
@@ -27,13 +27,15 @@
       "pull_request": "https://github.com/Takuyakou/life-launcher/pull/55"
     },
     "P8-02": {
-      "status": "COMPLETE_AWAITING_REVIEW",
-      "approved": false,
-      "report": "docs/phase8/workreports/p8-02-report.md"
+      "status": "COMPLETE_MERGED",
+      "approved": true,
+      "report": "docs/phase8/workreports/p8-02-report.md",
+      "pull_request": "https://github.com/Takuyakou/life-launcher/pull/56"
     },
     "P8-03": {
-      "status": "BLOCKED_BY_P8-02",
-      "approved": false
+      "status": "COMPLETE_AWAITING_REVIEW",
+      "approved": false,
+      "report": "docs/phase8/workreports/p8-03-report.md"
     },
     "P8-04": {
       "status": "BLOCKED_BY_P8-03",
