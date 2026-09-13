@@ -174,7 +174,7 @@ Main Window
 | System | 自動起動 | Startup | Windows自動起動 |
 | System | ミニ | Mini | ミニタイマー |
 | View | 記録 / メイン | Records / Home | 画面切替 |
-| View | 手順書 | Instructions | 手順書ビューアー |
+| View | 手順書 | Instructions | 手順書ビューワー |
 | Help | 使い方 | Guide | アプリ内ガイド |
 | Help | 設定 | Settings | 設定ダイアログ |
 
@@ -470,7 +470,7 @@ URLはWindowsの既定ブラウザで開き、登録ごとのブラウザ指定�
 - 失敗時はUIを停止せず、種別フォールバックを使う。
 - メンテナンスからキャッシュを再生成できる。
 
-## 17. 手順書ビューアー
+## 17. 手順書ビューワー
 
 ### 17.1 ウィンドウと左ペイン
 
@@ -495,9 +495,11 @@ URLはWindowsの既定ブラウザで開き、登録ごとのブラウザ指定�
 | HTML | サンドボックスiframe | 読み取り専用 | 橙系FileCode |
 | Folder | ツリー階層 | 管理操作 | フォルダー色 |
 
-- HTMLはインラインCSSを保持したサニタイズ済み `srcDoc` を使う。
-- iframeは `sandbox="allow-same-origin"`。
-- script、form、入れ子iframe、object、外部リソース等を除去する。
+- HTMLは元の文書構造、インラインCSS、相対stylesheet・画像・fontを保持したサニタイズ済み `srcDoc` を使う。
+- 相対assetは検証済みの登録ルート内だけを元HTMLの親フォルダー基準で解決する。
+- iframeは `sandbox="allow-same-origin"` と専用CSPで分離する。`allow-scripts`、`allow-forms`、`allow-popups`は付与しない。
+- script、event handler、form controls、入れ子iframe、object、embedを除去し、リモートCSS・画像・font・通信を拒否する。
+- HTML iframeは本文領域の全幅をviewportとして使い、元HTMLのresponsive layoutを反映する。
 - HTTP/HTTPSリンクは外部ブラウザで開く。
 
 ### 17.3 ツリーと編集安全性
@@ -694,7 +696,7 @@ URLはWindowsの既定ブラウザで開き、登録ごとのブラウザ指定�
 - URLはWindowsの既定ブラウザで開く。
 - favicon取得失敗時はフォールバックアイコンになる。
 - Chromeブックマーク名取得はローカルプロファイルを読める場合に限る。
-- HTML手順書は安全性のためスクリプトや外部リソースを除去し、通常ブラウザと完全同一ではない。
+- HTML手順書は静的HTML/CSSと登録ルート内の相対assetを通常ブラウザに近い形で表示する。JavaScript依存UI、form、nested frame、リモートassetは安全性のため動作しない。
 - 手順書フォルダー追跡はローカルドライブ上の安全なパスを前提とする。
 - `notes.json` は互換目的で残るが、「今日の実行」は `sessions.jsonl` から生成する。
 - アプリ内自動アップデーターは現行仕様に含まれない。

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="refresh" content="3600;url=https://example.invalid/refresh" />
+    <title>Browser parity fixture</title>
+    <link rel="stylesheet" href="./styles/layout.css" />
+    <link rel="stylesheet" href="https://example.invalid/remote.css" />
+    <style>
+      .inline-probe {
+        border-left: 5px solid rgb(214, 157, 41);
+      }
+      .absolute-probe {
+        position: absolute;
+        top: 12px;
+        right: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <div>
+        <span class="eyebrow">手順書</span>
+        <h1>HTML表示の忠実度</h1>
+        <p>
+          長い日本語の文章でも、文字と余白と折り返しが実際のブラウザ表示と同じになることを確認します。
+        </p>
+      </div>
+      <img id="relative-image" src="./assets/sample.png" width="32" height="32" alt="相対画像" />
+    </header>
+    <main class="layout">
+      <section class="flex-row inline-probe" style="padding-top: 11px">
+        <article>Flex A</article>
+        <article>Flex B</article>
+      </section>
+      <section class="grid-probe">
+        <article>Grid A</article>
+        <article>Grid B</article>
+        <article>Grid C</article>
+      </section>
+      <section class="relative-panel">
+        <strong>Absolute</strong>
+        <span class="absolute-probe">右上</span>
+      </section>
+      <table>
+        <thead>
+          <tr>
+            <th>項目</th>
+            <th>状態</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>CSS variables &amp; 特殊文字 &lt;安全&gt;</td>
+            <td>表示</td>
+          </tr>
+        </tbody>
+      </table>
+      <div id="background-probe" aria-label="相対CSS画像"></div>
+      <a href="./linked.html">相対リンク</a>
+      <a href="https://example.com/reference">外部リンク</a>
+    </main>
+    <form id="unsafe-form"><input name="secret" /><button>送信</button></form>
+    <iframe id="unsafe-frame" src="https://example.invalid/frame"></iframe>
+    <img id="remote-image" src="https://example.invalid/pixel.png" alt="" />
+    <div
+      id="remote-style"
+      style="background-image: url(https://example.invalid/background.png)"
+    ></div>
+    <div id="event-probe" onclick="window.__unsafe = true">event</div>
+    <script>
+      window.__unsafe = true;
+      parent.__instructionEscaped = true;
+    </script>
+  </body>
+</html>

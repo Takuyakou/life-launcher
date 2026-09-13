@@ -84,7 +84,7 @@ export function InstructionViewer() {
       if (openForEdit && nextDocument.readOnly) {
         setStatus({ tone: "error", message: "この手順書は読み取り専用です" });
       }
-      document.title = `${nextDocument.name} - Life Launcher 手順書`;
+      document.title = `${nextDocument.name} - Life Launcher 手順書ビューワー`;
     } catch (error) {
       setInstruction(null);
       setSelectedPath(path);
@@ -292,7 +292,7 @@ export function InstructionViewer() {
     if (!instruction) return null;
     const name = instruction.name.toLocaleLowerCase();
     if (name.endsWith(".md")) return renderSafeMarkdown(instruction.content);
-    if (name.endsWith(".html")) return renderSafeHtml(instruction.content);
+    if (name.endsWith(".html")) return renderSafeHtml(instruction.content, instruction.assetBaseUrl);
     return null;
   }, [instruction]);
 
@@ -341,11 +341,16 @@ export function InstructionViewer() {
     });
   };
 
-  const openInDefaultEditor = async () => {
+  const externalOpenLabel = isHtmlInstruction ? "ブラウザで開く" : "既定のアプリで開く";
+
+  const openInDefaultApplication = async () => {
     if (!selectedPath) return;
     try {
       await openInstructionInDefaultEditor(selectedPath);
-      setStatus({ tone: "neutral", message: "既定のエディタで開きました" });
+      setStatus({
+        tone: "neutral",
+        message: isHtmlInstruction ? "ブラウザで開きました" : "既定のアプリで開きました",
+      });
     } catch (error) {
       setStatus({
         tone: "error",
@@ -409,7 +414,7 @@ export function InstructionViewer() {
       setExternalDocument((current) =>
         current ? { ...current, name: nextName, path: nextPath } : null,
       );
-      document.title = `${nextName} - Life Launcher 手順書`;
+      document.title = `${nextName} - Life Launcher 手順書ビューワー`;
       return;
     }
     void loadDocument(nextPath);
@@ -422,7 +427,7 @@ export function InstructionViewer() {
     setDraft("");
     setEditing(false);
     setExternalDocument(null);
-    document.title = "Life Launcher 手順書";
+    document.title = "Life Launcher 手順書ビューワー";
     setStatus({ tone: "neutral", message: "選択していた手順書の参照を解除しました" });
   };
 
@@ -431,7 +436,7 @@ export function InstructionViewer() {
       <header className="instructionHeader">
         <div className="instructionHeaderTitle">
           <span className="instructionHeaderEyebrow">手順書</span>
-          <strong title={instruction?.name}>{instruction?.name ?? "手順書ビューア"}</strong>
+          <strong title={instruction?.name}>{instruction?.name ?? "手順書ビューワー"}</strong>
         </div>
         <div className="instructionHeaderActions">
           <button
@@ -458,11 +463,11 @@ export function InstructionViewer() {
             <UiIcon name="edit" size={18} />
           </button>
           <button
-            aria-label="既定のエディタで開く"
+            aria-label={externalOpenLabel}
             className="instructionIconButton"
             disabled={!selectedPath}
-            onClick={() => void openInDefaultEditor()}
-            title="既定のエディタで開く"
+            onClick={() => void openInDefaultApplication()}
+            title={externalOpenLabel}
             type="button"
           >
             <UiIcon name="external" size={18} />

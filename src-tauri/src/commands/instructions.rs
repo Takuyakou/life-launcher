@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json::Value;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 use tauri_plugin_opener::OpenerExt;
 
 use crate::models::{
@@ -309,9 +309,13 @@ fn path_matches_instruction_search(path: &Path, root: &Path, query: &str) -> boo
 }
 
 #[tauri::command]
-pub fn read_instruction(path: String) -> Result<InstructionReadResponse, String> {
+pub fn read_instruction(app: AppHandle, path: String) -> Result<InstructionReadResponse, String> {
     let roots = read_configured_root_strings()?;
-    read_instruction_for_roots(Path::new(&path), &roots)
+    let target = validate_instruction_file(Path::new(&path), &roots)?;
+    app.asset_protocol_scope()
+        .allow_directory(&target.root, true)
+        .map_err(|error| format!("failed to allow instruction assets: {error}"))?;
+    read_instruction_for_roots(&target.path, &roots)
 }
 
 #[tauri::command]

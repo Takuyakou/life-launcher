@@ -110,7 +110,13 @@ export async function installTauriMock(
             return id;
           },
           unregisterCallback: (id: number) => callbacks.delete(id),
-          convertFileSrc: (path: string) => path,
+          convertFileSrc: (path: string) => {
+            const normalized = path.replace(/\\/g, "/");
+            const instructionPrefix = "C:/PublicDemo/Instructions/";
+            if (!normalized.startsWith(instructionPrefix)) return path;
+            const relative = normalized.slice(instructionPrefix.length);
+            return "http://asset.localhost/instructions/" + encodeURI(relative);
+          },
           invoke: async (command: string, args: Record<string, unknown> = {}) => {
             invokeCalls.push({ command, args });
             switch (command) {
@@ -353,11 +359,13 @@ export async function installTauriMock(
                 const path = String(args.path ?? "");
                 const name = path.split(/[\\/]/).filter(Boolean).at(-1) ?? path;
                 const html = name.endsWith(".html");
-                const content = html
-                  ? "<!doctype html><html><head><style>body{margin:0;background:rgb(232,240,254);font-family:Arial,sans-serif}main{max-width:640px;margin:0 auto;padding:48px}h1{color:rgb(11,87,208)}</style></head><body><main><h1>HTML手順書</h1><p>読み取り専用の参考資料です。</p></main><script>window.__unsafe=true</script></body></html>"
-                  : name.endsWith(".md")
-                    ? "# Markdown手順書"
-                    : "テキスト手順書";
+                const content =
+                  fixture.instructionDocuments?.[path] ??
+                  (html
+                    ? "<!doctype html><html><head><style>body{margin:0;background:rgb(232,240,254);font-family:Arial,sans-serif}main{max-width:640px;margin:0 auto;padding:48px}h1{color:rgb(11,87,208)}</style></head><body><main><h1>HTML手順書</h1><p>読み取り専用の参考資料です。</p></main><script>window.__unsafe=true</script></body></html>"
+                    : name.endsWith(".md")
+                      ? "# Markdown手順書"
+                      : "テキスト手順書");
                 return {
                   name,
                   path,
