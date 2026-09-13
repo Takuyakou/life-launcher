@@ -5590,7 +5590,7 @@ function DashboardApp() {
       const minutes = sessionMinutes(timer, stoppedAt);
 
       if (minutes < 1) {
-        if (reason === "manual") {
+        if (reason === "manual" || reason === "switch") {
           showToast("warn", "1分未満なので記録しませんでした");
         }
         return true;
@@ -8869,7 +8869,13 @@ function DashboardApp() {
                         >
                           {item.done ? "✓" : "○"}
                         </span>
-                        <div className="todayItemCopy">
+                        <div
+                          className={
+                            project
+                              ? "todayItemCopy"
+                              : "todayItemCopy todayItemCopy--withoutIdentity"
+                          }
+                        >
                           {item.projectId && projectsById.has(item.projectId) && (
                             <span className="todayProjectIdentity">
                               <ProjectIdentity
@@ -8878,6 +8884,17 @@ function DashboardApp() {
                                 name={projectsById.get(item.projectId)?.name ?? ""}
                                 projectId={item.projectId}
                               />
+                            </span>
+                          )}
+                          {isRunningTodayItem && (
+                            <span
+                              className={
+                                activeTimer.paused
+                                  ? "runningBadge runningBadge--paused"
+                                  : "runningBadge runningBadge--running"
+                              }
+                            >
+                              {activeTimer.paused ? "一時停止" : "実行中"}
                             </span>
                           )}
                           <span
@@ -8933,17 +8950,6 @@ function DashboardApp() {
                           </div>
                           <div className="todayTimerCluster">
                             <div className="todayTriggerZone">
-                              {isRunningTodayItem && (
-                                <span
-                                  className={
-                                    activeTimer.paused
-                                      ? "runningBadge runningBadge--paused"
-                                      : "runningBadge runningBadge--running"
-                                  }
-                                >
-                                  {activeTimer.paused ? "一時停止" : "実行中"}
-                                </span>
-                              )}
                               {todayTriggerEditingIndex === index ? (
                                 <input
                                   aria-label="いつ・何の後にやる？"

@@ -3650,6 +3650,8 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .todayItemCopy .runningBadge {
   flex: 0 0 auto;
+  padding-block: 1px;
+  line-height: 1.2;
 }
 
 .todayItemCopy {
@@ -7637,6 +7639,16 @@ input[type="number"]::-webkit-inner-spin-button {
   transform: none;
 }
 
+.todayItemCopy--withoutIdentity {
+  padding-inline-end: 64px;
+}
+
+.todayItemCopy--withoutIdentity .runningBadge {
+  position: absolute;
+  top: 1px;
+  right: 0;
+}
+
 .todayTextButton,
 .todayEditInput {
   min-height: 32px;
@@ -7709,11 +7721,6 @@ input[type="number"]::-webkit-inner-spin-button {
   gap: 4px;
   width: 100%;
   min-height: 34px;
-}
-
-.todayTriggerZone .runningBadge {
-  flex: 0 0 auto;
-  line-height: 1.2;
 }
 
 .todayTriggerZone .todayTriggerButton,
