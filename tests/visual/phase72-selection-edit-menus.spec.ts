@@ -138,7 +138,7 @@ test("v1.3 Do Now hides alternate actions when there is no other candidate", asy
   await expect(page.getByRole("menuitem", { name: "他の一手", exact: true })).toHaveCount(0);
 });
 
-test("timer actions keep time centered and slide play in from the left", async ({ page }) => {
+test("timer actions keep time subtly right of center and slide play in from the left", async ({ page }) => {
   const fixture = createPublicFixture();
   await prepare(page, fixture);
   const doNowShort = page.locator(".doNowStartPrimary");
@@ -146,7 +146,7 @@ test("timer actions keep time centered and slide play in from the left", async (
   await expect(doNowShort.locator(".timerStartDuration")).toHaveText("5分");
   await expect(doNowNormal.locator(".timerStartDuration")).toHaveText("25分");
   expect((await doNowShort.boundingBox())?.width).toBe((await doNowNormal.boundingBox())?.width);
-  expect((await doNowShort.boundingBox())?.width).toBe(104);
+  expect((await doNowShort.boundingBox())?.width).toBe(100);
   expect((await doNowShort.boundingBox())?.height).toBe(38);
   await expect(doNowShort.locator(".timerStartDuration")).toHaveCSS("opacity", "1");
   await expect(doNowShort.locator(".timerStartHoverGlyph")).toHaveCSS("opacity", "0");
@@ -160,8 +160,8 @@ test("timer actions keep time centered and slide play in from the left", async (
   const doNowTimeAfter = await doNowShort.locator(".timerStartDuration").boundingBox();
   const doNowPlayAfter = await doNowShort.locator(".timerStartHoverGlyph").boundingBox();
   expect(doNowBefore && doNowAfter && doNowTimeBefore && doNowTimeAfter).toBeTruthy();
-  expect(Math.abs(doNowTimeBefore!.x + doNowTimeBefore!.width / 2 - (doNowBefore!.x + doNowBefore!.width / 2))).toBeLessThanOrEqual(0.5);
-  expect(Math.abs(doNowTimeAfter!.x + doNowTimeAfter!.width / 2 - (doNowAfter!.x + doNowAfter!.width / 2))).toBeLessThanOrEqual(0.5);
+  expect(doNowTimeBefore!.x + doNowTimeBefore!.width / 2 - (doNowBefore!.x + doNowBefore!.width / 2)).toBeCloseTo(2, 1);
+  expect(doNowTimeAfter!.x + doNowTimeAfter!.width / 2 - (doNowAfter!.x + doNowAfter!.width / 2)).toBeCloseTo(2, 1);
   expect(doNowPlayAfter!.x).toBeGreaterThan(doNowPlayBefore!.x);
   expect(doNowAfter!.y).toBeLessThan(doNowBefore!.y);
   await page.mouse.move(0, 0);
@@ -184,8 +184,8 @@ test("timer actions keep time centered and slide play in from the left", async (
   const todayAfter = await todayShort.boundingBox();
   const todayTimeAfter = await todayShort.locator(".nextStepStartDuration").boundingBox();
   expect(todayBefore && todayAfter && todayTimeBefore && todayTimeAfter).toBeTruthy();
-  expect(Math.abs(todayTimeBefore!.x + todayTimeBefore!.width / 2 - (todayBefore!.x + todayBefore!.width / 2))).toBeLessThanOrEqual(0.5);
-  expect(Math.abs(todayTimeAfter!.x + todayTimeAfter!.width / 2 - (todayAfter!.x + todayAfter!.width / 2))).toBeLessThanOrEqual(0.5);
+  expect(todayTimeBefore!.x + todayTimeBefore!.width / 2 - (todayBefore!.x + todayBefore!.width / 2)).toBeCloseTo(2, 1);
+  expect(todayTimeAfter!.x + todayTimeAfter!.width / 2 - (todayAfter!.x + todayAfter!.width / 2)).toBeCloseTo(2, 1);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await expect(todayShort).toHaveCSS("transform", "none");
   await expect(todayShort.locator(".nextStepStartGlyph")).toHaveCSS("transition-duration", "0s");
