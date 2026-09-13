@@ -8878,3 +8878,353 @@ input[type="number"]::-webkit-inner-spin-button {
     flex-direction: column;
   }
 }
+
+/* P8-03 records redesign */
+.recordsViewHeader {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+  border-bottom: 1px solid var(--line-soft);
+  padding: 3px 0 8px;
+  background: var(--bg);
+}
+
+.recordsBackButton {
+  min-width: 92px;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 5px 10px;
+  background: var(--surface-soft);
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.recordsBackButton:hover,
+.recordsBackButton:focus-visible {
+  border-color: var(--accent);
+  background: var(--surface-strong);
+  color: var(--text);
+}
+
+.recordsTabs {
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  overflow-x: auto;
+}
+
+.recordsTab {
+  position: relative;
+  min-width: 112px;
+  min-height: 34px;
+  border: 0;
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 6px 12px 8px;
+  background: transparent;
+  color: var(--text-muted-readable);
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.recordsTab:hover,
+.recordsTab:focus-visible {
+  background: var(--surface-soft);
+  color: var(--text);
+}
+
+.recordsTab--active {
+  background: var(--surface-soft);
+  color: var(--text);
+}
+
+.recordsTab--active::after {
+  position: absolute;
+  right: 8px;
+  bottom: 0;
+  left: 8px;
+  height: 2px;
+  background: var(--accent);
+  content: "";
+}
+
+.recordsTabPanel {
+  min-width: 0;
+  display: grid;
+  gap: 16px;
+}
+
+.recordsAccordionList {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.recordsAccordion + .recordsAccordion {
+  border-top: 1px solid var(--line-soft);
+}
+
+.recordsAccordionSummary {
+  width: 100%;
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 0;
+  padding: 8px 12px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.recordsAccordionSummary:hover,
+.recordsAccordionSummary:focus-visible,
+.recordsAccordionSummary[aria-expanded="true"] {
+  background: var(--surface-soft);
+}
+
+.recordsAccordionSummary > span,
+.recordsAccordionSummary > strong {
+  white-space: nowrap;
+}
+
+.recordsAccordionSummary > span {
+  color: var(--text-muted-readable);
+  font-size: 12px;
+}
+
+.recordsAccordionBody {
+  display: grid;
+  border-top: 1px solid var(--line-soft);
+  background: var(--surface-soft);
+}
+
+.recordsActionHistoryRow {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) 56px;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 6px 12px 6px 42px;
+  color: var(--text-muted-readable);
+  font-size: 12px;
+}
+
+.recordsActionHistoryRow + .recordsActionHistoryRow {
+  border-top: 1px solid var(--line-soft);
+}
+
+.recordsActionHistoryRow > span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recordsActionHistoryRow > strong {
+  color: var(--text);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.recordsAccordionBody > footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--line-soft);
+  padding: 7px 12px 7px 42px;
+  color: var(--text-muted-readable);
+  font-size: 11px;
+}
+
+.recordsPagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border-top: 1px solid var(--line-soft);
+  padding: 8px 12px;
+}
+
+.recordsPagination button {
+  min-width: 30px;
+  min-height: 30px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 4px 8px;
+  background: var(--surface);
+  color: var(--text-muted-readable);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.recordsPagination button[aria-current="page"] {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.recordsCompactList {
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.recordsCompactRow {
+  min-width: 0;
+  min-height: 42px;
+  display: grid;
+  grid-template-columns: 88px 62px minmax(110px, 0.45fr) minmax(160px, 1fr) 56px 30px;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 0;
+  padding: 5px 7px 5px 11px;
+  color: var(--text-muted-readable);
+  font-size: 12px;
+}
+
+.recordsCompactRow + .recordsCompactRow {
+  border-top: 1px solid var(--line-soft);
+}
+
+.recordsCompactRow:hover,
+.recordsCompactRow:focus-visible {
+  background: var(--surface-strong);
+}
+
+.recordsCompactRow > time,
+.recordsCompactRow > strong {
+  white-space: nowrap;
+}
+
+.recordsCompactAction {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recordsSessionMenuButton {
+  width: 28px;
+  height: 28px;
+  opacity: 0;
+}
+
+.recordsCompactRow:hover .recordsSessionMenuButton,
+.recordsCompactRow:focus-within .recordsSessionMenuButton,
+.recordsSessionMenuButton:focus-visible {
+  opacity: 1;
+}
+
+.recordsOlderNotes {
+  padding-bottom: 4px;
+}
+
+.recordsOlderNotes > summary {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  color: var(--text-muted-readable);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.recordsOlderNotes[open] > summary {
+  margin-bottom: 10px;
+  color: var(--text);
+}
+
+@media (max-width: 860px) {
+  .recordsViewHeader {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .recordsBackButton {
+    align-self: flex-start;
+  }
+
+  .recordsTabs {
+    width: 100%;
+  }
+
+  .recordsTab {
+    flex: 1 0 auto;
+  }
+
+  .recordsCompactRow {
+    grid-template-columns: 82px 52px minmax(96px, 0.45fr) minmax(110px, 1fr) 48px 30px;
+    gap: 6px;
+  }
+}
+
+@media (max-width: 620px) {
+  .recordsStats {
+    gap: 6px;
+  }
+
+  .recordsStats div {
+    padding: 9px;
+  }
+
+  .recordsStats strong {
+    font-size: 19px;
+  }
+
+  .recordsAccordionSummary {
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+    gap: 7px;
+    padding-inline: 8px;
+  }
+
+  .recordsAccordionSummary > span:not(.projectIdentity) {
+    display: none;
+  }
+
+  .recordsActionHistoryRow {
+    grid-template-columns: 78px minmax(0, 1fr) 46px;
+    gap: 6px;
+    padding-inline: 8px;
+  }
+
+  .recordsAccordionBody > footer {
+    padding-inline: 8px;
+  }
+
+  .recordsCompactRow {
+    grid-template-columns: 76px minmax(0, 1fr) 44px 28px;
+    min-height: 48px;
+    padding-inline: 7px;
+  }
+
+  .recordsCompactRow > span:nth-child(2),
+  .recordsCompactRow > .projectIdentity,
+  .recordsCompactRow > strong:not(:last-of-type) {
+    display: none;
+  }
+
+  .recordsSessionMenuButton {
+    opacity: 1;
+  }
+}

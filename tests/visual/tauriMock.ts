@@ -260,13 +260,23 @@ export async function installTauriMock(
               case "load_session_summary":
                 return fixture.sessionSummary;
               case "load_session_entries": {
-                const filter = args.filter as { dateScope?: string } | undefined;
-                const entries =
-                  filter?.dateScope === "today"
-                    ? fixture.sessionEntries.entries.filter(
-                        (entry) => entry.date === fixture.config.today.date,
-                      )
-                    : fixture.sessionEntries.entries;
+                const filter = args.filter as
+                  | { dateScope?: string; projectId?: string | null; query?: string | null }
+                  | undefined;
+                const query = filter?.query?.trim().toLocaleLowerCase("ja-JP") ?? "";
+                const entries = fixture.sessionEntries.entries.filter((entry) => {
+                  if (filter?.dateScope === "today" && entry.date !== fixture.config.today.date) {
+                    return false;
+                  }
+                  if (filter?.projectId && entry.projectId !== filter.projectId) return false;
+                  if (
+                    query &&
+                    !`${entry.label} ${entry.note}`.toLocaleLowerCase("ja-JP").includes(query)
+                  ) {
+                    return false;
+                  }
+                  return true;
+                });
                 return { ...fixture.sessionEntries, entries };
               }
               case "update_session_entry":
