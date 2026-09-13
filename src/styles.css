@@ -1605,17 +1605,15 @@ button.instructionTreeDisclosure:hover {
 
 .instructionDocument--html {
   overflow: hidden;
-  padding: 20px clamp(20px, 4vw, 48px);
+  padding: 0;
 }
 
 .instructionHtmlFrame {
   display: block;
-  width: min(100%, 960px);
+  width: 100%;
   height: 100%;
-  margin: 0 auto;
-  border: 1px solid rgba(0, 0, 0, 0.2);
+  border: 0;
   background: #ffffff;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
 }
 
 .instructionPlainText {
@@ -1710,7 +1708,7 @@ button.instructionTreeDisclosure:hover {
     grid-row: 2;
   }
 
-  .instructionDocument {
+  .instructionDocument:not(.instructionDocument--html) {
     padding-right: 24px;
     padding-left: 24px;
   }

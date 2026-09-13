@@ -1033,7 +1033,11 @@ export function InstructionTree({
         });
       } else if (action === "external" && target.kind === "file") {
         await openInstructionInDefaultEditor(target.path);
-        setOperationStatus("既定のエディタで開きました");
+        setOperationStatus(
+          target.name.toLocaleLowerCase().endsWith(".html")
+            ? "ブラウザで開きました"
+            : "既定のアプリで開きました",
+        );
       } else if (action === "explorer" && target.kind !== "blank") {
         if (target.kind === "file") await revealInstructionInExplorer(target.path);
         else await openInstructionFolder(target.path);
@@ -1339,7 +1343,11 @@ export function InstructionTree({
               ) : null}
               <button onClick={() => void runContextAction("link-project", contextMenu.target)} role="menuitem" type="button">次の一手に紐づける</button>
               <button onClick={() => void runContextAction("rename", contextMenu.target)} role="menuitem" type="button">名前を変更</button>
-              <button onClick={() => void runContextAction("external", contextMenu.target)} role="menuitem" type="button">既定のエディタで開く</button>
+              <button onClick={() => void runContextAction("external", contextMenu.target)} role="menuitem" type="button">
+                {contextMenu.target.name.toLocaleLowerCase().endsWith(".html")
+                  ? "ブラウザで開く"
+                  : "既定のアプリで開く"}
+              </button>
               <button onClick={() => void runContextAction("explorer", contextMenu.target)} role="menuitem" type="button">エクスプローラーで表示</button>
               <button className="instructionContextMenuDanger" onClick={() => void runContextAction("recycle", contextMenu.target)} role="menuitem" type="button">ごみ箱へ移動</button>
             </>

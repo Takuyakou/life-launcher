@@ -24,6 +24,7 @@ export type VisualQaFixture = {
     restartEligible: boolean;
   }>;
   staleProjectIds?: string[];
+  instructionDocuments?: Record<string, string>;
 };
 
 const INSTRUCTION_ROOT = "C:\\PublicDemo\\Instructions";

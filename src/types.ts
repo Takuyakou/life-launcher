@@ -295,6 +295,7 @@ export type InstructionDocument = {
   name: string;
   path: string;
   content: string;
+  assetBaseUrl: string;
   size: number;
   modifiedAt: number;
   extension?: string;

@@ -223,8 +223,21 @@ export async function searchInstructionFiles(query: string): Promise<Instruction
   return invoke<InstructionEntry[]>("search_instruction_files", { query });
 }
 
+function instructionDirectoryPath(path: string): string {
+  const separatorIndex = Math.max(path.lastIndexOf("\\"), path.lastIndexOf("/"));
+  if (separatorIndex < 0) return path;
+  return path.slice(0, separatorIndex + 1);
+}
+
 export async function readInstruction(path: string): Promise<InstructionDocument> {
-  return invoke<InstructionDocument>("read_instruction", { path });
+  const document = await invoke<Omit<InstructionDocument, "assetBaseUrl">>(
+    "read_instruction",
+    { path },
+  );
+  return {
+    ...document,
+    assetBaseUrl: convertFileSrc(instructionDirectoryPath(document.path)),
+  };
 }
 
 export async function writeInstruction(

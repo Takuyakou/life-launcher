@@ -197,7 +197,7 @@ export async function openInstructionWindow({
   const readyWaiter = await createReadyWaiter();
   const instructionWindow = new WebviewWindow(INSTRUCTION_WINDOW_LABEL, {
     url: instructionUrl(path),
-    title: "Life Launcher 手順書",
+    title: "Life Launcher 手順書ビューワー",
     width: INITIAL_WIDTH,
     height: INITIAL_HEIGHT,
     minWidth: MIN_WIDTH,

@@ -24,7 +24,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost; img-src 'self' asset: http://asset.localhost data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'none'; frame-src 'self'; form-action 'none'",
+      "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost; img-src 'self' asset: http://asset.localhost data:; style-src 'self' asset: http://asset.localhost 'unsafe-inline'; font-src 'self' asset: http://asset.localhost data:; object-src 'none'; base-uri 'self' asset: http://asset.localhost; frame-src 'self'; form-action 'none'",
       "assetProtocol": {
         "enable": true,
         "scope": ["$HOME/AppData/Roaming/life-launcher/icons/**/*"]
