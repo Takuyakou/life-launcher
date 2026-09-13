@@ -218,12 +218,6 @@ export function HelpGuideDialog({ onClose, onCopyResult }: HelpGuideDialogProps)
     if (window.matchMedia("(max-width: 760px)").matches) setTocOpen(false);
   };
 
-  const returnToContents = () => {
-    setTocOpen(true);
-    bodyRef.current?.scrollTo({ top: 0, behavior: prefersReducedMotion() ? "auto" : "smooth" });
-    window.requestAnimationFrame(() => firstTocButtonRef.current?.focus());
-  };
-
   const copyBlock = async (id: string, content: string) => {
     if (copyingId !== null) return;
     setCopyingId(id);
@@ -342,9 +336,6 @@ export function HelpGuideDialog({ onClose, onCopyResult }: HelpGuideDialogProps)
                     onCopy={copyBlock}
                   />
                 ))}
-                <button className="helpGuideBackToToc" onClick={returnToContents} type="button">
-                  目次へ戻る
-                </button>
               </section>
             ))}
           </div>

@@ -21,6 +21,14 @@ const COMMON_FORBIDDEN_TAGS = [
   "math",
 ];
 const MARKDOWN_FORBIDDEN_TAGS = [...COMMON_FORBIDDEN_TAGS, "meta", "link", "style", "img"];
+const HTML_FORBIDDEN_TAGS = [
+  ...COMMON_FORBIDDEN_TAGS.filter((tag) => tag !== "svg"),
+  "animate",
+  "animateMotion",
+  "animateTransform",
+  "foreignObject",
+  "set",
+];
 const SAFE_URI_PATTERN = /^(?:(?:(?:f|ht)tps?):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i;
 const HTML_FRAME_CSP = [
   "default-src 'none'",
@@ -92,13 +100,12 @@ function sanitizeHtmlDocument(source: string, assetBaseUrl: string): string {
   if (!DOMPurify.isSupported || !isTrustedAssetBaseUrl(assetBaseUrl)) return "";
 
   const sanitized = DOMPurify.sanitize(source, {
-    USE_PROFILES: { html: true },
     ALLOW_DATA_ATTR: false,
     ADD_TAGS: ["link", "meta"],
     ADD_ATTR: ["charset", "content", "http-equiv", "name", "rel"],
     ALLOWED_URI_REGEXP: SAFE_URI_PATTERN,
     FORBID_ATTR: ["srcset"],
-    FORBID_TAGS: COMMON_FORBIDDEN_TAGS,
+    FORBID_TAGS: HTML_FORBIDDEN_TAGS,
     WHOLE_DOCUMENT: true,
   });
   const document = new DOMParser().parseFromString(sanitized, "text/html");
@@ -132,6 +139,28 @@ function sanitizeHtmlDocument(source: string, assetBaseUrl: string): string {
     const src = image.getAttribute("src") ?? "";
     if (!isSafeDocumentAsset(src)) image.removeAttribute("src");
     image.removeAttribute("srcset");
+  });
+  document.querySelectorAll<SVGElement>("svg, svg *").forEach((element) => {
+    [
+      "clip-path",
+      "fill",
+      "filter",
+      "marker-end",
+      "marker-mid",
+      "marker-start",
+      "mask",
+      "stroke",
+    ].forEach((name) => {
+      const value = element.getAttribute(name);
+      if (value) element.setAttribute(name, sanitizeCssReferences(value));
+    });
+    ["href", "xlink:href"].forEach((name) => {
+      const value = element.getAttribute(name);
+      if (!value) return;
+      const safe =
+        element.localName === "image" ? isSafeDocumentAsset(value) : value.trim().startsWith("#");
+      if (!safe) element.removeAttribute(name);
+    });
   });
   document.querySelectorAll("a[href]").forEach((anchor) => {
     const href = anchor.getAttribute("href") ?? "";

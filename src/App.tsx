@@ -498,6 +498,7 @@ type TodayDragPreview = {
   offsetY: number;
   width: number;
   height: number;
+  builderRemoveEligible?: boolean;
   targetIndex?: number;
   placement?: "before" | "after";
   targetIndicator?: {
@@ -2030,7 +2031,9 @@ function DashboardApp() {
   const [projectPointerDrag, setProjectPointerDrag] = useState<ProjectDragPreview | null>(null);
   const [inboxPointerDrag, setInboxPointerDrag] = useState<InboxDragPreview | null>(null);
   const builderRestoreGuidanceActive = Boolean(
-    projectPointerDrag?.restoreEligible || inboxPointerDrag?.restoreEligible,
+    projectPointerDrag?.restoreEligible ||
+      inboxPointerDrag?.restoreEligible ||
+      todayPointerDrag?.builderRemoveEligible,
   );
   const [miniTransitioning, setMiniTransitioning] = useState(false);
   const [numberInputDragging, setNumberInputDragging] = useState<NumberInputDragField | null>(null);
@@ -4598,6 +4601,13 @@ function DashboardApp() {
     if (!drag.hasMoved && distance >= SIDEBAR_DRAG_THRESHOLD_PX) drag.hasMoved = true;
     if (!drag.hasMoved) return;
 
+    const current = configRef.current;
+    const item = current?.today.items[drag.index];
+    const builderRemoveEligible = Boolean(
+      item &&
+        activeTimerRef.current?.sourceId !== todayTimerSourceId(item, drag.index),
+    );
+    updateBuilderRestoreHover(event.clientX, event.clientY, builderRemoveEligible);
     const target = todayDropTargetFromPoint(event.clientX, event.clientY);
     setTodayPointerDrag({
       index: drag.index,
@@ -4607,6 +4617,7 @@ function DashboardApp() {
       offsetY: drag.offsetY,
       width: drag.width,
       height: drag.height,
+      builderRemoveEligible,
       targetIndex: target?.index,
       placement: target?.placement,
       targetIndicator: target && target.index !== drag.index ? target.indicator : undefined,
@@ -4615,13 +4626,27 @@ function DashboardApp() {
 
   const finishTodayPointerDrag = (event: PointerEvent<HTMLElement>) => {
     const drag = todayPointerDragRef.current;
+    const current = configRef.current;
+    const item = current?.today.items[drag?.index ?? -1];
+    const sourceKey = item && drag ? todaySourceKey(item, drag.index) : null;
+    const builderDrop =
+      Boolean(
+        item &&
+          drag?.hasMoved &&
+          activeTimerRef.current?.sourceId !== todayTimerSourceId(item, drag.index),
+      ) && builderRestoreTargetFromPoint(event.clientX, event.clientY);
     todayPointerDragRef.current = null;
     setTodayPointerDrag(null);
+    clearBuilderRestoreHover();
 
     if (!drag) return;
     event.preventDefault();
     event.stopPropagation();
     if (!drag.hasMoved) return;
+    if (builderDrop && sourceKey) {
+      void removeTodayItem(sourceKey);
+      return;
+    }
 
     const target = todayDropTargetFromPoint(event.clientX, event.clientY);
     if (!target) return;
@@ -4631,6 +4656,7 @@ function DashboardApp() {
   const cancelTodayPointerDrag = () => {
     todayPointerDragRef.current = null;
     setTodayPointerDrag(null);
+    clearBuilderRestoreHover();
   };
 
   const stopProjectAutoScroll = () => {
@@ -6087,6 +6113,10 @@ function DashboardApp() {
 
   const updateVictoryText = (text: string) => {
     if (!config) return;
+    if (!text.trim()) {
+      seenCompletionFeedbackRef.current.delete(`victory:${config.today.date}`);
+      setCompletionFeedback((current) => (current?.kind === "victory" ? null : current));
+    }
     const victory = {
       text,
       done: text.trim() ? config.today.victory.done : false,
@@ -8537,7 +8567,7 @@ function DashboardApp() {
                     今日の勝利、達成
                   </span>
                 ) : victoryDone ? (
-                  <span className="victoryBadge">達成</span>
+                  <span className="victoryBadge">✓ 今日の勝利、達成</span>
                 ) : null}
               </section>
 
@@ -8549,7 +8579,11 @@ function DashboardApp() {
               >
                 {doNowSelection ? (
                   <div
-                    className="doNowContent"
+                    className={
+                      completionFeedback?.kind === "doNow"
+                        ? "doNowContent doNowContent--reward"
+                        : "doNowContent"
+                    }
                     data-project-color={resolveProjectColorId(
                       doNowSelection.project.id,
                       doNowSelection.project.colorId,
@@ -8648,24 +8682,36 @@ function DashboardApp() {
                               onClick={() => void finishTimer(activeTimer)}
                               type="button"
                             >
-                              終了
+                              <UiIcon name="stop" size={16} /> 終了
                             </button>
                           </>
                         ) : (
                           <>
                             <button
+                              aria-label={`短時間タイマー${doNowShortTimerMinutes}分で始める`}
                               className="doNowStartPrimary"
                               onClick={() => startDoNowProject(doNowSelection.project, true)}
                               type="button"
                             >
-                              <UiIcon name="play" size={16} /> {doNowShortTimerMinutes}分で始める
+                              <span className="timerStartDuration">
+                                短時間 {doNowShortTimerMinutes}分
+                              </span>
+                              <span aria-hidden="true" className="timerStartHoverGlyph">
+                                <UiIcon name="play" size={16} />
+                              </span>
                             </button>
                             <button
+                              aria-label={`通常タイマー${doNowDefaultTimerMinutes}分で開始`}
                               className="doNowStartSecondary"
                               onClick={() => startDoNowProject(doNowSelection.project, false)}
                               type="button"
                             >
-                              <UiIcon name="play" size={16} /> 通常 {doNowDefaultTimerMinutes}分
+                              <span className="timerStartDuration">
+                                通常 {doNowDefaultTimerMinutes}分
+                              </span>
+                              <span aria-hidden="true" className="timerStartHoverGlyph">
+                                <UiIcon name="play" size={16} />
+                              </span>
                             </button>
                           </>
                         )}
@@ -9006,7 +9052,7 @@ function DashboardApp() {
                                   title="このセッションを終了"
                                   type="button"
                                 >
-                                  終了
+                                  <UiIcon name="stop" size={16} /> 終了
                                 </button>
                               </div>
                             ) : (
@@ -9209,7 +9255,11 @@ function DashboardApp() {
                     }
                   >
                     <span aria-hidden="true">↓</span>
-                    <span>ここにドロップして今日の候補に戻す</span>
+                    <span>
+                      {todayPointerDrag?.builderRemoveEligible
+                        ? "ここにドロップして今日の3件から外す"
+                        : "ここにドロップして今日の候補に戻す"}
+                    </span>
                   </div>
                 )}
                 {todayBuilderOpen && (
@@ -12231,8 +12281,12 @@ function DashboardApp() {
               <button className="secondaryButton" onClick={continueCompletedTimer} type="button">
                 続ける(+15分)
               </button>
-              <button className="primaryButton" onClick={finishCompletedTimer} type="button">
-                終わる
+              <button
+                className="secondaryButton secondaryButton--finish"
+                onClick={finishCompletedTimer}
+                type="button"
+              >
+                <UiIcon name="stop" size={16} /> 終わる
               </button>
             </div>
           </section>

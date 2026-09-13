@@ -337,6 +337,17 @@ export function InstructionViewer() {
       const href = anchor?.getAttribute("href");
       if (!href) return;
       event.preventDefault();
+      if (href.startsWith("#")) {
+        let id = href.slice(1);
+        try {
+          id = decodeURIComponent(id);
+        } catch {
+          // Keep a malformed fragment literal instead of navigating outside the preview.
+        }
+        const destination = document.getElementById(id) ?? document.getElementsByName(id)[0];
+        destination?.scrollIntoView({ block: "start", behavior: "smooth" });
+        return;
+      }
       void openExternalHref(href);
     });
   };

@@ -175,6 +175,10 @@ test("HTML preview keeps local assets but blocks active and remote content", asy
   expect(await frame.locator('meta[name="viewport"]').count()).toBe(1);
   expect(await frame.locator('meta[http-equiv="refresh"]').count()).toBe(0);
   expect(await frame.locator("script, form, input, button, iframe, object, embed").count()).toBe(0);
+  await expect(frame.locator("#inline-diagram")).toBeVisible();
+  expect(await frame.locator("#inline-diagram marker, #inline-diagram line").count()).toBe(2);
+  expect(await frame.locator("foreignObject, animate").count()).toBe(0);
+  expect(await frame.locator("#unsafe-svg image").getAttribute("href")).toBeNull();
   expect(await frame.locator("#remote-image").getAttribute("src")).toBeNull();
   expect(await frame.locator("#event-probe").getAttribute("onclick")).toBeNull();
   expect(await frame.locator("link[href^='https://']").count()).toBe(0);
@@ -183,10 +187,17 @@ test("HTML preview keeps local assets but blocks active and remote content", asy
   expect(await frame.locator("#relative-image").getAttribute("src")).toBe("./assets/sample.png");
   expect(
     await frame
-      .locator("a")
-      .first()
+      .locator('a[href="./linked.html"]')
       .evaluate((anchor: HTMLAnchorElement) => anchor.href),
   ).toBe("http://asset.localhost/instructions/browser-parity/linked.html");
   await page.waitForTimeout(100);
   expect(remoteRequests).toEqual([]);
+});
+
+test("HTML preview scrolls fragment contents links inside the document", async ({ page }) => {
+  const frame = await prepareViewer(page, 1080, 720);
+  expect(await frame.evaluate(() => window.scrollY)).toBe(0);
+  await frame.locator("#toc-link").click();
+  await expect.poll(() => frame.evaluate(() => window.scrollY)).toBeGreaterThan(500);
+  await expect(frame.locator("#toc-target")).toBeInViewport();
 });

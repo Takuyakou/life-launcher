@@ -97,7 +97,7 @@ export function TimerPanel({
             onClick={onFinish}
             type="button"
           >
-            終了
+            <UiIcon name="stop" size={16} /> 終了
           </button>
         </div>
       ) : (

@@ -34,7 +34,7 @@ async function openGuide(page: Page) {
 }
 
 
-test("Guide contents move focus to a section and return to the first contents item", async ({
+test("Guide contents move focus to a section and mark the current location", async ({
   page,
 }) => {
   await prepare(page);
@@ -49,11 +49,7 @@ test("Guide contents move focus to a section and return to the first contents it
   await expect(todayHeading).toBeFocused();
   await expect(todayButton).toHaveAttribute("aria-current", "location");
 
-  await dialog
-    .locator('[data-help-section-id="today-builder"]')
-    .getByRole("button", { name: "目次へ戻る" })
-    .click();
-  await expect(navigation.getByRole("button").first()).toBeFocused();
+  await expect(dialog.getByRole("button", { name: "目次へ戻る" })).toHaveCount(0);
 });
 
 test("Guide traps focus and returns it after Escape or backdrop dismissal", async ({ page }) => {

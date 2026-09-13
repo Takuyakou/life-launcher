@@ -30,6 +30,20 @@
       <img id="relative-image" src="./assets/sample.png" width="32" height="32" alt="相対画像" />
     </header>
     <main class="layout">
+      <nav aria-label="文書の目次"><a id="toc-link" href="#toc-target">配線図へ</a></nav>
+      <svg id="inline-diagram" viewBox="0 0 120 40" role="img" aria-label="安全な配線図">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0,0 L10,5 L0,10 z" fill="#4faeb5" />
+          </marker>
+        </defs>
+        <line x1="5" y1="20" x2="110" y2="20" stroke="#4faeb5" marker-end="url(#arrow)" />
+      </svg>
+      <svg id="unsafe-svg">
+        <foreignObject><div>unsafe</div></foreignObject>
+        <animate attributeName="opacity" values="0;1" dur="1s" />
+        <image href="https://example.invalid/vector.png" />
+      </svg>
       <section class="flex-row inline-probe" style="padding-top: 11px">
         <article>Flex A</article>
         <article>Flex B</article>
@@ -60,6 +74,8 @@
       <div id="background-probe" aria-label="相対CSS画像"></div>
       <a href="./linked.html">相対リンク</a>
       <a href="https://example.com/reference">外部リンク</a>
+      <div style="height: 900px"></div>
+      <h2 id="toc-target">配線図</h2>
     </main>
     <form id="unsafe-form"><input name="secret" /><button>送信</button></form>
     <iframe id="unsafe-frame" src="https://example.invalid/frame"></iframe>

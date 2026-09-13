@@ -119,7 +119,7 @@ test("v1.3 Do Now switches candidates from the action row and context menu", asy
   await expect(alternate).toBeVisible();
   const labels = await actions.getByRole("button").allTextContents();
   expect(labels[0]?.trim()).toBe("他の一手");
-  expect(labels[1]).toContain("5分で始める");
+  expect(labels[1]).toContain("短時間 5分");
 
   await alternate.click();
   await expect(band.locator(".doNowCopy > strong")).toHaveText("5分だけ体を動かす");
@@ -136,4 +136,33 @@ test("v1.3 Do Now hides alternate actions when there is no other candidate", asy
   await expect(band.getByRole("button", { name: "他の一手", exact: true })).toHaveCount(0);
   await band.click({ button: "right" });
   await expect(page.getByRole("menuitem", { name: "他の一手", exact: true })).toHaveCount(0);
+});
+
+test("timer actions keep equal sizes and reveal play only on hover or focus", async ({ page }) => {
+  const fixture = createPublicFixture();
+  await prepare(page, fixture);
+  const doNowShort = page.locator(".doNowStartPrimary");
+  const doNowNormal = page.locator(".doNowStartSecondary");
+  await expect(doNowShort.locator(".timerStartDuration")).toHaveText("短時間 5分");
+  expect((await doNowShort.boundingBox())?.width).toBe((await doNowNormal.boundingBox())?.width);
+  await expect(doNowShort.locator(".timerStartDuration")).toHaveCSS("opacity", "1");
+  await expect(doNowShort.locator(".timerStartHoverGlyph")).toHaveCSS("opacity", "0");
+  await doNowShort.hover();
+  await expect(doNowShort.locator(".timerStartDuration")).toHaveCSS("opacity", "0");
+  await expect(doNowShort.locator(".timerStartHoverGlyph")).toHaveCSS("opacity", "1");
+
+  const todayShort = page.locator(".todayRow").first().getByRole("button", {
+    name: "短時間タイマー5分で開始",
+  });
+  await expect(todayShort.locator(".nextStepStartDuration")).toHaveCSS("opacity", "1");
+  await expect(todayShort.locator(".nextStepStartGlyph")).toHaveCSS("opacity", "0");
+  await todayShort.hover();
+  await expect(todayShort.locator(".nextStepStartDuration")).toHaveCSS("opacity", "0");
+  await expect(todayShort.locator(".nextStepStartGlyph")).toHaveCSS("opacity", "1");
+  await todayShort.click();
+  const row = page.locator(".todayRow").first();
+  const pause = row.getByRole("button", { name: "このセッションを一時停止" });
+  const stop = row.getByRole("button", { name: "終了", exact: true });
+  expect((await pause.boundingBox())?.width).toBe((await stop.boundingBox())?.width);
+  await expect(stop.locator("svg")).toHaveCount(1);
 });
