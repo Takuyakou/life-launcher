@@ -2,9 +2,9 @@
   "phase": "P8",
   "target": "v1.3",
   "workflow": "single-start-human-gated",
-  "current_stage": "P8-05",
+  "current_stage": "P8-06",
   "baseline_commit": "265dafebc8ef0e6a6a2d1ac5196a4765d13bd313",
-  "branch": "docs/p8-05-guide-spec-sync",
+  "branch": "chore/p8-06-regression-readiness",
   "precursor": {
     "status": "verified_already_implemented",
     "items": [
@@ -50,8 +50,9 @@
       "report": "docs/phase8/workreports/p8-05-report.md"
     },
     "P8-06": {
-      "status": "BLOCKED_BY_P8-05",
-      "approved": false
+      "status": "COMPLETE_AWAITING_REVIEW",
+      "approved": false,
+      "report": "docs/phase8/workreports/p8-06-report.md"
     }
   },
   "release_allowed": false
