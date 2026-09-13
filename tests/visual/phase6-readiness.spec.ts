@@ -157,6 +157,33 @@ test("Today3 manual stop below one minute is not recorded", async ({ page }) => 
   await expect(card.getByRole("status", { name: "未完了" })).toBeVisible();
 });
 
+test("switching from a sub-minute timer warns without recording or resizing manual cards", async ({
+  page,
+}) => {
+  const fixture = withTodayState(2);
+  fixture.config.settings.shortTimerMinutes = 2;
+  await prepare(page, fixture, { width: 860, height: 900 });
+  const cards = page.locator(".todayRow");
+  const first = cards.nth(0);
+  const second = cards.nth(1);
+  const firstIdleHeight = (await first.boundingBox())?.height;
+  const secondIdleHeight = (await second.boundingBox())?.height;
+
+  await first.getByRole("button", { name: "短時間タイマー2分で開始" }).click();
+  await expect(first.getByText("実行中", { exact: true })).toBeVisible();
+  expect((await first.boundingBox())?.height).toBe(firstIdleHeight);
+  await page.clock.runFor(30_000);
+  await second.getByRole("button", { name: "短時間タイマー2分で開始" }).click();
+
+  await expect(page.getByText("1分未満なので記録しませんでした", { exact: true })).toBeVisible();
+  await expect(second.getByText("実行中", { exact: true })).toBeVisible();
+  await expect(first.getByText("実行中", { exact: true })).toHaveCount(0);
+  expect((await second.boundingBox())?.height).toBe(secondIdleHeight);
+  expect(
+    (await invokeCommands(page)).filter((command) => command === "record_session"),
+  ).toHaveLength(0);
+});
+
 test("starting another timer ends a paused timer before the new timer runs", async ({ page }) => {
   const fixture = withTodayState(2);
   fixture.config.settings.shortTimerMinutes = 2;

@@ -230,7 +230,13 @@ for (const [width, columns] of [
     await expect(remove).toBeFocused();
     expect(await remove.evaluate((node) => node.matches(":focus-visible"))).toBe(true);
     await card.getByRole("button", { name: "短時間タイマー5分で開始" }).click();
-    await expect(card.locator(".runningBadge")).toHaveText("実行中");
+    const runningBadge = card.locator(".runningBadge");
+    await expect(runningBadge).toHaveText("実行中");
+    const identityBox = await card.locator(".todayProjectIdentity").boundingBox();
+    const runningBadgeBox = await runningBadge.boundingBox();
+    expect(identityBox && runningBadgeBox && runningBadgeBox.x >= identityBox.x + identityBox.width).toBe(
+      true,
+    );
     expect((await card.boundingBox())?.height).toBe(idleHeight);
     await card.getByRole("button", { name: "このセッションを一時停止" }).click();
     await expect(card.locator(".runningBadge")).toHaveText("一時停止");
