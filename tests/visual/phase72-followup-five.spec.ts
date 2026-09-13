@@ -66,13 +66,13 @@ test("follow-up: Today3 body is a drag surface and editing stays in canonical ac
 
   await row.click({ button: "right" });
   await page.getByRole("menuitem", { name: "編集", exact: true }).click();
-  await expect(page.getByRole("dialog", { name: "取り組みを編集", exact: true })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "次の一手を編集", exact: true })).toBeVisible();
   await page.getByRole("dialog").getByRole("button", { name: "キャンセル", exact: true }).click();
 
   await row.hover();
   await row.locator(".todayRowMenu").click();
   await page.getByRole("menuitem", { name: "編集", exact: true }).click();
-  await expect(page.getByRole("dialog", { name: "取り組みを編集", exact: true })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "次の一手を編集", exact: true })).toBeVisible();
 });
 
 test("follow-up: waiting clock shares vertical drag state and is disabled once active", async ({
