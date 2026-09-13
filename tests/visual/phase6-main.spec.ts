@@ -337,7 +337,7 @@ test("same-text Wishlist items keep separate stable identities", async ({ page }
   const rows = page.locator(".todayBuilderRow");
   await expect(rows).toHaveCount(2);
   await rows.nth(0).getByRole("button", { name: "今日へ" }).click();
-  await expect(rows.nth(0).getByRole("button", { name: "選択済み" })).toBeDisabled();
+  await expect(rows.nth(0).locator(".todayBuilderSelectedStatus")).toHaveText("✓ 選択済み");
   await expect(rows.nth(1).getByRole("button", { name: "今日へ" })).toBeEnabled();
   await rows.nth(1).getByRole("button", { name: "今日へ" }).click();
 
@@ -368,7 +368,7 @@ test("legacy same-text Wishlist selection maps to only the first stable item", a
 
   await page.locator(".todayBuilderDisclosure").click();
   const rows = page.locator(".todayBuilderRow");
-  await expect(rows.nth(0).getByRole("button", { name: "選択済み" })).toBeDisabled();
+  await expect(rows.nth(0).locator(".todayBuilderSelectedStatus")).toHaveText("✓ 選択済み");
   await expect(rows.nth(1).getByRole("button", { name: "今日へ" })).toBeEnabled();
   await rows.nth(1).getByRole("button", { name: "今日へ" }).click();
   expect((await currentConfig(page)).today.items.map((item) => item.sourceKey)).toEqual([

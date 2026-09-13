@@ -7877,7 +7877,91 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayBuilderHeader {
-  grid-template-columns: max-content auto minmax(0, 1fr);
+  grid-template-columns: max-content auto minmax(0, 1fr) max-content;
+}
+
+.todayGrid--empty,
+.todayEmptyState {
+  min-height: 144px;
+}
+
+.todayEmptyState {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  background: var(--surface);
+}
+
+.todayEmptyStateContent {
+  width: min(520px, 100%);
+  display: grid;
+  justify-items: start;
+  gap: 5px;
+  margin-inline-start: 14px;
+}
+
+.todayEmptyStateContent > strong {
+  font-size: var(--dashboard-font-action);
+}
+
+.todayEmptyStateContent > span {
+  color: var(--text-muted-readable);
+  font-size: var(--dashboard-font-meta);
+}
+
+.todayEmptyStateContent > button {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 7px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0 12px;
+  background: var(--surface-soft);
+  color: var(--accent-strong);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 700;
+}
+
+.todayEmptyStateContent > button:hover,
+.todayEmptyStateContent > button:focus-visible {
+  border-color: var(--accent);
+  background: var(--surface-strong);
+}
+
+.todayBuilderHeaderAdd {
+  min-height: 32px;
+  white-space: nowrap;
+}
+
+.todayBuilderRow--selected {
+  background: rgba(117, 196, 143, 0.04);
+}
+
+.todayBuilderSelectedStatus {
+  min-width: 76px;
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(117, 196, 143, 0.28);
+  border-radius: var(--radius);
+  padding: 0 8px;
+  background: rgba(117, 196, 143, 0.055);
+  color: var(--good);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+@media (max-width: 620px) {
+  .todayEmptyStateContent {
+    margin-inline-start: 2px;
+  }
 }
 
 .projectsBand .disclosureDescription,

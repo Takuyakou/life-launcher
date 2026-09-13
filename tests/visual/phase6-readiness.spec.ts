@@ -100,7 +100,7 @@ for (const activeCount of [0, 3]) {
     await expect(page.locator(".todayRow")).toHaveCount(activeCount);
     await expect(page.getByRole("button", { name: "今日の3件に追加" })).toHaveCount(0);
     const candidateLink = page
-      .locator(".focusBand .sectionEmptyActions")
+      .locator(".focusBand .todayEmptyState")
       .getByRole("button", { name: "今日を組み立てる" });
     if (activeCount === 0) {
       await expect(candidateLink).toBeVisible();
@@ -301,7 +301,7 @@ test("registration stays in source sections and persists after reload", async ({
 
   await expect(page.getByRole("button", { name: "今日の3件に追加" })).toHaveCount(0);
   await page
-    .locator(".focusBand .sectionEmptyActions")
+    .locator(".focusBand .todayEmptyState")
     .getByRole("button", { name: "今日を組み立てる" })
     .click();
   await expect(page.locator(".todayBuilderRow").first()).toBeFocused();
