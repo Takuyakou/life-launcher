@@ -10,11 +10,11 @@ for (const width of [1440, 860]) {
     await page.goto("/");
     await page.locator(".nextStepRow").first().click({button:"right"});
     await page.getByRole("menuitem",{name:"編集",exact:true}).click();
-    const editor=page.getByRole("dialog",{name:"プロジェクト編集",exact:true});
+    const editor=page.getByRole("dialog",{name:"取り組みを編集",exact:true});
     await expect(editor.locator(".dialogActions > button")).toHaveText(["保存","キャンセル"]);
     await expect(editor.locator(".projectTimerSetting > span")).toHaveText(["短時間タイマー","通常タイマー"]);
-    const short=editor.getByRole("spinbutton",{name:"プロジェクトの短時間タイマー分数"});
-    const normal=editor.getByRole("spinbutton",{name:"プロジェクトの通常タイマー分数"});
+    const short=editor.getByRole("spinbutton",{name:"取り組みの短時間タイマー分数"});
+    const normal=editor.getByRole("spinbutton",{name:"取り組みの通常タイマー分数"});
     await short.scrollIntoViewIfNeeded();
     const a=await short.boundingBox(),b=await normal.boundingBox();
     expect(a && b && (width <= 900 ? a.y < b.y : a.x < b.x)).toBeTruthy();

@@ -132,7 +132,7 @@ test("Project picker preserves order, enforces two selections, and restores focu
   await prepare(page);
   await page.locator('[data-project-id="sample-learning"]').click({ button: "right" });
   await page.getByRole("menuitem", { name: "編集" }).click();
-  const projectDialog = page.getByRole("dialog", { name: "プロジェクト編集" });
+  const projectDialog = page.getByRole("dialog", { name: "取り組みを編集" });
   const opener = projectDialog.getByRole("button", { name: "開始環境を選ぶ" });
   await expect(projectDialog.locator(".startEnvironmentSelectedItem")).toHaveCount(1);
   await opener.click();
@@ -209,7 +209,7 @@ test("Legacy selections over the limit are preserved and picker fits the narrow 
   await prepare(page, fixture, { width: 860, height: 700 });
   await page.locator('[data-project-id="sample-learning"]').click({ button: "right" });
   await page.getByRole("menuitem", { name: "編集" }).click();
-  const projectDialog = page.getByRole("dialog", { name: "プロジェクト編集" });
+  const projectDialog = page.getByRole("dialog", { name: "取り組みを編集" });
   await expect(projectDialog.locator(".startEnvironmentCount")).toContainText("3 / 2");
   await projectDialog.getByRole("button", { name: "開始環境を選ぶ" }).click();
   const picker = page.getByRole("dialog", { name: "開始環境を選ぶ" });

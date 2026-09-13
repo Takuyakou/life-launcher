@@ -311,14 +311,14 @@ test("registration stays in source sections and persists after reload", async ({
   await expect(page.locator(".todayBuilderDestination")).toHaveCount(0);
 
   const projects = page.locator(".projectsBand");
-  await projects.getByRole("button", { name: "プロジェクトを追加" }).click();
-  const projectDialog = page.getByRole("dialog", { name: "プロジェクトを追加" });
+  await projects.getByRole("button", { name: "取り組みを追加" }).click();
+  const projectDialog = page.getByRole("dialog", { name: "取り組みを追加" });
   await expect(projectDialog).toBeVisible();
-  const projectName = projectDialog.getByRole("textbox", { name: "プロジェクト名" });
+  const projectName = projectDialog.getByRole("textbox", { name: "取り組み名" });
   await expect(projectName).toBeFocused();
   await projectName.fill("再起動確認プロジェクト");
   await projectDialog
-    .getByRole("textbox", { name: "次の一手", exact: true })
+    .getByRole("textbox", { name: "次にやること", exact: true })
     .fill("再起動後も残る一手");
   await projectDialog.getByRole("button", { name: "保存" }).click();
   await expect(projectDialog).toHaveCount(0);

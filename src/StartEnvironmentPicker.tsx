@@ -105,8 +105,8 @@ export function StartEnvironmentPicker({
     <div className="startEnvironmentPicker">
       <div className="startEnvironmentHeader">
         <div>
-          <strong>開始環境</strong>
-          <span>タイマー開始時に順番に実行します</span>
+          <strong>道具・アプリ</strong>
+          <span>アプリ、フォルダ、ファイル、URLなど</span>
         </div>
         <span
           className={
@@ -267,7 +267,7 @@ export function StartEnvironmentPicker({
               ) : null}
             </div>
 
-            <div className="dialogActions">
+            <div className="dialogActions formDialogActions">
               <button
                 className="primaryButton"
                 onClick={() => {
@@ -279,7 +279,7 @@ export function StartEnvironmentPicker({
               >
                 選択を反映
               </button>
-              <button className="secondaryButton" onClick={closePicker} ref={cancelRef} type="button">
+              <button className="secondaryButton dialogCancelButton" onClick={closePicker} ref={cancelRef} type="button">
                 キャンセル
               </button>
             </div>
