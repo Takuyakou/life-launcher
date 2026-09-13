@@ -134,7 +134,7 @@ export function InstructionPicker({ choices, error, loading, onChange, onRetry, 
               {rows.length === 0 ? <p className="startEnvironmentNoResults">該当する手順書はありません</p> : null}
             </div>
             <div className="dialogActions formDialogActions">
-              <button className="primaryButton" onClick={() => { onChange(draftPath); close(); }} type="button">選択を反映</button>
+              <button className="primaryButton" onClick={() => { onChange(draftPath); close(); }} type="button">選択</button>
               <button className="secondaryButton dialogCancelButton" onClick={close} type="button">キャンセル</button>
             </div>
           </section>

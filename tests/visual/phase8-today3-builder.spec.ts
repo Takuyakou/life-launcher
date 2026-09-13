@@ -74,8 +74,8 @@ test("P8 Builder add is independent and routes to existing source forms", async 
 
   await add.click();
   await expect(disclosure).toHaveAttribute("aria-expanded", "false");
-  await page.getByRole("menuitem", { name: "取り組みを追加" }).click();
-  await expect(page.getByRole("dialog", { name: "取り組みを追加" })).toBeVisible();
+  await page.getByRole("menuitem", { name: "次の一手を追加" }).click();
+  await expect(page.getByRole("dialog", { name: "次の一手を追加" })).toBeVisible();
   await page.keyboard.press("Escape");
 
   await add.click();

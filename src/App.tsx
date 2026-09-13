@@ -6989,7 +6989,7 @@ function DashboardApp() {
     if (source === "project") setProjectsOpen(true);
     if (source === "wishlist") setInboxOpen(true);
     window.requestAnimationFrame(() => {
-      const label = source === "project" ? "取り組みを追加" : "やりたいことを追加";
+      const label = source === "project" ? "次の一手を追加" : "やりたいことを追加";
       document.querySelector<HTMLElement>(`button[aria-label="${label}"]`)?.focus();
     });
   };
@@ -8787,6 +8787,8 @@ function DashboardApp() {
                     const timerSourceId = todayTimerSourceId(item, index);
                     const isRunningTodayItem = activeTimer?.sourceId === timerSourceId;
                     const project = item.projectId ? projectsById.get(item.projectId) : undefined;
+                    const todayInstructionPath =
+                      item.instructionPath?.trim() || project?.instructionPath?.trim();
                     const shortMinutes =
                       item.shortTimerMinutes ??
                       project?.shortTimerMinutes ??
@@ -8901,21 +8903,45 @@ function DashboardApp() {
                           )}
                         </div>
                         <div className="todayCardFooter">
-                          <button
-                            className="todayRemoveButton"
-                            disabled={isRunningTodayItem}
-                            onClick={() => void removeTodayItem(todaySourceKey(item, index))}
-                            onPointerDown={(event) => event.stopPropagation()}
-                            title={
-                              isRunningTodayItem
-                                ? "タイマーを停止してから外してください"
-                                : undefined
-                            }
-                            type="button"
-                          >
-                            <UiIcon name="back" size={16} />
-                            今日の3件から外す
-                          </button>
+                          <div className="todayCardSecondaryActions">
+                            {todayInstructionPath && (
+                              <button
+                                aria-label={`${item.text || "未入力"}の手順書を開く`}
+                                className="doNowInstructionButton todayInstructionButton"
+                                onClick={() => {
+                                  void openInstructionWindow({
+                                    path: todayInstructionPath,
+                                    focus: true,
+                                  }).catch((error) => {
+                                    showToast(
+                                      "error",
+                                      `手順書を開けません: ${error instanceof Error ? error.message : String(error)}`,
+                                    );
+                                  });
+                                }}
+                                onPointerDown={(event) => event.stopPropagation()}
+                                title="手順書を開く"
+                                type="button"
+                              >
+                                <UiIcon name="book" size={16} /> 手順書
+                              </button>
+                            )}
+                            <button
+                              className="todayRemoveButton"
+                              disabled={isRunningTodayItem}
+                              onClick={() => void removeTodayItem(todaySourceKey(item, index))}
+                              onPointerDown={(event) => event.stopPropagation()}
+                              title={
+                                isRunningTodayItem
+                                  ? "タイマーを停止してから外してください"
+                                  : undefined
+                              }
+                              type="button"
+                            >
+                              <UiIcon name="back" size={16} />
+                              今日の3件から外す
+                            </button>
+                          </div>
                           <div className="todayTimerCluster">
                             <div className="todayTriggerZone">
                               {todayTriggerEditingIndex === index ? (
@@ -9440,14 +9466,14 @@ function DashboardApp() {
                     </span>
                   </button>
                   <button
-                    aria-label="取り組みを追加"
+                    aria-label="次の一手を追加"
                     className="sectionAddButton nextStepHeaderAdd"
                     onPointerDown={(event) => event.stopPropagation()}
                     onClick={(event) => {
                       event.stopPropagation();
                       openProjectAddDialog();
                     }}
-                    title="取り組みを追加"
+                    title="次の一手を追加"
                     type="button"
                   >
                     <UiIcon name="add" size={16} />
@@ -10241,7 +10267,7 @@ function DashboardApp() {
           ) : contextMenu.kind === "project" ? (
             <>
               <ContextMenuItem onClick={openProjectAddDialog} type="button">
-                取り組みを追加
+                次の一手を追加
               </ContextMenuItem>
               {explicitlyExcludedCandidate(`project:${contextMenu.project.id}`) && (
                 <ContextMenuItem
@@ -10308,7 +10334,7 @@ function DashboardApp() {
             </>
           ) : contextMenu.kind === "projects" ? (
             <ContextMenuItem onClick={openProjectAddDialog} type="button">
-              取り組みを追加
+              次の一手を追加
             </ContextMenuItem>
           ) : contextMenu.kind === "inboxes" ? (
             <ContextMenuItem
@@ -10320,7 +10346,7 @@ function DashboardApp() {
           ) : contextMenu.kind === "todayBuilderAdd" ? (
             <>
               <ContextMenuItem onClick={openProjectAddDialog} type="button">
-                取り組みを追加
+                次の一手を追加
               </ContextMenuItem>
               <ContextMenuItem onClick={() => openInboxAddDialog()} type="button">
                 やりたいことを追加
@@ -11810,7 +11836,7 @@ function DashboardApp() {
       {projectEditDraft && (
         <div className="modalBackdrop" role="presentation">
           <section
-            aria-label={projectEditDraft.isNew ? "取り組みを追加" : "取り組みを編集"}
+            aria-label={projectEditDraft.isNew ? "次の一手を追加" : "取り組みを編集"}
             aria-modal="true"
             className="dropDialog editDialog modalLongForm app-scrollbar"
             role="dialog"
@@ -11818,7 +11844,7 @@ function DashboardApp() {
           >
             <div>
               <p className="eyebrow">Undertaking</p>
-              <h2>{projectEditDraft.isNew ? "取り組みを追加" : "取り組みを編集"}</h2>
+              <h2>{projectEditDraft.isNew ? "次の一手を追加" : "取り組みを編集"}</h2>
               {projectEditDraft.isNew && (
                 <p className="dialogLead">何に取り組むか、次に何をするか、始めるときに必要なものを登録します。</p>
               )}

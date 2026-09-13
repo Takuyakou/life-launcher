@@ -7714,6 +7714,15 @@ input[type="number"]::-webkit-inner-spin-button {
   grid-row: auto;
 }
 
+.todayCardSecondaryActions {
+  min-width: 0;
+  display: grid;
+  align-content: end;
+  justify-items: start;
+  gap: 4px;
+}
+
+.todayRow .todayInstructionButton,
 .todayRow .todayRemoveButton {
   display: inline-flex;
   align-items: center;
@@ -7729,7 +7738,10 @@ input[type="number"]::-webkit-inner-spin-button {
   white-space: nowrap;
 }
 
+.todayRow .todayInstructionButton:hover:not(:disabled),
+.todayRow .todayInstructionButton:focus-visible,
 .todayRow .todayRemoveButton:hover:not(:disabled) {
+  border-color: var(--muted);
   background: var(--surface-soft);
   color: var(--text);
 }
@@ -8791,10 +8803,33 @@ input[type="number"]::-webkit-inner-spin-button {
   color: var(--good);
 }
 
+.formDialogActions .primaryButton:hover:not(:disabled) {
+  border-color: var(--control-positive-hover-border);
+  background: var(--control-positive-hover-bg);
+}
+
+.formDialogActions .primaryButton:active:not(:disabled) {
+  border-color: var(--control-positive-active-border);
+  background: var(--control-positive-active-bg);
+  box-shadow: var(--control-press-shadow);
+}
+
 .formDialogActions .dialogCancelButton {
   border-color: rgba(255, 128, 120, 0.42);
   background: var(--control-danger-bg);
   color: #ffb4ad;
+}
+
+.formDialogActions .dialogCancelButton:hover:not(:disabled) {
+  border-color: var(--control-danger-hover-border);
+  background: var(--control-danger-hover-bg);
+  color: #ffb4ad;
+}
+
+.formDialogActions .dialogCancelButton:active:not(:disabled) {
+  border-color: var(--control-danger-active-border);
+  background: var(--control-danger-active-bg);
+  box-shadow: var(--control-danger-press-shadow);
 }
 
 .instructionPicker {
