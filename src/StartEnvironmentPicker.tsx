@@ -277,7 +277,7 @@ export function StartEnvironmentPicker({
                 }}
                 type="button"
               >
-                選択を反映
+                選択
               </button>
               <button className="secondaryButton dialogCancelButton" onClick={closePicker} ref={cancelRef} type="button">
                 キャンセル

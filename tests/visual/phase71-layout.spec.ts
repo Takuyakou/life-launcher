@@ -20,7 +20,7 @@ for (const width of [1440, 860]) {
     expect(a && b && (width <= 900 ? a.y < b.y : a.x < b.x)).toBeTruthy();
     await editor.getByRole("button",{name:"開始環境を選ぶ",exact:true}).click();
     const picker=page.getByRole("dialog",{name:"開始環境を選ぶ",exact:true});
-    await expect(picker.locator(".dialogActions > button")).toHaveText(["選択を反映","キャンセル"]);
+    await expect(picker.locator(".dialogActions > button")).toHaveText(["選択","キャンセル"]);
     await expect(picker.getByRole("button",{name:"キャンセル",exact:true})).toBeFocused();
     await page.keyboard.press("Shift+Tab");
     await page.keyboard.press("Tab");

@@ -19,8 +19,8 @@ async function config(page: Page): Promise<AppConfig> {
 
 test("P8 entry form uses user vocabulary and preserves schema fields", async ({ page }) => {
   await prepare(page);
-  await page.getByRole("button", { name: "取り組みを追加", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "取り組みを追加" });
+  await page.getByRole("button", { name: "次の一手を追加", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "次の一手を追加" });
   await expect(dialog.getByRole("textbox", { name: "取り組み名" })).toBeFocused();
   await expect(dialog.getByText("目標（任意）", { exact: true })).toBeVisible();
   await expect(dialog.getByText("次にこの取り組みを開いたとき、最初にやる1つだけ決めます")).toBeVisible();
@@ -53,31 +53,47 @@ test("P8 instruction picker searches, applies and cancels a draft", async ({ pag
   await picker.getByRole("searchbox", { name: "手順書を検索" }).fill("guide");
   await expect(picker.getByRole("option", { name: /guide\.md/ })).toBeVisible();
   await picker.getByRole("option", { name: "手順書なし" }).click();
-  await picker.getByRole("button", { name: "キャンセル" }).click();
+  const instructionCancel = picker.getByRole("button", { name: "キャンセル" });
+  await instructionCancel.hover();
+  await expect(instructionCancel).toHaveCSS("background-color", "rgb(74, 48, 42)");
+  await instructionCancel.click();
   await expect(editor.locator(".instructionPickerSelection")).toContainText("guide.md");
   await editor.getByRole("button", { name: "手順書を選ぶ" }).click();
   picker = page.getByRole("dialog", { name: "手順書を選ぶ" });
   await picker.getByRole("option", { name: "手順書なし" }).click();
-  await picker.getByRole("button", { name: "選択を反映" }).click();
+  const instructionApply = picker.getByRole("button", { name: "選択", exact: true });
+  await instructionApply.hover();
+  await expect(instructionApply).toHaveCSS("background-color", "rgb(48, 66, 53)");
+  await instructionApply.click();
   await expect(editor.locator(".instructionPickerSelection")).toContainText("選択されていません");
   await expect(editor.getByRole("checkbox", { name: "開始時に手順書を開く" })).toBeDisabled();
+
+  await editor.getByRole("button", { name: "開始環境を選ぶ" }).click();
+  const environmentPicker = page.getByRole("dialog", { name: "開始環境を選ぶ" });
+  const environmentApply = environmentPicker.getByRole("button", { name: "選択", exact: true });
+  const environmentCancel = environmentPicker.getByRole("button", { name: "キャンセル" });
+  await environmentApply.hover();
+  await expect(environmentApply).toHaveCSS("background-color", "rgb(48, 66, 53)");
+  await environmentCancel.hover();
+  await expect(environmentCancel).toHaveCSS("background-color", "rgb(74, 48, 42)");
+  await environmentCancel.click();
 });
 
 test("P8 add actions are independent and available from bars and rows", async ({ page }) => {
   await prepare(page);
   const projectDisclosure = page.locator(".projectsBand .disclosure");
-  const projectAdd = page.getByRole("button", { name: "取り組みを追加", exact: true });
+  const projectAdd = page.getByRole("button", { name: "次の一手を追加", exact: true });
   await expect(projectDisclosure).toHaveAttribute("aria-expanded", "true");
   await projectAdd.click();
   await expect(projectDisclosure).toHaveAttribute("aria-expanded", "true");
-  await page.getByRole("dialog", { name: "取り組みを追加" }).getByRole("button", { name: "キャンセル" }).click();
+  await page.getByRole("dialog", { name: "次の一手を追加" }).getByRole("button", { name: "キャンセル" }).click();
   await page.locator(".projectsBand .disclosureHeader").click({ button: "right" });
-  await page.getByRole("menuitem", { name: "取り組みを追加" }).click();
-  await expect(page.getByRole("dialog", { name: "取り組みを追加" })).toBeVisible();
+  await page.getByRole("menuitem", { name: "次の一手を追加" }).click();
+  await expect(page.getByRole("dialog", { name: "次の一手を追加" })).toBeVisible();
   await page.keyboard.press("Escape");
   await page.locator(".nextStepRow").first().click({ button: "right" });
-  await page.getByRole("menuitem", { name: "取り組みを追加" }).click();
-  await expect(page.getByRole("dialog", { name: "取り組みを追加" })).toBeVisible();
+  await page.getByRole("menuitem", { name: "次の一手を追加" }).click();
+  await expect(page.getByRole("dialog", { name: "次の一手を追加" })).toBeVisible();
   await page.keyboard.press("Escape");
 
   const wishlistDisclosure = page.locator(".inboxBand .disclosure");
@@ -95,9 +111,18 @@ test("P8 add actions are independent and available from bars and rows", async ({
 
 test("P8 form actions fit at 860 and use apply/cancel semantics", async ({ page }) => {
   await prepare(page, 860);
-  await page.getByRole("button", { name: "取り組みを追加", exact: true }).click();
-  const actions = page.getByRole("dialog", { name: "取り組みを追加" }).locator(".formDialogActions");
-  await expect(actions.getByRole("button", { name: "保存" })).toHaveClass(/primaryButton/);
-  await expect(actions.getByRole("button", { name: "キャンセル" })).toHaveClass(/dialogCancelButton/);
+  await page.getByRole("button", { name: "次の一手を追加", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "次の一手を追加" });
+  await dialog.getByRole("textbox", { name: "取り組み名" }).fill("hover確認");
+  await dialog.getByRole("textbox", { name: "次にやること", exact: true }).fill("色を確認する");
+  const actions = dialog.locator(".formDialogActions");
+  const save = actions.getByRole("button", { name: "保存" });
+  const cancel = actions.getByRole("button", { name: "キャンセル" });
+  await expect(save).toHaveClass(/primaryButton/);
+  await expect(cancel).toHaveClass(/dialogCancelButton/);
+  await save.hover();
+  await expect(save).toHaveCSS("background-color", "rgb(48, 66, 53)");
+  await cancel.hover();
+  await expect(cancel).toHaveCSS("background-color", "rgb(74, 48, 42)");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });

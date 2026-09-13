@@ -68,6 +68,29 @@ test("removes only Today adoption, preserves both sources, candidates and sessio
   }
 });
 
+test("Today card shows its effective instruction action above remove and opens the viewer", async ({
+  page,
+}) => {
+  await prepare(page);
+  const card = page.locator(".todayRow").first();
+  const instruction = card.getByRole("button", {
+    name: "資料を1ページ読むの手順書を開く",
+  });
+  await expect(instruction).toBeVisible();
+  await expect(page.locator(".todayInstructionButton")).toHaveCount(1);
+  await expect(card.locator(".todayCardSecondaryActions > button")).toHaveText([
+    "手順書",
+    "今日の3件から外す",
+  ]);
+  const instructionBox = await instruction.boundingBox();
+  const removeBox = await card.locator(".todayRemoveButton").boundingBox();
+  expect(instructionBox && removeBox && instructionBox.y + instructionBox.height <= removeBox.y).toBe(true);
+
+  const beforeCalls = (await state(page)).calls.length;
+  await instruction.click();
+  await expect.poll(async () => (await state(page)).calls.slice(beforeCalls).some((call) => call.command === "plugin:window|get_all_windows")).toBe(true);
+});
+
 test("active and paused item cannot be removed even through its React handler; another item can", async ({
   page,
 }) => {

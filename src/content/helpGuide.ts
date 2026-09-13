@@ -74,7 +74,7 @@ export const HELP_GUIDE_SECTIONS: HelpGuideSection[] = [
       {
         type: "note",
         tone: "normal",
-        text: "「取り組みを追加」は詳しい計画を登録し、「やりたいことを追加」は本文だけをすばやく登録します。",
+        text: "「次の一手を追加」は詳しい計画を登録し、「やりたいことを追加」は本文だけをすばやく登録します。",
       },
     ],
   },

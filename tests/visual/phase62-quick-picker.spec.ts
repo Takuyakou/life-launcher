@@ -148,7 +148,7 @@ test("Project picker preserves order, enforces two selections, and restores focu
   await expect(blocked).toHaveAttribute("aria-disabled", "true");
   await blocked.press("Space");
   await expect(blocked).toHaveAttribute("aria-selected", "false");
-  await picker.getByRole("button", { name: "選択を反映" }).click();
+  await picker.getByRole("button", { name: "選択" }).click();
   await expect(picker).toHaveCount(0);
   await expect(opener).toBeFocused();
   await expect(projectDialog.locator(".startEnvironmentSelectedItem")).toHaveCount(2);
