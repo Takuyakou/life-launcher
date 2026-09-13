@@ -40,17 +40,17 @@ test("Guide contents move focus to a section and return to the first contents it
   await prepare(page);
   const dialog = await openGuide(page);
   const navigation = dialog.getByRole("navigation", { name: "使い方の目次" });
-  const todayButton = navigation.getByRole("button", { name: /今日の画面/ });
+  const todayButton = navigation.getByRole("button", { name: /今日を組み立てる/ });
 
   await todayButton.click();
   const todayHeading = dialog
-    .locator('[data-help-section-id="today"]')
-    .getByRole("heading", { name: "今日の画面" });
+    .locator('[data-help-section-id="today-builder"]')
+    .getByRole("heading", { name: "今日を組み立てる" });
   await expect(todayHeading).toBeFocused();
   await expect(todayButton).toHaveAttribute("aria-current", "location");
 
   await dialog
-    .locator('[data-help-section-id="today"]')
+    .locator('[data-help-section-id="today-builder"]')
     .getByRole("button", { name: "目次へ戻る" })
     .click();
   await expect(navigation.getByRole("button").first()).toBeFocused();
