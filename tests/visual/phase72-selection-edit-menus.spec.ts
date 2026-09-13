@@ -61,7 +61,7 @@ test("P72-01 empty Today CTA opens Builder and focuses a candidate", async ({ pa
   const fixture = createPublicFixture();
   fixture.config.today.items = [];
   await prepare(page, fixture, 860);
-  const empty = page.locator(".focusBand .sectionEmptyActions");
+  const empty = page.locator(".focusBand .todayEmptyState");
   await expect(empty).toContainText("今日やるものを選びましょう");
   await empty.getByRole("button", { name: "今日を組み立てる" }).click();
   await expect(page.locator(".todayBuilderDisclosure")).toHaveAttribute("aria-expanded", "true");

@@ -410,6 +410,9 @@ type ContextMenuTarget =
     }
   | {
       kind: "inboxes";
+    }
+  | {
+      kind: "todayBuilderAdd";
     };
 
 type ContextMenuState = ContextMenuTarget & {
@@ -9149,6 +9152,7 @@ function DashboardApp() {
                 <div
                   className={[
                     "todayGrid",
+                    config.today.items.length === 0 ? "todayGrid--empty" : "",
                     completionFeedback?.kind === "todayAll"
                       ? "todayGrid--allCompleteReward"
                       : "",
@@ -9168,11 +9172,15 @@ function DashboardApp() {
                     </div>
                   )}
                   {config.today.items.length === 0 && (
-                    <div className="sectionEmptyActions">
-                      <span>今日やるものを選びましょう</span>
-                      <button onClick={focusTodayBuilder} type="button">
-                        今日を組み立てる
-                      </button>
+                    <div className="todayEmptyState">
+                      <div className="todayEmptyStateContent">
+                        <strong>今日やるものを選びましょう</strong>
+                        <span>次の一手・やりたいことから選べます</span>
+                        <button onClick={focusTodayBuilder} type="button">
+                          <UiIcon name="add" size={16} />
+                          今日を組み立てる
+                        </button>
+                      </div>
                     </div>
                   )}
                   {config.today.items.map((item, index) => {
@@ -9539,6 +9547,25 @@ function DashboardApp() {
                   <span className="disclosureDescription">
                     次の一手・やりたいことから、今日やるものを選ぶ
                   </span>
+                  <button
+                    aria-label="今日の候補を追加"
+                    className="sectionAddButton todayBuilderHeaderAdd"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      const rect = event.currentTarget.getBoundingClientRect();
+                      openContextMenu(
+                        { kind: "todayBuilderAdd" },
+                        rect.left,
+                        rect.bottom,
+                        event.currentTarget,
+                      );
+                    }}
+                    onPointerDown={(event) => event.stopPropagation()}
+                    type="button"
+                  >
+                    <UiIcon name="add" size={16} />
+                    追加
+                  </button>
                 </div>
 
                 {builderRestoreGuidanceActive && (
@@ -9597,11 +9624,15 @@ function DashboardApp() {
                               </div>
                             )}
                             <div
-                              className={
+                              className={[
+                                "todayBuilderRow sourceListRow",
+                                isSelected ? "todayBuilderRow--selected" : "",
                                 todayBuilderPointerDrag?.index === index
-                                  ? "todayBuilderRow sourceListRow todayBuilderRow--dragging"
-                                  : "todayBuilderRow sourceListRow"
-                              }
+                                  ? "todayBuilderRow--dragging"
+                                  : "",
+                              ]
+                                .filter(Boolean)
+                                .join(" ")}
                               data-today-builder-index={index}
                               onContextMenu={(event) => {
                                 event.preventDefault();
@@ -9639,21 +9670,19 @@ function DashboardApp() {
                                 <strong title={candidate.text}>{candidate.text}</strong>
                               </div>
                               <div className="todayBuilderActions">
-                                <button
-                                  className="moveTodayButton todayBuilderAddButton"
-                                  disabled={isSelected || isFull}
-                                  onClick={() => void addCandidateToToday(candidate)}
-                                  title={
-                                    isSelected
-                                      ? "今日に選択済み"
-                                      : isFull
-                                        ? "いま選べるのは3件までです"
-                                        : "今日へ"
-                                  }
-                                  type="button"
-                                >
-                                  {isSelected ? "選択済み" : "今日へ"}
-                                </button>
+                                {isSelected ? (
+                                  <span className="todayBuilderSelectedStatus">✓ 選択済み</span>
+                                ) : (
+                                  <button
+                                    className="moveTodayButton todayBuilderAddButton"
+                                    disabled={isFull}
+                                    onClick={() => void addCandidateToToday(candidate)}
+                                    title={isFull ? "いま選べるのは3件までです" : "今日へ"}
+                                    type="button"
+                                  >
+                                    今日へ
+                                  </button>
+                                )}
                                 <button
                                   aria-label={`${candidate.text}の操作`}
                                   aria-haspopup="menu"
@@ -10688,6 +10717,15 @@ function DashboardApp() {
             >
               やりたいことを追加
             </ContextMenuItem>
+          ) : contextMenu.kind === "todayBuilderAdd" ? (
+            <>
+              <ContextMenuItem onClick={openProjectAddDialog} type="button">
+                取り組みを追加
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => openInboxAddDialog()} type="button">
+                やりたいことを追加
+              </ContextMenuItem>
+            </>
           ) : (
             <>
               <ContextMenuItem onClick={openGroupDialog} type="button">
