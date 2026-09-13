@@ -1,0 +1,30 @@
+{
+  "phase": "P8",
+  "target": "v1.3",
+  "workflow": "single-start-human-gated",
+  "current_stage": "P8-00",
+  "baseline_commit": "265dafebc8ef0e6a6a2d1ac5196a4765d13bd313",
+  "branch": "docs/p8-00-current-main-audit",
+  "precursor": {
+    "status": "verified_already_implemented",
+    "items": [
+      "Today Builder Undo normalization fix",
+      "今やる一手 他の一手",
+      "Today3 empty text 12px adjustment"
+    ]
+  },
+  "stages": {
+    "P8-00": {
+      "status": "COMPLETE_AWAITING_HUMAN_REVIEW",
+      "approved": false,
+      "report": "docs/phase8/workreports/p8-00-report.md"
+    },
+    "P8-01": { "status": "BLOCKED_BY_P8-00", "approved": false },
+    "P8-02": { "status": "BLOCKED_BY_P8-01", "approved": false },
+    "P8-03": { "status": "BLOCKED_BY_P8-02", "approved": false },
+    "P8-04": { "status": "BLOCKED_BY_P8-03", "approved": false },
+    "P8-05": { "status": "BLOCKED_BY_P8-04", "approved": false },
+    "P8-06": { "status": "BLOCKED_BY_P8-05", "approved": false }
+  },
+  "release_allowed": false
+}
