@@ -74,6 +74,19 @@ type DictionaryTileDragPreview = {
   pageTargetKey: string | null;
 };
 
+type DictionaryFocusLayer = "page" | "item";
+
+type DictionaryReopenState = {
+  activePageKey: string;
+  focusedPageKey: string;
+  focusLayer: DictionaryFocusLayer;
+  focusedButtonId: string | null;
+  lastFocusedButtonIds: Record<string, string>;
+  scrollTop: number;
+};
+
+let dictionaryReopenState: DictionaryReopenState | null = null;
+
 const DICTIONARY_FOCUS_LOCK_STORAGE_KEY = "life-launcher.dictionary-focus-lock";
 const DICTIONARY_TILE_GHOST_OFFSET_PX = 10;
 const DICTIONARY_PAGE_HOVER_SWITCH_DELAY_MS = 240;
@@ -178,6 +191,8 @@ export function DictionaryWindow() {
   const [focusedPageKey, setFocusedPageKey] = useState(OVERLAY_ALL_PAGE_KEY);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedButtonId, setSelectedButtonId] = useState<string | null>(null);
+  const [focusLayer, setFocusLayer] = useState<DictionaryFocusLayer>("item");
+  const lastFocusedButtonIdsRef = useRef<Record<string, string>>({});
   const [launchingButtonId, setLaunchingButtonId] = useState<string | null>(null);
   const [launchError, setLaunchError] = useState<string | null>(null);
   const [buttonIconSources, setButtonIconSources] = useState<Record<string, string>>({});
@@ -248,9 +263,17 @@ export function DictionaryWindow() {
 
   const hideWindow = useCallback(async () => {
     if (!dictionaryWindow) return;
+    dictionaryReopenState = {
+      activePageKey: selectedPageKey,
+      focusedPageKey,
+      focusLayer,
+      focusedButtonId: focusLayer === "item" ? selectedButtonId : null,
+      lastFocusedButtonIds: { ...lastFocusedButtonIdsRef.current },
+      scrollTop: dictionaryBodyRef.current?.scrollTop ?? 0,
+    };
     dictionaryVisibleRef.current = false;
     await hideDictionaryWindow();
-  }, [dictionaryWindow]);
+  }, [dictionaryWindow, focusLayer, focusedPageKey, selectedButtonId, selectedPageKey]);
 
   const protectFocusForClick = useCallback(() => {
     if (focusProtectionTimerRef.current !== null) {
@@ -411,7 +434,7 @@ export function DictionaryWindow() {
     : effectiveSelectedPageKey;
   const selectDictionaryPage = useCallback((pageKey: string) => {
     setSelectedPageKey(pageKey);
-    setSelectedButtonId(null);
+    setSelectedButtonId(lastFocusedButtonIdsRef.current[pageKey] ?? null);
   }, []);
   const schedulePageHoverSwitch = useCallback(
     (pageKey: string | null) => {
@@ -497,10 +520,20 @@ export function DictionaryWindow() {
     : -1;
 
   useEffect(() => {
-    setSelectedButtonId((current) =>
-      current && displayedButtonIds.includes(current) ? current : (displayedButtonIds[0] ?? null),
-    );
-  }, [displayedButtonIds]);
+    setSelectedButtonId((current) => {
+      const remembered = lastFocusedButtonIdsRef.current[effectiveSelectedPageKey];
+      const next =
+        current && displayedButtonIds.includes(current)
+          ? current
+          : remembered && displayedButtonIds.includes(remembered)
+            ? remembered
+            : (displayedButtonIds[0] ?? null);
+      if (focusLayer === "item" && next) {
+        lastFocusedButtonIdsRef.current[effectiveSelectedPageKey] = next;
+      }
+      return next;
+    });
+  }, [displayedButtonIds, effectiveSelectedPageKey, focusLayer]);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -519,7 +552,8 @@ export function DictionaryWindow() {
       if (!nextPage) return;
       setSelectedPageKey(nextPage.key);
       setFocusedPageKey(nextPage.key);
-      setSelectedButtonId(null);
+      setFocusLayer("page");
+      setSelectedButtonId(lastFocusedButtonIdsRef.current[nextPage.key] ?? null);
       if (focusTab) {
         window.requestAnimationFrame(() => tabRefs.current.get(nextPage.key)?.focus());
       }
@@ -542,20 +576,33 @@ export function DictionaryWindow() {
       const nextPage = pageTabs[normalizedIndex];
       if (!nextPage) return;
       setFocusedPageKey(nextPage.key);
+      setFocusLayer("page");
       window.requestAnimationFrame(() => tabRefs.current.get(nextPage.key)?.focus());
     },
     [pageTabs],
   );
 
-  const focusTile = useCallback((buttonId: string) => {
-    setSelectedButtonId(buttonId);
-    window.requestAnimationFrame(() => {
-      tileItemRefs.current
-        .get(buttonId)
-        ?.querySelector<HTMLButtonElement>(".dictionaryTile")
-        ?.focus();
-    });
-  }, []);
+  const rememberTileFocus = useCallback(
+    (buttonId: string) => {
+      setFocusLayer("item");
+      setSelectedButtonId(buttonId);
+      lastFocusedButtonIdsRef.current[effectiveSelectedPageKey] = buttonId;
+    },
+    [effectiveSelectedPageKey],
+  );
+
+  const focusTile = useCallback(
+    (buttonId: string) => {
+      rememberTileFocus(buttonId);
+      window.requestAnimationFrame(() => {
+        tileItemRefs.current
+          .get(buttonId)
+          ?.querySelector<HTMLButtonElement>(".dictionaryTile")
+          ?.focus();
+      });
+    },
+    [rememberTileFocus],
+  );
 
   const focusFirstTile = useCallback(() => {
     const firstTile = tileGridRef.current?.querySelector<HTMLButtonElement>(".dictionaryTile");
@@ -563,27 +610,19 @@ export function DictionaryWindow() {
       ?.closest<HTMLElement>("[data-dictionary-button-id]")
       ?.dataset.dictionaryButtonId;
     if (!firstTile || !buttonId) return false;
-    setSelectedButtonId(buttonId);
+    rememberTileFocus(buttonId);
     firstTile.focus();
     return true;
-  }, []);
+  }, [rememberTileFocus]);
 
-  const focusTileFromTab = useCallback(
-    (tab: HTMLElement) => {
-      const tabCenter = tab.getBoundingClientRect().left + tab.getBoundingClientRect().width / 2;
-      const candidates = selectedButtons.flatMap((button) => {
-        const element = tileItemRefs.current
-          .get(button.id)
-          ?.querySelector<HTMLButtonElement>(".dictionaryTile");
-        if (!element) return [];
-        const rect = element.getBoundingClientRect();
-        return [{ button, distance: Math.abs(rect.left + rect.width / 2 - tabCenter) }];
-      });
-      candidates.sort((left, right) => left.distance - right.distance);
-      if (candidates[0]) focusTile(candidates[0].button.id);
-    },
-    [focusTile, selectedButtons],
-  );
+  const focusTileFromTab = useCallback(() => {
+    const remembered = lastFocusedButtonIdsRef.current[effectiveSelectedPageKey];
+    const target =
+      selectedButtons.find((button) => button.id === remembered) ??
+      selectedButtons.find((button) => button.id === selectedButtonId) ??
+      selectedButtons[0];
+    if (target) focusTile(target.id);
+  }, [effectiveSelectedPageKey, focusTile, selectedButtonId, selectedButtons]);
 
   const moveTileFocus = useCallback(
     (buttonId: string, direction: "left" | "right" | "up" | "down") => {
@@ -641,6 +680,7 @@ export function DictionaryWindow() {
       if (candidates[0]) {
         focusTile(candidates[0].button.id);
       } else if (direction === "up") {
+        setFocusLayer("page");
         setFocusedPageKey(effectiveSelectedPageKey);
         tabRefs.current.get(effectiveSelectedPageKey)?.focus();
       }
@@ -866,10 +906,10 @@ export function DictionaryWindow() {
       event.currentTarget.focus();
       tilePointerTargetRef.current = captureTarget;
       focusProtectionRef.current = true;
-      setSelectedButtonId(button.id);
+      rememberTileFocus(button.id);
       updateTilePointer(next);
     },
-    [resetTilePointer, searchQuery, updateTilePointer],
+    [rememberTileFocus, resetTilePointer, searchQuery, updateTilePointer],
   );
 
   const moveTile = useCallback(
@@ -1059,17 +1099,62 @@ export function DictionaryWindow() {
   );
 
   const resetSearchAndFocus = useCallback(() => {
+    const saved = dictionaryReopenState;
     setSearchQuery("");
-    setSelectedButtonId(null);
     setLaunchError(null);
     if (searchFocusFrameRef.current !== null) {
       window.cancelAnimationFrame(searchFocusFrameRef.current);
     }
+
+    if (!saved) {
+      setFocusLayer("item");
+      setSelectedButtonId(null);
+      searchFocusFrameRef.current = window.requestAnimationFrame(() => {
+        searchFocusFrameRef.current = null;
+        if (!focusFirstTile()) searchInputRef.current?.focus();
+      });
+      return;
+    }
+
+    const activePageKey = pageTabs.some((tab) => tab.key === saved.activePageKey)
+      ? saved.activePageKey
+      : OVERLAY_ALL_PAGE_KEY;
+    const focusedPage = pageTabs.some((tab) => tab.key === saved.focusedPageKey)
+      ? saved.focusedPageKey
+      : activePageKey;
+    lastFocusedButtonIdsRef.current = { ...saved.lastFocusedButtonIds };
+    const rememberedButtonId =
+      saved.focusedButtonId ?? saved.lastFocusedButtonIds[activePageKey] ?? null;
+    setSelectedPageKey(activePageKey);
+    setFocusedPageKey(focusedPage);
+    setFocusLayer(saved.focusLayer);
+    setSelectedButtonId(rememberedButtonId);
+
     searchFocusFrameRef.current = window.requestAnimationFrame(() => {
-      searchFocusFrameRef.current = null;
-      if (!focusFirstTile()) searchInputRef.current?.focus();
+      searchFocusFrameRef.current = window.requestAnimationFrame(() => {
+        searchFocusFrameRef.current = null;
+        if (saved.focusLayer === "page") {
+          const tab = tabRefs.current.get(focusedPage) ?? tabRefs.current.get(activePageKey);
+          tab?.focus();
+        } else {
+          const rememberedTile = rememberedButtonId
+            ? tileItemRefs.current
+                .get(rememberedButtonId)
+                ?.querySelector<HTMLButtonElement>(".dictionaryTile")
+            : null;
+          if (rememberedTile) {
+            rememberTileFocus(rememberedButtonId!);
+            rememberedTile.focus();
+          } else {
+            focusFirstTile();
+          }
+        }
+        if (dictionaryBodyRef.current) {
+          dictionaryBodyRef.current.scrollTop = saved.scrollTop;
+        }
+      });
     });
-  }, [focusFirstTile]);
+  }, [focusFirstTile, pageTabs, rememberTileFocus]);
 
   useEffect(() => {
     if (!dictionaryWindow) {
@@ -1450,9 +1535,13 @@ export function DictionaryWindow() {
                   }
                   setSelectedPageKey(tab.key);
                   setFocusedPageKey(tab.key);
-                  setSelectedButtonId(null);
+                  setFocusLayer("page");
+                  setSelectedButtonId(lastFocusedButtonIdsRef.current[tab.key] ?? null);
                 }}
-                onFocus={() => setFocusedPageKey(tab.key)}
+                onFocus={() => {
+                  setFocusLayer("page");
+                  setFocusedPageKey(tab.key);
+                }}
                 onKeyDown={(event) => {
                   if (customPage) {
                     parity.keyboardMenu(event, { kind: "page", page: customPage });
@@ -1461,7 +1550,7 @@ export function DictionaryWindow() {
                   if (event.key === "ArrowDown") {
                     event.preventDefault();
                     event.stopPropagation();
-                    focusTileFromTab(event.currentTarget);
+                    focusTileFromTab();
                     return;
                   }
                   let nextIndex: number | null = null;
@@ -1648,6 +1737,7 @@ export function DictionaryWindow() {
             >
               {renderedPageButtons.map((button) => {
                 const selected = button.id === effectiveSelectedButtonId;
+                const keyboardFocused = focusLayer === "item" && selected;
                 const pointerPhase =
                   tilePointer.buttonId === button.id ? tilePointer.phase.toLowerCase() : "idle";
                 return (
@@ -1665,10 +1755,10 @@ export function DictionaryWindow() {
                     }}
                   >
                     <button
-                      aria-current={selected ? "true" : undefined}
+                      aria-current={keyboardFocused ? "true" : undefined}
                       className={[
                         "dictionaryTile",
-                        selected ? "dictionaryTile--selected" : "",
+                        keyboardFocused ? "dictionaryTile--selected" : "",
                         dragPreview?.sourceId === button.id
                           ? "dictionaryTile--placeholder"
                           : "",
@@ -1679,7 +1769,7 @@ export function DictionaryWindow() {
                       disabled={launchingButtonId !== null}
                       onClick={(event) => clickTile(event, button)}
                       onContextMenu={(event) => parity.buttonMenu(event, button)}
-                      onFocus={() => setSelectedButtonId(button.id)}
+                      onFocus={() => rememberTileFocus(button.id)}
                       onKeyDown={(event) => {
                         parity.keyboardMenu(event, { kind: "button", button });
                         if (event.defaultPrevented) return;
@@ -1698,7 +1788,6 @@ export function DictionaryWindow() {
                         event.stopPropagation();
                         moveTileFocus(button.id, direction);
                       }}
-                      onMouseEnter={() => setSelectedButtonId(button.id)}
                       onPointerDown={(event) => pressTile(event, button)}
                       tabIndex={selected ? 0 : -1}
                       title={button.label}
