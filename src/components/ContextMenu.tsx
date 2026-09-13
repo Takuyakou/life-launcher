@@ -33,9 +33,7 @@ export function ContextMenu({
 
   const dismiss = useCallback(() => {
     onClose();
-    window.requestAnimationFrame(() => {
-      if (opener?.isConnected) opener.focus();
-    });
+    if (opener?.isConnected) opener.focus();
   }, [onClose, opener]);
 
   const clampToViewport = useCallback(() => {
@@ -74,12 +72,19 @@ export function ContextMenu({
     const closeOnPointerDown = (event: PointerEvent) => {
       if (!menuRef.current?.contains(event.target as Node)) dismiss();
     };
+    const closeOnKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      event.preventDefault();
+      dismiss();
+    };
     const closeOnBlur = () => dismiss();
     document.addEventListener("pointerdown", closeOnPointerDown, true);
+    document.addEventListener("keydown", closeOnKeyDown);
     window.addEventListener("blur", closeOnBlur);
     return () => {
       window.cancelAnimationFrame(focusFrame);
       document.removeEventListener("pointerdown", closeOnPointerDown, true);
+      document.removeEventListener("keydown", closeOnKeyDown);
       window.removeEventListener("blur", closeOnBlur);
     };
   }, [dismiss]);
