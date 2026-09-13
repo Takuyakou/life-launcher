@@ -253,6 +253,7 @@ test("Quick keyboard menu uses the same reveal command and hides it for URLs", a
   await expect(page.getByRole("menuitem", { name: "エクスプローラーで表示する" })).toHaveCount(0);
 
   await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu", { name: "操作メニュー" })).toHaveCount(0);
   await expect(urlButton).toBeFocused();
   const group = page.locator(".quickGroup").first();
   const groupHeader = group.locator(".quickGroupHeader");
