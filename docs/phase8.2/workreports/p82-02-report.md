@@ -29,4 +29,6 @@ The focused matrix covers 0:00 start, tick, pause exclusion, resume arithmetic, 
 
 P82-03 adds the actual Do Now and Today3 controls and exercises the integrated start/switch/end paths. P82-04 performs full regression and documentation synchronization.
 
+P82-02 PR: https://github.com/Takuyakou/life-launcher/pull/74 (stacked on P82-01 PR #73)
+
 P82-02 COMPLETE — CONTINUING BY USER AUTHORIZATION
