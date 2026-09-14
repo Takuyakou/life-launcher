@@ -114,6 +114,12 @@ import {
   wishlistGroupKey,
 } from "./nextStepWishlist";
 import { TimerPanel } from "./components/TimerPanel";
+import {
+  SESSION_MINIMUM_MINUTES,
+  sessionMinutes,
+  timerMetrics,
+  type TimerMode,
+} from "./timerRuntime";
 import { UiIcon } from "./components/UiIcon";
 import {
   getButtonsForOverlayPage,
@@ -192,15 +198,11 @@ type ActiveTimer = {
   note: string;
   startedAtMs: number;
   startedAt: string;
-  targetMinutes: number;
+  mode: TimerMode;
+  targetMinutes: number | null;
   paused: boolean;
   pausedStartedAtMs: number | null;
   pausedTotalMs: number;
-};
-
-type TimerMetrics = {
-  elapsedSeconds: number;
-  remainingSeconds: number;
 };
 
 type ButtonGroup = {
@@ -676,9 +678,10 @@ type NumberInputDrag = {
 type MiniTimerSnapshot = {
   active: boolean;
   label: string;
+  mode: TimerMode;
   remainingClock: string;
   paused: boolean;
-  progressPercent: number;
+  progressPercent: number | null;
   projectId: string | null;
   projectName: string;
   projectColorId: ProjectColorId | null;
@@ -875,6 +878,7 @@ function inactiveMiniSnapshot(): MiniTimerSnapshot {
   return {
     active: false,
     label: "",
+    mode: "countdown",
     remainingClock: "00:00",
     paused: false,
     progressPercent: 0,
@@ -1097,23 +1101,6 @@ function formatClock(totalSeconds: number): string {
   const minutes = Math.floor(safeSeconds / 60);
   const seconds = safeSeconds % 60;
   return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
-}
-
-function timerMetrics(timer: ActiveTimer, now: number): TimerMetrics {
-  const currentPauseMs =
-    timer.paused && timer.pausedStartedAtMs ? now - timer.pausedStartedAtMs : 0;
-  const elapsedMs = Math.max(0, now - timer.startedAtMs - timer.pausedTotalMs - currentPauseMs);
-  const elapsedSeconds = Math.floor(elapsedMs / 1000);
-  const targetSeconds = timer.targetMinutes * 60;
-
-  return {
-    elapsedSeconds,
-    remainingSeconds: targetSeconds - elapsedSeconds,
-  };
-}
-
-function sessionMinutes(timer: ActiveTimer, now: number): number {
-  return Math.floor(timerMetrics(timer, now).elapsedSeconds / 60);
 }
 
 function readCollapsedGroups(): Record<string, boolean> {
@@ -2405,7 +2392,9 @@ function DashboardApp() {
     [launcherOverlayItems, launcherSearch, overlayPages, selectedOverlayPageButtons],
   );
   const timerProgressPercent =
-    activeTimer && currentTimerMetrics
+    activeTimer?.mode === "countdown" &&
+    activeTimer.targetMinutes !== null &&
+    currentTimerMetrics
       ? Math.min(
           100,
           Math.max(
@@ -2413,22 +2402,30 @@ function DashboardApp() {
             (currentTimerMetrics.elapsedSeconds / (activeTimer.targetMinutes * 60)) * 100,
           ),
         )
-      : 0;
+      : null;
   const miniSnapshot = useMemo<MiniTimerSnapshot>(() => {
     if (!activeTimer) return inactiveMiniSnapshot();
     const project = activeTimer.projectId
       ? config?.projects.find((item) => item.id === activeTimer.projectId)
       : undefined;
     const metrics = timerMetrics(activeTimer, now);
-    const progressPercent = Math.min(
-      100,
-      Math.max(0, (metrics.elapsedSeconds / (activeTimer.targetMinutes * 60)) * 100),
-    );
+    const progressPercent =
+      activeTimer.mode === "countdown" && activeTimer.targetMinutes !== null
+        ? Math.min(
+            100,
+            Math.max(0, (metrics.elapsedSeconds / (activeTimer.targetMinutes * 60)) * 100),
+          )
+        : null;
 
     return {
       active: true,
       label: activeTimer.label,
-      remainingClock: formatClock(Math.max(0, metrics.remainingSeconds)),
+      mode: activeTimer.mode,
+      remainingClock: formatClock(
+        activeTimer.mode === "measure"
+          ? metrics.elapsedSeconds
+          : Math.max(0, metrics.remainingSeconds ?? 0),
+      ),
       paused: activeTimer.paused,
       progressPercent,
       projectId: project?.id ?? null,
@@ -5817,7 +5814,7 @@ function DashboardApp() {
     async (timer: ActiveTimer, stoppedAt: number, reason: "manual" | "switch" | "complete") => {
       const minutes = sessionMinutes(timer, stoppedAt);
 
-      if (minutes < 1) {
+      if (minutes < SESSION_MINIMUM_MINUTES) {
         if (reason === "manual" || reason === "switch") {
           showToast("warn", "1分未満なので記録しませんでした");
         }
@@ -5864,7 +5861,13 @@ function DashboardApp() {
         return false;
       const stoppedAt = Date.now();
       const metrics = timerMetrics(timer, stoppedAt);
-      if (reason === "manual" && metrics.remainingSeconds <= 0) {
+      if (
+        reason === "manual" &&
+        timer.mode === "countdown" &&
+        timer.targetMinutes !== null &&
+        metrics.remainingSeconds !== null &&
+        metrics.remainingSeconds <= 0
+      ) {
         setCompletionPrompt({
           sourceId: timer.sourceId,
           projectId: timer.projectId,
@@ -5993,13 +5996,18 @@ function DashboardApp() {
   useEffect(() => {
     if (
       !activeTimer ||
+      activeTimer.mode !== "countdown" ||
+      activeTimer.targetMinutes === null ||
       activeTimer.paused ||
       !currentTimerMetrics ||
       finishingTimerRef.current !== null ||
       plannedCommitRef.current
     )
       return;
-    if (currentTimerMetrics.remainingSeconds <= 0) {
+    if (
+      currentTimerMetrics.remainingSeconds !== null &&
+      currentTimerMetrics.remainingSeconds <= 0
+    ) {
       if (
         completionPrompt?.sourceId === activeTimer.sourceId &&
         completionPrompt.targetMinutes === activeTimer.targetMinutes
@@ -6028,6 +6036,7 @@ function DashboardApp() {
       noteOverride?: string,
       instructionPathOverride?: string,
       instructionOpenOnStartOverride?: boolean,
+      mode: TimerMode = "countdown",
     ) => {
       const cleanLabel = label.trim();
       if (
@@ -6062,7 +6071,8 @@ function DashboardApp() {
         (projectId !== null && sourceId === projectId
           ? timerConfig.projects.find((project) => project.id === projectId)?.nextStep?.generationId
           : undefined);
-      const resolvedTargetMinutes = targetMinutes ?? config.settings.defaultTimerMinutes;
+      const resolvedTargetMinutes =
+        mode === "countdown" ? targetMinutes ?? config.settings.defaultTimerMinutes : null;
       const fallbackNote =
         projectId !== null
           ? (config.projects.find((project) => project.id === projectId)?.nextStep?.text ?? "")
@@ -6076,6 +6086,7 @@ function DashboardApp() {
         projectId,
         label: cleanLabel,
         note,
+        mode,
         startedAtMs: start.getTime(),
         startedAt: formatStartedAt(start),
         targetMinutes: resolvedTargetMinutes,
@@ -6158,7 +6169,7 @@ function DashboardApp() {
 
       const extended = {
         ...timer,
-        targetMinutes: timer.targetMinutes + 15,
+        targetMinutes: (timer.targetMinutes ?? completionPrompt.targetMinutes) + 15,
       };
       activeTimerRef.current = extended;
       return extended;
@@ -7953,10 +7964,16 @@ function DashboardApp() {
     : activeTimer
       ? activeTimer.paused
         ? "一時停止"
-        : "実行中"
+        : activeTimer.mode === "measure"
+          ? "計測中"
+          : "実行中"
       : "待機中";
   const timerClock = currentTimerMetrics
-    ? formatClock(Math.max(0, currentTimerMetrics.remainingSeconds))
+    ? formatClock(
+        activeTimer?.mode === "measure"
+          ? currentTimerMetrics.elapsedSeconds
+          : Math.max(0, currentTimerMetrics.remainingSeconds ?? 0),
+      )
     : "00:00";
   const activeTimerProject = activeTimer?.projectId
     ? config.projects.find((project) => project.id === activeTimer.projectId)

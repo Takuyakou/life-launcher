@@ -10,7 +10,7 @@ type TimerPanelProps = {
   status: string;
   state: TimerPanelState;
   clock: string;
-  progressPercent: number;
+  progressPercent: number | null;
   active: boolean;
   paused: boolean;
   onPause: () => void;
@@ -84,9 +84,11 @@ export function TimerPanel({
       >
         {clock}
       </div>
-      <div className="timerProgress" aria-hidden="true">
-        <span style={{ width: `${progressPercent}%` }} />
-      </div>
+      {progressPercent !== null && (
+        <div className="timerProgress" aria-hidden="true">
+          <span style={{ width: `${progressPercent}%` }} />
+        </div>
+      )}
       {active ? (
         <div className="timerControls">
           <button className="secondaryButton" onClick={onPause} type="button">

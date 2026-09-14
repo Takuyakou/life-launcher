@@ -14,11 +14,11 @@ export function earlyCompletionItem(
     sourceId: string;
     sourceGenerationId?: string;
     projectId: string | null;
-    targetMinutes: number;
+    targetMinutes: number | null;
   },
   elapsedSeconds: number,
 ): TodayItem | undefined {
-  if (elapsedSeconds >= timer.targetMinutes * 60) return;
+  if (timer.targetMinutes !== null && elapsedSeconds >= timer.targetMinutes * 60) return;
   // Direct Today identity must not also complete a different Project adoption.
   const key = timer.sourceId.startsWith("today:")
     ? timer.sourceId.slice("today:".length)
