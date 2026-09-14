@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import {
   groupWishlist,
+  prepareNextStepRemoval,
   prepareNextStepReplacement,
   wishlistGroupKey,
 } from "../../src/nextStepWishlist";
@@ -38,7 +39,7 @@ async function openPromotion(page: Page, itemId = "sample-weekend") {
   const menu = page.getByRole("menu");
   await expect(menu.getByRole("menuitem", { name: "今日へ", exact: true })).toHaveCount(0);
   await menu.getByRole("menuitem", { name: "次の一手にする" }).click();
-  return page.getByRole("dialog", { name: "次の一手を設定" });
+  return page.getByRole("dialog", { name: /次の一手を(設定|変更)/ });
 }
 
 function replacementFixture(): {
@@ -344,4 +345,166 @@ test("P82-01 group D&D saves only on drop, persists order and rolls back failure
   await expect(page.locator(".inboxDropIndicator")).toHaveCount(0);
   await page.mouse.up();
   expect(await saveCount()).toBe(beforeCross);
+});
+
+test("v1.3 removing a NextStep can return it to Wishlist without touching Today or history", () => {
+  const config = structuredClone(createPublicFixture().config);
+  const project = config.projects[0];
+  const today = structuredClone(config.today);
+  const completions = structuredClone(config.sourceCompletions);
+  const result = prepareNextStepRemoval(config, {
+    projectId: project.id,
+    expectedCurrent: project.nextStep!,
+    choice: "return",
+    createId: () => "returned-next-step",
+  });
+
+  expect(result.projects[0].nextStep).toBeUndefined();
+  expect(result.inbox.at(-1)).toEqual({
+    id: "returned-next-step",
+    text: project.nextStep?.text,
+    projectId: project.id,
+  });
+  expect(result.today).toEqual(today);
+  expect(result.sourceCompletions).toEqual(completions);
+  expect(config.projects[0].nextStep).toBeDefined();
+
+  const deleted = prepareNextStepRemoval(config, {
+    projectId: project.id,
+    expectedCurrent: project.nextStep!,
+    choice: "delete",
+    createId: () => "unused",
+  });
+  expect(deleted.projects[0].nextStep).toBeUndefined();
+  expect(deleted.inbox).toEqual(config.inbox);
+});
+
+test("v1.3 NextStep menu offers edit, change, unset and Builder registration", async ({ page }) => {
+  const fixture = createPublicFixture();
+  fixture.config.today.candidateExcludedSourceKeys.push("project:sample-learning");
+  await prepare(page, fixture);
+  const row = page.locator('[data-project-id="sample-learning"]');
+
+  await row.getByRole("button", { name: "サンプル学習の次の一手の操作" }).click();
+  const menu = page.getByRole("menu");
+  await expect(menu.getByRole("menuitem")).toHaveText([
+    "次の一手を編集",
+    "次の一手を変更",
+    "次の一手を未設定にする",
+    "今日を組み立てるに登録する",
+  ]);
+  await menu.getByRole("menuitem", { name: "次の一手を未設定にする" }).click();
+  const dialog = page.getByRole("dialog", { name: "次の一手を未設定にしますか？" });
+  await expect(dialog.getByRole("button")).toHaveText([
+    "",
+    "やりたいことへ戻す",
+    "削除して未設定にする",
+    "キャンセル",
+  ]);
+  await dialog.getByRole("button", { name: "やりたいことへ戻す" }).click();
+  await expect(dialog).toBeHidden();
+  const saved = await currentConfig(page);
+  expect(saved.projects.find(({ id }) => id === "sample-learning")?.nextStep).toBeUndefined();
+  expect(saved.inbox.some(({ text }) => text === fixture.config.projects[0].nextStep?.text)).toBe(true);
+});
+
+test("v1.3 dragging a NextStep to Wishlist highlights the target and returns it atomically", async ({ page }) => {
+  const fixture = createPublicFixture();
+  const originalToday = structuredClone(fixture.config.today);
+  const sourceText = fixture.config.projects[0].nextStep!.text;
+  await prepare(page, fixture);
+  const source = page.locator('[data-project-id="sample-learning"]');
+  const target = page.locator(".inboxBand .disclosureHeader");
+  const from = (await source.boundingBox())!;
+  const to = (await target.boundingBox())!;
+
+  await page.mouse.move(from.x + 260, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(from.x + 272, from.y + from.height / 2, { steps: 2 });
+  await expect(page.locator(".inboxBand.sourceReturnBand--target")).toBeVisible();
+  await expect(page.locator(".inboxBand .sourceReturnDropZone")).toContainText(
+    "ここにドロップしてやりたいことへ戻す",
+  );
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 6 });
+  await expect(page.locator(".inboxBand.sourceReturnBand--active")).toBeVisible();
+  await page.mouse.up();
+
+  await expect.poll(async () =>
+    (await currentConfig(page)).projects.find(({ id }) => id === "sample-learning")?.nextStep,
+  ).toBeUndefined();
+  const saved = await currentConfig(page);
+  expect(saved.inbox.some(({ text, projectId }) => text === sourceText && projectId === "sample-learning")).toBe(true);
+  expect(saved.today).toEqual(originalToday);
+});
+
+test("v1.3 dragging a Builder candidate to its source section shows guidance and excludes it", async ({ page }) => {
+  const fixture = createPublicFixture();
+  await prepare(page, fixture);
+  await page.locator(".todayBuilderDisclosure").click();
+  const source = page.locator(".todayBuilderRow", { hasText: "5分だけ体を動かす" });
+  const target = page.locator(".projectsBand .disclosureHeader");
+  const from = (await source.boundingBox())!;
+  const to = (await target.boundingBox())!;
+
+  await page.mouse.move(from.x + 220, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(from.x + 232, from.y + from.height / 2, { steps: 2 });
+  await expect(page.locator(".projectsBand.sourceReturnBand--target")).toBeVisible();
+  await expect(page.locator(".projectsBand .sourceReturnDropZone")).toContainText(
+    "ここにドロップして今日の候補から外す",
+  );
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 6 });
+  await page.mouse.up();
+
+  await expect.poll(async () => (await currentConfig(page)).today.candidateExcludedSourceKeys)
+    .toContain("project:sample-stretch");
+  expect((await currentConfig(page)).projects.some(({ id }) => id === "sample-stretch")).toBe(true);
+});
+
+test("v1.3 NextStep and Wishlist headers keep compact right-side actions", async ({ page }) => {
+  const fixture = createPublicFixture();
+  fixture.config.projects.push({
+    ...fixture.config.projects[0],
+    id: "project-unset",
+    name: "未設定プロジェクト",
+    nextStep: undefined,
+  });
+  await prepare(page, fixture);
+
+  await expect(page.getByRole("button", { name: "プロジェクトを追加" })).toHaveText("＋ プロジェクト");
+  await expect(page.getByRole("button", { name: "やりたいことを追加" })).toHaveText("＋ やりたいこと");
+  const configured = page.locator('[data-project-id="sample-learning"] .nextStepActionRegion p');
+  const unset = page.locator('[data-project-id="project-unset"] .nextStepActionRegion p');
+  expect(await configured.evaluate((node) => getComputedStyle(node).fontSize)).toBe(
+    await unset.evaluate((node) => getComputedStyle(node).fontSize),
+  );
+  await expect(page.locator('[data-project-id="project-unset"] .nextStepRowAction')).toHaveClass(
+    /nextStepRowAction--set/,
+  );
+  const setButton = page.locator('[data-project-id="project-unset"] .nextStepRowAction');
+  const setButtonBox = (await setButton.boundingBox())!;
+  await page.mouse.click(setButtonBox.x + setButtonBox.width / 2, setButtonBox.y - 5);
+  await expect(page.getByRole("dialog", { name: "次の一手を設定" })).toBeVisible();
+  await page.getByRole("dialog", { name: "次の一手を設定" })
+    .getByRole("button", { name: "キャンセル", exact: true })
+    .click();
+  await expect(page.locator(".wishlistDragHandle").first()).toHaveText("⋮⋮");
+  await page.locator(".projectsBand").screenshot({
+    path: "dist/visual-qa/v13-nextstep-wishlist/projects-1440.png",
+  });
+  await page.locator(".inboxBand").screenshot({
+    path: "dist/visual-qa/v13-nextstep-wishlist/wishlist-1440.png",
+  });
+  await page.setViewportSize({ width: 860, height: 900 });
+  for (const selector of [".projectsBand", ".inboxBand"]) {
+    expect(
+      await page.locator(selector).evaluate((node) => node.scrollWidth <= node.clientWidth),
+    ).toBe(true);
+  }
+  await page.locator(".projectsBand").screenshot({
+    path: "dist/visual-qa/v13-nextstep-wishlist/projects-860.png",
+  });
+  await page.locator(".inboxBand").screenshot({
+    path: "dist/visual-qa/v13-nextstep-wishlist/wishlist-860.png",
+  });
 });

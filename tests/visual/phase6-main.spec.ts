@@ -493,8 +493,8 @@ test("Project creation, NextStep setup, and keyboard context menu are reachable"
   await actionRegion.focus();
   await actionRegion.press("Shift+F10");
   await expect(page.getByRole("menuitem", { name: "次の一手を編集", exact: true })).toBeVisible();
-  await expect(page.getByRole("menuitem", { name: "今日へ", exact: true })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "次の一手を変更", exact: true })).toBeVisible();
   await expect(
-    page.getByRole("menuitem", { name: "次の一手を空にする", exact: true }),
+    page.getByRole("menuitem", { name: "次の一手を未設定にする", exact: true }),
   ).toBeVisible();
 });

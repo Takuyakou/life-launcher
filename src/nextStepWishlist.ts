@@ -6,6 +6,7 @@ import type {
 } from "./types";
 
 export type NextStepReplacementChoice = "return" | "complete";
+export type NextStepRemovalChoice = "return" | "delete";
 
 export type WishlistGroup = {
   key: string;
@@ -50,6 +51,39 @@ export function sameNextStepSnapshot(
   expected: LauncherNextStep | undefined,
 ): boolean {
   return JSON.stringify(current) === JSON.stringify(expected);
+}
+
+export function prepareNextStepRemoval(
+  config: AppConfig,
+  input: {
+    projectId: string;
+    expectedCurrent: LauncherNextStep;
+    choice: NextStepRemovalChoice;
+    createId: () => string;
+  },
+): AppConfig {
+  const project = config.projects.find((candidate) => candidate.id === input.projectId);
+  if (!project?.nextStep || !sameNextStepSnapshot(project.nextStep, input.expectedCurrent)) {
+    throw new Error("現在の次の一手が変更されたため、内容を確認し直してください");
+  }
+
+  return {
+    ...config,
+    projects: config.projects.map((candidate) =>
+      candidate.id === project.id ? { ...candidate, nextStep: undefined } : candidate,
+    ),
+    inbox:
+      input.choice === "return"
+        ? [
+            ...config.inbox,
+            {
+              id: input.createId(),
+              text: project.nextStep.text,
+              projectId: project.id,
+            },
+          ]
+        : config.inbox,
+  };
 }
 
 export function prepareNextStepReplacement(

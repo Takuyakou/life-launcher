@@ -304,6 +304,29 @@ test("Today3 active Timer is not a valid Builder removal target", async ({ page 
   expect((await config(page)).today.items).toHaveLength(fixture.config.today.items.length);
 });
 
+test("Builder adoption keeps the current scroll position after save", async ({ page }) => {
+  const fixture = createPublicFixture();
+  await prepare(page, fixture, 860);
+  await page.locator(".todayBuilderDisclosure").click();
+  const source = page.locator(".todayBuilderRow", { hasText: "5分だけ体を動かす" });
+  const target = page.locator(".todayRow").first();
+  await source.scrollIntoViewIfNeeded();
+  const from = (await source.boundingBox())!;
+  const to = (await target.boundingBox())!;
+  await page.mouse.move(from.x + from.width * 0.45, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(from.x + from.width * 0.45 + 12, from.y + from.height / 2, {
+    steps: 2,
+  });
+  await page.mouse.move(to.x + to.width * 0.2, to.y + to.height * 0.35, { steps: 6 });
+  const scrollArea = page.locator(".mainScrollArea");
+  const beforeDrop = await scrollArea.evaluate((node) => node.scrollTop);
+  await page.mouse.up();
+  await expect.poll(() => saveCount(page)).toBe(1);
+  await page.waitForTimeout(50);
+  expect(await scrollArea.evaluate((node) => node.scrollTop)).toBe(beforeDrop);
+});
+
 test("Today3 Builder removal save failure rolls the card back", async ({ page }) => {
   const fixture = createPublicFixture();
   await prepare(page, fixture);

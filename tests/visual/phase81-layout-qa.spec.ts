@@ -302,8 +302,9 @@ test("Phase 8.1 Project and NextStep keep separate keyboard context targets", as
   menu = page.getByRole("menu");
   await expect(menu.getByRole("menuitem")).toHaveText([
     "次の一手を編集",
-    "今日へ",
-    "次の一手を空にする",
+    "次の一手を変更",
+    "次の一手を未設定にする",
+    "今日を組み立てるに登録する",
   ]);
   await expect(menu.getByRole("menuitem", { name: "プロジェクトを編集" })).toHaveCount(0);
   await expectInsideViewport(page, menu, "NextStep context menu");

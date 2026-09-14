@@ -8,13 +8,17 @@ export type ConfirmDialogRequest = {
   message?: string;
   subject?: string;
   confirmLabel: string;
+  alternateLabel?: string;
   cancelLabel?: string;
   processingLabel?: string;
+  alternateProcessingLabel?: string;
+  alternateTone?: ConfirmDialogTone;
   tone?: ConfirmDialogTone;
   isProcessing?: boolean;
   closeOnBackdrop?: boolean;
   initialFocus?: "confirm" | "cancel";
   onConfirm: () => void | boolean | Promise<void | boolean>;
+  onAlternate?: () => void | boolean | Promise<void | boolean>;
 };
 
 type ConfirmDialogProps = ConfirmDialogRequest & {
@@ -28,13 +32,17 @@ export function ConfirmDialog({
   message,
   subject,
   confirmLabel,
+  alternateLabel,
   cancelLabel = "キャンセル",
   processingLabel = "処理中…",
+  alternateProcessingLabel = "処理中…",
+  alternateTone = "warning",
   tone = "normal",
   isProcessing = false,
   closeOnBackdrop = false,
   initialFocus = "cancel",
   onConfirm,
+  onAlternate,
   onCancel,
 }: ConfirmDialogProps) {
   const titleId = useId();
@@ -42,9 +50,9 @@ export function ConfirmDialog({
   const dialogRef = useRef<HTMLElement | null>(null);
   const cancelRef = useRef<HTMLButtonElement | null>(null);
   const confirmRef = useRef<HTMLButtonElement | null>(null);
-  const [internalProcessing, setInternalProcessing] = useState(false);
+  const [internalProcessing, setInternalProcessing] = useState<"confirm" | "alternate" | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const processing = isProcessing || internalProcessing;
+  const processing = isProcessing || internalProcessing !== null;
 
   useEffect(() => {
     if (!open) return;
@@ -53,7 +61,7 @@ export function ConfirmDialog({
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     setErrorMessage(null);
-    setInternalProcessing(false);
+    setInternalProcessing(null);
 
     const focusFrame = window.requestAnimationFrame(() => {
       const target = initialFocus === "confirm" ? confirmRef.current : cancelRef.current;
@@ -118,20 +126,23 @@ export function ConfirmDialog({
 
   if (!open) return null;
 
-  const runConfirm = async () => {
+  const runAction = async (
+    action: "confirm" | "alternate",
+    callback: () => void | boolean | Promise<void | boolean>,
+  ) => {
     if (processing) return;
-    setInternalProcessing(true);
+    setInternalProcessing(action);
     setErrorMessage(null);
     try {
-      const result = await onConfirm();
+      const result = await callback();
       if (result === false) {
-        setInternalProcessing(false);
+        setInternalProcessing(null);
         return;
       }
       onCancel();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : String(error));
-      setInternalProcessing(false);
+      setInternalProcessing(null);
     }
   };
 
@@ -183,12 +194,22 @@ export function ConfirmDialog({
           <button
             className={`confirmDialogButton confirmDialogButton--${tone}`}
             disabled={processing}
-            onClick={() => void runConfirm()}
+            onClick={() => void runAction("confirm", onConfirm)}
             ref={confirmRef}
             type="button"
           >
-            {processing ? processingLabel : confirmLabel}
+            {internalProcessing === "confirm" || isProcessing ? processingLabel : confirmLabel}
           </button>
+          {alternateLabel && onAlternate ? (
+            <button
+              className={`confirmDialogButton confirmDialogButton--${alternateTone}`}
+              disabled={processing}
+              onClick={() => void runAction("alternate", onAlternate)}
+              type="button"
+            >
+              {internalProcessing === "alternate" ? alternateProcessingLabel : alternateLabel}
+            </button>
+          ) : null}
           <button
             className="secondaryButton settingsButton--neutral"
             disabled={processing}

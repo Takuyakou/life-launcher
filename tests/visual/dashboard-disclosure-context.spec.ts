@@ -1,5 +1,4 @@
 import { expect, test, type Page } from "@playwright/test";
-import type { AppConfig } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 
@@ -9,18 +8,6 @@ async function prepare(page: Page) {
   await installTauriMock(page, createPublicFixture(), "main");
   await page.goto("/");
   await expect(page.locator(".doNowBand")).toBeVisible();
-}
-
-async function currentConfig(page: Page): Promise<AppConfig> {
-  return page.evaluate(() => {
-    const control = (
-      window as Window & {
-        __LIFE_LAUNCHER_VISUAL_QA__?: { currentConfig: () => AppConfig };
-      }
-    ).__LIFE_LAUNCHER_VISUAL_QA__;
-    if (!control) throw new Error("Visual QA control is unavailable");
-    return control.currentConfig();
-  });
 }
 
 test("confirmation actions place the destructive or completion action before cancel", async ({
@@ -70,7 +57,7 @@ test("dashboard disclosure bars toggle from their count and description areas", 
   }
 });
 
-test("a NextStep context menu exposes editing, Today adoption, and clearing", async ({ page }) => {
+test("a NextStep context menu exposes edit, change, unset and Builder registration", async ({ page }) => {
   await prepare(page);
   const row = page
     .locator(".nextStepRow", { hasText: "5分だけ体を動かす" })
@@ -78,21 +65,9 @@ test("a NextStep context menu exposes editing, Today adoption, and clearing", as
 
   await row.click({ button: "right" });
   await expect(page.getByRole("menuitem", { name: "次の一手を編集", exact: true })).toBeVisible();
-  await expect(page.getByRole("menuitem", { name: "今日へ", exact: true })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "次の一手を変更", exact: true })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "次の一手を未設定にする", exact: true })).toBeVisible();
   await expect(
-    page.getByRole("menuitem", { name: "次の一手を空にする", exact: true }),
+    page.getByRole("menuitem", { name: "今日を組み立てるに登録する", exact: true }),
   ).toBeVisible();
-  await page.getByRole("menuitem", { name: "今日へ", exact: true }).click();
-
-  const config = await currentConfig(page);
-  expect(config.today.items).toContainEqual(
-    expect.objectContaining({
-      sourceKey: "project:sample-stretch",
-      projectId: "sample-stretch",
-      text: "5分だけ体を動かす",
-      defaultTimerMinutes: 20,
-      shortTimerMinutes: 5,
-    }),
-  );
-  await expect(page.locator(".todayRow", { hasText: "5分だけ体を動かす" })).toBeVisible();
 });

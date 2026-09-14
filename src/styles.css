@@ -3471,8 +3471,8 @@ input[type="number"]::-webkit-inner-spin-button {
 .doNowActions .doNowStartPrimary,
 .doNowActions .doNowStartSecondary {
   position: relative;
-  width: 100px;
-  min-width: 100px;
+  width: 112px;
+  min-width: 112px;
   height: 38px;
   min-height: 38px;
   overflow: hidden;
@@ -3487,7 +3487,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .timerStartDuration {
   position: absolute;
   top: 50%;
-  left: calc(50% + 2px);
+  left: calc(50% + 5px);
   display: grid;
   place-items: center;
   transform: translate(-50%, -50%);
@@ -3500,7 +3500,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .timerStartHoverGlyph {
   position: absolute;
   top: 50%;
-  left: 14px;
+  left: 12px;
   width: 16px;
   display: grid;
   place-items: center;
@@ -8172,7 +8172,12 @@ input[type="number"]::-webkit-inner-spin-button {
 .inboxBand .disclosureDescription,
 .todayBuilderHeader .disclosureDescription,
 .todayActivityBand .disclosureDescription {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   justify-self: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .nextStepBody {
@@ -8213,8 +8218,34 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .projectsBand .disclosureHeader,
 .inboxBand .disclosureHeader {
-  grid-template-columns: max-content max-content max-content minmax(0, 1fr);
+  grid-template-columns: max-content max-content minmax(0, 1fr) max-content;
   min-height: 48px;
+}
+
+.disclosureHeaderActions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.sectionMenuButton {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  padding: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 18px;
+}
+
+.sectionMenuButton:hover,
+.sectionMenuButton:focus-visible {
+  border-color: var(--line);
+  background: var(--control-neutral-hover-bg);
+  color: var(--accent-strong);
 }
 
 .projectGrid,
@@ -8309,12 +8340,29 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .nextStepHeaderAdd--project {
-  align-self: stretch;
+  align-self: center;
+  min-height: 28px;
   border: 1px solid rgba(231, 185, 77, 0.58);
   border-radius: var(--radius);
   padding-inline: 10px;
   background: rgba(231, 185, 77, 0.1);
   color: var(--accent-strong);
+}
+
+.nextStepHeaderAdd--wishlist {
+  align-self: center;
+  min-height: 28px;
+  border: 1px solid rgba(231, 185, 77, 0.58);
+  padding-inline: 9px;
+  background: rgba(231, 185, 77, 0.1);
+  color: var(--accent-strong);
+}
+
+.nextStepHeaderAdd--wishlist:hover:not(:disabled),
+.nextStepHeaderAdd--wishlist:focus-visible {
+  border-color: var(--accent);
+  background: rgba(231, 185, 77, 0.18);
+  color: var(--text);
 }
 
 .nextStepHeaderAdd--project:hover:not(:disabled),
@@ -8351,8 +8399,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .nextStepProjectRegion {
-  grid-template-columns: minmax(0, 1fr) 32px;
-  gap: 4px;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .nextStepProjectRegion h3 {
@@ -8369,8 +8416,8 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .nextStepActionRegion {
-  grid-template-columns: minmax(0, 1fr) max-content;
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) max-content 32px;
+  gap: 8px;
 }
 
 .nextStepActionRegion p {
@@ -8379,6 +8426,10 @@ input[type="number"]::-webkit-inner-spin-button {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--text);
+  font-size: var(--dashboard-font-body);
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .nextStepProjectRegion:hover,
@@ -8392,7 +8443,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .nextStepRow .sourceRowMenu {
-  opacity: 0;
+  opacity: 1;
 }
 
 .nextStepProjectRegion:hover .sourceRowMenu,
@@ -8401,6 +8452,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .nextStepRowAction {
+  position: relative;
   min-height: 30px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -8410,6 +8462,31 @@ input[type="number"]::-webkit-inner-spin-button {
   font-size: var(--dashboard-font-meta);
   font-weight: 700;
   white-space: nowrap;
+}
+
+.nextStepRowAction::before {
+  position: absolute;
+  inset: -8px 0;
+  content: "";
+}
+
+.nextStepRowAction--set {
+  border-color: rgba(117, 196, 143, 0.42);
+  background: var(--control-positive-bg);
+  color: var(--good);
+}
+
+.nextStepRowAction--set:hover:not(:disabled),
+.nextStepRowAction--set:focus-visible {
+  border-color: var(--good);
+  background: rgba(117, 196, 143, 0.16);
+  color: #92e5ae;
+}
+
+.nextStepRowAction--change {
+  border-color: rgba(231, 185, 77, 0.3);
+  background: rgba(231, 185, 77, 0.055);
+  color: var(--accent-strong);
 }
 
 .nextStepRowAction:hover:not(:disabled),
@@ -8550,8 +8627,48 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .wishlistDragHandle {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 15px;
+  letter-spacing: 0;
   text-align: center;
+}
+
+.projectsBand,
+.inboxBand {
+  position: relative;
+}
+
+.sourceReturnBand--target {
+  border-radius: var(--radius);
+  outline: 2px solid rgba(231, 185, 77, 0.58);
+  outline-offset: 3px;
+  background: rgba(231, 185, 77, 0.055);
+}
+
+.sourceReturnBand--active {
+  outline-color: var(--accent);
+  background: rgba(231, 185, 77, 0.09);
+}
+
+.sourceReturnDropZone {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px dashed var(--accent);
+  border-radius: var(--radius);
+  background: rgba(231, 185, 77, 0.065);
+  color: var(--accent-strong);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 650;
+  pointer-events: none;
+}
+
+.sourceReturnDropZone--active {
+  background: rgba(231, 185, 77, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(231, 185, 77, 0.16);
 }
 
 .wishlistTodayStatus,
@@ -8634,7 +8751,16 @@ input[type="number"]::-webkit-inner-spin-button {
   }
 
   .nextStepActionRegion {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) 32px;
+  }
+
+  .nextStepActionRegion p {
+    grid-column: 1 / -1;
+  }
+
+  .nextStepActionRegion .sourceRowMenu {
+    grid-column: 2;
+    grid-row: 2;
   }
 
   .nextStepRowAction {
@@ -8750,6 +8876,11 @@ input[type="number"]::-webkit-inner-spin-button {
 @media (max-width: 900px) {
   .todayGrid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .projectsBand .disclosureDescription,
+  .inboxBand .disclosureDescription {
+    display: none;
   }
 }
 

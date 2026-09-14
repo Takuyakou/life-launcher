@@ -108,6 +108,7 @@ import { PROJECT_COLOR_IDS, PROJECT_COLOR_LABELS, resolveProjectColorId } from "
 import { canRevealLauncherButton } from "./launcherReveal";
 import {
   groupWishlist,
+  prepareNextStepRemoval,
   prepareNextStepReplacement,
   sameNextStepSnapshot,
   type NextStepReplacementChoice,
@@ -583,6 +584,8 @@ type ProjectDragPreview = {
   };
   restoreTarget: boolean;
   restoreEligible: boolean;
+  wishlistTarget: boolean;
+  wishlistEligible: boolean;
 };
 
 type InboxPointerDrag = {
@@ -657,6 +660,8 @@ type TodayBuilderDragPreview = {
     height: number;
   };
   todayGuidanceActive: boolean;
+  sourceTarget: "project" | "wishlist";
+  sourceTargetActive: boolean;
 };
 
 type NumberInputDragField =
@@ -4958,13 +4963,18 @@ function DashboardApp() {
     }
     if (drag.hasMoved) {
       const overBuilder = builderRestoreTargetFromPoint(event.clientX, event.clientY);
+      const overWishlist = pointWithinSelector(event.clientX, event.clientY, ".inboxBand");
       const restoreEligible = sourceCanReturnToBuilder(drag.sourceKey, drag.dayKey);
+      const project = configRef.current?.projects.find((candidate) => candidate.id === drag.id);
+      const wishlistEligible = Boolean(
+        project?.nextStep?.text.trim() && !sourceEditBlocked(drag.sourceKey),
+      );
       const restoreTarget = updateBuilderRestoreHover(
         event.clientX,
         event.clientY,
         restoreEligible,
       );
-      const target = overBuilder
+      const target = overBuilder || overWishlist
         ? null
         : projectDropTargetFromPoint(event.clientX, event.clientY);
       const placement = target ? resolveProjectDropPlacement(drag.id, target) : undefined;
@@ -4984,6 +4994,8 @@ function DashboardApp() {
             : undefined,
         restoreTarget,
         restoreEligible,
+        wishlistTarget: overWishlist && wishlistEligible,
+        wishlistEligible,
       });
       updateProjectAutoScroll(event.clientY);
     }
@@ -5005,6 +5017,14 @@ function DashboardApp() {
     }
     clearBuilderRestoreHover();
     if (builderRestoreTargetFromPoint(event.clientX, event.clientY)) return;
+
+    if (pointWithinSelector(event.clientX, event.clientY, ".inboxBand")) {
+      const project = configRef.current?.projects.find((candidate) => candidate.id === drag.id);
+      if (project?.nextStep?.text.trim() && !sourceEditBlocked(drag.sourceKey)) {
+        void removeProjectNextStep(project, "return");
+      }
+      return;
+    }
 
     const target = projectDropTargetFromPoint(event.clientX, event.clientY);
     if (!target) return;
@@ -5187,6 +5207,15 @@ function DashboardApp() {
     const todayTarget = canAdopt
       ? todayAdoptionDropTargetFromPoint(event.clientX, event.clientY)
       : null;
+    const sourceTarget =
+      candidate?.source === "やりたいこと" || drag.sourceKey.startsWith("wishlist:")
+        ? "wishlist"
+        : "project";
+    const sourceTargetActive = pointWithinSelector(
+      event.clientX,
+      event.clientY,
+      sourceTarget === "wishlist" ? ".inboxBand" : ".projectsBand",
+    );
     const target = todayBuilderDropTargetFromPoint(event.clientX, event.clientY);
     setTodayBuilderPointerDrag({
       index: sourceIndex >= 0 ? sourceIndex : drag.index,
@@ -5204,6 +5233,8 @@ function DashboardApp() {
       todayTargetIndex: todayTarget?.insertionIndex,
       todayTargetIndicator: todayTarget?.indicator,
       todayGuidanceActive: canAdopt,
+      sourceTarget,
+      sourceTargetActive,
     });
     updateProjectAutoScroll(event.clientY);
   };
@@ -5224,6 +5255,15 @@ function DashboardApp() {
     );
     const candidate = sourceIndex >= 0 ? todayBuilderCandidates[sourceIndex] : undefined;
     const current = configRef.current;
+    const sourceTarget =
+      candidate?.source === "やりたいこと" || drag.sourceKey.startsWith("wishlist:")
+        ? ".inboxBand"
+        : ".projectsBand";
+    if (candidate && pointWithinSelector(event.clientX, event.clientY, sourceTarget)) {
+      void excludeTodayBuilderCandidate(sourceIndex);
+      stopProjectAutoScroll();
+      return;
+    }
     const todayTarget = todayAdoptionDropTargetFromPoint(event.clientX, event.clientY);
     if (
       candidate &&
@@ -6852,6 +6892,8 @@ function DashboardApp() {
       showToast("warn", "今日の3件に既にあります");
       return false;
     }
+    const scrollArea = mainScrollAreaRef.current;
+    const scrollTopBeforeSave = scrollArea?.scrollTop;
 
     const selectionMutationTokens = { ...current.today.selectionMutationTokens };
     delete selectionMutationTokens[candidate.sourceKey];
@@ -6887,6 +6929,12 @@ function DashboardApp() {
         selectionMutationTokens,
       },
     });
+    if (saved && scrollArea && scrollTopBeforeSave !== undefined) {
+      scrollArea.scrollTop = scrollTopBeforeSave;
+      window.requestAnimationFrame(() => {
+        if (scrollArea.isConnected) scrollArea.scrollTop = scrollTopBeforeSave;
+      });
+    }
     if (saved) showToast("ok", "今日の3件に追加しました");
     return saved;
   };
@@ -7279,6 +7327,42 @@ function DashboardApp() {
     }
   };
 
+  const removeProjectNextStep = async (
+    project: LauncherProject,
+    choice: "return" | "delete",
+  ) => {
+    const current = configRef.current;
+    const liveProject = current?.projects.find((candidate) => candidate.id === project.id);
+    if (!current || !liveProject?.nextStep?.text.trim()) return false;
+    const sourceKey = `project:${project.id}`;
+    if (sourceEditBlocked(sourceKey)) {
+      setContextMenu(null);
+      showToast("warn", SOURCE_EDIT_TIMER_REASON);
+      return false;
+    }
+    let nextConfig: AppConfig;
+    try {
+      nextConfig = prepareNextStepRemoval(current, {
+        projectId: liveProject.id,
+        expectedCurrent: liveProject.nextStep,
+        choice,
+        createId: createStableId,
+      });
+    } catch (error) {
+      showToast("warn", error instanceof Error ? error.message : String(error));
+      return false;
+    }
+    const saved = await persistConfig(nextConfig);
+    if (saved) {
+      setContextMenu(null);
+      showToast(
+        "ok",
+        choice === "return" ? "やりたいことへ戻しました" : "次の一手を未設定にしました",
+      );
+    }
+    return saved;
+  };
+
   const clearProjectNextStep = (project: LauncherProject) => {
     const current = configRef.current;
     const liveProject = current?.projects.find((candidate) => candidate.id === project.id);
@@ -7291,27 +7375,18 @@ function DashboardApp() {
     }
     setContextMenu(null);
     requestConfirmation({
-      title: "次の一手を空にしますか？",
+      title: "次の一手を未設定にしますか？",
       subject: `「${liveProject.nextStep.text}」`,
       message: "今日の3件に採用済みの内容と実行記録は変更しません。",
-      confirmLabel: "空にする",
+      confirmLabel: "やりたいことへ戻す",
+      alternateLabel: "削除して未設定にする",
+      alternateTone: "danger",
       processingLabel: "保存しています…",
+      alternateProcessingLabel: "保存しています…",
       tone: "warning",
-      onConfirm: () =>
-        persistConfig({
-          ...current,
-          projects: current.projects.map((candidate) =>
-            candidate.id === project.id ? { ...candidate, nextStep: undefined } : candidate,
-          ),
-        }),
+      onConfirm: () => removeProjectNextStep(liveProject, "return"),
+      onAlternate: () => removeProjectNextStep(liveProject, "delete"),
     });
-  };
-
-  const addProjectNextStepToToday = (project: LauncherProject) => {
-    const current = configRef.current;
-    if (!current || !project.nextStep?.text.trim()) return;
-    setContextMenu(null);
-    void addCandidateToToday(projectTodayCandidate(project, current.settings));
   };
 
   const openProjectManagement = () => {
@@ -9593,7 +9668,7 @@ function DashboardApp() {
                                     <UiIcon name="play" size={16} />
                                   </span>
                                   <span aria-hidden="true" className="nextStepStartDuration">
-                                    {shortMinutes}分で始める
+                                    {shortMinutes}分
                                   </span>
                                 </button>
                                 <button
@@ -9625,7 +9700,7 @@ function DashboardApp() {
                                     <UiIcon name="play" size={16} />
                                   </span>
                                   <span aria-hidden="true" className="nextStepStartDuration">
-                                    通常 {defaultMinutes}分
+                                    {defaultMinutes}分
                                   </span>
                                 </button>
                                 <button
@@ -9997,7 +10072,18 @@ function DashboardApp() {
               </section>
 
               <section
-                className="projectsBand"
+                className={[
+                  "projectsBand",
+                  todayBuilderPointerDrag?.sourceTarget === "project"
+                    ? "sourceReturnBand--target"
+                    : "",
+                  todayBuilderPointerDrag?.sourceTarget === "project" &&
+                  todayBuilderPointerDrag.sourceTargetActive
+                    ? "sourceReturnBand--active"
+                    : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
                 onContextMenu={(event) => {
                   event.preventDefault();
                   openContextMenu(
@@ -10036,24 +10122,47 @@ function DashboardApp() {
                       <strong>次の一手</strong>
                     </span>
                   </button>
-                  <button
-                    aria-label="プロジェクトを追加"
-                    className="sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd nextStepHeaderAdd--project"
-                    onPointerDown={(event) => event.stopPropagation()}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      openProjectAddDialog();
-                    }}
-                    title="プロジェクトを追加"
-                    type="button"
-                  >
-                    ＋ プロジェクト
-                  </button>
                   <span className="disclosureCount">{config.projects.length}件</span>
                   <span className="disclosureDescription">
                     迷ったときに戻る「次の一手」を、プロジェクトごとに1つ決めます。
                   </span>
+                  <div className="disclosureHeaderActions">
+                    <button
+                      aria-label="プロジェクトを追加"
+                      className="sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd nextStepHeaderAdd--project"
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        openProjectAddDialog();
+                      }}
+                      title="プロジェクトを追加"
+                      type="button"
+                    >
+                      ＋ プロジェクト
+                    </button>
+                    <button
+                      aria-label="次の一手の操作"
+                      aria-haspopup="menu"
+                      className="sectionMenuButton"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        const rect = event.currentTarget.getBoundingClientRect();
+                        openContextMenu({ kind: "projects" }, rect.left, rect.bottom, event.currentTarget);
+                      }}
+                      onPointerDown={(event) => event.stopPropagation()}
+                      title="次の一手の操作"
+                      type="button"
+                    >
+                      <span aria-hidden="true">…</span>
+                    </button>
+                  </div>
                 </div>
+                {todayBuilderPointerDrag?.sourceTarget === "project" && (
+                  <div className={todayBuilderPointerDrag.sourceTargetActive ? "sourceReturnDropZone sourceReturnDropZone--active" : "sourceReturnDropZone"}>
+                    <span aria-hidden="true">↓</span>
+                    <span>ここにドロップして今日の候補から外す</span>
+                  </div>
+                )}
                 {projectsOpen && (
                   <div className="nextStepBody">
                     <div className="projectGrid">
@@ -10105,26 +10214,6 @@ function DashboardApp() {
                                   projectId={project.id}
                                 />
                               </h3>
-                              <button
-                                aria-label={`${project.name}のプロジェクト操作`}
-                                aria-haspopup="menu"
-                                className="sourceRowMenu nextStepRegionMenu"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  const rect = event.currentTarget.getBoundingClientRect();
-                                  openContextMenu(
-                                    { kind: "project", project },
-                                    rect.left,
-                                    rect.bottom,
-                                    event.currentTarget,
-                                  );
-                                }}
-                                onPointerDown={(event) => event.stopPropagation()}
-                                title="プロジェクト操作"
-                                type="button"
-                              >
-                                <span aria-hidden="true">⋯</span>
-                              </button>
                             </div>
                             <div
                               className="nextStepActionRegion"
@@ -10163,7 +10252,7 @@ function DashboardApp() {
                                 {project.nextStep?.text.trim() || "次の一手は未設定です"}
                               </p>
                               <button
-                                className="nextStepRowAction"
+                                className={project.nextStep?.text.trim() ? "nextStepRowAction nextStepRowAction--change" : "nextStepRowAction nextStepRowAction--set"}
                                 disabled={sourceEditBlocked(`project:${project.id}`)}
                                 onClick={(event) => {
                                   event.stopPropagation();
@@ -10174,6 +10263,26 @@ function DashboardApp() {
                                 type="button"
                               >
                                 {project.nextStep?.text.trim() ? "変更" : "次の一手を設定"}
+                              </button>
+                              <button
+                                aria-label={`${project.name}の次の一手の操作`}
+                                aria-haspopup="menu"
+                                className="sourceRowMenu nextStepRegionMenu"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  const rect = event.currentTarget.getBoundingClientRect();
+                                  openContextMenu(
+                                    { kind: "nextStep", project },
+                                    rect.left,
+                                    rect.bottom,
+                                    event.currentTarget,
+                                  );
+                                }}
+                                onPointerDown={(event) => event.stopPropagation()}
+                                title="次の一手の操作"
+                                type="button"
+                              >
+                                <span aria-hidden="true">…</span>
                               </button>
                             </div>
                           </article>
@@ -10264,7 +10373,22 @@ function DashboardApp() {
                 )}
               </section>
 
-              <section className="inboxBand">
+              <section
+                className={[
+                  "inboxBand",
+                  projectPointerDrag?.wishlistEligible ||
+                  todayBuilderPointerDrag?.sourceTarget === "wishlist"
+                    ? "sourceReturnBand--target"
+                    : "",
+                  projectPointerDrag?.wishlistTarget ||
+                  (todayBuilderPointerDrag?.sourceTarget === "wishlist" &&
+                    todayBuilderPointerDrag.sourceTargetActive)
+                    ? "sourceReturnBand--active"
+                    : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
                 <div
                   className="disclosureHeader"
                   data-inbox-header
@@ -10294,24 +10418,54 @@ function DashboardApp() {
                       <strong>やりたいこと</strong>
                     </span>
                   </button>
-                  <button
-                    aria-label="やりたいことを追加"
-                    className="sectionAddButton sectionAddButton--barHitTarget"
-                    disabled={inboxAddOpen}
-                    onPointerDown={(event) => event.stopPropagation()}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      openInboxAddDialog(event.currentTarget);
-                    }}
-                    title="やりたいことを追加"
-                    type="button"
-                  >
-                    <UiIcon name="add" size={16} />
-                    追加
-                  </button>
                   <span className="disclosureCount">{config.inbox.length}件</span>
-                  <span className="disclosureDescription">あとで整理する一時置き場</span>
+                  <span className="disclosureDescription">
+                    他にやりたいこと。今日やるものは「今日を組み立てる」から選べます。
+                  </span>
+                  <div className="disclosureHeaderActions">
+                    <button
+                      aria-label="やりたいことを追加"
+                      className="sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd nextStepHeaderAdd--wishlist"
+                      disabled={inboxAddOpen}
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        openInboxAddDialog(event.currentTarget);
+                      }}
+                      title="やりたいことを追加"
+                      type="button"
+                    >
+                      ＋ やりたいこと
+                    </button>
+                    <button
+                      aria-label="やりたいことの操作"
+                      aria-haspopup="menu"
+                      className="sectionMenuButton"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        const rect = event.currentTarget.getBoundingClientRect();
+                        openContextMenu({ kind: "inboxes" }, rect.left, rect.bottom, event.currentTarget);
+                      }}
+                      onPointerDown={(event) => event.stopPropagation()}
+                      title="やりたいことの操作"
+                      type="button"
+                    >
+                      <span aria-hidden="true">…</span>
+                    </button>
+                  </div>
                 </div>
+
+                {(projectPointerDrag?.wishlistEligible ||
+                  todayBuilderPointerDrag?.sourceTarget === "wishlist") && (
+                  <div className={projectPointerDrag?.wishlistTarget || todayBuilderPointerDrag?.sourceTargetActive ? "sourceReturnDropZone sourceReturnDropZone--active" : "sourceReturnDropZone"}>
+                    <span aria-hidden="true">↓</span>
+                    <span>
+                      {projectPointerDrag?.wishlistEligible
+                        ? "ここにドロップしてやりたいことへ戻す"
+                        : "ここにドロップして今日の候補から外す"}
+                    </span>
+                  </div>
+                )}
 
                 {inboxOpen && (
                   <div className="inboxBody">
@@ -10409,7 +10563,7 @@ function DashboardApp() {
                                         onPointerUp={finishInboxPointerDrag}
                                         tabIndex={0}
                                       >
-                                        <span aria-hidden="true" className="wishlistDragHandle">≡</span>
+                                        <span aria-hidden="true" className="wishlistDragHandle">⋮⋮</span>
                                         <span className="inboxItemText" title={item.text}>{item.text}</span>
                                         {selected && <span className="wishlistTodayStatus">✓ 今日の3件</span>}
                                         {!selected && excluded && sourceKey && (
@@ -10982,10 +11136,18 @@ function DashboardApp() {
                     次の一手を編集
                   </ContextMenuItem>
                   <ContextMenuItem
-                    onClick={() => addProjectNextStepToToday(contextMenu.project)}
+                    disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
+                    onClick={() =>
+                      openNextStepEditor(contextMenu.project, {
+                        mode: "promote",
+                        text: "",
+                        projectLocked: true,
+                      })
+                    }
+                    title={SOURCE_EDIT_TIMER_REASON}
                     type="button"
                   >
-                    今日へ
+                    次の一手を変更
                   </ContextMenuItem>
                   <ContextMenuItem
                     className="contextMenuSeparatorBefore"
@@ -10994,7 +11156,16 @@ function DashboardApp() {
                     title={SOURCE_EDIT_TIMER_REASON}
                     type="button"
                   >
-                    次の一手を空にする
+                    次の一手を未設定にする
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    disabled={!explicitlyExcludedCandidate(`project:${contextMenu.project.id}`)}
+                    onClick={() =>
+                      void restoreTodayBuilderCandidate(`project:${contextMenu.project.id}`)
+                    }
+                    type="button"
+                  >
+                    今日を組み立てるに登録する
                   </ContextMenuItem>
                 </>
               ) : (
@@ -12624,6 +12795,8 @@ function DashboardApp() {
                 aria-label={
                   nextStepEditDraft.mode === "edit"
                     ? "次の一手を編集"
+                    : replacingExisting
+                      ? "次の一手を変更"
                     : "次の一手を設定"
                 }
                 aria-modal="true"
@@ -12636,6 +12809,8 @@ function DashboardApp() {
                   <h2>
                     {nextStepEditDraft.mode === "edit"
                       ? "次の一手を編集"
+                      : replacingExisting
+                        ? "次の一手を変更"
                       : "次の一手を設定"}
                   </h2>
                   <p className="dialogLead">今進める1件と、始めるための環境を設定します。</p>
