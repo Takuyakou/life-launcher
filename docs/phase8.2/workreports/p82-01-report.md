@@ -34,4 +34,6 @@ Visual QA passed at 1440px and 860px for Project headers, unassigned-last order,
 
 P82-02 through P82-04 remain. The user explicitly authorized continuing the stages sequentially, so P82-02 may start after this report and PR are recorded.
 
+P82-01 PR: https://github.com/Takuyakou/life-launcher/pull/73 (stacked on P82-00 PR #72)
+
 P82-01 COMPLETE — CONTINUING BY USER AUTHORIZATION
