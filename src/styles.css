@@ -3527,6 +3527,49 @@ input[type="number"]::-webkit-inner-spin-button {
   font-size: 12px;
 }
 
+.doNowActions .doNowMeasureButton,
+.todayMeasureButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 38px;
+  min-height: 38px;
+  border-color: rgba(190, 181, 164, 0.32);
+  background: rgba(190, 181, 164, 0.08);
+  color: #d1c9bb;
+  transition:
+    background-color 130ms ease,
+    border-color 130ms ease,
+    transform 130ms ease;
+}
+
+.doNowActions .doNowMeasureButton {
+  width: 82px;
+  min-width: 82px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.doNowMeasureButton:hover:not(:disabled),
+.doNowMeasureButton:focus-visible,
+.todayMeasureButton:hover:not(:disabled),
+.todayMeasureButton:focus-visible {
+  border-color: rgba(209, 201, 187, 0.62);
+  background: rgba(190, 181, 164, 0.14);
+  color: var(--text);
+  transform: translateY(-1px);
+}
+
+.measureElapsedClock {
+  min-width: 48px;
+  color: var(--text);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  text-align: center;
+}
+
 .doNowInstructionButton {
   background: transparent;
   color: var(--muted);
@@ -4071,8 +4114,34 @@ input[type="number"]::-webkit-inner-spin-button {
   gap: 8px;
 }
 
+.todayTimerActions:not(.todayTimerActions--running) {
+  grid-template-columns: 88px 88px 36px;
+  gap: 6px;
+}
+
+.todayMeasureButton {
+  width: 36px;
+  min-width: 36px;
+  padding: 0;
+}
+
 .todayTimerActions--running {
   display: flex;
+}
+
+.todayTimerActions--measure {
+  gap: 5px;
+}
+
+.todayTimerActions--measure .measureElapsedClock {
+  min-width: 44px;
+}
+
+.todayTimerActions--measure .runningPauseButton,
+.todayTimerActions--measure .runningStopButton {
+  width: 72px;
+  min-width: 72px;
+  padding-inline: 6px;
 }
 
 .todayStartButton {
@@ -7805,17 +7874,17 @@ input[type="number"]::-webkit-inner-spin-button {
   display: grid;
   justify-items: end;
   gap: 4px;
-  width: 208px;
+  width: 224px;
   max-width: 100%;
   margin-left: auto;
 }
 
 .todayTimerCluster .todayTimerActions:not(.todayTimerActions--running) {
-  grid-template-columns: 100px 100px;
+  grid-template-columns: 88px 88px 36px;
 }
 
 .todayTimerCluster .todayStartButton {
-  width: 100px;
+  width: 88px;
 }
 
 .todayTriggerZone {

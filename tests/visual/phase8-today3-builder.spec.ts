@@ -17,7 +17,7 @@ async function currentConfig(page: Page): Promise<AppConfig> {
   }).__LIFE_LAUNCHER_VISUAL_QA__.currentConfig());
 }
 
-test("P8 Today3 empty state reserves one row and opens Builder without a large shift", async ({ page }) => {
+test("Today3 empty state reserves one row and opens Builder without moving its layout", async ({ page }) => {
   const fixture = createPublicFixture();
   fixture.config.today.items = [];
   await prepare(page, fixture);
@@ -32,11 +32,13 @@ test("P8 Today3 empty state reserves one row and opens Builder without a large s
   await empty.getByRole("button", { name: "今日を組み立てる" }).click();
   await expect(page.locator(".todayBuilderDisclosure")).toHaveAttribute("aria-expanded", "true");
   await expect(page.locator(".todayBuilderRow").first()).toBeFocused();
+  expect((await page.locator(".todayGrid").boundingBox())!.height).toBe(beforeHeight);
   await page.locator(".todayBuilderRow").first().getByRole("button", { name: "今日へ" }).click();
   await expect(empty).toHaveCount(0);
   await expect(page.locator(".todayRow")).toHaveCount(1);
   const afterHeight = (await page.locator(".todayGrid").boundingBox())!.height;
-  expect(Math.abs(afterHeight - beforeHeight)).toBeLessThanOrEqual(16);
+  expect(afterHeight).toBeLessThan(260);
+  expect(afterHeight).toBe((await page.locator(".todayRow").boundingBox())!.height);
   expect((await currentConfig(page)).today.items).toHaveLength(1);
 });
 

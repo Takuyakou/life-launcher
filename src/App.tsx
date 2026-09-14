@@ -1877,7 +1877,15 @@ function MiniModeApp() {
         paused={snapshot.paused}
         progressPercent={snapshot.progressPercent}
         state={snapshot.active ? (snapshot.paused ? "paused" : "running") : "waiting"}
-        status={snapshot.active ? (snapshot.paused ? "一時停止中" : "実行中") : "待機中"}
+        status={
+          snapshot.active
+            ? snapshot.paused
+              ? "一時停止中"
+              : snapshot.mode === "measure"
+                ? "計測中"
+                : "実行中"
+            : "待機中"
+        }
         variant="mini"
       />
     </main>
@@ -8008,7 +8016,10 @@ function DashboardApp() {
   const isDoNowRunning = Boolean(
     doNowSelection && activeTimer?.sourceId === doNowSelection.project.id,
   );
-  const startDoNowProject = (project: LauncherProject, short: boolean) => {
+  const startDoNowProject = (
+    project: LauncherProject,
+    timerKind: "short" | "normal" | "measure",
+  ) => {
     const actions = (project.nextStep?.buttonIds ?? []).flatMap(
       (buttonId) => buttonsById.get(buttonId)?.actions ?? [],
     );
@@ -8017,10 +8028,15 @@ function DashboardApp() {
       project.name,
       project.id,
       actions,
-      short
+      timerKind === "short"
         ? (project.nextStep?.shortTimerMinutes ?? config.settings.shortTimerMinutes)
-        : (project.nextStep?.defaultTimerMinutes ?? config.settings.defaultTimerMinutes),
+        : timerKind === "normal"
+          ? (project.nextStep?.defaultTimerMinutes ?? config.settings.defaultTimerMinutes)
+          : undefined,
       project.nextStep?.startNoteTemplate,
+      undefined,
+      undefined,
+      timerKind === "measure" ? "measure" : "countdown",
     );
   };
   const showNextDoNowCandidate = () => {
@@ -9089,7 +9105,11 @@ function DashboardApp() {
                                 : "runningBadge runningBadge--running"
                             }
                           >
-                            {activeTimer.paused ? "一時停止" : "実行中"}
+                            {activeTimer.paused
+                              ? "一時停止"
+                              : activeTimer.mode === "measure"
+                                ? "計測中"
+                                : "実行中"}
                           </span>
                         )}
                       </div>
@@ -9125,6 +9145,9 @@ function DashboardApp() {
                         )}
                         {isDoNowRunning && activeTimer ? (
                           <>
+                            {activeTimer.mode === "measure" && (
+                              <span className="measureElapsedClock">{timerClock}</span>
+                            )}
                             <button
                               aria-label={
                                 activeTimer.paused
@@ -9151,7 +9174,7 @@ function DashboardApp() {
                             <button
                               aria-label={`短時間タイマー${doNowShortTimerMinutes}分で始める`}
                               className="doNowStartPrimary"
-                              onClick={() => startDoNowProject(doNowSelection.project, true)}
+                              onClick={() => startDoNowProject(doNowSelection.project, "short")}
                               type="button"
                             >
                               <span className="timerStartDuration">{doNowShortTimerMinutes}分</span>
@@ -9162,13 +9185,23 @@ function DashboardApp() {
                             <button
                               aria-label={`通常タイマー${doNowDefaultTimerMinutes}分で開始`}
                               className="doNowStartSecondary"
-                              onClick={() => startDoNowProject(doNowSelection.project, false)}
+                              onClick={() => startDoNowProject(doNowSelection.project, "normal")}
                               type="button"
                             >
                               <span className="timerStartDuration">{doNowDefaultTimerMinutes}分</span>
                               <span aria-hidden="true" className="timerStartHoverGlyph">
                                 <UiIcon name="play" size={16} />
                               </span>
+                            </button>
+                            <button
+                              aria-label="時間を決めずに計測"
+                              className="doNowMeasureButton"
+                              onClick={() => startDoNowProject(doNowSelection.project, "measure")}
+                              title="時間を決めずに計測"
+                              type="button"
+                            >
+                              <UiIcon name="clock" size={16} />
+                              <span>計測</span>
                             </button>
                           </>
                         )}
@@ -9397,7 +9430,11 @@ function DashboardApp() {
                                   : "runningBadge runningBadge--running"
                               }
                             >
-                              {activeTimer.paused ? "一時停止" : "実行中"}
+                              {activeTimer.paused
+                                ? "一時停止"
+                                : activeTimer.mode === "measure"
+                                  ? "計測中"
+                                  : "実行中"}
                             </span>
                           )}
                           <span
@@ -9484,7 +9521,16 @@ function DashboardApp() {
                             {item.done ? (
                               <span className="todayCompletedLabel">今日の分は完了</span>
                             ) : isRunningTodayItem ? (
-                              <div className="todayTimerActions todayTimerActions--running">
+                              <div
+                                className={
+                                  activeTimer.mode === "measure"
+                                    ? "todayTimerActions todayTimerActions--running todayTimerActions--measure"
+                                    : "todayTimerActions todayTimerActions--running"
+                                }
+                              >
+                                {activeTimer.mode === "measure" && (
+                                  <span className="measureElapsedClock">{timerClock}</span>
+                                )}
                                 <button
                                   aria-label={
                                     activeTimer.paused
@@ -9577,6 +9623,34 @@ function DashboardApp() {
                                   <span aria-hidden="true" className="nextStepStartDuration">
                                     {defaultMinutes}分
                                   </span>
+                                </button>
+                                <button
+                                  aria-label="時間を決めずに計測"
+                                  className="todayMeasureButton"
+                                  disabled={!item.text.trim()}
+                                  onClick={() =>
+                                    void startTimer(
+                                      timerSourceId,
+                                      item.projectId && projectsById.has(item.projectId)
+                                        ? (projectsById.get(item.projectId)?.name ?? item.text)
+                                        : item.text,
+                                      item.projectId && projectsById.has(item.projectId)
+                                        ? item.projectId
+                                        : null,
+                                      (item.buttonIds ?? []).flatMap(
+                                        (buttonId) => buttonsById.get(buttonId)?.actions ?? [],
+                                      ),
+                                      undefined,
+                                      item.text,
+                                      item.instructionPath,
+                                      item.instructionOpenOnStart,
+                                      "measure",
+                                    )
+                                  }
+                                  title="時間を決めずに計測"
+                                  type="button"
+                                >
+                                  <UiIcon name="clock" size={16} />
                                 </button>
                               </div>
                             )}

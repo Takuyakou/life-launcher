@@ -26,6 +26,7 @@ async function expectBarEdgeClick(
   const header = page.locator(headerSelector);
   const button = page.getByRole("button", { name: buttonName, exact: true });
   for (const edge of ["top", "bottom"] as const) {
+    await button.scrollIntoViewIfNeeded();
     const headerBox = await header.boundingBox();
     const buttonBox = await button.boundingBox();
     if (!headerBox || !buttonBox) throw new Error("Header add action is not measurable");

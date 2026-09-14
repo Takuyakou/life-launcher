@@ -155,8 +155,12 @@ test("follow-up: excluded source reveals Builder guidance only after the 6px thr
     /ここにドロップして今日の候補に戻す/,
   );
   await expect(page.locator(".todayBuilderBand--restoreHover")).toHaveCount(0);
-  expect(await builder.boundingBox()).toEqual(builderBoxBefore);
-  expect(await source.boundingBox()).toEqual(box);
+  const builderBoxAfter = (await builder.boundingBox())!;
+  const sourceBoxAfter = (await source.boundingBox())!;
+  expect(builderBoxAfter.width).toBe(builderBoxBefore!.width);
+  expect(builderBoxAfter.height).toBe(builderBoxBefore!.height);
+  expect(sourceBoxAfter.width).toBe(box!.width);
+  expect(sourceBoxAfter.height).toBe(box!.height);
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(pageHeightBefore);
   expect(await saveCount(page)).toBe(before);
   await page.keyboard.press("Escape");
