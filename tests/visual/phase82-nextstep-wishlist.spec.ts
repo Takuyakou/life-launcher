@@ -304,7 +304,7 @@ test("P82-01 group D&D saves only on drop, persists order and rolls back failure
   const drag = async (sourceId: string, targetId: string, after = true) => {
     const source = page.locator(`[data-inbox-id="${sourceId}"]`);
     const target = page.locator(`[data-inbox-id="${targetId}"]`);
-    await source.scrollIntoViewIfNeeded();
+    await source.evaluate((element) => element.scrollIntoView({ block: "center" }));
     const from = (await source.boundingBox())!;
     const to = (await target.boundingBox())!;
     await page.mouse.move(from.x + 40, from.y + from.height / 2);
