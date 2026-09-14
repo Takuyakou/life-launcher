@@ -49,4 +49,6 @@ Vite continues to report the existing advisory that the main minified chunk is s
 
 Phase 8.2 is **READY FOR RELEASE PREPARATION**. Version changes, tagging, release creation, deployment, and merge remain intentionally outside this phase.
 
+Review: https://github.com/Takuyakou/life-launcher/pull/76
+
 P82-04 COMPLETE — STOPPED FOR HUMAN REVIEW

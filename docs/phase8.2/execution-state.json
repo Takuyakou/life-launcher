@@ -53,13 +53,13 @@
       "status": "COMPLETE_AWAITING_REVIEW",
       "approved": true,
       "report": "docs/phase8.2/workreports/p82-03-report.md",
-      "pull_request": null
+      "pull_request": "https://github.com/Takuyakou/life-launcher/pull/75"
     },
     "P82-04": {
       "status": "COMPLETE_AWAITING_REVIEW",
       "approved": true,
       "report": "docs/phase8.2/workreports/p82-04-report.md",
-      "pull_request": null,
+      "pull_request": "https://github.com/Takuyakou/life-launcher/pull/76",
       "verdict": "READY_FOR_RELEASE_PREPARATION"
     }
   }
