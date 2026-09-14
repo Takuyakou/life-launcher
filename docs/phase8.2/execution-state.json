@@ -2,9 +2,9 @@
   "phase": "Phase 8.2",
   "internal_phase_id": "P82",
   "workflow": "single-start-human-gated",
-  "current_stage": "P82-04",
+  "current_stage": "P82-04_COMPLETE",
   "baseline_commit": "ee6814ec70ac9caf7ed331cd2cf9ebe08722586f",
-  "branch": "docs/p82-00-baseline-audit",
+  "branch": "docs/p82-04-guide-regression",
   "audit_pull_request": "https://github.com/Takuyakou/life-launcher/pull/72",
   "release_allowed": false,
   "merged": false,
@@ -15,16 +15,19 @@
   },
   "verification": {
     "status": "PASS",
-    "public_check": "PASS_326_FILES_0_BLOCKERS_30_EXACT_ARTIFACT_PATHS",
+    "npm_ci": "PASS_172_PACKAGES_0_VULNERABILITIES",
+    "public_check": "PASS_335_FILES_0_BLOCKERS_30_EXACT_ARTIFACT_PATHS",
     "lint": "PASS_0_WARNINGS",
     "build": "PASS",
-    "full_visual_suite": "PASS_246",
+    "full_visual_suite": "PASS_268",
     "cargo_fmt": "PASS",
     "cargo_check": "PASS",
     "cargo_clippy": "PASS_0_WARNINGS",
     "cargo_test": "PASS_112_UNIT_PLUS_2_CAPABILITY",
     "npm_audit": "PASS_0_VULNERABILITIES",
     "npm_audit_production": "PASS_0_VULNERABILITIES",
+    "tauri_release_build_no_bundle": "PASS",
+    "git_diff_check": "PASS",
     "public_safety_exact_path_regression": "PASS_1"
   },
   "stages": {
@@ -50,11 +53,14 @@
       "status": "COMPLETE_AWAITING_REVIEW",
       "approved": true,
       "report": "docs/phase8.2/workreports/p82-03-report.md",
-      "pull_request": null
+      "pull_request": "https://github.com/Takuyakou/life-launcher/pull/75"
     },
     "P82-04": {
-      "status": "IN_PROGRESS",
-      "approved": true
+      "status": "COMPLETE_AWAITING_REVIEW",
+      "approved": true,
+      "report": "docs/phase8.2/workreports/p82-04-report.md",
+      "pull_request": "https://github.com/Takuyakou/life-launcher/pull/76",
+      "verdict": "READY_FOR_RELEASE_PREPARATION"
     }
   }
 }
