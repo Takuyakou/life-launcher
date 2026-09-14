@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
-test("P72 exact artifact permissions retain content and unknown-path checks", () => {
+test("exact artifact permissions retain content and unknown-path checks", () => {
   const parent = resolve(tmpdir());
   const root = mkdtempSync(join(parent, "life-launcher-p72-safety-"));
   try {
@@ -18,6 +18,11 @@ test("P72 exact artifact permissions retain content and unknown-path checks", ()
     });
     writeFileSync(allowed, '{"synthetic":true}\n');
     expect(run().status).toBe(0);
+    const auditDirectory = join(root, "docs/phase8.2");
+    mkdirSync(auditDirectory, { recursive: true });
+    const audit = join(auditDirectory, "00-baseline-audit.md");
+    writeFileSync(audit, "# Synthetic public audit\n");
+    expect(run().status).toBe(0);
     const unknown = join(directory, "unreviewed.json");
     writeFileSync(unknown, "{}");
     const rejectedPath = run();
@@ -29,10 +34,13 @@ test("P72 exact artifact permissions retain content and unknown-path checks", ()
       { value: "C:" + "\\" + ["Users", "Synthetic", "file.txt"].join("\\"), reason: "Windows user profile path" },
     ];
     for (const entry of syntheticCases) {
-      writeFileSync(allowed, entry.value);
-      const rejectedBody = run();
-      expect(rejectedBody.status).toBe(1);
-      expect(rejectedBody.stderr).toContain(entry.reason);
+      for (const path of [allowed, audit]) {
+        writeFileSync(path, entry.value);
+        const rejectedBody = run();
+        expect(rejectedBody.status).toBe(1);
+        expect(rejectedBody.stderr).toContain(entry.reason);
+        writeFileSync(path, "Synthetic public content\n");
+      }
     }
   } finally {
     if (dirname(resolve(root)) === parent) {
