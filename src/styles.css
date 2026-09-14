@@ -3471,8 +3471,8 @@ input[type="number"]::-webkit-inner-spin-button {
 .doNowActions .doNowStartPrimary,
 .doNowActions .doNowStartSecondary {
   position: relative;
-  width: 100px;
-  min-width: 100px;
+  width: 128px;
+  min-width: 128px;
   height: 38px;
   min-height: 38px;
   overflow: hidden;
@@ -4066,7 +4066,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .todayTimerActions {
   display: grid;
-  grid-template-columns: 100px 100px;
+  grid-template-columns: 128px 128px;
   align-items: center;
   gap: 8px;
 }
@@ -4077,7 +4077,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .todayStartButton {
   position: relative;
-  width: 100px;
+  width: 128px;
   height: 38px;
   overflow: hidden;
   border: 1px solid var(--line);
@@ -7805,17 +7805,17 @@ input[type="number"]::-webkit-inner-spin-button {
   display: grid;
   justify-items: end;
   gap: 4px;
-  width: 208px;
+  width: 264px;
   max-width: 100%;
   margin-left: auto;
 }
 
 .todayTimerCluster .todayTimerActions:not(.todayTimerActions--running) {
-  grid-template-columns: 100px 100px;
+  grid-template-columns: 128px 128px;
 }
 
 .todayTimerCluster .todayStartButton {
-  width: 100px;
+  width: 128px;
 }
 
 .todayTriggerZone {
