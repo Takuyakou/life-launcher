@@ -4,8 +4,10 @@
   "workflow": "user-wide-continuation-authorized",
   "current_stage": "P81-08",
   "baseline_commit": "07904dd1c34b5f9bbc101a6dcae58a71a6bb4fd9",
-  "head_commit": "88a27d132cbdfc68be1160785eb5facc1582a17e",
+  "head_commit": "1356a43115549963b2c5837b85f28a99aefd2bbe",
   "branch": "feat/p81-01-project-purification",
+  "implementation_pull_request": "https://github.com/Takuyakou/life-launcher/pull/70",
+  "stacked_on_pull_request": "https://github.com/Takuyakou/life-launcher/pull/69",
   "release_allowed": false,
   "merged": false,
   "released": false,
@@ -96,7 +98,8 @@
       "status": "COMPLETE_AWAITING_REVIEW",
       "continuation_authorized": true,
       "report": "docs/phase8.1/workreports/p81-08-report.md",
-      "final_summary": "docs/phase8.1/workreports/phase8.1-final-summary.md"
+      "final_summary": "docs/phase8.1/workreports/phase8.1-final-summary.md",
+      "pull_request": "https://github.com/Takuyakou/life-launcher/pull/70"
     }
   }
 }

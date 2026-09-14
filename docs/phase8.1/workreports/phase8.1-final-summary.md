@@ -6,7 +6,9 @@
 
 **実装・文書整合・フル検証済み、レビュー待ち。未merge・未release。**
 
-監査基準は`07904dd1c34b5f9bbc101a6dcae58a71a6bb4fd9`、現在HEADは監査承認commit `88a27d132cbdfc68be1160785eb5facc1582a17e`であり、Phase 8.1実装は未コミット作業ツリーとして記録する。
+監査基準は`07904dd1c34b5f9bbc101a6dcae58a71a6bb4fd9`、実装の開始点は監査承認commit `88a27d132cbdfc68be1160785eb5facc1582a17e`である。
+
+実装commitは`1356a43115549963b2c5837b85f28a99aefd2bbe`。実装PRは[#70](https://github.com/Takuyakou/life-launcher/pull/70)で、監査PR [#69](https://github.com/Takuyakou/life-launcher/pull/69)をbaseにしたstacked PRである。マージ順は#69→#70とする。
 
 ## Stage別まとめ
 
