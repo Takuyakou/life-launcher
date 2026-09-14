@@ -20,7 +20,8 @@
     "P81-00": {
       "status": "COMPLETE_AWAITING_REVIEW",
       "approved": false,
-      "report": "docs/phase8.1/workreports/p81-00-report.md"
+      "report": "docs/phase8.1/workreports/p81-00-report.md",
+      "pull_request": "https://github.com/Takuyakou/life-launcher/pull/69"
     },
     "P81-01": {
       "status": "BLOCKED_BY_P81-00",

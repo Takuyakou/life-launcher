@@ -6,6 +6,7 @@
 
 - 基準commit: `07904dd1c34b5f9bbc101a6dcae58a71a6bb4fd9`
 - 作業branch: `docs/p81-00-data-migration-audit`
+- Pull Request: https://github.com/Takuyakou/life-launcher/pull/69
 - config current version: 2
 - 推奨戦略: config v3 + Project配下のoptional NextStep object
 
