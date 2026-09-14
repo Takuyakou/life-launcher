@@ -5,7 +5,7 @@
   "current_stage": "P82-00",
   "baseline_commit": "ee6814ec70ac9caf7ed331cd2cf9ebe08722586f",
   "branch": "docs/p82-00-baseline-audit",
-  "audit_pull_request": null,
+  "audit_pull_request": "https://github.com/Takuyakou/life-launcher/pull/72",
   "release_allowed": false,
   "merged": false,
   "released": false,
@@ -32,7 +32,7 @@
       "status": "COMPLETE_AWAITING_REVIEW",
       "approved": true,
       "report": "docs/phase8.2/workreports/p82-00-report.md",
-      "pull_request": null
+      "pull_request": "https://github.com/Takuyakou/life-launcher/pull/72"
     },
     "P82-01": {
       "status": "BLOCKED_BY_HUMAN_REVIEW",

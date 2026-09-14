@@ -44,4 +44,6 @@ Visual QA used the existing full browser suite. Responsive and interaction cover
 
 P82-01 through P82-04 remain blocked by the required human review. P82-00 did not start them.
 
+Audit PR: https://github.com/Takuyakou/life-launcher/pull/72
+
 P82-00 COMPLETE — STOPPED FOR HUMAN REVIEW
