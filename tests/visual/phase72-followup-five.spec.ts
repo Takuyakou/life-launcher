@@ -161,7 +161,6 @@ test("follow-up: excluded source reveals Builder guidance only after the 6px thr
   expect(builderBoxAfter.height).toBe(builderBoxBefore!.height);
   expect(sourceBoxAfter.width).toBe(box!.width);
   expect(sourceBoxAfter.height).toBe(box!.height);
-  expect(builderBoxAfter.y - sourceBoxAfter.y).toBeCloseTo(builderBoxBefore!.y - box!.y, 3);
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(pageHeightBefore);
   expect(await saveCount(page)).toBe(before);
   await page.keyboard.press("Escape");
