@@ -165,7 +165,7 @@ test("Project picker preserves order, enforces two selections, and restores focu
   const project = (await currentConfig(page)).projects.find(
     (item) => item.id === "sample-learning",
   );
-  expect(project?.buttonIds).toEqual(["sample-documents", "reference-site"]);
+  expect(project?.nextStep?.buttonIds).toEqual(["sample-documents", "reference-site"]);
 });
 
 test("Wishlist edit uses the shared picker and keeps a cancelled picker draft", async ({
@@ -205,7 +205,11 @@ test("Legacy selections over the limit are preserved and picker fits the narrow 
     actions: [{ type: "open_file", payload: { path: "C:\\PublicDemo\\long.txt" } }],
   };
   fixture.config.buttons.push(longButton);
-  fixture.config.projects[0].buttonIds = ["sample-documents", "sample-editor", "reference-site"];
+  fixture.config.projects[0].nextStep!.buttonIds = [
+    "sample-documents",
+    "sample-editor",
+    "reference-site",
+  ];
   await prepare(page, fixture, { width: 860, height: 700 });
   await page.locator('[data-project-id="sample-learning"]').click({ button: "right" });
   await page.getByRole("menuitem", { name: "編集" }).click();
@@ -236,5 +240,9 @@ test("Legacy selections over the limit are preserved and picker fits the narrow 
   const project = (await currentConfig(page)).projects.find(
     (item) => item.id === "sample-learning",
   );
-  expect(project?.buttonIds).toEqual(["sample-documents", "sample-editor", "reference-site"]);
+  expect(project?.nextStep?.buttonIds).toEqual([
+    "sample-documents",
+    "sample-editor",
+    "reference-site",
+  ]);
 });

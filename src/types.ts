@@ -97,28 +97,47 @@ const InstructionFolderIdentitySchema = z.object({
   identity: z.string().regex(/^(?:[0-9A-F]{8}:[0-9A-F]{16}|[0-9A-F]{16}:[0-9A-F]{32})$/),
 });
 
-export const ProjectSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  northStar: z.string().max(60).optional(),
-  weeklyFocus: z.boolean().optional(),
-  nextStep: z.string(),
-  nextStepTrigger: z.string().max(EXECUTION_TRIGGER_MAX_CHARS).optional(),
-  nextStepUpdatedAt: z.string().datetime({ offset: true }).optional(),
-  nextStepReviewedAt: z.string().datetime({ offset: true }).optional(),
+const NextStepExecutionSchema = z.object({
   buttonIds: z.array(z.string()).default([]),
   defaultTimerMinutes: z.number().int().min(1).max(240).optional(),
   shortTimerMinutes: z.number().int().min(1).max(240).optional(),
   startNoteTemplate: z.string().optional(),
-  colorId: ProjectColorIdSchema.optional(),
   instructionPath: InstructionPathSchema.optional(),
   instructionOpenOnStart: z.boolean().optional(),
 });
+
+export const NextStepSchema = NextStepExecutionSchema.extend({
+  text: z.string(),
+  generationId: z.string().min(1).optional(),
+  trigger: z.string().max(EXECUTION_TRIGGER_MAX_CHARS).optional(),
+  updatedAt: z.string().datetime({ offset: true }).optional(),
+  reviewedAt: z.string().datetime({ offset: true }).optional(),
+});
+
+export const ProjectSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    northStar: z.string().max(60).optional(),
+    weeklyFocus: z.boolean().optional(),
+    colorId: ProjectColorIdSchema.optional(),
+    nextStep: NextStepSchema.optional(),
+    legacyNextStepSettings: NextStepExecutionSchema.optional(),
+  })
+  .superRefine((project, context) => {
+    if (project.nextStep && project.legacyNextStepSettings) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "nextStep and legacyNextStepSettings are mutually exclusive",
+      });
+    }
+  });
 
 export const TodayItemSchema = z.object({
   text: z.string(),
   done: z.boolean(),
   sourceKey: z.string().min(1).optional(),
+  sourceGenerationId: z.string().min(1).optional(),
   trigger: z.string().max(EXECUTION_TRIGGER_MAX_CHARS).optional(),
   projectId: z.string().optional(),
   buttonIds: z.array(z.string().min(1)).optional(),
@@ -181,7 +200,7 @@ export const SettingsSchema = z.object({
 export const AppConfigSchema = z
   .object({
     $schema: z.string().optional(),
-    version: z.literal(2),
+    version: z.literal(3),
     groups: z.array(z.string()).default([]),
     overlayPages: z.array(OverlayPageSchema).optional(),
     dictionaryOrder: DictionaryOrderSchema.optional(),
@@ -215,6 +234,7 @@ export type OverlayPage = z.infer<typeof OverlayPageSchema>;
 export type LauncherButton = z.infer<typeof ButtonSchema>;
 export type ProjectColorId = z.infer<typeof ProjectColorIdSchema>;
 export type LauncherProject = z.infer<typeof ProjectSchema>;
+export type LauncherNextStep = z.infer<typeof NextStepSchema>;
 export type TodayItem = z.infer<typeof TodayItemSchema>;
 export type TodayVictory = z.infer<typeof TodayVictorySchema>;
 export type UndoTodaySelectionInput = {
@@ -239,6 +259,7 @@ export type LoadConfigResponse = {
   error?: string | null;
   backupError?: string | null;
   changed: boolean;
+  saveBlocked: boolean;
   morningVictorySuggestion?: string | null;
 };
 

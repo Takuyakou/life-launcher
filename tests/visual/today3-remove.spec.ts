@@ -59,7 +59,7 @@ test("removes only Today adoption, preserves both sources, candidates and sessio
   await page.reload();
   await expect(page.locator(".todayRow")).toHaveCount(1);
   await page.locator(".todayBuilderDisclosure").click();
-  for (const text of [fixture.config.projects[0].nextStep, fixture.config.inbox[0].text]) {
+  for (const text of [fixture.config.projects[0].nextStep!.text, fixture.config.inbox[0].text]) {
     await expect(
       page
         .locator(".todayBuilderRow", { hasText: text })

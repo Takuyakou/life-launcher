@@ -2,14 +2,19 @@ use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io::Write;
 #[cfg(windows)]
+use std::os::windows::ffi::OsStrExt;
+#[cfg(windows)]
 use std::os::windows::process::CommandExt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use serde::de::DeserializeOwned;
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, State};
 use tauri_plugin_opener::OpenerExt;
+#[cfg(windows)]
+use windows::Win32::Storage::FileSystem::{ReplaceFileW, REPLACE_FILE_FLAGS};
+#[cfg(windows)]
+use windows_core::PCWSTR;
 
 use super::instructions::{
     normalize_instruction_folder_settings, reconcile_instruction_folder_settings,
@@ -17,9 +22,10 @@ use super::instructions::{
 use crate::models::{
     default_backup_keep, default_day_start_hour, default_timer_minutes, initial_config,
     short_timer_minutes, today_date, AppConfig, InboxItem, InstructionReferenceUpdateResponse,
-    LauncherButton, LoadConfigResponse, NextStepFreshnessResponse, OverlayPage, Project,
-    SaveConfigResponse, Settings, TodayVictory, UndoTodaySelectionInput, CONFIG_VERSION,
-    EXECUTION_TRIGGER_MAX_CHARS, OVERLAY_PAGE_NAME_MAX_CHARS, TODAY_ITEM_LIMIT, WEEKLY_FOCUS_LIMIT,
+    LauncherButton, LegacyProjectV2, LoadConfigResponse, NextStepFreshnessResponse, OverlayPage,
+    Project, ProjectV3, SaveConfigResponse, Settings, TodayVictory, UndoTodaySelectionInput,
+    CONFIG_VERSION, EXECUTION_TRIGGER_MAX_CHARS, OVERLAY_PAGE_NAME_MAX_CHARS, TODAY_ITEM_LIMIT,
+    WEEKLY_FOCUS_LIMIT,
 };
 use crate::state::AppState;
 
@@ -80,9 +86,11 @@ pub fn save_config(
         .config_write_lock
         .lock()
         .map_err(|_| "failed to lock config writes".to_string())?;
+    validate_project_v3_invariants(&config)?;
     let (mut config, _changed, _warnings) = sanitize_config(config);
     reconcile_config_instruction_roots(&mut config);
     let path = config_path()?;
+    validate_existing_config_before_save(&path)?;
     ensure_config_schema_file()?;
     backup_existing_config(&path)?;
     *state
@@ -320,17 +328,36 @@ fn rewrite_instruction_references_in_config(
 ) -> (Vec<String>, bool, bool) {
     let mut project_names = Vec::new();
     for project in &mut config.projects {
-        let Some(instruction_path) = project.instruction_path.as_ref() else {
-            continue;
+        let mut changed = false;
+        let mut rewrite = |instruction_path: &mut Option<String>,
+                           open_on_start: &mut Option<bool>| {
+            let Some(path) = instruction_path.as_ref() else {
+                return;
+            };
+            if !config_path_is_within(path, old_path) {
+                return;
+            }
+            *instruction_path =
+                new_path.map(|replacement| replace_config_path_prefix(path, old_path, replacement));
+            if new_path.is_none() {
+                *open_on_start = None;
+            }
+            changed = true;
         };
-        if !config_path_is_within(instruction_path, old_path) {
-            continue;
+        if let Some(next_step) = project.next_step.as_mut() {
+            rewrite(
+                &mut next_step.instruction_path,
+                &mut next_step.instruction_open_on_start,
+            );
         }
-        project_names.push(project.name.clone());
-        project.instruction_path = new_path
-            .map(|replacement| replace_config_path_prefix(instruction_path, old_path, replacement));
-        if new_path.is_none() {
-            project.instruction_open_on_start = None;
+        if let Some(pending) = project.legacy_next_step_settings.as_mut() {
+            rewrite(
+                &mut pending.instruction_path,
+                &mut pending.instruction_open_on_start,
+            );
+        }
+        if changed {
+            project_names.push(project.name.clone());
         }
     }
 
@@ -530,6 +557,7 @@ fn load_config_from_disk() -> Result<LoadConfigResponse, String> {
             error: None,
             backup_error,
             changed: true,
+            save_blocked: false,
             morning_victory_suggestion: None,
         });
     }
@@ -546,17 +574,29 @@ fn load_config_from_disk() -> Result<LoadConfigResponse, String> {
                 error: Some(format!("config.json is not valid JSON: {error}")),
                 backup_error: None,
                 changed: false,
+                save_blocked: true,
                 morning_victory_suggestion: None,
             });
         }
     };
 
-    let mut errors = Vec::new();
-    let fallback = initial_config();
     let raw_version = parsed
         .get("version")
         .and_then(Value::as_u64)
         .unwrap_or_default() as u8;
+    if !parsed.is_object() {
+        return Ok(LoadConfigResponse {
+            config: initial_config(),
+            path: path.to_string_lossy().to_string(),
+            backup_path: backup_path.to_string_lossy().to_string(),
+            error: Some("config root must be an object".to_string()),
+            backup_error: None,
+            changed: false,
+            save_blocked: true,
+            morning_victory_suggestion: None,
+        });
+    }
+    let mut errors = Vec::new();
     let missing_inbox = parsed.get("inbox").is_none();
     let missing_overlay_pages = parsed.get("overlayPages").is_none();
     let missing_dictionary_order = parsed.get("dictionaryOrder").is_none();
@@ -564,33 +604,36 @@ fn load_config_from_disk() -> Result<LoadConfigResponse, String> {
         .get("settings")
         .and_then(|settings| settings.get("miniWindowPosition"))
         .is_none();
-    let inbox = match parse_optional_field(&parsed, "inbox", &mut errors) {
-        Some(inbox) => inbox,
-        None => match parse_optional_field(&parsed, "later", &mut errors) {
-            Some(later) => {
-                errors.push("later: migrated to inbox".to_string());
-                later
-            }
-            None => {
-                errors.push("inbox: missing, using default value".to_string());
-                fallback.inbox
-            }
-        },
-    };
-
-    let mut config = AppConfig {
-        schema: parse_optional_field(&parsed, "$schema", &mut errors).or(fallback.schema),
-        version: parse_field(&parsed, "version", fallback.version, &mut errors),
-        groups: parse_optional_field(&parsed, "groups", &mut errors).unwrap_or(fallback.groups),
-        overlay_pages: parse_optional_field(&parsed, "overlayPages", &mut errors),
-        dictionary_order: parse_optional_field(&parsed, "dictionaryOrder", &mut errors),
-        buttons: parse_field(&parsed, "buttons", fallback.buttons, &mut errors),
-        projects: parse_field(&parsed, "projects", fallback.projects, &mut errors),
-        today: parse_field(&parsed, "today", fallback.today, &mut errors),
-        inbox,
-        source_completions: parse_optional_field(&parsed, "sourceCompletions", &mut errors)
-            .unwrap_or(fallback.source_completions),
-        settings: parse_field(&parsed, "settings", fallback.settings, &mut errors),
+    let mut prepared = parsed;
+    if missing_inbox {
+        let inbox = prepared
+            .get("later")
+            .cloned()
+            .unwrap_or_else(|| Value::Array(Vec::new()));
+        prepared
+            .as_object_mut()
+            .expect("JSON config root checked by decoder")
+            .insert("inbox".to_string(), inbox);
+        errors.push(if prepared.get("later").is_some() {
+            "later: migrated to inbox".to_string()
+        } else {
+            "inbox: missing, using default value".to_string()
+        });
+    }
+    let (mut config, migrated_config_v3) = match decode_config_for_v3(&prepared) {
+        Ok(result) => result,
+        Err(error) => {
+            return Ok(LoadConfigResponse {
+                config: initial_config(),
+                path: path.to_string_lossy().to_string(),
+                backup_path: backup_path.to_string_lossy().to_string(),
+                error: Some(error),
+                backup_error: None,
+                changed: false,
+                save_blocked: true,
+                morning_victory_suggestion: None,
+            });
+        }
     };
     let migrated_overlay_pages =
         missing_overlay_pages && migrate_overlay_pages_from_groups(&mut config);
@@ -608,12 +651,14 @@ fn load_config_from_disk() -> Result<LoadConfigResponse, String> {
         || migrated_overlay_pages
         || missing_dictionary_order
         || dictionary_order_changed
-        || instruction_roots_changed;
+        || instruction_roots_changed
+        || migrated_config_v3;
 
     if changed {
         if instruction_roots_changed
             || dictionary_order_changed
             || should_backup_before_config_rewrite(raw_version, migrated_overlay_pages)
+            || migrated_config_v3
         {
             backup_existing_config(&path)?;
         }
@@ -633,8 +678,84 @@ fn load_config_from_disk() -> Result<LoadConfigResponse, String> {
         },
         backup_error,
         changed,
+        save_blocked: false,
         morning_victory_suggestion,
     })
+}
+
+fn migrate_config_value_to_v3(parsed: &Value) -> Result<(Value, bool), String> {
+    let raw_version = parsed
+        .get("version")
+        .and_then(Value::as_u64)
+        .ok_or_else(|| "config version is missing or invalid".to_string())?;
+    if raw_version == 3 {
+        return Ok((parsed.clone(), false));
+    }
+    if raw_version > 3 {
+        return Err(format!(
+            "config version {raw_version} is newer than this app supports"
+        ));
+    }
+
+    let legacy_projects = parsed
+        .get("projects")
+        .cloned()
+        .ok_or_else(|| "projects: missing; migration was not attempted".to_string())?;
+    let legacy_projects =
+        serde_json::from_value::<Vec<LegacyProjectV2>>(legacy_projects).map_err(|error| {
+            format!("projects: invalid v2 data; migration was not attempted: {error}")
+        })?;
+    let projects = legacy_projects
+        .into_iter()
+        .map(ProjectV3::from)
+        .collect::<Vec<_>>();
+    let mut migrated = parsed.clone();
+    let root = migrated
+        .as_object_mut()
+        .ok_or_else(|| "config root must be an object".to_string())?;
+    root.insert("version".to_string(), Value::from(3));
+    root.insert(
+        "projects".to_string(),
+        serde_json::to_value(projects)
+            .map_err(|error| format!("failed to serialize migrated projects: {error}"))?,
+    );
+    Ok((migrated, true))
+}
+
+fn decode_config_for_v3(parsed: &Value) -> Result<(AppConfig, bool), String> {
+    let (migrated, changed) = migrate_config_value_to_v3(parsed)?;
+    let config = serde_json::from_value::<AppConfig>(migrated)
+        .map_err(|error| format!("config v3 validation failed: {error}"))?;
+    validate_project_v3_invariants(&config)?;
+    Ok((config, changed))
+}
+
+fn validate_project_v3_invariants(config: &AppConfig) -> Result<(), String> {
+    if let Some(project) = config
+        .projects
+        .iter()
+        .find(|project| project.next_step.is_some() && project.legacy_next_step_settings.is_some())
+    {
+        return Err(format!(
+            "project {} has both nextStep and legacyNextStepSettings",
+            project.id
+        ));
+    }
+    Ok(())
+}
+
+fn validate_existing_config_before_save(path: &Path) -> Result<(), String> {
+    if !path.exists() {
+        return Ok(());
+    }
+    let raw = fs::read_to_string(path)
+        .map_err(|error| format!("failed to validate {} before save: {error}", path.display()))?;
+    let parsed = serde_json::from_str::<Value>(&raw).map_err(|error| {
+        format!("config.json is invalid; save was blocked to preserve the original file: {error}")
+    })?;
+    decode_config_for_v3(&parsed)
+        .map(|_| ())
+        .map_err(|error| format!("config.json could not be validated; save was blocked: {error}"))
 }
 
 fn reconcile_config_instruction_roots(config: &mut AppConfig) -> bool {
@@ -722,28 +843,57 @@ pub fn ensure_config_schema_file() -> Result<(), String> {
     let temp_path = path.with_extension("json.tmp");
     fs::write(&temp_path, config_schema_json())
         .map_err(|error| format!("failed to write {}: {error}", temp_path.display()))?;
-    match fs::rename(&temp_path, &path) {
-        Ok(_) => Ok(()),
-        Err(first_error) => {
-            if path.exists() {
-                fs::remove_file(&path)
-                    .map_err(|error| format!("failed to replace {}: {error}", path.display()))?;
-                fs::rename(&temp_path, &path).map_err(|error| {
-                    format!(
-                        "failed to rename {} to {} after replace attempt ({first_error}): {error}",
-                        temp_path.display(),
-                        path.display()
-                    )
-                })
-            } else {
-                Err(format!(
-                    "failed to rename {} to {}: {first_error}",
-                    temp_path.display(),
-                    path.display()
-                ))
-            }
-        }
+    if path.exists() {
+        replace_file_atomically(&path, &temp_path)
+    } else {
+        fs::rename(&temp_path, &path).map_err(|error| {
+            format!(
+                "failed to rename {} to {}: {error}",
+                temp_path.display(),
+                path.display()
+            )
+        })
     }
+}
+
+#[cfg(windows)]
+fn replace_file_atomically(destination: &Path, replacement: &Path) -> Result<(), String> {
+    let destination_wide: Vec<u16> = destination
+        .as_os_str()
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+    let replacement_wide: Vec<u16> = replacement
+        .as_os_str()
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+    unsafe {
+        ReplaceFileW(
+            PCWSTR(destination_wide.as_ptr()),
+            PCWSTR(replacement_wide.as_ptr()),
+            PCWSTR::null(),
+            REPLACE_FILE_FLAGS(0),
+            None,
+            None,
+        )
+        .map_err(|error| {
+            format!(
+                "failed to atomically replace {}: {error}",
+                destination.display()
+            )
+        })
+    }
+}
+
+#[cfg(not(windows))]
+fn replace_file_atomically(destination: &Path, replacement: &Path) -> Result<(), String> {
+    fs::rename(replacement, destination).map_err(|error| {
+        format!(
+            "failed to atomically replace {}: {error}",
+            destination.display()
+        )
+    })
 }
 
 pub fn write_config(path: &PathBuf, config: &AppConfig) -> Result<(), String> {
@@ -758,27 +908,16 @@ pub fn write_config(path: &PathBuf, config: &AppConfig) -> Result<(), String> {
     fs::write(&temp_path, json)
         .map_err(|error| format!("failed to write {}: {error}", temp_path.display()))?;
 
-    match fs::rename(&temp_path, path) {
-        Ok(_) => Ok(()),
-        Err(first_error) => {
-            if path.exists() {
-                fs::remove_file(path)
-                    .map_err(|error| format!("failed to replace {}: {error}", path.display()))?;
-                fs::rename(&temp_path, path).map_err(|error| {
-                    format!(
-                        "failed to rename {} to {} after replace attempt ({first_error}): {error}",
-                        temp_path.display(),
-                        path.display()
-                    )
-                })
-            } else {
-                Err(format!(
-                    "failed to rename {} to {}: {first_error}",
-                    temp_path.display(),
-                    path.display()
-                ))
-            }
-        }
+    if path.exists() {
+        replace_file_atomically(path, &temp_path)
+    } else {
+        fs::rename(&temp_path, path).map_err(|error| {
+            format!(
+                "failed to rename {} to {}: {error}",
+                temp_path.display(),
+                path.display()
+            )
+        })
     }
 }
 
@@ -1267,40 +1406,6 @@ fn crc32(data: &[u8]) -> u32 {
     !crc
 }
 
-fn parse_field<T: DeserializeOwned>(
-    root: &Value,
-    key: &str,
-    fallback: T,
-    errors: &mut Vec<String>,
-) -> T {
-    match root.get(key) {
-        Some(value) => serde_json::from_value::<T>(value.clone()).unwrap_or_else(|error| {
-            errors.push(format!("{key}: {error}"));
-            fallback
-        }),
-        None => {
-            errors.push(format!("{key}: missing, using default value"));
-            fallback
-        }
-    }
-}
-
-fn parse_optional_field<T: DeserializeOwned>(
-    root: &Value,
-    key: &str,
-    errors: &mut Vec<String>,
-) -> Option<T> {
-    match root.get(key) {
-        Some(value) => serde_json::from_value::<T>(value.clone())
-            .map(Some)
-            .unwrap_or_else(|error| {
-                errors.push(format!("{key}: {error}"));
-                None
-            }),
-        None => None,
-    }
-}
-
 fn should_backup_before_config_rewrite(raw_version: u8, migrated_overlay_pages: bool) -> bool {
     raw_version < CONFIG_VERSION || migrated_overlay_pages
 }
@@ -1684,7 +1789,7 @@ fn config_schema_json() -> &'static str {
   "required": ["version", "groups", "buttons", "projects", "today", "inbox", "settings"],
   "properties": {
     "$schema": { "type": "string" },
-    "version": { "const": 2 },
+    "version": { "const": 3 },
     "groups": {
       "type": "array",
       "description": "Sidebar group names. Empty groups can be kept here.",
@@ -1720,6 +1825,10 @@ fn config_schema_json() -> &'static str {
     "inbox": {
       "type": "array",
       "items": { "$ref": "#/$defs/inboxItem" }
+    },
+    "sourceCompletions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/sourceCompletion" }
     },
     "settings": { "$ref": "#/$defs/settings" }
   },
@@ -1762,16 +1871,33 @@ fn config_schema_json() -> &'static str {
     "project": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "nextStep", "buttonIds"],
+      "required": ["id", "name"],
+      "allOf": [
+        { "not": { "required": ["nextStep", "legacyNextStepSettings"] } }
+      ],
       "properties": {
         "id": { "type": "string", "minLength": 1 },
         "name": { "type": "string", "minLength": 1 },
         "northStar": { "type": "string", "minLength": 1, "maxLength": 60 },
         "weeklyFocus": { "type": "boolean" },
-        "nextStep": { "type": "string" },
-        "nextStepTrigger": { "type": "string", "minLength": 1, "maxLength": 40 },
-        "nextStepUpdatedAt": { "type": "string", "format": "date-time" },
-        "nextStepReviewedAt": { "type": "string", "format": "date-time" },
+        "nextStep": { "$ref": "#/$defs/nextStep" },
+        "legacyNextStepSettings": { "$ref": "#/$defs/nextStepExecutionSettings" },
+        "colorId": {
+          "type": "string",
+          "enum": ["amber", "blue", "green", "violet", "rose", "cyan", "orange", "slate"]
+        }
+      }
+    },
+    "nextStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "text": { "type": "string" },
+        "generationId": { "type": "string", "minLength": 1 },
+        "trigger": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "reviewedAt": { "type": "string", "format": "date-time" },
         "buttonIds": {
           "type": "array",
           "items": { "type": "string", "minLength": 1 }
@@ -1784,11 +1910,26 @@ fn config_schema_json() -> &'static str {
           "minLength": 3,
           "pattern": "^[A-Za-z]:[\\\\/]"
         },
-        "instructionOpenOnStart": { "type": "boolean" },
-        "colorId": {
+        "instructionOpenOnStart": { "type": "boolean" }
+      }
+    },
+    "nextStepExecutionSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "buttonIds": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "defaultTimerMinutes": { "type": "integer", "minimum": 1, "maximum": 240 },
+        "shortTimerMinutes": { "type": "integer", "minimum": 1, "maximum": 240 },
+        "startNoteTemplate": { "type": "string" },
+        "instructionPath": {
           "type": "string",
-          "enum": ["amber", "blue", "green", "violet", "rose", "cyan", "orange", "slate"]
-        }
+          "minLength": 3,
+          "pattern": "^[A-Za-z]:[\\\\/]"
+        },
+        "instructionOpenOnStart": { "type": "boolean" }
       }
     },
     "today": {
@@ -1802,6 +1943,15 @@ fn config_schema_json() -> &'static str {
           "type": "array",
           "maxItems": 3,
           "items": { "$ref": "#/$defs/todayItem" }
+        },
+        "candidateExcludedSourceKeys": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "selectionMutationTokens": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
         }
       }
     },
@@ -1822,6 +1972,7 @@ fn config_schema_json() -> &'static str {
         "text": { "type": "string" },
         "done": { "type": "boolean" },
         "sourceKey": { "type": "string", "minLength": 1 },
+        "sourceGenerationId": { "type": "string", "minLength": 1 },
         "trigger": { "type": "string", "minLength": 1, "maxLength": 40 },
         "projectId": { "type": "string", "minLength": 1 },
         "buttonIds": {
@@ -1856,6 +2007,20 @@ fn config_schema_json() -> &'static str {
           "pattern": "^[A-Za-z]:[\\\\/]"
         },
         "instructionOpenOnStart": { "type": "boolean" }
+      }
+    },
+    "sourceCompletion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "sourceType", "sourceIdentity", "textSnapshot", "completedAt"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "sourceType": { "type": "string", "minLength": 1 },
+        "sourceIdentity": { "type": "string", "minLength": 1 },
+        "textSnapshot": { "type": "string" },
+        "projectId": { "type": "string", "minLength": 1 },
+        "projectNameSnapshot": { "type": "string" },
+        "completedAt": { "type": "string", "format": "date-time" }
       }
     },
     "settings": {
@@ -2004,28 +2169,6 @@ fn trim_empty_projects(
     }
 
     for project in projects {
-        if let Some(button_id) = project.button_id.take() {
-            let clean = button_id.trim();
-            if !clean.is_empty() && !project.button_ids.iter().any(|id| id == clean) {
-                project.button_ids.push(clean.to_string());
-            }
-            *changed = true;
-        }
-
-        let before = project.button_ids.len();
-        let mut normalized = Vec::new();
-        for button_id in &project.button_ids {
-            let clean = button_id.trim();
-            if clean.is_empty() || normalized.iter().any(|id| id == clean) {
-                continue;
-            }
-            normalized.push(clean.to_string());
-        }
-        if project.button_ids.len() != before || project.button_ids != normalized {
-            project.button_ids = normalized;
-            *changed = true;
-        }
-
         if let Some(north_star) = project.north_star.take() {
             let trimmed = north_star.trim();
             if trimmed.is_empty() {
@@ -2045,43 +2188,53 @@ fn trim_empty_projects(
             }
         }
 
-        normalize_execution_trigger(
-            &mut project.next_step_trigger,
-            "projects.nextStepTrigger",
-            changed,
-            warnings,
-        );
-
-        normalize_project_timestamp(&mut project.next_step_updated_at, changed);
-        normalize_project_timestamp(&mut project.next_step_reviewed_at, changed);
-        if !project.next_step.trim().is_empty()
-            && project.next_step_updated_at.is_none()
-            && project.next_step_reviewed_at.is_none()
+        if project
+            .next_step
+            .as_ref()
+            .is_some_and(|step| step.text.trim().is_empty())
         {
-            let baseline = chrono::Utc::now().to_rfc3339();
-            project.next_step_updated_at = Some(baseline.clone());
-            project.next_step_reviewed_at = Some(baseline);
+            project.next_step = None;
             *changed = true;
         }
-
-        for timer_minutes in [
-            &mut project.default_timer_minutes,
-            &mut project.short_timer_minutes,
-        ] {
-            if timer_minutes.is_some_and(|minutes| !(1..=240).contains(&minutes)) {
-                *timer_minutes = None;
+        if let Some(next_step) = project.next_step.as_mut() {
+            normalize_execution_trigger(
+                &mut next_step.trigger,
+                "projects.nextStep.trigger",
+                changed,
+                warnings,
+            );
+            normalize_project_timestamp(&mut next_step.updated_at, changed);
+            normalize_project_timestamp(&mut next_step.reviewed_at, changed);
+            if next_step.updated_at.is_none() && next_step.reviewed_at.is_none() {
+                let baseline = chrono::Utc::now().to_rfc3339();
+                next_step.updated_at = Some(baseline.clone());
+                next_step.reviewed_at = Some(baseline);
                 *changed = true;
-                warnings.push("projects: removed an invalid timer override".to_string());
             }
+            normalize_next_step_execution(
+                &mut next_step.button_ids,
+                &mut next_step.default_timer_minutes,
+                &mut next_step.short_timer_minutes,
+                &mut next_step.start_note_template,
+                &mut next_step.instruction_path,
+                &mut next_step.instruction_open_on_start,
+                changed,
+                warnings,
+            );
         }
-
-        if let Some(template) = &mut project.start_note_template {
-            let trimmed = template.trim();
-            if trimmed.is_empty() {
-                project.start_note_template = None;
-                *changed = true;
-            } else if trimmed != template {
-                *template = trimmed.to_string();
+        if let Some(pending) = project.legacy_next_step_settings.as_mut() {
+            normalize_next_step_execution(
+                &mut pending.button_ids,
+                &mut pending.default_timer_minutes,
+                &mut pending.short_timer_minutes,
+                &mut pending.start_note_template,
+                &mut pending.instruction_path,
+                &mut pending.instruction_open_on_start,
+                changed,
+                warnings,
+            );
+            if pending.is_empty() {
+                project.legacy_next_step_settings = None;
                 *changed = true;
             }
         }
@@ -2096,18 +2249,60 @@ fn trim_empty_projects(
             *changed = true;
             warnings.push("projects: removed an invalid colorId".to_string());
         }
+    }
+}
 
-        if let Some(path) = project.instruction_path.take() {
-            let normalized = normalize_instruction_folder_settings(std::slice::from_ref(&path));
-            if normalized.first() != Some(&path) {
-                *changed = true;
+#[allow(clippy::too_many_arguments)]
+fn normalize_next_step_execution(
+    button_ids: &mut Vec<String>,
+    default_timer_minutes: &mut Option<u32>,
+    short_timer_minutes: &mut Option<u32>,
+    start_note_template: &mut Option<String>,
+    instruction_path: &mut Option<String>,
+    instruction_open_on_start: &mut Option<bool>,
+    changed: &mut bool,
+    warnings: &mut Vec<String>,
+) {
+    let normalized: Vec<String> = button_ids
+        .iter()
+        .map(|id| id.trim())
+        .filter(|id| !id.is_empty())
+        .fold(Vec::new(), |mut ids, id| {
+            if !ids.iter().any(|item| item == id) {
+                ids.push(id.to_string());
             }
-            project.instruction_path = normalized.into_iter().next();
+            ids
+        });
+    if *button_ids != normalized {
+        *button_ids = normalized;
+        *changed = true;
+    }
+    for timer in [default_timer_minutes, short_timer_minutes] {
+        if timer.is_some_and(|minutes| !(1..=240).contains(&minutes)) {
+            *timer = None;
+            *changed = true;
+            warnings.push("projects.nextStep: removed an invalid timer override".to_string());
         }
-        if project.instruction_path.is_none() && project.instruction_open_on_start.is_some() {
-            project.instruction_open_on_start = None;
+    }
+    if let Some(template) = start_note_template.take() {
+        let trimmed = template.trim();
+        if !trimmed.is_empty() {
+            *start_note_template = Some(trimmed.to_string());
+        }
+        if trimmed != template {
             *changed = true;
         }
+    }
+    if let Some(path) = instruction_path.take() {
+        let normalized = normalize_instruction_folder_settings(std::slice::from_ref(&path));
+        if normalized.first() != Some(&path) {
+            *changed = true;
+        }
+        *instruction_path = normalized.into_iter().next();
+    }
+    if instruction_path.is_none() && instruction_open_on_start.is_some() {
+        *instruction_open_on_start = None;
+        *changed = true;
     }
 }
 
@@ -2127,13 +2322,13 @@ fn normalize_project_timestamp(value: &mut Option<String>, changed: &mut bool) {
 }
 
 fn project_is_stale_at(project: &Project, now: chrono::DateTime<chrono::FixedOffset>) -> bool {
-    if project.next_step.trim().is_empty() {
+    let Some(next_step) = project.next_step.as_ref() else {
         return false;
-    }
-    let Some(basis) = project
-        .next_step_reviewed_at
+    };
+    let Some(basis) = next_step
+        .reviewed_at
         .as_ref()
-        .or(project.next_step_updated_at.as_ref())
+        .or(next_step.updated_at.as_ref())
         .and_then(|value| chrono::DateTime::parse_from_rfc3339(value).ok())
     else {
         return false;
@@ -2174,10 +2369,12 @@ fn normalize_today_item_timer_snapshots(
             .as_deref()
             .and_then(|project_id| projects.iter().find(|project| project.id == project_id));
         let default_minutes = project
-            .and_then(|project| project.default_timer_minutes)
+            .and_then(|project| project.next_step.as_ref())
+            .and_then(|step| step.default_timer_minutes)
             .unwrap_or(settings.default_timer_minutes.into());
         let short_minutes = project
-            .and_then(|project| project.short_timer_minutes)
+            .and_then(|project| project.next_step.as_ref())
+            .and_then(|step| step.short_timer_minutes)
             .unwrap_or(settings.short_timer_minutes.into());
 
         if item
@@ -2480,20 +2677,29 @@ mod tests {
             schema["$defs"]["button"]["properties"]["overlayPageId"]["type"],
             "string"
         );
+        assert_eq!(schema["properties"]["version"]["const"], CONFIG_VERSION);
         assert_eq!(
-            schema["$defs"]["project"]["properties"]["nextStepTrigger"]["maxLength"],
-            40
+            schema["$defs"]["nextStep"]["properties"]["generationId"]["minLength"],
+            1
+        );
+        assert_eq!(
+            schema["$defs"]["todayItem"]["properties"]["sourceGenerationId"]["minLength"],
+            1
+        );
+        assert_eq!(
+            schema["$defs"]["nextStep"]["properties"]["trigger"]["maxLength"],
+            EXECUTION_TRIGGER_MAX_CHARS
         );
         assert_eq!(
             schema["$defs"]["todayItem"]["properties"]["trigger"]["maxLength"],
             40
         );
         assert_eq!(
-            schema["$defs"]["project"]["properties"]["nextStepUpdatedAt"]["format"],
+            schema["$defs"]["nextStep"]["properties"]["updatedAt"]["format"],
             "date-time"
         );
         assert_eq!(
-            schema["$defs"]["project"]["properties"]["nextStepReviewedAt"]["format"],
+            schema["$defs"]["nextStep"]["properties"]["reviewedAt"]["format"],
             "date-time"
         );
         assert_eq!(
@@ -2510,37 +2716,54 @@ mod tests {
             "null"
         );
         assert_eq!(
-            schema["$defs"]["project"]["properties"]["instructionOpenOnStart"]["type"],
+            schema["$defs"]["nextStep"]["properties"]["instructionOpenOnStart"]["type"],
             "boolean"
+        );
+        assert_eq!(
+            schema["$defs"]["project"]["properties"]["nextStep"]["$ref"],
+            "#/$defs/nextStep"
+        );
+        assert_eq!(
+            schema["$defs"]["project"]["properties"]["legacyNextStepSettings"]["$ref"],
+            "#/$defs/nextStepExecutionSettings"
+        );
+        assert_eq!(
+            schema["$defs"]["today"]["properties"]["candidateExcludedSourceKeys"]["uniqueItems"],
+            true
+        );
+        assert_eq!(
+            schema["$defs"]["today"]["properties"]["selectionMutationTokens"]
+                ["additionalProperties"]["type"],
+            "string"
+        );
+        assert_eq!(
+            schema["properties"]["sourceCompletions"]["items"]["$ref"],
+            "#/$defs/sourceCompletion"
         );
         assert!(schema["$defs"]["project"]["required"]
             .as_array()
             .expect("project required fields")
             .iter()
-            .all(|field| {
-                field != "northStar"
-                    && field != "weeklyFocus"
-                    && field != "nextStepTrigger"
-                    && field != "nextStepUpdatedAt"
-                    && field != "nextStepReviewedAt"
-            }));
+            .all(|field| field != "northStar" && field != "weeklyFocus" && field != "nextStep"));
     }
 
     #[test]
-    fn project_north_star_is_optional_for_legacy_config() {
+    fn project_optional_fields_default_for_v3_config() {
         let project: Project = serde_json::from_value(serde_json::json!({
             "id": "legacy",
             "name": "旧プロジェクト",
-            "nextStep": "従来の次の一手",
-            "buttonIds": []
+            "nextStep": {
+                "text": "従来の次の一手"
+            }
         }))
-        .expect("legacy project without northStar must remain readable");
+        .expect("v3 project without optional fields must remain readable");
 
         assert_eq!(project.north_star, None);
         assert_eq!(project.weekly_focus, None);
-        assert_eq!(project.next_step_trigger, None);
-        assert_eq!(project.next_step_updated_at, None);
-        assert_eq!(project.next_step_reviewed_at, None);
+        let next_step = project.next_step.expect("next step");
+        assert_eq!(next_step.trigger, None);
+        assert_eq!(next_step.updated_at, None);
+        assert_eq!(next_step.reviewed_at, None);
 
         let today_item: crate::models::TodayItem = serde_json::from_value(serde_json::json!({
             "text": "従来の今日の項目",
@@ -2595,8 +2818,9 @@ mod tests {
         let mut config = sample_config();
         config.settings.instruction_folders =
             Some(vec!["C:\\Docs".to_string(), "X:\\Other".to_string()]);
-        config.projects[0].instruction_path = Some("c:\\docs\\Sub\\Guide.md".to_string());
-        config.projects[0].instruction_open_on_start = Some(true);
+        let next_step = config.projects[0].next_step.as_mut().expect("next step");
+        next_step.instruction_path = Some("c:\\docs\\Sub\\Guide.md".to_string());
+        next_step.instruction_open_on_start = Some(true);
         let original_buttons = config.buttons.clone();
 
         let (projects, root_removed, _) = rewrite_instruction_references_in_config(
@@ -2608,7 +2832,10 @@ mod tests {
         assert_eq!(projects, vec![config.projects[0].name.clone()]);
         assert!(!root_removed);
         assert_eq!(
-            config.projects[0].instruction_path.as_deref(),
+            config.projects[0]
+                .next_step
+                .as_ref()
+                .and_then(|step| step.instruction_path.as_deref()),
             Some("C:\\Docs\\Renamed\\Guide.md")
         );
         assert_eq!(config.buttons.len(), original_buttons.len());
@@ -2617,8 +2844,9 @@ mod tests {
             rewrite_instruction_references_in_config(&mut config, "C:\\Docs", None, true);
         assert_eq!(projects, vec![config.projects[0].name.clone()]);
         assert!(root_removed);
-        assert_eq!(config.projects[0].instruction_path, None);
-        assert_eq!(config.projects[0].instruction_open_on_start, None);
+        let next_step = config.projects[0].next_step.as_ref().expect("next step");
+        assert_eq!(next_step.instruction_path, None);
+        assert_eq!(next_step.instruction_open_on_start, None);
         assert_eq!(
             config.settings.instruction_folders,
             Some(vec!["X:\\Other".to_string()])
@@ -2676,7 +2904,11 @@ mod tests {
         let mut config = sample_config();
         config.settings.instruction_folders = Some(vec![old_path.clone()]);
         config.settings.instruction_folder_identities = Some(initial.identities);
-        config.projects[0].instruction_path = Some(format!("{old_path}\\Guide.md"));
+        config.projects[0]
+            .next_step
+            .as_mut()
+            .expect("next step")
+            .instruction_path = Some(format!("{old_path}\\Guide.md"));
 
         assert!(reconcile_config_instruction_roots(&mut config));
         let new_path = new_root.to_string_lossy().to_string();
@@ -2685,7 +2917,10 @@ mod tests {
             Some([new_path.clone()].as_slice())
         );
         assert_eq!(
-            config.projects[0].instruction_path.as_deref(),
+            config.projects[0]
+                .next_step
+                .as_ref()
+                .and_then(|step| step.instruction_path.as_deref()),
             Some(format!("{new_path}\\Guide.md").as_str())
         );
         assert_eq!(
@@ -2704,16 +2939,18 @@ mod tests {
     #[test]
     fn legacy_next_step_gets_a_fresh_baseline_without_warning() {
         let mut config = sample_config();
-        config.projects[0].next_step_updated_at = None;
-        config.projects[0].next_step_reviewed_at = None;
+        let next_step = config.projects[0].next_step.as_mut().expect("next step");
+        next_step.updated_at = None;
+        next_step.reviewed_at = None;
 
         let (config, changed, warnings) = sanitize_config(config);
         let project = &config.projects[0];
 
         assert!(changed);
         assert!(warnings.is_empty());
-        assert!(project.next_step_updated_at.is_some());
-        assert!(project.next_step_reviewed_at.is_some());
+        let next_step = project.next_step.as_ref().expect("next step");
+        assert!(next_step.updated_at.is_some());
+        assert!(next_step.reviewed_at.is_some());
         assert!(!project_is_stale_at(
             project,
             chrono::Utc::now().fixed_offset()
@@ -2723,8 +2960,9 @@ mod tests {
     #[test]
     fn next_step_freshness_changes_at_fourteen_days() {
         let mut project = sample_config().projects.remove(0);
-        project.next_step_updated_at = Some("2026-07-02T12:00:00Z".to_string());
-        project.next_step_reviewed_at = None;
+        let next_step = project.next_step.as_mut().expect("next step");
+        next_step.updated_at = Some("2026-07-02T12:00:00Z".to_string());
+        next_step.reviewed_at = None;
         let thirteen_days =
             chrono::DateTime::parse_from_rfc3339("2026-07-15T12:00:00Z").expect("datetime");
         let fourteen_days =
@@ -2733,7 +2971,8 @@ mod tests {
         assert!(!project_is_stale_at(&project, thirteen_days));
         assert!(project_is_stale_at(&project, fourteen_days));
 
-        project.next_step_reviewed_at = Some("2026-07-10T12:00:00Z".to_string());
+        project.next_step.as_mut().expect("next step").reviewed_at =
+            Some("2026-07-10T12:00:00Z".to_string());
         assert!(!project_is_stale_at(&project, fourteen_days));
     }
 
@@ -2784,8 +3023,9 @@ mod tests {
     fn today_timer_minutes_are_snapshotted_once_from_the_project() {
         let mut config = sample_config();
         let project_id = config.projects[0].id.clone();
-        config.projects[0].default_timer_minutes = Some(37);
-        config.projects[0].short_timer_minutes = Some(7);
+        let next_step = config.projects[0].next_step.as_mut().expect("next step");
+        next_step.default_timer_minutes = Some(37);
+        next_step.short_timer_minutes = Some(7);
         config.today.items[0].project_id = Some(project_id);
         config.today.items[0].default_timer_minutes = None;
         config.today.items[0].short_timer_minutes = None;
@@ -2795,8 +3035,9 @@ mod tests {
         assert_eq!(config.today.items[0].default_timer_minutes, Some(37));
         assert_eq!(config.today.items[0].short_timer_minutes, Some(7));
 
-        config.projects[0].default_timer_minutes = Some(25);
-        config.projects[0].short_timer_minutes = Some(5);
+        let next_step = config.projects[0].next_step.as_mut().expect("next step");
+        next_step.default_timer_minutes = Some(25);
+        next_step.short_timer_minutes = Some(5);
         let (config, _, _) = sanitize_config(config);
         assert_eq!(config.today.items[0].default_timer_minutes, Some(37));
         assert_eq!(config.today.items[0].short_timer_minutes, Some(7));
@@ -2865,11 +3106,16 @@ mod tests {
             .remove("overlayPages");
         for project in legacy_value["projects"].as_array_mut().expect("projects") {
             let project = project.as_object_mut().expect("project");
-            project.remove("nextStepUpdatedAt");
             project.remove("northStar");
             project.remove("weeklyFocus");
-            project.remove("instructionPath");
-            project.remove("instructionOpenOnStart");
+            let next_step = project
+                .get_mut("nextStep")
+                .and_then(Value::as_object_mut)
+                .expect("next step");
+            next_step.remove("updatedAt");
+            next_step.remove("reviewedAt");
+            next_step.remove("instructionPath");
+            next_step.remove("instructionOpenOnStart");
         }
         let settings = legacy_value["settings"].as_object_mut().expect("settings");
         settings.remove("restartShortFirst");
@@ -2878,10 +3124,10 @@ mod tests {
         settings.remove("instructionHotkey");
 
         let legacy: AppConfig = serde_json::from_value(legacy_value).expect("legacy config");
-        assert!(legacy
-            .projects
-            .iter()
-            .all(|project| project.next_step_updated_at.is_none()));
+        assert!(legacy.projects.iter().all(|project| project
+            .next_step
+            .as_ref()
+            .is_none_or(|step| step.updated_at.is_none())));
         assert_eq!(legacy.settings.restart_short_first, None);
         assert_eq!(legacy.settings.instruction_folders, None);
         assert_eq!(legacy.settings.instruction_folder_identities, None);
@@ -2890,9 +3136,10 @@ mod tests {
 
         let mut partial_value = serde_json::to_value(sample_config()).expect("sample config");
         partial_value["projects"][0]["northStar"] = serde_json::json!("方向");
-        partial_value["projects"][0]["instructionPath"] =
+        partial_value["projects"][0]["nextStep"]["instructionPath"] =
             serde_json::json!("C:\\Manuals\\start.md");
-        partial_value["projects"][0]["instructionOpenOnStart"] = serde_json::json!(true);
+        partial_value["projects"][0]["nextStep"]["instructionOpenOnStart"] =
+            serde_json::json!(true);
         partial_value["settings"]["instructionFolders"] = serde_json::json!(["C:\\Manuals"]);
         partial_value["settings"]["instructionHotkey"] = serde_json::json!("Ctrl+Alt+I");
         partial_value["projects"][0]
@@ -2909,11 +3156,12 @@ mod tests {
         assert_eq!(partial.projects[0].north_star.as_deref(), Some("方向"));
         assert_eq!(partial.projects[0].weekly_focus, None);
         assert_eq!(partial.settings.restart_short_first, None);
+        let partial_next_step = partial.projects[0].next_step.as_ref().expect("next step");
         assert_eq!(
-            partial.projects[0].instruction_path.as_deref(),
+            partial_next_step.instruction_path.as_deref(),
             Some("C:\\Manuals\\start.md")
         );
-        assert_eq!(partial.projects[0].instruction_open_on_start, Some(true));
+        assert_eq!(partial_next_step.instruction_open_on_start, Some(true));
         assert_eq!(
             partial.settings.instruction_folders.as_deref(),
             Some(["C:\\Manuals".to_string()].as_slice())
@@ -3162,7 +3410,11 @@ mod tests {
     #[test]
     fn execution_triggers_are_trimmed_limited_and_empty_removed() {
         let mut config = sample_config();
-        config.projects[0].next_step_trigger = Some(format!("  {}  ", "後".repeat(41)));
+        config.projects[0]
+            .next_step
+            .as_mut()
+            .expect("next step")
+            .trigger = Some(format!("  {}  ", "後".repeat(41)));
         config.today.items[0].trigger = Some("  夕食後  ".to_string());
         config.today.items[1].trigger = Some("   ".to_string());
 
@@ -3170,15 +3422,16 @@ mod tests {
 
         assert!(changed);
         let project_trigger = config.projects[0]
-            .next_step_trigger
-            .as_deref()
+            .next_step
+            .as_ref()
+            .and_then(|step| step.trigger.as_deref())
             .expect("project trigger remains set");
         assert_eq!(project_trigger.chars().count(), EXECUTION_TRIGGER_MAX_CHARS);
         assert_eq!(config.today.items[0].trigger.as_deref(), Some("夕食後"));
         assert_eq!(config.today.items[1].trigger, None);
         assert!(warnings
             .iter()
-            .any(|warning| warning.contains("nextStepTrigger: truncated")));
+            .any(|warning| warning.contains("projects.nextStep.trigger: truncated")));
     }
 
     #[test]
@@ -3780,6 +4033,7 @@ mod tests {
             text: "資料を1ページ読む".to_string(),
             done: true,
             source_key: Some(source_key.clone()),
+            source_generation_id: None,
             trigger: Some("朝".to_string()),
             project_id: Some("compose".to_string()),
             button_ids: vec!["music-web".to_string()],
@@ -3862,6 +4116,9 @@ mod tests {
             .iter_mut()
             .find(|project| project.id == "compose")
             .expect("project exists")
+            .next_step
+            .as_mut()
+            .expect("next step")
             .button_ids
             .clear();
         config.today.items.clear();
@@ -3939,5 +4196,309 @@ mod tests {
 
         config.today.victory.done = true;
         assert_eq!(morning_victory_suggestion(&config), None);
+    }
+
+    fn production_v2_config_value() -> Value {
+        let mut value = serde_json::to_value(sample_config()).expect("serialize sample config");
+        value["version"] = Value::from(2);
+        value["projects"] = serde_json::json!([
+            {
+                "id": "compose",
+                "name": "サンプル学習",
+                "northStar": "小さく学び続ける",
+                "weeklyFocus": true,
+                "nextStep": "資料を1ページ読む",
+                "nextStepTrigger": "PCを開いたら",
+                "nextStepUpdatedAt": "2026-07-01T00:00:00Z",
+                "nextStepReviewedAt": "2026-07-02T00:00:00Z",
+                "buttonIds": ["music-web"],
+                "defaultTimerMinutes": 36,
+                "shortTimerMinutes": 5,
+                "startNoteTemplate": "前回の続き",
+                "colorId": "green",
+                "instructionPath": "C:\\Manuals\\compose.html",
+                "instructionOpenOnStart": true
+            }
+        ]);
+        value
+    }
+
+    #[test]
+    fn production_load_backs_up_exact_v2_bytes_and_migrates_only_once() {
+        let _guard = ENV_LOCK.lock().expect("env lock");
+        let root = std::env::temp_dir().join(format!(
+            "life-launcher-v2-production-load-{}",
+            chrono::Local::now()
+                .timestamp_nanos_opt()
+                .unwrap_or_default()
+        ));
+        let previous_appdata = std::env::var_os("APPDATA");
+        std::env::set_var("APPDATA", &root);
+        let path = config_path().expect("config path");
+        fs::create_dir_all(path.parent().expect("config parent")).expect("create config parent");
+        let mut raw_v2 =
+            serde_json::to_vec(&production_v2_config_value()).expect("serialize raw v2");
+        raw_v2.extend_from_slice(b"\r\n");
+        fs::write(&path, &raw_v2).expect("write raw v2");
+
+        let first = load_config_from_disk().expect("load and migrate v2");
+        assert!(first.changed);
+        assert!(!first.save_blocked);
+        assert_eq!(first.config.version, CONFIG_VERSION);
+        let first_written = fs::read(&path).expect("read migrated v3");
+        assert_ne!(first_written, raw_v2);
+        let first_backups = config_backup_files();
+        assert_eq!(first_backups.len(), 1);
+        assert_eq!(
+            fs::read(&first_backups[0]).expect("read raw migration backup"),
+            raw_v2
+        );
+
+        let second = load_config_from_disk().expect("reload migrated v3");
+        assert!(!second.changed);
+        assert!(!second.save_blocked);
+        assert_eq!(fs::read(&path).expect("read stable v3"), first_written);
+        assert_eq!(config_backup_files(), first_backups);
+
+        restore_test_appdata(previous_appdata, &root);
+    }
+
+    #[test]
+    fn production_load_blocks_unsafe_roots_and_preserves_original_bytes() {
+        let _guard = ENV_LOCK.lock().expect("env lock");
+        let root = std::env::temp_dir().join(format!(
+            "life-launcher-blocked-production-load-{}",
+            chrono::Local::now()
+                .timestamp_nanos_opt()
+                .unwrap_or_default()
+        ));
+        let previous_appdata = std::env::var_os("APPDATA");
+        std::env::set_var("APPDATA", &root);
+        let path = config_path().expect("config path");
+        fs::create_dir_all(path.parent().expect("config parent")).expect("create config parent");
+
+        let mut future = serde_json::to_value(sample_config()).expect("serialize future config");
+        future["version"] = Value::from(CONFIG_VERSION + 1);
+        let mut invalid_v3 =
+            serde_json::to_value(sample_config()).expect("serialize invalid v3 config");
+        invalid_v3["projects"][0]["nextStep"]["text"] = Value::from(42);
+        let mut conflicting_v3 =
+            serde_json::to_value(sample_config()).expect("serialize conflicting v3 config");
+        conflicting_v3["projects"][0]["legacyNextStepSettings"] =
+            serde_json::json!({ "shortTimerMinutes": 5 });
+        let cases = [
+            ("array root", b"[]".to_vec()),
+            ("invalid json", b"{not-json".to_vec()),
+            (
+                "future version",
+                serde_json::to_vec(&future).expect("serialize future version"),
+            ),
+            (
+                "invalid v3",
+                serde_json::to_vec(&invalid_v3).expect("serialize invalid v3"),
+            ),
+            (
+                "active and pending v3",
+                serde_json::to_vec(&conflicting_v3).expect("serialize conflicting v3"),
+            ),
+        ];
+
+        for (label, bytes) in cases {
+            fs::write(&path, &bytes).expect("write unsafe config");
+            let response = load_config_from_disk().expect("return blocked load response");
+            assert!(response.save_blocked, "{label} must block saves");
+            assert!(!response.changed, "{label} must not report a rewrite");
+            assert!(response.error.is_some(), "{label} must explain the failure");
+            assert_eq!(
+                fs::read(&path).expect("read preserved unsafe config"),
+                bytes,
+                "{label} must remain byte-for-byte unchanged"
+            );
+            assert!(
+                config_backup_files().is_empty(),
+                "{label} must not create a migration backup"
+            );
+        }
+
+        restore_test_appdata(previous_appdata, &root);
+    }
+
+    #[test]
+    fn central_save_validation_rejects_invalid_existing_config_without_writing() {
+        let _guard = ENV_LOCK.lock().expect("env lock");
+        let root = std::env::temp_dir().join(format!(
+            "life-launcher-save-validation-{}",
+            chrono::Local::now()
+                .timestamp_nanos_opt()
+                .unwrap_or_default()
+        ));
+        let previous_appdata = std::env::var_os("APPDATA");
+        std::env::set_var("APPDATA", &root);
+        let path = config_path().expect("config path");
+        fs::create_dir_all(path.parent().expect("config parent")).expect("create config parent");
+        let original = b"{\"version\":3,\"projects\":\"broken\"}\r\n";
+        fs::write(&path, original).expect("write invalid existing config");
+
+        let error = validate_existing_config_before_save(&path)
+            .expect_err("invalid existing config must block the central save path");
+        assert!(error.contains("save was blocked"));
+        assert_eq!(
+            fs::read(&path).expect("read rejected existing config"),
+            original
+        );
+        assert!(config_backup_files().is_empty());
+
+        restore_test_appdata(previous_appdata, &root);
+    }
+
+    #[test]
+    fn failed_atomic_replacement_retains_original_destination() {
+        let root = std::env::temp_dir().join(format!(
+            "life-launcher-atomic-replace-failure-{}",
+            chrono::Local::now()
+                .timestamp_nanos_opt()
+                .unwrap_or_default()
+        ));
+        fs::create_dir_all(&root).expect("create replacement root");
+        let destination = root.join("config.json");
+        let original = b"original config bytes";
+        fs::write(&destination, original).expect("write original destination");
+
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::OpenOptionsExt;
+
+            let locked_destination = fs::OpenOptions::new()
+                .read(true)
+                .share_mode(0)
+                .open(&destination)
+                .expect("lock original against replacement");
+            write_config(&destination, &sample_config())
+                .expect_err("locked destination must reject atomic replacement");
+            assert!(destination.with_extension("json.tmp").exists());
+            drop(locked_destination);
+        }
+        #[cfg(not(windows))]
+        {
+            let missing_replacement = root.join("missing.tmp");
+            replace_file_atomically(&destination, &missing_replacement)
+                .expect_err("missing replacement must fail atomically");
+        }
+        assert_eq!(
+            fs::read(&destination).expect("read retained destination"),
+            original
+        );
+
+        let _ = fs::remove_dir_all(root);
+    }
+}
+
+#[cfg(test)]
+mod migration_tests {
+    use super::*;
+    use crate::models::sample_config;
+
+    fn v2_config_value() -> Value {
+        let mut source = serde_json::to_value(sample_config()).expect("sample config");
+        source["version"] = Value::from(2);
+        source["projects"] = serde_json::json!([
+            {
+                "id": "compose",
+                "name": "サンプル学習",
+                "northStar": "小さく学び続ける",
+                "weeklyFocus": true,
+                "nextStep": "資料を1ページ読む",
+                "nextStepTrigger": "PCを開いたら",
+                "nextStepUpdatedAt": "2026-07-01T00:00:00Z",
+                "nextStepReviewedAt": "2026-07-02T00:00:00Z",
+                "buttonIds": ["music-web"],
+                "defaultTimerMinutes": 36,
+                "shortTimerMinutes": 5,
+                "startNoteTemplate": "前回の続き",
+                "colorId": "green",
+                "instructionPath": "C:\\Manuals\\compose.html",
+                "instructionOpenOnStart": true
+            },
+            {
+                "id": "writing",
+                "name": "文章",
+                "weeklyFocus": false,
+                "nextStep": "",
+                "buttonId": "documents",
+                "shortTimerMinutes": 7,
+                "colorId": "blue"
+            }
+        ]);
+        source
+    }
+
+    #[test]
+    fn config_v2_to_v3_value_migration_is_idempotent_and_preserves_snapshots() {
+        let source = v2_config_value();
+        let expected_today = source["today"].clone();
+        let expected_inbox = source["inbox"].clone();
+
+        let (migrated, changed) = migrate_config_value_to_v3(&source).expect("migrate v2");
+        assert!(changed);
+        assert_eq!(migrated["version"], 3);
+        assert_eq!(migrated["today"], expected_today);
+        assert_eq!(migrated["inbox"], expected_inbox);
+        assert_eq!(
+            migrated["projects"][0]["nextStep"]["text"],
+            "資料を1ページ読む"
+        );
+        assert_eq!(
+            migrated["projects"][1]["legacyNextStepSettings"]["buttonIds"][0],
+            "documents"
+        );
+        assert!(migrated["projects"][1].get("nextStep").is_none());
+
+        let (again, changed_again) = migrate_config_value_to_v3(&migrated).expect("accept v3");
+        assert!(!changed_again);
+        assert_eq!(again, migrated);
+    }
+
+    #[test]
+    fn config_migration_rejects_future_version_and_invalid_project_collection() {
+        let mut future = serde_json::to_value(sample_config()).unwrap();
+        future["version"] = Value::from(99);
+        assert!(migrate_config_value_to_v3(&future)
+            .expect_err("future version must fail")
+            .contains("newer"));
+
+        let mut invalid = v2_config_value();
+        invalid["projects"][0]["name"] = Value::Null;
+        assert!(migrate_config_value_to_v3(&invalid)
+            .expect_err("invalid projects must fail")
+            .contains("migration was not attempted"));
+    }
+
+    #[test]
+    fn config_v3_decoder_rejects_non_object_root_without_panicking() {
+        let error =
+            decode_config_for_v3(&serde_json::json!([])).expect_err("array root must be rejected");
+        assert!(error.contains("version") || error.contains("root"));
+    }
+
+    #[test]
+    fn config_v3_rejects_active_and_pending_next_step_settings_together() {
+        let mut value = serde_json::to_value(sample_config()).expect("sample config");
+        value["projects"][0]["legacyNextStepSettings"] = serde_json::json!({
+            "shortTimerMinutes": 5
+        });
+        let error = decode_config_for_v3(&value).expect_err("mutually exclusive fields must fail");
+        assert!(error.contains("both nextStep and legacyNextStepSettings"));
+    }
+
+    #[test]
+    fn config_v3_decoder_accepts_v2_then_accepts_written_v3_without_remigration() {
+        let source = v2_config_value();
+        let (first, migrated) = decode_config_for_v3(&source).expect("decode v2");
+        assert!(migrated);
+        assert_eq!(first.version, 3);
+        let written = serde_json::to_value(&first).expect("serialize v3");
+        let (second, migrated_again) = decode_config_for_v3(&written).expect("decode v3");
+        assert!(!migrated_again);
+        assert_eq!(serde_json::to_value(second).unwrap(), written);
     }
 }

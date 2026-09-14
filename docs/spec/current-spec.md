@@ -4,16 +4,17 @@
 
 | 項目 | 内容 |
 | --- | --- |
-| 文書版 | 1.3候補 |
+| 文書版 | 1.3候補 / Phase 8.1実装作業ツリー |
 | 対象 | Windowsデスクトップ版 Life Launcher |
-| 実装基準 | Public repository `Takuyakou/life-launcher` のPhase 8 P8-05候補 |
-| 基準コミット | `c23e0dc`（P8-03 merge後main。P8-04/P8-05差分を本書へ反映） |
-| 確認日 | 2026-09-13 |
+| 実装基準 | Public repository `Takuyakou/life-launcher` のPhase 8.1未コミット作業ツリー |
+| 作業branch | `feat/p81-01-project-purification` |
+| 監査基準コミット | `07904dd1c34b5f9bbc101a6dcae58a71a6bb4fd9` |
+| 確認日 | 2026-09-14 |
 | UI実装 | Tauri 2 / React 18 / TypeScript / CSS |
 
-本書は、Life Launcher v1.3候補のUI/UXと主要機能を、Phase 8までのコード、型、設定、capability、テストから整理した現行仕様書である。
+本書は、Life Launcher v1.3候補のUI/UXと主要機能を、Phase 8.1作業ツリーのコード、型、設定、capability、テストから整理した現行仕様書である。Phase 8.1のフルgate結果とRelease可否は未確定である。
 
-Public repository内の製品バージョンは引き続き`1.2.0`、config schemaは`2`である。Phase 8は表示と操作導線を整理するもので、永続schemaの追加やReleaseを行わない。機能の入口は [Overview](../OVERVIEW.md) を参照する。
+Public repository内の製品バージョンは引き続き`1.2.0`、config schemaは`3`である。Phase 8.1はProject / NextStep / Wishlistの責務を分離するが、version bumpやReleaseは行わない。機能の入口は [Overview](../OVERVIEW.md) を参照する。
 
 ## 1. プロダクト概要
 
@@ -221,8 +222,8 @@ Main Window
 - 候補行の「今日へ」を主な採用操作とし、D&DでもToday3へ採用できる。元の次の一手・やりたいことは残す。
 - 採用済み候補は弱いgreenの `✓ 選択済み` statusを表示する。buttonや採用解除toggleとして扱わない。
 - Today3が3件の場合は制限を超えて追加しない。自由入力で上限を回避する経路は持たない。
-- 候補は「次の一手」「やりたいこと」にまとめ、取り組み名を伴うcompact rowで表示する。
-- 候補行の取り組み名・行動文の列位置とhover/focus背景は登録元の行と揃える。右端の「今日へ」操作は維持する。
+- 候補は「次の一手」「やりたいこと」にまとめ、プロジェクト名を伴うcompact rowで表示する。
+- 候補行のプロジェクト名・行動文の列位置とhover/focus背景は登録元の行と揃える。右端の「今日へ」操作は維持する。
 - 採用済み候補はstable source identityで判定し、同じ文面のやりたいことも別項目として扱う。
 - 候補はD&Dと右クリックの上下移動で並べ替えられる。
 - 約6pxのしきい値、ghost、黄色の挿入線で状態を示す。
@@ -230,11 +231,11 @@ Main Window
 - 当日明示的に除外した次の一手・やりたいことだけをBuilderのバーまたは展開領域へD&Dして候補へ戻せる。Today3へは自動採用せず、既に候補のsourceでは復帰先を強調しない。
 - 復帰可能なsourceを閉じたBuilderへ500ms重ねると一時展開する。離脱、Escape、pointercancel、window blur、無効dropでは一時状態を解放し、成功時だけ開いた状態を維持する。
 - cross-section D&Dはstable source identityと開始日のpayloadを使い、drop直前にも日付、重複、3件上限、active Timer、source存在を再確認する。移動中と一時展開ではconfigを保存せず、成功dropは1回だけ保存し、失敗時は元表示とsourceを保持する。
-- 専用previewは取り組み識別と本文だけを表示し、Timer、「今日へ」、「…」等の操作を含めない。画面端ではメイン領域を自動scrollし、pointer操作の終了時に必ず停止する。
+- 専用previewはプロジェクト識別と本文だけを表示し、Timer、「今日へ」、「…」等の操作を含めない。画面端ではメイン領域を自動scrollし、pointer操作の終了時に必ず停止する。
 - 表示順はローカルUI状態として保持する。
 - 候補は5件ずつ表示し、6件以上では前後ページへ移動する。候補元の変更で最終ページが空になった場合は存在するページへ戻す。
 - 右クリックの「今日の候補から外す」はstable source identityを当日の除外一覧へ保存し、同じ候補のToday3も外す。元の次の一手・やりたいこと・実行記録は保持する。保存成功後の通知から8秒間「元に戻す」を実行できる。
-- 候補行の右クリックまたは「…」から登録元を編集できる。取り組み/やりたいことの既存editorと同じ保存経路を使い、採用中Today3を1回のconfig保存で再snapshotする。同じsourceのTimer実行中・一時停止中は編集できない。
+- 候補行の右クリックまたは「…」から登録元を編集できる。次の一手/やりたいことの既存editorと同じ保存経路を使い、採用中Today3を1回のconfig保存で再snapshotする。同じsourceのTimer実行中・一時停止中は編集できない。
 - 候補除外は同日reload後も維持し、日付切替で解除する。対象のTimer実行中はUIとhandlerの両方で拒否し、保存失敗時は候補とToday3をrollbackする。
 - 旧dismissデータは削除せず保持するが、新しい当日除外へ移行せず、候補の表示可否にも適用しない。
 - 候補が0件の場合は「次の一手」「やりたいこと」の登録元へ移動し、既存の追加ボタンへfocusできる。
@@ -290,30 +291,47 @@ Main Window
 - 日付変更、同sourceの再採用・再操作、sourceの編集・完了・削除、Today3満杯など復帰前提が変わった場合は安全に拒否する。Undo保存失敗時は成功扱いせず、通知上の操作を再試行できる状態に保つ。
 - 当日の選択操作tokenは日付切替で破棄する。旧configで未定義の場合は空として読み込む。
 
-## 11. プロジェクトの次の一手
+### Today完了後の整理
+
+- 明示的にTodayを完了した場合だけ、Session確定、Today3完了保存、完了Reward、登録元の整理の順で処理する。未完了の早期停止では表示しない。
+- NextStep由来では完了済みTodayカードとProjectを残し、同じgenerationの現在NextStepだけを空にして完了snapshotを作る。同ProjectのWishlistがある場合だけ、Reward後に次の候補、自由入力、今は決めないを選べる。
+- Wishlist由来では完了済みTodayカードを残し、元のWishlistを「完了にする」か「まだやりたい」として残すかをReward後に確認する。アプリが自動削除しない。
+- source identityとoptionalなNextStep generationで判定し、本文一致を世代判定に使わない。同じ完了について再読込後にRewardや整理UIを再実行しない。
+- 次の候補を選ぶ場合はWishlist→NextStep昇格と同じreset・保存・rollback契約を使う。自動補充や無言のNextStep生成は行わない。
+
+## 11. プロジェクトと次の一手
+
+- Projectは継続テーマの入れ物で、`id`、名称、目標、今週の重点、色だけを所有する。
+- NextStepは各Projectが0〜1件所有する「今進める一手」で、本文、始めるきっかけ、開始環境、手順書、Timer、鮮度時刻、optionalな`generationId`を所有する。
+- 見出しの黄色い`＋ プロジェクト`からProjectを追加する。Projectの追加・編集画面にはNextStepの実行設定を混在させない。
+- Project領域とNextStep領域は別々のpointer/focus/context targetとする。Projectの右クリックは「プロジェクトを編集」「やりたいことを追加」「プロジェクト管理」、NextStepの右クリックは「次の一手を編集/設定」「今日へ」「次の一手を空にする」を提供する。
+- NextStep未設定は警告色を使わない中立状態とし、後から設定できる。
+- 新しいNextStepまたは置換では、前の開始環境、手順書、Timer overrideを自動継承しない。開始環境と手順書は空、Timerは全体設定を使用する。
+- v2から保留された実行設定がある場合だけ、最初のNextStep設定時に「引き継ぐ」「破棄して全体設定を使う」を明示的に選ぶ。選択前は保存できず、キャンセル・保存失敗では保留し、保存成功後にだけ同じconfig保存で解消する。
 
 ### Today3との編集同期
 
-- canonicalはNextStep(Project.id) / Wishlist(stable inbox.id)。Today3右クリック「編集」は元editorを開く。曖昧な旧aliasや元データなしは編集不可。
-- 明示保存時だけ、text/trigger/projectId/buttonIds/instructionPath/instructionOpenOnStart/defaultTimerMinutes/shortTimerMinutesを再snapshotする。解除した任意値は残さない。[詳細matrix](../phase7.1/00-field-sync-matrix.md)。
+- canonicalはNextStep(Project.id) / Wishlist(stable inbox.id)。Project NextStepの`sourceKey`は`project:{id}`を維持し、同じProject内の世代はoptionalな`generationId`で区別する。Today3右クリック「編集」は元editorを開く。曖昧な旧aliasや元データなしは編集不可。
+- 明示保存時だけ、generationが一致するToday3へtext/trigger/projectId/buttonIds/instructionPath/instructionOpenOnStart/defaultTimerMinutes/shortTimerMinutesを再snapshotする。解除した任意値は残さない。[詳細matrix](../phase7.1/00-field-sync-matrix.md)。
 - 現在のToday3のsourceKey、done、配列順、個数、date、勝利条件は保持する。完了済みの現在カードもdoneを維持して更新し、Session/今日の実行/sourceCompletionsは書き換えない。部分補充なし。
 - Project編集はそのProject sourceだけ更新し、同じprojectIdを持つ別Wishlistは自動更新しない。Wishlist自身の編集保存時に関連Projectの現在の分数を解決する。
 - 同sourceのrunning/paused/満了確認/早期終了確認中はUI・直接handler双方で拒否する。別source Timerは編集を妨げない。保存中は同source開始も拒否し、実行中の分数・開始環境を変更しない。
 - sourceとToday3を一つのconfigとして保存し、成功後だけeditorを閉じる。失敗時は既存rollbackにより表示を戻しdraftを残す。ファイル置換のcrash atomic性と他writer競合の制約は監査文書を参照。
-- Project/Wishlist追加・編集footerは左保存、右キャンセル。初期入力focusは既存を維持。Start Environment / Instruction Pickerは左「選択」、右キャンセルで、初期focusも右。Pickerの選択は親draftのみ変更する。
+- Project/NextStep/Wishlist追加・編集footerは左保存、右キャンセル。初期入力focusは既存を維持。Start Environment / Instruction Pickerは左「選択」、右キャンセルで、初期focusも右。Pickerの選択は親draftのみ変更する。
 - Project/SettingsのTimer入力順は短時間→通常。狭幅は同じ順で縦積み。分数の単位・継承・validation・増減操作は変更しない。
 - 早期完了基準は有効なToday3短時間snapshotと5分の小さい方。整数1..240以外は5分fallback。基準以上・予定時間未満の手動終了だけ確認し、予定時間到達は満了が優先する。停止中編集後の新snapshotは次回から適用し、実行中には変えない。
 
 - 次回すぐ再開する内容を、プロジェクト色・名称・次の一手・任意の開始トリガーを持つcompact rowで表示する。
 - このセクションには短時間・通常タイマー、完了チェック、常設編集ボタン、常設「今日へ」ボタンを置かない。
-- 今日の3件への採用は「今日を組み立てる」の「今日へ」を主経路とし、行の右クリックにある「今日へ」からも行える。どちらも共通の3件上限とsource identity判定を使い、元のプロジェクトを残す。
-- 見出しの隣に「次の一手を追加」ボタンと件数を表示する。フォームは「取り組み名」「目標（任意）」「次にやること」「始めるきっかけ（任意）」を使い、基本→次にやること→開始環境→タイマー→見た目の順に配置する。内部Project field名は変更しない。
+- 今日の3件への採用は「今日を組み立てる」の「今日へ」を主経路とし、行の右クリックにある「今日へ」からも行える。どちらも共通の3件上限とsource identity判定を使い、現在NextStepの`generationId`をToday snapshotの`sourceGenerationId`へcopyし、元のプロジェクトを残す。
+- NextStep専用フォームは対象Project、次の一手、始めるきっかけ、開始環境、手順書、短時間/通常Timerを表示する。Project文脈から開いた場合は対象Projectを固定する。
+- 新規設定・置換・Wishlist昇格はstableな新しいgenerationを作り、既存NextStepの編集はgenerationを保持する。完了、再snapshot、直接Do NowからTodayへの対応付けは同じgenerationだけを対象とする。両field欠落はlegacy同世代として扱う。
 - 行はD&Dで並べ替えでき、ゴーストと挿入位置を区別する。
-- 右クリックから今日へ、上へ移動、下へ移動、編集、完了にする、削除を行える。
-- 「完了にする」はProjectを残して次の一手・trigger・鮮度情報を空にし、完了snapshotを作る。「削除」はProject登録自体を削除し、完了snapshotを作らない。どちらも同じ候補のToday3と当日除外を解除する。
-- active timer対象の完了と削除はUIとhandlerで拒否する。保存失敗時は登録・Today3・履歴を一体でrollbackする。
+- 右クリックのProject操作とNextStep操作を混在させない。Project自体の並べ替えは従来どおりD&Dで行える。
+- NextStep領域の右クリックには「完了にする」「削除」を置かない。「次の一手を空にする」は確認後に現在のNextStepだけを空にし、Project、採用済みToday3 snapshot、Session、source completionを変更しない。
+- NextStep由来のsource completionは、明示的なToday完了時にProjectを残して現在のNextStepを空にし、完了snapshotを追加する。実行中・一時停止中の同sourceに対する編集・空化はUIとhandlerで拒否し、保存失敗時はconfig更新をrollbackする。
 - 編集では開始環境Pickerからサイドバー・辞書の登録を検索し、最大2件まで選べる。保存済み3件以上は切り捨てず、2件以下へ減らすまで新規追加だけを拒否する。ID配列順を起動順として保持する。
-- プロジェクトごとの通常時間、短時間、開始メモ、手順書、開始時の手順書表示は今やる一手または今日の3件から開始する際に使う。
+- NextStepごとの通常時間、短時間、開始メモ、手順書、開始時の手順書表示は今やる一手または今日の3件から開始する際に使う。
 
 ## 12. やりたいこと
 
@@ -321,12 +339,14 @@ Main Window
 - 見出し補足は「あとで整理する一時置き場」。
 - 各項目は後方互換な安定IDを持つ。旧データで欠けているIDは読み込み時に一度だけ補完して保存する。
 - 小さな追加ボタンと件数は見出し枠内に置く。
-- 展開本文には常設の追加行を置かない。見出しの追加ボタンから、本文だけを登録する小型ダイアログを開く。
+- 展開本文には常設の追加行を置かない。見出しの追加ボタンから、本文と任意のProject所属を登録する小型ダイアログを開く。
 - 登録ダイアログは初期フォーカス、Tab循環、IME変換中のEnter抑止、空入力と120文字上限、保存中の多重送信抑止を備える。
 - キャンセル、Escape、外側クリックは未保存入力を破棄して起点へフォーカスを戻す。保存失敗時は入力を保持し、ダイアログ内で再試行できる。
 - 項目名は今日の3件より少し抑えた濃度で可読性を保つ。
 - D&Dで並べ替え、ゴーストと黄色挿入線を表示する。
-- 右クリックから上へ移動、下へ移動、編集、完了にする、削除を行う。完了は項目を一覧から外してsnapshotを作り、削除はsnapshotを作らない。どちらも確認を必須とする。
+- 右クリックから今日へ、次の一手にする、上へ移動、下へ移動、編集、完了にする、削除を行う。完了は項目を一覧から外してsnapshotを作り、削除はsnapshotを作らない。どちらも確認を必須とする。
+- 「次の一手にする」はNextStep専用フォームで内容を確認してから確定する。未所属WishlistはProject選択を必須とし、Projectを推測しない。既存NextStepを置き換える場合は現在の本文を明示する。
+- 昇格保存は対象ProjectのNextStep設定とstable IDで指定したWishlist削除を1回のconfig保存で行う。成功前にWishlistを消さず、キャンセルと保存失敗では両方を維持する。
 - 編集は専用ダイアログで行う。
 - 本文、プロジェクト、開始環境、手順書、開始時の手順書表示を設定できる。開始環境はProject編集と共通の検索Pickerを使う。
 - プロジェクト設定時は、次の一手と同じ濃度・サイズで色と名称を表示する。
@@ -523,28 +543,28 @@ URLはWindowsの既定ブラウザで開き、登録ごとのブラウザ指定�
 ### 18.1 ふりかえり
 
 - 今日と今週の合計時間、活動日数を表示する。
-- 取り組み別に「今週」と「累計」の履歴をaccordionで開閉する。各accordionの開閉状態は独立する。
+- プロジェクト別に「今週」と「累計」の履歴をaccordionで開閉する。各accordionの開閉状態は独立する。
 - 今週は対象期間の実施日、実行内容、分数、回数を表示する。
-- 累計は保存済みの実行内容を新しい順に5件ずつ表示し、取り組みごとに独立してpageを管理する。
-- 実行内容は各Sessionに保存されたsnapshotだけを表示する。現在の次の一手や取り組み名から過去内容を推測・上書きしない。
+- 累計は保存済みの実行内容を新しい順に5件ずつ表示し、プロジェクトごとに独立してpageを管理する。
+- 実行内容は各Sessionに保存されたsnapshotだけを表示する。現在の次の一手やプロジェクト名から過去内容を推測・上書きしない。
 - 保存内容が空の場合は `実行内容の記録なし` と表示する。
 
 ### 18.2 今週を決める
 
-- 前週の合計、活動日数、取り組み別時間、実行記録数を事実として表示する。
-- 動かした取り組み、今週の重点、鮮度レビュー、明示的に完了した項目を確認する。
+- 前週の合計、活動日数、プロジェクト別時間、実行記録数を事実として表示する。
+- 動かしたプロジェクト、今週の重点、鮮度レビュー、明示的に完了した項目を確認する。
 - 「完了した項目」は「完了にする」で候補から外した次の一手・やりたいことのimmutable snapshotであり、Today3完了やTimer Sessionとは別履歴とする。
 - ランキング、前週比評価、達成率、ストリーク、グラフは表示しない。
 
 ### 18.3 すべての記録
 
-- 実行記録を今日、今週、全期間、取り組み、テキストで絞り込む。
+- 実行記録を今日、今週、全期間、プロジェクト、テキストで絞り込む。
 - compact rowで表示し、長い本文はellipsisとtitleで補完する。
 - rowの右クリック、「…」、Shift+F10は同じcontext menuを開く。
 - 実行記録を手動追加、編集、削除できる。追加・編集dialogは左に保存、右にmuted redのキャンセルを配置する。
 - 以前のメモは互換表示し、初期状態では折りたたむ。
 - noteは自由textのまま扱い、tag抽出、分類、集計を行わない。
-- 今日の活動ログをclipboardへ出力でき、合計、取り組み別・項目別分数、時刻、作業名、noteを含める。
+- 今日の活動ログをclipboardへ出力でき、合計、プロジェクト別・項目別分数、時刻、作業名、noteを含める。
 - 外部serviceへ自動送信しない。
 ## 19. 設定
 
@@ -589,7 +609,7 @@ URLはWindowsの既定ブラウザで開き、登録ごとのブラウザ指定�
 - メイン上部の「使い方」から、offlineで読める静的な日本語Guideを開く。
 - 最初に「今やる一手を始める」「今日を組み立てる」「Timerを終えて実行記録を残す」の3stepを示す。
 - 章は「まず始める」「毎日の基本」「今日を組み立てる」「今日の3件」「Timerと完了」「開始環境と手順書」「辞書 / Quick」「記録と今週の見直し」「設定とデータ」「Life Launcherがしないこと」の10件。
-- 画面表示語は「取り組み」「目標」「次にやること」「始めるきっかけ」「実行記録」を使い、メインsection名としての「次の一手」は維持する。
+- 画面表示語は「プロジェクト」「目標」「次の一手」「始めるきっかけ」「実行記録」を使う。
 - 「他の一手」は候補が2件以上のときだけ表示し、buttonと右クリックが同じhandlerを使い、優先順や保存データを変更しないことを説明する。
 - Today3の最大3件、Builderの2source、`✓ 選択済み`、完了後もカードを保持すること、3/3後の次batch、明示的な採用解除とUndoを説明する。
 - 記録画面の3tab、辞書のactive pageとkeyboard focusの区別、再表示時の復元と検索resetを説明する。
@@ -622,7 +642,7 @@ URLはWindowsの既定ブラウザで開き、登録ごとのブラウザ指定�
 | `icons/` | アイコンキャッシュ |
 | `backups/` | 更新前退避 |
 
-- configの現行データ版は `2`。
+- configの現行データ版は `3`。v2移行は専用decoderとv3全体検証を通し、変換前raw backupの作成成功後にだけ一時ファイルとWindowsの原子的置換で書き込む。失敗時は`changed: false`、`saveBlocked: true`として元ファイルを書き換えず、future versionも拒否する。未リリースv3内で追加したoptional generation fieldはversionや`sourceKey`を変えず、v2 NextStepと既存Today3には遡及付与しない。詳細は[Phase 8.1 config v2→v3移行](../phase8.1/config-v2-to-v3-migration.md)を参照する。
 - UIからのconfig書き込みはRustのアトミック保存経路へ統一する。
 - 外部変更はホットリロードする。
 - 既定の1日開始時刻は4時。

@@ -692,7 +692,12 @@ export function useDictionaryFeatureParity({
         ? config.projects
         : config.projects.map((project) => ({
             ...project,
-            buttonIds: project.buttonIds.filter((item) => item !== buttonDraft.id),
+            ...(project.nextStep
+              ? { nextStep: { ...project.nextStep, buttonIds: project.nextStep.buttonIds.filter((item) => item !== buttonDraft.id) } }
+              : {}),
+            ...(project.legacyNextStepSettings
+              ? { legacyNextStepSettings: { ...project.legacyNextStepSettings, buttonIds: project.legacyNextStepSettings.buttonIds.filter((item) => item !== buttonDraft.id) } }
+              : {}),
           }));
     if (
       await persist(
@@ -742,7 +747,12 @@ export function useDictionaryFeatureParity({
             buttons: latest.buttons.filter((item) => item.id !== button.id),
             projects: latest.projects.map((project) => ({
               ...project,
-              buttonIds: project.buttonIds.filter((item) => item !== button.id),
+              ...(project.nextStep
+                ? { nextStep: { ...project.nextStep, buttonIds: project.nextStep.buttonIds.filter((item) => item !== button.id) } }
+                : {}),
+              ...(project.legacyNextStepSettings
+                ? { legacyNextStepSettings: { ...project.legacyNextStepSettings, buttonIds: project.legacyNextStepSettings.buttonIds.filter((item) => item !== button.id) } }
+                : {}),
             })),
           },
           `${button.label} を削除しました`,

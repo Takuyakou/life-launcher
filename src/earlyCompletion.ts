@@ -10,7 +10,12 @@ export function earlyCompletionThresholdSeconds(snapshot: unknown): number {
 
 export function earlyCompletionItem(
   items: TodayItem[],
-  timer: { sourceId: string; projectId: string | null; targetMinutes: number },
+  timer: {
+    sourceId: string;
+    sourceGenerationId?: string;
+    projectId: string | null;
+    targetMinutes: number;
+  },
   elapsedSeconds: number,
 ): TodayItem | undefined {
   if (elapsedSeconds >= timer.targetMinutes * 60) return;
@@ -20,7 +25,11 @@ export function earlyCompletionItem(
     : timer.projectId && timer.sourceId === timer.projectId
       ? `project:${timer.projectId}`
       : null;
-  const matches = items.filter((item) => item.sourceKey?.trim() === key);
+  const matches = items.filter(
+    (item) =>
+      item.sourceKey?.trim() === key &&
+      item.sourceGenerationId === timer.sourceGenerationId,
+  );
   const item = matches.length === 1 ? matches[0] : undefined;
   return item &&
     !item.done &&

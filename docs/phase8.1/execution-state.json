@@ -1,10 +1,18 @@
 {
-  "phase": "P8.1",
-  "workflow": "single-start-human-gated",
-  "current_stage": "P81-00",
+  "phase": "Phase 8.1",
+  "internal_phase_id": "P81",
+  "workflow": "user-wide-continuation-authorized",
+  "current_stage": "P81-08",
   "baseline_commit": "07904dd1c34b5f9bbc101a6dcae58a71a6bb4fd9",
-  "branch": "docs/p81-00-data-migration-audit",
+  "head_commit": "88a27d132cbdfc68be1160785eb5facc1582a17e",
+  "branch": "feat/p81-01-project-purification",
   "release_allowed": false,
+  "merged": false,
+  "released": false,
+  "user_authorization": {
+    "P81-01_through_P81-08_continuation": "AUTHORIZED",
+    "config_v2_to_v3_production_migration": "APPROVED"
+  },
   "completed_before_phase": [
     "Timer button hover/time display improvement",
     "HTML instruction renderer fidelity improvement",
@@ -16,44 +24,79 @@
     "recommendation": "config v3 with optional Project-owned NextStep object",
     "document": "docs/phase8.1/00-schema-strategy.md"
   },
+  "verification": {
+    "status": "PASS",
+    "verified_after_generation_patch": true,
+    "pre_generation_patch_results": {
+      "browser_visual_suite": "PASS_238",
+      "rust_unit_tests": "PASS_112",
+      "rust_capability_tests": "PASS_2",
+      "tauri_build_no_bundle": "PASS",
+      "counts_as_final_verification": false
+    },
+    "full_gates": {
+      "npm_ci": "PASS_172_PACKAGES",
+      "public_check": "PASS_321_FILES_0_BLOCKERS",
+      "lint": "PASS_0_WARNINGS",
+      "build": "PASS",
+      "full_visual_suite": "PASS_246",
+      "cargo_fmt": "PASS",
+      "cargo_check": "PASS",
+      "cargo_clippy": "PASS_0_WARNINGS",
+      "cargo_test": "PASS_112_UNIT_PLUS_2_CAPABILITY",
+      "npm_audit": "PASS_0_VULNERABILITIES",
+      "npm_audit_production": "PASS_0_VULNERABILITIES",
+      "git_diff_check": "PASS",
+      "tauri_build_no_bundle": "PASS"
+    }
+  },
   "stages": {
     "P81-00": {
       "status": "COMPLETE_AWAITING_REVIEW",
-      "approved": true,
+      "continuation_authorized": true,
       "report": "docs/phase8.1/workreports/p81-00-report.md",
       "pull_request": "https://github.com/Takuyakou/life-launcher/pull/69"
     },
     "P81-01": {
-      "status": "BLOCKED_BY_P81-00",
-      "approved": false
+      "status": "COMPLETE_AWAITING_REVIEW",
+      "continuation_authorized": true,
+      "report": "docs/phase8.1/workreports/p81-01-report.md"
     },
     "P81-02": {
-      "status": "BLOCKED_BY_P81-01",
-      "approved": false
+      "status": "COMPLETE_AWAITING_REVIEW",
+      "continuation_authorized": true,
+      "report": "docs/phase8.1/workreports/p81-02-report.md"
     },
     "P81-03": {
-      "status": "BLOCKED_BY_P81-02",
-      "approved": false
+      "status": "COMPLETE_AWAITING_REVIEW",
+      "continuation_authorized": true,
+      "report": "docs/phase8.1/workreports/p81-03-report.md"
     },
     "P81-04": {
-      "status": "BLOCKED_BY_P81-03",
-      "approved": false
+      "status": "COMPLETE_AWAITING_REVIEW",
+      "continuation_authorized": true,
+      "report": "docs/phase8.1/workreports/p81-04-report.md"
     },
     "P81-05": {
-      "status": "BLOCKED_BY_P81-04",
-      "approved": false
+      "status": "COMPLETE_AWAITING_REVIEW",
+      "continuation_authorized": true,
+      "report": "docs/phase8.1/workreports/p81-05-report.md"
     },
     "P81-06": {
-      "status": "BLOCKED_BY_P81-05",
-      "approved": false
+      "status": "COMPLETE_AWAITING_REVIEW",
+      "continuation_authorized": true,
+      "report": "docs/phase8.1/workreports/p81-06-report.md"
     },
     "P81-07": {
-      "status": "BLOCKED_BY_P81-06",
-      "approved": false
+      "status": "COMPLETE_AWAITING_REVIEW",
+      "continuation_authorized": true,
+      "report": "docs/phase8.1/workreports/p81-07-report.md"
     },
     "P81-08": {
-      "status": "BLOCKED_BY_P81-07",
-      "approved": false
+      "status": "COMPLETE_AWAITING_REVIEW",
+      "continuation_authorized": true,
+      "report": "docs/phase8.1/workreports/p81-08-report.md",
+      "final_summary": "docs/phase8.1/workreports/phase8.1-final-summary.md"
     }
   }
 }

@@ -282,10 +282,10 @@ export function RecordsView({
             <div className="weeklyReviewFacts">
               <div><span>合計時間</span><strong>{weeklyReview?.totalMinutes ?? 0}分</strong></div>
               <div><span>活動日数</span><strong>{weeklyReview?.activeDays ?? 0}日</strong></div>
-              <div><span>動かした取り組み</span><strong>{weeklyReviewProjects.length}件</strong></div>
+              <div><span>動かしたプロジェクト</span><strong>{weeklyReviewProjects.length}件</strong></div>
             </div>
             <div className="weeklyReviewBlock">
-              <div className="recordsInlineHeading"><h3>動かした取り組み</h3><span>先週の実行記録に残った取り組み</span></div>
+              <div className="recordsInlineHeading"><h3>動かしたプロジェクト</h3><span>先週の実行記録に残ったプロジェクト</span></div>
               {weeklyReviewProjects.length ? (
                 <div className="weeklyReviewProjectList">
                   {weeklyReviewProjects.map(({ summary, project }) => (
@@ -302,7 +302,7 @@ export function RecordsView({
             </div>
             <div className="weeklyReviewBlock">
               <div className="weeklyReviewBlockHeading">
-                <div className="recordsInlineHeading"><h3>今週の重点</h3><span>今週優先して進める取り組みを最大3件まで選びます</span></div>
+                <div className="recordsInlineHeading"><h3>今週の重点</h3><span>今週優先して進めるプロジェクトを最大3件まで選びます</span></div>
                 <span>{config.projects.filter((project) => project.weeklyFocus === true).length}/3</span>
               </div>
               <div className="weeklyFocusChecklist">
@@ -316,13 +316,13 @@ export function RecordsView({
             </div>
             {staleNextStepProjects.length > 0 && (
               <div className="weeklyReviewBlock freshnessReview" aria-labelledby="freshness-title">
-                <div className="recordsInlineHeading"><h3 id="freshness-title">鮮度レビュー</h3><span>次の一手を14日以上更新・確認していない取り組み</span></div>
+                <div className="recordsInlineHeading"><h3 id="freshness-title">鮮度レビュー</h3><span>次の一手を14日以上更新・確認していないプロジェクト</span></div>
                 <div className="freshnessReviewList">
                   {staleNextStepProjects.map((project) => (
                     <div className="freshnessReviewRow" key={project.id}>
                       <div className="freshnessReviewCopy">
                         <ProjectIdentity colorId={project.colorId} name={project.name} projectId={project.id} />
-                        <strong>{project.nextStep}</strong><span>次の一手が14日以上同じです</span>
+                        <strong>{project.nextStep?.text}</strong><span>次の一手が14日以上同じです</span>
                       </div>
                       <div className="freshnessReviewActions">
                         <button onClick={() => onEditProject(project)} type="button">書き直す</button>
@@ -354,8 +354,8 @@ export function RecordsView({
                   ))}
                 </div>
               </div>
-              <div className="filterGroup" aria-label="取り組み">
-                <span>取り組み</span><div className="projectFilterRow">
+              <div className="filterGroup" aria-label="プロジェクト">
+                <span>プロジェクト</span><div className="projectFilterRow">
                   <button className={sessionProjectFilter ? "filterChip" : "filterChip filterChip--active"} onClick={() => onProjectFilterChange("")} type="button">すべて</button>
                   {config.projects.map((project) => (
                     <button className={sessionProjectFilter === project.id ? "filterChip filterChip--active" : "filterChip"} key={project.id} onClick={() => onProjectFilterChange(project.id)} type="button">{project.name}</button>

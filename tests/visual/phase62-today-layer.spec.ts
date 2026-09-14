@@ -51,14 +51,20 @@ test("Builder is the only persistent Today adoption surface and groups its sourc
       ...fixture.config.projects[0],
       id: "sample-writing",
       name: "サンプル執筆",
-      nextStep: "見出しを1つ書く",
+      nextStep: {
+        ...fixture.config.projects[0].nextStep!,
+        text: "見出しを1つ書く",
+      },
       weeklyFocus: false,
     },
     {
       ...fixture.config.projects[1],
       id: "sample-review",
       name: "サンプル振り返り",
-      nextStep: "メモを1つ見返す",
+      nextStep: {
+        ...fixture.config.projects[1].nextStep!,
+        text: "メモを1つ見返す",
+      },
       weeklyFocus: false,
     },
   );
@@ -114,7 +120,7 @@ test("excluding a candidate keeps its source, removes linked Today3, and survive
   await page.getByRole("menuitem", { name: "今日の候補から外す" }).click();
 
   let config = await currentConfig(page);
-  expect(config.projects[0].nextStep).toBe("資料を1ページ読む");
+  expect(config.projects[0].nextStep?.text).toBe("資料を1ページ読む");
   expect(config.today.items.some((item) => item.sourceKey === "project:sample-learning")).toBe(
     false,
   );
@@ -125,7 +131,7 @@ test("excluding a candidate keeps its source, removes linked Today3, and survive
   await page.locator(".todayBuilderDisclosure").click();
   await expect(page.locator(".todayBuilderRow", { hasText: "資料を1ページ読む" })).toHaveCount(0);
   config = await currentConfig(page);
-  expect(config.projects[0].nextStep).toBe("資料を1ページ読む");
+  expect(config.projects[0].nextStep?.text).toBe("資料を1ページ読む");
 });
 
 test("candidate exclusion rolls the Today layer back when save fails", async ({ page }) => {
@@ -166,8 +172,10 @@ test("active Today timer disables candidate exclusion until it is stopped", asyn
 for (const width of [860]) {
   test(`Builder compact layout has no horizontal overflow at ${width}px`, async ({ page }) => {
     const fixture = createPublicFixture();
-    fixture.config.projects[0].nextStep =
-      "長い日本語の候補でもボタンと重ならず今日やる一手として最後まで確認できるようにする";
+    fixture.config.projects[0].nextStep = {
+      ...fixture.config.projects[0].nextStep!,
+      text: "長い日本語の候補でもボタンと重ならず今日やる一手として最後まで確認できるようにする",
+    };
     await prepare(page, fixture);
     await page.setViewportSize({ width, height: 900 });
     await page.locator(".todayBuilderDisclosure").click();

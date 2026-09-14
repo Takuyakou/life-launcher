@@ -27,7 +27,7 @@ async function openGuide(page: Page) {
   return dialog;
 }
 
-test("Guide has the Phase 8 ten-section structure and a three-step start", async ({ page }) => {
+test("Guide has the Phase 8.1 ten-section structure and a three-step start", async ({ page }) => {
   const dialog = await openGuide(page);
   const navigation = dialog.getByRole("navigation", { name: "使い方の目次" });
   const buttons = navigation.getByRole("button");
@@ -47,14 +47,14 @@ test("Guide has the Phase 8 ten-section structure and a three-step start", async
   await expect(sections.first()).toContainText("実行記録を残します");
 });
 
-test("Guide uses current labels and explains the Phase 8 state contracts", async ({ page }) => {
+test("Guide uses current labels and explains the Phase 8.1 state contracts", async ({ page }) => {
   const dialog = await openGuide(page);
   const text = await dialog.innerText();
 
   for (const label of [
-    "取り組み",
+    "プロジェクト",
     "目標",
-    "次にやること",
+    "次の一手",
     "始めるきっかけ",
     "実行記録",
     "他の一手",
@@ -69,6 +69,10 @@ test("Guide uses current labels and explains the Phase 8 state contracts", async
   expect(text).toContain("候補が2件以上");
   expect(text).toContain("優先順や保存データは書き換えません");
   expect(text).toContain("選択ページ、focus層、最後の項目、スクロール位置を復元");
+  expect(text).toContain("次の一手の右クリックには完了操作はありません");
+  expect(text).not.toContain(
+    "次の一手・やりたいこと自体を候補から終える場合は、それぞれの右クリック",
+  );
 
   for (const stale of [
     "初回セットアップ",
@@ -86,7 +90,7 @@ test("Overview and current spec stay concise and synchronized", () => {
   const specification = readFileSync("docs/spec/current-spec.md", "utf8");
 
   expect(overview.trimEnd().split(/\r?\n/).length).toBeLessThanOrEqual(100);
-  for (const text of ["v1.3候補", "取り組み", "実行記録", "ふりかえり", "今週を決める", "すべての記録"]) {
+  for (const text of ["v1.3候補", "プロジェクト", "実行記録", "ふりかえり", "今週を決める", "すべての記録"]) {
     expect(overview).toContain(text);
     expect(specification).toContain(text);
   }

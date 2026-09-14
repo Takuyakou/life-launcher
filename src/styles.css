@@ -8239,6 +8239,277 @@ input[type="number"]::-webkit-inner-spin-button {
   border-color: var(--line);
 }
 
+.nextStepHeaderAdd--project {
+  align-self: stretch;
+  border: 1px solid rgba(231, 185, 77, 0.58);
+  border-radius: var(--radius);
+  padding-inline: 10px;
+  background: rgba(231, 185, 77, 0.1);
+  color: var(--accent-strong);
+}
+
+.nextStepHeaderAdd--project:hover:not(:disabled),
+.nextStepHeaderAdd--project:focus-visible {
+  border-color: var(--accent);
+  background: rgba(231, 185, 77, 0.18);
+  color: var(--text);
+}
+
+.nextStepRow.sourceListRow {
+  grid-template-columns: minmax(150px, 220px) minmax(0, 1fr);
+  gap: 4px;
+  padding: 3px 4px;
+}
+
+.nextStepRow.sourceListRow:hover,
+.nextStepRow.sourceListRow:focus-within {
+  background: transparent;
+  border-bottom-color: var(--line-soft);
+}
+
+.nextStepProjectRegion,
+.nextStepActionRegion {
+  min-width: 0;
+  min-height: 40px;
+  display: grid;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 4px 7px;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
+}
+
+.nextStepProjectRegion {
+  grid-template-columns: minmax(0, 1fr) 32px;
+  gap: 4px;
+}
+
+.nextStepProjectRegion h3 {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+.nextStepProjectRegion h3 .projectIdentity {
+  width: 100%;
+  max-width: 100%;
+}
+
+.nextStepActionRegion {
+  grid-template-columns: minmax(0, 1fr) max-content;
+  gap: 10px;
+}
+
+.nextStepActionRegion p {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nextStepProjectRegion:hover,
+.nextStepProjectRegion:focus-visible,
+.nextStepProjectRegion:focus-within,
+.nextStepActionRegion:hover,
+.nextStepActionRegion:focus-visible,
+.nextStepActionRegion:focus-within {
+  border-color: var(--line-soft);
+  background: var(--control-neutral-hover-bg);
+}
+
+.nextStepRow .sourceRowMenu {
+  opacity: 0;
+}
+
+.nextStepProjectRegion:hover .sourceRowMenu,
+.nextStepProjectRegion:focus-within .sourceRowMenu {
+  opacity: 1;
+}
+
+.nextStepRowAction {
+  min-height: 30px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0 9px;
+  background: var(--surface-soft);
+  color: var(--text-muted-readable);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.nextStepRowAction:hover:not(:disabled),
+.nextStepRowAction:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.nextStepRowAction:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.nextStepEditDialog {
+  width: min(720px, 100%);
+}
+
+.completionFollowupDialog {
+  width: min(560px, 100%);
+}
+
+.completionFollowupChoices {
+  display: grid;
+  border-block: 1px solid var(--line-soft);
+}
+
+.completionFollowupChoice {
+  min-width: 0;
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  border: 0;
+  border-bottom: 1px solid var(--line-soft);
+  border-radius: 0;
+  padding: 8px 6px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.completionFollowupChoice:last-child {
+  border-bottom: 0;
+}
+
+.completionFollowupChoice:hover,
+.completionFollowupChoice:focus-visible {
+  background: var(--control-neutral-hover-bg);
+}
+
+.completionFollowupRadio {
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--muted);
+  border-radius: 50%;
+}
+
+.completionFollowupChoice--new {
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.nextStepFixedProject {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 9px 11px;
+  background: var(--surface-soft);
+}
+
+.nextStepFixedProject > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.nextStepReplacementNotice {
+  display: grid;
+  gap: 5px;
+  border: 1px solid rgba(231, 185, 77, 0.42);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  background: rgba(231, 185, 77, 0.07);
+}
+
+.nextStepReplacementNotice strong {
+  color: var(--accent-strong);
+  font-size: 13px;
+}
+
+.nextStepReplacementNotice span {
+  color: var(--text-muted-readable);
+  line-height: 1.45;
+}
+
+.nextStepReplacementNotice label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.nextStepReplacementNotice input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+
+.legacyNextStepChoice {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  border: 1px solid rgba(231, 185, 77, 0.42);
+  border-radius: var(--radius);
+  padding: 10px 12px 12px;
+  background: rgba(231, 185, 77, 0.055);
+}
+
+.legacyNextStepChoice legend {
+  padding-inline: 4px;
+  color: var(--accent-strong);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.legacyNextStepChoice p {
+  margin: 0;
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.legacyNextStepChoice > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.legacyNextStepChoice--selected {
+  border-color: var(--accent);
+  background: rgba(231, 185, 77, 0.13);
+  color: var(--accent-strong);
+}
+
+@media (max-width: 620px) {
+  .nextStepRow.sourceListRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .nextStepActionRegion {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .nextStepRowAction {
+    justify-self: start;
+  }
+
+  .nextStepFixedProject {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
 @media (hover: none) {
   .sourceRowMenu { opacity: 1; }
 }

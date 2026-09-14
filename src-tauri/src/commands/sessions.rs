@@ -213,7 +213,11 @@ fn build_do_now_candidates(
         .iter()
         .enumerate()
         .filter(|(_, project)| {
-            project.weekly_focus == Some(true) && !project.next_step.trim().is_empty()
+            project.weekly_focus == Some(true)
+                && project
+                    .next_step
+                    .as_ref()
+                    .is_some_and(|step| !step.text.trim().is_empty())
         })
         .map(|(manual_index, project)| {
             let last_started_at = entries
@@ -1029,14 +1033,14 @@ mod tests {
         let mut projects = crate::models::sample_config().projects;
         projects[0].id = "first".to_string();
         projects[0].weekly_focus = Some(true);
-        projects[0].next_step = "first step".to_string();
+        projects[0].next_step.as_mut().expect("next step").text = "first step".to_string();
         projects[1].id = "second".to_string();
         projects[1].weekly_focus = Some(true);
-        projects[1].next_step = "second step".to_string();
+        projects[1].next_step.as_mut().expect("next step").text = "second step".to_string();
         let mut third = projects[0].clone();
         third.id = "third".to_string();
         third.name = "third".to_string();
-        third.next_step = "third step".to_string();
+        third.next_step.as_mut().expect("next step").text = "third step".to_string();
         projects.push(third);
 
         let entries = vec![
@@ -1080,17 +1084,17 @@ mod tests {
         let mut projects = crate::models::sample_config().projects;
         projects[0].id = "first".to_string();
         projects[0].weekly_focus = Some(true);
-        projects[0].next_step = "first step".to_string();
+        projects[0].next_step.as_mut().expect("next step").text = "first step".to_string();
         projects[1].id = "second".to_string();
         projects[1].weekly_focus = Some(true);
-        projects[1].next_step = "second step".to_string();
+        projects[1].next_step.as_mut().expect("next step").text = "second step".to_string();
         let mut excluded = projects[0].clone();
         excluded.id = "excluded".to_string();
         excluded.weekly_focus = Some(false);
         projects.push(excluded);
         let mut empty = projects[0].clone();
         empty.id = "empty".to_string();
-        empty.next_step.clear();
+        empty.next_step = None;
         projects.push(empty);
         let entries = ["first", "second"]
             .into_iter()
@@ -1118,7 +1122,7 @@ mod tests {
     fn restart_support_requires_an_existing_session_at_least_fourteen_days_old() {
         let mut project = crate::models::sample_config().projects.remove(0);
         project.weekly_focus = Some(true);
-        project.next_step = "resume".to_string();
+        project.next_step.as_mut().expect("next step").text = "resume".to_string();
 
         let new_project = build_do_now_candidates(&[project.clone()], &[], "2026-07-16");
         assert!(!new_project[0].restart_eligible);

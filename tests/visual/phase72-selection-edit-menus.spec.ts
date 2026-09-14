@@ -23,7 +23,7 @@ async function currentConfig(page: Page): Promise<AppConfig> {
   );
 }
 
-test("P72-01 lower source menus restore only explicitly excluded stable sources", async ({ page }) => {
+test("Phase 8.1 separates NextStep actions from Wishlist candidate restore", async ({ page }) => {
   const fixture = createPublicFixture();
   fixture.config.inbox = [
     { id: "same-a", text: "同じ本文" },
@@ -35,11 +35,15 @@ test("P72-01 lower source menus restore only explicitly excluded stable sources"
   ];
   await prepare(page, fixture);
 
-  const project = page.locator(".nextStepRow").first();
-  await project.click({ button: "right" });
-  await expect(page.getByRole("menuitem", { name: "今日へ", exact: true })).toHaveCount(0);
-  await page.getByRole("menuitem", { name: "今日の候補に戻す" }).click();
+  const nextStep = page.locator(".nextStepRow").first().locator(".nextStepActionRegion");
+  await nextStep.click({ button: "right" });
+  await expect(page.getByRole("menuitem", { name: "次の一手を編集" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "今日へ", exact: true })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "次の一手を空にする" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "今日の候補に戻す" })).toHaveCount(0);
+  await page.keyboard.press("Escape");
   expect((await currentConfig(page)).today.candidateExcludedSourceKeys).toEqual([
+    "project:sample-learning",
     "wishlist:same-b",
   ]);
 
@@ -52,7 +56,9 @@ test("P72-01 lower source menus restore only explicitly excluded stable sources"
   await expect(page.getByRole("menu")).toHaveCount(0);
   await page.locator(".inboxRow").nth(1).click({ button: "right" });
   await page.getByRole("menuitem", { name: "今日の候補に戻す" }).click();
-  expect((await currentConfig(page)).today.candidateExcludedSourceKeys).toEqual([]);
+  expect((await currentConfig(page)).today.candidateExcludedSourceKeys).toEqual([
+    "project:sample-learning",
+  ]);
   await expect(page.locator(".todayRow")).toHaveCount(fixture.config.today.items.length);
 });
 
@@ -90,9 +96,9 @@ test("P72-01 Today and Builder expose the same menu through ellipsis and keyboar
   await expect(builder).toBeFocused();
 });
 
-test("P72-01 failed restore keeps exclusion and does not show success", async ({ page }) => {
+test("P72-01 failed Wishlist restore keeps exclusion and does not show success", async ({ page }) => {
   const fixture = createPublicFixture();
-  fixture.config.today.candidateExcludedSourceKeys = ["project:sample-learning"];
+  fixture.config.today.candidateExcludedSourceKeys = ["wishlist:sample-later"];
   await prepare(page, fixture);
   await page.evaluate(() =>
     (
@@ -101,11 +107,15 @@ test("P72-01 failed restore keeps exclusion and does not show success", async ({
       }
     ).__LIFE_LAUNCHER_VISUAL_QA__.setSaveConfigFailure(true),
   );
-  await page.locator(".nextStepRow").first().click({ button: "right" });
+  const inboxDisclosure = page.locator(".inboxBand .disclosure");
+  if ((await inboxDisclosure.getAttribute("aria-expanded")) !== "true") {
+    await inboxDisclosure.click();
+  }
+  await page.locator('[data-inbox-id="sample-later"]').click({ button: "right" });
   await page.getByRole("menuitem", { name: "今日の候補に戻す" }).click();
   await expect(page.locator(".toast").last()).toContainText("保存できません");
   expect((await currentConfig(page)).today.candidateExcludedSourceKeys).toEqual([
-    "project:sample-learning",
+    "wishlist:sample-later",
   ]);
   await expect(page.getByText("今日の候補に戻しました", { exact: true })).toHaveCount(0);
 });

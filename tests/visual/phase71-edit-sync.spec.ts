@@ -9,7 +9,7 @@ function seed() {
   const p = f.config.projects[0];
   f.config.inbox = [{id:"p71-w1",text:"同じ文"},{id:"p71-w2",text:"同じ文"}];
   f.config.today.items = [
-    {sourceKey:`project:${p.id}`,projectId:p.id,text:p.nextStep,done:false,shortTimerMinutes:3,defaultTimerMinutes:25},
+    {sourceKey:`project:${p.id}`,projectId:p.id,text:p.nextStep!.text,done:false,shortTimerMinutes:3,defaultTimerMinutes:25},
     {sourceKey:"wishlist:p71-w1",text:"同じ文",done:true,shortTimerMinutes:5,defaultTimerMinutes:25},
   ];
   return f;
@@ -33,14 +33,21 @@ test("P71 matrix preserves identity/history and clears removed snapshot fields",
   const p=before.projects[0];
   const key=`project:${p.id}`;
   const updated=structuredClone(before);
-  Object.assign(updated.projects[0],{nextStep:"更新",nextStepTrigger:"合図",buttonIds:["sample-documents"],shortTimerMinutes:2,defaultTimerMinutes:40});
+  updated.projects[0].nextStep = {
+    ...updated.projects[0].nextStep!,
+    text: "更新",
+    trigger: "合図",
+    buttonIds: ["sample-documents"],
+    shortTimerMinutes: 2,
+    defaultTimerMinutes: 40,
+  };
   const first=resnapshotSource(before,updated,key);
   expect(first.today.items[0]).toMatchObject({text:"更新",trigger:"合図",shortTimerMinutes:2,defaultTimerMinutes:40,buttonIds:["sample-documents"],sourceKey:key,done:false});
-  expect(first.today.items[0].instructionPath).toBe(p.instructionPath);
+  expect(first.today.items[0].instructionPath).toBe(p.nextStep!.instructionPath);
   const next=structuredClone(first);
-  delete next.projects[0].instructionPath;
-  delete next.projects[0].nextStepTrigger;
-  next.projects[0].buttonIds=[];
+  delete next.projects[0].nextStep!.instructionPath;
+  delete next.projects[0].nextStep!.trigger;
+  next.projects[0].nextStep!.buttonIds=[];
   const result=resnapshotSource(first,next,key);
   expect(result.today.items[0].instructionPath).toBeUndefined();
   expect(result.today.items[0].instructionOpenOnStart).toBeUndefined();
@@ -63,7 +70,7 @@ test("P71 Wishlist identity, relink, done and no-linked case",()=>{
   const before=seed().config;
   const next=structuredClone(before);
   next.inbox[0]={...next.inbox[0],text:"新しい文",projectId:next.projects[0].id};
-  next.projects[0].shortTimerMinutes=2;
+  next.projects[0].nextStep!.shortTimerMinutes=2;
   const result=resnapshotSource(before,next,"wishlist:p71-w1");
   expect(result.today.items[1]).toMatchObject({text:"新しい文",done:true,sourceKey:"wishlist:p71-w1",shortTimerMinutes:2,projectId:next.projects[0].id});
   expect(result.inbox[1]).toEqual(before.inbox[1]);
@@ -78,7 +85,7 @@ test("P71 Today Project editor saves both in one call; failure retains draft",as
   const before=await current(page);
   await edit(page);
   const dialog=page.getByRole("dialog",{name:"次の一手を編集",exact:true});
-  await dialog.getByRole("textbox",{name:/^次にやること/}).fill("同期した次の一手");
+  await dialog.getByRole("textbox",{name:"行動",exact:true}).fill("同期した次の一手");
   await page.evaluate(()=>{
     (window as Window & {__LIFE_LAUNCHER_VISUAL_QA__: {setSaveConfigFailure:(v:boolean)=>void}}).__LIFE_LAUNCHER_VISUAL_QA__.setSaveConfigFailure(true);
   });
@@ -92,7 +99,7 @@ test("P71 Today Project editor saves both in one call; failure retains draft",as
   await dialog.getByRole("button",{name:"保存",exact:true}).click();
   await expect(dialog).toHaveCount(0);
   expect((await current(page)).today.items[0].text).toBe("同期した次の一手");
-  expect((await current(page)).projects[0].nextStep).toBe("同期した次の一手");
+  expect((await current(page)).projects[0].nextStep?.text).toBe("同期した次の一手");
   await page.reload();
   expect((await current(page)).today.items[0].text).toBe("同期した次の一手");
 });
@@ -107,7 +114,7 @@ test("P71 running/paused blocks Today and source edit, other source stays editab
     await expect(page.getByRole("menuitem",{name:"編集",exact:true})).toBeDisabled();
     await page.keyboard.press("Escape");
     await page.locator(".nextStepRow").first().click({button:"right"});
-    const editButton=page.getByRole("menuitem",{name:"編集",exact:true});
+    const editButton=page.getByRole("menuitem",{name:"次の一手を編集",exact:true});
     await expect(editButton).toBeDisabled();
     await editButton.evaluate(node=>{
       const props=Object.keys(node).find(key=>key.startsWith("__reactProps$"));
@@ -128,9 +135,9 @@ test("P71 running/paused blocks Today and source edit, other source stays editab
 test("P71 source editor changes the next early threshold without changing history",async({page})=>{
   await prepare(page);
   await page.locator(".nextStepRow").first().click({button:"right"});
-  await page.getByRole("menuitem",{name:"編集",exact:true}).click();
+  await page.getByRole("menuitem",{name:"次の一手を編集",exact:true}).click();
   const editor=page.getByRole("dialog",{name:"次の一手を編集",exact:true});
-  await editor.getByRole("spinbutton",{name:"取り組みの短時間タイマー分数"}).fill("2");
+  await editor.getByRole("spinbutton",{name:"短時間タイマー分数"}).fill("2");
   await editor.getByRole("button",{name:"保存",exact:true}).click();
   await expect(editor).toHaveCount(0);
   expect((await current(page)).today.items[0].shortTimerMinutes).toBe(2);
@@ -164,7 +171,7 @@ test("P71 direct save is rejected if the same timer starts after editor opens",a
   await prepare(page);
   await edit(page);
   const editor=page.getByRole("dialog",{name:"次の一手を編集",exact:true});
-  await editor.getByRole("textbox",{name:/^次にやること/}).fill("保存してはいけない");
+  await editor.getByRole("textbox",{name:"行動",exact:true}).fill("保存してはいけない");
   await page.locator(".todayRow").first().getByRole("button",{name:"通常タイマー25分で開始"}).evaluate(node=>{
     const props=Object.keys(node).find(k=>k.startsWith("__reactProps$"));
     if(!props) throw new Error("React props unavailable");
@@ -173,5 +180,7 @@ test("P71 direct save is rejected if the same timer starts after editor opens",a
   await editor.getByRole("button",{name:"保存",exact:true}).click();
   await expect(page.locator(".toast").last()).toContainText("タイマーを停止してから編集してください");
   await expect(editor).toBeVisible();
-  expect((await current(page)).projects[0].nextStep).toBe(seed().config.projects[0].nextStep);
+  expect((await current(page)).projects[0].nextStep?.text).toBe(
+    seed().config.projects[0].nextStep?.text,
+  );
 });

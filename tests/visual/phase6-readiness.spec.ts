@@ -338,17 +338,22 @@ test("registration stays in source sections and persists after reload", async ({
   await expect(page.locator(".todayBuilderDestination")).toHaveCount(0);
 
   const projects = page.locator(".projectsBand");
-  await projects.getByRole("button", { name: "次の一手を追加" }).click();
-  const projectDialog = page.getByRole("dialog", { name: "次の一手を追加" });
+  await projects.getByRole("button", { name: "プロジェクトを追加", exact: true }).click();
+  const projectDialog = page.getByRole("dialog", { name: "プロジェクトを追加" });
   await expect(projectDialog).toBeVisible();
-  const projectName = projectDialog.getByRole("textbox", { name: "取り組み名" });
+  const projectName = projectDialog.getByRole("textbox", { name: "プロジェクト名" });
   await expect(projectName).toBeFocused();
   await projectName.fill("再起動確認プロジェクト");
-  await projectDialog
-    .getByRole("textbox", { name: "次にやること", exact: true })
-    .fill("再起動後も残る一手");
-  await projectDialog.getByRole("button", { name: "保存" }).click();
+  await projectDialog.getByRole("button", { name: "プロジェクトを追加", exact: true }).click();
   await expect(projectDialog).toHaveCount(0);
+
+  const addedProject = (await currentConfig(page)).projects.at(-1)!;
+  const addedProjectRow = page.locator(`[data-project-id="${addedProject.id}"]`);
+  await addedProjectRow.getByRole("button", { name: "次の一手を設定" }).click();
+  const nextStepDialog = page.getByRole("dialog", { name: "次の一手を設定" });
+  await nextStepDialog.getByRole("textbox", { name: "行動" }).fill("再起動後も残る一手");
+  await nextStepDialog.getByRole("button", { name: "保存", exact: true }).click();
+  await expect(nextStepDialog).toHaveCount(0);
 
   const wishlist = page.locator(".inboxBand");
   await wishlist.getByRole("button", { name: "やりたいことを追加" }).click();
@@ -362,7 +367,7 @@ test("registration stays in source sections and persists after reload", async ({
   await page.reload();
   expect(
     (await currentConfig(page)).projects.some(
-      (project) => project.nextStep === "再起動後も残る一手",
+      (project) => project.nextStep?.text === "再起動後も残る一手",
     ),
   ).toBe(true);
   expect(

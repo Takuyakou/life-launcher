@@ -72,9 +72,9 @@ test("P8 Builder omits registration while source bars keep their add actions", a
   await expect(disclosure).toHaveAttribute("aria-expanded", "false");
   await expect(page.getByRole("button", { name: "今日の候補を追加" })).toHaveCount(0);
 
-  await page.getByRole("button", { name: "次の一手を追加", exact: true }).click();
+  await page.getByRole("button", { name: "プロジェクトを追加", exact: true }).click();
   await expect(disclosure).toHaveAttribute("aria-expanded", "false");
-  await expect(page.getByRole("dialog", { name: "次の一手を追加" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "プロジェクトを追加" })).toBeVisible();
   await page.keyboard.press("Escape");
 
   await page.getByRole("button", { name: "やりたいことを追加", exact: true }).click();
