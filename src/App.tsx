@@ -9177,7 +9177,9 @@ function DashboardApp() {
                               onClick={() => startDoNowProject(doNowSelection.project, "short")}
                               type="button"
                             >
-                              <span className="timerStartDuration">{doNowShortTimerMinutes}分</span>
+                              <span className="timerStartDuration">
+                                {doNowShortTimerMinutes}分で始める
+                              </span>
                               <span aria-hidden="true" className="timerStartHoverGlyph">
                                 <UiIcon name="play" size={16} />
                               </span>
@@ -9188,7 +9190,9 @@ function DashboardApp() {
                               onClick={() => startDoNowProject(doNowSelection.project, "normal")}
                               type="button"
                             >
-                              <span className="timerStartDuration">{doNowDefaultTimerMinutes}分</span>
+                              <span className="timerStartDuration">
+                                通常 {doNowDefaultTimerMinutes}分
+                              </span>
                               <span aria-hidden="true" className="timerStartHoverGlyph">
                                 <UiIcon name="play" size={16} />
                               </span>
@@ -9589,7 +9593,7 @@ function DashboardApp() {
                                     <UiIcon name="play" size={16} />
                                   </span>
                                   <span aria-hidden="true" className="nextStepStartDuration">
-                                    {shortMinutes}分
+                                    {shortMinutes}分で始める
                                   </span>
                                 </button>
                                 <button
@@ -9621,7 +9625,7 @@ function DashboardApp() {
                                     <UiIcon name="play" size={16} />
                                   </span>
                                   <span aria-hidden="true" className="nextStepStartDuration">
-                                    {defaultMinutes}分
+                                    通常 {defaultMinutes}分
                                   </span>
                                 </button>
                                 <button

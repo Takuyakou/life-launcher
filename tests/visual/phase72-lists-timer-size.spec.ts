@@ -179,6 +179,8 @@ test("P72-03 Today buttons grow only in width and reveal play on hover", async (
   const normal = card.getByRole("button", { name: "通常タイマー240分で開始" });
   await expect(short).toHaveAttribute("title", "短時間タイマー: 120分");
   await expect(normal).toHaveAttribute("title", "通常タイマー: 240分");
+  await expect(short.locator(".nextStepStartDuration")).toHaveText("120分で始める");
+  await expect(normal.locator(".nextStepStartDuration")).toHaveText("通常 240分");
   const sizes = await Promise.all([short, normal].map((button) => button.evaluate((node) => {
     const style = getComputedStyle(node);
     const rect = node.getBoundingClientRect();

@@ -129,7 +129,7 @@ test("v1.3 Do Now switches candidates from the action row and context menu", asy
   await expect(alternate).toBeVisible();
   const labels = await actions.getByRole("button").allTextContents();
   expect(labels[0]?.trim()).toBe("他の一手");
-  expect(labels[1]?.trim()).toBe("5分");
+  expect(labels[1]?.trim()).toBe("5分で始める");
 
   await alternate.click();
   await expect(band.locator(".doNowCopy > strong")).toHaveText("5分だけ体を動かす");
@@ -153,8 +153,8 @@ test("timer actions keep time subtly right of center and slide play in from the 
   await prepare(page, fixture);
   const doNowShort = page.locator(".doNowStartPrimary");
   const doNowNormal = page.locator(".doNowStartSecondary");
-  await expect(doNowShort.locator(".timerStartDuration")).toHaveText("5分");
-  await expect(doNowNormal.locator(".timerStartDuration")).toHaveText("25分");
+  await expect(doNowShort.locator(".timerStartDuration")).toHaveText("5分で始める");
+  await expect(doNowNormal.locator(".timerStartDuration")).toHaveText("通常 25分");
   expect((await doNowShort.boundingBox())?.width).toBe((await doNowNormal.boundingBox())?.width);
   expect((await doNowShort.boundingBox())?.width).toBe(100);
   expect((await doNowShort.boundingBox())?.height).toBe(38);
@@ -182,6 +182,11 @@ test("timer actions keep time subtly right of center and slide play in from the 
   const todayShort = page.locator(".todayRow").first().getByRole("button", {
     name: "短時間タイマー5分で開始",
   });
+  const todayNormal = page.locator(".todayRow").first().getByRole("button", {
+    name: "通常タイマー25分で開始",
+  });
+  await expect(todayShort.locator(".nextStepStartDuration")).toHaveText("5分で始める");
+  await expect(todayNormal.locator(".nextStepStartDuration")).toHaveText("通常 25分");
   expect((await doNowShort.boundingBox())?.width).toBe(100);
   expect((await todayShort.boundingBox())?.width).toBe(88);
   expect((await doNowShort.boundingBox())?.height).toBe((await todayShort.boundingBox())?.height);
