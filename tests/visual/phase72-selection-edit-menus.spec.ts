@@ -156,7 +156,7 @@ test("timer actions keep time subtly right of center and slide play in from the 
   await expect(doNowShort.locator(".timerStartDuration")).toHaveText("5分で始める");
   await expect(doNowNormal.locator(".timerStartDuration")).toHaveText("通常 25分");
   expect((await doNowShort.boundingBox())?.width).toBe((await doNowNormal.boundingBox())?.width);
-  expect((await doNowShort.boundingBox())?.width).toBe(128);
+  expect((await doNowShort.boundingBox())?.width).toBe(100);
   expect((await doNowShort.boundingBox())?.height).toBe(38);
   await expect(doNowShort.locator(".timerStartDuration")).toHaveCSS("opacity", "1");
   await expect(doNowShort.locator(".timerStartHoverGlyph")).toHaveCSS("opacity", "0");

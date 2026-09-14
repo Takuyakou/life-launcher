@@ -164,8 +164,8 @@ test("P72-03 Today buttons grow only in width and reveal play on hover", async (
     const rect = node.getBoundingClientRect();
     return { width: rect.width, height: rect.height, color: style.color, background: style.backgroundColor };
   })));
-  expect(sizes[0].width).toBe(128);
-  expect(sizes[1].width).toBe(128);
+  expect(sizes[0].width).toBe(100);
+  expect(sizes[1].width).toBe(100);
   expect(sizes[0].height).toBe(38);
   expect(sizes[1].height).toBe(38);
   expect(sizes[0].color).not.toBe(sizes[1].color);
