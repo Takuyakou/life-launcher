@@ -4,7 +4,7 @@
   "workflow": "user-wide-continuation-authorized",
   "current_stage": "P81-08",
   "baseline_commit": "07904dd1c34b5f9bbc101a6dcae58a71a6bb4fd9",
-  "head_commit": "1356a43115549963b2c5837b85f28a99aefd2bbe",
+  "verified_implementation_commit": "1356a43115549963b2c5837b85f28a99aefd2bbe",
   "branch": "feat/p81-01-project-purification",
   "implementation_pull_request": "https://github.com/Takuyakou/life-launcher/pull/70",
   "stacked_on_pull_request": "https://github.com/Takuyakou/life-launcher/pull/69",
