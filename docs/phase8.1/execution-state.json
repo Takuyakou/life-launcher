@@ -1,0 +1,58 @@
+{
+  "phase": "P8.1",
+  "workflow": "single-start-human-gated",
+  "current_stage": "P81-00",
+  "baseline_commit": "07904dd1c34b5f9bbc101a6dcae58a71a6bb4fd9",
+  "branch": "docs/p81-00-data-migration-audit",
+  "release_allowed": false,
+  "completed_before_phase": [
+    "Timer button hover/time display improvement",
+    "HTML instruction renderer fidelity improvement",
+    "completion reward animation and repeat trigger",
+    "Today3 reverse D&D adoption removal and Undo"
+  ],
+  "strategy": {
+    "status": "AWAITING_HUMAN_APPROVAL",
+    "recommendation": "config v3 with optional Project-owned NextStep object",
+    "document": "docs/phase8.1/00-schema-strategy.md"
+  },
+  "stages": {
+    "P81-00": {
+      "status": "COMPLETE_AWAITING_REVIEW",
+      "approved": false,
+      "report": "docs/phase8.1/workreports/p81-00-report.md"
+    },
+    "P81-01": {
+      "status": "BLOCKED_BY_P81-00",
+      "approved": false
+    },
+    "P81-02": {
+      "status": "BLOCKED_BY_P81-01",
+      "approved": false
+    },
+    "P81-03": {
+      "status": "BLOCKED_BY_P81-02",
+      "approved": false
+    },
+    "P81-04": {
+      "status": "BLOCKED_BY_P81-03",
+      "approved": false
+    },
+    "P81-05": {
+      "status": "BLOCKED_BY_P81-04",
+      "approved": false
+    },
+    "P81-06": {
+      "status": "BLOCKED_BY_P81-05",
+      "approved": false
+    },
+    "P81-07": {
+      "status": "BLOCKED_BY_P81-06",
+      "approved": false
+    },
+    "P81-08": {
+      "status": "BLOCKED_BY_P81-07",
+      "approved": false
+    }
+  }
+}
