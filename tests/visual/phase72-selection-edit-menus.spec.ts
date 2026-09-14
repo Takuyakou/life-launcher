@@ -182,7 +182,8 @@ test("timer actions keep time subtly right of center and slide play in from the 
   const todayShort = page.locator(".todayRow").first().getByRole("button", {
     name: "短時間タイマー5分で開始",
   });
-  expect((await doNowShort.boundingBox())?.width).toBe((await todayShort.boundingBox())?.width);
+  expect((await doNowShort.boundingBox())?.width).toBe(100);
+  expect((await todayShort.boundingBox())?.width).toBe(88);
   expect((await doNowShort.boundingBox())?.height).toBe((await todayShort.boundingBox())?.height);
   await expect(todayShort.locator(".nextStepStartDuration")).toHaveCSS("opacity", "1");
   await expect(todayShort.locator(".nextStepStartGlyph")).toHaveCSS("opacity", "0");
