@@ -106,6 +106,13 @@ import {
 } from "./completionFollowup";
 import { PROJECT_COLOR_IDS, PROJECT_COLOR_LABELS, resolveProjectColorId } from "./projectIdentity";
 import { canRevealLauncherButton } from "./launcherReveal";
+import {
+  groupWishlist,
+  prepareNextStepReplacement,
+  sameNextStepSnapshot,
+  type NextStepReplacementChoice,
+  wishlistGroupKey,
+} from "./nextStepWishlist";
 import { TimerPanel } from "./components/TimerPanel";
 import { UiIcon } from "./components/UiIcon";
 import {
@@ -255,6 +262,12 @@ type ProjectEditDraft = {
 
 type LegacyNextStepChoice = "inherit" | "discard" | null;
 
+type WishlistGroupView = {
+  collapsed?: boolean;
+  expanded?: boolean;
+  page?: number;
+};
+
 type NextStepEditDraft = {
   mode: "edit" | "set" | "promote";
   projectId: string;
@@ -269,7 +282,8 @@ type NextStepEditDraft = {
   instructionPath: string;
   instructionOpenOnStart: boolean;
   legacyChoice: LegacyNextStepChoice;
-  replacementConfirmed: boolean;
+  replacementChoice: NextStepReplacementChoice | null;
+  replacedNextStep?: LauncherNextStep;
   promotedWishlistId?: string;
 };
 
@@ -1973,8 +1987,9 @@ function DashboardApp() {
   const [projectsOpen, setProjectsOpen] = useState(true);
   const [projectsListExpanded, setProjectsListExpanded] = useState(false);
   const [projectsListPage, setProjectsListPage] = useState(1);
-  const [inboxListExpanded, setInboxListExpanded] = useState(false);
-  const [inboxListPage, setInboxListPage] = useState(1);
+  const [wishlistGroupViews, setWishlistGroupViews] = useState<
+    Record<string, WishlistGroupView>
+  >({});
   const [todayBuilderOpen, setTodayBuilderOpen] = useState(false);
   const [todayBuilderPage, setTodayBuilderPage] = useState(1);
   const [, setTodayBuilderOrderRevision] = useState(0);
@@ -4416,7 +4431,13 @@ function DashboardApp() {
   ) => {
     if (!config || draggedIndex === targetIndex) return;
     const draggedItem = config.inbox[draggedIndex];
-    if (!draggedItem || !config.inbox[targetIndex]) return;
+    const targetItem = config.inbox[targetIndex];
+    if (!draggedItem || !targetItem) return;
+    const projectIds = new Set(config.projects.map((project) => project.id));
+    if (
+      wishlistGroupKey(draggedItem, projectIds) !== wishlistGroupKey(targetItem, projectIds)
+    )
+      return;
 
     const withoutDragged = config.inbox.filter((_, index) => index !== draggedIndex);
     let insertIndex = targetIndex;
@@ -4505,9 +4526,16 @@ function DashboardApp() {
 
   const moveInboxItemByOffset = async (index: number, offset: -1 | 1) => {
     if (!config) return;
-    const targetIndex = index + offset;
     const item = config.inbox[index];
-    if (!item || !config.inbox[targetIndex]) return;
+    if (!item) return;
+    const projectIds = new Set(config.projects.map((project) => project.id));
+    const key = wishlistGroupKey(item, projectIds);
+    const groupIndexes = config.inbox.flatMap((candidate, candidateIndex) =>
+      wishlistGroupKey(candidate, projectIds) === key ? [candidateIndex] : [],
+    );
+    const groupIndex = groupIndexes.indexOf(index);
+    const targetIndex = groupIndexes[groupIndex + offset];
+    if (targetIndex === undefined || !config.inbox[targetIndex]) return;
     const inbox = [...config.inbox];
     [inbox[index], inbox[targetIndex]] = [inbox[targetIndex], inbox[index]];
 
@@ -5030,9 +5058,18 @@ function DashboardApp() {
       event.clientY,
       restoreEligible,
     );
-    const target = builderRestoreTargetFromPoint(event.clientX, event.clientY)
+    const candidateTarget = builderRestoreTargetFromPoint(event.clientX, event.clientY)
       ? null
       : inboxDropTargetFromPoint(event.clientX, event.clientY);
+    const projectIds = new Set((current?.projects ?? []).map((project) => project.id));
+    const sourceItem = current?.inbox[sourceIndex];
+    const targetItem = candidateTarget ? current?.inbox[candidateTarget.index] : undefined;
+    const target =
+      sourceItem &&
+      targetItem &&
+      wishlistGroupKey(sourceItem, projectIds) === wishlistGroupKey(targetItem, projectIds)
+        ? candidateTarget
+        : null;
     setInboxPointerDrag({
       index: sourceIndex,
       sourceKey: drag.sourceKey,
@@ -6969,7 +7006,8 @@ function DashboardApp() {
       ...nextStepExecutionDraft(editingExisting ? project.nextStep : undefined),
       legacyChoice:
         !editingExisting && !project.nextStep && project.legacyNextStepSettings ? null : "discard",
-      replacementConfirmed: false,
+      replacementChoice: null,
+      replacedNextStep: mode === "promote" ? project.nextStep : undefined,
       ...(options?.promotedWishlistId
         ? { promotedWishlistId: options.promotedWishlistId }
         : {}),
@@ -7020,7 +7058,8 @@ function DashboardApp() {
       trigger: "",
       ...nextStepExecutionDraft(),
       legacyChoice: "discard",
-      replacementConfirmed: false,
+      replacementChoice: null,
+      replacedNextStep: undefined,
       promotedWishlistId: item.id,
     });
     setProjectNextStepSuggestions([]);
@@ -7041,7 +7080,8 @@ function DashboardApp() {
       trigger: "",
       ...nextStepExecutionDraft(),
       legacyChoice: project?.legacyNextStepSettings && !project.nextStep ? null : "discard",
-      replacementConfirmed: false,
+      replacementChoice: null,
+      replacedNextStep: project?.nextStep,
     });
     void refreshNextStepSuggestions(projectId || null);
   };
@@ -7084,6 +7124,13 @@ function DashboardApp() {
       return;
     }
     if (
+      draft.mode === "promote" &&
+      !sameNextStepSnapshot(project.nextStep, draft.replacedNextStep)
+    ) {
+      showToast("warn", "現在の次の一手が変更されたため、内容を確認し直してください");
+      return;
+    }
+    if (
       !project.nextStep &&
       project.legacyNextStepSettings &&
       draft.legacyChoice === null
@@ -7091,8 +7138,9 @@ function DashboardApp() {
       showToast("warn", "以前の実行設定を引き継ぐか破棄するか選んでください");
       return;
     }
-    if (draft.mode === "promote" && project.nextStep?.text.trim() && !draft.replacementConfirmed) {
-      showToast("warn", "現在の次の一手を置き換えることを確認してください");
+    const replacingExisting = Boolean(draft.mode === "promote" && project.nextStep?.text.trim());
+    if (replacingExisting && !draft.replacementChoice) {
+      showToast("warn", "現在の次の一手をどうするか選んでください");
       return;
     }
     const projectSourceKey = `project:${project.id}`;
@@ -7153,7 +7201,7 @@ function DashboardApp() {
       nextStep,
       legacyNextStepSettings: undefined,
     };
-    const nextConfig: AppConfig = {
+    let nextConfig: AppConfig = {
       ...current,
       projects: current.projects.map((candidate) =>
         candidate.id === project.id ? nextProject : candidate,
@@ -7162,6 +7210,26 @@ function DashboardApp() {
         ? current.inbox.filter((item) => item.id !== draft.promotedWishlistId)
         : current.inbox,
     };
+
+    if (replacingExisting) {
+      if (!draft.replacedNextStep || !draft.replacementChoice) return;
+      try {
+        nextConfig = prepareNextStepReplacement(current, {
+          projectId: project.id,
+          nextStep,
+          expectedCurrent: draft.replacedNextStep,
+          choice: draft.replacementChoice,
+          ...(draft.promotedWishlistId
+            ? { promotedWishlistId: draft.promotedWishlistId }
+            : {}),
+          completedAt: now,
+          createId: createStableId,
+        });
+      } catch (error) {
+        showToast("warn", error instanceof Error ? error.message : String(error));
+        return;
+      }
+    }
 
     if (draft.mode === "edit" && !draft.promotedWishlistId) {
       const result = await saveSourceEdit(current, nextConfig, projectSourceKey);
@@ -7178,7 +7246,14 @@ function DashboardApp() {
     try {
       if (!(await persistConfig(nextConfig))) return;
       closeNextStepEditDialog(true);
-      showToast("ok", draft.promotedWishlistId ? "次の一手にしました" : "次の一手を保存しました");
+      showToast("ok", draft.promotedWishlistId ? "次の一手にしました" : "次の一手を保存しました", {
+        detail:
+          replacingExisting && draft.replacementChoice === "return"
+            ? "元の次の一手はやりたいことへ戻しました"
+            : replacingExisting && draft.replacementChoice === "complete"
+              ? "元の次の一手は完了として記録しました"
+              : undefined,
+      });
     } finally {
       sourceEditBusyRef.current = null;
       setSourceEditSaving(false);
@@ -7218,19 +7293,6 @@ function DashboardApp() {
     if (!current || !project.nextStep?.text.trim()) return;
     setContextMenu(null);
     void addCandidateToToday(projectTodayCandidate(project, current.settings));
-  };
-
-  const addWishlistToToday = (index: number) => {
-    const current = configRef.current;
-    const item = current?.inbox[index];
-    if (!current || !item) return;
-    const project = item.projectId
-      ? current.projects.find((candidate) => candidate.id === item.projectId)
-      : undefined;
-    setContextMenu(null);
-    void addCandidateToToday(
-      wishlistTodayCandidate(item, index, project, current.settings, true),
-    );
   };
 
   const openProjectManagement = () => {
@@ -7551,26 +7613,38 @@ function DashboardApp() {
 
   useEffect(() => {
     const items = config?.inbox ?? [];
-    const pageCount = Math.max(1, Math.ceil(items.length / SOURCE_LIST_PAGE_SIZE));
-    setInboxListPage((page) => Math.min(Math.max(1, page), pageCount));
     const anchor = inboxListAnchorRef.current;
     if (!anchor || items.length === 0) return;
     let index = items.findIndex((item) => item.id === anchor.id);
     if (index < 0) index = Math.min(anchor.index, items.length - 1);
     const item = items[index];
-    if (!item?.id) return;
+    if (!item?.id || !config) return;
     inboxListAnchorRef.current = { id: item.id, index };
-    if (items.length >= SOURCE_LIST_PAGINATION_THRESHOLD) {
-      setInboxListPage(Math.floor(index / SOURCE_LIST_PAGE_SIZE) + 1);
-    } else if (items.length > SOURCE_LIST_COMPACT_LIMIT && index >= SOURCE_LIST_COMPACT_LIMIT) {
-      setInboxListExpanded(true);
+    const group = groupWishlist(config).find((candidate) =>
+      candidate.items.some((entry) => entry.item.id === item.id),
+    );
+    if (group) {
+      const groupIndex = group.items.findIndex((entry) => entry.item.id === item.id);
+      setWishlistGroupViews((current) => ({
+        ...current,
+        [group.key]: {
+          ...current[group.key],
+          collapsed: false,
+          ...(group.items.length >= SOURCE_LIST_PAGINATION_THRESHOLD
+            ? { page: Math.floor(groupIndex / SOURCE_LIST_PAGE_SIZE) + 1 }
+            : group.items.length > SOURCE_LIST_COMPACT_LIMIT &&
+                groupIndex >= SOURCE_LIST_COMPACT_LIMIT
+              ? { expanded: true }
+              : {}),
+        },
+      }));
     }
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
         document.querySelector<HTMLElement>(`[data-inbox-id="${CSS.escape(item.id ?? "")}"]`)?.focus();
       });
     });
-  }, [config?.inbox]);
+  }, [config]);
 
   useEffect(() => {
     const cancelPointerDrag = (event?: globalThis.KeyboardEvent) => {
@@ -7638,10 +7712,17 @@ function DashboardApp() {
     projectsListPage,
   );
   const visibleProjects = config.projects.slice(projectListRange.start, projectListRange.end);
-  const inboxListRange = sourceListRange(config.inbox.length, inboxListExpanded, inboxListPage);
-  const visibleInboxEntries = config.inbox
-    .map((item, index) => ({ item, index }))
-    .slice(inboxListRange.start, inboxListRange.end);
+  const wishlistGroups = groupWishlist(config);
+  const inboxNeighborIndex = (index: number, offset: -1 | 1) => {
+    const item = config.inbox[index];
+    if (!item) return undefined;
+    const projectIds = new Set(config.projects.map((project) => project.id));
+    const key = wishlistGroupKey(item, projectIds);
+    const indexes = config.inbox.flatMap((candidate, candidateIndex) =>
+      wishlistGroupKey(candidate, projectIds) === key ? [candidateIndex] : [],
+    );
+    return indexes[indexes.indexOf(index) + offset];
+  };
   const todayAllCompleted =
     config.today.items.length > 0 && todayCompletedCount === config.today.items.length;
   const victoryText = config.today.victory.text.trim();
@@ -9875,7 +9956,7 @@ function DashboardApp() {
                   </button>
                   <span className="disclosureCount">{config.projects.length}件</span>
                   <span className="disclosureDescription">
-                    各プロジェクトの、次回すぐ再開するための一手
+                    迷ったときに戻る「次の一手」を、プロジェクトごとに1つ決めます。
                   </span>
                 </div>
                 {projectsOpen && (
@@ -10139,113 +10220,192 @@ function DashboardApp() {
 
                 {inboxOpen && (
                   <div className="inboxBody">
-                    <div className="inboxList">
-                      {visibleInboxEntries.map(({ item, index }) => (
-                        <div
-                          className={
-                            inboxPointerDrag?.index === index
-                              ? "inboxRow sourceListRow inboxRow--dragging"
-                              : "inboxRow sourceListRow"
-                          }
-                          data-inbox-index={index}
-                          data-inbox-id={item.id}
-                          key={item.id ?? `${item.text}-${index}`}
-                          onFocus={() => {
-                            if (item.id) inboxListAnchorRef.current = { id: item.id, index };
-                          }}
-                          onContextMenu={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            openContextMenu(
-                              { kind: "inbox", index, itemText: item.text },
-                              event.clientX,
-                              event.clientY,
-                              event.currentTarget,
-                            );
-                          }}
-                          onKeyDown={(event) =>
-                            openContextMenuFromKeyboard(event, {
-                              kind: "inbox",
-                              index,
-                              itemText: item.text,
-                            })
-                          }
-                          onPointerCancel={cancelInboxPointerDrag}
-                          onPointerDown={(event) => startInboxPointerDrag(event, index)}
-                          onPointerMove={updateInboxPointerDrag}
-                          onPointerUp={finishInboxPointerDrag}
-                          tabIndex={0}
-                        >
-                          <span className="inboxItemCopy sourceListCopy">
-                            <span className="inboxProjectIdentity">
-                              {item.projectId && projectsById.has(item.projectId) ? (
+                    <div className="inboxGroups">
+                      {wishlistGroups.map((group) => {
+                        const view = wishlistGroupViews[group.key] ?? {};
+                        const range = sourceListRange(
+                          group.items.length,
+                          Boolean(view.expanded),
+                          view.page ?? 1,
+                        );
+                        const collapsed = Boolean(view.collapsed);
+                        const visibleItems = group.items.slice(range.start, range.end);
+                        const groupProject = group.projectId
+                          ? projectsById.get(group.projectId)
+                          : undefined;
+                        return (
+                          <section className="wishlistGroup" data-wishlist-group={group.key} key={group.key}>
+                            <button
+                              aria-expanded={!collapsed}
+                              className="wishlistGroupHeader"
+                              onClick={() =>
+                                setWishlistGroupViews((current) => ({
+                                  ...current,
+                                  [group.key]: {
+                                    ...current[group.key],
+                                    collapsed: !collapsed,
+                                  },
+                                }))
+                              }
+                              type="button"
+                            >
+                              <UiIcon name={collapsed ? "chevronRight" : "chevronDown"} size={16} />
+                              {groupProject ? (
                                 <ProjectIdentity
-                                  colorId={projectsById.get(item.projectId)?.colorId}
+                                  colorId={groupProject.colorId}
                                   compact
-                                  name={projectsById.get(item.projectId)?.name ?? ""}
-                                  projectId={item.projectId}
+                                  name={group.name}
+                                  projectId={groupProject.id}
                                 />
-                              ) : <span className="sourceProjectNone">プロジェクトなし</span>}
-                            </span>
-                            <span className="inboxItemText" title={item.text}>{item.text}</span>
-                          </span>
-                          <button
-                            aria-label={`${item.text}の操作`}
-                            aria-haspopup="menu"
-                            className="sourceRowMenu"
-                            title="操作メニュー"
-                            type="button"
-                            onClick={(event) => {
-                              const rect = event.currentTarget.getBoundingClientRect();
-                              openContextMenu({ kind: "inbox", index, itemText: item.text }, rect.left, rect.bottom, event.currentTarget);
-                            }}
-                          >
-                            <span aria-hidden="true">⋯</span>
-                          </button>
-                        </div>
-                      ))}
+                              ) : (
+                                <strong>未分類</strong>
+                              )}
+                              <span>{group.items.length}件</span>
+                            </button>
+                            {!collapsed && (
+                              <>
+                                <div className="inboxList">
+                                  {visibleItems.map(({ item, index }) => {
+                                    const sourceKey = item.id ? `wishlist:${item.id}` : null;
+                                    const selected = Boolean(
+                                      sourceKey &&
+                                        config.today.items.some(
+                                          (todayItem) =>
+                                            todayItem.sourceKey &&
+                                            canonicalSourceKey(config, todayItem.sourceKey) === sourceKey,
+                                        ),
+                                    );
+                                    const excluded = Boolean(
+                                      sourceKey && explicitlyExcludedCandidate(sourceKey),
+                                    );
+                                    return (
+                                      <div
+                                        className={
+                                          inboxPointerDrag?.index === index
+                                            ? "inboxRow sourceListRow inboxRow--dragging"
+                                            : "inboxRow sourceListRow"
+                                        }
+                                        data-inbox-index={index}
+                                        data-inbox-id={item.id}
+                                        key={item.id ?? `${item.text}-${index}`}
+                                        onFocus={() => {
+                                          if (item.id) inboxListAnchorRef.current = { id: item.id, index };
+                                        }}
+                                        onContextMenu={(event) => {
+                                          event.preventDefault();
+                                          event.stopPropagation();
+                                          openContextMenu(
+                                            { kind: "inbox", index, itemText: item.text },
+                                            event.clientX,
+                                            event.clientY,
+                                            event.currentTarget,
+                                          );
+                                        }}
+                                        onKeyDown={(event) =>
+                                          openContextMenuFromKeyboard(event, {
+                                            kind: "inbox",
+                                            index,
+                                            itemText: item.text,
+                                          })
+                                        }
+                                        onPointerCancel={cancelInboxPointerDrag}
+                                        onPointerDown={(event) => startInboxPointerDrag(event, index)}
+                                        onPointerMove={updateInboxPointerDrag}
+                                        onPointerUp={finishInboxPointerDrag}
+                                        tabIndex={0}
+                                      >
+                                        <span aria-hidden="true" className="wishlistDragHandle">≡</span>
+                                        <span className="inboxItemText" title={item.text}>{item.text}</span>
+                                        {selected && <span className="wishlistTodayStatus">✓ 今日の3件</span>}
+                                        {!selected && excluded && sourceKey && (
+                                          <button
+                                            className="wishlistRestoreButton"
+                                            onClick={() => void restoreTodayBuilderCandidate(sourceKey)}
+                                            onPointerDown={(event) => event.stopPropagation()}
+                                            type="button"
+                                          >
+                                            候補に戻す
+                                          </button>
+                                        )}
+                                        <button
+                                          aria-label={`${item.text}の操作`}
+                                          aria-haspopup="menu"
+                                          className="sourceRowMenu"
+                                          onClick={(event) => {
+                                            const rect = event.currentTarget.getBoundingClientRect();
+                                            openContextMenu({ kind: "inbox", index, itemText: item.text }, rect.left, rect.bottom, event.currentTarget);
+                                          }}
+                                          title="操作メニュー"
+                                          type="button"
+                                        >
+                                          <span aria-hidden="true">⋯</span>
+                                        </button>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                                {group.items.length > SOURCE_LIST_COMPACT_LIMIT &&
+                                  group.items.length < SOURCE_LIST_PAGINATION_THRESHOLD && (
+                                    <div className="sourceListControls">
+                                      <button
+                                        onClick={() =>
+                                          setWishlistGroupViews((current) => ({
+                                            ...current,
+                                            [group.key]: {
+                                              ...current[group.key],
+                                              expanded: !view.expanded,
+                                            },
+                                          }))
+                                        }
+                                        type="button"
+                                      >
+                                        {view.expanded
+                                          ? "5件だけ表示"
+                                          : `残り${group.items.length - SOURCE_LIST_COMPACT_LIMIT}件をもっと見る`}
+                                      </button>
+                                    </div>
+                                  )}
+                                {group.items.length >= SOURCE_LIST_PAGINATION_THRESHOLD && (
+                                  <nav aria-label={`${group.name}のやりたいことページ`} className="sourceListPagination">
+                                    <button
+                                      disabled={range.page <= 1}
+                                      onClick={() =>
+                                        setWishlistGroupViews((current) => ({
+                                          ...current,
+                                          [group.key]: {
+                                            ...current[group.key],
+                                            page: Math.max(1, range.page - 1),
+                                          },
+                                        }))
+                                      }
+                                      type="button"
+                                    >
+                                      <UiIcon name="chevronLeft" size={16} /> 前へ
+                                    </button>
+                                    <span>{range.page} / {range.pageCount}</span>
+                                    <button
+                                      disabled={range.page >= range.pageCount}
+                                      onClick={() =>
+                                        setWishlistGroupViews((current) => ({
+                                          ...current,
+                                          [group.key]: {
+                                            ...current[group.key],
+                                            page: Math.min(range.pageCount, range.page + 1),
+                                          },
+                                        }))
+                                      }
+                                      type="button"
+                                    >
+                                      次へ <UiIcon name="chevronRight" size={16} />
+                                    </button>
+                                  </nav>
+                                )}
+                              </>
+                            )}
+                          </section>
+                        );
+                      })}
                     </div>
-                    {config.inbox.length > SOURCE_LIST_COMPACT_LIMIT &&
-                      config.inbox.length < SOURCE_LIST_PAGINATION_THRESHOLD && (
-                        <div className="sourceListControls">
-                          <button
-                            onClick={() => {
-                              inboxListAnchorRef.current = null;
-                              setInboxListExpanded((expanded) => !expanded);
-                            }}
-                            type="button"
-                          >
-                            {inboxListExpanded
-                              ? "5件だけ表示"
-                              : `残り${config.inbox.length - SOURCE_LIST_COMPACT_LIMIT}件をもっと見る`}
-                          </button>
-                        </div>
-                      )}
-                    {config.inbox.length >= SOURCE_LIST_PAGINATION_THRESHOLD && (
-                      <nav aria-label="やりたいことのページ" className="sourceListPagination">
-                        <button
-                          disabled={inboxListRange.page <= 1}
-                          onClick={() => {
-                            inboxListAnchorRef.current = null;
-                            setInboxListPage((page) => Math.max(1, page - 1));
-                          }}
-                          type="button"
-                        >
-                          <UiIcon name="chevronLeft" size={16} /> 前へ
-                        </button>
-                        <span>{inboxListRange.page} / {inboxListRange.pageCount}</span>
-                        <button
-                          disabled={inboxListRange.page >= inboxListRange.pageCount}
-                          onClick={() => {
-                            inboxListAnchorRef.current = null;
-                            setInboxListPage((page) => Math.min(inboxListRange.pageCount, page + 1));
-                          }}
-                          type="button"
-                        >
-                          次へ <UiIcon name="chevronRight" size={16} />
-                        </button>
-                      </nav>
-                    )}
                     {inboxPointerDrag?.targetIndicator && (
                       <div
                         aria-hidden="true"
@@ -10641,12 +10801,6 @@ function DashboardApp() {
           ) : contextMenu.kind === "inbox" ? (
             <>
               <ContextMenuItem
-                onClick={() => addWishlistToToday(contextMenu.index)}
-                type="button"
-              >
-                今日へ
-              </ContextMenuItem>
-              <ContextMenuItem
                 disabled={sourceEditBlocked(
                   `wishlist:${config?.inbox[contextMenu.index]?.id ?? ""}`,
                 )}
@@ -10676,14 +10830,14 @@ function DashboardApp() {
                   </ContextMenuItem>
                 )}
               <ContextMenuItem
-                disabled={contextMenu.index <= 0}
+                disabled={inboxNeighborIndex(contextMenu.index, -1) === undefined}
                 onClick={() => void moveInboxItemByOffset(contextMenu.index, -1)}
                 type="button"
               >
                 上へ移動
               </ContextMenuItem>
               <ContextMenuItem
-                disabled={contextMenu.index >= (config?.inbox.length ?? 0) - 1}
+                disabled={inboxNeighborIndex(contextMenu.index, 1) === undefined}
                 onClick={() => void moveInboxItemByOffset(contextMenu.index, 1)}
                 type="button"
               >
@@ -12422,23 +12576,48 @@ function DashboardApp() {
                 )}
 
                 {replacingExisting ? (
-                  <div className="nextStepReplacementNotice" role="status">
-                    <strong>現在の次の一手を置き換えます</strong>
+                  <fieldset className="nextStepReplacementNotice">
+                    <legend>現在の次の一手をどうしますか？</legend>
                     <span>{nextStepProject?.nextStep?.text}</span>
-                    <label>
-                      <input
-                        checked={nextStepEditDraft.replacementConfirmed}
-                        onChange={(event) =>
+                    <div className="nextStepReplacementChoices">
+                      <button
+                        aria-pressed={nextStepEditDraft.replacementChoice === "return"}
+                        className="secondaryButton"
+                        disabled={sourceEditSaving}
+                        onClick={() =>
                           setNextStepEditDraft({
                             ...nextStepEditDraft,
-                            replacementConfirmed: event.target.checked,
+                            replacementChoice: "return",
                           })
                         }
-                        type="checkbox"
-                      />
-                      <span>置き換えることを確認しました</span>
-                    </label>
-                  </div>
+                        type="button"
+                      >
+                        やりたいことへ戻す
+                      </button>
+                      <button
+                        aria-pressed={nextStepEditDraft.replacementChoice === "complete"}
+                        className="secondaryButton"
+                        disabled={sourceEditSaving}
+                        onClick={() =>
+                          setNextStepEditDraft({
+                            ...nextStepEditDraft,
+                            replacementChoice: "complete",
+                          })
+                        }
+                        type="button"
+                      >
+                        完了にする
+                      </button>
+                      <button
+                        className="secondaryButton dialogCancelButton"
+                        disabled={sourceEditSaving}
+                        onClick={() => closeNextStepEditDialog()}
+                        type="button"
+                      >
+                        キャンセル
+                      </button>
+                    </div>
+                  </fieldset>
                 ) : null}
 
                 {nextStepProject?.legacyNextStepSettings && !nextStepProject.nextStep ? (
@@ -12687,21 +12866,23 @@ function DashboardApp() {
                       !nextStepEditDraft.projectId ||
                       !nextStepEditDraft.text.trim() ||
                       legacyChoiceRequired ||
-                      (replacingExisting && !nextStepEditDraft.replacementConfirmed)
+                      (replacingExisting && !nextStepEditDraft.replacementChoice)
                     }
                     onClick={() => void saveNextStepEdit()}
                     type="button"
                   >
                     {sourceEditSaving ? "保存中…" : "保存"}
                   </button>
-                  <button
-                    className="secondaryButton dialogCancelButton"
-                    disabled={sourceEditSaving}
-                    onClick={() => closeNextStepEditDialog()}
-                    type="button"
-                  >
-                    キャンセル
-                  </button>
+                  {!replacingExisting && (
+                    <button
+                      className="secondaryButton dialogCancelButton"
+                      disabled={sourceEditSaving}
+                      onClick={() => closeNextStepEditDialog()}
+                      type="button"
+                    >
+                      キャンセル
+                    </button>
+                  )}
                 </div>
               </section>
             </div>
