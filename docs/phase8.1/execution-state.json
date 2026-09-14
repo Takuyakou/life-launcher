@@ -12,14 +12,14 @@
     "Today3 reverse D&D adoption removal and Undo"
   ],
   "strategy": {
-    "status": "AWAITING_HUMAN_APPROVAL",
+    "status": "APPROVED",
     "recommendation": "config v3 with optional Project-owned NextStep object",
     "document": "docs/phase8.1/00-schema-strategy.md"
   },
   "stages": {
     "P81-00": {
       "status": "COMPLETE_AWAITING_REVIEW",
-      "approved": false,
+      "approved": true,
       "report": "docs/phase8.1/workreports/p81-00-report.md",
       "pull_request": "https://github.com/Takuyakou/life-launcher/pull/69"
     },
