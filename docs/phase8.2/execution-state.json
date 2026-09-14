@@ -1,0 +1,54 @@
+{
+  "phase": "Phase 8.2",
+  "internal_phase_id": "P82",
+  "workflow": "single-start-human-gated",
+  "current_stage": "P82-00",
+  "baseline_commit": "ee6814ec70ac9caf7ed331cd2cf9ebe08722586f",
+  "branch": "docs/p82-00-baseline-audit",
+  "audit_pull_request": null,
+  "release_allowed": false,
+  "merged": false,
+  "released": false,
+  "prerequisite": {
+    "phase_8_1_integrated": true,
+    "result": "PASS"
+  },
+  "verification": {
+    "status": "PASS",
+    "public_check": "PASS_326_FILES_0_BLOCKERS_30_EXACT_ARTIFACT_PATHS",
+    "lint": "PASS_0_WARNINGS",
+    "build": "PASS",
+    "full_visual_suite": "PASS_246",
+    "cargo_fmt": "PASS",
+    "cargo_check": "PASS",
+    "cargo_clippy": "PASS_0_WARNINGS",
+    "cargo_test": "PASS_112_UNIT_PLUS_2_CAPABILITY",
+    "npm_audit": "PASS_0_VULNERABILITIES",
+    "npm_audit_production": "PASS_0_VULNERABILITIES",
+    "public_safety_exact_path_regression": "PASS_1"
+  },
+  "stages": {
+    "P82-00": {
+      "status": "COMPLETE_AWAITING_REVIEW",
+      "approved": true,
+      "report": "docs/phase8.2/workreports/p82-00-report.md",
+      "pull_request": null
+    },
+    "P82-01": {
+      "status": "BLOCKED_BY_HUMAN_REVIEW",
+      "approved": false
+    },
+    "P82-02": {
+      "status": "BLOCKED_BY_P82-01",
+      "approved": false
+    },
+    "P82-03": {
+      "status": "BLOCKED_BY_P82-02",
+      "approved": false
+    },
+    "P82-04": {
+      "status": "BLOCKED_BY_P82-03",
+      "approved": false
+    }
+  }
+}

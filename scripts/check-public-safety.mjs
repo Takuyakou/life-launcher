@@ -32,6 +32,7 @@ const allowedInternalArtifactPaths = new Set([
   "tests/visual/phase6-baseline.spec.ts",
   "docs/phase7.2/00-baseline.md",
   "docs/phase7.2/00-timer-size-baseline.md",
+  "docs/phase8.2/00-baseline-audit.md",
   // User-approved exact synthetic outputs; content checks still run below.
   ...[1920, 1440, 1366, 1000, 860].flatMap((width) => [
     `docs/phase7.2/screenshots/baseline/timer-${width}.json`,
@@ -135,7 +136,9 @@ function selfTest() {
     throw new Error("Safety detector self-test failed: internal report allowlist is too broad");
   }
   if (
-    allowedInternalArtifactPaths.size !== 29 ||
+    allowedInternalArtifactPaths.size !== 30 ||
+    !allowedInternalArtifactPaths.has("docs/phase8.2/00-baseline-audit.md") ||
+    allowedInternalArtifactPaths.has("docs/phase8.2/other-baseline-audit.md") ||
     !allowedInternalArtifactPaths.has("docs/phase7.2/screenshots/baseline/timer-1440-hover.png") ||
     allowedInternalArtifactPaths.has("docs/phase7.2/screenshots/baseline/private-screenshot.png") ||
     allowedInternalArtifactPaths.has("docs/phase7.2/screenshots/baseline/timer-1440-secrets.json")
