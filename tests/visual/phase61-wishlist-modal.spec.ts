@@ -209,34 +209,30 @@ test("Wishlist modal stays within the narrow viewport without horizontal overflo
   }
 });
 
-test("Project add labels describe the real target and editing preserves unrelated fields", async ({ page }) => {
+test("Project metadata editing preserves its separate NextStep package", async ({ page }) => {
   await prepare(page);
-  const projectOpener = page.getByRole("button", { name: "次の一手を追加" });
+  const projectOpener = page.getByRole("button", { name: "プロジェクトを追加", exact: true });
   await projectOpener.click();
-  let projectDialog = page.getByRole("dialog", { name: "次の一手を追加" });
-  await expect(projectDialog).toContainText("何に取り組むか、次に何をするか、始めるときに必要なものを登録します。");
-  await expect(projectDialog.getByRole("textbox", { name: "取り組み名" })).toBeFocused();
-  await expect(projectDialog.getByRole("textbox", { name: "次にやること", exact: true })).toBeVisible();
-  await expect(projectDialog.getByRole("spinbutton", { name: "取り組みの短時間タイマー分数" })).toBeVisible();
+  let projectDialog = page.getByRole("dialog", { name: "プロジェクトを追加" });
+  await expect(projectDialog).toContainText("継続して進めるテーマを登録します。");
+  await expect(projectDialog.getByRole("textbox", { name: "プロジェクト名" })).toBeFocused();
+  await expect(projectDialog.getByRole("textbox", { name: "行動" })).toHaveCount(0);
+  await expect(projectDialog.getByRole("spinbutton")).toHaveCount(0);
   await projectDialog.getByRole("button", { name: "キャンセル" }).click();
 
   const before = (await currentConfig(page)).projects.find(
     (project) => project.id === "sample-learning",
   );
   expect(before).toBeTruthy();
-  await page.locator('[data-project-id="sample-learning"]').click({ button: "right" });
-  await page.getByRole("menuitem", { name: "編集" }).click();
-  projectDialog = page.getByRole("dialog", { name: "次の一手を編集" });
-  await projectDialog.getByRole("textbox", { name: /^次にやること/ }).fill("更新した一手");
+  await page.locator('[data-project-id="sample-learning"] .nextStepProjectRegion').click({ button: "right" });
+  await page.getByRole("menuitem", { name: "プロジェクトを編集" }).click();
+  projectDialog = page.getByRole("dialog", { name: "プロジェクトを編集" });
+  await projectDialog.getByRole("textbox", { name: "目標（任意）" }).fill("更新した目標");
   await projectDialog.getByRole("button", { name: "保存" }).click();
   const after = (await currentConfig(page)).projects.find(
     (project) => project.id === "sample-learning",
   );
-  expect(after).toMatchObject({
-    id: before!.id,
-    buttonIds: before!.buttonIds,
-    instructionPath: before!.instructionPath,
-    instructionOpenOnStart: before!.instructionOpenOnStart,
-    nextStep: "更新した一手",
-  });
+  expect(after?.id).toBe(before!.id);
+  expect(after?.northStar).toBe("更新した目標");
+  expect(after?.nextStep).toEqual(before!.nextStep);
 });

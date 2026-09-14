@@ -75,6 +75,7 @@ import {
   DoNowResponse,
   LauncherAction,
   LauncherButton,
+  LauncherNextStep,
   OverlayPage,
   LauncherProject,
   ProjectColorId,
@@ -98,6 +99,11 @@ import { StartEnvironmentPicker } from "./StartEnvironmentPicker";
 import { InstructionPicker } from "./InstructionPicker";
 import { RecordsView } from "./RecordsView";
 import { canonicalSourceKey, timerSourceKey, resnapshotSource, SOURCE_EDIT_TIMER_REASON } from "./sourceEdit";
+import {
+  completeTodayItemAndPrepareSource,
+  completeWishlistAfterToday,
+  type TodayCompletionSource,
+} from "./completionFollowup";
 import { PROJECT_COLOR_IDS, PROJECT_COLOR_LABELS, resolveProjectColorId } from "./projectIdentity";
 import { canRevealLauncherButton } from "./launcherReveal";
 import { TimerPanel } from "./components/TimerPanel";
@@ -173,6 +179,7 @@ type WeeklyReviewDisplayProject = {
 type ActiveTimer = {
   instanceId: number;
   sourceId: string;
+  sourceGenerationId?: string;
   projectId: string | null;
   label: string;
   note: string;
@@ -242,16 +249,28 @@ type ProjectEditDraft = {
   name: string;
   northStar: string;
   weeklyFocus: boolean;
-  nextStep: string;
-  nextStepTrigger: string;
+  colorId: ProjectColorId;
+  isNew: boolean;
+};
+
+type LegacyNextStepChoice = "inherit" | "discard" | null;
+
+type NextStepEditDraft = {
+  mode: "edit" | "set" | "promote";
+  projectId: string;
+  projectLocked: boolean;
+  text: string;
+  originalText: string;
+  trigger: string;
   buttonIds: string[];
   defaultTimerMinutes: string;
   shortTimerMinutes: string;
   startNoteTemplate: string;
   instructionPath: string;
   instructionOpenOnStart: boolean;
-  colorId: ProjectColorId;
-  isNew: boolean;
+  legacyChoice: LegacyNextStepChoice;
+  replacementConfirmed: boolean;
+  promotedWishlistId?: string;
 };
 
 type InstructionChoice = {
@@ -356,11 +375,18 @@ type CompletionFeedback = {
   sourceKey?: string;
 };
 
+type CompletionFollowup = {
+  key: string;
+  source: TodayCompletionSource;
+  text: string;
+};
+
 type TodayBuilderCandidate = {
   key: string;
   text: string;
   source: string;
   sourceKey: string;
+  sourceGenerationId?: string;
   legacyOrderKeys?: string[];
   sourceAliases?: string[];
   trigger?: string;
@@ -387,6 +413,10 @@ type ContextMenuTarget =
     }
   | {
       kind: "project";
+      project: LauncherProject;
+    }
+  | {
+      kind: "nextStep";
       project: LauncherProject;
     }
   | {
@@ -726,24 +756,26 @@ function projectTodayCandidate(
   project: LauncherProject,
   settings: AppConfig["settings"],
 ): TodayBuilderCandidate {
-  const text = project.nextStep.trim();
+  const nextStep = project.nextStep;
+  const text = nextStep?.text.trim() ?? "";
   return {
     key: `project:${project.id}`,
     text,
     source: "次の一手",
     sourceKey: `project:${project.id}`,
+    ...(nextStep?.generationId ? { sourceGenerationId: nextStep.generationId } : {}),
     legacyOrderKeys: [`project:${project.id}:${text}`],
     projectId: project.id,
-    ...(project.nextStepTrigger?.trim() ? { trigger: project.nextStepTrigger.trim() } : {}),
-    ...(project.buttonIds.length ? { buttonIds: [...project.buttonIds] } : {}),
-    ...(project.instructionPath
+    ...(nextStep?.trigger?.trim() ? { trigger: nextStep.trigger.trim() } : {}),
+    ...(nextStep?.buttonIds.length ? { buttonIds: [...nextStep.buttonIds] } : {}),
+    ...(nextStep?.instructionPath
       ? {
-          instructionPath: project.instructionPath,
-          instructionOpenOnStart: project.instructionOpenOnStart !== false,
+          instructionPath: nextStep.instructionPath,
+          instructionOpenOnStart: nextStep.instructionOpenOnStart !== false,
         }
       : {}),
-    defaultTimerMinutes: project.defaultTimerMinutes ?? settings.defaultTimerMinutes,
-    shortTimerMinutes: project.shortTimerMinutes ?? settings.shortTimerMinutes,
+    defaultTimerMinutes: nextStep?.defaultTimerMinutes ?? settings.defaultTimerMinutes,
+    shortTimerMinutes: nextStep?.shortTimerMinutes ?? settings.shortTimerMinutes,
   };
 }
 
@@ -770,8 +802,8 @@ function wishlistTodayCandidate(
           instructionOpenOnStart: item.instructionOpenOnStart !== false,
         }
       : {}),
-    defaultTimerMinutes: project?.defaultTimerMinutes ?? settings.defaultTimerMinutes,
-    shortTimerMinutes: project?.shortTimerMinutes ?? settings.shortTimerMinutes,
+    defaultTimerMinutes: project?.nextStep?.defaultTimerMinutes ?? settings.defaultTimerMinutes,
+    shortTimerMinutes: project?.nextStep?.shortTimerMinutes ?? settings.shortTimerMinutes,
   };
 }
 
@@ -1924,6 +1956,7 @@ function DashboardApp() {
   const [defaultTimerDraft, setDefaultTimerDraft] = useState("");
   const [victoryEditing, setVictoryEditing] = useState(false);
   const [inboxDraft, setInboxDraft] = useState("");
+  const [inboxAddProjectId, setInboxAddProjectId] = useState("");
   const [inboxAddOpen, setInboxAddOpen] = useState(false);
   const [inboxAddSaving, setInboxAddSaving] = useState(false);
   const [inboxAddError, setInboxAddError] = useState<string | null>(null);
@@ -1974,7 +2007,6 @@ function DashboardApp() {
   const [sessionProjectFilter, setSessionProjectFilter] = useState("");
   const [sessionDateScope, setSessionDateScope] = useState<RecordsDateScope>("week");
   const [notesHistory, setNotesHistory] = useState<NotesHistoryResponse | null>(null);
-  const [completionNextStepSuggestions, setCompletionNextStepSuggestions] = useState<string[]>([]);
   const [projectNextStepSuggestions, setProjectNextStepSuggestions] = useState<string[]>([]);
   const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(null);
   const timerStartRequestRef = useRef(0);
@@ -1991,6 +2023,7 @@ function DashboardApp() {
   const [earlyStopSaving, setEarlyStopSaving] = useState(false);
   const [completionPrompt, setCompletionPrompt] = useState<TimerCompletionPrompt | null>(null);
   const [completionFeedback, setCompletionFeedback] = useState<CompletionFeedback | null>(null);
+  const [completionFollowup, setCompletionFollowup] = useState<CompletionFollowup | null>(null);
   const [now, setNow] = useState(Date.now());
   const [collapsedGroups, setCollapsedGroups] =
     useState<Record<string, boolean>>(readCollapsedGroups);
@@ -2016,6 +2049,8 @@ function DashboardApp() {
     null,
   );
   const [projectEditDraft, setProjectEditDraft] = useState<ProjectEditDraft | null>(null);
+  const [projectEditSaving, setProjectEditSaving] = useState(false);
+  const [nextStepEditDraft, setNextStepEditDraft] = useState<NextStepEditDraft | null>(null);
   const [instructionChoices, setInstructionChoices] = useState<InstructionChoice[]>([]);
   const [instructionChoicesLoading, setInstructionChoicesLoading] = useState(false);
   const [instructionChoicesError, setInstructionChoicesError] = useState<string | null>(null);
@@ -2049,6 +2084,9 @@ function DashboardApp() {
   const todayBuilderOpenRef = useRef(todayBuilderOpen);
   todayBuilderOpenRef.current = todayBuilderOpen;
   const inboxAddSavingRef = useRef(false);
+  const projectEditSavingRef = useRef(false);
+  const configSaveBlockedRef = useRef(false);
+  const confirmDialogRef = useRef<ConfirmDialogRequest | null>(null);
   const inboxAddOpenerRef = useRef<HTMLButtonElement | null>(null);
   const sourceEditOriginRef = useRef<"source" | "today" | "builder">("source");
   const projectListAnchorRef = useRef<{ id: string; index: number } | null>(null);
@@ -2061,7 +2099,9 @@ function DashboardApp() {
   const toastTimersRef = useRef<Map<number, ToastTimerState>>(new Map());
   const toastActionLocksRef = useRef<Set<number>>(new Set());
   const completionFeedbackTimerRef = useRef<number | null>(null);
+  const completionFollowupTimerRef = useRef<number | null>(null);
   const seenCompletionFeedbackRef = useRef<Set<string>>(new Set());
+  const queuedCompletionFollowupsRef = useRef<Set<string>>(new Set());
   const lastBackupErrorRef = useRef<string | null>(null);
   const lastSettingsApplyErrorRef = useRef<string | null>(null);
   const shortcutCaptureActiveRef = useRef(false);
@@ -2073,6 +2113,8 @@ function DashboardApp() {
   const launcherPageAddRef = useRef<HTMLButtonElement | null>(null);
   const overlayPageDialogOpenerRef = useRef<HTMLElement | null>(null);
   const contextMenuReturnFocusRef = useRef<HTMLElement | null>(null);
+  const projectEditReturnFocusRef = useRef<HTMLElement | null>(null);
+  const nextStepEditReturnFocusRef = useRef<HTMLElement | null>(null);
   const confirmFocusReturnRef = useRef<HTMLElement | null>(null);
   const morningFocusDateRef = useRef<string | null>(null);
   const miniWindowRef = useRef<WebviewWindow | null>(null);
@@ -2083,7 +2125,11 @@ function DashboardApp() {
   const notesSaveTimersRef = useRef<Map<string, number>>(new Map());
 
   const requestConfirmation = useCallback((request: ConfirmDialogRequest) => {
-    setConfirmDialog((current) => current ?? request);
+    setConfirmDialog((current) => {
+      const next = current ?? request;
+      confirmDialogRef.current = next;
+      return next;
+    });
   }, []);
 
   const showCompletionFeedback = useCallback((feedback: CompletionFeedback) => {
@@ -2104,6 +2150,9 @@ function DashboardApp() {
       if (completionFeedbackTimerRef.current !== null) {
         window.clearTimeout(completionFeedbackTimerRef.current);
       }
+      if (completionFollowupTimerRef.current !== null) {
+        window.clearTimeout(completionFollowupTimerRef.current);
+      }
     },
     [],
   );
@@ -2118,6 +2167,65 @@ function DashboardApp() {
       });
     }
   }, []);
+
+  const captureDialogReturnFocus = useCallback(
+    (returnFocusRef: { current: HTMLElement | null }) => {
+      const activeElement =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      if (activeElement?.closest('[role="menu"]')) {
+        const contextMenuOpener = contextMenuReturnFocusRef.current;
+        returnFocusRef.current = contextMenuOpener?.isConnected ? contextMenuOpener : null;
+        return;
+      }
+      returnFocusRef.current =
+        activeElement?.isConnected &&
+        !activeElement.closest(".modalBackdrop, .launcherOverlayBackdrop")
+          ? activeElement
+          : null;
+    },
+    [],
+  );
+
+  const restoreDialogFocus = useCallback(
+    (returnFocusRef: { current: HTMLElement | null }, fallbackSelector?: string) => {
+      const returnTarget = returnFocusRef.current;
+      returnFocusRef.current = null;
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          if (returnTarget?.isConnected) {
+            returnTarget.focus();
+            return;
+          }
+          if (fallbackSelector) document.querySelector<HTMLElement>(fallbackSelector)?.focus();
+        });
+      });
+    },
+    [],
+  );
+
+  const closeProjectEditDialog = useCallback(
+    (afterSuccessfulSave = false) => {
+      if (!projectEditDraft || (!afterSuccessfulSave && projectEditSavingRef.current)) return;
+      const fallbackSelector = projectEditDraft.isNew
+        ? undefined
+        : `[data-project-id="${CSS.escape(projectEditDraft.id)}"] .nextStepProjectRegion`;
+      setProjectEditDraft(null);
+      restoreDialogFocus(projectEditReturnFocusRef, fallbackSelector);
+    },
+    [projectEditDraft, restoreDialogFocus],
+  );
+
+  const closeNextStepEditDialog = useCallback(
+    (afterSuccessfulSave = false) => {
+      if (!nextStepEditDraft || (!afterSuccessfulSave && sourceEditBusyRef.current)) return;
+      const fallbackSelector = nextStepEditDraft.projectId
+        ? `[data-project-id="${CSS.escape(nextStepEditDraft.projectId)}"] .nextStepActionRegion`
+        : undefined;
+      setNextStepEditDraft(null);
+      restoreDialogFocus(nextStepEditReturnFocusRef, fallbackSelector);
+    },
+    [nextStepEditDraft, restoreDialogFocus],
+  );
 
   const openLauncherOverlay = useCallback((opener?: HTMLElement | null) => {
     launcherOverlayOpenerRef.current =
@@ -2156,6 +2264,7 @@ function DashboardApp() {
   );
 
   const closeConfirmDialog = useCallback(() => {
+    confirmDialogRef.current = null;
     setConfirmDialog(null);
     const returnTarget = confirmFocusReturnRef.current;
     confirmFocusReturnRef.current = null;
@@ -2195,7 +2304,7 @@ function DashboardApp() {
   const staleNextStepProjects = useMemo(() => {
     if (!config) return [];
     const staleIds = new Set(staleNextStepProjectIds);
-    return config.projects.filter((project) => staleIds.has(project.id) && project.nextStep.trim());
+    return config.projects.filter((project) => staleIds.has(project.id) && project.nextStep?.text.trim());
   }, [config, staleNextStepProjectIds]);
 
   const buttonGroups = useMemo<ButtonGroup[]>(() => {
@@ -2604,29 +2713,17 @@ function DashboardApp() {
   }, [applyWeeklyReview, sessionDateScope, sessionProjectFilter, sessionSearch, showToast]);
 
   const refreshNextStepSuggestions = useCallback(
-    async (projectId: string | null | undefined, target: "completion" | "project") => {
+    async (projectId: string | null | undefined) => {
       if (!projectId) {
-        if (target === "completion") {
-          setCompletionNextStepSuggestions([]);
-        } else {
-          setProjectNextStepSuggestions([]);
-        }
+        setProjectNextStepSuggestions([]);
         return;
       }
 
       try {
         const suggestions = await loadNextStepSuggestions(projectId);
-        if (target === "completion") {
-          setCompletionNextStepSuggestions(suggestions);
-        } else {
-          setProjectNextStepSuggestions(suggestions);
-        }
+        setProjectNextStepSuggestions(suggestions);
       } catch {
-        if (target === "completion") {
-          setCompletionNextStepSuggestions([]);
-        } else {
-          setProjectNextStepSuggestions([]);
-        }
+        setProjectNextStepSuggestions([]);
       }
     },
     [],
@@ -2636,6 +2733,7 @@ function DashboardApp() {
     async (toastOnSuccess = false) => {
       try {
         const response = await loadConfig();
+        configSaveBlockedRef.current = response.saveBlocked;
         setConfig(response.config);
         setMorningVictorySuggestion(response.morningVictorySuggestion ?? null);
         setBackupPath(response.backupPath);
@@ -2665,6 +2763,7 @@ function DashboardApp() {
           showToast("ok", "設定を再読み込みしました");
         }
       } catch (error) {
+        configSaveBlockedRef.current = true;
         const message = error instanceof Error ? error.message : String(error);
         setBanner(message);
         setBackupPath("");
@@ -2754,12 +2853,14 @@ function DashboardApp() {
     });
   }, [buttonIconSources, config, refreshButtonIcon]);
 
-  useEffect(() => {
-    void refreshNextStepSuggestions(completionPrompt?.projectId, "completion");
-  }, [completionPrompt?.projectId, refreshNextStepSuggestions]);
-
   const persistConfig = useCallback(
     async (nextConfig: AppConfig) => {
+      if (configSaveBlockedRef.current) {
+        const message = "設定ファイルに問題があるため、元データを保護して保存を停止しています";
+        setBanner(message);
+        showToast("error", message);
+        return false;
+      }
       const safeConfig = limitToday(nextConfig);
       const previousConfig = configRef.current;
       configRef.current = safeConfig;
@@ -3312,13 +3413,14 @@ function DashboardApp() {
     inboxAddOpenerRef.current = null;
     setInboxAddOpen(false);
     setInboxDraft("");
+    setInboxAddProjectId("");
     setInboxAddError(null);
     setInboxAddSaving(false);
     window.requestAnimationFrame(() => opener?.focus());
   }, []);
 
   const dismissNonCriticalModal = useCallback(() => {
-    if (sourceEditBusyRef.current) return;
+    if (sourceEditBusyRef.current || projectEditSavingRef.current) return;
     if (inboxAddOpen) {
       closeInboxAddDialog();
       return;
@@ -3358,7 +3460,15 @@ function DashboardApp() {
       return;
     }
     if (projectEditDraft) {
-      setProjectEditDraft(null);
+      closeProjectEditDialog();
+      return;
+    }
+    if (nextStepEditDraft) {
+      closeNextStepEditDialog();
+      return;
+    }
+    if (completionFollowup) {
+      setCompletionFollowup(null);
       return;
     }
     if (groupRenameDraft) {
@@ -3368,6 +3478,8 @@ function DashboardApp() {
     if (groupDraft !== null) setGroupDraft(null);
   }, [
     buttonEditDraft,
+    closeNextStepEditDialog,
+    closeProjectEditDialog,
     closeInboxAddDialog,
     closeOverlayPageDialog,
     dropDraft,
@@ -3379,6 +3491,8 @@ function DashboardApp() {
     manualSessionDraft,
     overlayPageDraft,
     projectEditDraft,
+    nextStepEditDraft,
+    completionFollowup,
     requestCloseButtonEdit,
     requestCloseSettings,
     sessionEditDraft,
@@ -3395,6 +3509,8 @@ function DashboardApp() {
     manualSessionDraft ||
     buttonEditDraft ||
     projectEditDraft ||
+    nextStepEditDraft ||
+    completionFollowup ||
     groupRenameDraft ||
     overlayPageDraft ||
     groupDraft !== null,
@@ -3505,9 +3621,9 @@ function DashboardApp() {
       return;
     }
     if (field === "projectDefault" || field === "projectShort") {
-      if (!projectEditDraft) return;
-      setProjectEditDraft({
-        ...projectEditDraft,
+      if (!nextStepEditDraft) return;
+      setNextStepEditDraft({
+        ...nextStepEditDraft,
         [field === "projectDefault" ? "defaultTimerMinutes" : "shortTimerMinutes"]: String(value),
       });
       return;
@@ -3639,7 +3755,7 @@ function DashboardApp() {
     const projectNames = config.projects
       .filter(
         (project) =>
-          project.instructionPath && instructionPathWithin(project.instructionPath, path),
+          project.nextStep?.instructionPath && instructionPathWithin(project.nextStep.instructionPath, path),
       )
       .map((project) => project.name);
     requestConfirmation({
@@ -3658,6 +3774,7 @@ function DashboardApp() {
           if (savedRoot) {
             await updateInstructionReferences(path, null, true);
             const response = await loadConfig();
+            configSaveBlockedRef.current = response.saveBlocked;
             setConfig(response.config);
           }
           setSettingsDraft((current) =>
@@ -3830,6 +3947,7 @@ function DashboardApp() {
   const confirmBackupRestore = async (zipPath: string) => {
     try {
       const response = await restoreBackup(zipPath);
+      configSaveBlockedRef.current = response.saveBlocked;
       setConfig(response.config);
       setMorningVictorySuggestion(response.morningVictorySuggestion ?? null);
       setBackupPath(response.backupPath);
@@ -4385,22 +4503,6 @@ function DashboardApp() {
     });
   };
 
-  const moveProjectByOffset = async (projectId: string, offset: -1 | 1) => {
-    if (!config) return;
-    const index = config.projects.findIndex((project) => project.id === projectId);
-    const project = config.projects[index];
-    const targetIndex = index + offset;
-    if (!project || !config.projects[targetIndex]) return;
-    const projects = [...config.projects];
-    [projects[index], projects[targetIndex]] = [projects[targetIndex], projects[index]];
-
-    if (!(await persistConfig({ ...config, projects }))) return;
-    announceReorder(project.name, targetIndex + 1);
-    focusAfterReorder(() => {
-      document.querySelector<HTMLElement>(`[data-project-id="${projectId}"]`)?.focus();
-    });
-  };
-
   const moveInboxItemByOffset = async (index: number, offset: -1 | 1) => {
     if (!config) return;
     const targetIndex = index + offset;
@@ -4665,17 +4767,17 @@ function DashboardApp() {
   };
 
   const stepProjectTimer = (field: "defaultTimerMinutes" | "shortTimerMinutes", delta: number) => {
-    if (!config || !projectEditDraft) return;
+    if (!config || !nextStepEditDraft) return;
     const fallback =
       field === "defaultTimerMinutes"
         ? config.settings.defaultTimerMinutes
         : config.settings.shortTimerMinutes;
-    const current = Number.parseInt(projectEditDraft[field], 10);
+    const current = Number.parseInt(nextStepEditDraft[field], 10);
     const value = Math.min(
       240,
       Math.max(1, (Number.isFinite(current) ? current : fallback) + delta),
     );
-    setProjectEditDraft({ ...projectEditDraft, [field]: String(value) });
+    setNextStepEditDraft({ ...nextStepEditDraft, [field]: String(value) });
   };
 
   const continueProjectAutoScroll = () => {
@@ -4758,7 +4860,7 @@ function DashboardApp() {
     if (!current.today.candidateExcludedSourceKeys.includes(sourceKey)) return false;
     if (sourceKey.startsWith("project:")) {
       const id = sourceKey.slice("project:".length);
-      return current.projects.some((project) => project.id === id && project.nextStep.trim());
+      return current.projects.some((project) => project.id === id && project.nextStep?.text.trim());
     }
     if (sourceKey.startsWith("wishlist:")) {
       const id = sourceKey.slice("wishlist:".length);
@@ -5156,7 +5258,12 @@ function DashboardApp() {
           buttons: config.buttons.filter((item) => item.id !== button.id),
           projects: config.projects.map((project) => ({
             ...project,
-            buttonIds: project.buttonIds.filter((buttonId) => buttonId !== button.id),
+            ...(project.nextStep
+              ? { nextStep: { ...project.nextStep, buttonIds: project.nextStep.buttonIds.filter((buttonId) => buttonId !== button.id) } }
+              : {}),
+            ...(project.legacyNextStepSettings
+              ? { legacyNextStepSettings: { ...project.legacyNextStepSettings, buttonIds: project.legacyNextStepSettings.buttonIds.filter((buttonId) => buttonId !== button.id) } }
+              : {}),
           })),
         });
         if (!saved) {
@@ -5546,7 +5653,12 @@ function DashboardApp() {
         ? config.projects
         : config.projects.map((project) => ({
             ...project,
-            buttonIds: project.buttonIds.filter((buttonId) => buttonId !== buttonEditDraft.id),
+            ...(project.nextStep
+              ? { nextStep: { ...project.nextStep, buttonIds: project.nextStep.buttonIds.filter((buttonId) => buttonId !== buttonEditDraft.id) } }
+              : {}),
+            ...(project.legacyNextStepSettings
+              ? { legacyNextStepSettings: { ...project.legacyNextStepSettings, buttonIds: project.legacyNextStepSettings.buttonIds.filter((buttonId) => buttonId !== buttonEditDraft.id) } }
+              : {}),
           }));
 
     setButtonEditDraft(null);
@@ -5606,6 +5718,62 @@ function DashboardApp() {
       actions.splice(toIndex, 0, action);
       return { ...draft, actions };
     });
+  };
+
+  const queueCompletionFollowup = (
+    key: string,
+    source: TodayCompletionSource | null,
+    text: string,
+  ) => {
+    if (!source || queuedCompletionFollowupsRef.current.has(key)) return;
+    if (
+      source.kind === "nextStep" &&
+      (!source.isCurrentSnapshot ||
+        !(configRef.current?.inbox.some((item) => item.projectId === source.projectId) ?? false))
+    ) {
+      return;
+    }
+    queuedCompletionFollowupsRef.current.add(key);
+    if (completionFollowupTimerRef.current !== null) {
+      window.clearTimeout(completionFollowupTimerRef.current);
+    }
+    const showFollowup = () => {
+      completionFollowupTimerRef.current = null;
+      if (source.kind === "nextStep") {
+        if (configRef.current?.inbox.some((item) => item.projectId === source.projectId)) {
+          setCompletionFollowup({ key, source, text });
+        }
+        return;
+      }
+      if (confirmDialogRef.current) {
+        completionFollowupTimerRef.current = window.setTimeout(showFollowup, 250);
+        return;
+      }
+      requestConfirmation({
+        title: "この「やりたいこと」はどうしますか？",
+        subject: `「${text}」`,
+        message: "完了にすると、やりたいことから外します。今日の3件と実行記録は残ります。",
+        confirmLabel: "完了にする",
+        cancelLabel: "まだやりたい",
+        onConfirm: async () => {
+          const current = configRef.current;
+          if (!current) return false;
+          const next = completeWishlistAfterToday(
+            current,
+            source,
+            text,
+            new Date().toISOString(),
+            createStableId(),
+          );
+          if (!next) {
+            showToast("warn", "元のやりたいことが見つかりません");
+            return false;
+          }
+          return persistConfig(next);
+        },
+      });
+    };
+    completionFollowupTimerRef.current = window.setTimeout(showFollowup, 1100);
   };
 
   const recordTimerSession = useCallback(
@@ -5746,20 +5914,30 @@ function DashboardApp() {
       if (complete) {
         const current = configRef.current;
         if (current) {
-          let completedSourceKey: string | null = null;
-          const items = current.today.items.map((item, index) =>
-            todaySourceKey(item, index) === pending.sourceKey && !item.done
-              ? ((completedSourceKey = pending.sourceKey), { ...item, done: true })
-              : item,
+          const completedItem = current.today.items.find(
+            (item, index) => todaySourceKey(item, index) === pending.sourceKey && !item.done,
           );
-          const saved = await persistConfig({ ...current, today: { ...current.today, items } });
+          const prepared = completeTodayItemAndPrepareSource(
+            current,
+            pending.sourceKey,
+            new Date().toISOString(),
+            createStableId(),
+          );
+          const completedSourceKey = prepared.config === current ? null : pending.sourceKey;
+          const saved =
+            prepared.config === current ? true : await persistConfig(prepared.config);
           if (saved && completedSourceKey) {
             showTimerCompletionFeedback(
               pending.timer,
               current,
-              items,
+              prepared.config.today.items,
               completedSourceKey,
               wasDoNow,
+            );
+            queueCompletionFollowup(
+              `timer:${current.today.date}:${pending.timer.instanceId}:${completedSourceKey}`,
+              prepared.source,
+              completedItem?.text ?? pending.timer.note ?? pending.timer.label,
             );
           }
         }
@@ -5835,16 +6013,29 @@ function DashboardApp() {
       if (requestId !== timerStartRequestRef.current) return;
       setCompletionPrompt(null);
       const start = new Date();
+      const timerConfig = configRef.current ?? config;
+      const directTodayItem = sourceId.startsWith("today:")
+        ? timerConfig.today.items.find(
+            (item, index) => todayTimerSourceId(item, index) === sourceId,
+          )
+        : undefined;
+      const sourceGenerationId = sourceId.startsWith("today:")
+        ? directTodayItem?.sourceGenerationId
+        :
+        (projectId !== null && sourceId === projectId
+          ? timerConfig.projects.find((project) => project.id === projectId)?.nextStep?.generationId
+          : undefined);
       const resolvedTargetMinutes = targetMinutes ?? config.settings.defaultTimerMinutes;
       const fallbackNote =
         projectId !== null
-          ? (config.projects.find((project) => project.id === projectId)?.nextStep ?? "")
+          ? (config.projects.find((project) => project.id === projectId)?.nextStep?.text ?? "")
           : cleanLabel;
       const note = noteOverride?.trim() || fallbackNote;
       setNow(start.getTime());
       const nextTimer: ActiveTimer = {
         instanceId: requestId,
         sourceId,
+        ...(sourceGenerationId ? { sourceGenerationId } : {}),
         projectId,
         label: cleanLabel,
         note,
@@ -5865,10 +6056,10 @@ function DashboardApp() {
       }
 
       const project = projectId ? config.projects.find((item) => item.id === projectId) : undefined;
-      const instructionPath = instructionPathOverride?.trim() || project?.instructionPath;
+      const instructionPath = instructionPathOverride?.trim() || project?.nextStep?.instructionPath;
       const opensInstruction = instructionPathOverride?.trim()
         ? instructionOpenOnStartOverride !== false
-        : project?.instructionOpenOnStart !== false;
+        : project?.nextStep?.instructionOpenOnStart !== false;
       if (instructionPath && opensInstruction) {
         void openInstructionWindow({ path: instructionPath, focus: false }).catch((error) => {
           showToast(
@@ -5887,7 +6078,9 @@ function DashboardApp() {
     const saved = await persistConfig({
       ...config,
       projects: config.projects.map((project) =>
-        project.id === projectId ? { ...project, nextStepReviewedAt: reviewedAt } : project,
+        project.id === projectId && project.nextStep
+          ? { ...project, nextStep: { ...project.nextStep, reviewedAt } }
+          : project,
       ),
     });
     if (saved) {
@@ -5897,8 +6090,8 @@ function DashboardApp() {
   };
 
   const tryStaleNextStepForShortTime = async (project: LauncherProject) => {
-    if (!config || !project.nextStep.trim()) return;
-    const actions = project.buttonIds.flatMap(
+    if (!config || !project.nextStep?.text.trim()) return;
+    const actions = project.nextStep.buttonIds.flatMap(
       (buttonId) => buttonsById.get(buttonId)?.actions ?? [],
     );
     await startTimer(
@@ -5906,8 +6099,8 @@ function DashboardApp() {
       project.name,
       project.id,
       actions,
-      project.shortTimerMinutes ?? config.settings.shortTimerMinutes,
-      project.startNoteTemplate,
+      project.nextStep.shortTimerMinutes ?? config.settings.shortTimerMinutes,
+      project.nextStep.startNoteTemplate,
     );
     await markNextStepReviewed(project.id);
   };
@@ -5946,69 +6139,56 @@ function DashboardApp() {
 
     plannedCommitRef.current = true;
     const completedTimer = activeTimer;
-    const current = configRef.current;
     const wasDoNow = doNowSelection?.project.id === completedTimer.projectId;
-    const directSourceKey = completedTimer.sourceId.startsWith("today:")
-      ? completedTimer.sourceId.slice("today:".length)
-      : null;
-    const projectSourceKey = completedTimer.projectId
-      ? `project:${completedTimer.projectId}`
-      : null;
-    let completedSourceKey: string | null = null;
-    const items = current?.today.items.map((item, index) => {
-      const sourceKey = todaySourceKey(item, index);
-      const matches =
-        sourceKey === directSourceKey ||
-        (projectSourceKey !== null && sourceKey === projectSourceKey);
-      if (!matches || item.done) return item;
-      completedSourceKey = sourceKey;
-      return { ...item, done: true };
-    });
-    const completionSave =
-      current && items?.some((item, index) => item !== current.today.items[index])
-        ? persistConfig({ ...current, today: { ...current.today, items } })
-        : Promise.resolve(true);
-    void completionSave
-      .then(async (saved) => {
-        const finished = await finishTimer(completedTimer, "complete");
-        if (saved && finished && current && items) {
-          showTimerCompletionFeedback(
-            completedTimer,
-            current,
-            items,
-            completedSourceKey,
-            wasDoNow,
+    void finishTimer(completedTimer, "complete")
+      .then(async (finished) => {
+        if (!finished) return false;
+        const current = configRef.current;
+        if (!current) return true;
+        const directSourceKey = completedTimer.sourceId.startsWith("today:")
+          ? completedTimer.sourceId.slice("today:".length)
+          : null;
+        const projectSourceKey = completedTimer.projectId && completedTimer.sourceId === completedTimer.projectId
+          ? `project:${completedTimer.projectId}`
+          : null;
+        const targetSourceKey = directSourceKey ?? projectSourceKey;
+        const completedEntry = current.today.items
+          .map((item, index) => ({ item, sourceKey: todaySourceKey(item, index) }))
+          .find(
+            ({ item, sourceKey }) =>
+              !item.done &&
+              targetSourceKey !== null && sourceKey === targetSourceKey &&
+              item.sourceGenerationId === completedTimer.sourceGenerationId,
+          );
+        const prepared = completedEntry
+          ? completeTodayItemAndPrepareSource(
+              current,
+              completedEntry.sourceKey,
+              new Date().toISOString(),
+              createStableId(),
+            )
+          : { config: current, source: null };
+        if (prepared.config !== current && !(await persistConfig(prepared.config))) return false;
+
+        showTimerCompletionFeedback(
+          completedTimer,
+          current,
+          prepared.config.today.items,
+          completedEntry?.sourceKey ?? null,
+          wasDoNow,
+        );
+        if (completedEntry) {
+          queueCompletionFollowup(
+            `timer:${current.today.date}:${completedTimer.instanceId}:${completedEntry.sourceKey}`,
+            prepared.source,
+            completedEntry.item.text,
           );
         }
-        return finished;
+        return true;
       })
       .finally(() => {
         plannedCommitRef.current = false;
       });
-  };
-
-  const updateCompletionNextStep = (text: string) => {
-    if (!config || !completionPrompt?.projectId) return;
-    if (sourceEditBlocked(`project:${completionPrompt.projectId}`)) {
-      showToast("warn", SOURCE_EDIT_TIMER_REASON);
-      return;
-    }
-    const timestamp = new Date().toISOString();
-    const projects = config.projects.map((project) =>
-      project.id === completionPrompt.projectId
-        ? {
-            ...project,
-            nextStep: text,
-            nextStepUpdatedAt: timestamp,
-            nextStepReviewedAt: timestamp,
-          }
-        : project,
-    );
-    void saveSourceEdit(config, { ...config, projects }, `project:${completionPrompt.projectId}`).then((saved) => {
-      if (saved) {
-        setStaleNextStepProjectIds((ids) => ids.filter((id) => id !== completionPrompt.projectId));
-      }
-    });
   };
 
   const togglePause = useCallback(() => {
@@ -6317,7 +6497,14 @@ function DashboardApp() {
     setInboxAddError(null);
     const saved = await persistConfig({
       ...config,
-      inbox: [...config.inbox, { id: createStableId(), text }],
+      inbox: [
+        ...config.inbox,
+        {
+          id: createStableId(),
+          text,
+          ...(inboxAddProjectId ? { projectId: inboxAddProjectId } : {}),
+        },
+      ],
     });
     inboxAddSavingRef.current = false;
     setInboxAddSaving(false);
@@ -6342,10 +6529,9 @@ function DashboardApp() {
     sourceEditBusyRef.current = key;
     setSourceEditSaving(true);
     try {
-      const todayUpdated = previous.today.items.some(
-        (item, index) => canonicalSourceKey(previous, todaySourceKey(item, index)) === key,
-      );
-      return (await persistConfig(resnapshotSource(previous, next, key)))
+      const resnapshotted = resnapshotSource(previous, next, key);
+      const todayUpdated = resnapshotted.today !== next.today;
+      return (await persistConfig(resnapshotted))
         ? { todayUpdated }
         : null;
     } catch (error) {
@@ -6621,6 +6807,9 @@ function DashboardApp() {
         text: candidate.text,
         done: false,
         sourceKey: candidate.sourceKey,
+        ...(candidate.sourceGenerationId
+          ? { sourceGenerationId: candidate.sourceGenerationId }
+          : {}),
         ...(candidate.trigger ? { trigger: candidate.trigger } : {}),
         ...(candidate.projectId ? { projectId: candidate.projectId } : {}),
         ...(candidate.buttonIds?.length ? { buttonIds: [...candidate.buttonIds] } : {}),
@@ -6682,34 +6871,28 @@ function DashboardApp() {
     }
   };
 
-  const openInboxAddDialog = (opener?: HTMLButtonElement) => {
+  const openInboxAddDialog = (opener?: HTMLButtonElement, projectId = "") => {
     if (inboxAddSaving) return;
     if (opener) inboxAddOpenerRef.current = opener;
     setContextMenu(null);
     setInboxOpen(true);
     setInboxDraft("");
+    setInboxAddProjectId(
+      projectId && config?.projects.some((project) => project.id === projectId) ? projectId : "",
+    );
     setInboxAddError(null);
     setInboxAddOpen(true);
   };
 
   const openProjectAddDialog = () => {
     if (!config) return;
+    captureDialogReturnFocus(projectEditReturnFocusRef);
     setContextMenu(null);
-    setProjectNextStepSuggestions([]);
-    void refreshInstructionChoices();
     setProjectEditDraft({
       id: "",
       name: "",
       northStar: "",
       weeklyFocus: false,
-      nextStep: "",
-      nextStepTrigger: "",
-      buttonIds: [],
-      defaultTimerMinutes: "",
-      shortTimerMinutes: "",
-      startNoteTemplate: "",
-      instructionPath: "",
-      instructionOpenOnStart: false,
       colorId: "amber",
       isNew: true,
     });
@@ -6719,139 +6902,390 @@ function DashboardApp() {
     project: LauncherProject,
     origin: "source" | "today" | "builder" = "source",
   ) => {
-    if (sourceEditBlocked(`project:${project.id}`)) {
-      showToast("warn", SOURCE_EDIT_TIMER_REASON);
-      return;
-    }
     sourceEditOriginRef.current = origin;
+    captureDialogReturnFocus(projectEditReturnFocusRef);
     setContextMenu(null);
-    void refreshNextStepSuggestions(project.id, "project");
-    void refreshInstructionChoices();
     setProjectEditDraft({
       id: project.id,
       name: project.name,
       northStar: project.northStar ?? "",
       weeklyFocus: project.weeklyFocus === true,
-      nextStep: project.nextStep,
-      nextStepTrigger: project.nextStepTrigger ?? "",
-      buttonIds: project.buttonIds.filter((buttonId) =>
-        projectSelectableButtons.some((button) => button.id === buttonId),
-      ),
-      defaultTimerMinutes: project.defaultTimerMinutes ? String(project.defaultTimerMinutes) : "",
-      shortTimerMinutes: project.shortTimerMinutes ? String(project.shortTimerMinutes) : "",
-      startNoteTemplate: project.startNoteTemplate ?? "",
-      instructionPath: project.instructionPath ?? "",
-      instructionOpenOnStart: Boolean(
-        project.instructionPath && project.instructionOpenOnStart !== false,
-      ),
       colorId: resolveProjectColorId(project.id, project.colorId),
       isNew: false,
     });
   };
 
+  const nextStepExecutionDraft = (
+    execution?: Partial<LauncherNextStep>,
+  ): Pick<
+    NextStepEditDraft,
+    | "buttonIds"
+    | "defaultTimerMinutes"
+    | "shortTimerMinutes"
+    | "startNoteTemplate"
+    | "instructionPath"
+    | "instructionOpenOnStart"
+  > => ({
+    buttonIds: (execution?.buttonIds ?? []).filter((buttonId) =>
+      projectSelectableButtons.some((button) => button.id === buttonId),
+    ),
+    defaultTimerMinutes: execution?.defaultTimerMinutes
+      ? String(execution.defaultTimerMinutes)
+      : "",
+    shortTimerMinutes: execution?.shortTimerMinutes ? String(execution.shortTimerMinutes) : "",
+    startNoteTemplate: execution?.startNoteTemplate ?? "",
+    instructionPath: execution?.instructionPath ?? "",
+    instructionOpenOnStart: Boolean(
+      execution?.instructionPath && execution.instructionOpenOnStart !== false,
+    ),
+  });
+
+  const openNextStepEditor = (
+    project: LauncherProject,
+    options?: {
+      mode?: NextStepEditDraft["mode"];
+      text?: string;
+      promotedWishlistId?: string;
+      projectLocked?: boolean;
+    },
+  ) => {
+    const sourceKey = `project:${project.id}`;
+    if (sourceEditBlocked(sourceKey)) {
+      setContextMenu(null);
+      showToast("warn", SOURCE_EDIT_TIMER_REASON);
+      return;
+    }
+    const mode = options?.mode ?? (project.nextStep?.text.trim() ? "edit" : "set");
+    const editingExisting = mode === "edit" && Boolean(project.nextStep);
+    captureDialogReturnFocus(nextStepEditReturnFocusRef);
+    setContextMenu(null);
+    setNextStepEditDraft({
+      mode,
+      projectId: project.id,
+      projectLocked: options?.projectLocked ?? true,
+      text: options?.text ?? project.nextStep?.text ?? "",
+      originalText: project.nextStep?.text ?? "",
+      trigger: editingExisting ? (project.nextStep?.trigger ?? "") : "",
+      ...nextStepExecutionDraft(editingExisting ? project.nextStep : undefined),
+      legacyChoice:
+        !editingExisting && !project.nextStep && project.legacyNextStepSettings ? null : "discard",
+      replacementConfirmed: false,
+      ...(options?.promotedWishlistId
+        ? { promotedWishlistId: options.promotedWishlistId }
+        : {}),
+    });
+    void refreshNextStepSuggestions(project.id);
+    void refreshInstructionChoices();
+  };
+
+  const promoteInboxToNextStep = (index: number) => {
+    const current = configRef.current;
+    const item = current?.inbox[index];
+    if (!current || !item) return;
+    if (!item.id) {
+      setContextMenu(null);
+      showToast("warn", "この項目にはstable IDがないため、先に編集して保存してください");
+      return;
+    }
+    if (sourceEditBlocked(`wishlist:${item.id}`)) {
+      setContextMenu(null);
+      showToast("warn", SOURCE_EDIT_TIMER_REASON);
+      return;
+    }
+    const project = item.projectId
+      ? current.projects.find((candidate) => candidate.id === item.projectId)
+      : undefined;
+    if (item.projectId && !project) {
+      setContextMenu(null);
+      showToast("warn", "所属プロジェクトが見つかりません");
+      return;
+    }
+    if (project) {
+      openNextStepEditor(project, {
+        mode: "promote",
+        text: item.text,
+        promotedWishlistId: item.id,
+        projectLocked: true,
+      });
+      return;
+    }
+    captureDialogReturnFocus(nextStepEditReturnFocusRef);
+    setContextMenu(null);
+    setNextStepEditDraft({
+      mode: "promote",
+      projectId: "",
+      projectLocked: false,
+      text: item.text,
+      originalText: "",
+      trigger: "",
+      ...nextStepExecutionDraft(),
+      legacyChoice: "discard",
+      replacementConfirmed: false,
+      promotedWishlistId: item.id,
+    });
+    setProjectNextStepSuggestions([]);
+    void refreshInstructionChoices();
+  };
+
+  const selectNextStepProject = (projectId: string) => {
+    if (!nextStepEditDraft || nextStepEditDraft.projectLocked) return;
+    const project = configRef.current?.projects.find((candidate) => candidate.id === projectId);
+    if (project && sourceEditBlocked(`project:${project.id}`)) {
+      showToast("warn", SOURCE_EDIT_TIMER_REASON);
+      return;
+    }
+    setNextStepEditDraft({
+      ...nextStepEditDraft,
+      projectId,
+      originalText: project?.nextStep?.text ?? "",
+      trigger: "",
+      ...nextStepExecutionDraft(),
+      legacyChoice: project?.legacyNextStepSettings && !project.nextStep ? null : "discard",
+      replacementConfirmed: false,
+    });
+    void refreshNextStepSuggestions(projectId || null);
+  };
+
+  const chooseLegacyNextStepSettings = (choice: Exclude<LegacyNextStepChoice, null>) => {
+    if (!nextStepEditDraft) return;
+    const project = configRef.current?.projects.find(
+      (candidate) => candidate.id === nextStepEditDraft.projectId,
+    );
+    setNextStepEditDraft({
+      ...nextStepEditDraft,
+      ...nextStepExecutionDraft(
+        choice === "inherit" ? project?.legacyNextStepSettings : undefined,
+      ),
+      legacyChoice: choice,
+    });
+  };
+
+  const parseNextStepTimer = (raw: string, label: string) => {
+    if (!raw.trim()) return undefined;
+    const value = Number.parseInt(raw, 10);
+    if (!Number.isFinite(value) || value < 1 || value > 240) {
+      throw new Error(`${label}は1〜240分で入力してください`);
+    }
+    return value;
+  };
+
+  const saveNextStepEdit = async () => {
+    const current = configRef.current;
+    const draft = nextStepEditDraft;
+    if (!current || !draft || sourceEditBusyRef.current) return;
+    const project = current.projects.find((candidate) => candidate.id === draft.projectId);
+    if (!project) {
+      showToast("warn", "プロジェクトを選択してください");
+      return;
+    }
+    const text = draft.text.trim();
+    if (!text) {
+      showToast("warn", "次の一手を入力してください");
+      return;
+    }
+    if (
+      !project.nextStep &&
+      project.legacyNextStepSettings &&
+      draft.legacyChoice === null
+    ) {
+      showToast("warn", "以前の実行設定を引き継ぐか破棄するか選んでください");
+      return;
+    }
+    if (draft.mode === "promote" && project.nextStep?.text.trim() && !draft.replacementConfirmed) {
+      showToast("warn", "現在の次の一手を置き換えることを確認してください");
+      return;
+    }
+    const projectSourceKey = `project:${project.id}`;
+    const wishlistSourceKeyForPromotion = draft.promotedWishlistId
+      ? `wishlist:${draft.promotedWishlistId}`
+      : null;
+    if (
+      sourceEditBlocked(projectSourceKey) ||
+      (wishlistSourceKeyForPromotion && sourceEditBlocked(wishlistSourceKeyForPromotion))
+    ) {
+      showToast("warn", SOURCE_EDIT_TIMER_REASON);
+      return;
+    }
+    if (
+      draft.promotedWishlistId &&
+      !current.inbox.some((item) => item.id === draft.promotedWishlistId)
+    ) {
+      showToast("warn", "元のやりたいことが見つかりません");
+      return;
+    }
+
+    let defaultTimerMinutes: number | undefined;
+    let shortTimerMinutes: number | undefined;
+    try {
+      defaultTimerMinutes = parseNextStepTimer(draft.defaultTimerMinutes, "通常タイマー");
+      shortTimerMinutes = parseNextStepTimer(draft.shortTimerMinutes, "短時間タイマー");
+    } catch (error) {
+      showToast("warn", error instanceof Error ? error.message : String(error));
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const existing = draft.mode === "edit" ? project.nextStep : undefined;
+    const nextStep: LauncherNextStep = {
+      text,
+      ...(existing
+        ? { generationId: existing.generationId }
+        : { generationId: createStableId() }),
+      buttonIds: [...draft.buttonIds],
+      ...(draft.trigger.trim() ? { trigger: draft.trigger.trim() } : {}),
+      ...(defaultTimerMinutes ? { defaultTimerMinutes } : {}),
+      ...(shortTimerMinutes ? { shortTimerMinutes } : {}),
+      ...(draft.startNoteTemplate.trim()
+        ? { startNoteTemplate: draft.startNoteTemplate.trim() }
+        : {}),
+      ...(draft.instructionPath
+        ? {
+            instructionPath: draft.instructionPath,
+            instructionOpenOnStart: draft.instructionOpenOnStart,
+          }
+        : {}),
+      updatedAt:
+        existing?.updatedAt && text === draft.originalText ? existing.updatedAt : now,
+      ...(existing?.reviewedAt ? { reviewedAt: existing.reviewedAt } : {}),
+    };
+    const nextProject: LauncherProject = {
+      ...project,
+      nextStep,
+      legacyNextStepSettings: undefined,
+    };
+    const nextConfig: AppConfig = {
+      ...current,
+      projects: current.projects.map((candidate) =>
+        candidate.id === project.id ? nextProject : candidate,
+      ),
+      inbox: draft.promotedWishlistId
+        ? current.inbox.filter((item) => item.id !== draft.promotedWishlistId)
+        : current.inbox,
+    };
+
+    if (draft.mode === "edit" && !draft.promotedWishlistId) {
+      const result = await saveSourceEdit(current, nextConfig, projectSourceKey);
+      if (!result) return;
+      closeNextStepEditDialog(true);
+      showToast("ok", "次の一手を保存しました", {
+        detail: result.todayUpdated ? "今日の3件にも反映しました" : undefined,
+      });
+      return;
+    }
+
+    sourceEditBusyRef.current = projectSourceKey;
+    setSourceEditSaving(true);
+    try {
+      if (!(await persistConfig(nextConfig))) return;
+      closeNextStepEditDialog(true);
+      showToast("ok", draft.promotedWishlistId ? "次の一手にしました" : "次の一手を保存しました");
+    } finally {
+      sourceEditBusyRef.current = null;
+      setSourceEditSaving(false);
+    }
+  };
+
+  const clearProjectNextStep = (project: LauncherProject) => {
+    const current = configRef.current;
+    const liveProject = current?.projects.find((candidate) => candidate.id === project.id);
+    if (!current || !liveProject?.nextStep?.text.trim()) return;
+    const sourceKey = `project:${project.id}`;
+    if (sourceEditBlocked(sourceKey)) {
+      setContextMenu(null);
+      showToast("warn", SOURCE_EDIT_TIMER_REASON);
+      return;
+    }
+    setContextMenu(null);
+    requestConfirmation({
+      title: "次の一手を空にしますか？",
+      subject: `「${liveProject.nextStep.text}」`,
+      message: "今日の3件に採用済みの内容と実行記録は変更しません。",
+      confirmLabel: "空にする",
+      processingLabel: "保存しています…",
+      tone: "warning",
+      onConfirm: () =>
+        persistConfig({
+          ...current,
+          projects: current.projects.map((candidate) =>
+            candidate.id === project.id ? { ...candidate, nextStep: undefined } : candidate,
+          ),
+        }),
+    });
+  };
+
+  const addProjectNextStepToToday = (project: LauncherProject) => {
+    const current = configRef.current;
+    if (!current || !project.nextStep?.text.trim()) return;
+    setContextMenu(null);
+    void addCandidateToToday(projectTodayCandidate(project, current.settings));
+  };
+
+  const addWishlistToToday = (index: number) => {
+    const current = configRef.current;
+    const item = current?.inbox[index];
+    if (!current || !item) return;
+    const project = item.projectId
+      ? current.projects.find((candidate) => candidate.id === item.projectId)
+      : undefined;
+    setContextMenu(null);
+    void addCandidateToToday(
+      wishlistTodayCandidate(item, index, project, current.settings, true),
+    );
+  };
+
+  const openProjectManagement = () => {
+    setContextMenu(null);
+    setProjectsOpen(true);
+    window.requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>(".projectsBand")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  };
+
   const saveProjectEdit = async () => {
     const config = configRef.current;
-    if (!config || !projectEditDraft) return;
+    if (!config || !projectEditDraft || projectEditSavingRef.current) return;
     if (!projectEditDraft.isNew && !config.projects.some(p => p.id === projectEditDraft.id)) {
       showToast("warn", "元の登録が見つかりません");
       return;
     }
-    if (sourceEditBlocked(`project:${projectEditDraft.id}`)) {
-      showToast("warn", SOURCE_EDIT_TIMER_REASON);
-      return;
-    }
     const name = projectEditDraft.name.trim();
     if (!name) {
-      showToast("warn", "取り組み名を入力してください");
-      return;
-    }
-    const defaultTimerMinutes = projectEditDraft.defaultTimerMinutes.trim()
-      ? Number(projectEditDraft.defaultTimerMinutes)
-      : undefined;
-    const shortTimerMinutes = projectEditDraft.shortTimerMinutes.trim()
-      ? Number(projectEditDraft.shortTimerMinutes)
-      : undefined;
-    if (
-      [defaultTimerMinutes, shortTimerMinutes].some(
-        (minutes) =>
-          minutes !== undefined && (!Number.isInteger(minutes) || minutes < 1 || minutes > 240),
-      )
-    ) {
-      showToast("warn", "タイマー分数は1〜240の整数で入力してください");
+      showToast("warn", "プロジェクト名を入力してください");
       return;
     }
 
     const existingProject = projectEditDraft.isNew
       ? undefined
       : config.projects.find((item) => item.id === projectEditDraft.id);
-    const nextStep = projectEditDraft.nextStep.trim();
-    const nextStepChanged = existingProject
-      ? existingProject.nextStep !== nextStep
-      : Boolean(nextStep);
-    const nextStepTimestamp = nextStepChanged ? new Date().toISOString() : null;
     const project: LauncherProject = {
+      ...(existingProject ?? {}),
       id: projectEditDraft.isNew ? uniqueProjectId(name, config.projects) : projectEditDraft.id,
       name,
-      ...(projectEditDraft.northStar.trim()
-        ? { northStar: projectEditDraft.northStar.trim() }
-        : {}),
-      ...(projectEditDraft.weeklyFocus ? { weeklyFocus: true } : {}),
-      nextStep,
-      ...(projectEditDraft.nextStepTrigger.trim()
-        ? { nextStepTrigger: projectEditDraft.nextStepTrigger.trim() }
-        : {}),
-      buttonIds: projectEditDraft.buttonIds.filter((buttonId) =>
-        projectSelectableButtons.some((button) => button.id === buttonId),
-      ),
-      ...(defaultTimerMinutes !== undefined ? { defaultTimerMinutes } : {}),
-      ...(shortTimerMinutes !== undefined ? { shortTimerMinutes } : {}),
-      ...(projectEditDraft.startNoteTemplate.trim()
-        ? { startNoteTemplate: projectEditDraft.startNoteTemplate.trim() }
-        : {}),
-      ...(projectEditDraft.instructionPath
-        ? {
-            instructionPath: projectEditDraft.instructionPath,
-            instructionOpenOnStart: projectEditDraft.instructionOpenOnStart,
-          }
-        : {}),
+      northStar: projectEditDraft.northStar.trim() || undefined,
+      weeklyFocus: projectEditDraft.weeklyFocus || undefined,
       colorId: projectEditDraft.colorId,
-      ...(nextStepTimestamp
-        ? {
-            nextStepUpdatedAt: nextStepTimestamp,
-            nextStepReviewedAt: nextStepTimestamp,
-          }
-        : {
-            ...(existingProject?.nextStepUpdatedAt
-              ? { nextStepUpdatedAt: existingProject.nextStepUpdatedAt }
-              : {}),
-            ...(existingProject?.nextStepReviewedAt
-              ? { nextStepReviewedAt: existingProject.nextStepReviewedAt }
-              : {}),
-          }),
     };
 
     const projects = projectEditDraft.isNew
       ? [...config.projects, project]
       : config.projects.map((item) => (item.id === project.id ? project : item));
 
-    const result = await saveSourceEdit(
-      config,
-      { ...config, projects },
-      `project:${project.id}`,
-    );
-    if (!result) return;
-    setProjectEditDraft(null);
-    if (nextStepChanged) setStaleNextStepProjectIds((ids) => ids.filter((id) => id !== project.id));
-    if (projectEditDraft.isNew) {
-      showToast("ok", `${name} を保存しました`);
-    } else {
-      const detail =
-        sourceEditOriginRef.current === "source"
-          ? result.todayUpdated
-            ? "今日の3件にも反映しました"
-            : undefined
-          : "元の「次の一手」にも反映しました";
-      showToast("ok", "変更を保存しました", { detail });
+    projectEditSavingRef.current = true;
+    setProjectEditSaving(true);
+    try {
+      if (!(await persistConfig({ ...config, projects }))) return;
+      closeProjectEditDialog(true);
+      if (projectEditDraft.isNew) {
+        showToast("ok", `${name} を追加しました`);
+      } else {
+        showToast("ok", "プロジェクトを保存しました");
+      }
+    } finally {
+      projectEditSavingRef.current = false;
+      setProjectEditSaving(false);
     }
   };
 
@@ -6882,79 +7316,6 @@ function DashboardApp() {
       projects: config.projects.map((project) =>
         project.id === projectId ? { ...project, weeklyFocus: checked || undefined } : project,
       ),
-    });
-  };
-
-  const completeProjectNextStep = (project: LauncherProject) => {
-    if (!config || !project.nextStep.trim()) return;
-    const sourceKeys = [`project:${project.id}`];
-    if (isTimerActiveForSource(sourceKeys, project.id)) {
-      setContextMenu(null);
-      showToast("warn", "タイマーを停止してから完了してください");
-      return;
-    }
-    requestConfirmation({
-      title: "完了にしますか？",
-      subject: `「${project.nextStep}」`,
-      message: "この項目は今後の候補から外れます。これまでの実行記録は残ります。",
-      confirmLabel: "完了にする",
-      processingLabel: "完了にしています…",
-      onConfirm: async () => {
-        const completion: SourceCompletion = {
-          id: createStableId(),
-          sourceType: "nextStep",
-          sourceIdentity: sourceKeys[0],
-          textSnapshot: project.nextStep,
-          projectId: project.id,
-          projectNameSnapshot: project.name,
-          completedAt: new Date().toISOString(),
-        };
-        return persistConfig({
-          ...config,
-          today: withoutSourceFromToday(config, sourceKeys),
-          projects: config.projects.map((item) =>
-            item.id === project.id
-              ? {
-                  ...item,
-                  nextStep: "",
-                  nextStepTrigger: undefined,
-                  nextStepUpdatedAt: undefined,
-                  nextStepReviewedAt: undefined,
-                }
-              : item,
-          ),
-          sourceCompletions: [...config.sourceCompletions, completion],
-        });
-      },
-    });
-  };
-
-  const deleteProject = (project: LauncherProject) => {
-    if (!config) return;
-    const sourceKeys = [`project:${project.id}`];
-    if (isTimerActiveForSource(sourceKeys, project.id)) {
-      setContextMenu(null);
-      showToast("warn", "タイマーを停止してから削除してください");
-      return;
-    }
-    requestConfirmation({
-      title: "削除しますか？",
-      subject: `「${project.name}」`,
-      message: "この登録を削除します。完了としては記録されません。",
-      confirmLabel: "削除",
-      processingLabel: "削除しています…",
-      tone: "danger",
-      onConfirm: async () => {
-        const saved = await persistConfig({
-          ...config,
-          today: withoutSourceFromToday(config, sourceKeys),
-          projects: config.projects.filter((item) => item.id !== project.id),
-        });
-        if (!saved) return false;
-        setContextMenu(null);
-        showToast("ok", `${project.name} を削除しました`);
-        return true;
-      },
     });
   };
 
@@ -7179,7 +7540,11 @@ function DashboardApp() {
     }
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
-        document.querySelector<HTMLElement>(`[data-project-id="${CSS.escape(project.id)}"]`)?.focus();
+        document
+          .querySelector<HTMLElement>(
+            `[data-project-id="${CSS.escape(project.id)}"] .nextStepActionRegion`,
+          )
+          ?.focus();
       });
     });
   }, [config?.projects]);
@@ -7284,7 +7649,7 @@ function DashboardApp() {
   const victorySuggestions = uniqueSuggestions(
     [
       morningVictorySuggestion,
-      ...config.projects.slice(0, 3).map((project) => project.nextStep),
+      ...config.projects.slice(0, 3).map((project) => project.nextStep?.text ?? ""),
       config.inbox[0]?.text,
     ],
     5,
@@ -7299,7 +7664,7 @@ function DashboardApp() {
   );
   const rawTodayBuilderCandidates: TodayBuilderCandidate[] = [
     ...config.projects.flatMap((project) => {
-      const text = project.nextStep.trim();
+      const text = project.nextStep?.text.trim() ?? "";
       return text ? [projectTodayCandidate(project, config.settings)] : [];
     }),
     ...config.inbox.flatMap((item, index) => {
@@ -7323,7 +7688,7 @@ function DashboardApp() {
       const project = current.projects.find(
         (item) => item.id === sourceKey.slice("project:".length),
       );
-      return project?.nextStep.trim() ? projectTodayCandidate(project, current.settings) : undefined;
+      return project?.nextStep?.text.trim() ? projectTodayCandidate(project, current.settings) : undefined;
     }
     if (sourceKey.startsWith("wishlist:")) {
       const id = sourceKey.slice("wishlist:".length);
@@ -7392,7 +7757,7 @@ function DashboardApp() {
     }
     const project = config.projects.find((item) => `project:${item.id}` === key);
     if (project) {
-      openProjectEditDialog(project, "builder");
+      openNextStepEditor(project);
       return;
     }
     const inboxIndex = config.inbox.findIndex((item) => `wishlist:${item.id}` === key);
@@ -7515,9 +7880,6 @@ function DashboardApp() {
   const activeTimerProject = activeTimer?.projectId
     ? config.projects.find((project) => project.id === activeTimer.projectId)
     : undefined;
-  const completionProject = completionPrompt?.projectId
-    ? config.projects.find((project) => project.id === completionPrompt.projectId)
-    : null;
   const focusedProjects = config.projects.filter((project) => project.weeklyFocus === true);
   const doNowCandidates = (doNowResponse?.candidates ?? []).flatMap((candidate) => {
     const project = config.projects.find((item) => item.id === candidate.projectId);
@@ -7539,17 +7901,17 @@ function DashboardApp() {
             : "今日の中で最初に取り組んだため、次の候補です"
     : "";
   const doNowDefaultTimerMinutes = doNowSelection
-    ? (doNowSelection.project.defaultTimerMinutes ?? config.settings.defaultTimerMinutes)
+    ? (doNowSelection.project.nextStep?.defaultTimerMinutes ?? config.settings.defaultTimerMinutes)
     : config.settings.defaultTimerMinutes;
   const doNowShortTimerMinutes = doNowSelection
-    ? (doNowSelection.project.shortTimerMinutes ?? config.settings.shortTimerMinutes)
+    ? (doNowSelection.project.nextStep?.shortTimerMinutes ?? config.settings.shortTimerMinutes)
     : config.settings.shortTimerMinutes;
-  const doNowInstructionPath = doNowSelection?.project.instructionPath?.trim() ?? "";
+  const doNowInstructionPath = doNowSelection?.project.nextStep?.instructionPath?.trim() ?? "";
   const isDoNowRunning = Boolean(
     doNowSelection && activeTimer?.sourceId === doNowSelection.project.id,
   );
   const startDoNowProject = (project: LauncherProject, short: boolean) => {
-    const actions = project.buttonIds.flatMap(
+    const actions = (project.nextStep?.buttonIds ?? []).flatMap(
       (buttonId) => buttonsById.get(buttonId)?.actions ?? [],
     );
     void startTimer(
@@ -7558,9 +7920,9 @@ function DashboardApp() {
       project.id,
       actions,
       short
-        ? (project.shortTimerMinutes ?? config.settings.shortTimerMinutes)
-        : (project.defaultTimerMinutes ?? config.settings.defaultTimerMinutes),
-      project.startNoteTemplate,
+        ? (project.nextStep?.shortTimerMinutes ?? config.settings.shortTimerMinutes)
+        : (project.nextStep?.defaultTimerMinutes ?? config.settings.defaultTimerMinutes),
+      project.nextStep?.startNoteTemplate,
     );
   };
   const showNextDoNowCandidate = () => {
@@ -8633,20 +8995,20 @@ function DashboardApp() {
                           </span>
                         )}
                       </div>
-                      <strong title={doNowSelection.project.nextStep}>
-                        {doNowSelection.project.nextStep}
+                      <strong title={doNowSelection.project.nextStep?.text}>
+                        {doNowSelection.project.nextStep?.text}
                       </strong>
                       <div className="doNowMeta">
                         <span className="doNowMetaItem doNowMetaTimer">
                           <UiIcon name="clock" size={16} /> 通常 {doNowDefaultTimerMinutes}分
                         </span>
-                        {doNowSelection.project.nextStepTrigger?.trim() && (
+                        {doNowSelection.project.nextStep?.trigger?.trim() && (
                           <span
                             className="doNowMetaItem doNowTrigger"
-                            title={doNowSelection.project.nextStepTrigger.trim()}
+                            title={doNowSelection.project.nextStep.trigger.trim()}
                           >
                             <UiIcon name="external" size={16} />
-                            {doNowSelection.project.nextStepTrigger.trim()}
+                            {doNowSelection.project.nextStep.trigger.trim()}
                           </span>
                         )}
                         <span className="doNowReason">{doNowReason}</span>
@@ -8743,7 +9105,7 @@ function DashboardApp() {
                     <div className="doNowEmpty">
                       <span>重点プロジェクトに次の一手を設定すると、ここに提案されます。</span>
                       <button
-                        onClick={() => openProjectEditDialog(focusedProjects[0])}
+                        onClick={() => openNextStepEditor(focusedProjects[0])}
                         type="button"
                       >
                         次の一手を設定
@@ -8831,14 +9193,14 @@ function DashboardApp() {
                     const isRunningTodayItem = activeTimer?.sourceId === timerSourceId;
                     const project = item.projectId ? projectsById.get(item.projectId) : undefined;
                     const todayInstructionPath =
-                      item.instructionPath?.trim() || project?.instructionPath?.trim();
+                      item.instructionPath?.trim() || project?.nextStep?.instructionPath?.trim();
                     const shortMinutes =
                       item.shortTimerMinutes ??
-                      project?.shortTimerMinutes ??
+                      project?.nextStep?.shortTimerMinutes ??
                       config.settings.shortTimerMinutes;
                     const defaultMinutes =
                       item.defaultTimerMinutes ??
-                      project?.defaultTimerMinutes ??
+                      project?.nextStep?.defaultTimerMinutes ??
                       config.settings.defaultTimerMinutes;
                     return (
                       <article
@@ -9499,18 +9861,17 @@ function DashboardApp() {
                     </span>
                   </button>
                   <button
-                    aria-label="次の一手を追加"
-                    className="sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd"
+                    aria-label="プロジェクトを追加"
+                    className="sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd nextStepHeaderAdd--project"
                     onPointerDown={(event) => event.stopPropagation()}
                     onClick={(event) => {
                       event.stopPropagation();
                       openProjectAddDialog();
                     }}
-                    title="次の一手を追加"
+                    title="プロジェクトを追加"
                     type="button"
                   >
-                    <UiIcon name="add" size={16} />
-                    追加
+                    ＋ プロジェクト
                   </button>
                   <span className="disclosureCount">{config.projects.length}件</span>
                   <span className="disclosureDescription">
@@ -9532,67 +9893,113 @@ function DashboardApp() {
                             data-project-color={resolveProjectColorId(project.id, project.colorId)}
                             data-project-id={project.id}
                             key={project.id}
-                            onFocus={() => {
-                              const index = config.projects.findIndex((item) => item.id === project.id);
-                              projectListAnchorRef.current = { id: project.id, index };
-                            }}
-                            onContextMenu={(event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              openContextMenu(
-                                { kind: "project", project },
-                                event.clientX,
-                                event.clientY,
-                                event.currentTarget,
-                              );
-                            }}
-                            onKeyDown={(event) =>
-                              openContextMenuFromKeyboard(event, { kind: "project", project })
-                            }
                             onPointerCancel={cancelProjectPointerDrag}
                             onPointerDown={(event) => startProjectPointerDrag(event, project.id)}
                             onPointerMove={updateProjectPointerDrag}
                             onPointerUp={finishProjectPointerDrag}
-                            tabIndex={0}
                           >
-                            <div className="projectCopy sourceListCopy">
-                              <div className="projectTitleRow">
-                                <h3>
-                                  <ProjectIdentity
-                                    compact
-                                    colorId={project.colorId}
-                                    name={project.name}
-                                    projectId={project.id}
-                                  />
-                                </h3>
-                              </div>
+                            <div
+                              className="nextStepProjectRegion"
+                              onContextMenu={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                openContextMenu(
+                                  { kind: "project", project },
+                                  event.clientX,
+                                  event.clientY,
+                                  event.currentTarget,
+                                );
+                              }}
+                              onFocus={() => {
+                                const index = config.projects.findIndex(
+                                  (item) => item.id === project.id,
+                                );
+                                projectListAnchorRef.current = { id: project.id, index };
+                              }}
+                              onKeyDown={(event) =>
+                                openContextMenuFromKeyboard(event, { kind: "project", project })
+                              }
+                              tabIndex={0}
+                            >
+                              <h3>
+                                <ProjectIdentity
+                                  compact
+                                  colorId={project.colorId}
+                                  name={project.name}
+                                  projectId={project.id}
+                                />
+                              </h3>
+                              <button
+                                aria-label={`${project.name}のプロジェクト操作`}
+                                aria-haspopup="menu"
+                                className="sourceRowMenu nextStepRegionMenu"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  const rect = event.currentTarget.getBoundingClientRect();
+                                  openContextMenu(
+                                    { kind: "project", project },
+                                    rect.left,
+                                    rect.bottom,
+                                    event.currentTarget,
+                                  );
+                                }}
+                                onPointerDown={(event) => event.stopPropagation()}
+                                title="プロジェクト操作"
+                                type="button"
+                              >
+                                <span aria-hidden="true">⋯</span>
+                              </button>
+                            </div>
+                            <div
+                              className="nextStepActionRegion"
+                              onContextMenu={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                openContextMenu(
+                                  { kind: "nextStep", project },
+                                  event.clientX,
+                                  event.clientY,
+                                  event.currentTarget,
+                                );
+                              }}
+                              onFocus={() => {
+                                const index = config.projects.findIndex(
+                                  (item) => item.id === project.id,
+                                );
+                                projectListAnchorRef.current = { id: project.id, index };
+                              }}
+                              onKeyDown={(event) =>
+                                openContextMenuFromKeyboard(event, { kind: "nextStep", project })
+                              }
+                              tabIndex={0}
+                            >
                               <p
                                 className={
-                                  project.nextStep.trim() ? "" : "projectNextStepPlaceholder"
+                                  project.nextStep?.text.trim() ? "" : "projectNextStepPlaceholder"
                                 }
-                                title={project.nextStep.trim() || "次の一手を書く"}
+                                title={project.nextStep?.text.trim() || "次の一手は未設定です"}
                               >
-                                {project.nextStepTrigger?.trim() && (
+                                {project.nextStep?.trigger?.trim() && (
                                   <span className="projectNextStepTrigger">
-                                    {project.nextStepTrigger.trim()} ▸{" "}
+                                    {project.nextStep.trigger.trim()} ▸{" "}
                                   </span>
                                 )}
-                                {project.nextStep.trim() || "次の一手を書く"}
+                                {project.nextStep?.text.trim() || "次の一手は未設定です"}
                               </p>
+                              <button
+                                className="nextStepRowAction"
+                                disabled={sourceEditBlocked(`project:${project.id}`)}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  openNextStepEditor(project);
+                                }}
+                                onPointerDown={(event) => event.stopPropagation()}
+                                title={SOURCE_EDIT_TIMER_REASON}
+                                type="button"
+                              >
+                                {project.nextStep?.text.trim() ? "変更" : "次の一手を設定"}
+                              </button>
                             </div>
-                            <button
-                              aria-label={`${project.name}の操作`}
-                              aria-haspopup="menu"
-                              className="sourceRowMenu"
-                              title="操作メニュー"
-                              type="button"
-                              onClick={(event) => {
-                                const rect = event.currentTarget.getBoundingClientRect();
-                                openContextMenu({ kind: "project", project }, rect.left, rect.bottom, event.currentTarget);
-                              }}
-                            >
-                              <span aria-hidden="true">⋯</span>
-                            </button>
                           </article>
                         );
                       })}
@@ -9671,7 +10078,7 @@ function DashboardApp() {
                                 name={project.name}
                                 projectId={project.id}
                               />
-                              <strong>{project.nextStep || "次の一手を書く"}</strong>
+                              <strong>{project.nextStep?.text || "次の一手を書く"}</strong>
                             </>
                           ) : null;
                         })()}
@@ -10146,7 +10553,7 @@ function DashboardApp() {
                   const key = canonicalSourceKey(current, item.sourceKey);
                   if (!key || sourceEditBlocked(key)) return;
                   const project = current.projects.find(p => `project:${p.id}` === key);
-                  if (project) openProjectEditDialog(project, "today");
+                  if (project) openNextStepEditor(project);
                   else {
                     const index = current.inbox.findIndex(i => `wishlist:${i.id}` === key);
                     if (index >= 0) beginInboxEdit(index, "today");
@@ -10234,6 +10641,22 @@ function DashboardApp() {
           ) : contextMenu.kind === "inbox" ? (
             <>
               <ContextMenuItem
+                onClick={() => addWishlistToToday(contextMenu.index)}
+                type="button"
+              >
+                今日へ
+              </ContextMenuItem>
+              <ContextMenuItem
+                disabled={sourceEditBlocked(
+                  `wishlist:${config?.inbox[contextMenu.index]?.id ?? ""}`,
+                )}
+                onClick={() => promoteInboxToNextStep(contextMenu.index)}
+                title={SOURCE_EDIT_TIMER_REASON}
+                type="button"
+              >
+                次の一手にする
+              </ContextMenuItem>
+              <ContextMenuItem
                 onClick={() => openInboxAddDialog()}
                 type="button"
               >
@@ -10297,77 +10720,70 @@ function DashboardApp() {
                 削除
               </ContextMenuItem>
             </>
-          ) : contextMenu.kind === "project" ? (
+          ) : contextMenu.kind === "nextStep" ? (
             <>
-              <ContextMenuItem onClick={openProjectAddDialog} type="button">
-                次の一手を追加
-              </ContextMenuItem>
-              {explicitlyExcludedCandidate(`project:${contextMenu.project.id}`) && (
+              {contextMenu.project.nextStep?.text.trim() ? (
+                <>
+                  <ContextMenuItem
+                    disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
+                    onClick={() => openNextStepEditor(contextMenu.project)}
+                    title={SOURCE_EDIT_TIMER_REASON}
+                    type="button"
+                  >
+                    次の一手を編集
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    onClick={() => addProjectNextStepToToday(contextMenu.project)}
+                    type="button"
+                  >
+                    今日へ
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    className="contextMenuSeparatorBefore"
+                    disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
+                    onClick={() => clearProjectNextStep(contextMenu.project)}
+                    title={SOURCE_EDIT_TIMER_REASON}
+                    type="button"
+                  >
+                    次の一手を空にする
+                  </ContextMenuItem>
+                </>
+              ) : (
                 <ContextMenuItem
-                  onClick={() =>
-                    void restoreTodayBuilderCandidate(`project:${contextMenu.project.id}`)
-                  }
+                  disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
+                  onClick={() => openNextStepEditor(contextMenu.project)}
+                  title={SOURCE_EDIT_TIMER_REASON}
                   type="button"
                 >
-                  今日の候補に戻す
+                  次の一手を設定
                 </ContextMenuItem>
               )}
-              <ContextMenuItem
-                disabled={
-                  config?.projects.findIndex((project) => project.id === contextMenu.project.id) ===
-                  0
-                }
-                onClick={() => void moveProjectByOffset(contextMenu.project.id, -1)}
-                type="button"
-              >
-                上へ移動
-              </ContextMenuItem>
-              <ContextMenuItem
-                disabled={
-                  config?.projects.findIndex((project) => project.id === contextMenu.project.id) ===
-                  (config?.projects.length ?? 0) - 1
-                }
-                onClick={() => void moveProjectByOffset(contextMenu.project.id, 1)}
-                type="button"
-              >
-                下へ移動
-              </ContextMenuItem>
+            </>
+          ) : contextMenu.kind === "project" ? (
+            <>
               <ContextMenuItem
                 onClick={() => openProjectEditDialog(contextMenu.project)}
-                disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
-                title={SOURCE_EDIT_TIMER_REASON}
                 type="button"
               >
-                編集
+                プロジェクトを編集
               </ContextMenuItem>
               <ContextMenuItem
-                disabled={
-                  !contextMenu.project.nextStep.trim() ||
-                  isTimerActiveForSource(
-                    [`project:${contextMenu.project.id}`],
-                    contextMenu.project.id,
-                  )
-                }
-                onClick={() => completeProjectNextStep(contextMenu.project)}
+                onClick={() => openInboxAddDialog(undefined, contextMenu.project.id)}
                 type="button"
               >
-                完了にする
+                やりたいことを追加
               </ContextMenuItem>
               <ContextMenuItem
-                className="contextMenuDanger"
-                disabled={isTimerActiveForSource(
-                  [`project:${contextMenu.project.id}`],
-                  contextMenu.project.id,
-                )}
-                onClick={() => deleteProject(contextMenu.project)}
+                className="contextMenuSeparatorBefore"
+                onClick={openProjectManagement}
                 type="button"
               >
-                削除
+                プロジェクト管理
               </ContextMenuItem>
             </>
           ) : contextMenu.kind === "projects" ? (
             <ContextMenuItem onClick={openProjectAddDialog} type="button">
-              次の一手を追加
+              プロジェクトを追加
             </ContextMenuItem>
           ) : contextMenu.kind === "inboxes" ? (
             <ContextMenuItem
@@ -10478,7 +10894,7 @@ function DashboardApp() {
             </label>
 
             <fieldset className="inboxProjectChoices">
-              <legend>取り組み</legend>
+              <legend>プロジェクト</legend>
               <label>
                 <input
                   checked={!inboxEditProjectId}
@@ -10486,7 +10902,7 @@ function DashboardApp() {
                   onChange={() => setInboxEditProjectId("")}
                   type="radio"
                 />
-                <span>取り組みなし</span>
+                <span>プロジェクトなし</span>
               </label>
               {config.projects.map((project) => (
                 <label key={project.id}>
@@ -11244,7 +11660,7 @@ function DashboardApp() {
             </div>
 
             <label className="fieldStack">
-              <span>取り組み</span>
+              <span>プロジェクト</span>
               <select
                 className="textInput"
                 onChange={(event) =>
@@ -11362,7 +11778,7 @@ function DashboardApp() {
             </div>
 
             <label className="fieldStack">
-              <span>取り組み</span>
+              <span>プロジェクト</span>
               <select
                 className="textInput"
                 onChange={(event) => {
@@ -11835,6 +12251,22 @@ function DashboardApp() {
                 )}
               </label>
 
+              <label className="fieldStack">
+                <span>プロジェクト（任意）</span>
+                <select
+                  className="textInput"
+                  onChange={(event) => setInboxAddProjectId(event.target.value)}
+                  value={inboxAddProjectId}
+                >
+                  <option value="">プロジェクトなし</option>
+                  {config.projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
               <div className="dialogActions formDialogActions">
                 <button
                   className="primaryButton"
@@ -11857,26 +12289,445 @@ function DashboardApp() {
         </div>
       )}
 
+      {completionFollowup?.source.kind === "nextStep" && (
+        <div className="modalBackdrop" role="presentation">
+          <section
+            aria-label="次の一手を決めますか？"
+            aria-modal="true"
+            className="dropDialog completionFollowupDialog"
+            role="dialog"
+            tabIndex={-1}
+          >
+            <div>
+              <p className="eyebrow">Next Step</p>
+              <h2>次の一手を決めますか？</h2>
+              <p className="dialogLead">
+                {completionFollowup.source.projectName}のやりたいこと
+              </p>
+            </div>
+            <div className="completionFollowupChoices">
+              {config.inbox
+                .filter((item) => item.projectId === completionFollowup.source.projectId)
+                .map((item) => (
+                  <button
+                    className="completionFollowupChoice"
+                    key={item.id ?? item.text}
+                    onClick={() => {
+                      const index = configRef.current?.inbox.findIndex(
+                        (candidate) => candidate.id === item.id,
+                      );
+                      if (index === undefined || index < 0) return;
+                      setCompletionFollowup(null);
+                      promoteInboxToNextStep(index);
+                    }}
+                    type="button"
+                  >
+                    <span aria-hidden="true" className="completionFollowupRadio" />
+                    <span>{item.text}</span>
+                  </button>
+                ))}
+              <button
+                className="completionFollowupChoice completionFollowupChoice--new"
+                onClick={() => {
+                  const project = configRef.current?.projects.find(
+                    (candidate) => candidate.id === completionFollowup.source.projectId,
+                  );
+                  if (!project) return;
+                  setCompletionFollowup(null);
+                  openNextStepEditor(project, { mode: "set" });
+                }}
+                type="button"
+              >
+                <UiIcon name="add" size={16} />
+                新しく入力する
+              </button>
+            </div>
+            <div className="dialogActions formDialogActions">
+              <button
+                className="secondaryButton dialogCancelButton"
+                onClick={() => setCompletionFollowup(null)}
+                type="button"
+              >
+                今は決めない
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {nextStepEditDraft &&
+        (() => {
+          const nextStepProject = config.projects.find(
+            (project) => project.id === nextStepEditDraft.projectId,
+          );
+          const legacyChoiceRequired = Boolean(
+            nextStepProject?.legacyNextStepSettings &&
+              !nextStepProject.nextStep &&
+              nextStepEditDraft.legacyChoice === null,
+          );
+          const replacingExisting = Boolean(
+            nextStepEditDraft.mode === "promote" &&
+              nextStepProject?.nextStep?.text.trim(),
+          );
+          return (
+            <div className="modalBackdrop" role="presentation">
+              <section
+                aria-label={
+                  nextStepEditDraft.mode === "edit"
+                    ? "次の一手を編集"
+                    : "次の一手を設定"
+                }
+                aria-modal="true"
+                className="dropDialog editDialog modalLongForm nextStepEditDialog app-scrollbar"
+                role="dialog"
+                tabIndex={-1}
+              >
+                <div>
+                  <p className="eyebrow">Next Step</p>
+                  <h2>
+                    {nextStepEditDraft.mode === "edit"
+                      ? "次の一手を編集"
+                      : "次の一手を設定"}
+                  </h2>
+                  <p className="dialogLead">今進める1件と、始めるための環境を設定します。</p>
+                </div>
+
+                <h3 className="formSectionHeading">プロジェクト</h3>
+                {nextStepEditDraft.projectLocked && nextStepProject ? (
+                  <div className="nextStepFixedProject">
+                    <ProjectIdentity
+                      colorId={nextStepProject.colorId}
+                      name={nextStepProject.name}
+                      projectId={nextStepProject.id}
+                    />
+                    <span>このプロジェクトに設定します</span>
+                  </div>
+                ) : (
+                  <label className="fieldStack">
+                    <span>プロジェクト</span>
+                    <select
+                      autoFocus
+                      className="textInput"
+                      onChange={(event) => selectNextStepProject(event.target.value)}
+                      value={nextStepEditDraft.projectId}
+                    >
+                      <option value="">選択してください</option>
+                      {config.projects.map((project) => (
+                        <option key={project.id} value={project.id}>
+                          {project.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+
+                {replacingExisting ? (
+                  <div className="nextStepReplacementNotice" role="status">
+                    <strong>現在の次の一手を置き換えます</strong>
+                    <span>{nextStepProject?.nextStep?.text}</span>
+                    <label>
+                      <input
+                        checked={nextStepEditDraft.replacementConfirmed}
+                        onChange={(event) =>
+                          setNextStepEditDraft({
+                            ...nextStepEditDraft,
+                            replacementConfirmed: event.target.checked,
+                          })
+                        }
+                        type="checkbox"
+                      />
+                      <span>置き換えることを確認しました</span>
+                    </label>
+                  </div>
+                ) : null}
+
+                {nextStepProject?.legacyNextStepSettings && !nextStepProject.nextStep ? (
+                  <fieldset className="legacyNextStepChoice">
+                    <legend>以前の実行設定</legend>
+                    <p>移行前の開始環境などが残っています。今回だけ扱いを選んでください。</p>
+                    <div>
+                      <button
+                        aria-pressed={nextStepEditDraft.legacyChoice === "inherit"}
+                        className={
+                          nextStepEditDraft.legacyChoice === "inherit"
+                            ? "secondaryButton legacyNextStepChoice--selected"
+                            : "secondaryButton"
+                        }
+                        onClick={() => chooseLegacyNextStepSettings("inherit")}
+                        type="button"
+                      >
+                        引き継ぐ
+                      </button>
+                      <button
+                        aria-pressed={nextStepEditDraft.legacyChoice === "discard"}
+                        className={
+                          nextStepEditDraft.legacyChoice === "discard"
+                            ? "secondaryButton legacyNextStepChoice--selected"
+                            : "secondaryButton"
+                        }
+                        onClick={() => chooseLegacyNextStepSettings("discard")}
+                        type="button"
+                      >
+                        破棄して全体設定を使う
+                      </button>
+                    </div>
+                  </fieldset>
+                ) : null}
+
+                <h3 className="formSectionHeading">次の一手</h3>
+                <label className="fieldStack">
+                  <span>行動</span>
+                  <input
+                    aria-label="行動"
+                    autoFocus={nextStepEditDraft.projectLocked}
+                    className="textInput"
+                    maxLength={120}
+                    onChange={(event) =>
+                      setNextStepEditDraft({
+                        ...nextStepEditDraft,
+                        text: event.target.value,
+                      })
+                    }
+                    placeholder="次に着手する具体的な一手"
+                    value={nextStepEditDraft.text}
+                  />
+                  {projectNextStepSuggestions.length > 0 ? (
+                    <div className="suggestionRow" aria-label="次の一手候補">
+                      {projectNextStepSuggestions.map((suggestion) => (
+                        <button
+                          className="suggestionChip"
+                          key={suggestion}
+                          onClick={() =>
+                            setNextStepEditDraft({
+                              ...nextStepEditDraft,
+                              text: suggestion,
+                            })
+                          }
+                          type="button"
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </label>
+                <label className="fieldStack">
+                  <span>始めるきっかけ（任意）</span>
+                  <input
+                    className="textInput"
+                    maxLength={EXECUTION_TRIGGER_MAX_CHARS}
+                    onChange={(event) =>
+                      setNextStepEditDraft({
+                        ...nextStepEditDraft,
+                        trigger: event.target.value,
+                      })
+                    }
+                    placeholder="例: 21時 / 夕食後 / PCを開いたら"
+                    value={nextStepEditDraft.trigger}
+                  />
+                </label>
+
+                <h3 className="formSectionHeading">開始環境</h3>
+                <p className="formSectionDescription">タイマー開始時に一緒に開きます。</p>
+                <StartEnvironmentPicker
+                  buttons={projectSelectableButtons}
+                  onChange={(buttonIds) =>
+                    setNextStepEditDraft({ ...nextStepEditDraft, buttonIds })
+                  }
+                  overlayPages={overlayPages}
+                  renderIcon={renderButtonIcon}
+                  selectedIds={nextStepEditDraft.buttonIds}
+                />
+
+                <h3 className="formSectionHeading">手順書</h3>
+                <InstructionPicker
+                  choices={instructionChoices}
+                  error={instructionChoicesError}
+                  loading={instructionChoicesLoading}
+                  onChange={(instructionPath) =>
+                    setNextStepEditDraft({
+                      ...nextStepEditDraft,
+                      instructionPath,
+                      instructionOpenOnStart: instructionPath
+                        ? nextStepEditDraft.instructionPath
+                          ? nextStepEditDraft.instructionOpenOnStart
+                          : true
+                        : false,
+                    })
+                  }
+                  onRetry={() => void refreshInstructionChoices()}
+                  selectedPath={nextStepEditDraft.instructionPath}
+                />
+                <label className="projectWeeklyFocusToggle projectInstructionStartToggle">
+                  <input
+                    checked={nextStepEditDraft.instructionOpenOnStart}
+                    disabled={!nextStepEditDraft.instructionPath}
+                    onChange={(event) =>
+                      setNextStepEditDraft({
+                        ...nextStepEditDraft,
+                        instructionOpenOnStart: event.target.checked,
+                      })
+                    }
+                    type="checkbox"
+                  />
+                  <span>開始時に手順書を開く</span>
+                </label>
+
+                <h3 className="formSectionHeading">タイマー</h3>
+                <div className="projectTimerGrid">
+                  {(
+                    [
+                      ["shortTimerMinutes", "projectShort", "短時間", config.settings.shortTimerMinutes],
+                      [
+                        "defaultTimerMinutes",
+                        "projectDefault",
+                        "通常",
+                        config.settings.defaultTimerMinutes,
+                      ],
+                    ] as const
+                  ).map(([field, dragField, label, fallback]) => (
+                    <div className="projectTimerSetting" key={field}>
+                      <span>{label}</span>
+                      <div className="projectTimerControl">
+                        <button
+                          aria-label={`${label}タイマーを1分減らす`}
+                          className="projectTimerStepButton"
+                          onClick={() => stepProjectTimer(field, -1)}
+                          type="button"
+                        >
+                          −
+                        </button>
+                        <label
+                          className={
+                            numberInputDragging === dragField
+                              ? "projectTimerInput fieldStack--numberDrag fieldStack--numberDragging"
+                              : "projectTimerInput fieldStack--numberDrag"
+                          }
+                          onPointerCancel={cancelNumberInputDrag}
+                          onPointerDown={(event) =>
+                            startNumberInputDrag(
+                              event,
+                              dragField,
+                              Number.parseInt(nextStepEditDraft[field], 10) || fallback,
+                            )
+                          }
+                          onPointerMove={updateNumberInputDrag}
+                          onPointerUp={finishNumberInputDrag}
+                          title="上下にドラッグして分数を調整"
+                        >
+                          <span className="numberDragInput">
+                            <input
+                              aria-label={`${label}タイマー分数`}
+                              className="textInput"
+                              inputMode="numeric"
+                              max="240"
+                              min="1"
+                              onChange={(event) =>
+                                setNextStepEditDraft({
+                                  ...nextStepEditDraft,
+                                  [field]: event.target.value,
+                                })
+                              }
+                              placeholder={String(fallback)}
+                              type="number"
+                              value={nextStepEditDraft[field]}
+                            />
+                            <span aria-hidden="true" className="numberDragAffordance" />
+                          </span>
+                        </label>
+                        <button
+                          aria-label={`${label}タイマーを1分増やす`}
+                          className="projectTimerStepButton"
+                          onClick={() => stepProjectTimer(field, 1)}
+                          type="button"
+                        >
+                          +
+                        </button>
+                      </div>
+                      <div className="projectTimerFooter">
+                        <span>
+                          {nextStepEditDraft[field]
+                            ? `${nextStepEditDraft[field]}分を使用`
+                            : `全体設定 ${fallback}分を使用`}
+                        </span>
+                        <button
+                          disabled={!nextStepEditDraft[field]}
+                          onClick={() =>
+                            setNextStepEditDraft({ ...nextStepEditDraft, [field]: "" })
+                          }
+                          type="button"
+                        >
+                          全体設定に戻す
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <label className="fieldStack">
+                  <span>開始noteテンプレート（任意）</span>
+                  <input
+                    className="textInput"
+                    maxLength={120}
+                    onChange={(event) =>
+                      setNextStepEditDraft({
+                        ...nextStepEditDraft,
+                        startNoteTemplate: event.target.value,
+                      })
+                    }
+                    value={nextStepEditDraft.startNoteTemplate}
+                  />
+                </label>
+
+                <div className="dialogActions formDialogActions">
+                  <button
+                    className="primaryButton"
+                    disabled={
+                      sourceEditSaving ||
+                      !nextStepEditDraft.projectId ||
+                      !nextStepEditDraft.text.trim() ||
+                      legacyChoiceRequired ||
+                      (replacingExisting && !nextStepEditDraft.replacementConfirmed)
+                    }
+                    onClick={() => void saveNextStepEdit()}
+                    type="button"
+                  >
+                    {sourceEditSaving ? "保存中…" : "保存"}
+                  </button>
+                  <button
+                    className="secondaryButton dialogCancelButton"
+                    disabled={sourceEditSaving}
+                    onClick={() => closeNextStepEditDialog()}
+                    type="button"
+                  >
+                    キャンセル
+                  </button>
+                </div>
+              </section>
+            </div>
+          );
+        })()}
+
       {projectEditDraft && (
         <div className="modalBackdrop" role="presentation">
           <section
-            aria-label={projectEditDraft.isNew ? "次の一手を追加" : "次の一手を編集"}
+            aria-label={projectEditDraft.isNew ? "プロジェクトを追加" : "プロジェクトを編集"}
             aria-modal="true"
             className="dropDialog editDialog modalLongForm app-scrollbar"
             role="dialog"
             tabIndex={-1}
           >
             <div>
-              <p className="eyebrow">Undertaking</p>
-              <h2>{projectEditDraft.isNew ? "次の一手を追加" : "次の一手を編集"}</h2>
+              <p className="eyebrow">Project</p>
+              <h2>{projectEditDraft.isNew ? "プロジェクトを追加" : "プロジェクトを編集"}</h2>
               {projectEditDraft.isNew && (
-                <p className="dialogLead">何に取り組むか、次に何をするか、始めるときに必要なものを登録します。</p>
+                <p className="dialogLead">継続して進めるテーマを登録します。</p>
               )}
             </div>
 
             <h3 className="formSectionHeading">基本</h3>
             <label className="fieldStack">
-              <span>取り組み名</span>
+              <span>プロジェクト名</span>
               <input
                 autoFocus={projectEditDraft.isNew}
                 className="textInput"
@@ -11900,7 +12751,7 @@ function DashboardApp() {
                 value={projectEditDraft.northStar}
               />
               <small className="fieldHint">
-                この取り組みで実現したい目標を1行で書きます。
+                このプロジェクトで実現したい目標を1行で書きます。
               </small>
             </label>
 
@@ -11913,287 +12764,54 @@ function DashboardApp() {
               <span>今週の重点にする</span>
             </label>
 
-            <h3 className="formSectionHeading">次にやること</h3>
-            <p className="formSectionDescription">次にこの取り組みを開いたとき、最初にやる1つだけ決めます。</p>
-            <label className="fieldStack">
-              <span>次にやること</span>
-              <input
-                className="textInput"
-                maxLength={120}
-                onChange={(event) =>
-                  setProjectEditDraft({ ...projectEditDraft, nextStep: event.target.value })
-                }
-                value={projectEditDraft.nextStep}
-              />
-              {projectNextStepSuggestions.length > 0 && (
-                <div className="suggestionRow" aria-label="次の一手候補">
-                  {projectNextStepSuggestions.map((suggestion) => (
-                    <button
-                      className="suggestionChip"
-                      key={suggestion}
-                      onClick={() =>
-                        setProjectEditDraft({ ...projectEditDraft, nextStep: suggestion })
-                      }
-                      type="button"
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </label>
-
-            <label className="fieldStack">
-              <span>始めるきっかけ（任意）</span>
-              <input
-                className="textInput"
-                maxLength={EXECUTION_TRIGGER_MAX_CHARS}
-                onChange={(event) =>
-                  setProjectEditDraft({
-                    ...projectEditDraft,
-                    nextStepTrigger: event.target.value,
-                  })
-                }
-                placeholder="例: 21時 / 夕食後 / PCを開いたら"
-                value={projectEditDraft.nextStepTrigger}
-              />
-            </label>
-
-            <h3 className="formSectionHeading">開始環境</h3>
-            <p className="formSectionDescription">この取り組みを始めるとき、一緒に使う道具や手順を設定します。</p>
-            <StartEnvironmentPicker buttons={projectSelectableButtons} onChange={(buttonIds) => setProjectEditDraft({ ...projectEditDraft, buttonIds })} overlayPages={overlayPages} renderIcon={renderButtonIcon} selectedIds={projectEditDraft.buttonIds} />
-            <InstructionPicker
-              choices={instructionChoices}
-              error={instructionChoicesError}
-              loading={instructionChoicesLoading}
-              onChange={(instructionPath) => setProjectEditDraft({
-                ...projectEditDraft,
-                instructionPath,
-                instructionOpenOnStart: instructionPath ? (projectEditDraft.instructionPath ? projectEditDraft.instructionOpenOnStart : true) : false,
-              })}
-              onRetry={() => void refreshInstructionChoices()}
-              selectedPath={projectEditDraft.instructionPath}
-            />
-            <label className="projectWeeklyFocusToggle projectInstructionStartToggle">
-              <input checked={projectEditDraft.instructionOpenOnStart} disabled={!projectEditDraft.instructionPath} onChange={(event) => setProjectEditDraft({ ...projectEditDraft, instructionOpenOnStart: event.target.checked })} type="checkbox" />
-              <span>開始時に手順書を開く</span>
-            </label>
-            <h3 className="formSectionHeading">タイマー</h3>
+            <h3 className="formSectionHeading">見た目</h3>
             <div className="fieldStack">
-              <span>開始レシピ</span>
-              <div className="projectTimerGrid">
-                <div className="projectTimerSetting">
-                  <span>短時間タイマー</span>
-                  <div className="projectTimerControl">
-                    <button
-                      aria-label="短時間タイマーを1分減らす"
-                      className="projectTimerStepButton"
-                      onClick={() => stepProjectTimer("shortTimerMinutes", -1)}
-                      type="button"
-                    >
-                      −
-                    </button>
-                    <label
-                      className={
-                        numberInputDragging === "projectShort"
-                          ? "projectTimerInput fieldStack--numberDrag fieldStack--numberDragging"
-                          : "projectTimerInput fieldStack--numberDrag"
-                      }
-                      onPointerCancel={cancelNumberInputDrag}
-                      onPointerDown={(event) =>
-                        startNumberInputDrag(
-                          event,
-                          "projectShort",
-                          Number.parseInt(projectEditDraft.shortTimerMinutes, 10) ||
-                            config.settings.shortTimerMinutes,
-                        )
-                      }
-                      onPointerMove={updateNumberInputDrag}
-                      onPointerUp={finishNumberInputDrag}
-                      title="上下にドラッグして分数を調整"
-                    >
-                      <span className="numberDragInput">
-                        <input
-                          aria-label="取り組みの短時間タイマー分数"
-                          className="textInput"
-                          inputMode="numeric"
-                          max="240"
-                          min="1"
-                          onChange={(event) =>
-                            setProjectEditDraft({
-                              ...projectEditDraft,
-                              shortTimerMinutes: event.target.value,
-                            })
-                          }
-                          placeholder={String(config.settings.shortTimerMinutes)}
-                          type="number"
-                          value={projectEditDraft.shortTimerMinutes}
-                        />
-                        <span aria-hidden="true" className="numberDragAffordance" />
-                      </span>
-                    </label>
-                    <button
-                      aria-label="短時間タイマーを1分増やす"
-                      className="projectTimerStepButton"
-                      onClick={() => stepProjectTimer("shortTimerMinutes", 1)}
-                      type="button"
-                    >
-                      +
-                    </button>
-                  </div>
-                  <div className="projectTimerFooter">
-                    <span>
-                      {projectEditDraft.shortTimerMinutes
-                        ? `${projectEditDraft.shortTimerMinutes}分を使用`
-                        : `全体設定 ${config.settings.shortTimerMinutes}分を使用`}
-                    </span>
-                    <button
-                      disabled={!projectEditDraft.shortTimerMinutes}
-                      onClick={() =>
-                        setProjectEditDraft({ ...projectEditDraft, shortTimerMinutes: "" })
-                      }
-                      type="button"
-                    >
-                      全体設定に戻す
-                    </button>
-                  </div>
-                </div>
-                <div className="projectTimerSetting">
-                  <span>通常タイマー</span>
-                  <div className="projectTimerControl">
-                    <button
-                      aria-label="通常タイマーを1分減らす"
-                      className="projectTimerStepButton"
-                      onClick={() => stepProjectTimer("defaultTimerMinutes", -1)}
-                      type="button"
-                    >
-                      −
-                    </button>
-                    <label
-                      className={
-                        numberInputDragging === "projectDefault"
-                          ? "projectTimerInput fieldStack--numberDrag fieldStack--numberDragging"
-                          : "projectTimerInput fieldStack--numberDrag"
-                      }
-                      onPointerCancel={cancelNumberInputDrag}
-                      onPointerDown={(event) =>
-                        startNumberInputDrag(
-                          event,
-                          "projectDefault",
-                          Number.parseInt(projectEditDraft.defaultTimerMinutes, 10) ||
-                            config.settings.defaultTimerMinutes,
-                        )
-                      }
-                      onPointerMove={updateNumberInputDrag}
-                      onPointerUp={finishNumberInputDrag}
-                      title="上下にドラッグして分数を調整"
-                    >
-                      <span className="numberDragInput">
-                        <input
-                          aria-label="取り組みの通常タイマー分数"
-                          className="textInput"
-                          inputMode="numeric"
-                          max="240"
-                          min="1"
-                          onChange={(event) =>
-                            setProjectEditDraft({
-                              ...projectEditDraft,
-                              defaultTimerMinutes: event.target.value,
-                            })
-                          }
-                          placeholder={String(config.settings.defaultTimerMinutes)}
-                          type="number"
-                          value={projectEditDraft.defaultTimerMinutes}
-                        />
-                        <span aria-hidden="true" className="numberDragAffordance" />
-                      </span>
-                    </label>
-                    <button
-                      aria-label="通常タイマーを1分増やす"
-                      className="projectTimerStepButton"
-                      onClick={() => stepProjectTimer("defaultTimerMinutes", 1)}
-                      type="button"
-                    >
-                      +
-                    </button>
-                  </div>
-                  <div className="projectTimerFooter">
-                    <span>
-                      {projectEditDraft.defaultTimerMinutes
-                        ? `${projectEditDraft.defaultTimerMinutes}分を使用`
-                        : `全体設定 ${config.settings.defaultTimerMinutes}分を使用`}
-                    </span>
-                    <button
-                      disabled={!projectEditDraft.defaultTimerMinutes}
-                      onClick={() =>
-                        setProjectEditDraft({ ...projectEditDraft, defaultTimerMinutes: "" })
-                      }
-                      type="button"
-                    >
-                      全体設定に戻す
-                    </button>
-                  </div>
-                </div>
+              <span>プロジェクトカラー</span>
+              <div
+                aria-label="プロジェクトカラー"
+                className="projectColorPalette"
+                role="radiogroup"
+              >
+                {PROJECT_COLOR_IDS.map((colorId) => (
+                  <button
+                    aria-checked={projectEditDraft.colorId === colorId}
+                    aria-label={PROJECT_COLOR_LABELS[colorId]}
+                    className={
+                      projectEditDraft.colorId === colorId
+                        ? "projectColorSwatch projectColorSwatch--selected"
+                        : "projectColorSwatch"
+                    }
+                    data-project-color={colorId}
+                    key={colorId}
+                    onClick={() => setProjectEditDraft({ ...projectEditDraft, colorId })}
+                    role="radio"
+                    title={PROJECT_COLOR_LABELS[colorId]}
+                    type="button"
+                  >
+                    <span aria-hidden="true" />
+                  </button>
+                ))}
               </div>
-              <h3 className="formSectionHeading">見た目</h3>
-              <div className="fieldStack">
-                <span>取り組みカラー</span>
-                <div
-                  aria-label="取り組みカラー"
-                  className="projectColorPalette"
-                  role="radiogroup"
-                >
-                  {PROJECT_COLOR_IDS.map((colorId) => (
-                    <button
-                      aria-checked={projectEditDraft.colorId === colorId}
-                      aria-label={PROJECT_COLOR_LABELS[colorId]}
-                      className={
-                        projectEditDraft.colorId === colorId
-                          ? "projectColorSwatch projectColorSwatch--selected"
-                          : "projectColorSwatch"
-                      }
-                      data-project-color={colorId}
-                      key={colorId}
-                      onClick={() => setProjectEditDraft({ ...projectEditDraft, colorId })}
-                      role="radio"
-                      title={PROJECT_COLOR_LABELS[colorId]}
-                      type="button"
-                    >
-                      <span aria-hidden="true" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <label className="fieldStack">
-                <span>開始noteテンプレート（任意）</span>
-                <input
-                  className="textInput"
-                  maxLength={120}
-                  onChange={(event) =>
-                    setProjectEditDraft({
-                      ...projectEditDraft,
-                      startNoteTemplate: event.target.value,
-                    })
-                  }
-                  value={projectEditDraft.startNoteTemplate}
-                />
-              </label>
             </div>
 
 
             <div className="dialogActions formDialogActions">
               <button
                 className="primaryButton"
-                disabled={!projectEditDraft.name.trim() || sourceEditSaving}
+                disabled={!projectEditDraft.name.trim() || projectEditSaving}
                 onClick={saveProjectEdit}
                 type="button"
               >
-                保存
+                {projectEditSaving
+                  ? "保存しています…"
+                  : projectEditDraft.isNew
+                    ? "プロジェクトを追加"
+                    : "保存"}
               </button>
               <button
                 className="secondaryButton dialogCancelButton"
-                disabled={sourceEditSaving}
-                onClick={() => { if (!sourceEditBusyRef.current) setProjectEditDraft(null); }}
+                disabled={projectEditSaving}
+                onClick={() => closeProjectEditDialog()}
                 type="button"
               >
                 キャンセル
@@ -12218,32 +12836,6 @@ function DashboardApp() {
             </div>
 
             <p className="timerCompleteText">予定時間になりました</p>
-
-            {completionProject && (
-              <label className="fieldStack">
-                <span>次にやること</span>
-                <input
-                  className="textInput"
-                  onChange={(event) => updateCompletionNextStep(event.target.value)}
-                  placeholder="次の一手を書く"
-                  value={completionProject.nextStep}
-                />
-                {completionNextStepSuggestions.length > 0 && (
-                  <div className="suggestionRow" aria-label="次の一手候補">
-                    {completionNextStepSuggestions.map((suggestion) => (
-                      <button
-                        className="suggestionChip"
-                        key={suggestion}
-                        onClick={() => updateCompletionNextStep(suggestion)}
-                        type="button"
-                      >
-                        {suggestion}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </label>
-            )}
 
             <div className="dialogActions">
               <button className="secondaryButton" onClick={continueCompletedTimer} type="button">

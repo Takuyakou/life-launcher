@@ -19,10 +19,10 @@ async function state(page: Page) {
 async function prepare(page: Page, short: number, planned: number) {
   const fixture = createPublicFixture();
   const project = fixture.config.projects[0];
-  project.shortTimerMinutes = 10;
+  project.nextStep!.shortTimerMinutes = 10;
   fixture.config.today.items = [
     {
-      text: project.nextStep,
+      text: project.nextStep!.text,
       done: false,
       sourceKey: `project:${project.id}`,
       projectId: project.id,
@@ -82,7 +82,25 @@ for (const { short, planned, elapsed } of boundaries) {
       const records = after.calls.filter((c) => c.command === "record_session");
       expect(records).toHaveLength(1);
       expect(records[0].args.session).toMatchObject({ minutes: Math.floor(seconds / 60) });
-      expect(after.config.projects).toEqual(fixture.config.projects);
+      if (reachedPlanned) {
+        expect(after.config.projects[0]).toEqual({
+          ...fixture.config.projects[0],
+          nextStep: undefined,
+        });
+        expect(after.config.projects.slice(1)).toEqual(fixture.config.projects.slice(1));
+        expect(after.config.sourceCompletions).toHaveLength(
+          fixture.config.sourceCompletions.length + 1,
+        );
+        expect(after.config.sourceCompletions.at(-1)).toMatchObject({
+          sourceType: "nextStep",
+          sourceIdentity: `project:${fixture.config.projects[0].id}`,
+          textSnapshot: fixture.config.today.items[0].text,
+          projectId: fixture.config.projects[0].id,
+        });
+      } else {
+        expect(after.config.projects).toEqual(fixture.config.projects);
+        expect(after.config.sourceCompletions).toEqual(fixture.config.sourceCompletions);
+      }
       expect(after.config.inbox).toEqual(fixture.config.inbox);
       expect(after.config.today.items[0].shortTimerMinutes).toBe(short);
       await expect(page.getByText("今日の分は完了にしますか？", { exact: true })).toHaveCount(0);

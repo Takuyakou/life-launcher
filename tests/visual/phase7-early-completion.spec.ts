@@ -17,10 +17,10 @@ const dialogName = "今日の分は完了にしますか？";
 function fixtureForEarly(completed = 0) {
   const fixture = createPublicFixture();
   const project = fixture.config.projects[0];
-  project.shortTimerMinutes = 3;
+  project.nextStep!.shortTimerMinutes = 3;
   fixture.config.today.items = [
     {
-      text: project.nextStep,
+      text: project.nextStep!.text,
       done: false,
       sourceKey: `project:${project.id}`,
       projectId: project.id,
@@ -131,9 +131,26 @@ for (const action of ["left", "right", "escape"]) {
         index === 0 ? { ...item, done: action === "left" } : item,
       ),
     );
-    expect(after.config.projects).toEqual(before.config.projects);
+    if (action === "left") {
+      expect(after.config.projects[0]).toEqual({
+        ...before.config.projects[0],
+        nextStep: undefined,
+      });
+      expect(after.config.projects.slice(1)).toEqual(before.config.projects.slice(1));
+      expect(after.config.sourceCompletions).toHaveLength(
+        before.config.sourceCompletions.length + 1,
+      );
+      expect(after.config.sourceCompletions.at(-1)).toMatchObject({
+        sourceType: "nextStep",
+        sourceIdentity: `project:${before.config.projects[0].id}`,
+        textSnapshot: before.config.today.items[0].text,
+        projectId: before.config.projects[0].id,
+      });
+    } else {
+      expect(after.config.projects).toEqual(before.config.projects);
+      expect(after.config.sourceCompletions).toEqual(before.config.sourceCompletions);
+    }
     expect(after.config.inbox).toEqual(before.config.inbox);
-    expect(after.config.sourceCompletions).toEqual(before.config.sourceCompletions);
     expect(after.config.today.candidateExcludedSourceKeys).toEqual(
       before.config.today.candidateExcludedSourceKeys,
     );
@@ -166,7 +183,7 @@ test("adopted snapshot survives Project change and Do Now maps to the adopted it
     const c = (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: Control })
       .__LIFE_LAUNCHER_VISUAL_QA__;
     const next = c.currentConfig();
-    next.projects[0].shortTimerMinutes = 10;
+    next.projects[0].nextStep!.shortTimerMinutes = 10;
     c.updateConfig(next);
   });
   await expect(
@@ -341,7 +358,7 @@ test("missing runtime short snapshot uses five minutes, not the live Project sho
 }) => {
   const fixture = fixtureForEarly();
   fixture.config.today.items[0].shortTimerMinutes = undefined;
-  fixture.config.projects[0].shortTimerMinutes = 1;
+  fixture.config.projects[0].nextStep!.shortTimerMinutes = 1;
   await prepare(page, fixture);
   const card = page.locator(".todayRow").first();
   await card.getByRole("button", { name: "通常タイマー25分で開始" }).click();

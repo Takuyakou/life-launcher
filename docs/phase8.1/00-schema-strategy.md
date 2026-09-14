@@ -8,6 +8,7 @@ This is a proposal for human approval. P81-00 does not implement it.
 
 ```ts
 type NextStepV3 = {
+  generationId?: string;
   text: string;
   trigger?: string;
   updatedAt?: string;
@@ -22,7 +23,7 @@ type NextStepV3 = {
 
 type LegacyNextStepSettingsV3 = Omit<
   NextStepV3,
-  "text" | "trigger" | "updatedAt" | "reviewedAt"
+  "generationId" | "text" | "trigger" | "updatedAt" | "reviewedAt"
 >;
 
 type ProjectV3 = {
@@ -34,14 +35,31 @@ type ProjectV3 = {
   nextStep?: NextStepV3;
   legacyNextStepSettings?: LegacyNextStepSettingsV3;
 };
+
+type TodayItemV3 = {
+  sourceKey?: string;
+  sourceGenerationId?: string;
+  // existing Today snapshot fields remain unchanged
+};
 ```
 
 Exact schema syntax may change during implementation, but the ownership and migration rules below are normative.
 
+## Final review amendment: NextStep generation boundary
+
+Final review found that `project:{Project.id}` identifies the canonical NextStep family but cannot distinguish two successive NextSteps in the same Project, especially when their text is identical. Phase 8.1 therefore adds the smallest compatible boundary inside unreleased config v3:
+
+- optional `NextStep.generationId`;
+- optional `TodayItem.sourceGenerationId`;
+- no config version change;
+- no `sourceKey` format change.
+
+Missing values mean the legacy generation. Migrated v2 NextSteps and existing Today3 snapshots remain absent rather than receiving generated values. A new NextStep created by set, replacement, or Wishlist promotion receives a stable generation marker. Editing preserves it, and Today3 adoption copies it.
+
 ## Why this strategy
 
 1. It separates Project metadata from the current executable step without creating a new top-level collection.
-2. It keeps the proven stable identity `project:{Project.id}` and avoids migration of Today3 source keys.
+2. It keeps the proven stable source family `project:{Project.id}` and avoids migration of Today3 source keys, while an optional generation marker separates successive NextSteps.
 3. It represents “Project exists but has no current NextStep” directly.
 4. It lets the combined editor remain an implementation choice while making data ownership explicit.
 5. It can preserve settings left behind by v2 completion without manufacturing an empty candidate.
@@ -82,17 +100,22 @@ The values are Project-specific user choices. Promoting them to global settings 
 4. Create a raw pre-migration backup before any target write.
 5. Transform with a pure function:
    - non-empty NextStep: move content and all owned settings into `Project.nextStep`;
+   - leave `generationId` absent so migrated data remains in the legacy generation;
    - empty NextStep with retained settings: put settings in `legacyNextStepSettings`;
    - empty NextStep without settings: omit both objects;
    - preserve all unrelated collections and ordering.
 6. Validate the full v3 object in Rust and TypeScript-compatible schema terms.
 7. Persist using the existing serialized write path.
-8. Reload and validate the written v3 config before considering migration successful.
-9. On subsequent loads, accept v3 directly and never run the v2 transform again.
+8. Consider the load migration successful only after full in-memory v3 validation, raw backup creation, and successful atomic replacement. Serialize/decode round trips are covered by migration tests.
+9. On subsequent loads, validate v3 directly and never run the v2 transform again.
 
 ## Invariants
 
-- No new NextStep ID is minted; source identity remains Project-based.
+- No top-level NextStep entity or new source identity is minted; source identity remains Project-based.
+- The optional generation marker is not a new source key. `project:{id}` remains canonical for Builder membership and source lookup.
+- v2 migration does not mint generation markers or rewrite existing Today3. Missing NextStep and Today generation fields form the legacy generation.
+- New set/replacement/promotion mints one stable marker; edit preserves it; adoption copies it.
+- Completion, source re-snapshot, and direct Do Now-to-Today mapping may affect a Today snapshot only when its generation matches the current NextStep, including absent-to-absent legacy matching.
 - Today3 is not rebuilt, reordered, completed, or re-snapshotted by migration.
 - Wishlist IDs and source keys remain stable.
 - Session files and source completion history are not edited.
@@ -106,7 +129,7 @@ The values are Project-specific user choices. Promoting them to global settings 
 
 An editor opened from Builder or Today3 edits the canonical source represented by that item. If current behavior explicitly re-snapshots matching Today3, it may continue to do so in one rollback-capable save.
 
-Creating a new NextStep after the previous source was completed is replacement, not editing the historical snapshot. Existing Today3 cards and Sessions belonging to the previous text remain unchanged. This distinction must be explicit in handlers and tests rather than inferred from matching Project ID alone.
+Creating a new NextStep after the previous source was completed is replacement, not editing the historical snapshot. It receives a new `generationId`. Existing Today3 cards keep their previous `sourceGenerationId` and Sessions remain unchanged. Handlers must compare generations rather than infer the current incarnation from Project ID or matching text.
 
 ## Validation/schema alignment required before migration
 
@@ -119,7 +142,7 @@ Before v3 is written, implementation must align:
 - Undo config parsing;
 - fixtures for both v2 and v3.
 
-The app must retain a readable error and recovery path if the original file is invalid. A migration success banner must not be shown until the v3 reload succeeds.
+The app must retain a readable error and recovery path if the original file is invalid. A migration must not be reported as successful before validation, backup, and replacement succeed.
 
 ## Approval questions for later stages
 

@@ -27,9 +27,13 @@ test("confirmation actions place the destructive or completion action before can
   page,
 }) => {
   await prepare(page);
-  const project = page.locator(".nextStepRow", { hasText: "資料を1ページ読む" });
+  const inbox = page.locator(".inboxBand");
+  if ((await inbox.locator(".disclosure").getAttribute("aria-expanded")) === "false") {
+    await inbox.locator(".disclosure").click();
+  }
+  const wishlistItem = inbox.locator(".inboxRow").first();
 
-  await project.click({ button: "right" });
+  await wishlistItem.click({ button: "right" });
   await page.getByRole("menuitem", { name: "完了にする" }).click();
   let dialog = page.getByRole("dialog", { name: "完了にしますか？" });
   await expect(dialog.locator(".confirmDialogActions button")).toHaveText([
@@ -39,7 +43,7 @@ test("confirmation actions place the destructive or completion action before can
   await expect(dialog.getByRole("button", { name: "キャンセル" })).toBeFocused();
   await page.keyboard.press("Escape");
 
-  await project.click({ button: "right" });
+  await wishlistItem.click({ button: "right" });
   await page.getByRole("menuitem", { name: "削除" }).click();
   dialog = page.getByRole("dialog", { name: "削除しますか？" });
   await expect(dialog.locator(".confirmDialogActions button")).toHaveText(["削除", "キャンセル"]);
@@ -66,19 +70,19 @@ test("dashboard disclosure bars toggle from their count and description areas", 
   }
 });
 
-test("a NextStep context menu routes Today adoption through Builder", async ({ page }) => {
+test("a NextStep context menu exposes editing, Today adoption, and clearing", async ({ page }) => {
   await prepare(page);
-  const row = page.locator(".nextStepRow", { hasText: "5分だけ体を動かす" });
+  const row = page
+    .locator(".nextStepRow", { hasText: "5分だけ体を動かす" })
+    .locator(".nextStepActionRegion");
 
   await row.click({ button: "right" });
-  await expect(page.getByRole("menuitem", { name: "今日へ", exact: true })).toHaveCount(0);
-  await page.getByRole("menuitem", { name: "編集", exact: true }).focus();
-  await page.keyboard.press("Escape");
-  await page.locator(".todayBuilderDisclosure").click();
-  await page
-    .locator(".todayBuilderRow", { hasText: "5分だけ体を動かす" })
-    .getByRole("button", { name: "今日へ", exact: true })
-    .click();
+  await expect(page.getByRole("menuitem", { name: "次の一手を編集", exact: true })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "今日へ", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("menuitem", { name: "次の一手を空にする", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("menuitem", { name: "今日へ", exact: true }).click();
 
   const config = await currentConfig(page);
   expect(config.today.items).toContainEqual(

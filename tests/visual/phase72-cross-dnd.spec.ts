@@ -120,7 +120,10 @@ test("P72-04 Builder membership is checked across non-visible pages", async ({ p
       ...template,
       id: `extra-${index}`,
       name: `追加 ${index}`,
-      nextStep: `追加候補 ${index}`,
+      nextStep: {
+        ...template.nextStep!,
+        text: `追加候補 ${index}`,
+      },
       weeklyFocus: false,
     })),
     ...fixture.config.projects,

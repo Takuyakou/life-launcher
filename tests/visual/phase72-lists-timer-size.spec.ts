@@ -11,8 +11,11 @@ function fixtureWithCount(kind: "projects" | "inbox", count: number): VisualQaFi
       ...projectTemplate,
       id: `project-${index + 1}`,
       name: `プロジェクト ${String(index + 1).padStart(3, "0")}`,
-      nextStep: `次の一手 ${String(index + 1).padStart(3, "0")}`,
-      buttonIds: [],
+      nextStep: {
+        ...projectTemplate.nextStep!,
+        text: `次の一手 ${String(index + 1).padStart(3, "0")}`,
+        buttonIds: [],
+      },
       weeklyFocus: undefined,
     }));
     fixture.config.inbox = [];
@@ -99,7 +102,7 @@ test("P72-03 20+ pagination is independent, clamps, and never persists view stat
 test("P72-03 stable focus follows a source across 19-to-20 and deletion clamp", async ({ page }) => {
   await prepare(page, fixtureWithCount("projects", 19));
   await page.getByRole("button", { name: "残り14件をもっと見る" }).click();
-  const anchored = page.locator('[data-project-id="project-19"]');
+  const anchored = page.locator('[data-project-id="project-19"] .nextStepActionRegion');
   await anchored.focus();
   await page.evaluate(() => {
     const qa = (
@@ -115,7 +118,10 @@ test("P72-03 stable focus follows a source across 19-to-20 and deletion clamp", 
       ...config.projects[0],
       id: "project-20",
       name: "プロジェクト 020",
-      nextStep: "次の一手 020",
+      nextStep: {
+        ...config.projects[0].nextStep!,
+        text: "次の一手 020",
+      },
     });
     qa.updateConfig(config);
   });
@@ -136,7 +142,9 @@ test("P72-03 stable focus follows a source across 19-to-20 and deletion clamp", 
     qa.updateConfig(config);
   });
   await expect(page.getByRole("navigation", { name: "次の一手のページ" })).toHaveCount(0);
-  await expect(page.locator('[data-project-id="project-20"]')).toBeFocused();
+  await expect(
+    page.locator('[data-project-id="project-20"] .nextStepActionRegion'),
+  ).toBeFocused();
 });
 
 test("P72-03 Today buttons grow only in width and reveal play on hover", async ({ page }) => {

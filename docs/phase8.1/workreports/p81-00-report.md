@@ -1,5 +1,7 @@
 # Phase 8.1 / Stage 00 作業報告（内部ID: P81-00）
 
+> この報告はStage 00完了時点の監査snapshotである。その後、ユーザーがconfig v2→v3本番移行とP81-01〜P81-08の続行を承認した。現在状態は[Execution State](../execution-state.json)と[Phase 8.1作業まとめ](./phase8.1-final-summary.md)を参照する。
+
 ## 結果
 
 2026-09-14、Phase 8.1のCurrent Main / Data Ownership / Migration Auditを完了した。製品コードの変更はない。P81-01以降は未着手であり、監査PRを人間のレビュー待ちとして停止する。

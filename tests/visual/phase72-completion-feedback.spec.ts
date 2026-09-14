@@ -37,7 +37,7 @@ async function setSaveFailure(page: Page, failed: boolean) {
 function plannedFixture(completedBefore = 0) {
   const fixture = createPublicFixture();
   const project = fixture.config.projects[0];
-  project.shortTimerMinutes = 1;
+  project.nextStep!.shortTimerMinutes = 1;
   fixture.config.today.items = [
     {
       text: "先に終えた一手 A",
@@ -54,7 +54,7 @@ function plannedFixture(completedBefore = 0) {
       defaultTimerMinutes: 1,
     },
     {
-      text: project.nextStep,
+      text: project.nextStep!.text,
       done: false,
       sourceKey: `project:${project.id}`,
       projectId: project.id,
@@ -201,7 +201,7 @@ test("P72-05 the third completion prioritizes one 3-of-3 milestone and keeps nex
 
 test("P72-05 early completion yes rewards", async ({ page }) => {
   const yesFixture = plannedFixture(0);
-  yesFixture.config.projects[0].shortTimerMinutes = 3;
+  yesFixture.config.projects[0].nextStep!.shortTimerMinutes = 3;
   yesFixture.config.today.items[2].shortTimerMinutes = 3;
   yesFixture.config.today.items[2].defaultTimerMinutes = 25;
   await prepare(page, yesFixture);
@@ -215,7 +215,7 @@ test("P72-05 early completion yes rewards", async ({ page }) => {
 
 test("P72-05 early completion no leaves no feedback", async ({ page }) => {
   const fixture = plannedFixture(0);
-  fixture.config.projects[0].shortTimerMinutes = 3;
+  fixture.config.projects[0].nextStep!.shortTimerMinutes = 3;
   fixture.config.today.items[2].shortTimerMinutes = 3;
   fixture.config.today.items[2].defaultTimerMinutes = 25;
   await prepare(page, fixture);
@@ -239,7 +239,7 @@ test("P72-05 completion save failure records no feedback", async ({ page }) => {
 
 test("P72-05 Do Now-only completion uses a separate snapshot echo", async ({ page }) => {
   const fixture = createPublicFixture();
-  fixture.config.projects[0].shortTimerMinutes = 1;
+  fixture.config.projects[0].nextStep!.shortTimerMinutes = 1;
   fixture.config.today.items = [{ text: "別の項目", done: false, sourceKey: "manual:other" }];
   await prepare(page, fixture);
   await page.locator(".doNowStartPrimary").click();
@@ -248,16 +248,16 @@ test("P72-05 Do Now-only completion uses a separate snapshot echo", async ({ pag
   const echo = page.locator(".doNowCompletionEcho");
   await expect(page.locator(".doNowContent")).toHaveClass(/doNowContent--reward/);
   await expect(echo).toContainText("一手進みました");
-  await expect(echo).toContainText(fixture.config.projects[0].nextStep);
+  await expect(echo).toContainText(fixture.config.projects[0].nextStep!.text);
   await expect(page.locator(".todayRow--justCompleted, .todayAllCompletionReward"))
     .toHaveCount(0);
 });
 
 test("P72-05 a Do Now session linked to Today emits only the Today feedback", async ({ page }) => {
   const fixture = createPublicFixture();
-  fixture.config.projects[0].shortTimerMinutes = 1;
+  fixture.config.projects[0].nextStep!.shortTimerMinutes = 1;
   fixture.config.today.items = [{
-    text: fixture.config.projects[0].nextStep,
+    text: fixture.config.projects[0].nextStep!.text,
     done: false,
     sourceKey: `project:${fixture.config.projects[0].id}`,
     projectId: fixture.config.projects[0].id,

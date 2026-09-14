@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-pub const CONFIG_VERSION: u8 = 2;
+pub const CONFIG_VERSION: u8 = 3;
 pub const TODAY_ITEM_LIMIT: usize = 3;
 pub const WEEKLY_FOCUS_LIMIT: usize = 3;
 pub const EXECUTION_TRIGGER_MAX_CHARS: usize = 40;
@@ -68,7 +68,7 @@ pub struct LauncherButton {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Project {
+pub struct LegacyProjectV2 {
     pub id: String,
     pub name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -98,6 +98,140 @@ pub struct Project {
     pub instruction_path: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub instruction_open_on_start: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct NextStepV3 {
+    pub text: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub generation_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trigger: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reviewed_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub button_ids: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_timer_minutes: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub short_timer_minutes: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub start_note_template: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub instruction_path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub instruction_open_on_start: Option<bool>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct NextStepExecutionSettingsV3 {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub button_ids: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_timer_minutes: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub short_timer_minutes: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub start_note_template: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub instruction_path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub instruction_open_on_start: Option<bool>,
+}
+
+impl NextStepExecutionSettingsV3 {
+    pub fn is_empty(&self) -> bool {
+        self.button_ids.is_empty()
+            && self.default_timer_minutes.is_none()
+            && self.short_timer_minutes.is_none()
+            && self.start_note_template.is_none()
+            && self.instruction_path.is_none()
+            && self.instruction_open_on_start.is_none()
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectV3 {
+    pub id: String,
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub north_star: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub weekly_focus: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_step: Option<NextStepV3>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub legacy_next_step_settings: Option<NextStepExecutionSettingsV3>,
+}
+
+pub type Project = ProjectV3;
+
+impl From<LegacyProjectV2> for ProjectV3 {
+    fn from(project: LegacyProjectV2) -> Self {
+        let LegacyProjectV2 {
+            id,
+            name,
+            north_star,
+            weekly_focus,
+            next_step,
+            next_step_trigger,
+            next_step_updated_at,
+            next_step_reviewed_at,
+            button_id,
+            mut button_ids,
+            default_timer_minutes,
+            short_timer_minutes,
+            start_note_template,
+            color_id,
+            instruction_path,
+            instruction_open_on_start,
+        } = project;
+        if let Some(button_id) = button_id {
+            let clean = button_id.trim();
+            if !clean.is_empty() && !button_ids.iter().any(|id| id == clean) {
+                button_ids.push(clean.to_string());
+            }
+        }
+        let execution = NextStepExecutionSettingsV3 {
+            button_ids,
+            default_timer_minutes,
+            short_timer_minutes,
+            start_note_template,
+            instruction_path,
+            instruction_open_on_start,
+        };
+        let has_step = !next_step.trim().is_empty();
+        let next_step = has_step.then(|| NextStepV3 {
+            text: next_step,
+            generation_id: None,
+            trigger: next_step_trigger,
+            updated_at: next_step_updated_at,
+            reviewed_at: next_step_reviewed_at,
+            button_ids: execution.button_ids.clone(),
+            default_timer_minutes: execution.default_timer_minutes,
+            short_timer_minutes: execution.short_timer_minutes,
+            start_note_template: execution.start_note_template.clone(),
+            instruction_path: execution.instruction_path.clone(),
+            instruction_open_on_start: execution.instruction_open_on_start,
+        });
+        let legacy_next_step_settings = (!has_step && !execution.is_empty()).then_some(execution);
+        Self {
+            id,
+            name,
+            north_star,
+            weekly_focus,
+            color_id,
+            next_step,
+            legacy_next_step_settings,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -142,6 +276,8 @@ pub struct TodayItem {
     pub done: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_generation_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub trigger: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -349,6 +485,7 @@ pub struct LoadConfigResponse {
     pub error: Option<String>,
     pub backup_error: Option<String>,
     pub changed: bool,
+    pub save_blocked: bool,
     pub morning_victory_suggestion: Option<String>,
 }
 
@@ -744,36 +881,42 @@ pub fn sample_config() -> AppConfig {
                 name: "サンプル学習".to_string(),
                 north_star: None,
                 weekly_focus: None,
-                next_step: "資料を1ページ読む".to_string(),
-                next_step_trigger: None,
-                next_step_updated_at: None,
-                next_step_reviewed_at: None,
-                button_id: None,
-                button_ids: vec!["music-web".to_string()],
-                default_timer_minutes: None,
-                short_timer_minutes: None,
-                start_note_template: None,
                 color_id: None,
-                instruction_path: None,
-                instruction_open_on_start: None,
+                next_step: Some(NextStepV3 {
+                    text: "資料を1ページ読む".to_string(),
+                    generation_id: None,
+                    trigger: None,
+                    updated_at: None,
+                    reviewed_at: None,
+                    button_ids: vec!["music-web".to_string()],
+                    default_timer_minutes: None,
+                    short_timer_minutes: None,
+                    start_note_template: None,
+                    instruction_path: None,
+                    instruction_open_on_start: None,
+                }),
+                legacy_next_step_settings: None,
             },
             Project {
                 id: "organize".to_string(),
                 name: "整理".to_string(),
                 north_star: None,
                 weekly_focus: None,
-                next_step: "サンプルフォルダを開く".to_string(),
-                next_step_trigger: None,
-                next_step_updated_at: None,
-                next_step_reviewed_at: None,
-                button_id: None,
-                button_ids: vec!["documents".to_string()],
-                default_timer_minutes: None,
-                short_timer_minutes: None,
-                start_note_template: None,
                 color_id: None,
-                instruction_path: None,
-                instruction_open_on_start: None,
+                next_step: Some(NextStepV3 {
+                    text: "サンプルフォルダを開く".to_string(),
+                    generation_id: None,
+                    trigger: None,
+                    updated_at: None,
+                    reviewed_at: None,
+                    button_ids: vec!["documents".to_string()],
+                    default_timer_minutes: None,
+                    short_timer_minutes: None,
+                    start_note_template: None,
+                    instruction_path: None,
+                    instruction_open_on_start: None,
+                }),
+                legacy_next_step_settings: None,
             },
         ],
         today: Today {
@@ -786,6 +929,7 @@ pub fn sample_config() -> AppConfig {
                     text: "最初の一手を決める".to_string(),
                     done: false,
                     source_key: None,
+                    source_generation_id: None,
                     trigger: None,
                     project_id: None,
                     button_ids: Vec::new(),
@@ -798,6 +942,7 @@ pub fn sample_config() -> AppConfig {
                     text: "起動ボタンを1つ試す".to_string(),
                     done: false,
                     source_key: None,
+                    source_generation_id: None,
                     trigger: None,
                     project_id: None,
                     button_ids: Vec::new(),
@@ -825,6 +970,27 @@ pub fn sample_config() -> AppConfig {
 mod tests {
     use super::*;
     use chrono::{FixedOffset, TimeZone};
+
+    fn sample_legacy_project() -> LegacyProjectV2 {
+        LegacyProjectV2 {
+            id: "compose".to_string(),
+            name: "サンプル学習".to_string(),
+            north_star: None,
+            weekly_focus: None,
+            next_step: "資料を1ページ読む".to_string(),
+            next_step_trigger: None,
+            next_step_updated_at: None,
+            next_step_reviewed_at: None,
+            button_id: None,
+            button_ids: vec!["music-web".to_string()],
+            default_timer_minutes: None,
+            short_timer_minutes: None,
+            start_note_template: None,
+            color_id: None,
+            instruction_path: None,
+            instruction_open_on_start: None,
+        }
+    }
 
     #[test]
     fn initial_config_is_a_generic_empty_shell() {
@@ -863,5 +1029,67 @@ mod tests {
 
         assert_eq!(week_start_date(sunday), monday);
         assert_eq!(week_start_date(monday), monday);
+    }
+
+    #[test]
+    fn v2_project_with_next_step_moves_every_execution_field_to_v3_step() {
+        let mut project = sample_legacy_project();
+        project.next_step_trigger = Some("PCを開いたら".to_string());
+        project.default_timer_minutes = Some(45);
+        project.short_timer_minutes = Some(7);
+        project.start_note_template = Some("前回の続き".to_string());
+        project.instruction_path = Some("C:\\guide.html".to_string());
+        project.instruction_open_on_start = Some(true);
+
+        let migrated = ProjectV3::from(project);
+        let step = migrated.next_step.expect("active next step");
+        assert_eq!(step.text, "資料を1ページ読む");
+        assert_eq!(step.trigger.as_deref(), Some("PCを開いたら"));
+        assert_eq!(step.button_ids, vec!["music-web"]);
+        assert_eq!(step.default_timer_minutes, Some(45));
+        assert_eq!(step.short_timer_minutes, Some(7));
+        assert_eq!(step.start_note_template.as_deref(), Some("前回の続き"));
+        assert_eq!(step.instruction_path.as_deref(), Some("C:\\guide.html"));
+        assert_eq!(step.instruction_open_on_start, Some(true));
+        assert!(migrated.legacy_next_step_settings.is_none());
+    }
+
+    #[test]
+    fn v2_empty_next_step_preserves_execution_fields_as_pending_settings() {
+        let mut project = sample_legacy_project();
+        project.next_step.clear();
+        project.button_ids = vec!["music-web".to_string()];
+        project.short_timer_minutes = Some(8);
+        project.instruction_path = Some("C:\\guide.html".to_string());
+
+        let migrated = ProjectV3::from(project);
+        assert!(migrated.next_step.is_none());
+        let pending = migrated
+            .legacy_next_step_settings
+            .expect("pending execution settings");
+        assert_eq!(pending.button_ids, vec!["music-web"]);
+        assert_eq!(pending.short_timer_minutes, Some(8));
+        assert_eq!(pending.instruction_path.as_deref(), Some("C:\\guide.html"));
+    }
+
+    #[test]
+    fn v2_empty_next_step_without_execution_fields_creates_no_phantom_state() {
+        let mut project = sample_legacy_project();
+        project.next_step = "   ".to_string();
+        project.button_ids.clear();
+
+        let migrated = ProjectV3::from(project);
+        assert!(migrated.next_step.is_none());
+        assert!(migrated.legacy_next_step_settings.is_none());
+    }
+
+    #[test]
+    fn sample_config_uses_v3_nested_next_step() {
+        let config = sample_config();
+        assert_eq!(config.version, 3);
+        assert_eq!(
+            config.projects[0].next_step.as_ref().unwrap().text,
+            "資料を1ページ読む"
+        );
     }
 }

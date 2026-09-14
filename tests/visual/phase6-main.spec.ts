@@ -73,10 +73,10 @@ function withThreeTodayItems(): VisualQaFixture {
 
 function withOneMinuteProjectTimer(): VisualQaFixture {
   const fixture = createPublicFixture();
-  fixture.config.projects[0].shortTimerMinutes = 1;
+  fixture.config.projects[0].nextStep!.shortTimerMinutes = 1;
   fixture.config.today.items = [
     {
-      text: fixture.config.projects[0].nextStep,
+      text: fixture.config.projects[0].nextStep!.text,
       done: false,
       sourceKey: "project:" + fixture.config.projects[0].id,
       projectId: fixture.config.projects[0].id,
@@ -277,11 +277,18 @@ test("Today Builder is source-only, paginates, and ignores legacy dismiss keys",
   await page.getByRole("button", { name: "次のページ" }).click();
   await expect(page.locator("[data-today-builder-index]")).toHaveCount(3);
 
-  await page.locator(".projectsBand").getByRole("button", { name: "次の一手を追加" }).click();
-  const dialog = page.getByRole("dialog", { name: "次の一手を追加" });
-  await dialog.getByRole("textbox", { name: "取り組み名" }).fill("追加したプロジェクト");
-  await dialog.getByRole("textbox", { name: "次にやること", exact: true }).fill("6件目以降も残る候補");
-  await dialog.getByRole("button", { name: "保存" }).click();
+  await page.getByRole("button", { name: "プロジェクトを追加", exact: true }).click();
+  const projectDialog = page.getByRole("dialog", { name: "プロジェクトを追加" });
+  await projectDialog
+    .getByRole("textbox", { name: "プロジェクト名" })
+    .fill("追加したプロジェクト");
+  await projectDialog.getByRole("button", { name: "プロジェクトを追加", exact: true }).click();
+  const addedProject = (await currentConfig(page)).projects.at(-1)!;
+  const addedProjectRow = page.locator(`[data-project-id="${addedProject.id}"]`);
+  await addedProjectRow.getByRole("button", { name: "次の一手を設定" }).click();
+  const nextStepDialog = page.getByRole("dialog", { name: "次の一手を設定" });
+  await nextStepDialog.getByRole("textbox", { name: "行動" }).fill("6件目以降も残る候補");
+  await nextStepDialog.getByRole("button", { name: "保存", exact: true }).click();
   await expect(page.locator(".todayBuilderHeader .disclosureCount")).toContainText("9件");
 
   await page.reload();
@@ -289,7 +296,7 @@ test("Today Builder is source-only, paginates, and ignores legacy dismiss keys",
   await expect(page.locator(".todayBuilderPagination")).toContainText("1 / 2");
   expect(
     (await currentConfig(page)).projects.some(
-      (project) => project.nextStep === "6件目以降も残る候補",
+      (project) => project.nextStep?.text === "6件目以降も残る候補",
     ),
   ).toBe(true);
 });
@@ -380,8 +387,8 @@ test("legacy same-text Wishlist selection maps to only the first stable item", a
 test("Today adoption snapshots timer, actions, text, and instruction", async ({ page }) => {
   const fixture = createPublicFixture();
   fixture.config.today.items = [];
-  fixture.config.projects[0].defaultTimerMinutes = 37;
-  fixture.config.projects[0].shortTimerMinutes = 7;
+  fixture.config.projects[0].nextStep!.defaultTimerMinutes = 37;
+  fixture.config.projects[0].nextStep!.shortTimerMinutes = 7;
   await prepare(page, fixture);
 
   await page.locator(".todayBuilderDisclosure").click();
@@ -413,11 +420,14 @@ test("Today adoption snapshots timer, actions, text, and instruction", async ({ 
         project.id === "sample-learning"
           ? {
               ...project,
-              nextStep: "変更後の一手",
-              buttonIds: [],
-              instructionPath: undefined,
-              defaultTimerMinutes: 25,
-              shortTimerMinutes: 5,
+              nextStep: {
+                ...project.nextStep!,
+                text: "変更後の一手",
+                buttonIds: [],
+                instructionPath: undefined,
+                defaultTimerMinutes: 25,
+                shortTimerMinutes: 5,
+              },
             }
           : project,
       ),
@@ -454,7 +464,7 @@ test("failed Today adoption rolls the optimistic UI back", async ({ page }) => {
   expect((await currentConfig(page)).today.items).toEqual([]);
 });
 
-test("NextStep accordion, detailed add dialog, and keyboard context menu are reachable", async ({
+test("Project creation, NextStep setup, and keyboard context menu are reachable", async ({
   page,
 }) => {
   await prepare(page);
@@ -464,15 +474,27 @@ test("NextStep accordion, detailed add dialog, and keyboard context menu are rea
   await expect(page.locator(".nextStepBody")).toBeHidden();
   await disclosure.press("Enter");
 
-  await page.getByRole("button", { name: "次の一手を追加", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "次の一手を追加" });
-  await dialog.getByRole("textbox", { name: "取り組み名" }).fill("新しいプロジェクト");
-  await dialog.getByRole("textbox", { name: "次にやること", exact: true }).fill("最初の1行を書く");
-  await dialog.getByRole("button", { name: "保存" }).click();
+  await page.getByRole("button", { name: "プロジェクトを追加", exact: true }).click();
+  const projectDialog = page.getByRole("dialog", { name: "プロジェクトを追加" });
+  await projectDialog
+    .getByRole("textbox", { name: "プロジェクト名" })
+    .fill("新しいプロジェクト");
+  await projectDialog.getByRole("button", { name: "プロジェクトを追加", exact: true }).click();
   await expect(page.locator(".nextStepRow")).toHaveCount(3);
 
-  const row = page.locator(".nextStepRow").first();
-  await row.focus();
-  await row.press("Shift+F10");
-  await expect(page.getByRole("menuitem", { name: "編集" })).toBeVisible();
+  const addedProject = (await currentConfig(page)).projects.at(-1)!;
+  const row = page.locator(`[data-project-id="${addedProject.id}"]`);
+  await row.getByRole("button", { name: "次の一手を設定" }).click();
+  const nextStepDialog = page.getByRole("dialog", { name: "次の一手を設定" });
+  await nextStepDialog.getByRole("textbox", { name: "行動" }).fill("最初の1行を書く");
+  await nextStepDialog.getByRole("button", { name: "保存", exact: true }).click();
+
+  const actionRegion = row.locator(".nextStepActionRegion");
+  await actionRegion.focus();
+  await actionRegion.press("Shift+F10");
+  await expect(page.getByRole("menuitem", { name: "次の一手を編集", exact: true })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "今日へ", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("menuitem", { name: "次の一手を空にする", exact: true }),
+  ).toBeVisible();
 });

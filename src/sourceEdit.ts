@@ -17,32 +17,46 @@ export function timerSourceKey(config: AppConfig, sourceId: string): string | nu
 }
 
 export function resnapshotSource(previous: AppConfig, next: AppConfig, key: string): AppConfig {
-  const indices = previous.today.items.flatMap((item, index) =>
-    item.sourceKey && canonicalSourceKey(previous, item.sourceKey) === key ? [index] : []);
+  const previousProject = previous.projects.find(p => `project:${p.id}` === key);
+  const nextProject = next.projects.find(p => `project:${p.id}` === key);
+  const sourceGenerationId = previousProject?.nextStep?.generationId;
+  if (
+    previousProject &&
+    (!previousProject.nextStep || nextProject?.nextStep?.generationId !== sourceGenerationId)
+  ) {
+    return next;
+  }
+  const indices = previous.today.items.flatMap((item, index) => {
+    if (!item.sourceKey || canonicalSourceKey(previous, item.sourceKey) !== key) return [];
+    return previousProject && item.sourceGenerationId !== sourceGenerationId ? [] : [index];
+  });
   if (indices.length > 1) throw new Error("同じ登録に対応する今日の項目が複数あります");
   if (!indices.length) return next;
   if (previous.today.items[indices[0]].sourceKey !== key) {
     throw new Error("旧形式の採用項目です。今日の3件から外して再度選んでください");
   }
-  const project = next.projects.find(p => `project:${p.id}` === key);
+  const project = nextProject;
   const inbox = next.inbox.find(i => `wishlist:${i.id}` === key);
   if (!project && !inbox) throw new Error("元の登録が見つかりません");
   const linkedProject = project ?? next.projects.find(p => p.id === inbox?.projectId);
-  const source = project ?? inbox!;
+  const source = project?.nextStep ?? inbox!;
   const old = previous.today.items[indices[0]];
   const item: TodayItem = {
     sourceKey: old.sourceKey,
+    ...(project?.nextStep?.generationId
+      ? { sourceGenerationId: project.nextStep.generationId }
+      : {}),
     done: old.done,
-    text: (project ? project.nextStep : inbox!.text).trim(),
-    ...(project?.nextStepTrigger?.trim() ? { trigger: project.nextStepTrigger.trim() } : {}),
+    text: (project ? project.nextStep?.text ?? "" : inbox!.text).trim(),
+    ...(project?.nextStep?.trigger?.trim() ? { trigger: project.nextStep.trigger.trim() } : {}),
     ...(project || inbox?.projectId ? { projectId: project?.id ?? inbox!.projectId } : {}),
     ...(source.buttonIds?.length ? { buttonIds: [...source.buttonIds] } : {}),
     ...(source.instructionPath ? {
       instructionPath: source.instructionPath,
       instructionOpenOnStart: source.instructionOpenOnStart !== false,
     } : {}),
-    defaultTimerMinutes: linkedProject?.defaultTimerMinutes ?? next.settings.defaultTimerMinutes,
-    shortTimerMinutes: linkedProject?.shortTimerMinutes ?? next.settings.shortTimerMinutes,
+    defaultTimerMinutes: linkedProject?.nextStep?.defaultTimerMinutes ?? next.settings.defaultTimerMinutes,
+    shortTimerMinutes: linkedProject?.nextStep?.shortTimerMinutes ?? next.settings.shortTimerMinutes,
   };
   return { ...next, today: { ...next.today, items: next.today.items.map((entry, index) => index === indices[0] ? item : entry) } };
 }

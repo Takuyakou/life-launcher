@@ -29,7 +29,10 @@ function withHistory(): VisualQaFixture {
   const fixture = createPublicFixture();
   const project = fixture.config.projects.find((item) => item.id === "sample-learning");
   if (!project) throw new Error("sample project is missing");
-  project.nextStep = "現在の次の一手は履歴へ表示しない";
+  project.nextStep = {
+    ...project.nextStep!,
+    text: "現在の次の一手は履歴へ表示しない",
+  };
   fixture.sessionEntries.entries = Array.from({ length: 7 }, (_, index) => ({
     rowKey: `history-${index + 1}`,
     id: `history-${index + 1}`,
@@ -118,14 +121,14 @@ test("all records supports filters, keyboard context actions and execution-recor
   await row.press("Shift+F10");
   await page.getByRole("menuitem", { name: "編集" }).click();
   const editDialog = page.getByRole("dialog", { name: "実行記録を編集" });
-  await expect(editDialog.getByText("取り組み", { exact: true })).toBeVisible();
+  await expect(editDialog.getByText("プロジェクト", { exact: true })).toBeVisible();
   await expect(editDialog.getByText("実行内容", { exact: true })).toBeVisible();
   await expect(editDialog.locator(".formDialogActions button")).toHaveText(["保存", "キャンセル"]);
   await editDialog.getByRole("button", { name: "キャンセル" }).click();
 
   await records.getByRole("button", { name: "実行記録を追加" }).click();
   const addDialog = page.getByRole("dialog", { name: "実行記録を追加" });
-  await expect(addDialog.getByText("取り組み", { exact: true })).toBeVisible();
+  await expect(addDialog.getByText("プロジェクト", { exact: true })).toBeVisible();
   await expect(addDialog.getByText("実行内容", { exact: true })).toBeVisible();
   await expect(addDialog.locator(".formDialogActions button")).toHaveText(["追加", "キャンセル"]);
 });

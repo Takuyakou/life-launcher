@@ -37,61 +37,35 @@ async function setSaveFailure(page: Page, failed: boolean) {
   }, failed);
 }
 
-test("completing a NextStep keeps the Project and stores an immutable snapshot", async ({
-  page,
-}) => {
+test("clearing a NextStep keeps the Project and adopted Today3 snapshot", async ({ page }) => {
   const fixture = createPublicFixture();
-  fixture.config.today.candidateExcludedSourceKeys = ["project:sample-learning"];
   await prepare(page, fixture);
   const row = page.locator(".nextStepRow", { hasText: "資料を1ページ読む" });
   await row.click({ button: "right" });
-  await page.getByRole("menuitem", { name: "完了にする" }).click();
-  const dialog = page.getByRole("dialog", { name: "完了にしますか？" });
+  await expect(page.getByRole("menuitem", { name: "完了にする" })).toHaveCount(0);
+  await page.getByRole("menuitem", { name: "次の一手を空にする" }).click();
+  const dialog = page.getByRole("dialog", { name: "次の一手を空にしますか？" });
   await expect(dialog.getByRole("button", { name: "キャンセル" })).toBeFocused();
-  await expect(dialog).toContainText("これまでの実行記録は残ります");
+  await expect(dialog).toContainText("今日の3件に採用済みの内容と実行記録は変更しません");
   await page.keyboard.press("Escape");
-  expect((await currentConfig(page)).projects[0].nextStep).toBe("資料を1ページ読む");
+  expect((await currentConfig(page)).projects[0].nextStep?.text).toBe("資料を1ページ読む");
 
   await row.click({ button: "right" });
-  await page.getByRole("menuitem", { name: "完了にする" }).click();
+  await page.getByRole("menuitem", { name: "次の一手を空にする" }).click();
   await page
-    .getByRole("dialog", { name: "完了にしますか？" })
-    .getByRole("button", { name: "完了にする" })
+    .getByRole("dialog", { name: "次の一手を空にしますか？" })
+    .getByRole("button", { name: "空にする" })
     .dblclick();
   let config = await currentConfig(page);
   expect(config.projects.some((project) => project.id === "sample-learning")).toBe(true);
-  expect(config.projects[0].nextStep).toBe("");
-  expect(config.today.items.some((item) => item.sourceKey === "project:sample-learning")).toBe(
-    false,
-  );
-  expect(config.today.candidateExcludedSourceKeys).not.toContain("project:sample-learning");
-  expect(config.sourceCompletions).toHaveLength(1);
-  expect(config.sourceCompletions[0]).toMatchObject({
-    sourceType: "nextStep",
-    sourceIdentity: "project:sample-learning",
-    textSnapshot: "資料を1ページ読む",
-    projectId: "sample-learning",
-    projectNameSnapshot: "サンプル学習",
-  });
-
-  const completedProject = page.locator(".nextStepRow", { hasText: "サンプル学習" });
-  await completedProject.click({ button: "right" });
-  await page.getByRole("menuitem", { name: "削除" }).click();
-  await page
-    .getByRole("dialog", { name: "削除しますか？" })
-    .getByRole("button", { name: "削除", exact: true })
-    .click();
-  config = await currentConfig(page);
-  expect(config.projects.some((project) => project.id === "sample-learning")).toBe(false);
-  expect(config.sourceCompletions).toHaveLength(1);
-  expect(config.sourceCompletions[0].projectNameSnapshot).toBe("サンプル学習");
+  expect(config.projects[0].nextStep).toBeUndefined();
+  expect(config.today.items.some((item) => item.sourceKey === "project:sample-learning")).toBe(true);
+  expect(config.sourceCompletions).toEqual([]);
 
   await page.reload();
   config = await currentConfig(page);
-  expect(config.sourceCompletions).toHaveLength(1);
-  await page.getByRole("button", { name: "記録ビューを開く" }).click();
-  await expect(page.locator(".sourceCompletionSection")).toContainText("資料を1ページ読む");
-  await expect(page.locator(".sourceCompletionSection")).toContainText("次の一手");
+  expect(config.projects[0].nextStep).toBeUndefined();
+  expect(config.today.items.some((item) => item.sourceKey === "project:sample-learning")).toBe(true);
 });
 
 test("completing a Wishlist item removes only its active source and records its Project snapshot", async ({
@@ -119,7 +93,7 @@ test("completing a Wishlist item removes only its active source and records its 
   const config = await currentConfig(page);
   expect(config.inbox.some((entry) => entry.id === "sample-weekend")).toBe(false);
   expect(config.today.items).toEqual([]);
-  expect(config.projects[0].nextStep).toBe("資料を1ページ読む");
+  expect(config.projects[0].nextStep?.text).toBe("資料を1ページ読む");
   expect(config.sourceCompletions[0]).toMatchObject({
     sourceType: "wishlist",
     sourceIdentity: "wishlist:sample-weekend",
@@ -132,9 +106,18 @@ test("deleting a source removes linked Today3 without creating completion histor
   page,
 }) => {
   const fixture = createPublicFixture();
+  fixture.config.today.items = [
+    {
+      text: fixture.config.inbox[1].text,
+      done: false,
+      sourceKey: "wishlist:sample-weekend",
+      projectId: "sample-learning",
+    },
+  ];
   await prepare(page, fixture);
-  const row = page.locator(".nextStepRow", { hasText: "資料を1ページ読む" });
-  await row.click({ button: "right" });
+  await page.locator(".inboxBand .disclosure").click();
+  const item = page.locator(".inboxRow", { hasText: "週末に試すアイデア" });
+  await item.click({ button: "right" });
   await page.getByRole("menuitem", { name: "削除" }).click();
   const dialog = page.getByRole("dialog", { name: "削除しますか？" });
   await expect(dialog.getByRole("button", { name: "キャンセル" })).toBeFocused();
@@ -142,10 +125,9 @@ test("deleting a source removes linked Today3 without creating completion histor
   await dialog.getByRole("button", { name: "削除", exact: true }).click();
 
   const config = await currentConfig(page);
-  expect(config.projects.some((project) => project.id === "sample-learning")).toBe(false);
-  expect(config.today.items.some((item) => item.sourceKey === "project:sample-learning")).toBe(
-    false,
-  );
+  expect(config.inbox.some((entry) => entry.id === "sample-weekend")).toBe(false);
+  expect(config.projects.some((project) => project.id === "sample-learning")).toBe(true);
+  expect(config.today.items.some((entry) => entry.sourceKey === "wishlist:sample-weekend")).toBe(false);
   expect(config.sourceCompletions).toEqual([]);
 });
 
@@ -153,39 +135,56 @@ test("completion save failure rolls back source, Today3, and history together", 
   page,
 }) => {
   const fixture = createPublicFixture();
+  fixture.config.today.items = [
+    {
+      text: fixture.config.inbox[1].text,
+      done: false,
+      sourceKey: "wishlist:sample-weekend",
+      projectId: "sample-learning",
+    },
+  ];
   await prepare(page, fixture);
   await setSaveFailure(page, true);
-  const row = page.locator(".nextStepRow", { hasText: "資料を1ページ読む" });
-  await row.click({ button: "right" });
+  await page.locator(".inboxBand .disclosure").click();
+  const item = page.locator(".inboxRow", { hasText: "週末に試すアイデア" });
+  await item.click({ button: "right" });
   await page.getByRole("menuitem", { name: "完了にする" }).click();
   const dialog = page.getByRole("dialog", { name: "完了にしますか？" });
   await dialog.getByRole("button", { name: "完了にする" }).click();
 
   await expect(dialog).toBeVisible();
   const config = await currentConfig(page);
-  expect(config.projects[0].nextStep).toBe("資料を1ページ読む");
-  expect(config.today.items.some((item) => item.sourceKey === "project:sample-learning")).toBe(
-    true,
-  );
+  expect(config.inbox.some((entry) => entry.id === "sample-weekend")).toBe(true);
+  expect(config.today.items.some((entry) => entry.sourceKey === "wishlist:sample-weekend")).toBe(true);
   expect(config.sourceCompletions).toEqual([]);
 });
 
-test("active source timer disables complete and delete actions", async ({ page }) => {
+test("active Wishlist timer disables complete and delete actions", async ({ page }) => {
   const fixture = createPublicFixture();
-  fixture.config.today.items = [fixture.config.today.items[0]];
+  fixture.config.today.items = [
+    {
+      text: fixture.config.inbox[1].text,
+      done: false,
+      sourceKey: "wishlist:sample-weekend",
+      projectId: "sample-learning",
+      shortTimerMinutes: 5,
+      normalTimerMinutes: 25,
+    },
+  ];
   await prepare(page, fixture);
   await page
     .locator(".todayRow")
     .getByRole("button", { name: /短時間タイマー5分で開始/ })
     .click();
-  await page.locator(".nextStepRow", { hasText: "資料を1ページ読む" }).click({ button: "right" });
+  await page.locator(".inboxBand .disclosure").click();
+  await page.locator(".inboxRow", { hasText: "週末に試すアイデア" }).click({ button: "right" });
   await expect(page.getByRole("menuitem", { name: "完了にする" })).toBeDisabled();
   await expect(page.getByRole("menuitem", { name: "削除" })).toBeDisabled();
 });
 
-test("Today3 planned completion does not complete its reusable source", async ({ page }) => {
+test("Today3 planned completion clears its NextStep source and records history", async ({ page }) => {
   const fixture = createPublicFixture();
-  fixture.config.projects[0].shortTimerMinutes = 1;
+  fixture.config.projects[0].nextStep!.shortTimerMinutes = 1;
   fixture.config.today.items = [fixture.config.today.items[0]];
   await prepare(page, fixture);
   await page
@@ -200,6 +199,12 @@ test("Today3 planned completion does not complete its reusable source", async ({
 
   const config = await currentConfig(page);
   expect(config.today.items[0].done).toBe(true);
-  expect(config.projects[0].nextStep).toBe("資料を1ページ読む");
-  expect(config.sourceCompletions).toEqual([]);
+  expect(config.projects[0].nextStep).toBeUndefined();
+  expect(config.sourceCompletions).toHaveLength(1);
+  expect(config.sourceCompletions[0]).toMatchObject({
+    sourceType: "nextStep",
+    sourceIdentity: "project:sample-learning",
+    textSnapshot: "資料を1ページ読む",
+    projectId: "sample-learning",
+  });
 });

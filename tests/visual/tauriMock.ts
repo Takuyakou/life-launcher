@@ -128,6 +128,7 @@ export async function installTauriMock(
                   error: null,
                   backupError: null,
                   changed: false,
+                  saveBlocked: false,
                   morningVictorySuggestion: null,
                 };
               case "save_config":

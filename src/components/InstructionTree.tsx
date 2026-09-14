@@ -202,18 +202,31 @@ function rewriteProjectReferences(
 ): { config: AppConfig; projectNames: string[]; changed: boolean } {
   const projectNames: string[] = [];
   const projects = config.projects.map((project) => {
-    if (!project.instructionPath || !isWithinPath(project.instructionPath, oldPath)) return project;
+    const nextStepPath = project.nextStep?.instructionPath;
+    const legacyPath = project.legacyNextStepSettings?.instructionPath;
+    if (
+      (!nextStepPath || !isWithinPath(nextStepPath, oldPath)) &&
+      (!legacyPath || !isWithinPath(legacyPath, oldPath))
+    ) return project;
     projectNames.push(project.name);
-    if (newPath) {
-      return {
-        ...project,
-        instructionPath: replacePathPrefix(project.instructionPath, oldPath, newPath) ?? newPath,
-      };
-    }
-    const nextProject = { ...project };
-    delete nextProject.instructionPath;
-    delete nextProject.instructionOpenOnStart;
-    return nextProject;
+    const rewrite = <T extends { instructionPath?: string; instructionOpenOnStart?: boolean }>(
+      value: T | undefined,
+    ): T | undefined => {
+      if (!value?.instructionPath || !isWithinPath(value.instructionPath, oldPath)) return value;
+      const updated = { ...value };
+      if (newPath) {
+        updated.instructionPath = replacePathPrefix(value.instructionPath, oldPath, newPath) ?? newPath;
+      } else {
+        delete updated.instructionPath;
+        delete updated.instructionOpenOnStart;
+      }
+      return updated;
+    };
+    return {
+      ...project,
+      nextStep: rewrite(project.nextStep),
+      legacyNextStepSettings: rewrite(project.legacyNextStepSettings),
+    };
   });
   return {
     config: { ...config, projects },
@@ -945,15 +958,17 @@ export function InstructionTree({
 
   const openProjectLinkDialog = async (target: VisibleTreeNode) => {
     const loaded = await loadConfig();
-    if (loaded.config.projects.length === 0) {
+    const projects = loaded.config.projects
+      .filter((project) => project.nextStep?.text.trim())
+      .map((project) => ({
+        id: project.id,
+        name: project.name,
+        instructionPath: project.nextStep?.instructionPath,
+      }));
+    if (projects.length === 0) {
       setOperationStatus("紐付ける次の一手がありません。メイン画面で先に追加してください");
       return;
     }
-    const projects = loaded.config.projects.map((project) => ({
-      id: project.id,
-      name: project.name,
-      instructionPath: project.instructionPath,
-    }));
     const linkedProject = projects.find(
       (project) =>
         project.instructionPath && pathKey(project.instructionPath) === pathKey(target.path),
@@ -975,17 +990,21 @@ export function InstructionTree({
     try {
       const loaded = await loadConfig();
       const project = loaded.config.projects.find(
-        (candidate) => candidate.id === projectLinkDialog.projectId,
+        (candidate) =>
+          candidate.id === projectLinkDialog.projectId && candidate.nextStep?.text.trim(),
       );
       if (!project) throw new Error("選択した次の一手が見つかりません。再度選択してください");
       await saveConfigAndNotifyDashboard({
         ...loaded.config,
         projects: loaded.config.projects.map((candidate) =>
-          candidate.id === project.id
+          candidate.id === project.id && candidate.nextStep
             ? {
                 ...candidate,
-                instructionPath: projectLinkDialog.path,
-                instructionOpenOnStart: true,
+                nextStep: {
+                  ...candidate.nextStep,
+                  instructionPath: projectLinkDialog.path,
+                  instructionOpenOnStart: true,
+                },
               }
             : candidate,
         ),
