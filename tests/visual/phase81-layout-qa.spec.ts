@@ -138,8 +138,8 @@ for (const width of VIEWPORTS) {
     await expect(projects.getByRole("navigation", { name: "次の一手のページ" })).toContainText(
       "1 / 3",
     );
-    await expect(wishlist.getByRole("navigation", { name: "やりたいことのページ" })).toContainText(
-      "1 / 3",
+    await expect(wishlist.locator(".wishlistGroup").last().locator(".wishlistGroupHeader")).toContainText(
+      "未分類",
     );
 
     const longProject = projects.locator('[data-project-id="sample-learning"]');
@@ -197,7 +197,6 @@ for (const width of VIEWPORTS) {
     await expect(emptyProject.getByRole("button", { name: "次の一手を設定" })).toBeVisible();
 
     const unassignedWishlist = wishlist.locator('[data-inbox-id="phase81-wishlist-1"]');
-    await expect(unassignedWishlist.getByText("プロジェクトなし", { exact: true })).toBeVisible();
     await expect(unassignedWishlist.locator(".inboxItemText")).toHaveAttribute(
       "title",
       LONG_WISHLIST,

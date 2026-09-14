@@ -293,7 +293,7 @@ test("Phase 8.1 Wishlist promotion starts from a reset execution package", async
   await expect(dialog.getByRole("spinbutton", { name: "通常タイマー分数" })).toHaveValue("");
   await expect(dialog.getByRole("spinbutton", { name: "短時間タイマー分数" })).toHaveValue("");
   await expect(dialog.locator(".instructionPickerSelection")).toContainText("選択されていません");
-  await dialog.getByRole("checkbox", { name: "置き換えることを確認しました" }).check();
+  await dialog.getByRole("button", { name: "完了にする", exact: true }).click();
   await dialog.getByRole("button", { name: "保存", exact: true }).click();
 
   const config = await currentConfig(page);
@@ -304,6 +304,11 @@ test("Phase 8.1 Wishlist promotion starts from a reset execution package", async
   expect(promoted?.defaultTimerMinutes).toBeUndefined();
   expect(promoted?.shortTimerMinutes).toBeUndefined();
   expect(config.inbox.map((item) => item.id)).toEqual(["sample-later"]);
+  expect(config.sourceCompletions.at(-1)).toMatchObject({
+    sourceType: "nextStep",
+    sourceIdentity: "project:sample-learning",
+    textSnapshot: "資料を1ページ読む",
+  });
   expect(config.today).toEqual(todayBefore);
   const nativeCalls = await page.evaluate(() =>
     (

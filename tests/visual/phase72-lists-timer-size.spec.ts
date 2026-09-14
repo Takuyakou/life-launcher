@@ -65,11 +65,28 @@ for (const [kind, counts] of [
       if (kind === "inbox") await openWishlist(page);
       const section = page.locator(kind === "projects" ? ".projectsBand" : ".inboxBand");
       const rows = section.locator(kind === "projects" ? ".nextStepRow" : ".inboxRow");
-      const expected = count <= 5 ? count : count < 20 ? 5 : Math.min(10, count);
+      const expected =
+        kind === "projects"
+          ? count <= 5
+            ? count
+            : count < 20
+              ? 5
+              : Math.min(10, count)
+          : count <= 6
+            ? count
+            : 10;
       await expect(rows).toHaveCount(expected);
       await expect(section.locator(".disclosureCount")).toHaveText(`${count}件`);
-      await expect(section.locator(".sourceListControls")).toHaveCount(count >= 6 && count <= 19 ? 1 : 0);
-      await expect(section.locator(".sourceListPagination")).toHaveCount(count >= 20 ? 1 : 0);
+      const expectedControls =
+        kind === "inbox"
+          ? count >= 20
+            ? 2
+            : 0
+          : count >= 6 && count <= 19
+            ? 1
+            : 0;
+      await expect(section.locator(".sourceListControls")).toHaveCount(expectedControls);
+      await expect(section.locator(".sourceListPagination")).toHaveCount(kind === "projects" && count >= 20 ? 1 : 0);
     });
   }
 }
@@ -87,10 +104,15 @@ test("P72-03 6-19 item lists expand and compact without saving or toggling the s
 });
 
 test("P72-03 20+ pagination is independent, clamps, and never persists view state", async ({ page }) => {
-  await prepare(page, fixtureWithCount("inbox", 21));
+  const fixture = fixtureWithCount("inbox", 21);
+  fixture.config.inbox = fixture.config.inbox.map((item) => ({
+    ...item,
+    projectId: fixture.config.projects[0].id,
+  }));
+  await prepare(page, fixture);
   await openWishlist(page);
   const before = await saveCallCount(page);
-  const nav = page.getByRole("navigation", { name: "やりたいことのページ" });
+  const nav = page.getByRole("navigation", { name: "サンプル学習のやりたいことページ" });
   await expect(nav).toContainText("1 / 3");
   await nav.getByRole("button", { name: "次へ" }).click();
   await nav.getByRole("button", { name: "次へ" }).click();
