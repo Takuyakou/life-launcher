@@ -202,8 +202,8 @@ test("timer actions keep time subtly right of center and slide play in from the 
   await expect(todayShort.locator(".nextStepStartDuration")).toHaveText("5分");
   await expect(todayNormal.locator(".nextStepStartDuration")).toHaveText("25分");
   expect((await doNowShort.boundingBox())?.width).toBe(112);
-  expect((await todayShort.boundingBox())?.width).toBe(88);
-  expect((await doNowShort.boundingBox())?.height).toBe((await todayShort.boundingBox())?.height);
+  expect((await todayShort.boundingBox())?.width).toBe(78);
+  expect((await todayShort.boundingBox())?.height).toBe(36);
   await expect(todayShort.locator(".nextStepStartDuration")).toHaveCSS("opacity", "1");
   await expect(todayShort.locator(".nextStepStartGlyph")).toHaveCSS("opacity", "0");
   const todayBefore = await todayShort.boundingBox();

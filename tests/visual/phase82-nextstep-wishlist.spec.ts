@@ -123,12 +123,7 @@ test("v1.3 Wishlist group reorder preserves item order without changing Project 
     `project:${first.id}`,
     "unassigned",
   ]);
-  expect(result.inbox.map(({ id }) => id)).toEqual([
-    "second-1",
-    "first-1",
-    "first-2",
-    "none-1",
-  ]);
+  expect(result.inbox.map(({ id }) => id)).toEqual(["second-1", "first-1", "first-2", "none-1"]);
   expect(result.projects.map(({ id }) => id)).toEqual([first.id, second.id]);
 });
 
@@ -282,11 +277,18 @@ test("P82-01 promotion cancel and save failure leave both sources unchanged", as
   expect(await currentConfig(page)).toEqual(initial);
 });
 
-test("P82-01 Wishlist renders Project groups, collapse, Today and excluded states", async ({ page }) => {
+test("P82-01 Wishlist renders Project groups, collapse, Today and excluded states", async ({
+  page,
+}) => {
   const fixture = createPublicFixture();
   fixture.config.inbox.push({
     id: "wish-selected",
     text: "今日に選ばれたやりたいこと",
+    projectId: "sample-stretch",
+  });
+  fixture.config.inbox.push({
+    id: "wish-selected-second",
+    text: "同じプロジェクトのもう一件",
     projectId: "sample-stretch",
   });
   fixture.config.inbox.push({ id: "wish-excluded", text: "候補から外したやりたいこと" });
@@ -305,6 +307,9 @@ test("P82-01 Wishlist renders Project groups, collapse, Today and excluded state
   for (const [index, name] of expectedGroupNames.entries()) {
     await expect(groups.nth(index).locator(".wishlistGroupHeader")).toContainText(name);
   }
+  const stretchGroup = page.locator('[data-wishlist-group="project:sample-stretch"]');
+  await expect(stretchGroup.locator(".wishlistGroupHeader")).toContainText("2件");
+  await expect(stretchGroup.locator(".inboxRow")).toHaveCount(2);
   await expect(page.locator('[data-inbox-id="wish-selected"] .wishlistTodayStatus')).toHaveText(
     "✓ 今日の3件",
   );
@@ -332,15 +337,14 @@ test("P82-01 promotion rejects a source removed after the form opened", async ({
   const dialog = await openPromotion(page);
   await dialog.getByRole("button", { name: "やりたいことへ戻す" }).click();
   await page.evaluate(() => {
-    const control = (
-      window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: VisualQaControl }
-    ).__LIFE_LAUNCHER_VISUAL_QA__;
+    const control = (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: VisualQaControl })
+      .__LIFE_LAUNCHER_VISUAL_QA__;
     const config = structuredClone(control.currentConfig());
     config.projects[0].nextStep = undefined;
     control.updateConfig(config);
   });
   await expect(page.locator('[data-project-id="sample-learning"]')).toContainText(
-    "次の一手は未設定です",
+    "まだ次の一手がありません",
   );
   await dialog.getByRole("button", { name: "保存", exact: true }).click();
   await expect(dialog).toBeVisible();
@@ -348,7 +352,9 @@ test("P82-01 promotion rejects a source removed after the form opened", async ({
   expect((await currentConfig(page)).inbox.some(({ id }) => id === "sample-weekend")).toBe(true);
 });
 
-test("P82-01 group D&D saves only on drop, persists order and rolls back failure", async ({ page }) => {
+test("P82-01 group D&D saves only on drop, persists order and rolls back failure", async ({
+  page,
+}) => {
   const fixture = createPublicFixture();
   fixture.config.inbox = [
     { id: "wish-one", text: "同じ文言", projectId: "sample-learning" },
@@ -357,9 +363,14 @@ test("P82-01 group D&D saves only on drop, persists order and rolls back failure
     { id: "wish-other", text: "別Project", projectId: "sample-stretch" },
   ];
   await prepare(page, fixture);
-  const saveCount = () => page.evaluate(() => (
+  const saveCount = () =>
+    page.evaluate(
+      () =>
+        (
     window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: VisualQaControl }
-  ).__LIFE_LAUNCHER_VISUAL_QA__.invokeCalls.filter(({ command }) => command === "save_config").length);
+        ).__LIFE_LAUNCHER_VISUAL_QA__.invokeCalls.filter(({ command }) => command === "save_config")
+          .length,
+    );
   const drag = async (sourceId: string, targetId: string, after = true) => {
     const source = page.locator(`[data-inbox-id="${sourceId}"]`);
     const target = page.locator(`[data-inbox-id="${targetId}"]`);
@@ -376,26 +387,30 @@ test("P82-01 group D&D saves only on drop, persists order and rolls back failure
   await expect(page.locator(".inboxDropIndicator")).toBeVisible();
   expect(await saveCount()).toBe(0);
   await page.mouse.up();
-  await expect.poll(async () => (await currentConfig(page)).inbox.map(({ id }) => id)).toEqual([
-    "wish-two", "wish-one", "wish-three", "wish-other",
-  ]);
+  await expect
+    .poll(async () => (await currentConfig(page)).inbox.map(({ id }) => id))
+    .toEqual(["wish-two", "wish-one", "wish-three", "wish-other"]);
   expect(await saveCount()).toBe(1);
   await page.reload();
   const disclosure = page.locator(".inboxBand .disclosure");
   if ((await disclosure.getAttribute("aria-expanded")) !== "true") await disclosure.click();
-  await expect(page.locator('[data-wishlist-group="project:sample-learning"] .inboxRow').first()).toHaveAttribute(
-    "data-inbox-id",
-    "wish-two",
-  );
+  await expect(
+    page.locator('[data-wishlist-group="project:sample-learning"] .inboxRow').first(),
+  ).toHaveAttribute("data-inbox-id", "wish-two");
 
-  await page.evaluate(() => (
+  await page.evaluate(() =>
+    (
     window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: VisualQaControl }
-  ).__LIFE_LAUNCHER_VISUAL_QA__.setSaveConfigFailure(true));
+    ).__LIFE_LAUNCHER_VISUAL_QA__.setSaveConfigFailure(true),
+  );
   await drag("wish-three", "wish-two", false);
   await page.mouse.up();
   await expect(page.locator(".inboxDragGhost")).toHaveCount(0);
   expect((await currentConfig(page)).inbox.map(({ id }) => id)).toEqual([
-    "wish-two", "wish-one", "wish-three", "wish-other",
+    "wish-two",
+    "wish-one",
+    "wish-three",
+    "wish-other",
   ]);
 
   const beforeCross = await saveCount();
@@ -463,10 +478,14 @@ test("v1.3 NextStep menu offers edit, change, unset and Builder registration", a
   await expect(dialog).toBeHidden();
   const saved = await currentConfig(page);
   expect(saved.projects.find(({ id }) => id === "sample-learning")?.nextStep).toBeUndefined();
-  expect(saved.inbox.some(({ text }) => text === fixture.config.projects[0].nextStep?.text)).toBe(true);
+  expect(saved.inbox.some(({ text }) => text === fixture.config.projects[0].nextStep?.text)).toBe(
+    true,
+  );
 });
 
-test("v1.3 dragging a NextStep to Wishlist highlights the target and returns it atomically", async ({ page }) => {
+test("v1.3 dragging a NextStep to Wishlist highlights the target and returns it atomically", async ({
+  page,
+}) => {
   const fixture = createPublicFixture();
   const originalToday = structuredClone(fixture.config.today);
   const sourceText = fixture.config.projects[0].nextStep!.text;
@@ -487,15 +506,24 @@ test("v1.3 dragging a NextStep to Wishlist highlights the target and returns it 
   await expect(page.locator(".inboxBand.sourceReturnBand--active")).toBeVisible();
   await page.mouse.up();
 
-  await expect.poll(async () =>
+  await expect
+    .poll(
+      async () =>
     (await currentConfig(page)).projects.find(({ id }) => id === "sample-learning")?.nextStep,
-  ).toBeUndefined();
+    )
+    .toBeUndefined();
   const saved = await currentConfig(page);
-  expect(saved.inbox.some(({ text, projectId }) => text === sourceText && projectId === "sample-learning")).toBe(true);
+  expect(
+    saved.inbox.some(
+      ({ text, projectId }) => text === sourceText && projectId === "sample-learning",
+    ),
+  ).toBe(true);
   expect(saved.today).toEqual(originalToday);
 });
 
-test("v1.3 dragging a Builder candidate to its source section shows guidance and excludes it", async ({ page }) => {
+test("v1.3 dragging a Builder candidate to its source section shows guidance and excludes it", async ({
+  page,
+}) => {
   const fixture = createPublicFixture();
   await prepare(page, fixture);
   await page.locator(".todayBuilderDisclosure").click();
@@ -514,7 +542,8 @@ test("v1.3 dragging a Builder candidate to its source section shows guidance and
   await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 6 });
   await page.mouse.up();
 
-  await expect.poll(async () => (await currentConfig(page)).today.candidateExcludedSourceKeys)
+  await expect
+    .poll(async () => (await currentConfig(page)).today.candidateExcludedSourceKeys)
     .toContain("project:sample-stretch");
   expect((await currentConfig(page)).projects.some(({ id }) => id === "sample-stretch")).toBe(true);
 });
@@ -529,8 +558,12 @@ test("v1.3 NextStep and Wishlist headers keep compact right-side actions", async
   });
   await prepare(page, fixture);
 
-  await expect(page.getByRole("button", { name: "プロジェクトを追加" })).toHaveText("＋ プロジェクト");
-  await expect(page.getByRole("button", { name: "やりたいことを追加" })).toHaveText("＋ やりたいこと");
+  await expect(page.getByRole("button", { name: "プロジェクトを追加" })).toHaveText(
+    "＋ プロジェクト",
+  );
+  await expect(page.getByRole("button", { name: "やりたいことを追加" })).toHaveText(
+    "＋ やりたいこと",
+  );
   const configured = page.locator(
     '.nextStepCard[data-project-id="sample-learning"] .nextStepActionRegion p',
   );
@@ -549,7 +582,8 @@ test("v1.3 NextStep and Wishlist headers keep compact right-side actions", async
   const setButtonBox = (await setButton.boundingBox())!;
   await page.mouse.click(setButtonBox.x + setButtonBox.width / 2, setButtonBox.y - 5);
   await expect(page.getByRole("dialog", { name: "次の一手を設定" })).toBeVisible();
-  await page.getByRole("dialog", { name: "次の一手を設定" })
+  await page
+    .getByRole("dialog", { name: "次の一手を設定" })
     .getByRole("button", { name: "キャンセル", exact: true })
     .click();
   await expect(page.locator(".wishlistDragHandle").first()).toHaveText("⋮⋮");
@@ -602,22 +636,60 @@ test("v1.3 NextStep uses a compact 3x2 grid with aligned actions and six-item ex
   const cards = page.locator(".nextStepCard");
   await expect(cards).toHaveCount(6);
   expect(
-    await page.locator(".projectGrid").evaluate((node) =>
-      getComputedStyle(node).gridTemplateColumns.split(" ").length,
-    ),
+    await page
+      .locator(".projectGrid")
+      .evaluate((node) => getComputedStyle(node).gridTemplateColumns.split(" ").length),
   ).toBe(3);
   const configuredAction = page
     .locator(".nextStepCard", { hasText: template.nextStep!.text })
     .getByRole("button", { name: "変更" });
   const unsetAction = page
-    .locator(".nextStepCard", { hasText: "次の一手は未設定です" })
+    .locator(".nextStepCard", { hasText: "まだ次の一手がありません" })
     .getByRole("button", { name: "次の一手を設定" })
     .first();
   const configuredBox = (await configuredAction.boundingBox())!;
   const unsetBox = (await unsetAction.boundingBox())!;
-  expect(Math.abs(configuredBox.y + configuredBox.height - (unsetBox.y + unsetBox.height))).toBeLessThan(
+  expect(
+    Math.abs(configuredBox.y + configuredBox.height - (unsetBox.y + unsetBox.height)),
+  ).toBeLessThan(1);
+  const configuredCard = page.locator(".nextStepCard", { hasText: template.nextStep!.text });
+  const cardBox = (await configuredCard.boundingBox())!;
+  expect(cardBox.height).toBe(120);
+  const projectBox = (await configuredCard.locator(".nextStepProjectRegion").boundingBox())!;
+  const taskBox = (await configuredCard.locator(".nextStepActionRegion p").boundingBox())!;
+  expect(projectBox.x - cardBox.x).toBeLessThanOrEqual(14);
+  expect(taskBox.x - cardBox.x).toBeLessThanOrEqual(14);
+  const menuBox = (await configuredCard.locator(".nextStepRegionMenu").boundingBox())!;
+  expect(menuBox.width).toBe(28);
+  expect(menuBox.height).toBe(28);
+  expect(Math.abs(menuBox.x + menuBox.width - (cardBox.x + cardBox.width - 4))).toBeLessThanOrEqual(
     1,
   );
+  expect(Math.abs(menuBox.y - (cardBox.y + 4))).toBeLessThanOrEqual(1);
+  expect(
+    Math.abs(configuredBox.y + configuredBox.height - (cardBox.y + cardBox.height - 7)),
+  ).toBeLessThanOrEqual(1);
+  const todayCard = page.locator(".todayRow", { hasText: template.nextStep!.text });
+  const typography = await page.evaluate(() => {
+    const read = (selector: string) => {
+      const style = getComputedStyle(document.querySelector<HTMLElement>(selector)!);
+      return {
+        color: style.color,
+        fontSize: style.fontSize,
+        fontWeight: style.fontWeight,
+        lineHeight: style.lineHeight,
+      };
+    };
+    return {
+      nextProject: read(".nextStepCard .nextStepProjectRegion .projectIdentity"),
+      todayProject: read(".todayRow .todayProjectIdentity .projectIdentity"),
+      nextTask: read(".nextStepCard .nextStepActionRegion p"),
+      todayTask: read(".todayRow .todayTextButton"),
+    };
+  });
+  expect(typography.nextProject).toEqual(typography.todayProject);
+  expect(typography.nextTask).toEqual(typography.todayTask);
+  await expect(todayCard).toBeVisible();
   await expect(page.getByRole("button", { name: "＋ 残り2件を表示" })).toBeVisible();
   await page.getByRole("button", { name: "＋ 残り2件を表示" }).click();
   await expect(cards).toHaveCount(8);
@@ -626,15 +698,15 @@ test("v1.3 NextStep uses a compact 3x2 grid with aligned actions and six-item ex
 
   await page.setViewportSize({ width: 1000, height: 900 });
   expect(
-    await page.locator(".projectGrid").evaluate((node) =>
-      getComputedStyle(node).gridTemplateColumns.split(" ").length,
-    ),
+    await page
+      .locator(".projectGrid")
+      .evaluate((node) => getComputedStyle(node).gridTemplateColumns.split(" ").length),
   ).toBe(2);
   await page.setViewportSize({ width: 620, height: 900 });
   expect(
-    await page.locator(".projectGrid").evaluate((node) =>
-      getComputedStyle(node).gridTemplateColumns.split(" ").length,
-    ),
+    await page
+      .locator(".projectGrid")
+      .evaluate((node) => getComputedStyle(node).gridTemplateColumns.split(" ").length),
   ).toBe(1);
 });
 
@@ -688,9 +760,8 @@ test("v1.3 Wishlist item drop sets or replaces a NextStep and returns the old on
   ];
   await prepare(page, fixture);
   const source = page.locator('[data-inbox-id="drop-to-next-step"]');
-  const target = page.locator(
-    `.nextStepCard[data-project-id="${project.id}"]`,
-  );
+  const target = page.locator(`.nextStepCard[data-project-id="${project.id}"]`);
+  await source.scrollIntoViewIfNeeded();
   const from = (await source.boundingBox())!;
   const to = (await target.boundingBox())!;
 
@@ -705,9 +776,12 @@ test("v1.3 Wishlist item drop sets or replaces a NextStep and returns the old on
   await expect(target).toHaveClass(/nextStepCard--dropTarget/);
   await page.mouse.up();
 
-  await expect.poll(async () =>
+  await expect
+    .poll(
+      async () =>
     (await currentConfig(page)).projects.find(({ id }) => id === project.id)?.nextStep?.text,
-  ).toBe("ドロップして設定する次の一手");
+    )
+    .toBe("ドロップして設定する次の一手");
   const saved = await currentConfig(page);
   expect(saved.inbox.some(({ id }) => id === "drop-to-next-step")).toBe(false);
   expect(

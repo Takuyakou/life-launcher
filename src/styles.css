@@ -2342,7 +2342,9 @@ h3 {
   border-radius: var(--radius);
   cursor: ns-resize;
   touch-action: none;
-  transition: color 120ms ease, background-color 120ms ease;
+  transition:
+    color 120ms ease,
+    background-color 120ms ease;
 }
 
 .timerClock--adjustable:hover {
@@ -3177,7 +3179,12 @@ input[type="number"]::-webkit-inner-spin-button {
 .victoryBar--done {
   border-color: rgba(231, 185, 77, 0.72);
   background:
-    linear-gradient(120deg, rgba(231, 185, 77, 0.1), rgba(231, 185, 77, 0.025) 48%, transparent 75%),
+    linear-gradient(
+      120deg,
+      rgba(231, 185, 77, 0.1),
+      rgba(231, 185, 77, 0.025) 48%,
+      transparent 75%
+    ),
     var(--surface);
 }
 
@@ -3710,9 +3717,20 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .todayRowMenu {
   position: absolute;
-  top: 5px;
-  right: 5px;
+  top: 4px;
+  right: 4px;
   z-index: 1;
+  width: 28px;
+  height: 28px;
+  border-color: transparent;
+  border-radius: var(--radius);
+  background: transparent;
+}
+
+.todayRowMenu:hover,
+.todayRowMenu:focus-visible {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.055);
 }
 
 .todayRow:hover .todayRowMenu,
@@ -4207,8 +4225,8 @@ input[type="number"]::-webkit-inner-spin-button {
 .todayTimerActions--running .runningPauseButton,
 .todayTimerActions--running .runningStopButton {
   width: 90px;
-  height: 38px;
-  min-height: 38px;
+  height: 36px;
+  min-height: 36px;
 }
 
 .doNowActions .runningPauseButton,
@@ -4371,10 +4389,10 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayBuilderGroupHeading > strong {
-  color: var(--muted);
-  font-size: var(--dashboard-font-body);
-  font-weight: 650;
-  line-height: 1.35;
+  color: var(--text-muted-readable);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 750;
+  line-height: 1.3;
 }
 
 .todayBuilderRow {
@@ -4413,6 +4431,10 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .todayBuilderRow strong {
   overflow: hidden;
+  color: var(--text);
+  font-size: var(--dashboard-font-body);
+  font-weight: 650;
+  line-height: 1.4;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -4962,8 +4984,7 @@ input[type="number"]::-webkit-inner-spin-button {
   border-radius: 11px;
   padding: 11px 10px 13px 12px;
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.025), transparent 62%),
-    var(--surface-strong);
+    linear-gradient(145deg, rgba(255, 255, 255, 0.025), transparent 62%), var(--surface-strong);
   color: var(--text);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.035),
@@ -5091,8 +5112,12 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 @keyframes toast-lifetime {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -5107,32 +5132,54 @@ input[type="number"]::-webkit-inner-spin-button {
   color: var(--good);
 }
 
-.toast--ok .toastAccent { background: var(--good); }
-.toast--ok .toastIconBadge { color: var(--good); }
-.toast--ok .toastCopy strong { color: var(--text); }
+.toast--ok .toastAccent {
+  background: var(--good);
+}
+.toast--ok .toastIconBadge {
+  color: var(--good);
+}
+.toast--ok .toastCopy strong {
+  color: var(--text);
+}
 
 .toast--neutral {
   color: var(--accent);
 }
 
-.toast--neutral .toastCopy strong { color: var(--text); }
-.toast--neutral .toastIconBadge { color: var(--accent-strong); }
+.toast--neutral .toastCopy strong {
+  color: var(--text);
+}
+.toast--neutral .toastIconBadge {
+  color: var(--accent-strong);
+}
 
 .toast--warn {
   color: var(--warn);
 }
 
-.toast--warn .toastAccent { background: var(--warn); }
-.toast--warn .toastIconBadge { color: var(--warn); }
-.toast--warn .toastCopy strong { color: var(--text); }
+.toast--warn .toastAccent {
+  background: var(--warn);
+}
+.toast--warn .toastIconBadge {
+  color: var(--warn);
+}
+.toast--warn .toastCopy strong {
+  color: var(--text);
+}
 
 .toast--error {
   color: var(--error);
 }
 
-.toast--error .toastAccent { background: var(--error); }
-.toast--error .toastIconBadge { color: var(--error); }
-.toast--error .toastCopy strong { color: var(--text); }
+.toast--error .toastAccent {
+  background: var(--error);
+}
+.toast--error .toastIconBadge {
+  color: var(--error);
+}
+.toast--error .toastCopy strong {
+  color: var(--text);
+}
 
 @media (max-width: 520px) {
   .toastStack {
@@ -7749,7 +7796,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayRow {
-  min-height: 104px;
+  min-height: 154px;
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr) auto;
@@ -7873,7 +7920,7 @@ input[type="number"]::-webkit-inner-spin-button {
   grid-row: 2;
   display: flex;
   align-items: flex-end;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
   min-width: 0;
 }
@@ -7882,17 +7929,27 @@ input[type="number"]::-webkit-inner-spin-button {
   display: grid;
   justify-items: end;
   gap: 4px;
-  width: 224px;
+  width: 200px;
   max-width: 100%;
   margin-left: auto;
 }
 
 .todayTimerCluster .todayTimerActions:not(.todayTimerActions--running) {
-  grid-template-columns: 88px 88px 36px;
+  grid-template-columns: 78px 78px 34px;
+  gap: 5px;
 }
 
 .todayTimerCluster .todayStartButton {
-  width: 88px;
+  width: 78px;
+  height: 36px;
+  min-height: 36px;
+}
+
+.todayTimerCluster .todayMeasureButton {
+  width: 34px;
+  min-width: 34px;
+  height: 36px;
+  min-height: 36px;
 }
 
 .todayTriggerZone {
@@ -7941,6 +7998,10 @@ input[type="number"]::-webkit-inner-spin-button {
   font-size: var(--dashboard-font-meta);
   font-weight: 650;
   white-space: nowrap;
+}
+
+.todayRow .todayRemoveButton {
+  padding-inline: 4px;
 }
 
 .todayRow .todayInstructionButton:hover:not(:disabled),
@@ -8289,8 +8350,31 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayBuilderRow .todayBuilderAddButton {
+  min-height: 30px;
   padding-inline: 8px;
   white-space: nowrap;
+}
+
+.todayBuilderRow .inboxProjectIdentity .projectIdentity,
+.todayBuilderRow .sourceProjectNone {
+  color: var(--text-muted-readable);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.todayBuilderRow .sourceRowMenu {
+  width: 28px;
+  height: 28px;
+  border-color: transparent;
+  background: transparent;
+  opacity: 1;
+}
+
+.todayBuilderRow .sourceRowMenu:hover,
+.todayBuilderRow .sourceRowMenu:focus-visible {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.055);
 }
 
 .sourceListRow .sourceListCopy,
@@ -8319,8 +8403,54 @@ input[type="number"]::-webkit-inner-spin-button {
   font-size: var(--dashboard-font-meta);
 }
 
-.sourceListRow:not(.nextStepRow--dragging):not(.inboxRow--dragging):not(.todayBuilderRow--dragging):hover,
-.sourceListRow:not(.nextStepRow--dragging):not(.inboxRow--dragging):not(.todayBuilderRow--dragging):focus-within {
+.todayBuilderProjectGroupHeader {
+  width: 100%;
+  min-height: 36px;
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-bottom: 1px solid var(--line-soft);
+  border-radius: 0;
+  padding: 4px 10px;
+  background: transparent;
+  color: var(--text-muted-readable);
+  text-align: left;
+}
+
+.todayBuilderProjectGroupHeader:hover,
+.todayBuilderProjectGroupHeader:focus-visible {
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--text);
+}
+
+.todayBuilderProjectGroupHeader .projectIdentity,
+.todayBuilderProjectGroupHeader > strong {
+  min-width: 0;
+  color: inherit;
+  font-size: var(--dashboard-font-meta);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.todayBuilderProjectGroupHeader > span:last-child {
+  color: var(--muted);
+  font-size: var(--dashboard-font-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+.todayBuilderRow.sourceListRow .sourceListCopy--groupedWishlist {
+  grid-template-columns: minmax(0, 1fr);
+  padding-left: 22px;
+}
+
+.sourceListRow:not(.nextStepRow--dragging):not(.inboxRow--dragging):not(
+    .todayBuilderRow--dragging
+  ):hover,
+.sourceListRow:not(.nextStepRow--dragging):not(.inboxRow--dragging):not(
+    .todayBuilderRow--dragging
+  ):focus-within {
   background: var(--control-neutral-hover-bg);
   border-bottom-color: var(--line);
 }
@@ -8491,6 +8621,31 @@ input[type="number"]::-webkit-inner-spin-button {
   color: #92e5ae;
 }
 
+.todayTimerCluster .todayTimerActions--measure {
+  width: 200px;
+  height: 36px;
+  justify-content: flex-end;
+  gap: 5px;
+  border: 1px solid rgba(190, 181, 164, 0.32);
+  border-radius: var(--radius);
+  padding: 0 6px;
+  background: var(--surface-soft);
+}
+
+.todayTimerCluster .todayTimerActions--measure .measureElapsedClock {
+  min-width: 44px;
+}
+
+.todayTimerCluster .todayTimerActions--measure .runningPauseButton,
+.todayTimerCluster .todayTimerActions--measure .runningStopButton {
+  width: auto;
+  min-width: 46px;
+  height: 25px;
+  min-height: 25px;
+  padding-inline: 6px;
+  font-size: var(--dashboard-font-meta);
+}
+
 .nextStepRowAction--change {
   border-color: rgba(231, 185, 77, 0.3);
   background: rgba(231, 185, 77, 0.055);
@@ -8527,10 +8682,11 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .nextStepCard.nextStepRow.sourceListRow {
   position: relative;
-  height: 100px;
-  min-height: 100px;
+  height: 120px;
+  min-height: 120px;
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 0;
   overflow: hidden;
   border: 1px solid var(--line);
@@ -8575,6 +8731,7 @@ input[type="number"]::-webkit-inner-spin-button {
   display: block;
   border: 0;
   padding: 0 30px 0 0;
+  text-align: left;
 }
 
 .nextStepCard .nextStepProjectRegion:hover,
@@ -8584,8 +8741,10 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .nextStepCard .nextStepProjectRegion h3 .projectIdentity {
+  color: var(--muted);
   font-size: var(--dashboard-font-meta);
-  line-height: 1.35;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
 .nextStepCard .nextStepActionRegion {
@@ -8608,12 +8767,12 @@ input[type="number"]::-webkit-inner-spin-button {
 .nextStepCard .nextStepActionRegion p {
   min-height: 31px;
   display: -webkit-box;
-  margin: 5px 0 0;
+  margin: 9px 0 0;
   overflow: hidden;
   color: var(--text);
   font-size: var(--dashboard-font-body);
   font-weight: 650;
-  line-height: 1.35;
+  line-height: 1.45;
   white-space: normal;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -8643,6 +8802,8 @@ input[type="number"]::-webkit-inner-spin-button {
   border-color: transparent;
   border-radius: var(--radius);
   background: transparent;
+  opacity: 1;
+  z-index: 2;
 }
 
 .nextStepCard .nextStepRegionMenu:hover,
@@ -9034,7 +9195,9 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 @media (hover: none) {
-  .sourceRowMenu { opacity: 1; }
+  .sourceRowMenu {
+    opacity: 1;
+  }
 }
 .sectionEmptyActions {
   grid-column: 1 / -1;
@@ -9653,45 +9816,102 @@ input[type="number"]::-webkit-inner-spin-button {
   animation: completion-particle 900ms ease-out forwards;
 }
 
-.completionParticle:nth-child(1) { --completion-x: -96px; --completion-y: -38px; }
-.completionParticle:nth-child(2) { --completion-x: -62px; --completion-y: 42px; animation-delay: 35ms; }
-.completionParticle:nth-child(3) { --completion-x: -24px; --completion-y: -58px; animation-delay: 60ms; }
-.completionParticle:nth-child(4) { --completion-x: 28px; --completion-y: -52px; animation-delay: 25ms; }
-.completionParticle:nth-child(5) { --completion-x: 68px; --completion-y: 38px; animation-delay: 70ms; }
-.completionParticle:nth-child(6) { --completion-x: 102px; --completion-y: -30px; animation-delay: 45ms; }
+.completionParticle:nth-child(1) {
+  --completion-x: -96px;
+  --completion-y: -38px;
+}
+.completionParticle:nth-child(2) {
+  --completion-x: -62px;
+  --completion-y: 42px;
+  animation-delay: 35ms;
+}
+.completionParticle:nth-child(3) {
+  --completion-x: -24px;
+  --completion-y: -58px;
+  animation-delay: 60ms;
+}
+.completionParticle:nth-child(4) {
+  --completion-x: 28px;
+  --completion-y: -52px;
+  animation-delay: 25ms;
+}
+.completionParticle:nth-child(5) {
+  --completion-x: 68px;
+  --completion-y: 38px;
+  animation-delay: 70ms;
+}
+.completionParticle:nth-child(6) {
+  --completion-x: 102px;
+  --completion-y: -30px;
+  animation-delay: 45ms;
+}
 
 @keyframes completion-sweep {
-  to { transform: translateX(110%); }
+  to {
+    transform: translateX(110%);
+  }
 }
 
 @keyframes completion-gold-pulse {
-  0%, 100% { box-shadow: none; }
-  42% { box-shadow: 0 0 16px rgba(231, 185, 77, 0.13); }
+  0%,
+  100% {
+    box-shadow: none;
+  }
+  42% {
+    box-shadow: 0 0 16px rgba(231, 185, 77, 0.13);
+  }
 }
 
 @keyframes completion-card-pop {
-  0%, 100% { transform: scale(1); }
-  42% { transform: scale(1.012); }
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  42% {
+    transform: scale(1.012);
+  }
 }
 
 @keyframes completion-check-pop {
-  0% { opacity: 0; transform: scale(0.7); }
-  100% { opacity: 1; transform: scale(1); }
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 @keyframes completion-grid-glow {
-  0%, 100% { filter: none; }
-  40% { filter: drop-shadow(0 0 12px rgba(231, 185, 77, 0.14)); }
+  0%,
+  100% {
+    filter: none;
+  }
+  40% {
+    filter: drop-shadow(0 0 12px rgba(231, 185, 77, 0.14));
+  }
 }
 
 @keyframes completion-label-in {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes completion-particle {
-  0% { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(0.65); }
-  14% { opacity: 1; }
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0deg) scale(0.65);
+  }
+  14% {
+    opacity: 1;
+  }
   100% {
     opacity: 0;
     transform: translate(var(--completion-x), var(--completion-y)) rotate(170deg) scale(0.8);

@@ -38,7 +38,9 @@ async function calls(page: Page, command: string): Promise<InvokeCall[]> {
   );
 }
 
-test("P82-03 Measure ticks, pauses, resumes, records and emits elapsed mini state", async ({ page }) => {
+test("P82-03 Measure ticks, pauses, resumes, records and emits elapsed mini state", async ({
+  page,
+}) => {
   await prepare(page);
   const measure = page.locator(".doNowMeasureButton");
   await expect(measure).toHaveAttribute("title", "時間を決めずに計測");
@@ -50,7 +52,10 @@ test("P82-03 Measure ticks, pauses, resumes, records and emits elapsed mini stat
 
   await page.clock.fastForward(65_000);
   await expect(dock.locator(".timerClock")).toHaveText("01:05");
-  await page.locator(".doNowActions").getByRole("button", { name: "このセッションを一時停止" }).click();
+  await page
+    .locator(".doNowActions")
+    .getByRole("button", { name: "このセッションを一時停止" })
+    .click();
   await page.clock.fastForward(120_000);
   await expect(dock.locator(".timerClock")).toHaveText("01:05");
   await page.locator(".doNowActions").getByRole("button", { name: "このセッションを再開" }).click();
@@ -58,17 +63,24 @@ test("P82-03 Measure ticks, pauses, resumes, records and emits elapsed mini stat
   await expect(dock.locator(".timerClock")).toHaveText("01:10");
 
   const miniEvents = await calls(page, "plugin:event|emit");
-  expect(miniEvents.some((call) => {
+  expect(
+    miniEvents.some((call) => {
     const payload = call.args.payload as { mode?: string; remainingClock?: string } | undefined;
-    return call.args.event === "mini-timer-snapshot" &&
-      payload?.mode === "measure" && payload.remainingClock === "01:10";
-  })).toBe(true);
+      return (
+        call.args.event === "mini-timer-snapshot" &&
+        payload?.mode === "measure" &&
+        payload.remainingClock === "01:10"
+      );
+    }),
+  ).toBe(true);
   await page.locator(".doNowActions .runningStopButton").click();
   await expect(page.locator(".doNowMeasureButton")).toBeVisible();
   expect((await calls(page, "record_session")).at(-1)?.args.session).toMatchObject({ minutes: 1 });
 });
 
-test("P82-03 sub-minute Measure does not record and immediately releases its source", async ({ page }) => {
+test("P82-03 sub-minute Measure does not record and immediately releases its source", async ({
+  page,
+}) => {
   await prepare(page);
   const card = page.locator(".todayRow").first();
   await card.locator(".todayMeasureButton").click();
@@ -79,24 +91,32 @@ test("P82-03 sub-minute Measure does not record and immediately releases its sou
   await expect(page.getByText("1分未満なので記録しませんでした", { exact: true })).toBeVisible();
 });
 
-test("P82-03 sub-minute Measure switch skips recording and starts the clicked Timer", async ({ page }) => {
+test("P82-03 sub-minute Measure switch skips recording and starts the clicked Timer", async ({
+  page,
+}) => {
   await prepare(page);
   const cards = page.locator(".todayRow");
   await cards.nth(0).locator(".todayMeasureButton").click();
   await page.clock.fastForward(59_000);
   await cards.nth(1).locator(".todayStartButton--normal").click();
   expect(await calls(page, "record_session")).toHaveLength(0);
-  await expect(cards.nth(1).getByRole("button", { name: "このセッションを一時停止" })).toBeVisible();
+  await expect(
+    cards.nth(1).getByRole("button", { name: "このセッションを一時停止" }),
+  ).toBeVisible();
   await expect(page.getByText("1分未満なので記録しませんでした", { exact: true })).toBeVisible();
 });
 
-test("P82-03 Measure and countdown switch in every direction with one active Timer", async ({ page }) => {
+test("P82-03 Measure and countdown switch in every direction with one active Timer", async ({
+  page,
+}) => {
   await prepare(page);
   const cards = page.locator(".todayRow");
   await cards.nth(0).locator(".todayMeasureButton").click();
   await page.clock.fastForward(61_000);
   await cards.nth(1).locator(".todayStartButton--short").click();
-  await expect(cards.nth(1).getByRole("button", { name: "このセッションを一時停止" })).toBeVisible();
+  await expect(
+    cards.nth(1).getByRole("button", { name: "このセッションを一時停止" }),
+  ).toBeVisible();
   await page.clock.fastForward(61_000);
   await cards.nth(2).locator(".todayMeasureButton").click();
   await expect(cards.nth(2).locator(".measureElapsedClock")).toHaveText("00:00");
@@ -117,14 +137,22 @@ test("P82-03 Measure manual end reuses Today3 early completion", async ({ page }
   expect(await calls(page, "record_session")).toHaveLength(0);
   await page.getByRole("button", { name: "未完了のまま終了" }).click();
   expect((await calls(page, "record_session")).at(-1)?.args.session).toMatchObject({ minutes: 5 });
-  const config = await page.evaluate(() => (
+  const config = await page.evaluate(() =>
+    (
     window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: VisualQaControl }
-  ).__LIFE_LAUNCHER_VISUAL_QA__.currentConfig());
+    ).__LIFE_LAUNCHER_VISUAL_QA__.currentConfig(),
+  );
   expect(config.today.items[0].done).toBe(false);
 });
 
-for (const [width, columns] of [[1440, 3], [1000, 2], [860, 1]] as const) {
-  test(`P82-03 Measure layout stays bounded in ${columns} column mode at ${width}`, async ({ page }) => {
+for (const [width, columns] of [
+  [1440, 3],
+  [1000, 2],
+  [860, 1],
+] as const) {
+  test(`P82-03 Measure layout stays bounded in ${columns} column mode at ${width}`, async ({
+    page,
+  }) => {
     await prepare(page, measureFixture(), width);
     const card = page.locator(".todayRow").first();
     const inactiveHeight = (await card.boundingBox())!.height;
@@ -134,8 +162,8 @@ for (const [width, columns] of [[1440, 3], [1000, 2], [860, 1]] as const) {
     );
     await expect(card.getByRole("button", { name: /手順書を開く/ })).toBeVisible();
     const measureBox = await card.locator(".todayMeasureButton").boundingBox();
-    expect(measureBox?.width).toBe(36);
-    expect(measureBox?.height).toBe(38);
+    expect(measureBox?.width).toBe(34);
+    expect(measureBox?.height).toBe(36);
     const doNowBox = await page.locator(".doNowMeasureButton").boundingBox();
     expect(doNowBox?.width).toBe(82);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
@@ -153,9 +181,11 @@ for (const [width, columns] of [[1440, 3], [1000, 2], [860, 1]] as const) {
       await expect(card.locator(".todayMeasureButton")).toBeFocused();
       await card.locator(".todayMeasureButton").press("Enter");
       await page.clock.fastForward(65_000);
+      await expect(card.getByRole("button", { name: "このセッションを一時停止" })).toHaveText(/止/);
       await card.getByRole("button", { name: "このセッションを一時停止" }).click();
       expect((await card.boundingBox())!.height).toBe(inactiveHeight);
       await expect(card.locator(".measureElapsedClock")).toHaveText("01:05");
+      expect((await card.locator(".todayTimerActions--measure").boundingBox())?.width).toBe(200);
       await page.locator(".mainScrollArea").screenshot({
         path: "dist/visual-qa/phase82-03/countup-active-paused-860.png",
       });

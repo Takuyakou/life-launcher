@@ -136,14 +136,10 @@ for (const width of VIEWPORTS) {
     await expect(projects.locator(".disclosureCount")).toHaveText("21件");
     await expect(wishlist.locator(".disclosureCount")).toHaveText("21件");
     await expect(projects.getByRole("button", { name: "＋ 残り15件を表示" })).toBeVisible();
-    await expect(
-      wishlist.locator(".wishlistGroupHeader", { hasText: "未分類" }),
-    ).toBeVisible();
+    await expect(wishlist.locator(".wishlistGroupHeader", { hasText: "未分類" })).toBeVisible();
 
     const longProject = projects.locator('.nextStepCard[data-project-id="sample-learning"]');
-    const emptyProject = projects.locator(
-      '.nextStepCard[data-project-id="phase81-empty-project"]',
-    );
+    const emptyProject = projects.locator('.nextStepCard[data-project-id="phase81-empty-project"]');
     const projectRegion = longProject.locator(".nextStepProjectRegion");
     const actionRegion = longProject.locator(".nextStepActionRegion");
     const projectBox = await measurable(projectRegion, "Project region");
@@ -175,7 +171,7 @@ for (const width of VIEWPORTS) {
       actionTextBox.y + actionTextBox.height,
       "NextStep text must stack before its action",
     ).toBeLessThanOrEqual(actionButtonBox.y + 0.5);
-    await expect(emptyProject.getByText("次の一手は未設定です", { exact: true })).toBeVisible();
+    await expect(emptyProject.getByText("まだ次の一手がありません", { exact: true })).toBeVisible();
     await expect(emptyProject.getByRole("button", { name: "次の一手を設定" })).toBeVisible();
 
     const unassignedWishlist = wishlist.locator('[data-inbox-id="phase81-wishlist-1"]');

@@ -96,17 +96,77 @@ test("Builder is the only persistent Today adoption surface and groups its sourc
     "やりたいこと3件",
   ]);
   await expect(page.getByRole("button", { name: "今日の候補を追加" })).toHaveCount(0);
-  await expect(page.locator(".todayBuilderRow .projectIdentity")).toHaveCount(4);
+  await expect(
+    page.locator(".todayBuilderRow:not(.todayBuilderRow--groupedWishlist) .projectIdentity"),
+  ).toHaveCount(4);
+  await expect(page.locator(".todayBuilderProjectGroupHeader")).toHaveCount(1);
   await expect(
     page.locator(".todayBuilderRow").getByRole("button", { name: "今日へ" }),
   ).toHaveCount(5);
+  const firstBuilderRow = page.locator(".todayBuilderRow").first();
+  const builderMenu = firstBuilderRow.locator(".sourceRowMenu");
+  await expect(builderMenu).toHaveCSS("opacity", "1");
+  expect((await builderMenu.boundingBox())?.width).toBe(28);
+  expect((await builderMenu.boundingBox())?.height).toBe(28);
+  await expect(firstBuilderRow.locator("strong")).toHaveCSS(
+    "font-size",
+    await page
+      .locator(".nextStepCard .nextStepActionRegion p")
+      .first()
+      .evaluate((node) => getComputedStyle(node).fontSize),
+  );
   await page.getByRole("button", { name: "次のページ" }).click();
   await expect(page.locator(".todayBuilderGroupHeading")).toHaveCount(0);
   await expect(page.locator(".todayBuilderRow")).toHaveCount(2);
-  await expect(page.locator(".todayBuilderRow .projectIdentity")).toHaveCount(1);
+  await expect(page.locator(".todayBuilderRow .projectIdentity")).toHaveCount(0);
+  await expect(page.locator(".todayBuilderProjectGroupHeader")).toHaveCount(2);
   await expect(
     page.locator(".todayBuilderRow").getByRole("button", { name: "今日へ" }),
   ).toHaveCount(2);
+});
+
+test("Builder Wishlist groups matching Projects and toggles each group", async ({ page }) => {
+  const fixture = createPublicFixture();
+  fixture.config.today.items = [];
+  fixture.config.inbox = [
+    { id: "builder-learning-one", text: "同じProjectの候補1", projectId: "sample-learning" },
+    { id: "builder-unassigned", text: "未分類の候補" },
+    { id: "builder-learning-two", text: "同じProjectの候補2", projectId: "sample-learning" },
+  ];
+  await prepare(page, fixture);
+  await page.locator(".todayBuilderDisclosure").click();
+
+  const learningHeader = page.locator(
+    '[data-today-builder-project-group="project:sample-learning"]',
+  );
+  const learningRows = page.locator(
+    '[data-today-builder-wishlist-group="project:sample-learning"] .todayBuilderRow',
+  );
+  await expect(learningHeader).toContainText("サンプル学習");
+  await expect(learningHeader).toContainText("2件");
+  await expect(learningRows).toHaveCount(2);
+  await expect(learningRows.nth(0)).toContainText("同じProjectの候補1");
+  await expect(learningRows.nth(1)).toContainText("同じProjectの候補2");
+  await expect(learningRows.locator(".inboxProjectIdentity")).toHaveCount(0);
+
+  await learningHeader.click();
+  await expect(learningHeader).toHaveAttribute("aria-expanded", "false");
+  await expect(learningRows).toHaveCount(0);
+  await learningHeader.click();
+  await expect(learningHeader).toHaveAttribute("aria-expanded", "true");
+  await expect(learningRows).toHaveCount(2);
+  await page.locator(".todayBuilderBand").screenshot({
+    path: "dist/visual-qa/v13-nextstep-wishlist/builder-wishlist-groups-1440.png",
+  });
+  await page.setViewportSize({ width: 860, height: 900 });
+  expect(
+    await page
+      .locator(".todayBuilderBand")
+      .evaluate((node) => node.scrollWidth <= node.clientWidth),
+  ).toBe(true);
+  await page.locator(".todayBuilderBand").screenshot({
+    path: "dist/visual-qa/v13-nextstep-wishlist/builder-wishlist-groups-860.png",
+  });
 });
 
 test("excluding a candidate keeps its source, removes linked Today3, and survives reload", async ({
