@@ -9174,7 +9174,11 @@ function DashboardApp() {
             <section className="banner">
               <span>{banner}</span>
               {backupPath && (
-                <button className="bannerButton" onClick={openBackupFolder} type="button">
+                <button
+                  className="bannerButton mainActionButton mainActionButton--neutral"
+                  onClick={openBackupFolder}
+                  type="button"
+                >
                   バックアップから復元: フォルダを開く
                 </button>
               )}
@@ -9186,7 +9190,7 @@ function DashboardApp() {
               <span>先週のふりかえりが見られます</span>
               <div>
                 <button
-                  className="weeklyReviewBannerPrimary"
+                  className="weeklyReviewBannerPrimary mainActionButton mainActionButton--neutral"
                   onClick={() => {
                     setWeeklyReviewBannerOpen(false);
                     setActiveView("records");
@@ -9398,7 +9402,7 @@ function DashboardApp() {
                       <div className="doNowActions">
                         {doNowCandidates.length > 1 && (
                           <button
-                            className="doNowAlternateButton"
+                            className="doNowAlternateButton mainActionButton mainActionButton--neutral"
                             onClick={showNextDoNowCandidate}
                             type="button"
                           >
@@ -9474,7 +9478,7 @@ function DashboardApp() {
                         {doNowInstructionPath && (
                           <button
                             aria-label={`${doNowSelection.project.name}の手順書を開く`}
-                            className="doNowInstructionButton"
+                            className="doNowInstructionButton mainActionButton mainActionButton--neutral"
                             onClick={() => {
                               void openInstructionWindow({
                                 path: doNowInstructionPath,
@@ -9502,6 +9506,7 @@ function DashboardApp() {
                     <div className="doNowEmpty">
                       <span>重点プロジェクトに次の一手を設定すると、ここに提案されます。</span>
                       <button
+                        className="mainActionButton mainActionButton--neutral"
                         onClick={() => openNextStepEditor(focusedProjects[0])}
                         type="button"
                       >
@@ -9516,7 +9521,11 @@ function DashboardApp() {
                     </div>
                     <div className="doNowEmpty">
                       <span>今週の重点を選ぶと、今やる一手を提案できます。</span>
-                      <button onClick={() => setActiveView("records")} type="button">
+                      <button
+                        className="mainActionButton mainActionButton--neutral"
+                        onClick={() => setActiveView("records")}
+                        type="button"
+                      >
                         重点を選ぶ
                       </button>
                     </div>
@@ -9578,7 +9587,11 @@ function DashboardApp() {
                       <div className="todayEmptyStateContent">
                         <strong>今日やるものを選びましょう</strong>
                         <span>次の一手・やりたいことから選べます</span>
-                        <button onClick={focusTodayBuilder} type="button">
+                        <button
+                          className="mainActionButton mainActionButton--neutral"
+                          onClick={focusTodayBuilder}
+                          type="button"
+                        >
                           <UiIcon name="add" size={16} />
                           今日を組み立てる
                         </button>
@@ -9719,7 +9732,7 @@ function DashboardApp() {
                             {todayInstructionPath && (
                               <button
                                 aria-label={`${item.text || "未入力"}の手順書を開く`}
-                                className="doNowInstructionButton todayInstructionButton"
+                                className="doNowInstructionButton todayInstructionButton mainActionButton mainActionButton--neutral"
                                 onClick={() => {
                                   void openInstructionWindow({
                                     path: todayInstructionPath,
@@ -9739,7 +9752,7 @@ function DashboardApp() {
                               </button>
                             )}
                             <button
-                              className="todayRemoveButton"
+                              className="todayRemoveButton mainActionButton mainActionButton--neutral"
                               disabled={isRunningTodayItem}
                               onClick={() => void removeTodayItem(todaySourceKey(item, index))}
                               onPointerDown={(event) => event.stopPropagation()}
@@ -9981,7 +9994,7 @@ function DashboardApp() {
                 {allTodayItemsCompleted && (
                   <div className="todayNextBatch">
                     <button
-                      className="secondaryButton"
+                      className="secondaryButton mainActionButton mainActionButton--neutral"
                       onClick={() => void startNextTodayBatch()}
                       type="button"
                     >
@@ -10046,10 +10059,18 @@ function DashboardApp() {
                       <div className="sectionEmptyActions sectionEmptyActions--sources">
                         <span>候補はまだありません。次の一手か、やりたいことを登録できます。</span>
                         <div>
-                          <button onClick={() => focusCandidateSource("project")} type="button">
+                          <button
+                            className="mainActionButton mainActionButton--neutral"
+                            onClick={() => focusCandidateSource("project")}
+                            type="button"
+                          >
                             次の一手へ
                           </button>
-                          <button onClick={() => focusCandidateSource("wishlist")} type="button">
+                          <button
+                            className="mainActionButton mainActionButton--neutral"
+                            onClick={() => focusCandidateSource("wishlist")}
+                            type="button"
+                          >
                             やりたいことへ
                           </button>
                         </div>
@@ -10133,7 +10154,7 @@ function DashboardApp() {
                                   <span className="todayBuilderSelectedStatus">✓ 選択済み</span>
                                 ) : (
                                   <button
-                                    className="moveTodayButton todayBuilderAddButton"
+                                    className="moveTodayButton todayBuilderAddButton mainActionButton mainActionButton--positive"
                                     disabled={isFull}
                                     onClick={() => void addCandidateToToday(candidate)}
                                     title={isFull ? "いま選べるのは3件までです" : "今日へ"}
@@ -10171,6 +10192,7 @@ function DashboardApp() {
                       <nav aria-label="今日を組み立てるのページ" className="todayBuilderPagination">
                         <button
                           aria-label="前のページ"
+                          className="mainActionButton mainActionButton--neutral"
                           disabled={visibleTodayBuilderPage <= 1}
                           onClick={() => setTodayBuilderPage(visibleTodayBuilderPage - 1)}
                           type="button"
@@ -10183,6 +10205,7 @@ function DashboardApp() {
                         </span>
                         <button
                           aria-label="次のページ"
+                          className="mainActionButton mainActionButton--neutral"
                           disabled={visibleTodayBuilderPage >= todayBuilderPageCount}
                           onClick={() => setTodayBuilderPage(visibleTodayBuilderPage + 1)}
                           type="button"
@@ -10300,7 +10323,7 @@ function DashboardApp() {
                   </button>
                   <button
                     aria-label="プロジェクトを追加"
-                    className="sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd nextStepHeaderAdd--project"
+                    className="sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd nextStepHeaderAdd--project mainActionButton mainActionButton--gold"
                     onPointerDown={(event) => event.stopPropagation()}
                     onClick={(event) => {
                       event.stopPropagation();
@@ -10425,7 +10448,7 @@ function DashboardApp() {
                                 {project.nextStep?.text.trim() || "次の一手は未設定です"}
                               </p>
                               <button
-                                className="nextStepRowAction"
+                                className="nextStepRowAction mainActionButton mainActionButton--neutral"
                                 disabled={sourceEditBlocked(`project:${project.id}`)}
                                 onClick={(event) => {
                                   event.stopPropagation();
@@ -10446,6 +10469,7 @@ function DashboardApp() {
                       config.projects.length < SOURCE_LIST_PAGINATION_THRESHOLD && (
                         <div className="sourceListControls">
                           <button
+                            className="mainActionButton mainActionButton--neutral"
                             onClick={() => {
                               projectListAnchorRef.current = null;
                               setProjectsListExpanded((expanded) => !expanded);
@@ -10461,6 +10485,7 @@ function DashboardApp() {
                     {config.projects.length >= SOURCE_LIST_PAGINATION_THRESHOLD && (
                       <nav aria-label="次の一手のページ" className="sourceListPagination">
                         <button
+                          className="mainActionButton mainActionButton--neutral"
                           disabled={projectListRange.page <= 1}
                           onClick={() => {
                             projectListAnchorRef.current = null;
@@ -10472,6 +10497,7 @@ function DashboardApp() {
                         </button>
                         <span>{projectListRange.page} / {projectListRange.pageCount}</span>
                         <button
+                          className="mainActionButton mainActionButton--neutral"
                           disabled={projectListRange.page >= projectListRange.pageCount}
                           onClick={() => {
                             projectListAnchorRef.current = null;
@@ -10558,7 +10584,7 @@ function DashboardApp() {
                   </button>
                   <button
                     aria-label="やりたいことを追加"
-                    className="sectionAddButton sectionAddButton--barHitTarget"
+                    className="sectionAddButton sectionAddButton--barHitTarget mainActionButton mainActionButton--gold"
                     disabled={inboxAddOpen}
                     onPointerDown={(event) => event.stopPropagation()}
                     onClick={(event) => {
@@ -10676,7 +10702,7 @@ function DashboardApp() {
                                         {selected && <span className="wishlistTodayStatus">✓ 今日の3件</span>}
                                         {!selected && excluded && sourceKey && (
                                           <button
-                                            className="wishlistRestoreButton"
+                                            className="wishlistRestoreButton mainActionButton mainActionButton--positive"
                                             onClick={() => void restoreTodayBuilderCandidate(sourceKey)}
                                             onPointerDown={(event) => event.stopPropagation()}
                                             type="button"
@@ -10705,6 +10731,7 @@ function DashboardApp() {
                                   group.items.length < SOURCE_LIST_PAGINATION_THRESHOLD && (
                                     <div className="sourceListControls">
                                       <button
+                                        className="mainActionButton mainActionButton--neutral"
                                         onClick={() =>
                                           setWishlistGroupViews((current) => ({
                                             ...current,
@@ -10725,6 +10752,7 @@ function DashboardApp() {
                                 {group.items.length >= SOURCE_LIST_PAGINATION_THRESHOLD && (
                                   <nav aria-label={`${group.name}のやりたいことページ`} className="sourceListPagination">
                                     <button
+                                      className="mainActionButton mainActionButton--neutral"
                                       disabled={range.page <= 1}
                                       onClick={() =>
                                         setWishlistGroupViews((current) => ({
@@ -10741,6 +10769,7 @@ function DashboardApp() {
                                     </button>
                                     <span>{range.page} / {range.pageCount}</span>
                                     <button
+                                      className="mainActionButton mainActionButton--neutral"
                                       disabled={range.page >= range.pageCount}
                                       onClick={() =>
                                         setWishlistGroupViews((current) => ({
