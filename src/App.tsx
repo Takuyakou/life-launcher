@@ -11818,76 +11818,116 @@ function DashboardApp() {
               }
             >
               <h3>メンテナンス</h3>
-              <div className="settingsButtonRow">
-                <button
-                  className="secondaryButton settingsButton--neutral"
-                  disabled={dailyActivityCopying}
-                  onClick={() => void copyTodayActivityLog()}
-                  title="今日のセッションとできたことをクリップボードへコピー"
-                  type="button"
+              <div className="maintenanceGroups">
+                <section
+                  aria-labelledby="maintenance-data-heading"
+                  className="maintenanceGroup"
                 >
-                  {dailyActivityCopying ? "コピー中" : "今日の活動ログをコピー"}
-                </button>
-                <button
-                  className="secondaryButton settingsButton--neutral"
-                  onClick={openRuntimeDataFolder}
-                  type="button"
+                  <h4 id="maintenance-data-heading">データ・フォルダ</h4>
+                  <div className="settingsButtonRow">
+                    <button
+                      className="secondaryButton settingsButton--neutral"
+                      disabled={dailyActivityCopying}
+                      onClick={() => void copyTodayActivityLog()}
+                      title="今日のセッションとできたことをクリップボードへコピー"
+                      type="button"
+                    >
+                      {dailyActivityCopying ? "コピー中" : "今日の活動ログをコピー"}
+                    </button>
+                    <button
+                      className="secondaryButton settingsButton--neutral"
+                      onClick={openRuntimeDataFolder}
+                      type="button"
+                    >
+                      configフォルダを開く
+                    </button>
+                    <button
+                      className="secondaryButton settingsButton--neutral"
+                      onClick={openBackupFolder}
+                      type="button"
+                    >
+                      バックアップフォルダを開く
+                    </button>
+                  </div>
+                </section>
+
+                <section
+                  aria-labelledby="maintenance-display-heading"
+                  className="maintenanceGroup"
                 >
-                  configフォルダを開く
-                </button>
-                <button
-                  className="secondaryButton settingsButton--neutral"
-                  onClick={openBackupFolder}
-                  type="button"
+                  <h4 id="maintenance-display-heading">表示・キャッシュ</h4>
+                  <div className="settingsButtonRow">
+                    <button
+                      className="secondaryButton settingsButton--warning"
+                      onClick={requestIconCacheRegeneration}
+                      type="button"
+                    >
+                      アイコンキャッシュ再生成
+                    </button>
+                    <button
+                      className="secondaryButton settingsButton--warning"
+                      onClick={requestMiniWindowPositionReset}
+                      type="button"
+                    >
+                      ミニウィンドウ位置をリセット
+                    </button>
+                    <button
+                      className="secondaryButton settingsButton--warning"
+                      onClick={requestInstructionWindowPositionReset}
+                      type="button"
+                    >
+                      手順書ウィンドウ位置をリセット
+                    </button>
+                  </div>
+                </section>
+
+                <section
+                  aria-labelledby="maintenance-instructions-heading"
+                  className="maintenanceGroup"
                 >
-                  バックアップフォルダを開く
-                </button>
-                <button
-                  className="secondaryButton settingsButton--warning"
-                  onClick={requestIconCacheRegeneration}
-                  type="button"
+                  <h4 id="maintenance-instructions-heading">手順書</h4>
+                  <div className="settingsButtonRow">
+                    <button
+                      className="secondaryButton settingsButton--neutral"
+                      onClick={() => void reloadInstructionList()}
+                      type="button"
+                    >
+                      手順書一覧を再読み込み
+                    </button>
+                  </div>
+                </section>
+
+                <section
+                  aria-labelledby="maintenance-reset-heading"
+                  className="maintenanceGroup maintenanceGroup--reset"
                 >
-                  アイコンキャッシュ再生成
-                </button>
-                <button
-                  className="secondaryButton settingsButton--warning"
-                  onClick={requestMiniWindowPositionReset}
-                  type="button"
-                >
-                  ミニウィンドウ位置をリセット
-                </button>
-                <button
-                  className="secondaryButton settingsButton--warning"
-                  onClick={requestInstructionWindowPositionReset}
-                  type="button"
-                >
-                  手順書ウィンドウ位置をリセット
-                </button>
-                <button
-                  className="secondaryButton settingsButton--neutral"
-                  onClick={() => void reloadInstructionList()}
-                  type="button"
-                >
-                  手順書一覧を再読み込み
-                </button>
+                  <h4 id="maintenance-reset-heading">初期化</h4>
+                  <p>Life Launcherを初回起動時の状態へ戻します。</p>
+                  <button
+                    className="dangerButton settingsButton--danger softwareResetButton"
+                    type="button"
+                  >
+                    ソフトウェアリセット...
+                  </button>
+                </section>
               </div>
             </div>
 
-            <div className="dialogActions">
+            <div className="dialogActions settingsDialogActions">
               <button
-                className="secondaryButton settingsButton--neutral"
-                onClick={requestCloseSettings}
-                type="button"
-              >
-                キャンセル
-              </button>
-              <button
-                className="primaryButton"
+                className="secondaryButton settingsSaveButton"
                 disabled={Boolean(shortcutRecordingField)}
                 onClick={saveSettingsCenter}
                 type="button"
               >
                 保存
+              </button>
+              <button
+                className="dangerButton settingsCancelButton"
+                onClick={requestCloseSettings}
+                type="button"
+              >
+                キャンセル
               </button>
             </div>
           </section>
