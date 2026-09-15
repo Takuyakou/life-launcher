@@ -67,11 +67,7 @@ for (const [kind, counts] of [
       const rows = section.locator(kind === "projects" ? ".nextStepRow" : ".inboxRow");
       const expected =
         kind === "projects"
-          ? count <= 5
-            ? count
-            : count < 20
-              ? 5
-              : Math.min(10, count)
+          ? Math.min(6, count)
           : count <= 6
             ? count
             : 10;
@@ -82,24 +78,24 @@ for (const [kind, counts] of [
           ? count >= 20
             ? 2
             : 0
-          : count >= 6 && count <= 19
+          : count > 6
             ? 1
             : 0;
       await expect(section.locator(".sourceListControls")).toHaveCount(expectedControls);
-      await expect(section.locator(".sourceListPagination")).toHaveCount(kind === "projects" && count >= 20 ? 1 : 0);
+      await expect(section.locator(".sourceListPagination")).toHaveCount(0);
     });
   }
 }
 
-test("P72-03 6-19 item lists expand and compact without saving or toggling the section", async ({ page }) => {
+test("v1.3 7+ Project cards expand and compact without saving or toggling the section", async ({ page }) => {
   await prepare(page, fixtureWithCount("projects", 19));
   const before = await saveCallCount(page);
   const section = page.locator(".projectsBand");
-  await section.getByRole("button", { name: "残り14件をもっと見る" }).click();
+  await section.getByRole("button", { name: "＋ 残り13件を表示" }).click();
   await expect(section.locator(".nextStepRow")).toHaveCount(19);
   await expect(section.locator(".disclosure")).toHaveAttribute("aria-expanded", "true");
-  await section.getByRole("button", { name: "5件だけ表示" }).click();
-  await expect(section.locator(".nextStepRow")).toHaveCount(5);
+  await section.getByRole("button", { name: "− 折りたたむ" }).click();
+  await expect(section.locator(".nextStepRow")).toHaveCount(6);
   expect(await saveCallCount(page)).toBe(before);
 });
 
@@ -121,10 +117,10 @@ test("P72-03 20+ pagination is independent, clamps, and never persists view stat
   expect(await saveCallCount(page)).toBe(before);
 });
 
-test("P72-03 stable focus follows a source across 19-to-20 and deletion clamp", async ({ page }) => {
+test("v1.3 stable focus follows a Project card across expansion and deletion", async ({ page }) => {
   await prepare(page, fixtureWithCount("projects", 19));
-  await page.getByRole("button", { name: "残り14件をもっと見る" }).click();
-  const anchored = page.locator('[data-project-id="project-19"] .nextStepActionRegion');
+  await page.getByRole("button", { name: "＋ 残り13件を表示" }).click();
+  const anchored = page.locator('.nextStepCard[data-project-id="project-19"]');
   await anchored.focus();
   await page.evaluate(() => {
     const qa = (
@@ -147,7 +143,7 @@ test("P72-03 stable focus follows a source across 19-to-20 and deletion clamp", 
     });
     qa.updateConfig(config);
   });
-  await expect(page.getByRole("navigation", { name: "次の一手のページ" })).toContainText("2 / 2");
+  await expect(page.getByRole("navigation", { name: "次の一手のページ" })).toHaveCount(0);
   await expect(anchored).toBeFocused();
 
   await page.evaluate(() => {
@@ -165,7 +161,7 @@ test("P72-03 stable focus follows a source across 19-to-20 and deletion clamp", 
   });
   await expect(page.getByRole("navigation", { name: "次の一手のページ" })).toHaveCount(0);
   await expect(
-    page.locator('[data-project-id="project-20"] .nextStepActionRegion'),
+    page.locator('.nextStepCard[data-project-id="project-20"]'),
   ).toBeFocused();
 });
 

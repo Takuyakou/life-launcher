@@ -483,7 +483,7 @@ test("Project creation, NextStep setup, and keyboard context menu are reachable"
   await expect(page.locator(".nextStepRow")).toHaveCount(3);
 
   const addedProject = (await currentConfig(page)).projects.at(-1)!;
-  const row = page.locator(`[data-project-id="${addedProject.id}"]`);
+  const row = page.locator(`.nextStepCard[data-project-id="${addedProject.id}"]`);
   await row.getByRole("button", { name: "次の一手を設定" }).click();
   const nextStepDialog = page.getByRole("dialog", { name: "次の一手を設定" });
   await nextStepDialog.getByRole("textbox", { name: "行動" }).fill("最初の1行を書く");

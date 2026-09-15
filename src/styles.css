@@ -3504,8 +3504,8 @@ input[type="number"]::-webkit-inner-spin-button {
   width: 16px;
   display: grid;
   place-items: center;
-  opacity: 0;
-  transform: translate(-3px, -50%);
+  opacity: 1;
+  transform: translate(0, -50%);
   transition:
     opacity 130ms ease,
     transform 130ms ease;
@@ -4780,6 +4780,14 @@ input[type="number"]::-webkit-inner-spin-button {
 .todayStartButton:active:not(:disabled) {
   transform: translateY(0) scale(0.985);
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.18);
+}
+
+.doNowStartPrimary:hover:not(:disabled),
+.doNowStartPrimary:focus-visible,
+.doNowStartSecondary:hover:not(:disabled),
+.doNowStartSecondary:focus-visible {
+  transform: none;
+  box-shadow: none;
 }
 
 .runningStopButton:hover:not(:disabled) {
@@ -8489,8 +8497,8 @@ input[type="number"]::-webkit-inner-spin-button {
   color: var(--accent-strong);
 }
 
-.nextStepRowAction:hover:not(:disabled),
-.nextStepRowAction:focus-visible {
+.nextStepRowAction--change:hover:not(:disabled),
+.nextStepRowAction--change:focus-visible {
   border-color: var(--accent);
   color: var(--accent-strong);
 }
@@ -8498,6 +8506,169 @@ input[type="number"]::-webkit-inner-spin-button {
 .nextStepRowAction:disabled {
   cursor: not-allowed;
   opacity: 0.48;
+}
+
+.projectsBand {
+  container-type: inline-size;
+}
+
+.projectsBand .nextStepBody {
+  gap: 9px;
+  padding: 10px 8px 2px;
+}
+
+.projectsBand .projectGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  border-left: 0;
+  padding-left: 0;
+}
+
+.nextStepCard.nextStepRow.sourceListRow {
+  position: relative;
+  height: 100px;
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 9px 9px 7px 12px;
+  background: var(--surface-soft);
+  cursor: grab;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    transform 120ms ease;
+}
+
+.nextStepCard::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--project-color);
+  content: "";
+}
+
+.nextStepCard.nextStepRow.sourceListRow:hover,
+.nextStepCard.nextStepRow.sourceListRow:focus-within {
+  border-color: var(--line-strong);
+  background: var(--control-neutral-hover-bg);
+  transform: translateY(-1px);
+}
+
+.nextStepCard.nextStepRow.sourceListRow:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.nextStepCard--dropTarget.nextStepRow.sourceListRow {
+  border-color: var(--accent);
+  background: rgba(231, 185, 77, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(231, 185, 77, 0.18);
+}
+
+.nextStepCard .nextStepProjectRegion {
+  min-height: 20px;
+  display: block;
+  border: 0;
+  padding: 0 30px 0 0;
+}
+
+.nextStepCard .nextStepProjectRegion:hover,
+.nextStepCard .nextStepProjectRegion:focus-within {
+  border-color: transparent;
+  background: transparent;
+}
+
+.nextStepCard .nextStepProjectRegion h3 .projectIdentity {
+  font-size: var(--dashboard-font-meta);
+  line-height: 1.35;
+}
+
+.nextStepCard .nextStepActionRegion {
+  min-height: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  border: 0;
+  padding: 0;
+}
+
+.nextStepCard .nextStepActionRegion:hover,
+.nextStepCard .nextStepActionRegion:focus-within {
+  border-color: transparent;
+  background: transparent;
+}
+
+.nextStepCard .nextStepActionRegion p {
+  min-height: 31px;
+  display: -webkit-box;
+  margin: 5px 0 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: var(--dashboard-font-body);
+  font-weight: 650;
+  line-height: 1.35;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.nextStepCard .projectNextStepPlaceholder {
+  color: var(--text-muted-readable);
+  font-size: var(--dashboard-font-meta);
+  font-style: italic;
+  font-weight: 600;
+}
+
+.nextStepCard .nextStepRowAction {
+  align-self: flex-end;
+  min-height: 28px;
+  margin-top: auto;
+  padding-inline: 8px;
+  font-size: var(--dashboard-font-meta);
+}
+
+.nextStepCard .nextStepRegionMenu {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 28px;
+  height: 28px;
+  border-color: transparent;
+  border-radius: var(--radius);
+  background: transparent;
+}
+
+.nextStepCard .nextStepRegionMenu:hover,
+.nextStepCard .nextStepRegionMenu:focus-visible {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.nextStepCardControls {
+  padding: 1px 0 7px;
+}
+
+.nextStepCardControls button {
+  min-height: 30px;
+}
+
+@container (max-width: 900px) {
+  .projectsBand .projectGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (max-width: 680px) {
+  .projectsBand .projectGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .nextStepEditDialog {
@@ -8598,8 +8769,13 @@ input[type="number"]::-webkit-inner-spin-button {
   border-bottom: 1px solid var(--line-soft);
   border-radius: 0;
   background: transparent;
-  color: var(--muted);
+  color: var(--text-muted-readable);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 650;
   text-align: left;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
 }
 
 .wishlistGroupHeader:hover {
@@ -8609,6 +8785,14 @@ input[type="number"]::-webkit-inner-spin-button {
 .wishlistGroupHeader .projectIdentity {
   min-width: 0;
   color: var(--text);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 650;
+}
+
+.wishlistGroupHeader > strong {
+  color: var(--text);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 650;
 }
 
 .wishlistGroupHeader > span:last-child {
@@ -8621,6 +8805,11 @@ input[type="number"]::-webkit-inner-spin-button {
   gap: 8px;
 }
 
+.wishlistGroup .inboxItemText {
+  font-size: var(--dashboard-font-meta);
+  font-weight: 600;
+}
+
 .wishlistGroup .sourceRowMenu {
   grid-column: 4;
 }
@@ -8630,6 +8819,77 @@ input[type="number"]::-webkit-inner-spin-button {
   font-size: 15px;
   letter-spacing: 0;
   text-align: center;
+}
+
+.wishlistGroup--dragging {
+  opacity: 0.5;
+}
+
+.wishlistGroupDropIndicator {
+  position: fixed;
+  z-index: 80;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 6px rgba(231, 185, 77, 0.4);
+  pointer-events: none;
+}
+
+.doNowStartPrimary::after,
+.doNowStartSecondary::after {
+  position: absolute;
+  right: 12px;
+  bottom: 0;
+  left: 12px;
+  height: 2px;
+  background: currentColor;
+  content: "";
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 150ms ease;
+}
+
+.doNowStartPrimary:hover:not(:disabled)::after,
+.doNowStartPrimary:focus-visible::after,
+.doNowStartSecondary:hover:not(:disabled)::after,
+.doNowStartSecondary:focus-visible::after {
+  transform: scaleX(1);
+}
+
+.wishlistGroupDragGhost {
+  position: fixed;
+  z-index: 90;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  background: var(--surface-strong);
+  color: var(--text);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 700;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.34);
+  pointer-events: none;
+}
+
+.todayBuilderRow .sourceRowMenu {
+  width: 28px;
+  height: 28px;
+  opacity: 1;
+}
+
+.todayBuilderRow .sourceRowMenu:hover,
+.todayBuilderRow .sourceRowMenu:focus-visible {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.todayBuilderRow .todayBuilderAddButton {
+  min-height: 30px;
+  height: 30px;
+  padding-inline: 8px;
+  font-size: var(--dashboard-font-meta);
 }
 
 .projectsBand,
@@ -9462,6 +9722,8 @@ input[type="number"]::-webkit-inner-spin-button {
   .doNowStartSecondary,
   .todayStartButton,
   .timerStartHoverGlyph,
+  .doNowStartPrimary::after,
+  .doNowStartSecondary::after,
   .todayStartButton .nextStepStartGlyph {
     transition: none !important;
   }

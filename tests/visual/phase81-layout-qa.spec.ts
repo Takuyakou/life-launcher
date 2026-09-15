@@ -135,15 +135,15 @@ for (const width of VIEWPORTS) {
     const wishlist = page.locator(".inboxBand");
     await expect(projects.locator(".disclosureCount")).toHaveText("21件");
     await expect(wishlist.locator(".disclosureCount")).toHaveText("21件");
-    await expect(projects.getByRole("navigation", { name: "次の一手のページ" })).toContainText(
-      "1 / 3",
-    );
-    await expect(wishlist.locator(".wishlistGroup").last().locator(".wishlistGroupHeader")).toContainText(
-      "未分類",
-    );
+    await expect(projects.getByRole("button", { name: "＋ 残り15件を表示" })).toBeVisible();
+    await expect(
+      wishlist.locator(".wishlistGroupHeader", { hasText: "未分類" }),
+    ).toBeVisible();
 
-    const longProject = projects.locator('[data-project-id="sample-learning"]');
-    const emptyProject = projects.locator('[data-project-id="phase81-empty-project"]');
+    const longProject = projects.locator('.nextStepCard[data-project-id="sample-learning"]');
+    const emptyProject = projects.locator(
+      '.nextStepCard[data-project-id="phase81-empty-project"]',
+    );
     const projectRegion = longProject.locator(".nextStepProjectRegion");
     const actionRegion = longProject.locator(".nextStepActionRegion");
     const projectBox = await measurable(projectRegion, "Project region");
@@ -159,21 +159,10 @@ for (const width of VIEWPORTS) {
       projectIdentityBox.x + projectIdentityBox.width,
       "Project identity must remain inside its region",
     ).toBeLessThanOrEqual(projectBox.x + projectBox.width + 0.5);
-    if (width <= 620) {
-      expect(
-        projectBox.y + projectBox.height,
-        "Project must stack before NextStep",
-      ).toBeLessThanOrEqual(actionBox.y + 0.5);
-    } else {
-      expect(
-        projectBox.x + projectBox.width,
-        "Project must remain left of NextStep",
-      ).toBeLessThanOrEqual(actionBox.x + 0.5);
-      expect(
-        projectIdentityBox.x + projectIdentityBox.width,
-        "Project identity must not enter NextStep",
-      ).toBeLessThanOrEqual(actionBox.x + 0.5);
-    }
+    expect(
+      projectBox.y + projectBox.height,
+      "Project must stack before NextStep",
+    ).toBeLessThanOrEqual(actionBox.y + 0.5);
 
     await expect(actionRegion.locator("p")).toHaveAttribute("title", LONG_NEXT_STEP);
     await expect(actionRegion.locator("p")).toHaveCSS("text-overflow", "ellipsis");
@@ -182,17 +171,10 @@ for (const width of VIEWPORTS) {
       actionRegion.locator(".nextStepRowAction"),
       "NextStep action",
     );
-    if (width > 620) {
-      expect(
-        actionTextBox.x + actionTextBox.width,
-        "NextStep text must not cover its action",
-      ).toBeLessThanOrEqual(actionButtonBox.x + 0.5);
-    } else {
-      expect(
-        actionTextBox.y + actionTextBox.height,
-        "NextStep text must stack before its action",
-      ).toBeLessThanOrEqual(actionButtonBox.y + 0.5);
-    }
+    expect(
+      actionTextBox.y + actionTextBox.height,
+      "NextStep text must stack before its action",
+    ).toBeLessThanOrEqual(actionButtonBox.y + 0.5);
     await expect(emptyProject.getByText("次の一手は未設定です", { exact: true })).toBeVisible();
     await expect(emptyProject.getByRole("button", { name: "次の一手を設定" })).toBeVisible();
 
@@ -259,7 +241,7 @@ test("Phase 8.1 unassigned Wishlist and empty Project require explicit keyboard 
   await expect(unassigned).toBeVisible();
 
   const emptyAction = page.locator(
-    '[data-project-id="phase81-empty-project"] .nextStepActionRegion',
+    '.nextStepCard[data-project-id="phase81-empty-project"] .nextStepActionRegion',
   );
   await emptyAction.focus();
   await emptyAction.press("Shift+F10");
@@ -279,7 +261,7 @@ test("Phase 8.1 unassigned Wishlist and empty Project require explicit keyboard 
 
 test("Phase 8.1 Project and NextStep keep separate keyboard context targets", async ({ page }) => {
   await prepare(page, 1440);
-  const row = page.locator('[data-project-id="sample-learning"]');
+  const row = page.locator('.nextStepCard[data-project-id="sample-learning"]');
   const projectRegion = row.locator(".nextStepProjectRegion");
   const actionRegion = row.locator(".nextStepActionRegion");
 
@@ -317,7 +299,7 @@ test("Phase 8.1 dialogs restore their canonical context target on every close pa
   page,
 }) => {
   await prepare(page, 860);
-  const row = page.locator('[data-project-id="sample-learning"]');
+  const row = page.locator('.nextStepCard[data-project-id="sample-learning"]');
   const projectRegion = row.locator(".nextStepProjectRegion");
   const actionRegion = row.locator(".nextStepActionRegion");
 
@@ -358,7 +340,7 @@ test("Phase 8.1 dialogs restore their canonical context target on every close pa
 for (const width of [860, 620] as const) {
   test(`Phase 8.1 metadata and NextStep dialogs remain usable at ${width}`, async ({ page }) => {
     await prepare(page, width);
-    const row = page.locator('[data-project-id="sample-learning"]');
+    const row = page.locator('.nextStepCard[data-project-id="sample-learning"]');
     const projectRegion = row.locator(".nextStepProjectRegion");
     const actionRegion = row.locator(".nextStepActionRegion");
 

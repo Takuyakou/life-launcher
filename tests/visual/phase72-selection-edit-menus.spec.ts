@@ -162,10 +162,13 @@ test("timer actions keep time subtly right of center and slide play in from the 
   expect((await doNowShort.boundingBox())?.width).toBe(112);
   expect((await doNowShort.boundingBox())?.height).toBe(38);
   await expect(doNowShort.locator(".timerStartDuration")).toHaveCSS("opacity", "1");
-  await expect(doNowShort.locator(".timerStartHoverGlyph")).toHaveCSS("opacity", "0");
+  await expect(doNowShort.locator(".timerStartHoverGlyph")).toHaveCSS("opacity", "1");
   const doNowBefore = await doNowShort.boundingBox();
   const doNowTimeBefore = await doNowShort.locator(".timerStartDuration").boundingBox();
   const doNowPlayBefore = await doNowShort.locator(".timerStartHoverGlyph").boundingBox();
+  const accentBefore = await doNowShort.evaluate(
+    (node) => getComputedStyle(node, "::after").transform,
+  );
   await doNowShort.hover();
   await expect(doNowShort.locator(".timerStartDuration")).toHaveCSS("opacity", "1");
   await expect(doNowShort.locator(".timerStartHoverGlyph")).toHaveCSS("opacity", "1");
@@ -175,9 +178,13 @@ test("timer actions keep time subtly right of center and slide play in from the 
   expect(doNowBefore && doNowAfter && doNowTimeBefore && doNowTimeAfter).toBeTruthy();
   expect(doNowTimeBefore!.x + doNowTimeBefore!.width / 2 - (doNowBefore!.x + doNowBefore!.width / 2)).toBeCloseTo(5, 1);
   expect(doNowTimeAfter!.x + doNowTimeAfter!.width / 2 - (doNowAfter!.x + doNowAfter!.width / 2)).toBeCloseTo(5, 1);
-  expect(doNowPlayAfter!.x).toBeGreaterThan(doNowPlayBefore!.x);
+  expect(doNowPlayAfter!.x).toBeCloseTo(doNowPlayBefore!.x, 1);
   expect(doNowPlayAfter!.x + doNowPlayAfter!.width).toBeLessThan(doNowTimeAfter!.x);
-  expect(doNowAfter!.y).toBeLessThan(doNowBefore!.y);
+  expect(doNowAfter!.y).toBeCloseTo(doNowBefore!.y, 1);
+  expect(accentBefore).toContain("0");
+  expect(await doNowShort.evaluate((node) => getComputedStyle(node, "::after").transform)).not.toBe(
+    accentBefore,
+  );
   await page.locator(".doNowBand").screenshot({
     path: "dist/visual-qa/v13-nextstep-wishlist/do-now-timer-hover.png",
   });

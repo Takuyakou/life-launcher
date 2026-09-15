@@ -152,7 +152,7 @@ test("follow-up: excluded source reveals Builder guidance only after the 6px thr
   await expect(page.locator(".projectDragGhost")).toBeVisible();
   await expect(page.locator(".todayBuilderBand--restoreTarget")).toBeVisible();
   await expect(page.locator(".todayBuilderRestoreDropZone")).toHaveText(
-    /ここにドロップして今日の候補に戻す/,
+    /ここにドロップして今日を組み立てるに入れる/,
   );
   await expect(page.locator(".todayBuilderBand--restoreHover")).toHaveCount(0);
   const builderBoxAfter = (await builder.boundingBox())!;

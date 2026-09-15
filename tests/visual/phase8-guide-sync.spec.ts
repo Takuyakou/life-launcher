@@ -69,7 +69,8 @@ test("Guide uses current labels and explains the Phase 8.2 state contracts", asy
   expect(text).toContain("候補が2件以上");
   expect(text).toContain("優先順や保存データは書き換えません");
   expect(text).toContain("各プロジェクト0〜1件の再開地点");
-  expect(text).toContain("所属のない項目は最後の「未分類」");
+  expect(text).toContain("次の一手とは独立した順");
+  expect(text).toContain("所属のない項目は「未分類」にまとまります");
   expect(text).toContain("やりたいことへ戻す");
   expect(text).toContain("「計測」は0:00から実行時間を数え");
   expect(text).toContain("計測を含む現在の1本を終了してから");
@@ -104,7 +105,8 @@ test("Overview and current spec stay concise and synchronized", () => {
   expect(specification).toContain("再表示時の検索語は復元せず空に戻す");
   expect(specification).toContain("章は「まず始める」");
   expect(specification).toContain("迷ったときに戻る「再開地点」");
-  expect(specification).toContain("所属のない項目は最後の「未分類」");
+  expect(specification).toContain("次の一手のProject表示順とは同期しない");
+  expect(specification).toContain("所属のない項目は同じ独立順の「未分類」");
   expect(specification).toContain("古い一手を「やりたいことへ戻す」「完了にする」「キャンセル」");
   expect(specification).toContain("計測は0:00から実効経過時間を増やし");
   expect(specification).toContain("計測に架空の予定時間や進捗率を作らない");

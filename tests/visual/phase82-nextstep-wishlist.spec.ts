@@ -3,6 +3,8 @@ import {
   groupWishlist,
   prepareNextStepRemoval,
   prepareNextStepReplacement,
+  prepareWishlistPromotion,
+  reorderWishlistGroups,
   wishlistGroupKey,
 } from "../../src/nextStepWishlist";
 import type { AppConfig, LauncherNextStep } from "../../src/types";
@@ -75,7 +77,7 @@ function replacementFixture(): {
   return { config, current, promoted };
 }
 
-test("P82-01 Wishlist groups follow Project order and keep unassigned items last", () => {
+test("v1.3 Wishlist groups follow their own inbox order", () => {
   const config = structuredClone(createPublicFixture().config);
   const first = config.projects[0];
   const second = { ...first, id: "project-second", name: "二番目", nextStep: undefined };
@@ -89,13 +91,45 @@ test("P82-01 Wishlist groups follow Project order and keep unassigned items last
   ];
 
   const groups = groupWishlist(config);
-  expect(groups.map((group) => group.name)).toEqual([first.name, second.name, "未分類"]);
-  expect(groups[0].items.map(({ item }) => item.id)).toEqual(["first-1", "first-2"]);
-  expect(groups[1].items.map(({ item }) => item.id)).toEqual(["second-1"]);
+  expect(groups.map((group) => group.name)).toEqual([second.name, first.name, "未分類"]);
+  expect(groups[0].items.map(({ item }) => item.id)).toEqual(["second-1"]);
+  expect(groups[1].items.map(({ item }) => item.id)).toEqual(["first-1", "first-2"]);
   expect(groups[2].items.map(({ item }) => item.id)).toEqual(["orphan-1", "unassigned-1"]);
   expect(wishlistGroupKey(config.inbox[2], new Set(config.projects.map(({ id }) => id)))).toBe(
     "unassigned",
   );
+});
+
+test("v1.3 Wishlist group reorder preserves item order without changing Project order", () => {
+  const config = structuredClone(createPublicFixture().config);
+  const first = config.projects[0];
+  const second = { ...first, id: "project-second", name: "二番目", nextStep: undefined };
+  config.projects = [first, second];
+  config.inbox = [
+    { id: "first-1", text: "一番目A", projectId: first.id },
+    { id: "first-2", text: "一番目B", projectId: first.id },
+    { id: "second-1", text: "二番目A", projectId: second.id },
+    { id: "none-1", text: "未分類" },
+  ];
+  const result = reorderWishlistGroups(
+    config,
+    `project:${second.id}`,
+    `project:${first.id}`,
+    "before",
+  );
+
+  expect(groupWishlist(result).map(({ key }) => key)).toEqual([
+    `project:${second.id}`,
+    `project:${first.id}`,
+    "unassigned",
+  ]);
+  expect(result.inbox.map(({ id }) => id)).toEqual([
+    "second-1",
+    "first-1",
+    "first-2",
+    "none-1",
+  ]);
+  expect(result.projects.map(({ id }) => id)).toEqual([first.id, second.id]);
 });
 
 test("P82-01 returning the previous NextStep is atomic and strips execution payload", () => {
@@ -123,6 +157,29 @@ test("P82-01 returning the previous NextStep is atomic and strips execution payl
   expect(result.today).toEqual(todayBefore);
   expect(result.sourceCompletions).toEqual(completionsBefore);
   expect(config.inbox.map(({ id }) => id)).toEqual(["wish-promote", "wish-keep"]);
+});
+
+test("v1.3 Wishlist drop promotion returns the old NextStep and preserves unrelated state", () => {
+  const { config, current, promoted } = replacementFixture();
+  const todayBefore = structuredClone(config.today);
+  const completionsBefore = structuredClone(config.sourceCompletions);
+  const result = prepareWishlistPromotion(config, {
+    wishlistId: "wish-promote",
+    projectId: config.projects[0].id,
+    nextStep: promoted,
+    expectedCurrent: current,
+    createId: () => "returned-from-drop",
+  });
+
+  expect(result.projects[0].nextStep).toEqual(promoted);
+  expect(result.inbox.map(({ id }) => id)).toEqual(["wish-keep", "returned-from-drop"]);
+  expect(result.inbox[1]).toEqual({
+    id: "returned-from-drop",
+    text: current.text,
+    projectId: config.projects[0].id,
+  });
+  expect(result.today).toEqual(todayBefore);
+  expect(result.sourceCompletions).toEqual(completionsBefore);
 });
 
 test("P82-01 completing the previous NextStep records history without returning it", () => {
@@ -244,9 +301,10 @@ test("P82-01 Wishlist renders Project groups, collapse, Today and excluded state
 
   const groups = page.locator(".wishlistGroup");
   await expect(groups).toHaveCount(3);
-  await expect(groups.nth(0).locator(".wishlistGroupHeader")).toContainText("サンプル学習");
-  await expect(groups.nth(1).locator(".wishlistGroupHeader")).toContainText("ストレッチ");
-  await expect(groups.nth(2).locator(".wishlistGroupHeader")).toContainText("未分類");
+  const expectedGroupNames = groupWishlist(fixture.config).map(({ name }) => name);
+  for (const [index, name] of expectedGroupNames.entries()) {
+    await expect(groups.nth(index).locator(".wishlistGroupHeader")).toContainText(name);
+  }
   await expect(page.locator('[data-inbox-id="wish-selected"] .wishlistTodayStatus')).toHaveText(
     "✓ 今日の3件",
   );
@@ -473,15 +531,21 @@ test("v1.3 NextStep and Wishlist headers keep compact right-side actions", async
 
   await expect(page.getByRole("button", { name: "プロジェクトを追加" })).toHaveText("＋ プロジェクト");
   await expect(page.getByRole("button", { name: "やりたいことを追加" })).toHaveText("＋ やりたいこと");
-  const configured = page.locator('[data-project-id="sample-learning"] .nextStepActionRegion p');
-  const unset = page.locator('[data-project-id="project-unset"] .nextStepActionRegion p');
+  const configured = page.locator(
+    '.nextStepCard[data-project-id="sample-learning"] .nextStepActionRegion p',
+  );
+  const unset = page.locator(
+    '.nextStepCard[data-project-id="project-unset"] .nextStepActionRegion p',
+  );
   expect(await configured.evaluate((node) => getComputedStyle(node).fontSize)).toBe(
     await unset.evaluate((node) => getComputedStyle(node).fontSize),
   );
-  await expect(page.locator('[data-project-id="project-unset"] .nextStepRowAction')).toHaveClass(
-    /nextStepRowAction--set/,
+  await expect(
+    page.locator('.nextStepCard[data-project-id="project-unset"] .nextStepRowAction'),
+  ).toHaveClass(/nextStepRowAction--set/);
+  const setButton = page.locator(
+    '.nextStepCard[data-project-id="project-unset"] .nextStepRowAction',
   );
-  const setButton = page.locator('[data-project-id="project-unset"] .nextStepRowAction');
   const setButtonBox = (await setButton.boundingBox())!;
   await page.mouse.click(setButtonBox.x + setButtonBox.width / 2, setButtonBox.y - 5);
   await expect(page.getByRole("dialog", { name: "次の一手を設定" })).toBeVisible();
@@ -507,4 +571,147 @@ test("v1.3 NextStep and Wishlist headers keep compact right-side actions", async
   await page.locator(".inboxBand").screenshot({
     path: "dist/visual-qa/v13-nextstep-wishlist/wishlist-860.png",
   });
+});
+
+test("v1.3 NextStep uses a compact 3x2 grid with aligned actions and six-item expansion", async ({
+  page,
+}) => {
+  const fixture = createPublicFixture();
+  const template = fixture.config.projects[0];
+  while (fixture.config.projects.length < 8) {
+    const index = fixture.config.projects.length;
+    fixture.config.projects.push({
+      ...template,
+      id: `project-card-${index}`,
+      weeklyFocus: false,
+      name:
+        index === 6
+          ? "とても長いプロジェクト名でもカードの横幅を押し広げない"
+          : `カードプロジェクト${index}`,
+      nextStep:
+        index % 2 === 0
+          ? undefined
+          : {
+              ...template.nextStep!,
+              text: "長い次の一手でも二行以内に収まり、操作ボタンの位置を変えないことを確認する",
+            },
+    });
+  }
+  await prepare(page, fixture);
+
+  const cards = page.locator(".nextStepCard");
+  await expect(cards).toHaveCount(6);
+  expect(
+    await page.locator(".projectGrid").evaluate((node) =>
+      getComputedStyle(node).gridTemplateColumns.split(" ").length,
+    ),
+  ).toBe(3);
+  const configuredAction = page
+    .locator(".nextStepCard", { hasText: template.nextStep!.text })
+    .getByRole("button", { name: "変更" });
+  const unsetAction = page
+    .locator(".nextStepCard", { hasText: "次の一手は未設定です" })
+    .getByRole("button", { name: "次の一手を設定" })
+    .first();
+  const configuredBox = (await configuredAction.boundingBox())!;
+  const unsetBox = (await unsetAction.boundingBox())!;
+  expect(Math.abs(configuredBox.y + configuredBox.height - (unsetBox.y + unsetBox.height))).toBeLessThan(
+    1,
+  );
+  await expect(page.getByRole("button", { name: "＋ 残り2件を表示" })).toBeVisible();
+  await page.getByRole("button", { name: "＋ 残り2件を表示" }).click();
+  await expect(cards).toHaveCount(8);
+  await page.getByRole("button", { name: "− 折りたたむ" }).click();
+  await expect(cards).toHaveCount(6);
+
+  await page.setViewportSize({ width: 1000, height: 900 });
+  expect(
+    await page.locator(".projectGrid").evaluate((node) =>
+      getComputedStyle(node).gridTemplateColumns.split(" ").length,
+    ),
+  ).toBe(2);
+  await page.setViewportSize({ width: 620, height: 900 });
+  expect(
+    await page.locator(".projectGrid").evaluate((node) =>
+      getComputedStyle(node).gridTemplateColumns.split(" ").length,
+    ),
+  ).toBe(1);
+});
+
+test("v1.3 Wishlist project groups reorder independently and expose Project edit", async ({
+  page,
+}) => {
+  const fixture = createPublicFixture();
+  const first = fixture.config.projects[0];
+  const second = fixture.config.projects[1];
+  fixture.config.inbox = [
+    { id: "group-first", text: "一番目の項目", projectId: first.id },
+    { id: "group-second", text: "二番目の項目", projectId: second.id },
+  ];
+  await prepare(page, fixture);
+  const firstHeader = page.locator(".wishlistGroupHeader", { hasText: first.name });
+  const secondHeader = page.locator(".wishlistGroupHeader", { hasText: second.name });
+  await secondHeader.scrollIntoViewIfNeeded();
+  const from = (await secondHeader.boundingBox())!;
+  const to = (await firstHeader.boundingBox())!;
+
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(from.x + from.width / 2 + 12, from.y + from.height / 2, { steps: 2 });
+  await expect(page.locator(".wishlistGroupDragGhost")).toBeVisible();
+  await page.mouse.move(to.x + to.width / 2, to.y + 3, { steps: 5 });
+  await expect(page.locator(".wishlistGroupDropIndicator")).toBeVisible();
+  await page.mouse.up();
+  await expect.poll(async () => (await currentConfig(page)).inbox[0]?.id).toBe("group-second");
+  expect((await currentConfig(page)).projects.map(({ id }) => id)).toEqual(
+    fixture.config.projects.map(({ id }) => id),
+  );
+
+  await page.locator(".wishlistGroupHeader", { hasText: second.name }).click({ button: "right" });
+  await page.getByRole("menuitem", { name: "プロジェクトを編集" }).click();
+  await expect(page.getByRole("dialog", { name: "プロジェクトを編集" })).toBeVisible();
+});
+
+test("v1.3 Wishlist item drop sets or replaces a NextStep and returns the old one", async ({
+  page,
+}) => {
+  const fixture = createPublicFixture();
+  const project = fixture.config.projects[0];
+  const oldText = project.nextStep!.text;
+  fixture.config.inbox = [
+    {
+      id: "drop-to-next-step",
+      text: "ドロップして設定する次の一手",
+      projectId: project.id,
+      buttonIds: ["sample-button"],
+    },
+  ];
+  await prepare(page, fixture);
+  const source = page.locator('[data-inbox-id="drop-to-next-step"]');
+  const target = page.locator(
+    `.nextStepCard[data-project-id="${project.id}"]`,
+  );
+  const from = (await source.boundingBox())!;
+  const to = (await target.boundingBox())!;
+
+  await page.mouse.move(from.x + 20, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(from.x + 32, from.y + from.height / 2, { steps: 2 });
+  await expect(page.locator(".projectsBand.sourceReturnBand--target")).toBeVisible();
+  await expect(page.locator(".projectsBand .sourceReturnDropZone")).toContainText(
+    "ここにドロップして次の一手を設定する",
+  );
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 6 });
+  await expect(target).toHaveClass(/nextStepCard--dropTarget/);
+  await page.mouse.up();
+
+  await expect.poll(async () =>
+    (await currentConfig(page)).projects.find(({ id }) => id === project.id)?.nextStep?.text,
+  ).toBe("ドロップして設定する次の一手");
+  const saved = await currentConfig(page);
+  expect(saved.inbox.some(({ id }) => id === "drop-to-next-step")).toBe(false);
+  expect(
+    saved.inbox.some(({ text, projectId }) => text === oldText && projectId === project.id),
+  ).toBe(true);
+  expect(saved.projects[0].nextStep?.buttonIds).toEqual(["sample-button"]);
 });

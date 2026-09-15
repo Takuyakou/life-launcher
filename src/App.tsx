@@ -110,6 +110,8 @@ import {
   groupWishlist,
   prepareNextStepRemoval,
   prepareNextStepReplacement,
+  prepareWishlistPromotion,
+  reorderWishlistGroups,
   sameNextStepSnapshot,
   type NextStepReplacementChoice,
   wishlistGroupKey,
@@ -495,6 +497,7 @@ type SidebarDragPreview = InternalButtonDrag & {
     left: number;
     top: number;
     width: number;
+    height?: number;
   };
   targetButtonId?: string;
   targetGroupName?: string;
@@ -581,6 +584,7 @@ type ProjectDragPreview = {
     left: number;
     top: number;
     width: number;
+    height?: number;
   };
   restoreTarget: boolean;
   restoreEligible: boolean;
@@ -620,6 +624,38 @@ type InboxDragPreview = {
   };
   restoreTarget: boolean;
   restoreEligible: boolean;
+  nextStepEligible: boolean;
+  nextStepTargetProjectId?: string;
+};
+
+type WishlistGroupPointerDrag = {
+  key: string;
+  name: string;
+  startX: number;
+  startY: number;
+  hasMoved: boolean;
+  offsetX: number;
+  offsetY: number;
+  width: number;
+  height: number;
+};
+
+type WishlistGroupDragPreview = {
+  key: string;
+  name: string;
+  pointerX: number;
+  pointerY: number;
+  offsetX: number;
+  offsetY: number;
+  width: number;
+  height: number;
+  targetKey?: string;
+  placement?: "before" | "after";
+  targetIndicator?: {
+    left: number;
+    top: number;
+    width: number;
+  };
 };
 
 type TodayBuilderPointerDrag = {
@@ -711,6 +747,7 @@ const MINI_WINDOW_SAFE_MARGIN_PX = 16;
 const NUMBER_INPUT_DRAG_THRESHOLD_PX = 4;
 const NUMBER_INPUT_DRAG_PIXELS_PER_STEP = 8;
 const TODAY_BUILDER_PAGE_SIZE = 5;
+const PROJECT_CARD_COMPACT_LIMIT = 6;
 const SOURCE_LIST_COMPACT_LIMIT = 5;
 const SOURCE_LIST_PAGINATION_THRESHOLD = 20;
 const SOURCE_LIST_PAGE_SIZE = 10;
@@ -1664,21 +1701,35 @@ function projectDropTargetFromPoint(
   const element = document.elementFromPoint(x, y);
   if (!element) return nearestProjectDropTargetFromPoint(x, y);
 
-  const cardElement = element.closest<HTMLElement>("[data-project-id]");
+  const cardElement = element.closest<HTMLElement>(".nextStepCard[data-project-id]");
   if (!cardElement) return nearestProjectDropTargetFromPoint(x, y);
-  return projectDropTargetFromCard(cardElement, y);
+  return projectDropTargetFromCard(cardElement, x, y);
 }
 
 function projectDropTargetFromCard(
   cardElement: HTMLElement,
+  x: number,
   y: number,
 ): { id: string; placement: "before" | "after" } | null {
   const id = cardElement.dataset.projectId;
   if (!id) return null;
   const rect = cardElement.getBoundingClientRect();
+  const sharesRow = Array.from(
+    document.querySelectorAll<HTMLElement>(".nextStepCard[data-project-id]"),
+  ).some(
+    (candidate) =>
+      candidate !== cardElement &&
+      Math.abs(candidate.getBoundingClientRect().top - rect.top) < 2,
+  );
   return {
     id,
-    placement: y < rect.top + rect.height / 2 ? "before" : "after",
+    placement: sharesRow
+      ? x < rect.left + rect.width / 2
+        ? "before"
+        : "after"
+      : y < rect.top + rect.height / 2
+        ? "before"
+        : "after",
   };
 }
 
@@ -1686,7 +1737,9 @@ function nearestProjectDropTargetFromPoint(
   x: number,
   y: number,
 ): { id: string; placement: "before" | "after" } | null {
-  const cards = Array.from(document.querySelectorAll<HTMLElement>("[data-project-id]"));
+  const cards = Array.from(
+    document.querySelectorAll<HTMLElement>(".nextStepCard[data-project-id]"),
+  );
   if (cards.length === 0) return null;
 
   const nearest = cards.reduce<{ card: HTMLElement; distance: number } | null>((best, card) => {
@@ -1700,7 +1753,42 @@ function nearestProjectDropTargetFromPoint(
     return best;
   }, null);
 
-  return nearest ? projectDropTargetFromCard(nearest.card, y) : null;
+  return nearest ? projectDropTargetFromCard(nearest.card, x, y) : null;
+}
+
+function nextStepTargetProjectFromPoint(x: number, y: number): string | null {
+  const element = document.elementFromPoint(x, y);
+  const card = element?.closest<HTMLElement>(".nextStepCard[data-project-id]");
+  return card?.dataset.projectId ?? null;
+}
+
+function wishlistGroupDropTargetFromPoint(
+  x: number,
+  y: number,
+): {
+  key: string;
+  placement: "before" | "after";
+  indicator: { left: number; top: number; width: number };
+} | null {
+  const group = Array.from(
+    document.querySelectorAll<HTMLElement>("[data-wishlist-group]"),
+  ).find((candidate) => {
+    const rect = candidate.getBoundingClientRect();
+    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+  });
+  const key = group?.dataset.wishlistGroup;
+  if (!group || !key) return null;
+  const rect = group.getBoundingClientRect();
+  const placement = y < rect.top + rect.height / 2 ? "before" : "after";
+  return {
+    key,
+    placement,
+    indicator: {
+      left: rect.left + 6,
+      top: placement === "before" ? rect.top - 2 : rect.bottom + 1,
+      width: Math.max(0, rect.width - 12),
+    },
+  };
 }
 
 function inboxDropTargetFromPoint(
@@ -1768,10 +1856,26 @@ function todayBuilderDropTargetFromPoint(
 function projectDropIndicator(
   id: string,
   placement: "before" | "after",
-): { left: number; top: number; width: number } | undefined {
-  const card = document.querySelector<HTMLElement>(`[data-project-id="${CSS.escape(id)}"]`);
+): { left: number; top: number; width: number; height?: number } | undefined {
+  const card = document.querySelector<HTMLElement>(
+    `.nextStepCard[data-project-id="${CSS.escape(id)}"]`,
+  );
   if (!card) return undefined;
   const rect = card.getBoundingClientRect();
+  const sharesRow = Array.from(
+    document.querySelectorAll<HTMLElement>(".nextStepCard[data-project-id]"),
+  ).some(
+    (candidate) =>
+      candidate !== card && Math.abs(candidate.getBoundingClientRect().top - rect.top) < 2,
+  );
+  if (sharesRow) {
+    return {
+      left: placement === "before" ? rect.left - 2 : rect.right + 1,
+      top: rect.top + 6,
+      width: 3,
+      height: Math.max(0, rect.height - 12),
+    };
+  }
   return {
     left: rect.left + 6,
     top: placement === "before" ? rect.top - 2 : rect.bottom + 1,
@@ -1986,7 +2090,6 @@ function DashboardApp() {
   const [inboxOpen, setInboxOpen] = useState(false);
   const [projectsOpen, setProjectsOpen] = useState(true);
   const [projectsListExpanded, setProjectsListExpanded] = useState(false);
-  const [projectsListPage, setProjectsListPage] = useState(1);
   const [wishlistGroupViews, setWishlistGroupViews] = useState<
     Record<string, WishlistGroupView>
   >({});
@@ -2077,6 +2180,8 @@ function DashboardApp() {
   const [todayPointerDrag, setTodayPointerDrag] = useState<TodayDragPreview | null>(null);
   const [projectPointerDrag, setProjectPointerDrag] = useState<ProjectDragPreview | null>(null);
   const [inboxPointerDrag, setInboxPointerDrag] = useState<InboxDragPreview | null>(null);
+  const [wishlistGroupPointerDrag, setWishlistGroupPointerDrag] =
+    useState<WishlistGroupDragPreview | null>(null);
   const builderRestoreGuidanceActive = Boolean(
     projectPointerDrag?.restoreEligible ||
       inboxPointerDrag?.restoreEligible ||
@@ -2093,6 +2198,7 @@ function DashboardApp() {
   const todayPointerDragRef = useRef<TodayPointerDrag | null>(null);
   const projectPointerDragRef = useRef<ProjectPointerDrag | null>(null);
   const inboxPointerDragRef = useRef<InboxPointerDrag | null>(null);
+  const wishlistGroupPointerDragRef = useRef<WishlistGroupPointerDrag | null>(null);
   const todayBuilderPointerDragRef = useRef<TodayBuilderPointerDrag | null>(null);
   const builderAutoOpenTimerRef = useRef<number | null>(null);
   const builderTemporarilyOpenedRef = useRef(false);
@@ -4459,6 +4565,18 @@ function DashboardApp() {
     void persistConfig({ ...config, inbox });
   };
 
+  const moveWishlistGroup = (
+    draggedKey: string,
+    targetKey: string,
+    placement: "before" | "after",
+  ) => {
+    const current = configRef.current;
+    if (!current || draggedKey === targetKey) return;
+    const nextConfig = reorderWishlistGroups(current, draggedKey, targetKey, placement);
+    if (nextConfig === current) return;
+    void persistConfig(nextConfig);
+  };
+
   const announceReorder = (label: string, position: number) => {
     setReorderAnnouncement(`「${label}」を${position}番目へ移動しました`);
   };
@@ -5083,11 +5201,26 @@ function DashboardApp() {
       event.clientY,
       restoreEligible,
     );
-    const candidateTarget = builderRestoreTargetFromPoint(event.clientX, event.clientY)
-      ? null
-      : inboxDropTargetFromPoint(event.clientX, event.clientY);
-    const projectIds = new Set((current?.projects ?? []).map((project) => project.id));
     const sourceItem = current?.inbox[sourceIndex];
+    const sourceEditable = Boolean(
+      sourceItem?.id && !sourceEditBlocked(`wishlist:${sourceItem.id}`),
+    );
+    const hoveredProjectId = nextStepTargetProjectFromPoint(event.clientX, event.clientY);
+    const nextStepEligible = Boolean(
+      sourceEditable &&
+        current?.projects.some((project) => !sourceEditBlocked(`project:${project.id}`)),
+    );
+    const nextStepTargetProjectId =
+      hoveredProjectId &&
+      sourceEditable &&
+      !sourceEditBlocked(`project:${hoveredProjectId}`)
+        ? hoveredProjectId
+        : undefined;
+    const candidateTarget =
+      builderRestoreTargetFromPoint(event.clientX, event.clientY) || nextStepTargetProjectId
+        ? null
+        : inboxDropTargetFromPoint(event.clientX, event.clientY);
+    const projectIds = new Set((current?.projects ?? []).map((project) => project.id));
     const targetItem = candidateTarget ? current?.inbox[candidateTarget.index] : undefined;
     const target =
       sourceItem &&
@@ -5110,6 +5243,8 @@ function DashboardApp() {
         !restoreTarget && target && target.index !== drag.index ? target.indicator : undefined,
       restoreTarget,
       restoreEligible,
+      nextStepEligible,
+      nextStepTargetProjectId,
     });
     updateProjectAutoScroll(event.clientY);
   };
@@ -5136,6 +5271,17 @@ function DashboardApp() {
         (item) => item.id === drag.sourceKey.slice("wishlist:".length),
       ) ?? -1;
     if (sourceIndex < 0) return;
+    const targetProjectId = nextStepTargetProjectFromPoint(event.clientX, event.clientY);
+    const sourceItem = current?.inbox[sourceIndex];
+    if (
+      targetProjectId &&
+      sourceItem?.id &&
+      !sourceEditBlocked(`wishlist:${sourceItem.id}`) &&
+      !sourceEditBlocked(`project:${targetProjectId}`)
+    ) {
+      void promoteWishlistToProject(sourceItem.id, targetProjectId);
+      return;
+    }
     const target = inboxDropTargetFromPoint(event.clientX, event.clientY);
     if (!target) return;
     const placement =
@@ -5153,6 +5299,89 @@ function DashboardApp() {
     setInboxPointerDrag(null);
     stopProjectAutoScroll();
     clearBuilderRestoreHover();
+  };
+
+  const toggleWishlistGroup = (key: string) => {
+    setWishlistGroupViews((current) => ({
+      ...current,
+      [key]: {
+        ...current[key],
+        collapsed: !current[key]?.collapsed,
+      },
+    }));
+  };
+
+  const startWishlistGroupPointerDrag = (
+    event: PointerEvent<HTMLElement>,
+    key: string,
+    name: string,
+  ) => {
+    if (event.button !== 0) return;
+    const header = (event.target as Element).closest<HTMLElement>(".wishlistGroupHeader");
+    if (!header || !event.currentTarget.contains(header)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const rect = header.getBoundingClientRect();
+    wishlistGroupPointerDragRef.current = {
+      key,
+      name,
+      startX: event.clientX,
+      startY: event.clientY,
+      hasMoved: false,
+      offsetX: event.clientX - rect.left,
+      offsetY: event.clientY - rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+  };
+
+  const updateWishlistGroupPointerDrag = (event: PointerEvent<HTMLElement>) => {
+    const drag = wishlistGroupPointerDragRef.current;
+    if (!drag) return;
+    const distance = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
+    if (!drag.hasMoved && distance >= SIDEBAR_DRAG_THRESHOLD_PX) drag.hasMoved = true;
+    if (!drag.hasMoved) return;
+    const target = wishlistGroupDropTargetFromPoint(event.clientX, event.clientY);
+    setWishlistGroupPointerDrag({
+      key: drag.key,
+      name: drag.name,
+      pointerX: event.clientX,
+      pointerY: event.clientY,
+      offsetX: drag.offsetX,
+      offsetY: drag.offsetY,
+      width: drag.width,
+      height: drag.height,
+      targetKey: target?.key,
+      placement: target?.placement,
+      targetIndicator:
+        target && target.key !== drag.key ? target.indicator : undefined,
+    });
+    updateProjectAutoScroll(event.clientY);
+  };
+
+  const finishWishlistGroupPointerDrag = (event: PointerEvent<HTMLElement>) => {
+    const drag = wishlistGroupPointerDragRef.current;
+    wishlistGroupPointerDragRef.current = null;
+    setWishlistGroupPointerDrag(null);
+    stopProjectAutoScroll();
+    if (!drag) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (!drag.hasMoved) {
+      toggleWishlistGroup(drag.key);
+      return;
+    }
+    const target = wishlistGroupDropTargetFromPoint(event.clientX, event.clientY);
+    if (target && target.key !== drag.key) {
+      moveWishlistGroup(drag.key, target.key, target.placement);
+    }
+  };
+
+  const cancelWishlistGroupPointerDrag = () => {
+    wishlistGroupPointerDragRef.current = null;
+    setWishlistGroupPointerDrag(null);
+    stopProjectAutoScroll();
   };
 
   const startTodayBuilderPointerDrag = (event: PointerEvent<HTMLDivElement>, index: number) => {
@@ -6921,7 +7150,7 @@ function DashboardApp() {
         shortTimerMinutes: candidate.shortTimerMinutes,
       },
     );
-    const saved = await persistConfig({
+    const savePromise = persistConfig({
       ...current,
       today: {
         ...current.today,
@@ -6929,11 +7158,15 @@ function DashboardApp() {
         selectionMutationTokens,
       },
     });
-    if (saved && scrollArea && scrollTopBeforeSave !== undefined) {
+    if (scrollArea && scrollTopBeforeSave !== undefined) {
       scrollArea.scrollTop = scrollTopBeforeSave;
       window.requestAnimationFrame(() => {
         if (scrollArea.isConnected) scrollArea.scrollTop = scrollTopBeforeSave;
       });
+    }
+    const saved = await savePromise;
+    if (saved && scrollArea && scrollTopBeforeSave !== undefined) {
+      scrollArea.scrollTop = scrollTopBeforeSave;
     }
     if (saved) showToast("ok", "今日の3件に追加しました");
     return saved;
@@ -7131,6 +7364,74 @@ function DashboardApp() {
     });
     setProjectNextStepSuggestions([]);
     void refreshInstructionChoices();
+  };
+
+  const promoteWishlistToProject = async (wishlistId: string, projectId: string) => {
+    const current = configRef.current;
+    const item = current?.inbox.find((candidate) => candidate.id === wishlistId);
+    const project = current?.projects.find((candidate) => candidate.id === projectId);
+    if (!current || !item || !project || sourceEditBusyRef.current) return false;
+    const wishlistSource = `wishlist:${wishlistId}`;
+    const projectSource = `project:${projectId}`;
+    if (sourceEditBlocked(wishlistSource) || sourceEditBlocked(projectSource)) {
+      showToast("warn", SOURCE_EDIT_TIMER_REASON);
+      return false;
+    }
+
+    const legacyExecution = project.nextStep ? undefined : project.legacyNextStepSettings;
+    const instructionPath = item.instructionPath ?? legacyExecution?.instructionPath;
+    const nextStep: LauncherNextStep = {
+      text: item.text.trim(),
+      generationId: createStableId(),
+      buttonIds: [...(item.buttonIds ?? legacyExecution?.buttonIds ?? [])],
+      ...(legacyExecution?.defaultTimerMinutes
+        ? { defaultTimerMinutes: legacyExecution.defaultTimerMinutes }
+        : {}),
+      ...(legacyExecution?.shortTimerMinutes
+        ? { shortTimerMinutes: legacyExecution.shortTimerMinutes }
+        : {}),
+      ...(legacyExecution?.startNoteTemplate
+        ? { startNoteTemplate: legacyExecution.startNoteTemplate }
+        : {}),
+      ...(instructionPath
+        ? {
+            instructionPath,
+            instructionOpenOnStart:
+              item.instructionPath !== undefined
+                ? item.instructionOpenOnStart !== false
+                : legacyExecution?.instructionOpenOnStart !== false,
+          }
+        : {}),
+      updatedAt: new Date().toISOString(),
+    };
+    let nextConfig: AppConfig;
+    try {
+      nextConfig = prepareWishlistPromotion(current, {
+        wishlistId,
+        projectId,
+        nextStep,
+        expectedCurrent: project.nextStep,
+        createId: createStableId,
+      });
+    } catch (error) {
+      showToast("warn", error instanceof Error ? error.message : String(error));
+      return false;
+    }
+
+    sourceEditBusyRef.current = projectSource;
+    try {
+      const saved = await persistConfig(nextConfig);
+      if (saved) {
+        showToast("ok", project.nextStep?.text.trim() ? "次の一手を変更しました" : "次の一手に設定しました", {
+          detail: project.nextStep?.text.trim()
+            ? "元の次の一手はやりたいことへ戻しました"
+            : undefined,
+        });
+      }
+      return saved;
+    } finally {
+      sourceEditBusyRef.current = null;
+    }
   };
 
   const selectNextStepProject = (projectId: string) => {
@@ -7680,8 +7981,6 @@ function DashboardApp() {
 
   useEffect(() => {
     const projects = config?.projects ?? [];
-    const pageCount = Math.max(1, Math.ceil(projects.length / SOURCE_LIST_PAGE_SIZE));
-    setProjectsListPage((page) => Math.min(Math.max(1, page), pageCount));
     const anchor = projectListAnchorRef.current;
     if (!anchor || projects.length === 0) return;
     let index = projects.findIndex((project) => project.id === anchor.id);
@@ -7689,16 +7988,14 @@ function DashboardApp() {
     const project = projects[index];
     if (!project) return;
     projectListAnchorRef.current = { id: project.id, index };
-    if (projects.length >= SOURCE_LIST_PAGINATION_THRESHOLD) {
-      setProjectsListPage(Math.floor(index / SOURCE_LIST_PAGE_SIZE) + 1);
-    } else if (projects.length > SOURCE_LIST_COMPACT_LIMIT && index >= SOURCE_LIST_COMPACT_LIMIT) {
+    if (projects.length > PROJECT_CARD_COMPACT_LIMIT && index >= PROJECT_CARD_COMPACT_LIMIT) {
       setProjectsListExpanded(true);
     }
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
         document
           .querySelector<HTMLElement>(
-            `[data-project-id="${CSS.escape(project.id)}"] .nextStepActionRegion`,
+            `.nextStepCard[data-project-id="${CSS.escape(project.id)}"]`,
           )
           ?.focus();
       });
@@ -7744,9 +8041,10 @@ function DashboardApp() {
     const cancelPointerDrag = (event?: globalThis.KeyboardEvent) => {
       if (event && event.key !== "Escape") return;
       const hadDrag = Boolean(
-        todayPointerDragRef.current ||
+          todayPointerDragRef.current ||
           projectPointerDragRef.current ||
           inboxPointerDragRef.current ||
+          wishlistGroupPointerDragRef.current ||
           todayBuilderPointerDragRef.current,
       );
       if (!hadDrag) return;
@@ -7754,10 +8052,12 @@ function DashboardApp() {
       todayPointerDragRef.current = null;
       projectPointerDragRef.current = null;
       inboxPointerDragRef.current = null;
+      wishlistGroupPointerDragRef.current = null;
       todayBuilderPointerDragRef.current = null;
       setTodayPointerDrag(null);
       setProjectPointerDrag(null);
       setInboxPointerDrag(null);
+      setWishlistGroupPointerDrag(null);
       setTodayBuilderPointerDrag(null);
       setBuilderRestoreTargetActive(false);
       if (builderAutoOpenTimerRef.current !== null) {
@@ -7800,12 +8100,9 @@ function DashboardApp() {
   }
 
   const todayCompletedCount = config.today.items.filter((item) => item.done).length;
-  const projectListRange = sourceListRange(
-    config.projects.length,
-    projectsListExpanded,
-    projectsListPage,
-  );
-  const visibleProjects = config.projects.slice(projectListRange.start, projectListRange.end);
+  const visibleProjects = projectsListExpanded
+    ? config.projects
+    : config.projects.slice(0, PROJECT_CARD_COMPACT_LIMIT);
   const wishlistGroups = groupWishlist(config);
   const inboxNeighborIndex = (index: number, offset: -1 | 1) => {
     const item = config.inbox[index];
@@ -9849,7 +10146,7 @@ function DashboardApp() {
                     <span>
                       {todayPointerDrag?.builderRemoveEligible
                         ? "ここにドロップして今日の3件から外す"
-                        : "ここにドロップして今日の候補に戻す"}
+                        : "ここにドロップして今日を組み立てるに入れる"}
                     </span>
                   </div>
                 )}
@@ -9972,7 +10269,7 @@ function DashboardApp() {
                                   title="操作メニュー"
                                   type="button"
                                 >
-                                  <span aria-hidden="true">⋯</span>
+                                  <span aria-hidden="true">…</span>
                                 </button>
                               </div>
                             </div>
@@ -10074,6 +10371,12 @@ function DashboardApp() {
               <section
                 className={[
                   "projectsBand",
+                  inboxPointerDrag?.nextStepEligible
+                    ? "sourceReturnBand--target"
+                    : "",
+                  inboxPointerDrag?.nextStepTargetProjectId
+                    ? "sourceReturnBand--active"
+                    : "",
                   todayBuilderPointerDrag?.sourceTarget === "project"
                     ? "sourceReturnBand--target"
                     : "",
@@ -10163,6 +10466,18 @@ function DashboardApp() {
                     <span>ここにドロップして今日の候補から外す</span>
                   </div>
                 )}
+                {inboxPointerDrag?.nextStepEligible && (
+                  <div
+                    className={
+                      inboxPointerDrag.nextStepTargetProjectId
+                        ? "sourceReturnDropZone sourceReturnDropZone--active"
+                        : "sourceReturnDropZone"
+                    }
+                  >
+                    <span aria-hidden="true">↓</span>
+                    <span>ここにドロップして次の一手を設定する</span>
+                  </div>
+                )}
                 {projectsOpen && (
                   <div className="nextStepBody">
                     <div className="projectGrid">
@@ -10171,17 +10486,40 @@ function DashboardApp() {
                           <article
                             className={[
                               "nextStepRow sourceListRow",
+                              "nextStepCard",
                               projectPointerDrag?.id === project.id ? "nextStepRow--dragging" : "",
+                              inboxPointerDrag?.nextStepTargetProjectId === project.id
+                                ? "nextStepCard--dropTarget"
+                                : "",
                             ]
                               .filter(Boolean)
                               .join(" ")}
                             data-project-color={resolveProjectColorId(project.id, project.colorId)}
                             data-project-id={project.id}
                             key={project.id}
+                            onContextMenu={(event) => {
+                              event.preventDefault();
+                              openContextMenu(
+                                { kind: "nextStep", project },
+                                event.clientX,
+                                event.clientY,
+                                event.currentTarget,
+                              );
+                            }}
+                            onFocus={() => {
+                              const index = config.projects.findIndex(
+                                (item) => item.id === project.id,
+                              );
+                              projectListAnchorRef.current = { id: project.id, index };
+                            }}
+                            onKeyDown={(event) =>
+                              openContextMenuFromKeyboard(event, { kind: "nextStep", project })
+                            }
                             onPointerCancel={cancelProjectPointerDrag}
                             onPointerDown={(event) => startProjectPointerDrag(event, project.id)}
                             onPointerMove={updateProjectPointerDrag}
                             onPointerUp={finishProjectPointerDrag}
+                            tabIndex={0}
                           >
                             <div
                               className="nextStepProjectRegion"
@@ -10194,12 +10532,6 @@ function DashboardApp() {
                                   event.clientY,
                                   event.currentTarget,
                                 );
-                              }}
-                              onFocus={() => {
-                                const index = config.projects.findIndex(
-                                  (item) => item.id === project.id,
-                                );
-                                projectListAnchorRef.current = { id: project.id, index };
                               }}
                               onKeyDown={(event) =>
                                 openContextMenuFromKeyboard(event, { kind: "project", project })
@@ -10227,12 +10559,6 @@ function DashboardApp() {
                                   event.currentTarget,
                                 );
                               }}
-                              onFocus={() => {
-                                const index = config.projects.findIndex(
-                                  (item) => item.id === project.id,
-                                );
-                                projectListAnchorRef.current = { id: project.id, index };
-                              }}
                               onKeyDown={(event) =>
                                 openContextMenuFromKeyboard(event, { kind: "nextStep", project })
                               }
@@ -10259,7 +10585,11 @@ function DashboardApp() {
                                   openNextStepEditor(project);
                                 }}
                                 onPointerDown={(event) => event.stopPropagation()}
-                                title={SOURCE_EDIT_TIMER_REASON}
+                                title={
+                                  sourceEditBlocked(`project:${project.id}`)
+                                    ? SOURCE_EDIT_TIMER_REASON
+                                    : undefined
+                                }
                                 type="button"
                               >
                                 {project.nextStep?.text.trim() ? "変更" : "次の一手を設定"}
@@ -10289,46 +10619,20 @@ function DashboardApp() {
                         );
                       })}
                     </div>
-                    {config.projects.length > SOURCE_LIST_COMPACT_LIMIT &&
-                      config.projects.length < SOURCE_LIST_PAGINATION_THRESHOLD && (
-                        <div className="sourceListControls">
-                          <button
-                            onClick={() => {
-                              projectListAnchorRef.current = null;
-                              setProjectsListExpanded((expanded) => !expanded);
-                            }}
-                            type="button"
-                          >
-                            {projectsListExpanded
-                              ? "5件だけ表示"
-                              : `残り${config.projects.length - SOURCE_LIST_COMPACT_LIMIT}件をもっと見る`}
-                          </button>
-                        </div>
-                      )}
-                    {config.projects.length >= SOURCE_LIST_PAGINATION_THRESHOLD && (
-                      <nav aria-label="次の一手のページ" className="sourceListPagination">
+                    {config.projects.length > PROJECT_CARD_COMPACT_LIMIT && (
+                      <div className="sourceListControls nextStepCardControls">
                         <button
-                          disabled={projectListRange.page <= 1}
                           onClick={() => {
                             projectListAnchorRef.current = null;
-                            setProjectsListPage((page) => Math.max(1, page - 1));
+                            setProjectsListExpanded((expanded) => !expanded);
                           }}
                           type="button"
                         >
-                          <UiIcon name="chevronLeft" size={16} /> 前へ
+                          {projectsListExpanded
+                            ? "− 折りたたむ"
+                            : `＋ 残り${config.projects.length - PROJECT_CARD_COMPACT_LIMIT}件を表示`}
                         </button>
-                        <span>{projectListRange.page} / {projectListRange.pageCount}</span>
-                        <button
-                          disabled={projectListRange.page >= projectListRange.pageCount}
-                          onClick={() => {
-                            projectListAnchorRef.current = null;
-                            setProjectsListPage((page) => Math.min(projectListRange.pageCount, page + 1));
-                          }}
-                          type="button"
-                        >
-                          次へ <UiIcon name="chevronRight" size={16} />
-                        </button>
-                      </nav>
+                      </div>
                     )}
                     {projectPointerDrag?.targetIndicator && (
                       <div
@@ -10483,18 +10787,50 @@ function DashboardApp() {
                           ? projectsById.get(group.projectId)
                           : undefined;
                         return (
-                          <section className="wishlistGroup" data-wishlist-group={group.key} key={group.key}>
+                          <section
+                            className={
+                              wishlistGroupPointerDrag?.key === group.key
+                                ? "wishlistGroup wishlistGroup--dragging"
+                                : "wishlistGroup"
+                            }
+                            data-wishlist-group={group.key}
+                            key={group.key}
+                            onPointerCancel={cancelWishlistGroupPointerDrag}
+                            onPointerDown={(event) =>
+                              startWishlistGroupPointerDrag(event, group.key, group.name)
+                            }
+                            onPointerMove={updateWishlistGroupPointerDrag}
+                            onPointerUp={finishWishlistGroupPointerDrag}
+                          >
                             <button
                               aria-expanded={!collapsed}
                               className="wishlistGroupHeader"
-                              onClick={() =>
-                                setWishlistGroupViews((current) => ({
-                                  ...current,
-                                  [group.key]: {
-                                    ...current[group.key],
-                                    collapsed: !collapsed,
-                                  },
-                                }))
+                              onClick={(event) => {
+                                if (event.detail === 0) toggleWishlistGroup(group.key);
+                              }}
+                              onContextMenu={(event) => {
+                                if (!groupProject) return;
+                                event.preventDefault();
+                                event.stopPropagation();
+                                openContextMenu(
+                                  { kind: "project", project: groupProject },
+                                  event.clientX,
+                                  event.clientY,
+                                  event.currentTarget,
+                                );
+                              }}
+                              onKeyDown={(event) => {
+                                if (groupProject) {
+                                  openContextMenuFromKeyboard(event, {
+                                    kind: "project",
+                                    project: groupProject,
+                                  });
+                                }
+                              }}
+                              title={
+                                groupProject
+                                  ? `${group.name}（ドラッグでグループを並べ替え、右クリックで編集）`
+                                  : "ドラッグでグループを並べ替え"
                               }
                               type="button"
                             >
@@ -10661,6 +10997,30 @@ function DashboardApp() {
                         className="inboxDropIndicator"
                         style={inboxPointerDrag.targetIndicator}
                       />
+                    )}
+                    {wishlistGroupPointerDrag?.targetIndicator && (
+                      <div
+                        aria-hidden="true"
+                        className="wishlistGroupDropIndicator"
+                        style={wishlistGroupPointerDrag.targetIndicator}
+                      />
+                    )}
+                    {wishlistGroupPointerDrag && (
+                      <div
+                        aria-hidden="true"
+                        className="wishlistGroupDragGhost"
+                        style={{
+                          left:
+                            wishlistGroupPointerDrag.pointerX -
+                            wishlistGroupPointerDrag.offsetX,
+                          top:
+                            wishlistGroupPointerDrag.pointerY -
+                            wishlistGroupPointerDrag.offsetY,
+                          width: Math.min(320, wishlistGroupPointerDrag.width),
+                        }}
+                      >
+                        {wishlistGroupPointerDrag.name}
+                      </div>
                     )}
                     {inboxPointerDrag && (
                       (() => {
