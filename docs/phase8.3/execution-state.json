@@ -4,9 +4,9 @@
   "workflow": "single-start-human-gated",
   "current_stage": "P83-04_COMPLETE",
   "baseline_commit": "f2c0dd5c1475e16864beefe7bb0efae0a85cdf72",
-  "branch": "feature/p83-04-clean-start-e2e-docs",
+  "branch": "main",
   "release_allowed": false,
-  "merged": false,
+  "merged": true,
   "released": false,
   "verification": {
     "status": "READY_FOR_RELEASE_PREP",
@@ -43,19 +43,19 @@
       "status": "COMPLETE",
       "approved": true,
       "report": "docs/phase8.3/workreports/p83-02-report.md",
-      "pull_request": "PENDING"
+      "pull_request": "https://github.com/Takuyakou/life-launcher/pull/80"
     },
     "P83-03": {
       "status": "COMPLETE",
       "approved": true,
       "report": "docs/phase8.3/workreports/p83-03-report.md",
-      "pull_request": "PENDING"
+      "pull_request": "https://github.com/Takuyakou/life-launcher/pull/81"
     },
     "P83-04": {
       "status": "COMPLETE",
       "approved": true,
       "report": "docs/phase8.3/workreports/p83-04-report.md",
-      "pull_request": "PENDING",
+      "pull_request": "https://github.com/Takuyakou/life-launcher/pull/82",
       "verdict": "READY_FOR_RELEASE_PREP"
     }
   }
