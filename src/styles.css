@@ -8076,24 +8076,34 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayTimerCluster .todayTimerActions:not(.todayTimerActions--running) {
-  grid-template-columns: 66px 66px 60px;
-  gap: 4px;
+  grid-template-columns: 78px 78px 34px;
+  gap: 5px;
 }
 
 .todayTimerCluster .todayStartButton {
-  width: 66px;
+  width: 78px;
   height: 36px;
   min-height: 36px;
 }
 
 .todayTimerCluster .todayMeasureButton {
-  width: 60px;
-  min-width: 60px;
+  width: 34px;
+  min-width: 34px;
   height: 36px;
   min-height: 36px;
-  gap: 3px;
-  padding-inline: 5px;
-  font-size: var(--dashboard-font-meta);
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--muted);
+}
+
+.todayTimerCluster .todayMeasureButton:hover:not(:disabled),
+.todayTimerCluster .todayMeasureButton:focus-visible {
+  border-color: rgba(190, 181, 164, 0.32);
+  background: rgba(190, 181, 164, 0.08);
+  box-shadow: none;
+  color: #d1c9bb;
+  transform: none;
 }
 
 .todayTriggerZone {
@@ -8922,7 +8932,7 @@ input[type="number"]::-webkit-inner-spin-button {
   -webkit-line-clamp: 2;
 }
 
-.nextStepCard .projectNextStepPlaceholder {
+.nextStepCard .nextStepActionRegion .projectNextStepPlaceholder {
   min-height: 34px;
   display: flex;
   align-items: center;
@@ -8932,7 +8942,7 @@ input[type="number"]::-webkit-inner-spin-button {
   border-radius: var(--radius);
   padding: 0 9px;
   background: color-mix(in srgb, var(--project-color) 5%, transparent);
-  color: var(--text-muted-readable);
+  color: var(--text-muted-readable) !important;
   font-size: var(--dashboard-font-meta);
   font-style: normal;
   font-weight: 700;

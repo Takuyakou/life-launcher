@@ -572,9 +572,8 @@ test("v1.3 NextStep and Wishlist headers keep compact right-side actions", async
   const unset = page.locator(
     '.nextStepCard[data-project-id="project-unset"] .nextStepActionRegion p',
   );
-  expect(await configured.evaluate((node) => getComputedStyle(node).fontSize)).toBe(
-    await unset.evaluate((node) => getComputedStyle(node).fontSize),
-  );
+  expect(await configured.evaluate((node) => getComputedStyle(node).fontSize)).toBe("13px");
+  expect(await unset.evaluate((node) => getComputedStyle(node).fontSize)).toBe("11px");
   await expect(
     page.locator('.nextStepCard[data-project-id="project-unset"] .nextStepRowAction'),
   ).toHaveClass(/nextStepRowAction--set/);
@@ -656,6 +655,10 @@ test("v1.3 NextStep uses a compact 3x2 grid with aligned actions and six-item ex
     .locator(".projectNextStepPlaceholder")
     .first();
   await expect(unsetPlaceholder).toHaveCSS("border-style", "dashed");
+  await expect(unsetPlaceholder).toHaveCSS("display", "flex");
+  await expect(unsetPlaceholder).toHaveCSS("justify-content", "center");
+  await expect(unsetPlaceholder).toHaveCSS("color", "rgb(163, 156, 142)");
+  await expect(unsetPlaceholder).toHaveCSS("font-size", "11px");
   await expect(unsetPlaceholder).toHaveCSS("font-style", "normal");
   await expect(unsetPlaceholder).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
   expect(

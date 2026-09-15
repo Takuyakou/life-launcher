@@ -162,9 +162,15 @@ for (const [width, columns] of [
     );
     await expect(card.getByRole("button", { name: /手順書を開く/ })).toBeVisible();
     const measureBox = await card.locator(".todayMeasureButton").boundingBox();
-    expect(measureBox?.width).toBe(60);
+    expect(measureBox?.width).toBe(34);
     expect(measureBox?.height).toBe(36);
-    await expect(card.locator(".todayMeasureButton")).toContainText("計測");
+    await expect(card.locator(".todayMeasureButton")).toHaveText("");
+    await expect(card.locator(".todayMeasureButton")).toHaveCSS(
+      "background-color",
+      "rgba(0, 0, 0, 0)",
+    );
+    await card.locator(".todayMeasureButton").hover();
+    await expect(card.locator(".todayMeasureButton")).toHaveCSS("transform", "none");
     const doNowBox = await page.locator(".doNowMeasureButton").boundingBox();
     expect(doNowBox?.width).toBe(82);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(

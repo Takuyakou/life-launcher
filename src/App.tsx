@@ -10342,7 +10342,6 @@ function DashboardApp() {
                                   type="button"
                                 >
                                   <UiIcon name="clock" size={16} />
-                                  <span>計測</span>
                                 </button>
                               </div>
                             )}

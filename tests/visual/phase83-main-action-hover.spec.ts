@@ -381,21 +381,21 @@ test("P83-03 timer controls and NextStep cards keep their established dimensions
       button: page.locator(".todayRow").first().locator(".todayStartButton--short"),
       color: "rgb(111, 207, 151)",
       height: 36,
-      width: 66,
+      width: 78,
     },
     {
       backgroundColor: "rgb(37, 45, 56)",
       button: page.locator(".todayRow").first().locator(".todayStartButton--normal"),
       color: "rgb(169, 208, 255)",
       height: 36,
-      width: 66,
+      width: 78,
     },
     {
-      backgroundColor: "rgba(190, 181, 164, 0.08)",
+      backgroundColor: "rgba(0, 0, 0, 0)",
       button: page.locator(".todayRow").first().locator(".todayMeasureButton"),
-      color: "rgb(209, 201, 187)",
+      color: "rgb(184, 176, 160)",
       height: 36,
-      width: 60,
+      width: 34,
     },
   ];
   for (const { backgroundColor, button, color, height, width } of timerContracts) {
