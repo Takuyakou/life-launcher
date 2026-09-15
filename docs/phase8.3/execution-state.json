@@ -23,7 +23,7 @@
       "status": "COMPLETE_AWAITING_REVIEW",
       "approved": false,
       "report": "docs/phase8.3/workreports/p83-00-report.md",
-      "pull_request": null
+      "pull_request": "https://github.com/Takuyakou/life-launcher/pull/78"
     },
     "P83-01": {
       "status": "BLOCKED_BY_P83-00_HUMAN_REVIEW",

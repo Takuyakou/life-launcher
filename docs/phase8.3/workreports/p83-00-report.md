@@ -2,7 +2,7 @@
 
 ## Status
 
-P83-00 audit is complete for `origin/main` commit `f2c0dd5c1475e16864beefe7bb0efae0a85cdf72`. No product code, destructive reset command, schema, version, release metadata, execution-state, commit, or remote branch was changed.
+P83-00 audit is complete for `origin/main` commit `f2c0dd5c1475e16864beefe7bb0efae0a85cdf72`. Only audit documentation and its execution-state record changed; no product code, destructive reset command, schema, version, or release metadata changed. Review is tracked in [PR #78](https://github.com/Takuyakou/life-launcher/pull/78).
 
 ## Deliverables
 
@@ -44,6 +44,7 @@ P83-00 audit is complete for `origin/main` commit `f2c0dd5c1475e16864beefe7bb0ef
 | `cargo test --manifest-path src-tauri/Cargo.toml` | Success: 112 Rust unit tests + 2 capability tests; 0 failed |
 | `npx playwright test tests/visual/phase81-entry-contracts.spec.ts --grep "reload and restore"` | Success: 1 passed |
 | `npm run public:check` | Worktree-only blocker: the checker rejects the linked-worktree `.git` metadata file; no product-content finding |
+| Pull request | [#78 `docs: audit Phase 8.3 reset boundaries`](https://github.com/Takuyakou/life-launcher/pull/78) |
 
 ## Existing coverage gaps handed to later stages
 
