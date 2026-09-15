@@ -123,6 +123,10 @@ pub fn start_config_watcher(app: AppHandle) -> Result<(), String> {
                 continue;
             }
 
+            if app.state::<AppState>().software_reset_in_progress() {
+                continue;
+            }
+
             let suppressed = app
                 .state::<AppState>()
                 .suppress_reload_until

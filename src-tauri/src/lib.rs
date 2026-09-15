@@ -24,6 +24,11 @@ use commands::main_shell_drop::{enable_main_shell_drop, remove_main_shell_drop_t
 use commands::notes::{
     load_notes_history, load_today_notes, save_notes_for_date, save_today_notes,
 };
+use commands::reset::{
+    acknowledge_software_reset_recovery, create_software_reset_backup,
+    load_software_reset_recovery, prepare_software_reset, recover_interrupted_software_reset,
+    software_reset,
+};
 use commands::sessions::{
     delete_session_entry, load_do_now_candidates, load_next_step_suggestions, load_session_entries,
     load_session_summary, load_today_session_total, load_weekly_review, record_manual_session,
@@ -63,13 +68,14 @@ pub fn run() {
     builder
         .manage(AppState::default())
         .plugin(tauri_plugin_opener::init())
-        .plugin(
-            tauri_plugin_window_state::Builder::default()
-                .skip_initial_state("life-launcher-instruction")
-                .skip_initial_state("dictionary")
-                .build(),
-        )
         .setup(|app| {
+            recover_interrupted_software_reset(app.handle())?;
+            app.handle().plugin(
+                tauri_plugin_window_state::Builder::default()
+                    .skip_initial_state("life-launcher-instruction")
+                    .skip_initial_state("dictionary")
+                    .build(),
+            )?;
             #[cfg(desktop)]
             {
                 app.handle().plugin(
@@ -161,6 +167,11 @@ pub fn run() {
             select_backup_folder,
             select_backup_zip,
             restore_backup,
+            create_software_reset_backup,
+            prepare_software_reset,
+            software_reset,
+            load_software_reset_recovery,
+            acknowledge_software_reset_recovery,
             execute_actions,
             resolve_drop_item,
             reveal_launcher_item,

@@ -11,9 +11,10 @@ export async function installTauriMock(
   page: Page,
   fixture: VisualQaFixture,
   currentWindowLabel = "main",
+  softwareResetRecovery: unknown = null,
 ): Promise<void> {
   await page.addInitScript(
-    ({ fixture, paths, currentWindowLabel }) => {
+    ({ fixture, paths, currentWindowLabel, softwareResetRecovery }) => {
       const configStorageKey = "life-launcher-visual-qa-config";
       let currentConfig = (() => {
         try {
@@ -381,6 +382,14 @@ export async function installTauriMock(
               case "select_backup_folder":
               case "select_backup_zip":
                 return null;
+              case "load_software_reset_recovery": {
+                const recovery = softwareResetRecovery;
+                softwareResetRecovery = null;
+                return recovery;
+              }
+              case "acknowledge_software_reset_recovery":
+              case "prepare_software_reset":
+                return null;
               case "choose_instruction_root":
                 return instructionRootChoices.shift() ?? null;
               case "execute_actions": {
@@ -457,6 +466,6 @@ export async function installTauriMock(
         },
       });
     },
-    { fixture, paths: TEST_PATHS, currentWindowLabel },
+    { fixture, paths: TEST_PATHS, currentWindowLabel, softwareResetRecovery },
   );
 }

@@ -6031,6 +6031,7 @@ input[type="number"]::-webkit-inner-spin-button {
   color: var(--muted);
   font-size: 14px;
   line-height: 1.6;
+  white-space: pre-line;
 }
 
 .confirmDialogSubject {
@@ -6581,6 +6582,83 @@ input[type="number"]::-webkit-inner-spin-button {
 .softwareResetButton {
   width: fit-content;
   min-width: 172px;
+}
+
+.softwareResetChoiceBackdrop {
+  z-index: 52;
+}
+
+.softwareResetChoiceDialog {
+  width: min(500px, 100%);
+}
+
+.softwareResetChoiceActions {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1.2fr) minmax(100px, 0.8fr);
+  gap: 8px;
+}
+
+.softwareResetChoiceActions button {
+  min-height: 40px;
+  padding-inline: 10px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.softwareResetProgressBackdrop {
+  z-index: 60;
+  cursor: wait;
+}
+
+.softwareResetProgressDialog {
+  width: min(430px, 100%);
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+}
+
+.softwareResetProgressDialog h2,
+.softwareResetProgressDialog p {
+  margin: 0;
+}
+
+.softwareResetProgressDialog h2 {
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.softwareResetProgressDialog p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.softwareResetProgressIndicator {
+  width: 24px;
+  height: 24px;
+  border: 3px solid color-mix(in srgb, var(--accent) 24%, var(--line));
+  border-top-color: var(--accent-strong);
+  border-radius: 50%;
+  animation: software-reset-spin 800ms linear infinite;
+}
+
+@keyframes software-reset-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .softwareResetProgressIndicator {
+    animation: none;
+    border-color: var(--accent);
+  }
+}
+
+@media (max-width: 620px) {
+  .softwareResetChoiceActions {
+    grid-template-columns: 1fr;
+  }
 }
 
 .modalLongForm {
