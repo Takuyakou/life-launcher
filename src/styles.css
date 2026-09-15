@@ -6247,6 +6247,33 @@ input[type="number"]::-webkit-inner-spin-button {
   padding-top: 12px;
 }
 
+.settingsDialogActions > button {
+  min-height: 42px;
+}
+
+.settingsSaveButton {
+  border-color: color-mix(in srgb, var(--good) 48%, var(--line));
+  background: var(--control-positive-bg);
+  color: var(--good);
+}
+
+.settingsSaveButton:hover:not(:disabled) {
+  border-color: var(--control-positive-hover-border);
+  background: var(--control-positive-hover-bg);
+}
+
+.settingsCancelButton {
+  border-color: color-mix(in srgb, var(--error) 48%, var(--line));
+  background: color-mix(in srgb, var(--control-danger-bg) 62%, transparent);
+  color: color-mix(in srgb, #ffb4ad 78%, var(--muted));
+}
+
+.settingsCancelButton:hover:not(:disabled) {
+  border-color: var(--control-danger-hover-border);
+  background: var(--control-danger-hover-bg);
+  color: #ffb4ad;
+}
+
 @media (max-height: 760px) {
   .modalBackdrop {
     align-items: start;
@@ -6518,6 +6545,42 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .settingsButton--danger:hover {
   border-color: var(--error);
+}
+
+.maintenanceGroups {
+  display: grid;
+  gap: 16px;
+}
+
+.maintenanceGroup {
+  display: grid;
+  gap: 8px;
+}
+
+.maintenanceGroup h4,
+.maintenanceGroup p {
+  margin: 0;
+}
+
+.maintenanceGroup h4 {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.maintenanceGroup--reset {
+  margin-top: 4px;
+  border-top: 1px solid color-mix(in srgb, var(--error) 32%, var(--line));
+  padding-top: 16px;
+}
+
+.maintenanceGroup--reset p {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.softwareResetButton {
+  width: fit-content;
+  min-width: 172px;
 }
 
 .modalLongForm {
