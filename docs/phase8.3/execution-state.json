@@ -2,23 +2,28 @@
   "phase": "Phase 8.3",
   "internal_phase_id": "P83",
   "workflow": "single-start-human-gated",
-  "current_stage": "P83-03_COMPLETE",
+  "current_stage": "P83-04_COMPLETE",
   "baseline_commit": "f2c0dd5c1475e16864beefe7bb0efae0a85cdf72",
-  "branch": "feature/p83-03-main-action-hover-colors",
+  "branch": "feature/p83-04-clean-start-e2e-docs",
   "release_allowed": false,
   "merged": false,
   "released": false,
   "verification": {
-    "status": "PASS_WITH_WORKTREE_ENV_NOTE",
+    "status": "READY_FOR_RELEASE_PREP",
     "npm_ci": "PASS_172_PACKAGES_0_VULNERABILITIES",
-    "public_check": "WORKTREE_ONLY_BLOCKER_DOT_GIT_METADATA",
+    "public_check": "PASS_CLEAN_EXPORT_350_FILES_0_BLOCKERS",
     "lint": "PASS_0_WARNINGS",
     "build": "PASS",
-    "full_visual_suite": "PASS_303",
+    "full_visual_suite": "PASS_305",
     "cargo_fmt_check": "PASS",
     "cargo_check": "PASS",
     "cargo_clippy": "PASS_0_WARNINGS",
-    "cargo_test": "PASS_120_UNIT_PLUS_2_CAPABILITY",
+    "cargo_test": "PASS_121_UNIT_PLUS_2_CAPABILITY",
+    "clean_start_browser_e2e": "PASS_2",
+    "isolated_native_backend_smoke": "PASS",
+    "npm_audit": "PASS_0_VULNERABILITIES",
+    "npm_audit_production": "PASS_0_VULNERABILITIES",
+    "tauri_build_no_bundle": "PASS",
     "git_diff_check": "PASS"
   },
   "stages": {
@@ -47,8 +52,11 @@
       "pull_request": "PENDING"
     },
     "P83-04": {
-      "status": "READY",
-      "approved": true
+      "status": "COMPLETE",
+      "approved": true,
+      "report": "docs/phase8.3/workreports/p83-04-report.md",
+      "pull_request": "PENDING",
+      "verdict": "READY_FOR_RELEASE_PREP"
     }
   }
 }

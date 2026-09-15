@@ -1024,6 +1024,7 @@ fn crc32(data: &[u8]) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::{InboxItem, NextStepV3, Project, SessionLogEntry, TodayItem};
     use std::sync::atomic::{AtomicBool, Ordering};
 
     struct TestPlatform(AtomicBool);
@@ -1183,6 +1184,125 @@ mod tests {
         assert!(!fixture.paths.window_state.exists());
         assert!(fixture.paths.marker.exists());
         fixture.assert_preserved();
+    }
+
+    #[test]
+    fn isolated_native_backend_clean_start_smoke_supports_first_workflow_after_reset() {
+        let fixture = Fixture::new("isolated-native-backend-clean-start-smoke");
+        let platform = TestPlatform(AtomicBool::new(true));
+        let external_before = fs::read(&fixture.external).unwrap();
+        let backup_before = fs::read(&fixture.backup).unwrap();
+
+        software_reset_at_paths(&fixture.paths, &platform, &fixture.input(), &NoFailures).unwrap();
+
+        let marker = read_marker(&fixture.paths.marker).unwrap();
+        assert_eq!(marker.phase, ResetPhase::CommittedAwaitingRestartValidation);
+        validate_fresh_state(&fixture.paths, &marker, &platform, true).unwrap();
+        assert_eq!(
+            serde_json::to_value(read_current_config(&fixture.paths).unwrap()).unwrap(),
+            serde_json::to_value(initial_config()).unwrap()
+        );
+        assert!(fs::read(fixture.paths.data_dir.join("sessions.jsonl"))
+            .unwrap()
+            .is_empty());
+        assert!(!fixture.paths.window_state.exists());
+        assert!(!platform.0.load(Ordering::Acquire));
+
+        // A successful process restart validates the committed fresh state and retires the marker.
+        remove_if_exists(&fixture.paths.marker).unwrap();
+        assert!(!fixture.paths.marker.exists());
+        assert!(!fixture.paths.recovery.exists());
+
+        let mut restarted_config = read_current_config(&fixture.paths).unwrap();
+        assert_eq!(
+            serde_json::to_value(&restarted_config).unwrap(),
+            serde_json::to_value(initial_config()).unwrap()
+        );
+
+        let project_id = "first-project".to_string();
+        restarted_config.projects.push(Project {
+            id: project_id.clone(),
+            name: "First project".to_string(),
+            north_star: None,
+            weekly_focus: None,
+            color_id: None,
+            next_step: Some(NextStepV3 {
+                text: "Take the first step".to_string(),
+                generation_id: Some("first-generation".to_string()),
+                trigger: None,
+                updated_at: None,
+                reviewed_at: None,
+                button_ids: Vec::new(),
+                default_timer_minutes: None,
+                short_timer_minutes: None,
+                start_note_template: None,
+                instruction_path: None,
+                instruction_open_on_start: None,
+            }),
+            legacy_next_step_settings: None,
+        });
+        restarted_config.inbox.push(InboxItem {
+            id: Some("first-wishlist-item".to_string()),
+            text: "Try the next idea".to_string(),
+            project_id: Some(project_id.clone()),
+            button_ids: Vec::new(),
+            instruction_path: None,
+            instruction_open_on_start: None,
+        });
+        restarted_config.today.items.push(TodayItem {
+            text: "Take the first step".to_string(),
+            done: false,
+            source_key: Some(format!("next-step:{project_id}")),
+            source_generation_id: Some("first-generation".to_string()),
+            trigger: None,
+            project_id: Some(project_id.clone()),
+            button_ids: Vec::new(),
+            instruction_path: None,
+            instruction_open_on_start: None,
+            default_timer_minutes: None,
+            short_timer_minutes: None,
+        });
+        write_json_synced(
+            &fixture.paths.data_dir.join("config.json"),
+            &restarted_config,
+        )
+        .unwrap();
+
+        let created_config = read_current_config(&fixture.paths).unwrap();
+        assert_eq!(created_config.projects.len(), 1);
+        assert_eq!(
+            created_config.projects[0]
+                .next_step
+                .as_ref()
+                .map(|step| step.text.as_str()),
+            Some("Take the first step")
+        );
+        assert_eq!(created_config.inbox.len(), 1);
+        assert_eq!(created_config.today.items.len(), 1);
+
+        let sessions_path = fixture.paths.data_dir.join("sessions.jsonl");
+        let session = SessionLogEntry {
+            id: Some("first-session".to_string()),
+            date: created_config.today.date.clone(),
+            project_id: Some(project_id),
+            label: "First project".to_string(),
+            started_at: "09:00".to_string(),
+            minutes: 5,
+            note: "Clean start session".to_string(),
+            manual: false,
+        };
+        append_json_record(&sessions_path, &session).unwrap();
+        let reloaded_session: SessionLogEntry =
+            read_last_valid_json_record(&sessions_path, "session log").unwrap();
+        assert_eq!(reloaded_session.id.as_deref(), Some("first-session"));
+        assert_eq!(
+            reloaded_session.project_id.as_deref(),
+            Some("first-project")
+        );
+        assert_eq!(reloaded_session.minutes, 5);
+
+        assert_eq!(fs::read(&fixture.external).unwrap(), external_before);
+        assert_eq!(fs::read(&fixture.backup).unwrap(), backup_before);
     }
 
     #[test]

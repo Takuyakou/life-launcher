@@ -1,6 +1,6 @@
 # Life Launcher Overview
 
-> 最終更新: 2026-09-14 / Phase 8.2実装候補（未リリース・最終検証待ち）
+> 最終更新: 2026-09-15 / Phase 8.3実装完了（未リリース）
 > 詳細は [UI/UX・機能仕様書](spec/current-spec.md) を参照してください。
 
 ## 何ができるアプリか
@@ -38,7 +38,7 @@ MarkdownとTextは編集でき、次の一手やToday3の開始時に関連付�
 
 ### 登録 / バックアップ
 
-ファイル、ショートカット、ブラウザーのURL、ごみ箱などをD&Dで登録できます。指定フォルダーへ日次ZIPバックアップを保存し、検証後にアプリ内から復元できます。
+ファイル、ショートカット、ブラウザーのURL、ごみ箱などをD&Dで登録できます。指定フォルダーへ日次ZIPバックアップを保存し、検証後にアプリ内から復元できます。設定の「メンテナンス」からソフトウェアリセットを実行でき、バックアップの要否と最終確認を順に選びます。実行中または一時停止中のTimerは先に終了します。登録先のファイル、手順書本体、既存バックアップは削除せず、内部snapshotとjournalで失敗時のrollbackと次回起動時の復旧を行い、成功後は初回状態で再起動します。
 
 ## 画面構成
 
@@ -84,7 +84,7 @@ Phase 8.1作業ツリーではconfigをv3へ更新し、Project metadataとNextS
 
 | Version | 概要 |
 | --- | --- |
-| v1.3候補 | Phase 8/8.1/8.2で登録フォーム、Project/NextStep/Wishlistの責務と表示、config v3移行、Today3完了後の整理、計測Timer、記録、辞書、Guideを更新。Phase 8.2は最終検証・レビュー待ち |
+| v1.3候補 | Phase 8/8.1/8.2/8.3で登録フォーム、Project/NextStep/Wishlist、config v3移行、計測Timer、Settings、ソフトウェアリセット、Main操作feedback、clean-start検証を更新。Phase 8.3は最終検証中 |
 | 1.2.0 | 動的早期完了、編集同期、Undo Toast、cross-section D&D、完了フィードバックを追加 |
 | 1.1.0 | Today3と候補選択、登録完了履歴、開始環境Picker、辞書操作を整理 |
 | 1.0.0 | 最初のPublicリリース。Quick、辞書、実行支援、Timer、記録、手順書を収録 |
@@ -93,7 +93,7 @@ Phase 8.1作業ツリーではconfigをv3へ更新し、Project metadataとNextS
 
 ## 関連文書
 
-- [詳細UI/UX・機能仕様](spec/current-spec.md)
+- [詳細UI/UX・機能仕様](spec/current-spec.md) / [ソフトウェアリセット](phase8.3/software-reset.md)
 - [README (日本語)](../README.md) / [README (English)](../README.en.md)
 - [CHANGELOG](../CHANGELOG.md)
 - [Privacy](../PRIVACY.md) / [Security](../SECURITY.md)

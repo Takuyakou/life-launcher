@@ -4,17 +4,17 @@
 
 | 項目 | 内容 |
 | --- | --- |
-| 文書版 | 1.3候補 / Phase 8.1実装作業ツリー |
+| 文書版 | 1.3候補 / Phase 8.3実装作業ツリー |
 | 対象 | Windowsデスクトップ版 Life Launcher |
-| 実装基準 | Public repository `Takuyakou/life-launcher` のPhase 8.1未コミット作業ツリー |
-| 作業branch | `feat/p81-01-project-purification` |
-| 監査基準コミット | `07904dd1c34b5f9bbc101a6dcae58a71a6bb4fd9` |
-| 確認日 | 2026-09-14 |
+| 実装基準 | Public repository `Takuyakou/life-launcher` のPhase 8.3実装作業ツリー |
+| 作業branch | `feature/p83-04-clean-start-e2e-docs` |
+| 監査基準コミット | `f2c0dd5c1475e16864beefe7bb0efae0a85cdf72` |
+| 確認日 | 2026-09-15 |
 | UI実装 | Tauri 2 / React 18 / TypeScript / CSS |
 
-本書は、Life Launcher v1.3候補のUI/UXと主要機能を、Phase 8.1作業ツリーのコード、型、設定、capability、テストから整理した現行仕様書である。Phase 8.1のフルgate結果とRelease可否は未確定である。
+本書は、Life Launcher v1.3候補のUI/UXと主要機能を、Phase 8.3作業ツリーのコード、型、設定、capability、テストから整理した現行仕様書である。Phase 8.3の実装とフルgateは完了しており、Release作業はこのPhaseに含めない。
 
-Public repository内の製品バージョンは引き続き`1.2.0`、config schemaは`3`である。Phase 8.1はProject / NextStep / Wishlistの責務を分離するが、version bumpやReleaseは行わない。機能の入口は [Overview](../OVERVIEW.md) を参照する。
+Public repository内の製品バージョンは引き続き`1.2.0`、config schemaは`3`である。Phase 8.3はSettingsの情報設計、ソフトウェアリセット、Main本文ボタンの操作feedback、clean-start検証と文書同期を扱い、version bumpやReleaseは行わない。機能の入口は [Overview](../OVERVIEW.md) を参照する。
 
 ## 1. プロダクト概要
 
@@ -120,7 +120,15 @@ Main Window
 - 橙は一時停止、赤は終了・削除・破棄。
 - プロジェクト色はamber、blue、green、violet、rose、cyan、orange、slate。
 
-### 4.2 文字と形状
+### 4.2 Main本文のAction
+
+- Main本文と記録画面の明示的なAction buttonだけに、共通のhover、keyboard focus、pressed feedbackを適用する。
+- 作成・追加はgold、編集・設定・非破壊操作はneutral、今日への採用・復元はpositiveを使う。Timerのgreen / blue / neutral、破壊操作のred、statusとプロジェクト色は既存semanticを維持する。
+- hoverとkeyboard focusは背景と境界を強め、`translateY(-1px)`と控えめなshadowを120msで表示する。pressedは`translateY(0) scale(.985)`へ戻し、buttonのレイアウト寸法は変えない。
+- `prefers-reduced-motion`では色とfocus feedbackを残し、移動・拡縮とtransform transitionを止める。disabledまたは`aria-disabled`のActionは移動させない。
+- 上部toolbar、sidebar、context menu、section header、status / badge、D&D surface、ellipsis / icon control、Timer controlは共通Action hoverの対象外とする。
+
+### 4.3 文字と形状
 
 - 基本フォントは `Segoe UI`, `Yu Gothic UI`, `Meiryo`, `system-ui`, `sans-serif`。
 - ページタイトル約22px、勝利条件・今やる一手約17px、見出し・本文約14px、補足約11px。
@@ -608,7 +616,7 @@ URLはWindowsの既定ブラウザで開き、登録ごとのブラウザ指定�
 ### 19.1 バックアップとメンテナンス
 
 - バックアップ先と保持数を設定でき、既定保持数は30。
-- 設定済みの場合、1日1回 `config.json`、`sessions.jsonl`、`notes.json` をZIP保存する。
+- 設定済みの場合、1日1回 `config.json`、`sessions.jsonl`、`notes.json`、`config.schema.json` の4ファイルをZIP保存する。
 - ZIPを選択して復元し、復元前に現在データを退避する。
 - ZIPの名前、エントリー、サイズ、圧縮形式、チェックサムを検証する。
 - 設定フッターは左に緑の「保存」、右に控えめな赤の「キャンセル」を置く。保存可否と未保存確認の既存契約は維持する。
@@ -617,6 +625,19 @@ URLはWindowsの既定ブラウザで開き、登録ごとのブラウザ指定�
 - 「表示・キャッシュ」からアイコンキャッシュ、ミニウィンドウ位置、手順書ウィンドウ位置を管理する。
 - 「手順書」から手順書一覧を再読み込みできる。
 - 「初期化」は他の操作から分離して最下部へ置き、赤い「ソフトウェアリセット...」を入口にする。
+
+### 19.2 ソフトウェアリセット
+
+- ソフトウェアリセットは、バックアップ選択と最終確認の二段階で実行する。最終確認は安全側の操作へ初期focusを置く。
+- 実行中または一時停止中のTimer、完了確認、早期終了確認がある場合は開始せず、Timerを終了してから実行するよう案内する。
+- 最初の段階で、現在データを検証済みZIPへ保存して続けるか、ユーザー向けZIPを作らず続けるかを選べる。どちらを選んでもrollback用の内部snapshotは省略しない。
+- reset対象はLife Launcherが所有するconfig、Session、互換notes、schema、icon cache、既知のUI保存状態、window state、autostart登録とする。config内のQuick、辞書、Project、NextStep、Wishlist、Today3、勝利条件、完了履歴、設定も初期状態へ戻る。
+- 登録先のアプリ、ファイル、フォルダー、URL、手順書本体と周辺asset、ユーザー指定backup folder、既存backupは削除・移動しない。登録情報だけを初期化する。
+- frontendはapp-owned localStorageをcaptureしてからclearし、backend commandが検出可能な失敗を返した場合はcaptureから復元する。
+- backendはcommand受領後に内部snapshotとdurable journalを保存してからruntime file、icon、window state、autostartを変更し、検出した途中失敗ではsnapshotからrollbackする。
+- 起動時は通常のconfig読み込みより前に未完了journalを確認する。中断された処理はsnapshotから復旧し、frontendがlocalStorage復旧を適用してacknowledgeするまで復旧情報を保持する。
+- 成功時は補助windowを閉じてprocess restartを要求する。再起動後はProject 0件を含むcanonical初回起動状態から使用できる。
+- 詳細な境界と失敗時契約は [ソフトウェアリセット](../phase8.3/software-reset.md) に定める。
 
 ## 20. アプリ内ガイド
 
