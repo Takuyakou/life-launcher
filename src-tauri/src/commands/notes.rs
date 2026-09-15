@@ -3,13 +3,14 @@ use std::fs;
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
-use tauri::AppHandle;
+use tauri::{AppHandle, State};
 
 use crate::commands::config::configured_day_start_hour;
 use crate::models::{
     today_date, NotesForDateInput, NotesHistoryEntry, NotesHistoryResponse, TodayNotesInput,
     TodayNotesResponse,
 };
+use crate::state::AppState;
 
 const CONFIG_DIR_NAME: &str = "life-launcher";
 const NOTES_FILE_NAME: &str = "notes.json";
@@ -41,8 +42,10 @@ pub fn load_today_notes(_app: AppHandle) -> Result<TodayNotesResponse, String> {
 #[tauri::command]
 pub fn save_today_notes(
     _app: AppHandle,
+    state: State<'_, AppState>,
     input: TodayNotesInput,
 ) -> Result<TodayNotesResponse, String> {
+    let _reset_guard = state.begin_app_write()?;
     let path = notes_path()?;
     let date = today_date(configured_day_start_hour());
     let mut notes = read_notes_file(&path)?;
@@ -82,8 +85,10 @@ pub fn load_notes_history(_app: AppHandle) -> Result<NotesHistoryResponse, Strin
 #[tauri::command]
 pub fn save_notes_for_date(
     _app: AppHandle,
+    state: State<'_, AppState>,
     input: NotesForDateInput,
 ) -> Result<NotesHistoryResponse, String> {
+    let _reset_guard = state.begin_app_write()?;
     let path = notes_path()?;
     let mut notes = read_notes_file(&path)?;
     let date = input.date.trim();

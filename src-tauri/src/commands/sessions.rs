@@ -4,7 +4,7 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 
 use chrono::{Duration, Local, NaiveDate};
-use tauri::AppHandle;
+use tauri::{AppHandle, State};
 
 use crate::commands::config::{backups_path, configured_day_start_hour, load_config_internal};
 use crate::models::{
@@ -14,6 +14,7 @@ use crate::models::{
     SessionSummaryResponse, SessionTotalResponse, UpdateSessionEntryInput,
     WeeklyReviewProjectSummary, WeeklyReviewResponse,
 };
+use crate::state::AppState;
 
 const CONFIG_DIR_NAME: &str = "life-launcher";
 const SESSIONS_FILE_NAME: &str = "sessions.jsonl";
@@ -34,8 +35,10 @@ pub fn load_today_session_total(_app: AppHandle) -> Result<SessionTotalResponse,
 #[tauri::command]
 pub fn record_session(
     _app: AppHandle,
+    state: State<'_, AppState>,
     session: SessionLogInput,
 ) -> Result<SessionTotalResponse, String> {
+    let _reset_guard = state.begin_app_write()?;
     let path = sessions_path()?;
     let date = today_date(configured_day_start_hour());
 
@@ -69,8 +72,10 @@ pub fn record_session(
 #[tauri::command]
 pub fn record_manual_session(
     _app: AppHandle,
+    state: State<'_, AppState>,
     session: ManualSessionInput,
 ) -> Result<SessionSummaryResponse, String> {
+    let _reset_guard = state.begin_app_write()?;
     let path = sessions_path()?;
     let date = session.date.trim();
     NaiveDate::parse_from_str(date, "%Y-%m-%d")
@@ -192,7 +197,15 @@ pub fn load_weekly_review(_app: AppHandle) -> Result<WeeklyReviewResponse, Strin
 }
 
 #[tauri::command]
-pub fn load_do_now_candidates(app: AppHandle) -> Result<DoNowResponse, String> {
+pub fn load_do_now_candidates(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<DoNowResponse, String> {
+    let _reset_guard = state.begin_app_write()?;
+    let _write_guard = state
+        .config_write_lock
+        .lock()
+        .map_err(|_| "failed to lock config writes".to_string())?;
     let config = load_config_internal(&app)?.config;
     let date = today_date(config.settings.day_start_hour);
     let entries = read_session_entries(&sessions_path()?)?;
@@ -358,8 +371,10 @@ pub fn load_session_entries(
 #[tauri::command]
 pub fn update_session_entry(
     _app: AppHandle,
+    state: State<'_, AppState>,
     input: UpdateSessionEntryInput,
 ) -> Result<SessionEntriesResponse, String> {
+    let _reset_guard = state.begin_app_write()?;
     let path = sessions_path()?;
     let mut read = read_session_file(&path)?;
     let row_key = input.row_key.trim();
@@ -407,8 +422,10 @@ pub fn update_session_entry(
 #[tauri::command]
 pub fn delete_session_entry(
     _app: AppHandle,
+    state: State<'_, AppState>,
     input: DeleteSessionEntryInput,
 ) -> Result<SessionEntriesResponse, String> {
+    let _reset_guard = state.begin_app_write()?;
     let path = sessions_path()?;
     let mut read = read_session_file(&path)?;
     let row_key = input.row_key.trim();

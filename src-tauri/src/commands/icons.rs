@@ -22,8 +22,11 @@ use reqwest::header::{CONTENT_LENGTH, CONTENT_TYPE, LOCATION, USER_AGENT};
 #[cfg(windows)]
 use reqwest::{redirect::Policy, Url};
 
+use tauri::{AppHandle, Manager, State};
+
 use crate::commands::config::config_dir_path;
 use crate::models::{Action, LauncherButton, ShellSpecialItem};
+use crate::state::AppState;
 
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
@@ -52,14 +55,25 @@ const FAVICON_IMAGE_MAX_BYTES: usize = 2 * 1024 * 1024;
 const FAVICON_USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) LifeLauncher/1.3";
 
 #[tauri::command]
-pub async fn ensure_button_icon_cache(button: LauncherButton) -> Result<Option<String>, String> {
-    tauri::async_runtime::spawn_blocking(move || ensure_button_icon_cache_blocking(&button))
-        .await
-        .map_err(|error| format!("failed to join icon task: {error}"))?
+pub async fn ensure_button_icon_cache(
+    app: AppHandle,
+    button: LauncherButton,
+) -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        let _reset_guard = state.begin_app_write()?;
+        ensure_button_icon_cache_blocking(&button)
+    })
+    .await
+    .map_err(|error| format!("failed to join icon task: {error}"))?
 }
 
 #[tauri::command]
-pub fn delete_button_icon_cache(button_id: String) -> Result<(), String> {
+pub fn delete_button_icon_cache(
+    state: State<'_, AppState>,
+    button_id: String,
+) -> Result<(), String> {
+    let _reset_guard = state.begin_app_write()?;
     let path = icon_cache_path(&button_id)?;
     if path.exists() {
         fs::remove_file(&path)

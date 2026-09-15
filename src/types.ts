@@ -480,6 +480,21 @@ export type DeleteSessionEntryInput = {
   rowKey: string;
 };
 
+export type SoftwareResetStorageSnapshot = Record<string, string | null>;
+
+export type SoftwareResetInput = {
+  localStorageSnapshot: SoftwareResetStorageSnapshot;
+  localStorageCleared: true;
+};
+
+export type SoftwareResetBackupResponse = {
+  path: string;
+};
+
+export type SoftwareResetResponse = {
+  restartRequested: boolean;
+};
+
 export type NotesHistoryEntry = {
   date: string;
   items: string[];

@@ -1,9 +1,10 @@
 use crate::commands::config::load_config_internal;
 use crate::models::{Action, LauncherButton};
+use crate::state::AppState;
 use std::ffi::OsString;
 use std::fs;
 use std::path::{Component, Path, PathBuf, Prefix};
-use tauri::AppHandle;
+use tauri::{AppHandle, State};
 
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
@@ -87,7 +88,16 @@ fn dispatch_explorer(
 }
 
 #[tauri::command]
-pub fn reveal_launcher_item(app: AppHandle, button_id: String) -> Result<String, String> {
+pub fn reveal_launcher_item(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    button_id: String,
+) -> Result<String, String> {
+    let _reset_guard = state.begin_app_write()?;
+    let _write_guard = state
+        .config_write_lock
+        .lock()
+        .map_err(|_| "failed to lock config writes".to_string())?;
     let config = load_config_internal(&app)?.config;
     let button = config
         .buttons

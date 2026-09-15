@@ -30,7 +30,9 @@ import {
   WEEKLY_REVIEW_SEEN_STORAGE_KEY,
 } from "./constants";
 import {
+  acknowledgeSoftwareResetRecovery,
   chooseInstructionRoot,
+  createSoftwareResetBackup,
   deleteSessionEntry,
   deleteButtonIconCache,
   enableMainShellDrop,
@@ -51,6 +53,7 @@ import {
   loadWeeklyReview,
   openConfigBackups,
   openDataFolder,
+  prepareSoftwareReset,
   reapplyDashboardSettings,
   revealLauncherItem,
   resumeDashboardShortcuts,
@@ -62,7 +65,9 @@ import {
   saveNotesForDate,
   selectBackupFolder,
   selectBackupZip,
+  softwareReset,
   suspendDashboardShortcuts,
+  loadSoftwareResetRecovery,
   updateSessionEntry,
   updateInstructionReferences,
   undoTodaySelection,
@@ -85,6 +90,7 @@ import {
   SessionEntriesResponse,
   SessionEntryRow,
   SessionSummaryResponse,
+  SoftwareResetStorageSnapshot,
   SourceCompletion,
   WeeklyReviewResponse,
   WeeklyReviewProjectSummary,
@@ -157,6 +163,48 @@ import {
 
 type ToastTone = "neutral" | "ok" | "warn" | "error";
 type NotesSaveStatus = "saved" | "saving" | "error";
+
+const SOFTWARE_RESET_TIMER_MESSAGE = "実行中のタイマーを終了してからリセットしてください。";
+const SOFTWARE_RESET_STORAGE_KEYS = [
+  GROUP_COLLAPSE_STORAGE_KEY,
+  WEEKLY_REVIEW_SEEN_STORAGE_KEY,
+  "life-launcher-mini-position",
+  "life-launcher-today-builder-order",
+  "life-launcher-instruction-always-on-top",
+  "life-launcher-instruction-last-opened-path",
+  "life-launcher-instruction-expanded-folders",
+  "life-launcher-instruction-tree-order-v1",
+  "life-launcher.dictionary-focus-lock",
+  "life-launcher-today-builder-dismissed",
+] as const;
+
+let softwareResetRecoveryPromise: ReturnType<typeof loadSoftwareResetRecovery> | null = null;
+
+function getSoftwareResetRecoveryForBoot() {
+  softwareResetRecoveryPromise ??= loadSoftwareResetRecovery();
+  return softwareResetRecoveryPromise;
+}
+
+function captureSoftwareResetStorage(): SoftwareResetStorageSnapshot {
+  return Object.fromEntries(
+    SOFTWARE_RESET_STORAGE_KEYS.map((key) => [key, window.localStorage.getItem(key)]),
+  );
+}
+
+function clearSoftwareResetStorage() {
+  SOFTWARE_RESET_STORAGE_KEYS.forEach((key) => window.localStorage.removeItem(key));
+}
+
+function restoreSoftwareResetStorage(snapshot: SoftwareResetStorageSnapshot) {
+  SOFTWARE_RESET_STORAGE_KEYS.forEach((key) => {
+    const value = snapshot[key];
+    if (value === null || value === undefined) {
+      window.localStorage.removeItem(key);
+    } else {
+      window.localStorage.setItem(key, value);
+    }
+  });
+}
 
 type ActiveView = "main" | "records";
 type RecordsDateScope = "today" | "week" | "all";
@@ -2173,6 +2221,11 @@ function DashboardApp() {
   const [helpGuideOpen, setHelpGuideOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSectionKey>("basic");
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogRequest | null>(null);
+  const [softwareResetChoiceOpen, setSoftwareResetChoiceOpen] = useState(false);
+  const [softwareResetChoiceBusy, setSoftwareResetChoiceBusy] = useState(false);
+  const [softwareResetStage, setSoftwareResetStage] = useState<"idle" | "resetting" | "restart">(
+    "idle",
+  );
   const [manualSessionDraft, setManualSessionDraft] = useState<ManualSessionDraft | null>(null);
   const [sessionEditDraft, setSessionEditDraft] = useState<SessionEditDraft | null>(null);
   const [buttonEditDraft, setButtonEditDraft] = useState<ButtonEditDraft | null>(null);
@@ -2220,6 +2273,10 @@ function DashboardApp() {
   const inboxAddSavingRef = useRef(false);
   const projectEditSavingRef = useRef(false);
   const configSaveBlockedRef = useRef(false);
+  const resetInProgressRef = useRef(false);
+  const writeGenerationRef = useRef(0);
+  const softwareResetChoiceOpenerRef = useRef<HTMLElement | null>(null);
+  const softwareResetProgressRef = useRef<HTMLElement | null>(null);
   const confirmDialogRef = useRef<ConfirmDialogRequest | null>(null);
   const inboxAddOpenerRef = useRef<HTMLButtonElement | null>(null);
   const sourceEditOriginRef = useRef<"source" | "today" | "builder">("source");
@@ -2257,6 +2314,8 @@ function DashboardApp() {
   const miniSnapshotRef = useRef<MiniTimerSnapshot>(inactiveMiniSnapshot());
   const iconRequestIdsRef = useRef<Set<string>>(new Set());
   const notesSaveTimersRef = useRef<Map<string, number>>(new Map());
+  const completionPromptRef = useRef<TimerCompletionPrompt | null>(null);
+  completionPromptRef.current = completionPrompt;
 
   const requestConfirmation = useCallback((request: ConfirmDialogRequest) => {
     setConfirmDialog((current) => {
@@ -2860,6 +2919,7 @@ function DashboardApp() {
 
   const refreshConfig = useCallback(
     async (toastOnSuccess = false) => {
+      if (resetInProgressRef.current) return;
       try {
         const response = await loadConfig();
         configSaveBlockedRef.current = response.saveBlocked;
@@ -2905,7 +2965,24 @@ function DashboardApp() {
   );
 
   useEffect(() => {
-    void refreshConfig();
+    let active = true;
+    void (async () => {
+      try {
+        const recovery = await getSoftwareResetRecoveryForBoot();
+        if (active && recovery) {
+          restoreSoftwareResetStorage(recovery.localStorageSnapshot);
+          setCollapsedGroups(readCollapsedGroups());
+          await acknowledgeSoftwareResetRecovery();
+          showToast("warn", recovery.message);
+        }
+      } catch (error) {
+        if (active) {
+          const message = error instanceof Error ? error.message : String(error);
+          showToast("error", `ソフトウェアリセットの復旧を完了できません: ${message}`);
+        }
+      }
+      if (active) void refreshConfig();
+    })();
     const unlisten = listenForConfigChanges(() => {
       window.setTimeout(() => void refreshConfig(true), 250);
     });
@@ -2913,6 +2990,7 @@ function DashboardApp() {
     const toastTimers = toastTimersRef.current;
 
     return () => {
+      active = false;
       unlisten.then((dispose) => dispose()).catch(() => undefined);
       toastTimers.forEach(({ dismissTimer, removeTimer }) => {
         if (dismissTimer !== null) window.clearTimeout(dismissTimer);
@@ -2922,7 +3000,7 @@ function DashboardApp() {
       notesSaveTimers.forEach((timer) => window.clearTimeout(timer));
       notesSaveTimers.clear();
     };
-  }, [refreshConfig]);
+  }, [refreshConfig, showToast]);
 
   useEffect(() => {
     if (activeView === "records") {
@@ -2984,6 +3062,7 @@ function DashboardApp() {
 
   const persistConfig = useCallback(
     async (nextConfig: AppConfig) => {
+      if (resetInProgressRef.current) return false;
       if (configSaveBlockedRef.current) {
         const message = "設定ファイルに問題があるため、元データを保護して保存を停止しています";
         setBanner(message);
@@ -2992,16 +3071,23 @@ function DashboardApp() {
       }
       const safeConfig = limitToday(nextConfig);
       const previousConfig = configRef.current;
+      const writeGeneration = writeGenerationRef.current;
       configRef.current = safeConfig;
       setConfig(safeConfig);
       try {
         const response = await saveConfig(safeConfig);
+        if (resetInProgressRef.current || writeGeneration !== writeGenerationRef.current) {
+          return false;
+        }
         configRef.current = response.config;
         setConfig(response.config);
         setBanner(null);
         await reapplyDashboardSettings();
         return true;
       } catch (error) {
+        if (resetInProgressRef.current || writeGeneration !== writeGenerationRef.current) {
+          return false;
+        }
         if (configRef.current === safeConfig) {
           configRef.current = previousConfig;
           setConfig(previousConfig);
@@ -3950,6 +4036,177 @@ function DashboardApp() {
       },
     });
   };
+
+  const softwareResetIsTimerBlocked = useCallback(
+    () =>
+      Boolean(
+        activeTimerRef.current || completionPromptRef.current || earlyStopRef.current,
+      ),
+    [],
+  );
+
+  const rejectSoftwareResetForTimer = useCallback(() => {
+    if (!softwareResetIsTimerBlocked()) return false;
+    showToast("warn", SOFTWARE_RESET_TIMER_MESSAGE);
+    return true;
+  }, [showToast, softwareResetIsTimerBlocked]);
+
+  const freezeFrontendForSoftwareReset = useCallback(() => {
+    resetInProgressRef.current = true;
+    writeGenerationRef.current += 1;
+    timerStartRequestRef.current += 1;
+    notesSaveTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    notesSaveTimersRef.current.clear();
+    if (completionFollowupTimerRef.current !== null) {
+      window.clearTimeout(completionFollowupTimerRef.current);
+      completionFollowupTimerRef.current = null;
+    }
+    setNotesSaveStatus("saved");
+    setShortcutRecordingField(null);
+    setSettingsDraft(null);
+    setManualSessionDraft(null);
+    setSessionEditDraft(null);
+    setButtonEditDraft(null);
+    setProjectEditDraft(null);
+    setNextStepEditDraft(null);
+    setDropDraft(null);
+    setGroupDraft(null);
+    setGroupRenameDraft(null);
+    setOverlayPageDraft(null);
+    setContextMenu(null);
+  }, []);
+
+  const executeSoftwareReset = useCallback(async () => {
+    if (resetInProgressRef.current) return false;
+    if (rejectSoftwareResetForTimer()) return true;
+
+    let localStorageSnapshot: SoftwareResetStorageSnapshot;
+    try {
+      localStorageSnapshot = captureSoftwareResetStorage();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      showToast("error", `ソフトウェアリセットを準備できません: ${message}`);
+      return false;
+    }
+    resetInProgressRef.current = true;
+    freezeFrontendForSoftwareReset();
+    setSoftwareResetStage("resetting");
+
+    try {
+      await prepareSoftwareReset();
+      clearSoftwareResetStorage();
+      const response = await softwareReset({
+        localStorageSnapshot,
+        localStorageCleared: true,
+      });
+      if (!response?.restartRequested) {
+        throw new Error("アプリの再起動を開始できませんでした");
+      }
+      setSoftwareResetStage("restart");
+      return true;
+    } catch (error) {
+      let storageRollbackError: unknown = null;
+      try {
+        restoreSoftwareResetStorage(localStorageSnapshot);
+      } catch (rollbackError) {
+        storageRollbackError = rollbackError;
+      }
+      resetInProgressRef.current = false;
+      writeGenerationRef.current += 1;
+      setSoftwareResetStage("idle");
+      const message = error instanceof Error ? error.message : String(error);
+      const rollbackDetail = storageRollbackError
+        ? ` localStorageも復元できません: ${
+            storageRollbackError instanceof Error
+              ? storageRollbackError.message
+              : String(storageRollbackError)
+          }`
+        : "";
+      showToast("error", `ソフトウェアリセットに失敗しました: ${message}${rollbackDetail}`);
+      return false;
+    }
+  }, [freezeFrontendForSoftwareReset, rejectSoftwareResetForTimer, showToast]);
+
+  const requestFinalSoftwareResetConfirmation = useCallback(() => {
+    confirmFocusReturnRef.current = softwareResetChoiceOpenerRef.current;
+    requestConfirmation({
+      title: "ソフトウェアリセットを実行しますか？",
+      message:
+        "Life Launcherのデータと設定を初回起動時の状態へ戻します。\n\nこの操作はアプリ内からは取り消せません。",
+      confirmLabel: "ソフトウェアリセット",
+      processingLabel: "リセットしています…",
+      tone: "danger",
+      initialFocus: "cancel",
+      closeOnBackdrop: true,
+      onConfirm: executeSoftwareReset,
+    });
+  }, [executeSoftwareReset, requestConfirmation]);
+
+  const closeSoftwareResetChoice = useCallback((restoreFocus = true) => {
+    setSoftwareResetChoiceOpen(false);
+    if (restoreFocus) {
+      window.requestAnimationFrame(() =>
+        softwareResetChoiceOpenerRef.current?.focus({ preventScroll: true }),
+      );
+    }
+  }, []);
+
+  const continueSoftwareReset = useCallback(
+    async (createBackup: boolean) => {
+      if (softwareResetChoiceBusy || rejectSoftwareResetForTimer()) {
+        if (!softwareResetChoiceBusy) closeSoftwareResetChoice();
+        return;
+      }
+      setSoftwareResetChoiceBusy(true);
+      try {
+        if (createBackup) {
+          const backup = await createSoftwareResetBackup();
+          if (!backup?.path) throw new Error("バックアップ先を確認できませんでした");
+        }
+        softwareResetChoiceOpenerRef.current?.focus({ preventScroll: true });
+        closeSoftwareResetChoice(false);
+        requestFinalSoftwareResetConfirmation();
+      } catch (error) {
+        closeSoftwareResetChoice();
+        const message = error instanceof Error ? error.message : String(error);
+        showToast("error", `リセット前のバックアップに失敗しました: ${message}`);
+      } finally {
+        setSoftwareResetChoiceBusy(false);
+      }
+    },
+    [
+      rejectSoftwareResetForTimer,
+      requestFinalSoftwareResetConfirmation,
+      showToast,
+      softwareResetChoiceBusy,
+      closeSoftwareResetChoice,
+    ],
+  );
+
+  const requestSoftwareReset = useCallback(() => {
+    if (rejectSoftwareResetForTimer()) return;
+    softwareResetChoiceOpenerRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setSoftwareResetChoiceBusy(false);
+    setSoftwareResetChoiceOpen(true);
+  }, [rejectSoftwareResetForTimer]);
+
+  useEffect(() => {
+    if (!softwareResetChoiceOpen) return;
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape" || softwareResetChoiceBusy) return;
+      event.preventDefault();
+      event.stopPropagation();
+      closeSoftwareResetChoice();
+    };
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => document.removeEventListener("keydown", onKeyDown, true);
+  }, [closeSoftwareResetChoice, softwareResetChoiceBusy, softwareResetChoiceOpen]);
+
+  useEffect(() => {
+    if (softwareResetStage === "idle") return;
+    window.requestAnimationFrame(() => softwareResetProgressRef.current?.focus());
+  }, [softwareResetStage]);
 
   const requestClearBackupFolder = () => {
     if (!settingsDraft?.backupFolder) return;
@@ -7062,10 +7319,13 @@ function DashboardApp() {
   };
 
   const scheduleNotesSave = (key: string, save: () => Promise<void>, immediate = false) => {
+    if (resetInProgressRef.current) return;
     const existing = notesSaveTimersRef.current.get(key);
     if (existing !== undefined) window.clearTimeout(existing);
+    const writeGeneration = writeGenerationRef.current;
     const run = () => {
       notesSaveTimersRef.current.delete(key);
+      if (resetInProgressRef.current || writeGeneration !== writeGenerationRef.current) return;
       void save();
     };
     if (immediate) {
@@ -8550,6 +8810,8 @@ function DashboardApp() {
     settingsDraft ||
     helpGuideOpen ||
     confirmDialog ||
+    softwareResetChoiceOpen ||
+    softwareResetStage !== "idle" ||
     earlyStop ||
     manualSessionDraft ||
     sessionEditDraft ||
@@ -9323,7 +9585,11 @@ function DashboardApp() {
             <section className="banner">
               <span>{banner}</span>
               {backupPath && (
-                <button className="bannerButton" onClick={openBackupFolder} type="button">
+                <button
+                  className="bannerButton mainActionButton mainActionButton--neutral"
+                  onClick={openBackupFolder}
+                  type="button"
+                >
                   バックアップから復元: フォルダを開く
                 </button>
               )}
@@ -9335,7 +9601,7 @@ function DashboardApp() {
               <span>先週のふりかえりが見られます</span>
               <div>
                 <button
-                  className="weeklyReviewBannerPrimary"
+                  className="weeklyReviewBannerPrimary mainActionButton mainActionButton--neutral"
                   onClick={() => {
                     setWeeklyReviewBannerOpen(false);
                     setActiveView("records");
@@ -9548,7 +9814,7 @@ function DashboardApp() {
                       <div className="doNowActions">
                         {doNowCandidates.length > 1 && (
                           <button
-                            className="doNowAlternateButton"
+                            className="doNowAlternateButton mainActionButton mainActionButton--neutral"
                             onClick={showNextDoNowCandidate}
                             type="button"
                           >
@@ -9624,7 +9890,7 @@ function DashboardApp() {
                         {doNowInstructionPath && (
                           <button
                             aria-label={`${doNowSelection.project.name}の手順書を開く`}
-                            className="doNowInstructionButton"
+                            className="doNowInstructionButton mainActionButton mainActionButton--neutral"
                             onClick={() => {
                               void openInstructionWindow({
                                 path: doNowInstructionPath,
@@ -9651,7 +9917,11 @@ function DashboardApp() {
                     </div>
                     <div className="doNowEmpty">
                       <span>重点プロジェクトに次の一手を設定すると、ここに提案されます。</span>
-                      <button onClick={() => openNextStepEditor(focusedProjects[0])} type="button">
+                      <button
+                        className="mainActionButton mainActionButton--neutral"
+                        onClick={() => openNextStepEditor(focusedProjects[0])}
+                        type="button"
+                      >
                         次の一手を設定
                       </button>
                     </div>
@@ -9663,7 +9933,11 @@ function DashboardApp() {
                     </div>
                     <div className="doNowEmpty">
                       <span>今週の重点を選ぶと、今やる一手を提案できます。</span>
-                      <button onClick={() => setActiveView("records")} type="button">
+                      <button
+                        className="mainActionButton mainActionButton--neutral"
+                        onClick={() => setActiveView("records")}
+                        type="button"
+                      >
                         重点を選ぶ
                       </button>
                     </div>
@@ -9721,7 +9995,11 @@ function DashboardApp() {
                       <div className="todayEmptyStateContent">
                         <strong>今日やるものを選びましょう</strong>
                         <span>次の一手・やりたいことから選べます</span>
-                        <button onClick={focusTodayBuilder} type="button">
+                        <button
+                          className="mainActionButton mainActionButton--neutral"
+                          onClick={focusTodayBuilder}
+                          type="button"
+                        >
                           <UiIcon name="add" size={16} />
                           今日を組み立てる
                         </button>
@@ -9862,7 +10140,7 @@ function DashboardApp() {
                             {todayInstructionPath && (
                               <button
                                 aria-label={`${item.text || "未入力"}の手順書を開く`}
-                                className="doNowInstructionButton todayInstructionButton"
+                                className="doNowInstructionButton todayInstructionButton mainActionButton mainActionButton--neutral"
                                 onClick={() => {
                                   void openInstructionWindow({
                                     path: todayInstructionPath,
@@ -9882,7 +10160,7 @@ function DashboardApp() {
                               </button>
                             )}
                             <button
-                              className="todayRemoveButton"
+                              className="todayRemoveButton mainActionButton mainActionButton--neutral"
                               disabled={isRunningTodayItem}
                               onClick={() => void removeTodayItem(todaySourceKey(item, index))}
                               onPointerDown={(event) => event.stopPropagation()}
@@ -10129,7 +10407,7 @@ function DashboardApp() {
                 {allTodayItemsCompleted && (
                   <div className="todayNextBatch">
                     <button
-                      className="secondaryButton"
+                      className="secondaryButton mainActionButton mainActionButton--neutral"
                       onClick={() => void startNextTodayBatch()}
                       type="button"
                     >
@@ -10207,10 +10485,18 @@ function DashboardApp() {
                       <div className="sectionEmptyActions sectionEmptyActions--sources">
                         <span>候補はまだありません。次の一手か、やりたいことを登録できます。</span>
                         <div>
-                          <button onClick={() => focusCandidateSource("project")} type="button">
+                          <button
+                            className="mainActionButton mainActionButton--neutral"
+                            onClick={() => focusCandidateSource("project")}
+                            type="button"
+                          >
                             次の一手へ
                           </button>
-                          <button onClick={() => focusCandidateSource("wishlist")} type="button">
+                          <button
+                            className="mainActionButton mainActionButton--neutral"
+                            onClick={() => focusCandidateSource("wishlist")}
+                            type="button"
+                          >
                             やりたいことへ
                           </button>
                         </div>
@@ -10365,7 +10651,7 @@ function DashboardApp() {
                                     <span className="todayBuilderSelectedStatus">✓ 選択済み</span>
                                   ) : (
                                     <button
-                                      className="moveTodayButton todayBuilderAddButton"
+                                      className="moveTodayButton todayBuilderAddButton mainActionButton mainActionButton--positive"
                                       disabled={isFull}
                                       onClick={() => void addCandidateToToday(candidate)}
                                       title={isFull ? "いま選べるのは3件までです" : "今日へ"}
@@ -10404,6 +10690,7 @@ function DashboardApp() {
                       <nav aria-label="今日を組み立てるのページ" className="todayBuilderPagination">
                         <button
                           aria-label="前のページ"
+                          className="mainActionButton mainActionButton--neutral"
                           disabled={visibleTodayBuilderPage <= 1}
                           onClick={() => setTodayBuilderPage(visibleTodayBuilderPage - 1)}
                           type="button"
@@ -10416,6 +10703,7 @@ function DashboardApp() {
                         </span>
                         <button
                           aria-label="次のページ"
+                          className="mainActionButton mainActionButton--neutral"
                           disabled={visibleTodayBuilderPage >= todayBuilderPageCount}
                           onClick={() => setTodayBuilderPage(visibleTodayBuilderPage + 1)}
                           type="button"
@@ -10548,7 +10836,7 @@ function DashboardApp() {
                   <div className="disclosureHeaderActions">
                     <button
                       aria-label="プロジェクトを追加"
-                      className="sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd nextStepHeaderAdd--project"
+                      className="sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd nextStepHeaderAdd--project mainActionButton mainActionButton--gold"
                       onPointerDown={(event) => event.stopPropagation()}
                       onClick={(event) => {
                         event.stopPropagation();
@@ -10707,8 +10995,8 @@ function DashboardApp() {
                               <button
                                 className={
                                   project.nextStep?.text.trim()
-                                    ? "nextStepRowAction nextStepRowAction--change"
-                                    : "nextStepRowAction nextStepRowAction--set"
+                                    ? "nextStepRowAction nextStepRowAction--change mainActionButton mainActionButton--neutral"
+                                    : "nextStepRowAction nextStepRowAction--set mainActionButton mainActionButton--neutral"
                                 }
                                 disabled={sourceEditBlocked(`project:${project.id}`)}
                                 onClick={(event) => {
@@ -10753,6 +11041,7 @@ function DashboardApp() {
                     {config.projects.length > PROJECT_CARD_COMPACT_LIMIT && (
                       <div className="sourceListControls nextStepCardControls">
                         <button
+                          className="mainActionButton mainActionButton--neutral"
                           onClick={() => {
                             projectListAnchorRef.current = null;
                             setProjectsListExpanded((expanded) => !expanded);
@@ -10860,7 +11149,7 @@ function DashboardApp() {
                   <div className="disclosureHeaderActions">
                     <button
                       aria-label="やりたいことを追加"
-                      className="sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd nextStepHeaderAdd--wishlist"
+                      className="sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd nextStepHeaderAdd--wishlist mainActionButton mainActionButton--gold"
                       disabled={inboxAddOpen}
                       onPointerDown={(event) => event.stopPropagation()}
                       onClick={(event) => {
@@ -11054,10 +11343,8 @@ function DashboardApp() {
                                         )}
                                         {!selected && excluded && sourceKey && (
                                           <button
-                                            className="wishlistRestoreButton"
-                                            onClick={() =>
-                                              void restoreTodayBuilderCandidate(sourceKey)
-                                            }
+                                            className="wishlistRestoreButton mainActionButton mainActionButton--positive"
+                                            onClick={() => void restoreTodayBuilderCandidate(sourceKey)}
                                             onPointerDown={(event) => event.stopPropagation()}
                                             type="button"
                                           >
@@ -11091,6 +11378,7 @@ function DashboardApp() {
                                   group.items.length < SOURCE_LIST_PAGINATION_THRESHOLD && (
                                     <div className="sourceListControls">
                                       <button
+                                        className="mainActionButton mainActionButton--neutral"
                                         onClick={() =>
                                           setWishlistGroupViews((current) => ({
                                             ...current,
@@ -11114,6 +11402,7 @@ function DashboardApp() {
                                     className="sourceListPagination"
                                   >
                                     <button
+                                      className="mainActionButton mainActionButton--neutral"
                                       disabled={range.page <= 1}
                                       onClick={() =>
                                         setWishlistGroupViews((current) => ({
@@ -11132,6 +11421,7 @@ function DashboardApp() {
                                       {range.page} / {range.pageCount}
                                     </span>
                                     <button
+                                      className="mainActionButton mainActionButton--neutral"
                                       disabled={range.page >= range.pageCount}
                                       onClick={() =>
                                         setWishlistGroupViews((current) => ({
@@ -12555,76 +12845,118 @@ function DashboardApp() {
               }
             >
               <h3>メンテナンス</h3>
-              <div className="settingsButtonRow">
-                <button
-                  className="secondaryButton settingsButton--neutral"
-                  disabled={dailyActivityCopying}
-                  onClick={() => void copyTodayActivityLog()}
-                  title="今日のセッションとできたことをクリップボードへコピー"
-                  type="button"
+              <div className="maintenanceGroups">
+                <section
+                  aria-labelledby="maintenance-data-heading"
+                  className="maintenanceGroup"
                 >
-                  {dailyActivityCopying ? "コピー中" : "今日の活動ログをコピー"}
-                </button>
-                <button
-                  className="secondaryButton settingsButton--neutral"
-                  onClick={openRuntimeDataFolder}
-                  type="button"
+                  <h4 id="maintenance-data-heading">データ・フォルダ</h4>
+                  <div className="settingsButtonRow">
+                    <button
+                      className="secondaryButton settingsButton--neutral"
+                      disabled={dailyActivityCopying}
+                      onClick={() => void copyTodayActivityLog()}
+                      title="今日のセッションとできたことをクリップボードへコピー"
+                      type="button"
+                    >
+                      {dailyActivityCopying ? "コピー中" : "今日の活動ログをコピー"}
+                    </button>
+                    <button
+                      className="secondaryButton settingsButton--neutral"
+                      onClick={openRuntimeDataFolder}
+                      type="button"
+                    >
+                      configフォルダを開く
+                    </button>
+                    <button
+                      className="secondaryButton settingsButton--neutral"
+                      onClick={openBackupFolder}
+                      type="button"
+                    >
+                      バックアップフォルダを開く
+                    </button>
+                  </div>
+                </section>
+
+                <section
+                  aria-labelledby="maintenance-display-heading"
+                  className="maintenanceGroup"
                 >
-                  configフォルダを開く
-                </button>
-                <button
-                  className="secondaryButton settingsButton--neutral"
-                  onClick={openBackupFolder}
-                  type="button"
+                  <h4 id="maintenance-display-heading">表示・キャッシュ</h4>
+                  <div className="settingsButtonRow">
+                    <button
+                      className="secondaryButton settingsButton--warning"
+                      onClick={requestIconCacheRegeneration}
+                      type="button"
+                    >
+                      アイコンキャッシュ再生成
+                    </button>
+                    <button
+                      className="secondaryButton settingsButton--warning"
+                      onClick={requestMiniWindowPositionReset}
+                      type="button"
+                    >
+                      ミニウィンドウ位置をリセット
+                    </button>
+                    <button
+                      className="secondaryButton settingsButton--warning"
+                      onClick={requestInstructionWindowPositionReset}
+                      type="button"
+                    >
+                      手順書ウィンドウ位置をリセット
+                    </button>
+                  </div>
+                </section>
+
+                <section
+                  aria-labelledby="maintenance-instructions-heading"
+                  className="maintenanceGroup"
                 >
-                  バックアップフォルダを開く
-                </button>
-                <button
-                  className="secondaryButton settingsButton--warning"
-                  onClick={requestIconCacheRegeneration}
-                  type="button"
+                  <h4 id="maintenance-instructions-heading">手順書</h4>
+                  <div className="settingsButtonRow">
+                    <button
+                      className="secondaryButton settingsButton--neutral"
+                      onClick={() => void reloadInstructionList()}
+                      type="button"
+                    >
+                      手順書一覧を再読み込み
+                    </button>
+                  </div>
+                </section>
+
+                <section
+                  aria-labelledby="maintenance-reset-heading"
+                  className="maintenanceGroup maintenanceGroup--reset"
                 >
-                  アイコンキャッシュ再生成
-                </button>
-                <button
-                  className="secondaryButton settingsButton--warning"
-                  onClick={requestMiniWindowPositionReset}
-                  type="button"
-                >
-                  ミニウィンドウ位置をリセット
-                </button>
-                <button
-                  className="secondaryButton settingsButton--warning"
-                  onClick={requestInstructionWindowPositionReset}
-                  type="button"
-                >
-                  手順書ウィンドウ位置をリセット
-                </button>
-                <button
-                  className="secondaryButton settingsButton--neutral"
-                  onClick={() => void reloadInstructionList()}
-                  type="button"
-                >
-                  手順書一覧を再読み込み
-                </button>
+                  <h4 id="maintenance-reset-heading">初期化</h4>
+                  <p>Life Launcherを初回起動時の状態へ戻します。</p>
+                  <button
+                    className="dangerButton settingsButton--danger softwareResetButton"
+                    disabled={softwareResetStage !== "idle"}
+                    onClick={requestSoftwareReset}
+                    type="button"
+                  >
+                    ソフトウェアリセット...
+                  </button>
+                </section>
               </div>
             </div>
 
-            <div className="dialogActions">
+            <div className="dialogActions settingsDialogActions">
               <button
-                className="secondaryButton settingsButton--neutral"
-                onClick={requestCloseSettings}
-                type="button"
-              >
-                キャンセル
-              </button>
-              <button
-                className="primaryButton"
+                className="secondaryButton settingsSaveButton"
                 disabled={Boolean(shortcutRecordingField)}
                 onClick={saveSettingsCenter}
                 type="button"
               >
                 保存
+              </button>
+              <button
+                className="dangerButton settingsCancelButton"
+                onClick={requestCloseSettings}
+                type="button"
+              >
+                キャンセル
               </button>
             </div>
           </section>
@@ -13993,7 +14325,101 @@ function DashboardApp() {
         </div>
       )}
 
+      {softwareResetChoiceOpen && (
+        <div
+          className="modalBackdrop confirmBackdrop softwareResetChoiceBackdrop"
+          onClick={(event) => {
+            event.stopPropagation();
+            if (event.target === event.currentTarget && !softwareResetChoiceBusy) {
+              closeSoftwareResetChoice();
+            }
+          }}
+          role="presentation"
+        >
+          <section
+            aria-describedby="software-reset-choice-description"
+            aria-labelledby="software-reset-choice-title"
+            aria-modal="true"
+            className="dropDialog confirmDialog softwareResetChoiceDialog"
+            role="dialog"
+          >
+            <div className="confirmDialogHeader">
+              <h2 id="software-reset-choice-title">リセット前にバックアップしますか？</h2>
+              <button
+                aria-label="確認を閉じる"
+                className="confirmDialogClose"
+                disabled={softwareResetChoiceBusy}
+                onClick={() => closeSoftwareResetChoice()}
+                title="閉じる"
+                type="button"
+              >
+                <UiIcon name="close" size={16} />
+              </button>
+            </div>
+            <div className="confirmDialogBody" id="software-reset-choice-description">
+              <p>
+                現在のデータをバックアップしておくと、
+                <br />
+                必要になった場合に元へ戻せます。
+              </p>
+            </div>
+            <div className="dialogActions softwareResetChoiceActions">
+              <button
+                className="confirmDialogButton confirmDialogButton--normal"
+                disabled={softwareResetChoiceBusy}
+                onClick={() => void continueSoftwareReset(true)}
+                type="button"
+              >
+                {softwareResetChoiceBusy ? "バックアップしています…" : "バックアップして続行"}
+              </button>
+              <button
+                className="secondaryButton settingsButton--warning"
+                disabled={softwareResetChoiceBusy}
+                onClick={() => void continueSoftwareReset(false)}
+                type="button"
+              >
+                バックアップせず続行
+              </button>
+              <button
+                autoFocus
+                className="secondaryButton settingsButton--neutral"
+                disabled={softwareResetChoiceBusy}
+                onClick={() => closeSoftwareResetChoice()}
+                type="button"
+              >
+                キャンセル
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
       {confirmDialog && <ConfirmDialog {...confirmDialog} onCancel={closeConfirmDialog} open />}
+      {softwareResetStage !== "idle" && (
+        <div className="modalBackdrop softwareResetProgressBackdrop" role="presentation">
+          <section
+            aria-labelledby="software-reset-progress-title"
+            aria-live="assertive"
+            aria-modal="true"
+            className="dropDialog softwareResetProgressDialog"
+            onKeyDown={(event) => {
+              if (event.key === "Tab") event.preventDefault();
+            }}
+            ref={softwareResetProgressRef}
+            role="dialog"
+            tabIndex={-1}
+          >
+            <span aria-hidden="true" className="softwareResetProgressIndicator" />
+            <div>
+              <h2 id="software-reset-progress-title">
+                {softwareResetStage === "restart"
+                  ? "Life Launcherを再起動しています"
+                  : "ソフトウェアリセットを実行しています"}
+              </h2>
+              <p>この画面を閉じずにお待ちください。</p>
+            </div>
+          </section>
+        </div>
+      )}
       {helpGuideOpen && (
         <HelpGuideDialog
           onClose={() => setHelpGuideOpen(false)}

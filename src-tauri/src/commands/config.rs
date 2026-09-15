@@ -55,6 +55,7 @@ pub fn load_config(
     app: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<LoadConfigResponse, String> {
+    let _reset_guard = state.begin_app_write()?;
     let _write_guard = state
         .config_write_lock
         .lock()
@@ -63,7 +64,15 @@ pub fn load_config(
 }
 
 #[tauri::command]
-pub fn load_next_step_freshness(app: AppHandle) -> Result<NextStepFreshnessResponse, String> {
+pub fn load_next_step_freshness(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<NextStepFreshnessResponse, String> {
+    let _reset_guard = state.begin_app_write()?;
+    let _write_guard = state
+        .config_write_lock
+        .lock()
+        .map_err(|_| "failed to lock config writes".to_string())?;
     let config = load_config_internal(&app)?.config;
     let now = chrono::Utc::now().fixed_offset();
     Ok(NextStepFreshnessResponse {
@@ -82,6 +91,7 @@ pub fn save_config(
     state: State<'_, AppState>,
     config: AppConfig,
 ) -> Result<SaveConfigResponse, String> {
+    let _reset_guard = state.begin_app_write()?;
     let _write_guard = state
         .config_write_lock
         .lock()
@@ -223,6 +233,7 @@ pub fn undo_today_selection(
     state: State<'_, AppState>,
     input: UndoTodaySelectionInput,
 ) -> Result<SaveConfigResponse, String> {
+    let _reset_guard = state.begin_app_write()?;
     let _write_guard = state
         .config_write_lock
         .lock()
@@ -247,6 +258,7 @@ pub fn undo_today_selection(
 
 #[tauri::command]
 pub fn backup_config_before_instruction_change(state: State<'_, AppState>) -> Result<(), String> {
+    let _reset_guard = state.begin_app_write()?;
     let _write_guard = state
         .config_write_lock
         .lock()
@@ -262,6 +274,7 @@ pub fn update_instruction_references(
     new_path: Option<String>,
     unregister_root: bool,
 ) -> Result<InstructionReferenceUpdateResponse, String> {
+    let _reset_guard = state.begin_app_write()?;
     let _write_guard = state
         .config_write_lock
         .lock()
@@ -521,6 +534,7 @@ pub fn restore_backup(
     state: State<'_, AppState>,
     zip_path: String,
 ) -> Result<LoadConfigResponse, String> {
+    let _reset_guard = state.begin_app_write()?;
     let _write_guard = state
         .config_write_lock
         .lock()
@@ -978,6 +992,54 @@ fn daily_backup(config: &AppConfig) -> Result<Option<PathBuf>, String> {
     Ok(Some(backup_path))
 }
 
+pub(crate) fn create_forced_user_backup(config: &AppConfig) -> Result<PathBuf, String> {
+    let folder = config
+        .settings
+        .backup_folder
+        .as_ref()
+        .ok_or_else(|| "backup folder is not configured".to_string())?;
+    let backup_dir = PathBuf::from(folder);
+    if !backup_dir.is_dir() {
+        return Err(format!(
+            "backup folder does not exist or is not a directory: {}",
+            backup_dir.display()
+        ));
+    }
+
+    ensure_config_schema_file()?;
+    let entries = daily_backup_entries()?;
+    let timestamp = chrono::Local::now().format("%Y%m%d-%H%M%S-%f");
+    let mut backup_path = backup_dir.join(format!(
+        "{DAILY_BACKUP_PREFIX}{timestamp}{DAILY_BACKUP_SUFFIX}"
+    ));
+    let mut collision = 0u16;
+    while backup_path.exists() {
+        collision = collision.saturating_add(1);
+        backup_path = backup_dir.join(format!(
+            "{DAILY_BACKUP_PREFIX}{timestamp}-{collision}{DAILY_BACKUP_SUFFIX}"
+        ));
+    }
+    write_zip(&backup_path, &entries)?;
+
+    let written = fs::read(&backup_path)
+        .map_err(|error| format!("failed to verify {}: {error}", backup_path.display()))?;
+    let verified = read_zip(&written)?;
+    if verified.len() != entries.len()
+        || entries.iter().any(|expected| {
+            verified
+                .iter()
+                .find(|entry| entry.name == expected.name)
+                .is_none_or(|entry| entry.data != expected.data)
+        })
+    {
+        return Err(format!(
+            "backup validation failed: {}",
+            backup_path.display()
+        ));
+    }
+    Ok(backup_path)
+}
+
 fn daily_backup_entries() -> Result<Vec<ZipEntry>, String> {
     let data_dir = config_dir_path()?;
 
@@ -1333,7 +1395,7 @@ fn read_zip_entry_data(
     Ok(bytes[data_start..data_end].to_vec())
 }
 
-fn atomic_write_bytes(path: &PathBuf, bytes: &[u8]) -> Result<(), String> {
+pub(crate) fn atomic_write_bytes(path: &PathBuf, bytes: &[u8]) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)
             .map_err(|error| format!("failed to create {}: {error}", parent.display()))?;
@@ -1780,7 +1842,7 @@ fn normalize_victory(victory: &mut TodayVictory, changed: &mut bool) {
     }
 }
 
-fn config_schema_json() -> &'static str {
+pub(crate) fn config_schema_json() -> &'static str {
     r##"{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Life Launcher config",

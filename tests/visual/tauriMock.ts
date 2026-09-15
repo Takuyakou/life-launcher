@@ -11,10 +11,19 @@ export async function installTauriMock(
   page: Page,
   fixture: VisualQaFixture,
   currentWindowLabel = "main",
+  softwareResetRecovery: unknown = null,
+  options: { cleanStartReset?: boolean; cleanStartNow?: string } = {},
 ): Promise<void> {
   await page.addInitScript(
-    ({ fixture, paths, currentWindowLabel }) => {
+    ({ fixture, paths, currentWindowLabel, softwareResetRecovery, options }) => {
       const configStorageKey = "life-launcher-visual-qa-config";
+      const cleanStartStorageKey = "life-launcher-visual-qa-clean-start";
+      const resetBackupPath = "C:\\PublicDemo\\Backups\\lifelauncher-clean-start.zip";
+      const externalSentinel = {
+        path: "C:\\ExternalFixtures\\instruction-guide.html",
+        value: "external-file-untouched",
+      };
+      const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
       let currentConfig = (() => {
         try {
           const stored = window.sessionStorage.getItem(configStorageKey);
@@ -25,6 +34,135 @@ export async function installTauriMock(
       })();
       const persistCurrentConfig = () => {
         window.sessionStorage.setItem(configStorageKey, JSON.stringify(currentConfig));
+      };
+      type CleanStartState = {
+        sessions: typeof fixture.sessionEntries.entries;
+        notes: string[];
+        notesHistory: typeof fixture.notesHistory;
+        backup: null | {
+          path: string;
+          config: typeof fixture.config;
+          sessions: typeof fixture.sessionEntries.entries;
+          notes: string[];
+          notesHistory: typeof fixture.notesHistory;
+        };
+        externalSentinel: typeof externalSentinel;
+        resetCompleted: boolean;
+        restoreCount: number;
+      };
+      const initialCleanStartState = (): CleanStartState => ({
+        sessions: clone(fixture.sessionEntries.entries),
+        notes: clone(fixture.todayNotes),
+        notesHistory: clone(fixture.notesHistory),
+        backup: null,
+        externalSentinel: clone(externalSentinel),
+        resetCompleted: false,
+        restoreCount: 0,
+      });
+      const cleanStartState: CleanStartState | null = (() => {
+        if (!options.cleanStartReset) return null;
+        try {
+          const stored = window.sessionStorage.getItem(cleanStartStorageKey);
+          return stored ? (JSON.parse(stored) as CleanStartState) : initialCleanStartState();
+        } catch {
+          return initialCleanStartState();
+        }
+      })();
+      const persistCleanStartState = () => {
+        if (!cleanStartState) return;
+        window.sessionStorage.setItem(cleanStartStorageKey, JSON.stringify(cleanStartState));
+      };
+      const dateKeyAt = (isoNow: string, dayStartHour: number) => {
+        const offsetMatch = isoNow.match(/([+-])(\d{2}):(\d{2})$/);
+        const instant = new Date(isoNow);
+        const offsetMinutes = offsetMatch
+          ? (offsetMatch[1] === "+" ? 1 : -1) *
+            (Number(offsetMatch[2]) * 60 + Number(offsetMatch[3]))
+          : 0;
+        const localAtBoundary = new Date(
+          instant.getTime() + offsetMinutes * 60_000 - dayStartHour * 60 * 60_000,
+        );
+        return localAtBoundary.toISOString().slice(0, 10);
+      };
+      const freshConfig = () => ({
+        $schema: "./config.schema.json",
+        version: 3 as const,
+        groups: [],
+        overlayPages: [],
+        dictionaryOrder: [],
+        buttons: [],
+        projects: [],
+        today: {
+          date: dateKeyAt(options.cleanStartNow ?? new Date().toISOString(), 4),
+          victory: { text: "", done: false },
+          items: [],
+          candidateExcludedSourceKeys: [],
+          selectionMutationTokens: {},
+        },
+        inbox: [],
+        sourceCompletions: [],
+        settings: {
+          alwaysOnTop: false,
+          focusHotkey: "Alt+Space",
+          launcherHotkey: "Ctrl+K",
+          miniHotkey: null,
+          autoStart: false,
+          defaultTimerMinutes: 25,
+          shortTimerMinutes: 5,
+          dayStartHour: 4,
+          backupFolder: null,
+          backupKeep: 30,
+          miniMode: true,
+          miniWindowPosition: null,
+          restartShortFirst: true,
+          instructionFolders: [],
+          instructionFolderIdentities: [],
+          instructionHotkey: null,
+        },
+      });
+      const cleanStartTotalMinutes = () =>
+        cleanStartState?.sessions
+          .filter((entry) => entry.date === currentConfig.today.date)
+          .reduce((total, entry) => total + entry.minutes, 0) ?? fixture.todayMinutes;
+      const cleanStartSessionSummary = () => {
+        if (!cleanStartState) return fixture.sessionSummary;
+        const totals = new Map<
+          string,
+          { projectId?: string | null; label: string; activeDates: Set<string>; totalMinutes: number }
+        >();
+        for (const entry of cleanStartState.sessions) {
+          const key = entry.projectId ?? `label:${entry.label}`;
+          const total = totals.get(key) ?? {
+            projectId: entry.projectId,
+            label: entry.label,
+            activeDates: new Set<string>(),
+            totalMinutes: 0,
+          };
+          total.activeDates.add(entry.date);
+          total.totalMinutes += entry.minutes;
+          totals.set(key, total);
+        }
+        const projects = [...totals.values()].map((entry) => ({
+          projectId: entry.projectId,
+          label: entry.label,
+          activeDays: entry.activeDates.size,
+          totalMinutes: entry.totalMinutes,
+        }));
+        const activeDays = new Set(cleanStartState.sessions.map((entry) => entry.date)).size;
+        const totalMinutes = cleanStartState.sessions.reduce(
+          (total, entry) => total + entry.minutes,
+          0,
+        );
+        return {
+          date: currentConfig.today.date,
+          todayMinutes: cleanStartTotalMinutes(),
+          weekMinutes: totalMinutes,
+          activeDays,
+          projects,
+          allTimeProjects: projects,
+          recentSessions: clone(cleanStartState.sessions),
+          path: paths.sessions,
+        };
       };
       let callbackId = 1;
       let eventId = 1;
@@ -42,7 +180,7 @@ export async function installTauriMock(
       const callbacks = new Map<number, (event: unknown) => void>();
       const eventListeners = new Map<string, Map<number, number>>();
       const pendingExecuteActions: Array<() => void> = [];
-      let currentNotes = fixture.todayNotes;
+      let currentNotes = cleanStartState ? clone(cleanStartState.notes) : fixture.todayNotes;
 
       const dispatchEvent = (event: string, payload: unknown = null) => {
         const listeners = eventListeners.get(event);
@@ -72,6 +210,7 @@ export async function installTauriMock(
           instructionRootChoices = [...choices];
         },
         currentConfig: () => currentConfig,
+        cleanStartState: () => (cleanStartState ? clone(cleanStartState) : null),
         resolveExecuteActions: () => {
           for (const resolve of pendingExecuteActions.splice(0)) resolve();
         },
@@ -236,43 +375,87 @@ export async function installTauriMock(
               }
               case "load_today_session_total":
                 return {
-                  date: fixture.config.today.date,
-                  totalMinutes: fixture.todayMinutes,
+                  date: currentConfig.today.date,
+                  totalMinutes: cleanStartTotalMinutes(),
                   path: paths.sessions,
                 };
-              case "record_session":
+              case "record_session": {
                 if (failRecordSession) throw new Error("Synthetic Session failure");
+                if (cleanStartState) {
+                  const session = args.session as {
+                    projectId?: string | null;
+                    label: string;
+                    startedAt: string;
+                    minutes: number;
+                    note: string;
+                  };
+                  if (session.minutes > 0) {
+                    const id = `clean-start-session-${cleanStartState.sessions.length + 1}`;
+                    cleanStartState.sessions.push({
+                      rowKey: id,
+                      id,
+                      date: currentConfig.today.date,
+                      projectId: session.projectId,
+                      label: session.label,
+                      startedAt: session.startedAt,
+                      minutes: session.minutes,
+                      note: session.note,
+                      manual: false,
+                    });
+                    persistCleanStartState();
+                  }
+                }
                 return {
-                  date: fixture.config.today.date,
-                  totalMinutes: fixture.todayMinutes,
+                  date: currentConfig.today.date,
+                  totalMinutes: cleanStartTotalMinutes(),
                   path: paths.sessions,
                 };
+              }
               case "record_manual_session":
                 return fixture.sessionSummary;
               case "load_do_now_candidates":
-                return { date: fixture.config.today.date, candidates: fixture.doNowCandidates };
+                return {
+                  date: currentConfig.today.date,
+                  candidates: cleanStartState
+                    ? currentConfig.projects
+                        .filter((project) => project.nextStep?.text.trim())
+                        .map((project) => ({
+                          projectId: project.id,
+                          reason: "manualOrder",
+                          restartEligible: false,
+                        }))
+                    : fixture.doNowCandidates,
+                };
               case "load_next_step_freshness":
                 return { staleProjectIds: fixture.staleProjectIds ?? [] };
               case "load_today_notes":
-                return { date: fixture.config.today.date, items: currentNotes, path: paths.notes };
+                return { date: currentConfig.today.date, items: currentNotes, path: paths.notes };
               case "save_today_notes":
                 currentNotes = (
                   (args.input as { items?: string[] } | undefined)?.items ?? []
                 ).slice();
-                return { date: fixture.config.today.date, items: currentNotes, path: paths.notes };
+                if (cleanStartState) {
+                  cleanStartState.notes = [...currentNotes];
+                  persistCleanStartState();
+                }
+                return { date: currentConfig.today.date, items: currentNotes, path: paths.notes };
               case "load_notes_history":
-                return { entries: fixture.notesHistory, path: paths.notes };
+                return {
+                  entries: cleanStartState?.notesHistory ?? fixture.notesHistory,
+                  path: paths.notes,
+                };
               case "save_notes_for_date":
                 return { entries: fixture.notesHistory, path: paths.notes };
               case "load_session_summary":
-                return fixture.sessionSummary;
+                return cleanStartSessionSummary();
               case "load_session_entries": {
                 const filter = args.filter as
                   | { dateScope?: string; projectId?: string | null; query?: string | null }
                   | undefined;
                 const query = filter?.query?.trim().toLocaleLowerCase("ja-JP") ?? "";
-                const entries = fixture.sessionEntries.entries.filter((entry) => {
-                  if (filter?.dateScope === "today" && entry.date !== fixture.config.today.date) {
+                const sourceEntries = cleanStartState?.sessions ?? fixture.sessionEntries.entries;
+                const entries = sourceEntries.filter((entry) => {
+                  if (filter?.dateScope === "today" && entry.date !== currentConfig.today.date) {
                     return false;
                   }
                   if (filter?.projectId && entry.projectId !== filter.projectId) return false;
@@ -284,7 +467,11 @@ export async function installTauriMock(
                   }
                   return true;
                 });
-                return { ...fixture.sessionEntries, entries };
+                return {
+                  ...fixture.sessionEntries,
+                  date: currentConfig.today.date,
+                  entries: clone(entries),
+                };
               }
               case "update_session_entry":
               case "delete_session_entry":
@@ -379,7 +566,59 @@ export async function installTauriMock(
               }
               case "ensure_button_icon_cache":
               case "select_backup_folder":
+                return null;
               case "select_backup_zip":
+                return cleanStartState?.backup?.path ?? null;
+              case "create_software_reset_backup":
+                if (!cleanStartState) return { path: resetBackupPath };
+                cleanStartState.backup = {
+                  path: resetBackupPath,
+                  config: clone(currentConfig),
+                  sessions: clone(cleanStartState.sessions),
+                  notes: clone(cleanStartState.notes),
+                  notesHistory: clone(cleanStartState.notesHistory),
+                };
+                persistCleanStartState();
+                return { path: resetBackupPath };
+              case "software_reset":
+                if (!cleanStartState) return { restartRequested: true };
+                currentConfig = freshConfig();
+                currentNotes = [];
+                cleanStartState.sessions = [];
+                cleanStartState.notes = [];
+                cleanStartState.notesHistory = [];
+                cleanStartState.resetCompleted = true;
+                persistCurrentConfig();
+                persistCleanStartState();
+                return { restartRequested: true };
+              case "restore_backup": {
+                if (!cleanStartState?.backup) return null;
+                currentConfig = clone(cleanStartState.backup.config);
+                currentNotes = clone(cleanStartState.backup.notes);
+                cleanStartState.sessions = clone(cleanStartState.backup.sessions);
+                cleanStartState.notes = clone(cleanStartState.backup.notes);
+                cleanStartState.notesHistory = clone(cleanStartState.backup.notesHistory);
+                cleanStartState.restoreCount += 1;
+                persistCurrentConfig();
+                persistCleanStartState();
+                return {
+                  config: currentConfig,
+                  path: paths.config,
+                  backupPath: "",
+                  error: null,
+                  backupError: null,
+                  changed: false,
+                  saveBlocked: false,
+                  morningVictorySuggestion: null,
+                };
+              }
+              case "load_software_reset_recovery": {
+                const recovery = softwareResetRecovery;
+                softwareResetRecovery = null;
+                return recovery;
+              }
+              case "acknowledge_software_reset_recovery":
+              case "prepare_software_reset":
                 return null;
               case "choose_instruction_root":
                 return instructionRootChoices.shift() ?? null;
@@ -457,6 +696,6 @@ export async function installTauriMock(
         },
       });
     },
-    { fixture, paths: TEST_PATHS, currentWindowLabel },
+    { fixture, paths: TEST_PATHS, currentWindowLabel, softwareResetRecovery, options },
   );
 }

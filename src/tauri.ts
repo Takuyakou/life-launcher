@@ -29,6 +29,10 @@ import {
   SessionLogInput,
   SessionSummaryResponse,
   SessionTotalResponse,
+  SoftwareResetBackupResponse,
+  SoftwareResetInput,
+  SoftwareResetResponse,
+  SoftwareResetStorageSnapshot,
   UpdateSessionEntryInput,
   TodayNotesInput,
   TodayNotesResponse,
@@ -193,6 +197,29 @@ export async function openConfigBackups(): Promise<string> {
 
 export async function openDataFolder(): Promise<string> {
   return invoke<string>("open_data_folder");
+}
+
+export async function createSoftwareResetBackup(): Promise<SoftwareResetBackupResponse> {
+  return invoke<SoftwareResetBackupResponse>("create_software_reset_backup");
+}
+
+export async function softwareReset(input: SoftwareResetInput): Promise<SoftwareResetResponse> {
+  return invoke<SoftwareResetResponse>("software_reset", { input });
+}
+
+export async function prepareSoftwareReset(): Promise<void> {
+  return invoke<void>("prepare_software_reset");
+}
+
+export async function loadSoftwareResetRecovery(): Promise<{
+  message: string;
+  localStorageSnapshot: SoftwareResetStorageSnapshot;
+} | null> {
+  return invoke("load_software_reset_recovery");
+}
+
+export async function acknowledgeSoftwareResetRecovery(): Promise<void> {
+  return invoke<void>("acknowledge_software_reset_recovery");
 }
 
 export async function selectBackupFolder(): Promise<string | null> {

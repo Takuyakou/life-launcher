@@ -157,6 +157,7 @@ pub fn list_instruction_roots(
     app: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<Vec<InstructionRoot>, String> {
+    let _reset_guard = state.begin_app_write()?;
     let _write_guard = state
         .config_write_lock
         .lock()

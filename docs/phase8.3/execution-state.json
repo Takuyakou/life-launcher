@@ -1,0 +1,62 @@
+{
+  "phase": "Phase 8.3",
+  "internal_phase_id": "P83",
+  "workflow": "single-start-human-gated",
+  "current_stage": "P83-04_COMPLETE",
+  "baseline_commit": "f2c0dd5c1475e16864beefe7bb0efae0a85cdf72",
+  "branch": "main",
+  "release_allowed": false,
+  "merged": true,
+  "released": false,
+  "verification": {
+    "status": "READY_FOR_RELEASE_PREP",
+    "npm_ci": "PASS_172_PACKAGES_0_VULNERABILITIES",
+    "public_check": "PASS_CLEAN_EXPORT_350_FILES_0_BLOCKERS",
+    "lint": "PASS_0_WARNINGS",
+    "build": "PASS",
+    "full_visual_suite": "PASS_305",
+    "cargo_fmt_check": "PASS",
+    "cargo_check": "PASS",
+    "cargo_clippy": "PASS_0_WARNINGS",
+    "cargo_test": "PASS_121_UNIT_PLUS_2_CAPABILITY",
+    "clean_start_browser_e2e": "PASS_2",
+    "isolated_native_backend_smoke": "PASS",
+    "npm_audit": "PASS_0_VULNERABILITIES",
+    "npm_audit_production": "PASS_0_VULNERABILITIES",
+    "tauri_build_no_bundle": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "stages": {
+    "P83-00": {
+      "status": "COMPLETE",
+      "approved": true,
+      "report": "docs/phase8.3/workreports/p83-00-report.md",
+      "pull_request": "https://github.com/Takuyakou/life-launcher/pull/78"
+    },
+    "P83-01": {
+      "status": "COMPLETE",
+      "approved": true,
+      "report": "docs/phase8.3/workreports/p83-01-report.md",
+      "pull_request": "https://github.com/Takuyakou/life-launcher/pull/79"
+    },
+    "P83-02": {
+      "status": "COMPLETE",
+      "approved": true,
+      "report": "docs/phase8.3/workreports/p83-02-report.md",
+      "pull_request": "https://github.com/Takuyakou/life-launcher/pull/80"
+    },
+    "P83-03": {
+      "status": "COMPLETE",
+      "approved": true,
+      "report": "docs/phase8.3/workreports/p83-03-report.md",
+      "pull_request": "https://github.com/Takuyakou/life-launcher/pull/81"
+    },
+    "P83-04": {
+      "status": "COMPLETE",
+      "approved": true,
+      "report": "docs/phase8.3/workreports/p83-04-report.md",
+      "pull_request": "https://github.com/Takuyakou/life-launcher/pull/82",
+      "verdict": "READY_FOR_RELEASE_PREP"
+    }
+  }
+}

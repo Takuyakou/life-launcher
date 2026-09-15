@@ -3318,7 +3318,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .doNowAlternateButton {
-  border-color: var(--line-soft) !important;
+  border-color: var(--line-soft);
   background: transparent;
   color: var(--muted);
   font-size: 12px;
@@ -3326,7 +3326,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .doNowAlternateButton:hover,
 .doNowAlternateButton:focus-visible {
-  border-color: var(--accent) !important;
+  border-color: var(--accent);
   color: var(--accent-strong);
 }
 
@@ -4290,7 +4290,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .sectionAddButton--barHitTarget::before {
   position: absolute;
-  inset: -10px 0;
+  inset: -11px 0;
   content: "";
 }
 
@@ -6086,6 +6086,7 @@ input[type="number"]::-webkit-inner-spin-button {
   color: var(--muted);
   font-size: 14px;
   line-height: 1.6;
+  white-space: pre-line;
 }
 
 .confirmDialogSubject {
@@ -6300,6 +6301,33 @@ input[type="number"]::-webkit-inner-spin-button {
   margin-top: 0;
   border-top: 1px solid var(--line);
   padding-top: 12px;
+}
+
+.settingsDialogActions > button {
+  min-height: 42px;
+}
+
+.settingsSaveButton {
+  border-color: color-mix(in srgb, var(--good) 48%, var(--line));
+  background: var(--control-positive-bg);
+  color: var(--good);
+}
+
+.settingsSaveButton:hover:not(:disabled) {
+  border-color: var(--control-positive-hover-border);
+  background: var(--control-positive-hover-bg);
+}
+
+.settingsCancelButton {
+  border-color: color-mix(in srgb, var(--error) 48%, var(--line));
+  background: color-mix(in srgb, var(--control-danger-bg) 62%, transparent);
+  color: color-mix(in srgb, #ffb4ad 78%, var(--muted));
+}
+
+.settingsCancelButton:hover:not(:disabled) {
+  border-color: var(--control-danger-hover-border);
+  background: var(--control-danger-hover-bg);
+  color: #ffb4ad;
 }
 
 @media (max-height: 760px) {
@@ -6573,6 +6601,119 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .settingsButton--danger:hover {
   border-color: var(--error);
+}
+
+.maintenanceGroups {
+  display: grid;
+  gap: 16px;
+}
+
+.maintenanceGroup {
+  display: grid;
+  gap: 8px;
+}
+
+.maintenanceGroup h4,
+.maintenanceGroup p {
+  margin: 0;
+}
+
+.maintenanceGroup h4 {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.maintenanceGroup--reset {
+  margin-top: 4px;
+  border-top: 1px solid color-mix(in srgb, var(--error) 32%, var(--line));
+  padding-top: 16px;
+}
+
+.maintenanceGroup--reset p {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.softwareResetButton {
+  width: fit-content;
+  min-width: 172px;
+}
+
+.softwareResetChoiceBackdrop {
+  z-index: 52;
+}
+
+.softwareResetChoiceDialog {
+  width: min(500px, 100%);
+}
+
+.softwareResetChoiceActions {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1.2fr) minmax(100px, 0.8fr);
+  gap: 8px;
+}
+
+.softwareResetChoiceActions button {
+  min-height: 40px;
+  padding-inline: 10px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.softwareResetProgressBackdrop {
+  z-index: 60;
+  cursor: wait;
+}
+
+.softwareResetProgressDialog {
+  width: min(430px, 100%);
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+}
+
+.softwareResetProgressDialog h2,
+.softwareResetProgressDialog p {
+  margin: 0;
+}
+
+.softwareResetProgressDialog h2 {
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.softwareResetProgressDialog p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.softwareResetProgressIndicator {
+  width: 24px;
+  height: 24px;
+  border: 3px solid color-mix(in srgb, var(--accent) 24%, var(--line));
+  border-top-color: var(--accent-strong);
+  border-radius: 50%;
+  animation: software-reset-spin 800ms linear infinite;
+}
+
+@keyframes software-reset-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .softwareResetProgressIndicator {
+    animation: none;
+    border-color: var(--accent);
+  }
+}
+
+@media (max-width: 620px) {
+  .softwareResetChoiceActions {
+    grid-template-columns: 1fr;
+  }
 }
 
 .modalLongForm {
@@ -10451,5 +10592,123 @@ input[type="number"]::-webkit-inner-spin-button {
 
   .recordsSessionMenuButton {
     opacity: 1;
+  }
+}
+
+/* P83-03: explicit actions in Main content only. */
+.mainActionButton {
+  --main-action-bg: var(--control-neutral-bg);
+  --main-action-hover-bg: var(--control-neutral-hover-bg);
+  --main-action-active-bg: var(--control-neutral-active-bg);
+  --main-action-border: var(--line);
+  --main-action-hover-border: var(--muted);
+  --main-action-active-border: var(--line);
+  --main-action-color: var(--text-muted-readable);
+  --main-action-hover-color: var(--text);
+  border-color: var(--main-action-border);
+  background: var(--main-action-bg);
+  color: var(--main-action-color);
+  transition:
+    transform 120ms ease,
+    background 120ms ease,
+    border-color 120ms ease,
+    box-shadow 120ms ease,
+    filter 120ms ease;
+}
+
+.mainActionButton.mainActionButton--neutral,
+.mainActionButton.mainActionButton--gold,
+.mainActionButton.mainActionButton--positive {
+  border-width: 1px;
+  border-style: solid;
+}
+
+.mainActionButton--gold {
+  --main-action-bg: rgba(231, 185, 77, 0.1);
+  --main-action-hover-bg: rgba(231, 185, 77, 0.18);
+  --main-action-active-bg: rgba(231, 185, 77, 0.08);
+  --main-action-border: rgba(231, 185, 77, 0.58);
+  --main-action-hover-border: var(--accent);
+  --main-action-active-border: rgba(231, 185, 77, 0.7);
+  --main-action-color: var(--accent-strong);
+  --main-action-hover-color: var(--text);
+}
+
+.mainActionButton--positive {
+  --main-action-bg: var(--control-positive-bg);
+  --main-action-hover-bg: var(--control-positive-hover-bg);
+  --main-action-active-bg: var(--control-positive-active-bg);
+  --main-action-border: rgba(111, 207, 151, 0.45);
+  --main-action-hover-border: var(--control-positive-hover-border);
+  --main-action-active-border: var(--control-positive-active-border);
+  --main-action-color: var(--good);
+  --main-action-hover-color: var(--good);
+}
+
+button.mainActionButton:is(
+  .mainActionButton--neutral,
+  .mainActionButton--gold,
+  .mainActionButton--positive
+):not([aria-disabled="true"]) {
+  border-color: var(--main-action-border);
+  background: var(--main-action-bg);
+  color: var(--main-action-color);
+}
+
+.mainActionButton:focus-visible:not(:disabled):not([aria-disabled="true"]) {
+  border-color: var(--main-action-hover-border);
+  background: var(--main-action-hover-bg);
+  color: var(--main-action-hover-color);
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.22);
+  filter: brightness(1.04);
+  transform: translateY(-1px);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .mainActionButton:hover:not(:disabled):not([aria-disabled="true"]) {
+    border-color: var(--main-action-hover-border);
+    background: var(--main-action-hover-bg);
+    color: var(--main-action-hover-color);
+    box-shadow: 0 5px 14px rgba(0, 0, 0, 0.22);
+    filter: brightness(1.04);
+    transform: translateY(-1px);
+  }
+}
+
+.mainActionButton:active:not(:disabled):not([aria-disabled="true"]) {
+  border-color: var(--main-action-active-border);
+  background: var(--main-action-active-bg);
+  box-shadow: var(--control-neutral-press-shadow);
+  filter: none;
+  transform: translateY(0) scale(0.985);
+}
+
+.mainActionButton:disabled,
+.mainActionButton[aria-disabled="true"] {
+  box-shadow: none;
+  filter: none;
+  transform: none;
+}
+
+.sectionLinkButton.mainActionButton {
+  min-height: 30px;
+  border-radius: var(--radius);
+  padding: 4px 8px;
+  text-decoration: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mainActionButton {
+    transition:
+      background 120ms ease,
+      border-color 120ms ease,
+      box-shadow 120ms ease,
+      filter 120ms ease;
+  }
+
+  .mainActionButton:focus-visible:not(:disabled):not([aria-disabled="true"]),
+  .mainActionButton:hover:not(:disabled):not([aria-disabled="true"]),
+  .mainActionButton:active:not(:disabled):not([aria-disabled="true"]) {
+    transform: none;
   }
 }
