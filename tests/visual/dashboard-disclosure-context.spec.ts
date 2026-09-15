@@ -64,10 +64,70 @@ test("a NextStep context menu exposes edit, change, unset and Builder registrati
     .locator(".nextStepActionRegion");
 
   await row.click({ button: "right" });
-  await expect(page.getByRole("menuitem", { name: "次の一手を編集", exact: true })).toBeVisible();
-  await expect(page.getByRole("menuitem", { name: "次の一手を変更", exact: true })).toBeVisible();
-  await expect(page.getByRole("menuitem", { name: "次の一手を未設定にする", exact: true })).toBeVisible();
-  await expect(
-    page.getByRole("menuitem", { name: "今日を組み立てるに登録する", exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole("menuitem")).toHaveText([
+    "プロジェクトを編集",
+    "プロジェクトを管理",
+    "次の一手を編集",
+    "次の一手を変更",
+    "次の一手を未設定にする",
+    "今日を組み立てるに登録する",
+  ]);
+  await expect(page.getByRole("menuitem", { name: "やりたいことを追加" })).toHaveCount(0);
+});
+
+test("Builder bar menu smoothly navigates to each candidate source", async ({ page }) => {
+  await prepare(page);
+  await page.evaluate(() => {
+    const target = window as Window & {
+      __builderScrollCalls?: Array<{ className: string; behavior?: ScrollBehavior }>;
+    };
+    target.__builderScrollCalls = [];
+    Element.prototype.scrollIntoView = function (options?: boolean | ScrollIntoViewOptions) {
+      const behavior = typeof options === "object" ? options.behavior : undefined;
+      target.__builderScrollCalls?.push({
+        className: (this as HTMLElement).className,
+        behavior,
+      });
+    };
+  });
+
+  const builderHeader = page.locator(".todayBuilderHeader");
+  await builderHeader.click({ button: "right" });
+  await expect(page.getByRole("menuitem")).toHaveText([
+    "次の一手から追加",
+    "やりたいことから追加",
+  ]);
+  await page.getByRole("menuitem", { name: "次の一手から追加" }).click();
+  await expect(page.locator(".projectsBand .disclosure")).toBeFocused();
+
+  await builderHeader.click({ button: "right" });
+  await page.getByRole("menuitem", { name: "やりたいことから追加" }).click();
+  await expect(page.locator(".inboxBand .disclosure")).toBeFocused();
+
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (
+            window as Window & {
+              __builderScrollCalls?: Array<{ className: string; behavior?: ScrollBehavior }>;
+            }
+          ).__builderScrollCalls,
+      ),
+    )
+    .toEqual([
+      { className: "projectsBand", behavior: "smooth" },
+      { className: "inboxBand", behavior: "smooth" },
+    ]);
+});
+
+test("Today3 menus are always visible and use horizontal move labels", async ({ page }) => {
+  await prepare(page);
+  const menuButton = page.locator(".todayRow").first().locator(".todayRowMenu");
+  await expect(menuButton).toHaveCSS("opacity", "1");
+  await menuButton.click();
+  await expect(page.getByRole("menuitem", { name: "左へ移動" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "右へ移動" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "上へ移動" })).toHaveCount(0);
+  await expect(page.getByRole("menuitem", { name: "下へ移動" })).toHaveCount(0);
 });

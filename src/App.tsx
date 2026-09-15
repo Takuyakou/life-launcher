@@ -458,6 +458,9 @@ type ContextMenuTarget =
       index: number;
     }
   | {
+      kind: "todayBuilderBar";
+    }
+  | {
       kind: "doNow";
     }
   | {
@@ -5455,6 +5458,7 @@ function DashboardApp() {
 
   const finishTodayBuilderPointerDrag = (event: PointerEvent<HTMLDivElement>) => {
     const drag = todayBuilderPointerDragRef.current;
+    const preview = todayBuilderPointerDrag;
     todayBuilderPointerDragRef.current = null;
     setTodayBuilderPointerDrag(null);
     if (!drag) return;
@@ -5492,7 +5496,13 @@ function DashboardApp() {
     }
     stopProjectAutoScroll();
     if (pointWithinSelector(event.clientX, event.clientY, ".todayGrid")) return;
-    const target = todayBuilderDropTargetFromPoint(event.clientX, event.clientY);
+    const target =
+      todayBuilderDropTargetFromPoint(event.clientX, event.clientY) ??
+      (pointWithinSelector(event.clientX, event.clientY, ".todayBuilderBand") &&
+      preview?.targetIndex !== undefined &&
+      preview.placement
+        ? { index: preview.targetIndex, placement: preview.placement }
+        : null);
     if (!target) return;
     if (sourceIndex >= 0) {
       moveTodayBuilderCandidate(sourceIndex, target.index, target.placement);
@@ -7828,6 +7838,24 @@ function DashboardApp() {
     });
   };
 
+  const navigateToCandidateSource = (source: "project" | "wishlist") => {
+    setContextMenu(null);
+    if (source === "project") setProjectsOpen(true);
+    else setInboxOpen(true);
+    window.requestAnimationFrame(() => {
+      const band = document.querySelector<HTMLElement>(
+        source === "project" ? ".projectsBand" : ".inboxBand",
+      );
+      band?.querySelector<HTMLElement>(".disclosure")?.focus({ preventScroll: true });
+      band?.scrollIntoView({
+        block: "start",
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
+      });
+    });
+  };
+
   const startNextTodayBatch = async () => {
     if (!config || !allTodayItemsCompleted) return;
     const saved = await persistConfig({
@@ -10036,6 +10064,7 @@ function DashboardApp() {
                                   type="button"
                                 >
                                   <UiIcon name="clock" size={16} />
+                                  <span>計測</span>
                                 </button>
                               </div>
                             )}
@@ -10124,7 +10153,20 @@ function DashboardApp() {
               >
                 <div
                   className="disclosureHeader todayBuilderHeader"
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    openContextMenu(
+                      { kind: "todayBuilderBar" },
+                      event.clientX,
+                      event.clientY,
+                      event.currentTarget,
+                    );
+                  }}
+                  onKeyDown={(event) =>
+                    openContextMenuFromKeyboard(event, { kind: "todayBuilderBar" })
+                  }
                   onClick={(event) => toggleDisclosureFromBar(event, toggleTodayBuilder)}
+                  tabIndex={0}
                 >
                   <button
                     aria-expanded={todayBuilderOpen}
@@ -10612,14 +10654,14 @@ function DashboardApp() {
                                 event.preventDefault();
                                 event.stopPropagation();
                                 openContextMenu(
-                                  { kind: "project", project },
+                                  { kind: "nextStep", project },
                                   event.clientX,
                                   event.clientY,
                                   event.currentTarget,
                                 );
                               }}
                               onKeyDown={(event) =>
-                                openContextMenuFromKeyboard(event, { kind: "project", project })
+                                openContextMenuFromKeyboard(event, { kind: "nextStep", project })
                               }
                               tabIndex={0}
                             >
@@ -11004,9 +11046,6 @@ function DashboardApp() {
                                         onPointerUp={finishInboxPointerDrag}
                                         tabIndex={0}
                                       >
-                                        <span aria-hidden="true" className="wishlistDragHandle">
-                                          ⋮⋮
-                                        </span>
                                         <span className="inboxItemText" title={item.text}>
                                           {item.text}
                                         </span>
@@ -11465,14 +11504,14 @@ function DashboardApp() {
                 onClick={() => void moveTodayItemByOffset(contextMenu.index, -1)}
                 type="button"
               >
-                上へ移動
+                左へ移動
               </ContextMenuItem>
               <ContextMenuItem
                 disabled={contextMenu.index >= (config?.today.items.length ?? 0) - 1}
                 onClick={() => void moveTodayItemByOffset(contextMenu.index, 1)}
                 type="button"
               >
-                下へ移動
+                右へ移動
               </ContextMenuItem>
               <ContextMenuItem
                 disabled={
@@ -11495,6 +11534,21 @@ function DashboardApp() {
                 type="button"
               >
                 今日の3件から外す
+              </ContextMenuItem>
+            </>
+          ) : contextMenu.kind === "todayBuilderBar" ? (
+            <>
+              <ContextMenuItem
+                onClick={() => navigateToCandidateSource("project")}
+                type="button"
+              >
+                次の一手から追加
+              </ContextMenuItem>
+              <ContextMenuItem
+                onClick={() => navigateToCandidateSource("wishlist")}
+                type="button"
+              >
+                やりたいことから追加
               </ContextMenuItem>
             </>
           ) : contextMenu.kind === "todayBuilder" ? (
@@ -11548,9 +11602,6 @@ function DashboardApp() {
                 type="button"
               >
                 次の一手にする
-              </ContextMenuItem>
-              <ContextMenuItem onClick={() => openInboxAddDialog()} type="button">
-                やりたいことを追加
               </ContextMenuItem>
               {config?.inbox[contextMenu.index]?.id &&
                 explicitlyExcludedCandidate(`wishlist:${config.inbox[contextMenu.index].id}`) && (
@@ -11617,6 +11668,15 @@ function DashboardApp() {
             </>
           ) : contextMenu.kind === "nextStep" ? (
             <>
+              <ContextMenuItem
+                onClick={() => openProjectEditDialog(contextMenu.project)}
+                type="button"
+              >
+                プロジェクトを編集
+              </ContextMenuItem>
+              <ContextMenuItem onClick={openProjectManagement} type="button">
+                プロジェクトを管理
+              </ContextMenuItem>
               {contextMenu.project.nextStep?.text.trim() ? (
                 <>
                   <ContextMenuItem
@@ -11642,7 +11702,6 @@ function DashboardApp() {
                     次の一手を変更
                   </ContextMenuItem>
                   <ContextMenuItem
-                    className="contextMenuSeparatorBefore"
                     disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
                     onClick={() => clearProjectNextStep(contextMenu.project)}
                     title={SOURCE_EDIT_TIMER_REASON}
@@ -11651,6 +11710,7 @@ function DashboardApp() {
                     次の一手を未設定にする
                   </ContextMenuItem>
                   <ContextMenuItem
+                    className="contextMenuSeparatorBefore"
                     disabled={!explicitlyExcludedCandidate(`project:${contextMenu.project.id}`)}
                     onClick={() =>
                       void restoreTodayBuilderCandidate(`project:${contextMenu.project.id}`)
@@ -11680,17 +11740,11 @@ function DashboardApp() {
                 プロジェクトを編集
               </ContextMenuItem>
               <ContextMenuItem
-                onClick={() => openInboxAddDialog(undefined, contextMenu.project.id)}
-                type="button"
-              >
-                やりたいことを追加
-              </ContextMenuItem>
-              <ContextMenuItem
                 className="contextMenuSeparatorBefore"
                 onClick={openProjectManagement}
                 type="button"
               >
-                プロジェクト管理
+                プロジェクトを管理
               </ContextMenuItem>
             </>
           ) : contextMenu.kind === "projects" ? (

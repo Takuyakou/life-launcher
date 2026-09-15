@@ -182,8 +182,8 @@ test("P72-03 Today buttons grow only in width and reveal play on hover", async (
     const rect = node.getBoundingClientRect();
     return { width: rect.width, height: rect.height, color: style.color, background: style.backgroundColor };
   })));
-  expect(sizes[0].width).toBe(78);
-  expect(sizes[1].width).toBe(78);
+  expect(sizes[0].width).toBe(66);
+  expect(sizes[1].width).toBe(66);
   expect(sizes[0].height).toBe(36);
   expect(sizes[1].height).toBe(36);
   expect(sizes[0].color).not.toBe(sizes[1].color);
@@ -200,7 +200,7 @@ for (const width of [1920, 860]) {
     fixture.config.today.items.push({ text: "長い本文".repeat(20), done: false, sourceKey: "manual:long" });
     await prepare(page, fixture, width);
     for (const button of await page.locator(".todayStartButton").all()) {
-      expect((await button.boundingBox())?.width).toBe(78);
+      expect((await button.boundingBox())?.width).toBe(66);
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       await page.evaluate(() => document.documentElement.clientWidth),

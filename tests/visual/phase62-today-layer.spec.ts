@@ -144,6 +144,9 @@ test("Builder Wishlist groups matching Projects and toggles each group", async (
   );
   await expect(learningHeader).toContainText("サンプル学習");
   await expect(learningHeader).toContainText("2件");
+  const projectBox = (await learningHeader.locator(".projectIdentity").boundingBox())!;
+  const countBox = (await learningHeader.locator(":scope > span:last-child").boundingBox())!;
+  expect(countBox.x - (projectBox.x + projectBox.width)).toBeLessThanOrEqual(8);
   await expect(learningRows).toHaveCount(2);
   await expect(learningRows.nth(0)).toContainText("同じProjectの候補1");
   await expect(learningRows.nth(1)).toContainText("同じProjectの候補2");

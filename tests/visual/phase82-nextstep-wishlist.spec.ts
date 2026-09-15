@@ -461,6 +461,8 @@ test("v1.3 NextStep menu offers edit, change, unset and Builder registration", a
   await row.getByRole("button", { name: "サンプル学習の次の一手の操作" }).click();
   const menu = page.getByRole("menu");
   await expect(menu.getByRole("menuitem")).toHaveText([
+    "プロジェクトを編集",
+    "プロジェクトを管理",
     "次の一手を編集",
     "次の一手を変更",
     "次の一手を未設定にする",
@@ -586,7 +588,7 @@ test("v1.3 NextStep and Wishlist headers keep compact right-side actions", async
     .getByRole("dialog", { name: "次の一手を設定" })
     .getByRole("button", { name: "キャンセル", exact: true })
     .click();
-  await expect(page.locator(".wishlistDragHandle").first()).toHaveText("⋮⋮");
+  await expect(page.locator(".wishlistDragHandle")).toHaveCount(0);
   await page.locator(".projectsBand").screenshot({
     path: "dist/visual-qa/v13-nextstep-wishlist/projects-1440.png",
   });
@@ -649,6 +651,13 @@ test("v1.3 NextStep uses a compact 3x2 grid with aligned actions and six-item ex
     .first();
   const configuredBox = (await configuredAction.boundingBox())!;
   const unsetBox = (await unsetAction.boundingBox())!;
+  const unsetPlaceholder = page
+    .locator(".nextStepCard", { hasText: "まだ次の一手がありません" })
+    .locator(".projectNextStepPlaceholder")
+    .first();
+  await expect(unsetPlaceholder).toHaveCSS("border-style", "dashed");
+  await expect(unsetPlaceholder).toHaveCSS("font-style", "normal");
+  await expect(unsetPlaceholder).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
   expect(
     Math.abs(configuredBox.y + configuredBox.height - (unsetBox.y + unsetBox.height)),
   ).toBeLessThan(1);
@@ -657,8 +666,9 @@ test("v1.3 NextStep uses a compact 3x2 grid with aligned actions and six-item ex
   expect(cardBox.height).toBe(120);
   const projectBox = (await configuredCard.locator(".nextStepProjectRegion").boundingBox())!;
   const taskBox = (await configuredCard.locator(".nextStepActionRegion p").boundingBox())!;
+  const projectDotBox = (await configuredCard.locator(".projectIdentityDot").boundingBox())!;
   expect(projectBox.x - cardBox.x).toBeLessThanOrEqual(14);
-  expect(taskBox.x - cardBox.x).toBeLessThanOrEqual(14);
+  expect(Math.abs(taskBox.x - (projectDotBox.x + projectDotBox.width / 2))).toBeLessThanOrEqual(1);
   const menuBox = (await configuredCard.locator(".nextStepRegionMenu").boundingBox())!;
   expect(menuBox.width).toBe(28);
   expect(menuBox.height).toBe(28);
