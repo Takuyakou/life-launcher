@@ -1,0 +1,45 @@
+{
+  "phase": "Phase 8.3",
+  "internal_phase_id": "P83",
+  "workflow": "single-start-human-gated",
+  "current_stage": "P83-00_COMPLETE",
+  "baseline_commit": "f2c0dd5c1475e16864beefe7bb0efae0a85cdf72",
+  "branch": "docs/p83-00-current-audit",
+  "release_allowed": false,
+  "merged": false,
+  "released": false,
+  "verification": {
+    "status": "PASS_WITH_WORKTREE_ENV_NOTE",
+    "npm_ci": "PASS_172_PACKAGES_0_VULNERABILITIES",
+    "public_check": "WORKTREE_ONLY_BLOCKER_DOT_GIT_METADATA",
+    "lint": "PASS_0_WARNINGS",
+    "build": "PASS",
+    "full_visual_suite": "PASS_268",
+    "cargo_test": "PASS_112_UNIT_PLUS_2_CAPABILITY",
+    "git_diff_check": "PASS"
+  },
+  "stages": {
+    "P83-00": {
+      "status": "COMPLETE_AWAITING_REVIEW",
+      "approved": false,
+      "report": "docs/phase8.3/workreports/p83-00-report.md",
+      "pull_request": null
+    },
+    "P83-01": {
+      "status": "BLOCKED_BY_P83-00_HUMAN_REVIEW",
+      "approved": false
+    },
+    "P83-02": {
+      "status": "BLOCKED_BY_P83-01",
+      "approved": false
+    },
+    "P83-03": {
+      "status": "BLOCKED_BY_P83-02",
+      "approved": false
+    },
+    "P83-04": {
+      "status": "BLOCKED_BY_P83-03",
+      "approved": false
+    }
+  }
+}
