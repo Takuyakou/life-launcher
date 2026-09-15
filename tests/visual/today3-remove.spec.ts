@@ -100,6 +100,12 @@ test("active and paused item cannot be removed even through its React handler; a
   const remove = card.locator(".todayRemoveButton");
   await expect(remove).toBeDisabled();
   await expect(remove).toHaveAttribute("title", "タイマーを停止してから外してください");
+  await page.locator(".todayBuilderDisclosure").click();
+  const selectedButton = page
+    .locator(".todayBuilderRow", { hasText: "資料を1ページ読む" })
+    .getByRole("button", { name: "選択済み" });
+  await expect(selectedButton).toBeDisabled();
+  await expect(selectedButton).toHaveAttribute("title", "タイマーを停止してから外してください");
   await remove.evaluate((node) => (node as HTMLButtonElement).click());
   await remove.press("Enter");
   await remove.press("Space");
@@ -248,6 +254,10 @@ for (const [width, columns] of [
     for (const card of await page.locator(".todayRow").all()) {
       const footer = card.locator(".todayCardFooter");
       expect(await footer.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+      const cardWidth = (await card.boundingBox())?.width ?? 0;
+      expect(await footer.evaluate((node) => getComputedStyle(node).flexDirection)).toBe(
+        cardWidth <= 380 ? "column" : "row",
+      );
       const a = await card.locator(".todayRemoveButton").boundingBox();
       const b = await card.locator(".todayTimerActions, .todayCompletedLabel").boundingBox();
       expect(a && b && (a.x + a.width <= b.x || a.y + a.height <= b.y)).toBeTruthy();

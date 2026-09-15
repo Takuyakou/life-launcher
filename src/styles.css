@@ -4977,12 +4977,12 @@ input[type="number"]::-webkit-inner-spin-button {
   width: 100%;
   min-height: 72px;
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) auto 28px;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
   border: 1px solid rgba(184, 176, 160, 0.3);
   border-radius: 11px;
-  padding: 11px 10px 13px 12px;
+  padding: 11px 42px 13px 12px;
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.025), transparent 62%), var(--surface-strong);
   color: var(--text);
@@ -5055,6 +5055,9 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .toastClose {
+  position: absolute;
+  top: 8px;
+  right: 8px;
   width: 28px;
   height: 28px;
   padding: 0;
@@ -7937,6 +7940,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayRow {
+  container: today-card / inline-size;
   min-height: 154px;
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr);
@@ -8066,6 +8070,17 @@ input[type="number"]::-webkit-inner-spin-button {
   min-width: 0;
 }
 
+@container today-card (max-width: 380px) {
+  .todayCardFooter {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .todayTimerCluster {
+    margin-left: auto;
+  }
+}
+
 .todayTimerCluster {
   display: grid;
   justify-items: end;
@@ -8091,16 +8106,16 @@ input[type="number"]::-webkit-inner-spin-button {
   min-width: 34px;
   height: 36px;
   min-height: 36px;
-  border-color: transparent;
-  background: transparent;
+  border-color: rgba(190, 181, 164, 0.32);
+  background: rgba(190, 181, 164, 0.08);
   box-shadow: none;
   color: var(--muted);
 }
 
 .todayTimerCluster .todayMeasureButton:hover:not(:disabled),
 .todayTimerCluster .todayMeasureButton:focus-visible {
-  border-color: rgba(190, 181, 164, 0.32);
-  background: rgba(190, 181, 164, 0.08);
+  border-color: rgba(209, 201, 187, 0.62);
+  background: rgba(190, 181, 164, 0.14);
   box-shadow: none;
   color: #d1c9bb;
   transform: none;
@@ -8383,6 +8398,18 @@ input[type="number"]::-webkit-inner-spin-button {
   font-size: var(--dashboard-font-meta);
   font-weight: 700;
   white-space: nowrap;
+}
+
+.todayBuilderSelectedStatus:hover:not(:disabled),
+.todayBuilderSelectedStatus:focus-visible {
+  border-color: var(--good);
+  background: rgba(117, 196, 143, 0.16);
+  color: #92e5ae;
+}
+
+.todayBuilderSelectedStatus:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 @media (max-width: 620px) {
@@ -9167,7 +9194,8 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .doNowStartPrimary::after,
-.doNowStartSecondary::after {
+.doNowStartSecondary::after,
+.todayStartButton::after {
   position: absolute;
   right: 12px;
   bottom: 0;
@@ -9183,7 +9211,9 @@ input[type="number"]::-webkit-inner-spin-button {
 .doNowStartPrimary:hover:not(:disabled)::after,
 .doNowStartPrimary:focus-visible::after,
 .doNowStartSecondary:hover:not(:disabled)::after,
-.doNowStartSecondary:focus-visible::after {
+.doNowStartSecondary:focus-visible::after,
+.todayStartButton:hover:not(:disabled)::after,
+.todayStartButton:focus-visible::after {
   transform: scaleX(1);
 }
 
@@ -10114,6 +10144,7 @@ input[type="number"]::-webkit-inner-spin-button {
   .timerStartHoverGlyph,
   .doNowStartPrimary::after,
   .doNowStartSecondary::after,
+  .todayStartButton::after,
   .todayStartButton .nextStepStartGlyph {
     transition: none !important;
   }

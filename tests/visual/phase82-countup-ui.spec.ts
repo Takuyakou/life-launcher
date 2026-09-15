@@ -167,10 +167,20 @@ for (const [width, columns] of [
     await expect(card.locator(".todayMeasureButton")).toHaveText("");
     await expect(card.locator(".todayMeasureButton")).toHaveCSS(
       "background-color",
-      "rgba(0, 0, 0, 0)",
+      "rgba(190, 181, 164, 0.08)",
     );
     await card.locator(".todayMeasureButton").hover();
     await expect(card.locator(".todayMeasureButton")).toHaveCSS("transform", "none");
+    const timerButton = card.locator(".todayStartButton--short");
+    const underlineBefore = await timerButton.evaluate(
+      (node) => getComputedStyle(node, "::after").transform,
+    );
+    await timerButton.hover();
+    await page.waitForTimeout(180);
+    const underlineAfter = await timerButton.evaluate(
+      (node) => getComputedStyle(node, "::after").transform,
+    );
+    expect(underlineAfter).not.toBe(underlineBefore);
     const doNowBox = await page.locator(".doNowMeasureButton").boundingBox();
     expect(doNowBox?.width).toBe(82);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(

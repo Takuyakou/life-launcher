@@ -59,13 +59,22 @@ test("P8 completed Today3 cards stay visible and only exact 3 of 3 offers the ne
   await expect(page.getByRole("button", { name: "次の3件を選ぶ" })).toBeVisible();
 });
 
-test("P8 Builder selection is a status and not a toggle", async ({ page }) => {
+test("P8 Builder selection removes Today adoption and supports Undo", async ({ page }) => {
   await prepare(page, createPublicFixture());
   await page.locator(".todayBuilderDisclosure").click();
   const selected = page.locator(".todayBuilderRow", { hasText: "資料を1ページ読む" });
   await expect(selected).toHaveClass(/todayBuilderRow--selected/);
-  await expect(selected.locator(".todayBuilderSelectedStatus")).toHaveText("✓ 選択済み");
+  const selectedButton = selected.getByRole("button", { name: "選択済み" });
+  await expect(selectedButton).toHaveText("✓ 選択済み");
   await expect(selected.getByRole("button", { name: "今日へ" })).toHaveCount(0);
+  const beforeCount = (await currentConfig(page)).today.items.length;
+  await selectedButton.click();
+  await expect(page.getByText("今日の3件から外しました", { exact: true })).toBeVisible();
+  expect((await currentConfig(page)).today.items).toHaveLength(beforeCount - 1);
+  await expect(selected.getByRole("button", { name: "今日へ" })).toBeVisible();
+  await page.getByRole("button", { name: "元に戻す" }).click();
+  await expect(selected.getByRole("button", { name: "選択済み" })).toBeVisible();
+  expect((await currentConfig(page)).today.items).toHaveLength(beforeCount);
 });
 
 test("P8 Builder omits registration while source bars keep their add actions", async ({ page }) => {

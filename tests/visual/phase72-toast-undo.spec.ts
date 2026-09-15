@@ -35,6 +35,10 @@ test("P72-02 remove Undo restores one snapshot while preserving later order and 
   fixture.config.today.items.push({ text: "第三の項目", done: false, sourceKey: "manual:third" });
   await prepare(page, fixture);
   const toast = await removeFirstToday(page);
+  const toastBox = (await toast.boundingBox())!;
+  const closeBox = (await toast.getByRole("button", { name: "通知を閉じる" }).boundingBox())!;
+  expect(closeBox.y - toastBox.y).toBeLessThanOrEqual(10);
+  expect(toastBox.x + toastBox.width - (closeBox.x + closeBox.width)).toBeLessThanOrEqual(16);
 
   await page.evaluate(() => {
     const qa = (

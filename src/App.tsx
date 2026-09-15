@@ -10528,9 +10528,14 @@ function DashboardApp() {
                           candidate.sourceKey,
                           ...(candidate.sourceAliases ?? []),
                         ]);
-                        const isSelected = config.today.items.some((item, todayIndex) =>
+                        const selectedIndex = config.today.items.findIndex((item, todayIndex) =>
                           matchingSourceKeys.has(todaySourceKey(item, todayIndex)),
                         );
+                        const isSelected = selectedIndex >= 0;
+                        const selectedTimerRunning =
+                          isSelected &&
+                          activeTimer?.sourceId ===
+                            todayTimerSourceId(config.today.items[selectedIndex], selectedIndex);
                         const isFull = config.today.items.length >= TODAY_ITEM_LIMIT;
                         return (
                           <div
@@ -10647,10 +10652,28 @@ function DashboardApp() {
                                 </div>
                                 <div className="todayBuilderActions">
                                   {isSelected ? (
-                                    <span className="todayBuilderSelectedStatus">✓ 選択済み</span>
+                                    <button
+                                      className="todayBuilderSelectedStatus"
+                                      disabled={selectedTimerRunning}
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        void removeTodayItem(
+                                          todaySourceKey(config.today.items[selectedIndex], selectedIndex),
+                                        );
+                                      }}
+                                      onPointerDown={(event) => event.stopPropagation()}
+                                      title={
+                                        selectedTimerRunning
+                                          ? "タイマーを停止してから外してください"
+                                          : "今日の3件から外す"
+                                      }
+                                      type="button"
+                                    >
+                                      ✓ 選択済み
+                                    </button>
                                   ) : (
                                     <button
-                                      className="moveTodayButton todayBuilderAddButton mainActionButton mainActionButton--positive"
+                                      className="moveTodayButton todayBuilderAddButton mainActionButton mainActionButton--neutral"
                                       disabled={isFull}
                                       onClick={() => void addCandidateToToday(candidate)}
                                       title={isFull ? "いま選べるのは3件までです" : "今日へ"}
