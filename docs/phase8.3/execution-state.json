@@ -2,9 +2,9 @@
   "phase": "Phase 8.3",
   "internal_phase_id": "P83",
   "workflow": "single-start-human-gated",
-  "current_stage": "P83-02_COMPLETE",
+  "current_stage": "P83-03_COMPLETE",
   "baseline_commit": "f2c0dd5c1475e16864beefe7bb0efae0a85cdf72",
-  "branch": "feature/p83-02-safe-software-reset",
+  "branch": "feature/p83-03-main-action-hover-colors",
   "release_allowed": false,
   "merged": false,
   "released": false,
@@ -14,7 +14,7 @@
     "public_check": "WORKTREE_ONLY_BLOCKER_DOT_GIT_METADATA",
     "lint": "PASS_0_WARNINGS",
     "build": "PASS",
-    "full_visual_suite": "PASS_285",
+    "full_visual_suite": "PASS_303",
     "cargo_fmt_check": "PASS",
     "cargo_check": "PASS",
     "cargo_clippy": "PASS_0_WARNINGS",
@@ -41,12 +41,14 @@
       "pull_request": "PENDING"
     },
     "P83-03": {
-      "status": "READY",
-      "approved": true
+      "status": "COMPLETE",
+      "approved": true,
+      "report": "docs/phase8.3/workreports/p83-03-report.md",
+      "pull_request": "PENDING"
     },
     "P83-04": {
-      "status": "BLOCKED_BY_P83-03",
-      "approved": false
+      "status": "READY",
+      "approved": true
     }
   }
 }

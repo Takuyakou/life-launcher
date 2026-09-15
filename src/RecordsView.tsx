@@ -111,7 +111,11 @@ export function RecordsView({
   return (
     <section className="recordsView" data-skip-target="records" tabIndex={-1}>
       <header className="recordsViewHeader">
-        <button className="recordsBackButton" onClick={onBack} type="button">
+        <button
+          className="recordsBackButton mainActionButton mainActionButton--neutral"
+          onClick={onBack}
+          type="button"
+        >
           <UiIcon name="back" size={16} />
           メイン
         </button>
@@ -230,11 +234,11 @@ export function RecordsView({
                           )) : <p className="quietText quietText--small">該当する実行記録はありません。</p>}
                           {sessions.length > HISTORY_PAGE_SIZE && (
                             <nav aria-label={`${project.label}の履歴ページ`} className="recordsPagination">
-                              <button disabled={page <= 1} onClick={() => setCumulativePages((current) => ({ ...current, [key]: page - 1 }))} type="button">‹ 前へ</button>
+                              <button className="mainActionButton mainActionButton--neutral" disabled={page <= 1} onClick={() => setCumulativePages((current) => ({ ...current, [key]: page - 1 }))} type="button">‹ 前へ</button>
                               {Array.from({ length: pageCount }, (_, index) => index + 1).map((number) => (
-                                <button aria-current={page === number ? "page" : undefined} key={number} onClick={() => setCumulativePages((current) => ({ ...current, [key]: number }))} type="button">{number}</button>
+                                <button aria-current={page === number ? "page" : undefined} className="mainActionButton mainActionButton--neutral" key={number} onClick={() => setCumulativePages((current) => ({ ...current, [key]: number }))} type="button">{number}</button>
                               ))}
-                              <button disabled={page >= pageCount} onClick={() => setCumulativePages((current) => ({ ...current, [key]: page + 1 }))} type="button">次へ ›</button>
+                              <button className="mainActionButton mainActionButton--neutral" disabled={page >= pageCount} onClick={() => setCumulativePages((current) => ({ ...current, [key]: page + 1 }))} type="button">次へ ›</button>
                             </nav>
                           )}
                           <footer>
@@ -325,9 +329,9 @@ export function RecordsView({
                         <strong>{project.nextStep?.text}</strong><span>次の一手が14日以上同じです</span>
                       </div>
                       <div className="freshnessReviewActions">
-                        <button onClick={() => onEditProject(project)} type="button">書き直す</button>
-                        <button onClick={() => onTryShort(project)} type="button">短時間で試す</button>
-                        <button onClick={() => onMarkReviewed(project.id)} type="button">このまま</button>
+                        <button className="mainActionButton mainActionButton--neutral" onClick={() => onEditProject(project)} type="button">書き直す</button>
+                        <button className="mainActionButton mainActionButton--positive" onClick={() => onTryShort(project)} type="button">短時間で試す</button>
+                        <button className="mainActionButton mainActionButton--neutral" onClick={() => onMarkReviewed(project.id)} type="button">このまま</button>
                       </div>
                     </div>
                   ))}
@@ -343,7 +347,7 @@ export function RecordsView({
           <section className="recordsSection">
             <div className="sectionHeading">
               <h2>最近の実行記録</h2>
-              <button className="sectionLinkButton" onClick={onAddSession} type="button">実行記録を追加</button>
+              <button className="sectionLinkButton mainActionButton mainActionButton--gold" onClick={onAddSession} type="button">実行記録を追加</button>
             </div>
             <div className="recordsFilters">
               <input aria-label="実行記録を検索" className="textInput" onChange={(event) => onSearchChange(event.target.value)} placeholder="検索" value={sessionSearch} />
