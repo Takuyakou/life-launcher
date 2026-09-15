@@ -241,7 +241,11 @@ test("Phase 8.1 unassigned Wishlist and empty Project require explicit keyboard 
   );
   await emptyAction.focus();
   await emptyAction.press("Shift+F10");
-  await expect(page.getByRole("menu").getByRole("menuitem")).toHaveText(["次の一手を設定"]);
+  await expect(page.getByRole("menu").getByRole("menuitem")).toHaveText([
+    "プロジェクトを編集",
+    "プロジェクトを管理",
+    "次の一手を設定",
+  ]);
   await page.getByRole("menuitem", { name: "次の一手を設定", exact: true }).click();
   const setup = page.getByRole("dialog", { name: "次の一手を設定", exact: true });
   await expect(setup.getByRole("textbox", { name: "行動" })).toBeFocused();
@@ -255,7 +259,7 @@ test("Phase 8.1 unassigned Wishlist and empty Project require explicit keyboard 
   await expect(emptyAction).toBeFocused();
 });
 
-test("Phase 8.1 Project and NextStep keep separate keyboard context targets", async ({ page }) => {
+test("Phase 8.1 NextStep cards expose one combined keyboard context menu", async ({ page }) => {
   await prepare(page, 1440);
   const row = page.locator('.nextStepCard[data-project-id="sample-learning"]');
   const projectRegion = row.locator(".nextStepProjectRegion");
@@ -266,12 +270,15 @@ test("Phase 8.1 Project and NextStep keep separate keyboard context targets", as
   let menu = page.getByRole("menu");
   await expect(menu.getByRole("menuitem")).toHaveText([
     "プロジェクトを編集",
-    "やりたいことを追加",
-    "プロジェクト管理",
+    "プロジェクトを管理",
+    "次の一手を編集",
+    "次の一手を変更",
+    "次の一手を未設定にする",
+    "今日を組み立てるに登録する",
   ]);
-  await expect(menu.getByRole("menuitem", { name: "次の一手を編集" })).toHaveCount(0);
-  await expectInsideViewport(page, menu, "Project context menu");
-  await page.screenshot({ path: resolve(SCREENSHOT_DIR, "project-context-1440x900.png") });
+  await expect(menu.getByRole("menuitem", { name: "やりたいことを追加" })).toHaveCount(0);
+  await expectInsideViewport(page, menu, "Combined NextStep context menu");
+  await page.screenshot({ path: resolve(SCREENSHOT_DIR, "nextstep-context-1440x900.png") });
   await page.keyboard.press("Escape");
   await expect(projectRegion).toBeFocused();
 
@@ -279,14 +286,14 @@ test("Phase 8.1 Project and NextStep keep separate keyboard context targets", as
   await actionRegion.press("Shift+F10");
   menu = page.getByRole("menu");
   await expect(menu.getByRole("menuitem")).toHaveText([
+    "プロジェクトを編集",
+    "プロジェクトを管理",
     "次の一手を編集",
     "次の一手を変更",
     "次の一手を未設定にする",
     "今日を組み立てるに登録する",
   ]);
-  await expect(menu.getByRole("menuitem", { name: "プロジェクトを編集" })).toHaveCount(0);
-  await expectInsideViewport(page, menu, "NextStep context menu");
-  await page.screenshot({ path: resolve(SCREENSHOT_DIR, "nextstep-context-1440x900.png") });
+  await expectInsideViewport(page, menu, "Combined NextStep action context menu");
   await page.keyboard.press("Escape");
   await expect(actionRegion).toBeFocused();
 });
