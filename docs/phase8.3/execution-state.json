@@ -29,7 +29,7 @@
       "status": "COMPLETE",
       "approved": true,
       "report": "docs/phase8.3/workreports/p83-01-report.md",
-      "pull_request": null
+      "pull_request": "https://github.com/Takuyakou/life-launcher/pull/79"
     },
     "P83-02": {
       "status": "READY",

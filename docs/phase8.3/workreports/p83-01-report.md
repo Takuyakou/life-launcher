@@ -16,3 +16,7 @@ Settings footer now places green Save on the left and muted-red Cancel on the ri
 ## Handoff
 
 P83-02 may wire the isolated reset entry only after implementing the two-stage confirmation, Timer gate, forced fresh backup, journaled rollback, and clean restart specified by P83-00. No release/version work is included.
+
+## Pull Request
+
+- https://github.com/Takuyakou/life-launcher/pull/79
