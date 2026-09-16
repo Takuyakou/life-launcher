@@ -412,6 +412,15 @@ test("P83-03 timer controls and NextStep cards keep their established dimensions
       width: 34,
     },
   ];
+
+  const [shortButton, normalButton] = await Promise.all([
+    page.locator(".todayRow").first().locator(".todayStartButton--short").boundingBox(),
+    page.locator(".todayRow").first().locator(".todayStartButton--normal").boundingBox(),
+  ]);
+  expect(shortButton).not.toBeNull();
+  expect(normalButton).not.toBeNull();
+  expect(normalButton!.x - (shortButton!.x + shortButton!.width)).toBeGreaterThanOrEqual(5.5);
+
   for (const { backgroundColor, button, color, height, width } of timerContracts) {
     await expect(button).not.toHaveClass(/mainActionButton/);
     const initial = await readStyle(button);

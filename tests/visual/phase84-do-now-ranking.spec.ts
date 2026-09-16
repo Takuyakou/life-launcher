@@ -128,5 +128,17 @@ test("P84-03 Do Now kicker, task and metadata share the reference left edge", as
   expect(Math.abs(task!.x - meta!.x)).toBeLessThanOrEqual(1);
   expect(task!.y).toBeGreaterThan(kicker!.y + kicker!.height);
   expect(meta!.y).toBeGreaterThan(task!.y + task!.height);
+  const projectColors = await card.evaluate((node) => {
+    const kicker = node.querySelector<HTMLElement>(".doNowKicker h2");
+    const statusDot = node.querySelector<HTMLElement>(".doNowStatusDot");
+    const styles = getComputedStyle(node);
+    return {
+      border: styles.borderLeftColor,
+      kicker: kicker ? getComputedStyle(kicker).color : "",
+      statusDot: statusDot ? getComputedStyle(statusDot).backgroundColor : "",
+    };
+  });
+  expect(projectColors.kicker).toBe(projectColors.border);
+  expect(projectColors.statusDot).toBe(projectColors.border);
   await card.screenshot({ path: "dist/visual-qa/phase84/do-now-aligned.png" });
 });

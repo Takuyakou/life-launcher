@@ -25,7 +25,7 @@ async function currentConfig(page: Page): Promise<AppConfig> {
   );
 }
 
-test("P84 NextStep editor defaults to new input and picks only same-project Wishlist items", async ({
+test("P84 NextStep editor defaults to Wishlist and picks only same-project items", async ({
   page,
 }) => {
   const fixture = createPublicFixture();
@@ -45,17 +45,18 @@ test("P84 NextStep editor defaults to new input and picks only same-project Wish
   const dialog = page.getByRole("dialog", { name: "次の一手を設定" });
   const modes = dialog.getByRole("tab");
   await expect(modes).toHaveText(["やりたいことから選ぶ", "＋ 新しく入力"]);
-  await expect(modes.nth(0)).toHaveAttribute("aria-selected", "false");
-  await expect(modes.nth(1)).toHaveAttribute("aria-selected", "true");
-  await expect(dialog.getByLabel("行動")).toBeVisible();
-
-  await modes.nth(0).click();
+  await expect(modes.nth(0)).toHaveAttribute("aria-selected", "true");
+  await expect(modes.nth(1)).toHaveAttribute("aria-selected", "false");
   await expect(dialog.getByLabel("行動")).toHaveCount(0);
   const candidates = dialog.getByRole("radio");
   await expect(candidates).toHaveCount(2);
   await expect(candidates).toHaveText(["同じプロジェクトの候補A", "同じプロジェクトの候補B"]);
   await expect(dialog.getByText("別プロジェクトの候補")).toHaveCount(0);
   await expect(dialog.getByText("未分類の候補")).toHaveCount(0);
+
+  await modes.nth(1).click();
+  await expect(dialog.getByLabel("行動")).toBeVisible();
+  await modes.nth(0).click();
 
   await candidates.nth(0).click();
   await expect(candidates.nth(0)).toHaveAttribute("aria-checked", "true");

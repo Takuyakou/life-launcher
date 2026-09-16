@@ -131,6 +131,16 @@ test("P84 Picker groups Wishlist by project, starts expanded, and uses a danger 
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const dialog = picker(page);
+  const addButton = dialog.locator(".todayPickerAddButton").first();
+  const addButtonStyle = await addButton.evaluate((node) => {
+    const styles = getComputedStyle(node);
+    return {
+      borderRadius: styles.borderRadius,
+      fontSize: styles.fontSize,
+      width: node.getBoundingClientRect().width,
+    };
+  });
+  expect(addButtonStyle).toEqual({ borderRadius: "8px", fontSize: "11px", width: 96 });
   const projectGroup = dialog.locator(
     '[data-today-picker-wishlist-group="project:sample-learning"]',
   );
