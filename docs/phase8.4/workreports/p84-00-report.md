@@ -4,6 +4,8 @@
 
 P84-00 current Candidate / Builder / D&D / Do Now audit is complete on baseline `d180045`. Product code is unchanged. P84-01 and later stages are not started.
 
+Review pull request: [#85](https://github.com/Takuyakou/life-launcher/pull/85)
+
 ## Deliverables
 
 - [Today candidate audit](../00-today-candidate-audit.md)
