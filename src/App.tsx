@@ -638,6 +638,14 @@ type ProjectDragPreview = {
   restoreEligible: boolean;
   wishlistTarget: boolean;
   wishlistEligible: boolean;
+  todayTargetIndex?: number;
+  todayTargetIndicator?: {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  };
+  todayGuidanceActive: boolean;
 };
 
 type InboxPointerDrag = {
@@ -5329,8 +5337,30 @@ function DashboardApp() {
     if (drag.hasMoved) {
       const overBuilder = builderRestoreTargetFromPoint(event.clientX, event.clientY);
       const overWishlist = pointWithinSelector(event.clientX, event.clientY, ".inboxBand");
+      const overToday = pointWithinSelector(event.clientX, event.clientY, ".todayGrid");
       const restoreEligible = sourceCanReturnToBuilder(drag.sourceKey, drag.dayKey);
-      const project = configRef.current?.projects.find((candidate) => candidate.id === drag.id);
+      const current = configRef.current;
+      const project = current?.projects.find((candidate) => candidate.id === drag.id);
+      const candidate = current ? todayCandidateFromConfig(current, drag.sourceKey) : undefined;
+      const matchingSourceKeys = candidate
+        ? new Set([candidate.sourceKey, ...(candidate.sourceAliases ?? [])])
+        : new Set<string>();
+      const todayGuidanceActive = Boolean(
+        candidate &&
+          current &&
+          current.today.date === drag.dayKey &&
+          current.today.items.length < TODAY_ITEM_LIMIT &&
+          !current.today.items.some((item, index) =>
+            matchingSourceKeys.has(todaySourceKey(item, index)),
+          ) &&
+          !isTimerActiveForSource(
+            [candidate.sourceKey, ...(candidate.sourceAliases ?? [])],
+            candidate.projectId,
+          ),
+      );
+      const todayTarget = todayGuidanceActive
+        ? todayAdoptionDropTargetFromPoint(event.clientX, event.clientY)
+        : null;
       const wishlistEligible = Boolean(
         project?.nextStep?.text.trim() && !sourceEditBlocked(drag.sourceKey),
       );
@@ -5340,7 +5370,7 @@ function DashboardApp() {
         restoreEligible,
       );
       const target =
-        overBuilder || overWishlist
+        overBuilder || overWishlist || overToday
         ? null
         : projectDropTargetFromPoint(event.clientX, event.clientY);
       const placement = target ? resolveProjectDropPlacement(drag.id, target) : undefined;
@@ -5352,16 +5382,19 @@ function DashboardApp() {
         offsetY: drag.offsetY,
         width: drag.width,
         height: drag.height,
-        targetId: restoreTarget ? undefined : target?.id,
-        placement: restoreTarget ? undefined : placement,
+        targetId: restoreTarget || todayTarget ? undefined : target?.id,
+        placement: restoreTarget || todayTarget ? undefined : placement,
         targetIndicator:
-          !restoreTarget && target && target.id !== drag.id && placement
+          !restoreTarget && !todayTarget && target && target.id !== drag.id && placement
             ? projectDropIndicator(target.id, placement)
             : undefined,
         restoreTarget,
         restoreEligible,
         wishlistTarget: overWishlist && wishlistEligible,
         wishlistEligible,
+        todayTargetIndex: todayTarget?.insertionIndex,
+        todayTargetIndicator: todayTarget?.indicator,
+        todayGuidanceActive,
       });
       updateProjectAutoScroll(event.clientY);
     }
@@ -5383,6 +5416,31 @@ function DashboardApp() {
     }
     clearBuilderRestoreHover();
     if (builderRestoreTargetFromPoint(event.clientX, event.clientY)) return;
+
+    const current = configRef.current;
+    const candidate = current ? todayCandidateFromConfig(current, drag.sourceKey) : undefined;
+    const matchingSourceKeys = candidate
+      ? new Set([candidate.sourceKey, ...(candidate.sourceAliases ?? [])])
+      : new Set<string>();
+    const todayTarget = todayAdoptionDropTargetFromPoint(event.clientX, event.clientY);
+    const canAdoptToday = Boolean(
+      candidate &&
+        current &&
+        current.today.date === drag.dayKey &&
+        current.today.items.length < TODAY_ITEM_LIMIT &&
+        !current.today.items.some((item, index) =>
+          matchingSourceKeys.has(todaySourceKey(item, index)),
+        ) &&
+        !isTimerActiveForSource(
+          [candidate.sourceKey, ...(candidate.sourceAliases ?? [])],
+          candidate.projectId,
+        ),
+    );
+    if (candidate && todayTarget && canAdoptToday) {
+      void addCandidateToToday(candidate, todayTarget.insertionIndex);
+      return;
+    }
+    if (pointWithinSelector(event.clientX, event.clientY, ".todayGrid")) return;
 
     if (pointWithinSelector(event.clientX, event.clientY, ".inboxBand")) {
       const project = configRef.current?.projects.find((candidate) => candidate.id === drag.id);
@@ -10063,13 +10121,20 @@ function DashboardApp() {
                     "todayGrid",
                     config.today.items.length === 0 ? "todayGrid--empty" : "",
                     completionFeedback?.kind === "todayAll" ? "todayGrid--allCompleteReward" : "",
-                    todayBuilderPointerDrag?.todayGuidanceActive ? "todayGrid--dropGuidance" : "",
-                    todayBuilderPointerDrag?.todayTargetIndicator ? "todayGrid--dropTarget" : "",
+                    todayBuilderPointerDrag?.todayGuidanceActive ||
+                    projectPointerDrag?.todayGuidanceActive
+                      ? "todayGrid--dropGuidance"
+                      : "",
+                    todayBuilderPointerDrag?.todayTargetIndicator ||
+                    projectPointerDrag?.todayTargetIndicator
+                      ? "todayGrid--dropTarget"
+                      : "",
                   ]
                     .filter(Boolean)
                     .join(" ")}
                 >
-                  {todayBuilderPointerDrag?.todayGuidanceActive && (
+                  {(todayBuilderPointerDrag?.todayGuidanceActive ||
+                    projectPointerDrag?.todayGuidanceActive) && (
                     <div aria-hidden="true" className="todayDropGuidanceOverlay">
                       ↓ ここにドロップして「今日の3件」に追加
                     </div>
@@ -11209,13 +11274,22 @@ function DashboardApp() {
                         style={projectPointerDrag.targetIndicator}
                       />
                     )}
+                    {projectPointerDrag?.todayTargetIndicator && (
+                      <div
+                        aria-hidden="true"
+                        className="todayDropIndicator"
+                        style={projectPointerDrag.todayTargetIndicator}
+                      />
+                    )}
                     {projectPointerDrag && (
                       <div
                         aria-hidden="true"
                         className={
-                          projectPointerDrag.restoreTarget
-                            ? "projectDragGhost projectDragGhost--restore"
-                            : "projectDragGhost"
+                          projectPointerDrag.todayTargetIndex !== undefined
+                            ? "projectDragGhost projectDragGhost--today"
+                            : projectPointerDrag.restoreTarget
+                              ? "projectDragGhost projectDragGhost--restore"
+                              : "projectDragGhost"
                         }
                         style={{
                           left: projectPointerDrag.pointerX - projectPointerDrag.offsetX,
