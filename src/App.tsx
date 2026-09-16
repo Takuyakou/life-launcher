@@ -1683,6 +1683,20 @@ function pointWithinSelector(x: number, y: number, selector: string): boolean {
   const rect = element.getBoundingClientRect();
   return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
 }
+const TODAY_REMOVE_DROP_HIT_TOP_PX = 20;
+const TODAY_REMOVE_DROP_HIT_BOTTOM_PX = 6;
+
+function pointWithinTodayRemoveDropZone(x: number, y: number): boolean {
+  const element = document.querySelector<HTMLElement>(".todayRemoveDropZone");
+  if (!element) return false;
+  const rect = element.getBoundingClientRect();
+  return (
+    x >= rect.left &&
+    x <= rect.right &&
+    y >= rect.top - TODAY_REMOVE_DROP_HIT_TOP_PX &&
+    y <= rect.bottom + TODAY_REMOVE_DROP_HIT_BOTTOM_PX
+  );
+}
 
 function projectDropTargetFromPoint(
   x: number,
@@ -5076,7 +5090,7 @@ function DashboardApp() {
     );
     const removeTargetActive =
       removeEligible &&
-      pointWithinSelector(event.clientX, event.clientY, ".todayRemoveDropZone");
+      pointWithinTodayRemoveDropZone(event.clientX, event.clientY);
     const target = todayDropTargetFromPoint(event.clientX, event.clientY);
     setTodayPointerDrag({
       index: drag.index,
@@ -5104,7 +5118,7 @@ function DashboardApp() {
         item &&
           drag?.hasMoved &&
           activeTimerRef.current?.sourceId !== todayTimerSourceId(item, drag.index),
-      ) && pointWithinSelector(event.clientX, event.clientY, ".todayRemoveDropZone");
+      ) && pointWithinTodayRemoveDropZone(event.clientX, event.clientY);
     todayPointerDragRef.current = null;
     setTodayPointerDrag(null);
 
@@ -10214,7 +10228,7 @@ function DashboardApp() {
                                   {activeTimer.paused
                                     ? "再開"
                                     : activeTimer.mode === "measure"
-                                      ? "止"
+                                      ? "停止"
                                       : "一時停止"}
                                 </button>
                                 <button

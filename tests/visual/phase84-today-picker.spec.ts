@@ -53,20 +53,24 @@ for (const count of [0, 1, 2]) {
   });
 }
 
-test("P84 Picker entry keeps the full card hit target with a compact gold visual", async ({
+test("P84 Picker entry matches Today card height in the two-column small window", async ({
   page,
 }) => {
   const fixture = createPublicFixture();
-  fixture.config.today.items = fixture.config.today.items.slice(0, 1);
-  await prepare(page, fixture);
+  fixture.config.today.items = fixture.config.today.items.slice(0, 2);
+  await prepare(page, fixture, 1000);
 
+  const card = page.locator(".todayRow").first();
   const entry = page.locator(".todayPickerEntry");
   const visual = entry.locator(".todayPickerEntryVisual");
+  const cardBox = await card.boundingBox();
   const entryBox = await entry.boundingBox();
   const visualBox = await visual.boundingBox();
+  expect(cardBox).not.toBeNull();
   expect(entryBox).not.toBeNull();
   expect(visualBox).not.toBeNull();
-  expect(entryBox!.height).toBeGreaterThanOrEqual(96);
+  expect(entryBox!.height).toBeGreaterThanOrEqual(154);
+  expect(Math.abs(entryBox!.height - cardBox!.height)).toBeLessThanOrEqual(2);
   expect(visualBox!.width).toBeLessThan(entryBox!.width * 0.6);
   expect(visualBox!.height).toBeLessThan(entryBox!.height);
 
@@ -222,4 +226,67 @@ test("P84-01 Escape closes the Picker and returns focus to its entry", async ({ 
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
   await expect(entry).toBeFocused();
+});
+
+test("P84 Picker aligns project, task, and action columns with readable long content", async ({
+  page,
+}) => {
+  const fixture = createPublicFixture();
+  fixture.config.projects[0].name = "とても長いプロジェクト名を表示幅の中で安全に省略する確認用";
+  fixture.config.inbox[0].text =
+    "長い候補名でもタスク列と操作列が重ならず二行まで読めることを確認する";
+  await prepare(page, fixture, 1280);
+
+  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
+  const dialog = picker(page);
+  const taskXs = await dialog
+    .locator(".todayPickerCopy strong")
+    .evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().x));
+  expect(Math.max(...taskXs) - Math.min(...taskXs)).toBeLessThanOrEqual(1);
+  const actionRights = await dialog
+    .locator(".todayPickerRow > button, .todayPickerSelectedStatus")
+    .evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().right));
+  expect(Math.max(...actionRights) - Math.min(...actionRights)).toBeLessThanOrEqual(1);
+  await expect(dialog.locator(".todayPickerRow").first()).toHaveCSS("min-height", "54px");
+  await dialog.screenshot({ path: "dist/visual-qa/phase84/picker-aligned-1280.png" });
+});
+
+test("P84 Picker selection preserves collapsed Wishlist groups", async ({
+  page,
+}) => {
+  const fixture = createPublicFixture();
+  fixture.config.today.items = [];
+  await prepare(page, fixture);
+
+  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
+  const dialog = picker(page);
+  const projectHeader = dialog
+    .locator('[data-today-picker-wishlist-group="project:sample-learning"]')
+    .locator(".todayPickerWishlistGroupHeader");
+  await projectHeader.click();
+  await expect(projectHeader).toHaveAttribute("aria-expanded", "false");
+
+  const row = dialog.locator(".todayPickerRow", { hasText: "5分だけ体を動かす" });
+  await row.getByRole("button", { name: "今日へ" }).click();
+  await expect(row.getByText("✓ 今日の3件")).toBeVisible();
+  await expect(projectHeader).toHaveAttribute("aria-expanded", "false");
+  expect((await currentConfig(page)).today.items).toHaveLength(1);
+});
+
+test("P84 Picker remains contained and keeps actions visible at narrow width", async ({ page }) => {
+  const fixture = createPublicFixture();
+  fixture.config.today.items = [];
+  fixture.config.projects[0].name = "長いプロジェクト名の狭幅表示確認";
+  await prepare(page, fixture, 520);
+
+  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
+  const dialog = picker(page);
+  const dialogBox = await dialog.boundingBox();
+  const actionBoxes = await dialog
+    .locator(".todayPickerRow > button")
+    .evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect()));
+  expect(dialogBox).not.toBeNull();
+  expect(actionBoxes.every((box) => box.right <= dialogBox!.x + dialogBox!.width + 1)).toBe(true);
+  expect(await dialog.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+  await dialog.screenshot({ path: "dist/visual-qa/phase84/picker-narrow-520.png" });
 });

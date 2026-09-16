@@ -193,19 +193,27 @@ for (const [width, columns] of [
     await page.locator(".mainScrollArea").screenshot({
       path: `dist/visual-qa/phase82-03/countup-${width}.png`,
     });
-    if (width === 860) {
-      await card.locator(".todayMeasureButton").focus();
-      await expect(card.locator(".todayMeasureButton")).toBeFocused();
-      await card.locator(".todayMeasureButton").press("Enter");
-      await page.clock.fastForward(65_000);
-      await expect(card.getByRole("button", { name: "このセッションを一時停止" })).toHaveText(/止/);
-      await card.getByRole("button", { name: "このセッションを一時停止" }).click();
-      expect((await card.boundingBox())!.height).toBe(inactiveHeight);
-      await expect(card.locator(".measureElapsedClock")).toHaveText("01:05");
-      expect((await card.locator(".todayTimerActions--measure").boundingBox())?.width).toBe(200);
-      await page.locator(".mainScrollArea").screenshot({
-        path: "dist/visual-qa/phase82-03/countup-active-paused-860.png",
-      });
-    }
+    await card.locator(".todayMeasureButton").focus();
+    await expect(card.locator(".todayMeasureButton")).toBeFocused();
+    await card.locator(".todayMeasureButton").press("Enter");
+    await page.clock.fastForward(5_000);
+    const measureActions = card.locator(".todayTimerActions--measure");
+    const pause = card.getByRole("button", { name: "このセッションを一時停止" });
+    const stop = card.getByRole("button", { name: "終了", exact: true });
+    await expect(pause).toHaveText("停止");
+    await expect(stop).toHaveText("終了");
+    await expect(card.locator(".measureElapsedClock")).toHaveText("00:05");
+    await expect(measureActions).toHaveCSS("border-top-style", "none");
+    await expect(measureActions).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    expect((await measureActions.boundingBox())?.width).toBe(200);
+    expect((await measureActions.boundingBox())?.height).toBe(36);
+    expect((await pause.boundingBox())?.width).toBe(68);
+    expect((await pause.boundingBox())?.height).toBe(36);
+    expect((await stop.boundingBox())?.width).toBe(68);
+    expect((await stop.boundingBox())?.height).toBe(36);
+    expect((await card.boundingBox())!.height).toBe(inactiveHeight);
+    await page.locator(".mainScrollArea").screenshot({
+      path: `dist/visual-qa/phase82-03/countup-active-${width}.png`,
+    });
   });
 }

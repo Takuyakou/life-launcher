@@ -7937,7 +7937,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .todayRemoveDropZone {
   width: 100%;
-  min-height: 64px;
+  min-height: 76px;
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -8411,7 +8411,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .todayPickerEntry {
   width: 100%;
-  min-height: 96px;
+  min-height: 154px;
   display: grid;
   place-content: center;
   border: 1px dashed rgba(231, 185, 77, 0.44);
@@ -8539,9 +8539,9 @@ input[type="number"]::-webkit-inner-spin-button {
 .todayPickerRow {
   min-height: 54px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) max-content;
+  grid-template-columns: minmax(130px, 180px) minmax(0, 1fr) 96px;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   border-bottom: 1px solid var(--line-soft);
   padding: 7px 4px;
 }
@@ -8549,41 +8549,48 @@ input[type="number"]::-webkit-inner-spin-button {
 .todayPickerRow--selected {
   border-left: 2px solid var(--good);
   padding-left: 2px;
-  background: rgba(117, 196, 143, 0.07);
+  background: rgba(117, 196, 143, 0.04);
 }
 
 .todayPickerCopy {
-  min-width: 0;
-  display: grid;
-  align-items: start;
-  gap: 3px;
+  display: contents;
 }
 
 .todayPickerCopy .projectIdentity,
 .todayPickerCopy .sourceProjectNone {
+  grid-column: 1;
+  min-width: 0;
+  overflow: hidden;
   color: var(--text-muted-readable);
   font-size: var(--dashboard-font-meta);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .todayPickerRow--groupedWishlist .todayPickerCopy {
-  display: block;
-  padding-left: 24px;
+  display: contents;
 }
 
 .todayPickerCopy strong {
+  grid-column: 2;
   min-width: 0;
+  display: -webkit-box;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-size: var(--dashboard-font-body);
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .todayPickerRow > button {
-  min-width: 68px;
+  grid-column: 3;
+  width: 96px;
+  min-width: 0;
 }
 
 .todayPickerSelectedStatus {
-  min-width: 86px;
+  grid-column: 3;
+  width: 96px;
   color: var(--good);
   font-size: var(--dashboard-font-meta);
   font-weight: 700;
@@ -8601,7 +8608,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .todayPickerWishlistGroupHeader {
   width: 100%;
-  min-height: 43px;
+  min-height: 36px;
   display: grid;
   grid-template-columns: 16px minmax(0, 1fr) max-content;
   align-items: center;
@@ -8673,8 +8680,27 @@ input[type="number"]::-webkit-inner-spin-button {
     display: none;
   }
 
+  .todayPickerRow {
+    grid-template-columns: minmax(0, 1fr) 96px;
+    gap: 10px;
+  }
+
+  .todayPickerCopy,
   .todayPickerRow--groupedWishlist .todayPickerCopy {
-    padding-left: 16px;
+    grid-column: 1;
+    display: grid;
+    gap: 3px;
+  }
+
+  .todayPickerCopy .projectIdentity,
+  .todayPickerCopy .sourceProjectNone,
+  .todayPickerCopy strong {
+    grid-column: 1;
+  }
+
+  .todayPickerRow > button,
+  .todayPickerSelectedStatus {
+    grid-column: 2;
   }
 }
 
@@ -9112,12 +9138,11 @@ input[type="number"]::-webkit-inner-spin-button {
 .todayTimerCluster .todayTimerActions--measure {
   width: 200px;
   height: 36px;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 5px;
-  border: 1px solid rgba(190, 181, 164, 0.32);
-  border-radius: var(--radius);
-  padding: 0 6px;
-  background: var(--surface-soft);
+  border: 0;
+  padding: 0;
+  background: transparent;
 }
 
 .todayTimerCluster .todayTimerActions--measure .measureElapsedClock {
@@ -9126,11 +9151,11 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .todayTimerCluster .todayTimerActions--measure .runningPauseButton,
 .todayTimerCluster .todayTimerActions--measure .runningStopButton {
-  width: auto;
-  min-width: 46px;
-  height: 25px;
-  min-height: 25px;
-  padding-inline: 6px;
+  width: 68px;
+  min-width: 68px;
+  height: 36px;
+  min-height: 36px;
+  padding-inline: 7px;
   font-size: var(--dashboard-font-meta);
 }
 
