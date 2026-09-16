@@ -12,9 +12,13 @@ async function prepare(page: Page, width = 1440) {
 }
 
 async function config(page: Page): Promise<AppConfig> {
-  return page.evaluate(() => (window as Window & {
-    __LIFE_LAUNCHER_VISUAL_QA__: { currentConfig: () => AppConfig };
-  }).__LIFE_LAUNCHER_VISUAL_QA__.currentConfig());
+  return page.evaluate(() =>
+    (
+      window as Window & {
+        __LIFE_LAUNCHER_VISUAL_QA__: { currentConfig: () => AppConfig };
+      }
+    ).__LIFE_LAUNCHER_VISUAL_QA__.currentConfig(),
+  );
 }
 
 async function expectBarEdgeClick(
@@ -40,7 +44,9 @@ async function expectBarEdgeClick(
   }
 }
 
-test("Phase 8.1 separates Project metadata from the NextStep execution package", async ({ page }) => {
+test("Phase 8.1 separates Project metadata from the NextStep execution package", async ({
+  page,
+}) => {
   await prepare(page);
   await page.getByRole("button", { name: "プロジェクトを追加", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "プロジェクトを追加" });
@@ -65,13 +71,15 @@ test("Phase 8.1 separates Project metadata from the NextStep execution package",
   await expect(nextStepDialog.getByRole("textbox", { name: "行動" })).toBeFocused();
   expect(await nextStepDialog.getByRole("heading", { level: 3 }).allTextContents()).toEqual([
     "プロジェクト",
-    "次の一手",
+    "次の一手の決め方",
     "開始環境",
     "手順書",
     "タイマー",
   ]);
   await nextStepDialog.getByRole("textbox", { name: "行動" }).fill("最初の行を書く");
-  await nextStepDialog.getByRole("textbox", { name: "始めるきっかけ（任意）" }).fill("PCを開いたら");
+  await nextStepDialog
+    .getByRole("textbox", { name: "始めるきっかけ（任意）" })
+    .fill("PCを開いたら");
   await nextStepDialog.getByRole("button", { name: "保存", exact: true }).click();
   saved = (await config(page)).projects.at(-1)!;
   expect(saved.nextStep).toMatchObject({ text: "最初の行を書く", trigger: "PCを開いたら" });
@@ -79,7 +87,9 @@ test("Phase 8.1 separates Project metadata from the NextStep execution package",
 
 test("P8 instruction picker searches, applies and cancels a draft", async ({ page }) => {
   await prepare(page);
-  await page.locator('[data-project-id="sample-learning"] .nextStepActionRegion').click({ button: "right" });
+  await page
+    .locator('[data-project-id="sample-learning"] .nextStepActionRegion')
+    .click({ button: "right" });
   await page.getByRole("menuitem", { name: "次の一手を編集", exact: true }).click();
   const editor = page.getByRole("dialog", { name: "次の一手を編集" });
   await editor.getByRole("button", { name: "手順書を選ぶ" }).click();
@@ -128,7 +138,10 @@ test("P8 add actions are independent and available from source bars", async ({ p
   await expect(projectDisclosure).toHaveAttribute("aria-expanded", "true");
   await projectAdd.click();
   await expect(projectDisclosure).toHaveAttribute("aria-expanded", "true");
-  await page.getByRole("dialog", { name: "プロジェクトを追加" }).getByRole("button", { name: "キャンセル" }).click();
+  await page
+    .getByRole("dialog", { name: "プロジェクトを追加" })
+    .getByRole("button", { name: "キャンセル" })
+    .click();
   await page.locator(".projectsBand .disclosureHeader").click({ button: "right" });
   await page.getByRole("menuitem", { name: "プロジェクトを追加" }).click();
   await expect(page.getByRole("dialog", { name: "プロジェクトを追加" })).toBeVisible();
@@ -157,7 +170,8 @@ test("P8 add actions are independent and available from source bars", async ({ p
   await page.getByRole("menuitem", { name: "やりたいことを追加" }).click();
   await expect(page.getByRole("dialog", { name: "やりたいことを追加" })).toBeVisible();
   await page.keyboard.press("Escape");
-  if (await wishlistDisclosure.getAttribute("aria-expanded") === "false") await wishlistDisclosure.click();
+  if ((await wishlistDisclosure.getAttribute("aria-expanded")) === "false")
+    await wishlistDisclosure.click();
   await expect(page.locator(".inboxBody")).toBeVisible();
   await page.locator(".inboxRow").first().click({ button: "right" });
   await expect(page.getByRole("menuitem", { name: "やりたいことを追加" })).toHaveCount(0);
@@ -177,5 +191,9 @@ test("P8 form actions fit at 860 and use apply/cancel semantics", async ({ page 
   await expect(save).toHaveCSS("background-color", "rgb(48, 66, 53)");
   await cancel.hover();
   await expect(cancel).toHaveCSS("background-color", "rgb(74, 48, 42)");
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+    ),
+  ).toBe(true);
 });

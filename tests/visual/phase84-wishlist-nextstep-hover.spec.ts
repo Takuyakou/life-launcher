@@ -65,8 +65,10 @@ test("P84 Wishlist promote action is status-aware, stable, keyboard reachable, a
 
   const plain = page.locator('[data-inbox-id="sample-later"]');
   const selected = page.locator('[data-inbox-id="sample-weekend"]');
-  const plainAction = plain.getByRole("button", { name: "あとで確認するサンプルを次の一手にする" });
-  const selectedAction = selected.getByRole("button", { name: "週末に試すアイデアを次の一手にする" });
+  const plainAction = plain.getByRole("button", { name: "あとで確認するサンプルの次の一手を設定" });
+  const selectedAction = selected.getByRole("button", {
+    name: "週末に試すアイデアの次の一手を設定",
+  });
   const plainMenu = plain.locator(".sourceRowMenu");
   const selectedMenu = selected.locator(".sourceRowMenu");
   const selectedStatus = selected.locator(".wishlistTodayStatus");
@@ -78,17 +80,18 @@ test("P84 Wishlist promote action is status-aware, stable, keyboard reachable, a
   await expect(plainMenu).toHaveCSS("opacity", "1");
   await expect(selectedMenu).toHaveCSS("opacity", "1");
   expect(
-    await plain.locator(".wishlistRowActions > *").evaluateAll((nodes) =>
-      nodes.map((node) => node.className),
-    ),
+    await plain
+      .locator(".wishlistRowActions > *")
+      .evaluateAll((nodes) => nodes.map((node) => node.className)),
   ).toEqual(["wishlistNextStepSlot", "sourceRowMenu"]);
   expect(
-    await selected.locator(".wishlistRowActions > *").evaluateAll((nodes) =>
-      nodes.map((node) => node.className),
-    ),
+    await selected
+      .locator(".wishlistRowActions > *")
+      .evaluateAll((nodes) => nodes.map((node) => node.className)),
   ).toEqual(["wishlistNextStepSlot", "wishlistTodayStatus", "sourceRowMenu"]);
 
   const setButton = page.getByRole("button", { name: "次の一手を設定", exact: true });
+  const setBase = await style(setButton);
   await setButton.hover();
   await page.waitForTimeout(140);
   const setHover = await style(setButton);
@@ -103,9 +106,9 @@ test("P84 Wishlist promote action is status-aware, stable, keyboard reachable, a
   await page.waitForTimeout(140);
   await expect(plainAction).toHaveCSS("opacity", "1");
   const revealedAction = await style(plainAction);
-  expect(revealedAction.backgroundColor).toBe(setHover.backgroundColor);
-  expect(revealedAction.borderColor).toBe(setHover.borderColor);
-  expect(revealedAction.color).toBe(setHover.color);
+  expect(revealedAction.backgroundColor).toBe(setBase.backgroundColor);
+  expect(revealedAction.borderColor).toBe(setBase.borderColor);
+  expect(revealedAction.color).toBe(setBase.color);
   expect(revealedAction.borderRadius).toBe("8px");
   expect(revealedAction.fontWeight).toBe(setHover.fontWeight);
   const plainAfter = await style(plain);
@@ -149,7 +152,9 @@ test("P84 Wishlist promote action is status-aware, stable, keyboard reachable, a
   await expect(selected.locator(".wishlistNextStepSlot")).toHaveCSS("display", "none");
   await expect(selectedStatus).toBeVisible();
   await expect(selectedMenu).toBeVisible();
-  expect(await page.locator(".inboxBand").evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+  expect(
+    await page.locator(".inboxBand").evaluate((node) => node.scrollWidth <= node.clientWidth),
+  ).toBe(true);
   await page.locator(".inboxBand").screenshot({
     path: "dist/visual-qa/phase84/wishlist-promote-narrow.png",
   });

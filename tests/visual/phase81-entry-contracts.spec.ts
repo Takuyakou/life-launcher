@@ -281,6 +281,7 @@ test("Phase 8.1 resolves pending legacy execution settings only after a successf
 
 test("Phase 8.1 Wishlist promotion starts from a reset execution package", async ({ page }) => {
   const fixture = createPublicFixture();
+  fixture.config.today.items = [];
   const todayBefore = structuredClone(fixture.config.today);
   await prepare(page, fixture);
   await openWishlistSection(page);
@@ -288,12 +289,16 @@ test("Phase 8.1 Wishlist promotion starts from a reset execution package", async
   await page.getByRole("menuitem", { name: "次の一手にする" }).click();
   const dialog = page.getByRole("dialog", { name: "次の一手を変更" });
 
-  await expect(dialog.getByRole("textbox", { name: "行動" })).toHaveValue("週末に試すアイデア");
+  await expect(dialog.getByRole("textbox", { name: "行動" })).toHaveCount(0);
+  await expect(dialog.getByRole("radio", { name: "週末に試すアイデア" })).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
   await expect(dialog.getByText("開始環境は選択されていません", { exact: true })).toBeVisible();
   await expect(dialog.getByRole("spinbutton", { name: "通常タイマー分数" })).toHaveValue("");
   await expect(dialog.getByRole("spinbutton", { name: "短時間タイマー分数" })).toHaveValue("");
   await expect(dialog.locator(".instructionPickerSelection")).toContainText("選択されていません");
-  await dialog.getByRole("button", { name: "完了にする", exact: true }).click();
+  await dialog.getByRole("button", { name: "やりたいことへ戻す" }).click();
   await dialog.getByRole("button", { name: "保存", exact: true }).click();
 
   const config = await currentConfig(page);
@@ -303,12 +308,12 @@ test("Phase 8.1 Wishlist promotion starts from a reset execution package", async
   expect(promoted?.instructionPath).toBeUndefined();
   expect(promoted?.defaultTimerMinutes).toBeUndefined();
   expect(promoted?.shortTimerMinutes).toBeUndefined();
-  expect(config.inbox.map((item) => item.id)).toEqual(["sample-later"]);
-  expect(config.sourceCompletions.at(-1)).toMatchObject({
-    sourceType: "nextStep",
-    sourceIdentity: "project:sample-learning",
-    textSnapshot: "資料を1ページ読む",
+  expect(config.inbox.map((item) => item.id)).toEqual(["sample-later", expect.any(String)]);
+  expect(config.inbox.at(-1)).toMatchObject({
+    text: "資料を1ページ読む",
+    projectId: "sample-learning",
   });
+  expect(config.sourceCompletions).toEqual([]);
   expect(config.today).toEqual(todayBefore);
   const nativeCalls = await page.evaluate(() =>
     (

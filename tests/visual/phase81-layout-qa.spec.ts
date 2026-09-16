@@ -227,7 +227,11 @@ test("Phase 8.1 unassigned Wishlist and empty Project require explicit keyboard 
   const projectSelection = promotion.getByRole("combobox", { name: "プロジェクト", exact: true });
   await expect(projectSelection).toBeFocused();
   await expect(projectSelection).toHaveValue("");
-  await expect(promotion.getByRole("textbox", { name: "行動" })).toHaveValue(LONG_WISHLIST);
+  await expect(promotion.getByRole("textbox", { name: "行動" })).toHaveCount(0);
+  await expect(promotion.getByRole("tab", { name: "やりたいことから選ぶ" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
   await expect(promotion.getByRole("button", { name: "保存", exact: true })).toBeDisabled();
   await expectInsideViewport(page, promotion, "unassigned Wishlist promotion dialog");
   await page.screenshot({ path: resolve(SCREENSHOT_DIR, "unassigned-promotion-620x900.png") });
@@ -384,7 +388,7 @@ for (const width of [860, 620] as const) {
     await expect(nextStep.getByRole("textbox", { name: "行動" })).toBeFocused();
     await expect(nextStep.getByRole("heading", { level: 3 })).toHaveText([
       "プロジェクト",
-      "次の一手",
+      "次の一手の決め方",
       "開始環境",
       "手順書",
       "タイマー",

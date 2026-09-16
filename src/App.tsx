@@ -119,7 +119,6 @@ import { canRevealLauncherButton } from "./launcherReveal";
 import {
   groupWishlist,
   prepareNextStepRemoval,
-  prepareNextStepReplacement,
   prepareWishlistPromotion,
   reorderWishlistGroups,
   sameNextStepSnapshot,
@@ -332,8 +331,11 @@ type WishlistGroupView = {
   page?: number;
 };
 
+type NextStepDecisionMode = "new" | "wishlist";
+
 type NextStepEditDraft = {
   mode: "edit" | "set" | "promote";
+  decisionMode: NextStepDecisionMode;
   projectId: string;
   projectLocked: boolean;
   text: string;
@@ -841,6 +843,23 @@ function todaySourceKey(item: TodayItem, index: number): string {
 
 function todayTimerSourceId(item: TodayItem, index: number): string {
   return `today:${todaySourceKey(item, index)}`;
+}
+
+function unfinishedTodayUsesSource(
+  config: AppConfig,
+  sourceKey: string,
+  sourceGenerationId?: string,
+): boolean {
+  return config.today.items.some((item) => {
+    if (item.done || !item.sourceKey || canonicalSourceKey(config, item.sourceKey) !== sourceKey) {
+      return false;
+    }
+    return !(
+      sourceGenerationId &&
+      item.sourceGenerationId &&
+      item.sourceGenerationId !== sourceGenerationId
+    );
+  });
 }
 
 function toggleDisclosureFromBar(event: ReactMouseEvent<HTMLElement>, toggle: () => void) {
@@ -1685,16 +1704,22 @@ function pointWithinSelector(x: number, y: number, selector: string): boolean {
 }
 const TODAY_REMOVE_DROP_HIT_TOP_PX = 20;
 const TODAY_REMOVE_DROP_HIT_BOTTOM_PX = 6;
+const TODAY_REMOVE_DROP_HIT_BOTTOM_NARROW_PX = 32;
+const TODAY_REMOVE_DROP_NARROW_WIDTH_PX = 860;
 
 function pointWithinTodayRemoveDropZone(x: number, y: number): boolean {
   const element = document.querySelector<HTMLElement>(".todayRemoveDropZone");
   if (!element) return false;
   const rect = element.getBoundingClientRect();
+  const bottomExtension =
+    window.innerWidth <= TODAY_REMOVE_DROP_NARROW_WIDTH_PX
+      ? TODAY_REMOVE_DROP_HIT_BOTTOM_NARROW_PX
+      : TODAY_REMOVE_DROP_HIT_BOTTOM_PX;
   return (
     x >= rect.left &&
     x <= rect.right &&
     y >= rect.top - TODAY_REMOVE_DROP_HIT_TOP_PX &&
-    y <= rect.bottom + TODAY_REMOVE_DROP_HIT_BOTTOM_PX
+    y <= rect.bottom + bottomExtension
   );
 }
 
@@ -1758,7 +1783,6 @@ function nearestProjectDropTargetFromPoint(
 
   return nearest ? projectDropTargetFromCard(nearest.card, x, y) : null;
 }
-
 
 function wishlistGroupDropTargetFromPoint(
   x: number,
@@ -4011,10 +4035,7 @@ function DashboardApp() {
   };
 
   const softwareResetIsTimerBlocked = useCallback(
-    () =>
-      Boolean(
-        activeTimerRef.current || completionPromptRef.current || earlyStopRef.current,
-      ),
+    () => Boolean(activeTimerRef.current || completionPromptRef.current || earlyStopRef.current),
     [],
   );
 
@@ -5089,8 +5110,7 @@ function DashboardApp() {
       item && activeTimerRef.current?.sourceId !== todayTimerSourceId(item, drag.index),
     );
     const removeTargetActive =
-      removeEligible &&
-      pointWithinTodayRemoveDropZone(event.clientX, event.clientY);
+      removeEligible && pointWithinTodayRemoveDropZone(event.clientX, event.clientY);
     const target = todayDropTargetFromPoint(event.clientX, event.clientY);
     setTodayPointerDrag({
       index: drag.index,
@@ -7551,21 +7571,23 @@ function DashboardApp() {
       return;
     }
     const mode = options?.mode ?? (project.nextStep?.text.trim() ? "edit" : "set");
+    const promotingWishlist = mode === "promote" && Boolean(options?.promotedWishlistId);
     const editingExisting = mode === "edit" && Boolean(project.nextStep);
     captureDialogReturnFocus(nextStepEditReturnFocusRef);
     setContextMenu(null);
     setNextStepEditDraft({
       mode,
+      decisionMode: promotingWishlist ? "wishlist" : "new",
       projectId: project.id,
       projectLocked: options?.projectLocked ?? true,
-      text: options?.text ?? project.nextStep?.text ?? "",
+      text: promotingWishlist ? "" : (options?.text ?? project.nextStep?.text ?? ""),
       originalText: project.nextStep?.text ?? "",
       trigger: editingExisting ? (project.nextStep?.trigger ?? "") : "",
       ...nextStepExecutionDraft(editingExisting ? project.nextStep : undefined),
       legacyChoice:
         !editingExisting && !project.nextStep && project.legacyNextStepSettings ? null : "discard",
       replacementChoice: null,
-      replacedNextStep: mode === "promote" ? project.nextStep : undefined,
+      replacedNextStep: promotingWishlist ? project.nextStep : undefined,
       ...(options?.promotedWishlistId ? { promotedWishlistId: options.promotedWishlistId } : {}),
     });
     void refreshNextStepSuggestions(project.id);
@@ -7607,9 +7629,10 @@ function DashboardApp() {
     setContextMenu(null);
     setNextStepEditDraft({
       mode: "promote",
+      decisionMode: "wishlist",
       projectId: "",
       projectLocked: false,
-      text: item.text,
+      text: "",
       originalText: "",
       trigger: "",
       ...nextStepExecutionDraft(),
@@ -7706,15 +7729,55 @@ function DashboardApp() {
     }
     setNextStepEditDraft({
       ...nextStepEditDraft,
+      mode:
+        nextStepEditDraft.decisionMode === "wishlist"
+          ? "promote"
+          : project?.nextStep
+            ? "edit"
+            : "set",
       projectId,
       originalText: project?.nextStep?.text ?? "",
       trigger: "",
       ...nextStepExecutionDraft(),
       legacyChoice: project?.legacyNextStepSettings && !project.nextStep ? null : "discard",
       replacementChoice: null,
-      replacedNextStep: project?.nextStep,
+      replacedNextStep:
+        nextStepEditDraft.decisionMode === "wishlist" ? project?.nextStep : undefined,
+      promotedWishlistId: undefined,
     });
     void refreshNextStepSuggestions(projectId || null);
+  };
+
+  const selectNextStepDecisionMode = (decisionMode: NextStepDecisionMode) => {
+    const draft = nextStepEditDraft;
+    const current = configRef.current;
+    if (!draft || !current || draft.decisionMode === decisionMode) return;
+    const project = current.projects.find((candidate) => candidate.id === draft.projectId);
+    const selectedWishlistStillMatches = current.inbox.some(
+      (item) => item.id === draft.promotedWishlistId && item.projectId === draft.projectId,
+    );
+    if (decisionMode === "wishlist") {
+      setNextStepEditDraft({
+        ...draft,
+        mode: "promote",
+        decisionMode,
+        trigger: "",
+        ...nextStepExecutionDraft(),
+        legacyChoice: "discard",
+        replacementChoice: null,
+        replacedNextStep: project?.nextStep,
+        promotedWishlistId: selectedWishlistStillMatches ? draft.promotedWishlistId : undefined,
+      });
+      return;
+    }
+    setNextStepEditDraft({
+      ...draft,
+      mode: project?.nextStep ? "edit" : "set",
+      decisionMode,
+      legacyChoice: project?.legacyNextStepSettings && !project.nextStep ? null : "discard",
+      replacementChoice: null,
+      replacedNextStep: undefined,
+    });
   };
 
   const chooseLegacyNextStepSettings = (choice: Exclude<LegacyNextStepChoice, null>) => {
@@ -7747,43 +7810,60 @@ function DashboardApp() {
       showToast("warn", "プロジェクトを選択してください");
       return;
     }
-    const text = draft.text.trim();
+
+    const promotingWishlist = draft.decisionMode === "wishlist";
+    const selectedWishlist =
+      promotingWishlist && draft.promotedWishlistId
+        ? current.inbox.find(
+            (item) => item.id === draft.promotedWishlistId && item.projectId === project.id,
+          )
+        : undefined;
+    if (promotingWishlist && !selectedWishlist) {
+      showToast("warn", "やりたいことを選択してください");
+      return;
+    }
+    const text = promotingWishlist ? (selectedWishlist?.text.trim() ?? "") : draft.text.trim();
     if (!text) {
       showToast("warn", "次の一手を入力してください");
       return;
     }
-    if (
-      draft.mode === "promote" &&
-      !sameNextStepSnapshot(project.nextStep, draft.replacedNextStep)
-    ) {
+    if (promotingWishlist && !sameNextStepSnapshot(project.nextStep, draft.replacedNextStep)) {
       showToast("warn", "現在の次の一手が変更されたため、内容を確認し直してください");
       return;
     }
-    if (!project.nextStep && project.legacyNextStepSettings && draft.legacyChoice === null) {
+    if (
+      !promotingWishlist &&
+      !project.nextStep &&
+      project.legacyNextStepSettings &&
+      draft.legacyChoice === null
+    ) {
       showToast("warn", "以前の実行設定を引き継ぐか破棄するか選んでください");
       return;
     }
-    const replacingExisting = Boolean(draft.mode === "promote" && project.nextStep?.text.trim());
-    if (replacingExisting && !draft.replacementChoice) {
-      showToast("warn", "現在の次の一手をどうするか選んでください");
+
+    const replacingExisting = Boolean(promotingWishlist && project.nextStep?.text.trim());
+    if (replacingExisting && draft.replacementChoice !== "return") {
+      showToast("warn", "現在の次の一手をやりたいことへ戻すことを確認してください");
       return;
     }
     const projectSourceKey = `project:${project.id}`;
-    const wishlistSourceKeyForPromotion = draft.promotedWishlistId
-      ? `wishlist:${draft.promotedWishlistId}`
-      : null;
+    const wishlistSourceKey = selectedWishlist ? `wishlist:${selectedWishlist.id}` : null;
     if (
       sourceEditBlocked(projectSourceKey) ||
-      (wishlistSourceKeyForPromotion && sourceEditBlocked(wishlistSourceKeyForPromotion))
+      (wishlistSourceKey && sourceEditBlocked(wishlistSourceKey))
     ) {
       showToast("warn", SOURCE_EDIT_TIMER_REASON);
       return;
     }
+    if (selectedWishlist && unfinishedTodayUsesSource(current, `wishlist:${selectedWishlist.id}`)) {
+      showToast("warn", "今日の3件で未完了のやりたいことは選べません");
+      return;
+    }
     if (
-      draft.promotedWishlistId &&
-      !current.inbox.some((item) => item.id === draft.promotedWishlistId)
+      replacingExisting &&
+      unfinishedTodayUsesSource(current, projectSourceKey, project.nextStep?.generationId)
     ) {
-      showToast("warn", "元のやりたいことが見つかりません");
+      showToast("warn", "今日の3件で未完了の次の一手があるため変更できません");
       return;
     }
 
@@ -7798,7 +7878,7 @@ function DashboardApp() {
     }
 
     const now = new Date().toISOString();
-    const existing = draft.mode === "edit" ? project.nextStep : undefined;
+    const existing = !promotingWishlist && draft.mode === "edit" ? project.nextStep : undefined;
     const nextStep: LauncherNextStep = {
       text,
       ...(existing ? { generationId: existing.generationId } : { generationId: createStableId() }),
@@ -7818,40 +7898,36 @@ function DashboardApp() {
       updatedAt: existing?.updatedAt && text === draft.originalText ? existing.updatedAt : now,
       ...(existing?.reviewedAt ? { reviewedAt: existing.reviewedAt } : {}),
     };
-    const nextProject: LauncherProject = {
-      ...project,
-      nextStep,
-      legacyNextStepSettings: undefined,
-    };
-    let nextConfig: AppConfig = {
-      ...current,
-      projects: current.projects.map((candidate) =>
-        candidate.id === project.id ? nextProject : candidate,
-      ),
-      inbox: draft.promotedWishlistId
-        ? current.inbox.filter((item) => item.id !== draft.promotedWishlistId)
-        : current.inbox,
-    };
 
-    if (replacingExisting) {
-      if (!draft.replacedNextStep || !draft.replacementChoice) return;
+    let nextConfig: AppConfig;
+    if (promotingWishlist && selectedWishlist) {
       try {
-        nextConfig = prepareNextStepReplacement(current, {
+        nextConfig = prepareWishlistPromotion(current, {
+          wishlistId: selectedWishlist.id!,
           projectId: project.id,
           nextStep,
           expectedCurrent: draft.replacedNextStep,
-          choice: draft.replacementChoice,
-          ...(draft.promotedWishlistId ? { promotedWishlistId: draft.promotedWishlistId } : {}),
-          completedAt: now,
           createId: createStableId,
         });
       } catch (error) {
         showToast("warn", error instanceof Error ? error.message : String(error));
         return;
       }
+    } else {
+      const nextProject: LauncherProject = {
+        ...project,
+        nextStep,
+        legacyNextStepSettings: undefined,
+      };
+      nextConfig = {
+        ...current,
+        projects: current.projects.map((candidate) =>
+          candidate.id === project.id ? nextProject : candidate,
+        ),
+      };
     }
 
-    if (draft.mode === "edit" && !draft.promotedWishlistId) {
+    if (!promotingWishlist && draft.mode === "edit") {
       const result = await saveSourceEdit(current, nextConfig, projectSourceKey);
       if (!result) return;
       closeNextStepEditDialog(true);
@@ -7866,13 +7942,8 @@ function DashboardApp() {
     try {
       if (!(await persistConfig(nextConfig))) return;
       closeNextStepEditDialog(true);
-      showToast("ok", draft.promotedWishlistId ? "次の一手にしました" : "次の一手を保存しました", {
-        detail:
-          replacingExisting && draft.replacementChoice === "return"
-            ? "元の次の一手はやりたいことへ戻しました"
-            : replacingExisting && draft.replacementChoice === "complete"
-              ? "元の次の一手は完了として記録しました"
-              : undefined,
+      showToast("ok", promotingWishlist ? "次の一手にしました" : "次の一手を保存しました", {
+        detail: replacingExisting ? "元の次の一手はやりたいことへ戻しました" : undefined,
       });
     } finally {
       sourceEditBusyRef.current = null;
@@ -8099,9 +8170,7 @@ function DashboardApp() {
       band?.querySelector<HTMLElement>(".disclosure")?.focus({ preventScroll: true });
       band?.scrollIntoView({
         block: "start",
-        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-          ? "auto"
-          : "smooth",
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
       });
     });
   };
@@ -8448,10 +8517,7 @@ function DashboardApp() {
     const project = candidate.projectId ? projectsById.get(candidate.projectId) : undefined;
     return (
       <div
-        className={[
-          "todayPickerRow",
-          grouped ? "todayPickerRow--groupedWishlist" : "",
-        ]
+        className={["todayPickerRow", grouped ? "todayPickerRow--groupedWishlist" : ""]
           .filter(Boolean)
           .join(" ")}
         key={candidate.key}
@@ -8473,8 +8539,7 @@ function DashboardApp() {
         <button
           className="mainActionButton mainActionButton--gold"
           disabled={
-            todayPickerSavingSourceKey !== null ||
-            config.today.items.length >= TODAY_ITEM_LIMIT
+            todayPickerSavingSourceKey !== null || config.today.items.length >= TODAY_ITEM_LIMIT
           }
           onClick={() => void chooseTodayCandidate(candidate)}
           type="button"
@@ -8556,8 +8621,7 @@ function DashboardApp() {
         .map((key) => order.get(key))
         .find((index) => index !== undefined);
     const orderedCandidates = [...activeCandidates].sort((left, right) => {
-      const sourceOrder = (candidate: TodayCandidate) =>
-        candidate.source === "次の一手" ? 0 : 1;
+      const sourceOrder = (candidate: TodayCandidate) => (candidate.source === "次の一手" ? 0 : 1);
       const sourceDifference = sourceOrder(left) - sourceOrder(right);
       if (sourceDifference !== 0) return sourceDifference;
       const leftIndex = orderIndex(left);
@@ -10433,9 +10497,7 @@ function DashboardApp() {
                     aria-disabled={!todayPointerDrag.removeEligible}
                     className={[
                       "todayRemoveDropZone",
-                      todayPointerDrag.removeTargetActive
-                        ? "todayRemoveDropZone--active"
-                        : "",
+                      todayPointerDrag.removeTargetActive ? "todayRemoveDropZone--active" : "",
                     ]
                       .filter(Boolean)
                       .join(" ")}
@@ -10531,7 +10593,9 @@ function DashboardApp() {
                   <div className="todayBuilderBody">
                     {todayBuilderCandidates.length === 0 ? (
                       <div className="sectionEmptyActions sectionEmptyActions--sources">
-                        <span>候補はまだありません。次の一手か、やりたいことを登録できます。</span>
+                          <span>
+                            候補はまだありません。次の一手か、やりたいことを登録できます。
+                          </span>
                         <div>
                           <button
                             className="mainActionButton mainActionButton--neutral"
@@ -10693,7 +10757,9 @@ function DashboardApp() {
                                           projectId={candidate.projectId}
                                         />
                                       ) : (
-                                        <span className="sourceProjectNone">プロジェクトなし</span>
+                                          <span className="sourceProjectNone">
+                                            プロジェクトなし
+                                          </span>
                                       )}
                                     </span>
                                   )}
@@ -10707,7 +10773,10 @@ function DashboardApp() {
                                       onClick={(event) => {
                                         event.stopPropagation();
                                         void removeTodayItem(
-                                          todaySourceKey(config.today.items[selectedIndex], selectedIndex),
+                                            todaySourceKey(
+                                              config.today.items[selectedIndex],
+                                              selectedIndex,
+                                            ),
                                         );
                                       }}
                                       onPointerDown={(event) => event.stopPropagation()}
@@ -10758,7 +10827,10 @@ function DashboardApp() {
                       })
                     )}
                     {todayBuilderPageCount > 1 && (
-                      <nav aria-label="今日を組み立てるのページ" className="todayBuilderPagination">
+                        <nav
+                          aria-label="今日を組み立てるのページ"
+                          className="todayBuilderPagination"
+                        >
                         <button
                           aria-label="前のページ"
                           className="mainActionButton mainActionButton--neutral"
@@ -10823,9 +10895,11 @@ function DashboardApp() {
                             }
                             style={{
                               left:
-                                todayBuilderPointerDrag.pointerX - todayBuilderPointerDrag.offsetX,
+                                  todayBuilderPointerDrag.pointerX -
+                                  todayBuilderPointerDrag.offsetX,
                               top:
-                                todayBuilderPointerDrag.pointerY - todayBuilderPointerDrag.offsetY,
+                                  todayBuilderPointerDrag.pointerY -
+                                  todayBuilderPointerDrag.offsetY,
                               width: Math.min(300, todayBuilderPointerDrag.width),
                             }}
                           >
@@ -11410,8 +11484,8 @@ function DashboardApp() {
                                         <div className="wishlistRowActions">
                                           <span className="wishlistNextStepSlot">
                                             <button
-                                              aria-label={`${item.text}を次の一手にする`}
-                                              className="wishlistNextStepAction mainActionButton mainActionButton--neutral"
+                                              aria-label={`${item.text}の次の一手を設定`}
+                                              className="wishlistNextStepAction nextStepRowAction nextStepRowAction--set mainActionButton mainActionButton--neutral"
                                               disabled={
                                                 !item.id || sourceEditBlocked(`wishlist:${item.id}`)
                                               }
@@ -11423,11 +11497,11 @@ function DashboardApp() {
                                               title={
                                                 item.id && sourceEditBlocked(`wishlist:${item.id}`)
                                                   ? SOURCE_EDIT_TIMER_REASON
-                                                  : "次の一手にする"
+                                                  : "次の一手を設定"
                                               }
                                               type="button"
                                             >
-                                              ▷ 次の一手
+                                              ▷ 次の一手を設定
                                             </button>
                                           </span>
                                           {selected && (
@@ -11911,16 +11985,10 @@ function DashboardApp() {
             </>
           ) : contextMenu.kind === "todayBuilderBar" ? (
             <>
-              <ContextMenuItem
-                onClick={() => navigateToCandidateSource("project")}
-                type="button"
-              >
+              <ContextMenuItem onClick={() => navigateToCandidateSource("project")} type="button">
                 次の一手から追加
               </ContextMenuItem>
-              <ContextMenuItem
-                onClick={() => navigateToCandidateSource("wishlist")}
-                type="button"
-              >
+              <ContextMenuItem onClick={() => navigateToCandidateSource("wishlist")} type="button">
                 やりたいことから追加
               </ContextMenuItem>
             </>
@@ -12308,7 +12376,10 @@ function DashboardApp() {
                 <p>次の一手・やりたいことから、今日の3件へ追加します。</p>
               </div>
               <div className="todayPickerHeaderActions">
-                <div aria-label={`今日の3件 ${config.today.items.length}件`} className="todayPickerCounter">
+                <div
+                  aria-label={`今日の3件 ${config.today.items.length}件`}
+                  className="todayPickerCounter"
+                >
                   <strong>{config.today.items.length} / 3</strong>
                   {config.today.items.length < TODAY_ITEM_LIMIT && (
                     <span>あと{TODAY_ITEM_LIMIT - config.today.items.length}件</span>
@@ -12444,10 +12515,7 @@ function DashboardApp() {
                               }
                               type="button"
                             >
-                              <UiIcon
-                                name={collapsed ? "chevronRight" : "chevronDown"}
-                                size={16}
-                              />
+                              <UiIcon name={collapsed ? "chevronRight" : "chevronDown"} size={16} />
                               {project ? (
                                 <ProjectIdentity
                                   colorId={project.colorId}
@@ -13099,10 +13167,7 @@ function DashboardApp() {
             >
               <h3>メンテナンス</h3>
               <div className="maintenanceGroups">
-                <section
-                  aria-labelledby="maintenance-data-heading"
-                  className="maintenanceGroup"
-                >
+                <section aria-labelledby="maintenance-data-heading" className="maintenanceGroup">
                   <h4 id="maintenance-data-heading">データ・フォルダ</h4>
                   <div className="settingsButtonRow">
                     <button
@@ -13131,10 +13196,7 @@ function DashboardApp() {
                   </div>
                 </section>
 
-                <section
-                  aria-labelledby="maintenance-display-heading"
-                  className="maintenanceGroup"
-                >
+                <section aria-labelledby="maintenance-display-heading" className="maintenanceGroup">
                   <h4 id="maintenance-display-heading">表示・キャッシュ</h4>
                   <div className="settingsButtonRow">
                     <button
@@ -13929,24 +13991,57 @@ function DashboardApp() {
           const nextStepProject = config.projects.find(
             (project) => project.id === nextStepEditDraft.projectId,
           );
+          const wishlistMode = nextStepEditDraft.decisionMode === "wishlist";
+          const wishlistCandidates = nextStepProject
+            ? config.inbox.filter(
+                (item) => Boolean(item.id) && item.projectId === nextStepProject.id,
+              )
+            : [];
+          const selectedWishlist = nextStepEditDraft.promotedWishlistId
+            ? wishlistCandidates.find((item) => item.id === nextStepEditDraft.promotedWishlistId)
+            : undefined;
+          const selectedWishlistLocked = Boolean(
+            selectedWishlist &&
+            unfinishedTodayUsesSource(config, `wishlist:${selectedWishlist.id}`),
+          );
+          const currentNextStepLocked = Boolean(
+            wishlistMode &&
+            selectedWishlist &&
+            nextStepProject?.nextStep &&
+            unfinishedTodayUsesSource(
+              config,
+              `project:${nextStepProject.id}`,
+              nextStepProject.nextStep.generationId,
+            ),
+          );
           const legacyChoiceRequired = Boolean(
+            !wishlistMode &&
             nextStepProject?.legacyNextStepSettings &&
-              !nextStepProject.nextStep &&
-              nextStepEditDraft.legacyChoice === null,
+            !nextStepProject.nextStep &&
+            nextStepEditDraft.legacyChoice === null,
           );
           const replacingExisting = Boolean(
-            nextStepEditDraft.mode === "promote" && nextStepProject?.nextStep?.text.trim(),
+            wishlistMode && selectedWishlist && nextStepProject?.nextStep?.text.trim(),
           );
+          const editingExisting = !wishlistMode && nextStepEditDraft.mode === "edit";
+          const dialogTitle = editingExisting
+            ? "次の一手を編集"
+            : replacingExisting
+              ? "次の一手を変更"
+              : "次の一手を設定";
+          const saveDisabled =
+            sourceEditSaving ||
+            !nextStepEditDraft.projectId ||
+            (wishlistMode
+              ? !selectedWishlist || selectedWishlistLocked || currentNextStepLocked
+              : !nextStepEditDraft.text.trim()) ||
+            (replacingExisting && nextStepEditDraft.replacementChoice !== "return") ||
+            legacyChoiceRequired;
+
           return (
             <div className="modalBackdrop" role="presentation">
               <section
-                aria-label={
-                  nextStepEditDraft.mode === "edit"
-                    ? "次の一手を編集"
-                    : replacingExisting
-                      ? "次の一手を変更"
-                    : "次の一手を設定"
-                }
+                aria-label={dialogTitle}
                 aria-modal="true"
                 className="dropDialog editDialog modalLongForm nextStepEditDialog app-scrollbar"
                 role="dialog"
@@ -13954,13 +14049,7 @@ function DashboardApp() {
               >
                 <div>
                   <p className="eyebrow">Next Step</p>
-                  <h2>
-                    {nextStepEditDraft.mode === "edit"
-                      ? "次の一手を編集"
-                      : replacingExisting
-                        ? "次の一手を変更"
-                      : "次の一手を設定"}
-                  </h2>
+                  <h2>{dialogTitle}</h2>
                   <p className="dialogLead">今進める1件と、始めるための環境を設定します。</p>
                 </div>
 
@@ -13993,121 +14082,229 @@ function DashboardApp() {
                   </label>
                 )}
 
-                {replacingExisting ? (
-                  <fieldset className="nextStepReplacementNotice">
-                    <legend>現在の次の一手をどうしますか？</legend>
-                    <span>{nextStepProject?.nextStep?.text}</span>
-                    <div className="nextStepReplacementChoices">
-                      <button
-                        aria-pressed={nextStepEditDraft.replacementChoice === "return"}
-                        className="secondaryButton"
-                        disabled={sourceEditSaving}
-                        onClick={() =>
-                          setNextStepEditDraft({
-                            ...nextStepEditDraft,
-                            replacementChoice: "return",
-                          })
-                        }
-                        type="button"
-                      >
-                        やりたいことへ戻す
-                      </button>
-                      <button
-                        aria-pressed={nextStepEditDraft.replacementChoice === "complete"}
-                        className="secondaryButton"
-                        disabled={sourceEditSaving}
-                        onClick={() =>
-                          setNextStepEditDraft({
-                            ...nextStepEditDraft,
-                            replacementChoice: "complete",
-                          })
-                        }
-                        type="button"
-                      >
-                        完了にする
-                      </button>
-                      <button
-                        className="secondaryButton dialogCancelButton"
-                        disabled={sourceEditSaving}
-                        onClick={() => closeNextStepEditDialog()}
-                        type="button"
-                      >
-                        キャンセル
-                      </button>
-                    </div>
-                  </fieldset>
-                ) : null}
+                <section className="nextStepDecisionBlock">
+                  <h3>次の一手の決め方</h3>
+                  <p>同じプロジェクトのやりたいことから選ぶか、新しい行動を入力します。</p>
+                  <div
+                    aria-label="次の一手の決め方"
+                    className="nextStepDecisionModes"
+                    role="tablist"
+                  >
+                    <button
+                      aria-selected={wishlistMode}
+                      className={
+                        wishlistMode
+                          ? "nextStepDecisionModeButton nextStepDecisionModeButton--active mainActionButton mainActionButton--positive"
+                          : "nextStepDecisionModeButton mainActionButton mainActionButton--neutral"
+                      }
+                      disabled={sourceEditSaving}
+                      onClick={() => selectNextStepDecisionMode("wishlist")}
+                      role="tab"
+                      type="button"
+                    >
+                      やりたいことから選ぶ
+                    </button>
+                    <button
+                      aria-selected={!wishlistMode}
+                      className={
+                        !wishlistMode
+                          ? "nextStepDecisionModeButton nextStepDecisionModeButton--active mainActionButton mainActionButton--positive"
+                          : "nextStepDecisionModeButton mainActionButton mainActionButton--neutral"
+                      }
+                      disabled={sourceEditSaving}
+                      onClick={() => selectNextStepDecisionMode("new")}
+                      role="tab"
+                      type="button"
+                    >
+                      ＋ 新しく入力
+                    </button>
+                  </div>
 
-                {nextStepProject?.legacyNextStepSettings && !nextStepProject.nextStep ? (
-                  <fieldset className="legacyNextStepChoice">
-                    <legend>以前の実行設定</legend>
-                    <p>移行前の開始環境などが残っています。今回だけ扱いを選んでください。</p>
-                    <div>
-                      <button
-                        aria-pressed={nextStepEditDraft.legacyChoice === "inherit"}
-                        className={
-                          nextStepEditDraft.legacyChoice === "inherit"
-                            ? "secondaryButton legacyNextStepChoice--selected"
-                            : "secondaryButton"
-                        }
-                        onClick={() => chooseLegacyNextStepSettings("inherit")}
-                        type="button"
-                      >
-                        引き継ぐ
-                      </button>
-                      <button
-                        aria-pressed={nextStepEditDraft.legacyChoice === "discard"}
-                        className={
-                          nextStepEditDraft.legacyChoice === "discard"
-                            ? "secondaryButton legacyNextStepChoice--selected"
-                            : "secondaryButton"
-                        }
-                        onClick={() => chooseLegacyNextStepSettings("discard")}
-                        type="button"
-                      >
-                        破棄して全体設定を使う
-                      </button>
-                    </div>
-                  </fieldset>
-                ) : null}
+                  <div className="nextStepDecisionPanel" role="tabpanel">
+                    {wishlistMode ? (
+                      <>
+                        <div className="nextStepWishlistPickerHeading">
+                          <strong>やりたいこと</strong>
+                          <span>{wishlistCandidates.length}件</span>
+                        </div>
+                        {wishlistCandidates.length ? (
+                          <div
+                            aria-label="次の一手にするやりたいこと"
+                            className="nextStepWishlistPickerList"
+                            role="radiogroup"
+                          >
+                            {wishlistCandidates.map((item) => {
+                              const locked = unfinishedTodayUsesSource(
+                                config,
+                                `wishlist:${item.id}`,
+                              );
+                              return (
+                                <button
+                                  aria-checked={item.id === selectedWishlist?.id}
+                                  className="nextStepWishlistCandidate"
+                                  disabled={sourceEditSaving || locked}
+                                  key={item.id}
+                                  title={
+                                    locked
+                                      ? "未完了の今日の3件に入っているため、完了または外すまで次の一手にできません"
+                                      : undefined
+                                  }
+                                  onClick={() =>
+                                    setNextStepEditDraft({
+                                      ...nextStepEditDraft,
+                                      mode: "promote",
+                                      promotedWishlistId: item.id,
+                                      replacementChoice: null,
+                                      replacedNextStep: nextStepProject?.nextStep,
+                                    })
+                                  }
+                                  role="radio"
+                                  type="button"
+                                >
+                                  <span aria-hidden="true" className="nextStepWishlistRadio" />
+                                  <span className="nextStepWishlistCandidateText">{item.text}</span>
+                                  {locked ? (
+                                    <span className="nextStepWishlistLock">今日の3件で未完了</span>
+                                  ) : null}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="nextStepWishlistEmpty">
+                            このプロジェクトのやりたいことはありません
+                          </p>
+                        )}
 
-                <h3 className="formSectionHeading">次の一手</h3>
-                <label className="fieldStack">
-                  <span>行動</span>
-                  <input
-                    aria-label="行動"
-                    autoFocus={nextStepEditDraft.projectLocked}
-                    className="textInput"
-                    maxLength={120}
-                    onChange={(event) =>
-                      setNextStepEditDraft({
-                        ...nextStepEditDraft,
-                        text: event.target.value,
-                      })
-                    }
-                    placeholder="次に着手する具体的な一手"
-                    value={nextStepEditDraft.text}
-                  />
-                  {projectNextStepSuggestions.length > 0 ? (
-                    <div className="suggestionRow" aria-label="次の一手候補">
-                      {projectNextStepSuggestions.map((suggestion) => (
-                        <button
-                          className="suggestionChip"
-                          key={suggestion}
-                          onClick={() =>
-                            setNextStepEditDraft({
-                              ...nextStepEditDraft,
-                              text: suggestion,
-                            })
-                          }
-                          type="button"
-                        >
-                          {suggestion}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                </label>
+                        {selectedWishlist ? (
+                          <div className="nextStepWishlistSelection">
+                            <span aria-hidden="true">✓</span>
+                            <span className="nextStepWishlistSelectionCopy">
+                              <small>選択済み</small>
+                              <strong>{selectedWishlist.text}</strong>
+                            </span>
+                            <button
+                              className="secondaryButton"
+                              disabled={sourceEditSaving}
+                              onClick={() =>
+                                setNextStepEditDraft({
+                                  ...nextStepEditDraft,
+                                  promotedWishlistId: undefined,
+                                })
+                              }
+                              type="button"
+                            >
+                              選び直す
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="nextStepDecisionHint">1件選択してください。</span>
+                        )}
+
+                        {replacingExisting ? (
+                          <div className="nextStepSwapSummary">
+                            <strong>現在の次の一手</strong>
+                            <span>
+                              「{nextStepProject?.nextStep?.text}
+                              」は、保存するとやりたいことへ戻ります。
+                            </span>
+                            <button
+                              aria-pressed={nextStepEditDraft.replacementChoice === "return"}
+                              className="secondaryButton"
+                              disabled={sourceEditSaving}
+                              onClick={() =>
+                                setNextStepEditDraft({
+                                  ...nextStepEditDraft,
+                                  replacementChoice: "return",
+                                })
+                              }
+                              type="button"
+                            >
+                              やりたいことへ戻す
+                            </button>
+                            {currentNextStepLocked ? (
+                              <span>今日の3件で未完了のため、今は入れ替えできません。</span>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </>
+                    ) : (
+                      <>
+                        {nextStepProject?.legacyNextStepSettings && !nextStepProject.nextStep ? (
+                          <fieldset className="legacyNextStepChoice">
+                            <legend>以前の実行設定</legend>
+                            <p>
+                              移行前の開始環境などが残っています。今回だけ扱いを選んでください。
+                            </p>
+                            <div>
+                              <button
+                                aria-pressed={nextStepEditDraft.legacyChoice === "inherit"}
+                                className={
+                                  nextStepEditDraft.legacyChoice === "inherit"
+                                    ? "secondaryButton legacyNextStepChoice--selected"
+                                    : "secondaryButton"
+                                }
+                                onClick={() => chooseLegacyNextStepSettings("inherit")}
+                                type="button"
+                              >
+                                引き継ぐ
+                              </button>
+                              <button
+                                aria-pressed={nextStepEditDraft.legacyChoice === "discard"}
+                                className={
+                                  nextStepEditDraft.legacyChoice === "discard"
+                                    ? "secondaryButton legacyNextStepChoice--selected"
+                                    : "secondaryButton"
+                                }
+                                onClick={() => chooseLegacyNextStepSettings("discard")}
+                                type="button"
+                              >
+                                破棄して全体設定を使う
+                              </button>
+                            </div>
+                          </fieldset>
+                        ) : null}
+                        <label className="fieldStack">
+                          <span>行動</span>
+                          <input
+                            aria-label="行動"
+                            autoFocus={nextStepEditDraft.projectLocked}
+                            className="textInput"
+                            maxLength={120}
+                            onChange={(event) =>
+                              setNextStepEditDraft({
+                                ...nextStepEditDraft,
+                                text: event.target.value,
+                              })
+                            }
+                            placeholder="次に着手する具体的な一手"
+                            value={nextStepEditDraft.text}
+                          />
+                          {projectNextStepSuggestions.length > 0 ? (
+                            <div className="suggestionRow" aria-label="次の一手候補">
+                              {projectNextStepSuggestions.map((suggestion) => (
+                                <button
+                                  className="suggestionChip"
+                                  key={suggestion}
+                                  onClick={() =>
+                                    setNextStepEditDraft({
+                                      ...nextStepEditDraft,
+                                      text: suggestion,
+                                    })
+                                  }
+                                  type="button"
+                                >
+                                  {suggestion}
+                                </button>
+                              ))}
+                            </div>
+                          ) : null}
+                        </label>
+                      </>
+                    )}
+                  </div>
+                </section>
+
                 <label className="fieldStack">
                   <span>始めるきっかけ（任意）</span>
                   <input
@@ -14284,28 +14481,20 @@ function DashboardApp() {
                 <div className="dialogActions formDialogActions">
                   <button
                     className="primaryButton"
-                    disabled={
-                      sourceEditSaving ||
-                      !nextStepEditDraft.projectId ||
-                      !nextStepEditDraft.text.trim() ||
-                      legacyChoiceRequired ||
-                      (replacingExisting && !nextStepEditDraft.replacementChoice)
-                    }
+                    disabled={saveDisabled}
                     onClick={() => void saveNextStepEdit()}
                     type="button"
                   >
                     {sourceEditSaving ? "保存中…" : "保存"}
                   </button>
-                  {!replacingExisting && (
-                    <button
-                      className="secondaryButton dialogCancelButton"
-                      disabled={sourceEditSaving}
-                      onClick={() => closeNextStepEditDialog()}
-                      type="button"
-                    >
-                      キャンセル
-                    </button>
-                  )}
+                  <button
+                    className="secondaryButton dialogCancelButton"
+                    disabled={sourceEditSaving}
+                    onClick={() => closeNextStepEditDialog()}
+                    type="button"
+                  >
+                    キャンセル
+                  </button>
                 </div>
               </section>
             </div>
