@@ -3366,7 +3366,7 @@ input[type="number"]::-webkit-inner-spin-button {
   align-items: center;
   gap: 7px;
   margin: 0;
-  color: var(--good);
+  color: var(--project-color, var(--good));
   font-size: 12px;
   font-weight: 850;
 }
@@ -3376,8 +3376,9 @@ input[type="number"]::-webkit-inner-spin-button {
   height: 8px;
   flex: 0 0 auto;
   border-radius: 50%;
-  background: var(--good);
-  box-shadow: 0 0 0 3px rgba(111, 207, 151, 0.12);
+  background: var(--project-color, var(--good));
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--project-color, var(--good)) 18%, transparent);
 }
 
 .doNowProjectChip {
@@ -8115,14 +8116,14 @@ input[type="number"]::-webkit-inner-spin-button {
   display: grid;
   justify-items: end;
   gap: 4px;
-  width: 200px;
+  width: 202px;
   max-width: 100%;
   margin-left: auto;
 }
 
 .todayTimerCluster .todayTimerActions:not(.todayTimerActions--running) {
   grid-template-columns: 78px 78px 34px;
-  gap: 5px;
+  gap: 6px;
 }
 
 .todayTimerCluster .todayStartButton {
@@ -8640,6 +8641,15 @@ input[type="number"]::-webkit-inner-spin-button {
   grid-column: 3;
   width: 96px;
   min-width: 0;
+}
+
+.todayPickerRow > .todayPickerAddButton {
+  min-height: 30px;
+  border-radius: var(--radius);
+  padding: 0 11px;
+  font-size: var(--dashboard-font-meta, 11px);
+  font-weight: 700;
+  line-height: 1;
 }
 
 .todayPickerSelectedStatus {

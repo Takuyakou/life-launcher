@@ -7573,14 +7573,16 @@ function DashboardApp() {
     const mode = options?.mode ?? (project.nextStep?.text.trim() ? "edit" : "set");
     const promotingWishlist = mode === "promote" && Boolean(options?.promotedWishlistId);
     const editingExisting = mode === "edit" && Boolean(project.nextStep);
+    const initialDecisionMode: NextStepDecisionMode =
+      promotingWishlist || mode === "set" ? "wishlist" : "new";
     captureDialogReturnFocus(nextStepEditReturnFocusRef);
     setContextMenu(null);
     setNextStepEditDraft({
       mode,
-      decisionMode: promotingWishlist ? "wishlist" : "new",
+      decisionMode: initialDecisionMode,
       projectId: project.id,
       projectLocked: options?.projectLocked ?? true,
-      text: promotingWishlist ? "" : (options?.text ?? project.nextStep?.text ?? ""),
+      text: initialDecisionMode === "wishlist" ? "" : (options?.text ?? project.nextStep?.text ?? ""),
       originalText: project.nextStep?.text ?? "",
       trigger: editingExisting ? (project.nextStep?.trigger ?? "") : "",
       ...nextStepExecutionDraft(editingExisting ? project.nextStep : undefined),
@@ -8537,7 +8539,7 @@ function DashboardApp() {
           <strong>{candidate.text}</strong>
         </div>
         <button
-          className="mainActionButton mainActionButton--gold"
+          className="todayPickerAddButton mainActionButton mainActionButton--gold"
           disabled={
             todayPickerSavingSourceKey !== null || config.today.items.length >= TODAY_ITEM_LIMIT
           }
