@@ -33,19 +33,16 @@ async function openGuide(page: Page) {
   return dialog;
 }
 
-
-test("Guide contents move focus to a section and mark the current location", async ({
-  page,
-}) => {
+test("Guide contents move focus to a section and mark the current location", async ({ page }) => {
   await prepare(page);
   const dialog = await openGuide(page);
   const navigation = dialog.getByRole("navigation", { name: "使い方の目次" });
-  const todayButton = navigation.getByRole("button", { name: /今日を組み立てる/ });
+  const todayButton = navigation.getByRole("button", { name: /今日やるものを選ぶ/ });
 
   await todayButton.click();
   const todayHeading = dialog
     .locator('[data-help-section-id="today-builder"]')
-    .getByRole("heading", { name: "今日を組み立てる" });
+    .getByRole("heading", { name: "今日やるものを選ぶ" });
   await expect(todayHeading).toBeFocused();
   await expect(todayButton).toHaveAttribute("aria-current", "location");
 

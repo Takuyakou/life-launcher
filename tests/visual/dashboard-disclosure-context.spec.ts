@@ -57,7 +57,9 @@ test.skip("dashboard disclosure bars toggle from their count and description are
   }
 });
 
-test("a NextStep context menu exposes edit, change, unset and Builder registration", async ({ page }) => {
+test("a NextStep context menu exposes edit, change and unset without legacy registration", async ({
+  page,
+}) => {
   await prepare(page);
   const row = page
     .locator(".nextStepRow", { hasText: "5分だけ体を動かす" })
@@ -70,7 +72,6 @@ test("a NextStep context menu exposes edit, change, unset and Builder registrati
     "次の一手を編集",
     "次の一手を変更",
     "次の一手を未設定にする",
-    "今日を組み立てるに登録する",
   ]);
   await expect(page.getByRole("menuitem", { name: "やりたいことを追加" })).toHaveCount(0);
 });
@@ -93,10 +94,7 @@ test.skip("Builder bar menu smoothly navigates to each candidate source", async 
 
   const builderHeader = page.locator(".todayBuilderHeader");
   await builderHeader.click({ button: "right" });
-  await expect(page.getByRole("menuitem")).toHaveText([
-    "次の一手から追加",
-    "やりたいことから追加",
-  ]);
+  await expect(page.getByRole("menuitem")).toHaveText(["次の一手から追加", "やりたいことから追加"]);
   await page.getByRole("menuitem", { name: "次の一手から追加" }).click();
   await expect(page.locator(".projectsBand .disclosure")).toBeFocused();
 

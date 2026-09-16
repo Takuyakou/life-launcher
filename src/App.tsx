@@ -11112,7 +11112,7 @@ function DashboardApp() {
                   </button>
                   <span className="disclosureCount">{config.inbox.length}件</span>
                   <span className="disclosureDescription">
-                    他にやりたいこと。今日やるものは「今日を組み立てる」から選べます。
+                    他にやりたいこと。今日やるものは「今日の3件」から選べます。
                   </span>
                   <div className="disclosureHeaderActions">
                     <button
@@ -11261,9 +11261,6 @@ function DashboardApp() {
                                             sourceKey,
                                         ),
                                     );
-                                    const excluded = Boolean(
-                                      sourceKey && explicitlyExcludedCandidate(sourceKey),
-                                    );
                                     return (
                                       <div
                                         className={
@@ -11308,16 +11305,6 @@ function DashboardApp() {
                                         </span>
                                         {selected && (
                                           <span className="wishlistTodayStatus">✓ 今日の3件</span>
-                                        )}
-                                        {!selected && excluded && sourceKey && (
-                                          <button
-                                            className="wishlistRestoreButton mainActionButton mainActionButton--positive"
-                                            onClick={() => void restoreTodayBuilderCandidate(sourceKey)}
-                                            onPointerDown={(event) => event.stopPropagation()}
-                                            type="button"
-                                          >
-                                            候補に戻す
-                                          </button>
                                         )}
                                         <button
                                           aria-label={`${item.text}の操作`}
@@ -11861,19 +11848,6 @@ function DashboardApp() {
               >
                 次の一手にする
               </ContextMenuItem>
-              {config?.inbox[contextMenu.index]?.id &&
-                explicitlyExcludedCandidate(`wishlist:${config.inbox[contextMenu.index].id}`) && (
-                  <ContextMenuItem
-                    onClick={() =>
-                      void restoreTodayBuilderCandidate(
-                        `wishlist:${config.inbox[contextMenu.index].id}`,
-                      )
-                    }
-                    type="button"
-                  >
-                    今日の候補に戻す
-                  </ContextMenuItem>
-                )}
               <ContextMenuItem
                 disabled={inboxNeighborIndex(contextMenu.index, -1) === undefined}
                 onClick={() => void moveInboxItemByOffset(contextMenu.index, -1)}
@@ -11966,16 +11940,6 @@ function DashboardApp() {
                     type="button"
                   >
                     次の一手を未設定にする
-                  </ContextMenuItem>
-                  <ContextMenuItem
-                    className="contextMenuSeparatorBefore"
-                    disabled={!explicitlyExcludedCandidate(`project:${contextMenu.project.id}`)}
-                    onClick={() =>
-                      void restoreTodayBuilderCandidate(`project:${contextMenu.project.id}`)
-                    }
-                    type="button"
-                  >
-                    今日を組み立てるに登録する
                   </ContextMenuItem>
                 </>
               ) : (
@@ -12698,7 +12662,7 @@ function DashboardApp() {
                 <div className="settingsWeeklyFocusHeading">
                   <div>
                     <h4 id="settings-weekly-focus-title">今週の重点</h4>
-                    <p>今やる一手の候補にするプロジェクトを最大3件選びます。</p>
+                    <p>今やる一手で優先するプロジェクトを最大3件選びます。</p>
                   </div>
                   <span>
                     {settingsDraft.weeklyFocusProjectIds.length}/{WEEKLY_FOCUS_LIMIT}

@@ -23,48 +23,39 @@ async function currentConfig(page: Page): Promise<AppConfig> {
   );
 }
 
-test("Phase 8.1 separates NextStep actions from Wishlist candidate restore", async ({ page }) => {
+test("Phase 8.4 keeps legacy candidate exclusions inert and removes restore actions", async ({
+  page,
+}) => {
   const fixture = createPublicFixture();
   fixture.config.inbox = [
     { id: "same-a", text: "同じ本文" },
     { id: "same-b", text: "同じ本文" },
   ];
-  fixture.config.today.candidateExcludedSourceKeys = [
-    "project:sample-learning",
-    "wishlist:same-b",
-  ];
+  fixture.config.today.candidateExcludedSourceKeys = ["project:sample-learning", "wishlist:same-b"];
   await prepare(page, fixture);
 
   const nextStep = page.locator(".nextStepRow").first().locator(".nextStepActionRegion");
   await nextStep.click({ button: "right" });
   await expect(page.getByRole("menuitem", { name: "次の一手を編集" })).toBeVisible();
-  await expect(page.getByRole("menuitem", { name: "次の一手を変更" })).toBeVisible();
-  await expect(page.getByRole("menuitem", { name: "次の一手を未設定にする" })).toBeVisible();
-  await expect(
-    page.getByRole("menuitem", { name: "今日を組み立てるに登録する" }),
-  ).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "今日を組み立てるに登録する" })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+
+  const inboxDisclosure = page.locator(".inboxBand .disclosure");
+  if ((await inboxDisclosure.getAttribute("aria-expanded")) !== "true")
+    await inboxDisclosure.click();
+  await page.locator('[data-inbox-id="same-b"]').click({ button: "right" });
   await expect(page.getByRole("menuitem", { name: "今日の候補に戻す" })).toHaveCount(0);
   await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
+  const picker = page.getByRole("dialog", { name: "今日やるものを選ぶ" });
+  await expect(picker).toContainText("資料を1ページ読む");
+  await expect(picker.locator(".todayPickerRow", { hasText: "同じ本文" })).toHaveCount(2);
   expect((await currentConfig(page)).today.candidateExcludedSourceKeys).toEqual([
     "project:sample-learning",
     "wishlist:same-b",
   ]);
-
-  const inboxDisclosure = page.locator(".inboxBand .disclosure");
-  if ((await inboxDisclosure.getAttribute("aria-expanded")) !== "true") await inboxDisclosure.click();
-  await page.locator(".inboxRow").first().click({ button: "right" });
-  await expect(page.getByRole("menuitem", { name: "今日の候補に戻す" })).toHaveCount(0);
-  await page.getByRole("menuitem", { name: "編集", exact: true }).focus();
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("menu")).toHaveCount(0);
-  await page.locator(".inboxRow").nth(1).click({ button: "right" });
-  await page.getByRole("menuitem", { name: "今日の候補に戻す" }).click();
-  expect((await currentConfig(page)).today.candidateExcludedSourceKeys).toEqual([
-    "project:sample-learning",
-  ]);
-  await expect(page.locator(".todayRow")).toHaveCount(fixture.config.today.items.length);
 });
-
 
 test.skip("P72-01 empty Today CTA opens Builder and focuses a candidate", async ({ page }) => {
   const fixture = createPublicFixture();
@@ -80,7 +71,9 @@ test.skip("P72-01 empty Today CTA opens Builder and focuses a candidate", async 
   );
 });
 
-test.skip("P72-01 Today and Builder expose the same menu through ellipsis and keyboard", async ({ page }) => {
+test.skip("P72-01 Today and Builder expose the same menu through ellipsis and keyboard", async ({
+  page,
+}) => {
   const fixture = createPublicFixture();
   await prepare(page, fixture);
   const todayMenu = page.locator(".todayRow").first().locator(".todayRowMenu");
@@ -99,7 +92,7 @@ test.skip("P72-01 Today and Builder expose the same menu through ellipsis and ke
   await expect(builder).toBeFocused();
 });
 
-test("P72-01 failed Wishlist restore keeps exclusion and does not show success", async ({ page }) => {
+test("Phase 8.4 opening the Picker does not rewrite legacy exclusion state", async ({ page }) => {
   const fixture = createPublicFixture();
   fixture.config.today.candidateExcludedSourceKeys = ["wishlist:sample-later"];
   await prepare(page, fixture);
@@ -110,19 +103,15 @@ test("P72-01 failed Wishlist restore keeps exclusion and does not show success",
       }
     ).__LIFE_LAUNCHER_VISUAL_QA__.setSaveConfigFailure(true),
   );
-  const inboxDisclosure = page.locator(".inboxBand .disclosure");
-  if ((await inboxDisclosure.getAttribute("aria-expanded")) !== "true") {
-    await inboxDisclosure.click();
-  }
-  await page.locator('[data-inbox-id="sample-later"]').click({ button: "right" });
-  await page.getByRole("menuitem", { name: "今日の候補に戻す" }).click();
-  await expect(page.locator(".toast").last()).toContainText("保存できません");
+
+  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
+  const picker = page.getByRole("dialog", { name: "今日やるものを選ぶ" });
+  await expect(picker).toContainText("あとで確認するサンプル");
   expect((await currentConfig(page)).today.candidateExcludedSourceKeys).toEqual([
     "wishlist:sample-later",
   ]);
-  await expect(page.getByText("今日の候補に戻しました", { exact: true })).toHaveCount(0);
+  await expect(page.locator(".toast")).toHaveCount(0);
 });
-
 test("v1.3 Do Now switches candidates from the action row and context menu", async ({ page }) => {
   const fixture = createPublicFixture();
   await prepare(page, fixture);
@@ -151,7 +140,9 @@ test("v1.3 Do Now hides alternate actions when there is no other candidate", asy
   await expect(page.getByRole("menuitem", { name: "他の一手", exact: true })).toHaveCount(0);
 });
 
-test("timer actions keep time subtly right of center and slide play in from the left", async ({ page }) => {
+test("timer actions keep time subtly right of center and slide play in from the left", async ({
+  page,
+}) => {
   const fixture = createPublicFixture();
   await prepare(page, fixture);
   const doNowShort = page.locator(".doNowStartPrimary");
@@ -176,8 +167,12 @@ test("timer actions keep time subtly right of center and slide play in from the 
   const doNowTimeAfter = await doNowShort.locator(".timerStartDuration").boundingBox();
   const doNowPlayAfter = await doNowShort.locator(".timerStartHoverGlyph").boundingBox();
   expect(doNowBefore && doNowAfter && doNowTimeBefore && doNowTimeAfter).toBeTruthy();
-  expect(doNowTimeBefore!.x + doNowTimeBefore!.width / 2 - (doNowBefore!.x + doNowBefore!.width / 2)).toBeCloseTo(5, 1);
-  expect(doNowTimeAfter!.x + doNowTimeAfter!.width / 2 - (doNowAfter!.x + doNowAfter!.width / 2)).toBeCloseTo(5, 1);
+  expect(
+    doNowTimeBefore!.x + doNowTimeBefore!.width / 2 - (doNowBefore!.x + doNowBefore!.width / 2),
+  ).toBeCloseTo(5, 1);
+  expect(
+    doNowTimeAfter!.x + doNowTimeAfter!.width / 2 - (doNowAfter!.x + doNowAfter!.width / 2),
+  ).toBeCloseTo(5, 1);
   expect(doNowPlayAfter!.x).toBeCloseTo(doNowPlayBefore!.x, 1);
   expect(doNowPlayAfter!.x + doNowPlayAfter!.width).toBeLessThan(doNowTimeAfter!.x);
   expect(doNowAfter!.y).toBeCloseTo(doNowBefore!.y, 1);
@@ -214,8 +209,12 @@ test("timer actions keep time subtly right of center and slide play in from the 
   const todayAfter = await todayShort.boundingBox();
   const todayTimeAfter = await todayShort.locator(".nextStepStartDuration").boundingBox();
   expect(todayBefore && todayAfter && todayTimeBefore && todayTimeAfter).toBeTruthy();
-  expect(todayTimeBefore!.x + todayTimeBefore!.width / 2 - (todayBefore!.x + todayBefore!.width / 2)).toBeCloseTo(2, 1);
-  expect(todayTimeAfter!.x + todayTimeAfter!.width / 2 - (todayAfter!.x + todayAfter!.width / 2)).toBeCloseTo(2, 1);
+  expect(
+    todayTimeBefore!.x + todayTimeBefore!.width / 2 - (todayBefore!.x + todayBefore!.width / 2),
+  ).toBeCloseTo(2, 1);
+  expect(
+    todayTimeAfter!.x + todayTimeAfter!.width / 2 - (todayAfter!.x + todayAfter!.width / 2),
+  ).toBeCloseTo(2, 1);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await expect(todayShort).toHaveCSS("transform", "none");
   await expect(todayShort.locator(".nextStepStartGlyph")).toHaveCSS("transition-duration", "0s");

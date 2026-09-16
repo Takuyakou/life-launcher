@@ -20,7 +20,7 @@ export type VisualQaFixture = {
   todayMinutes: number;
   doNowCandidates: Array<{
     projectId: string;
-    reason: "noToday" | "oldestToday" | "manualOrder";
+    reason: "noToday" | "oldestSession" | "manualOrder";
     restartEligible: boolean;
   }>;
   staleProjectIds?: string[];

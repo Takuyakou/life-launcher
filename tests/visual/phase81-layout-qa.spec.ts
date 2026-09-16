@@ -274,7 +274,6 @@ test("Phase 8.1 NextStep cards expose one combined keyboard context menu", async
     "次の一手を編集",
     "次の一手を変更",
     "次の一手を未設定にする",
-    "今日を組み立てるに登録する",
   ]);
   await expect(menu.getByRole("menuitem", { name: "やりたいことを追加" })).toHaveCount(0);
   await expectInsideViewport(page, menu, "Combined NextStep context menu");
@@ -291,7 +290,6 @@ test("Phase 8.1 NextStep cards expose one combined keyboard context menu", async
     "次の一手を編集",
     "次の一手を変更",
     "次の一手を未設定にする",
-    "今日を組み立てるに登録する",
   ]);
   await expectInsideViewport(page, menu, "Combined NextStep action context menu");
   await page.keyboard.press("Escape");

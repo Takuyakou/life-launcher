@@ -315,7 +315,7 @@ test("P82-01 Wishlist renders Project groups, collapse, Today and excluded state
   );
   await expect(
     page.locator('[data-inbox-id="wish-excluded"]').getByRole("button", { name: "候補に戻す" }),
-  ).toBeVisible();
+  ).toHaveCount(0);
 
   const firstHeader = groups.nth(0).locator(".wishlistGroupHeader");
   await firstHeader.click();
@@ -367,7 +367,7 @@ test("P82-01 group D&D saves only on drop, persists order and rolls back failure
     page.evaluate(
       () =>
         (
-    window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: VisualQaControl }
+          window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: VisualQaControl }
         ).__LIFE_LAUNCHER_VISUAL_QA__.invokeCalls.filter(({ command }) => command === "save_config")
           .length,
     );
@@ -400,7 +400,7 @@ test("P82-01 group D&D saves only on drop, persists order and rolls back failure
 
   await page.evaluate(() =>
     (
-    window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: VisualQaControl }
+      window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: VisualQaControl }
     ).__LIFE_LAUNCHER_VISUAL_QA__.setSaveConfigFailure(true),
   );
   await drag("wish-three", "wish-two", false);
@@ -452,7 +452,9 @@ test("v1.3 removing a NextStep can return it to Wishlist without touching Today 
   expect(deleted.inbox).toEqual(config.inbox);
 });
 
-test("v1.3 NextStep menu offers edit, change, unset and Builder registration", async ({ page }) => {
+test("Phase 8.4 NextStep menu offers edit, change and unset without legacy registration", async ({
+  page,
+}) => {
   const fixture = createPublicFixture();
   fixture.config.today.candidateExcludedSourceKeys.push("project:sample-learning");
   await prepare(page, fixture);
@@ -466,7 +468,6 @@ test("v1.3 NextStep menu offers edit, change, unset and Builder registration", a
     "次の一手を編集",
     "次の一手を変更",
     "次の一手を未設定にする",
-    "今日を組み立てるに登録する",
   ]);
   await menu.getByRole("menuitem", { name: "次の一手を未設定にする" }).click();
   const dialog = page.getByRole("dialog", { name: "次の一手を未設定にしますか？" });
@@ -511,7 +512,7 @@ test("v1.3 dragging a NextStep to Wishlist highlights the target and returns it 
   await expect
     .poll(
       async () =>
-    (await currentConfig(page)).projects.find(({ id }) => id === "sample-learning")?.nextStep,
+        (await currentConfig(page)).projects.find(({ id }) => id === "sample-learning")?.nextStep,
     )
     .toBeUndefined();
   const saved = await currentConfig(page);
@@ -792,7 +793,7 @@ test("v1.3 Wishlist item drop sets or replaces a NextStep and returns the old on
   await expect
     .poll(
       async () =>
-    (await currentConfig(page)).projects.find(({ id }) => id === project.id)?.nextStep?.text,
+        (await currentConfig(page)).projects.find(({ id }) => id === project.id)?.nextStep?.text,
     )
     .toBe("ドロップして設定する次の一手");
   const saved = await currentConfig(page);

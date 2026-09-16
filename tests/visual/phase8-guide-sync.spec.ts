@@ -6,7 +6,7 @@ import { installTauriMock } from "./tauriMock";
 const SECTION_TITLES = [
   "まず始める",
   "毎日の基本",
-  "今日を組み立てる",
+  "今日やるものを選ぶ",
   "今日の3件",
   "Timerと完了",
   "開始環境と手順書",
@@ -38,12 +38,14 @@ test("Guide has the current ten-section structure and a three-step start", async
 
   for (let index = 0; index < SECTION_TITLES.length; index += 1) {
     await expect(buttons.nth(index)).toContainText(SECTION_TITLES[index]);
-    await expect(sections.nth(index).getByRole("heading", { name: SECTION_TITLES[index] })).toBeVisible();
+    await expect(
+      sections.nth(index).getByRole("heading", { name: SECTION_TITLES[index] }),
+    ).toBeVisible();
   }
 
   await expect(sections.first().locator(".helpGuideSteps > li")).toHaveCount(3);
   await expect(sections.first()).toContainText("今やる一手をそのまま始めます");
-  await expect(sections.first()).toContainText("今日を組み立てる");
+  await expect(sections.first()).toContainText("今日やるものを選ぶ");
   await expect(sections.first()).toContainText("実行記録を残します");
 });
 
@@ -58,7 +60,7 @@ test("Guide uses current labels and explains the Phase 8.2 state contracts", asy
     "始めるきっかけ",
     "実行記録",
     "他の一手",
-    "✓ 選択済み",
+    "✓ 今日の3件",
     "ふりかえり",
     "今週を決める",
     "すべての記録",
@@ -68,6 +70,8 @@ test("Guide uses current labels and explains the Phase 8.2 state contracts", asy
 
   expect(text).toContain("候補が2件以上");
   expect(text).toContain("優先順や保存データは書き換えません");
+  expect(text).toContain("今週の重点は優先順位を上げますが、候補を限定しません");
+  expect(text).toContain("↓ ここにドロップして今日の3件から外す");
   expect(text).toContain("各プロジェクト0〜1件の再開地点");
   expect(text).toContain("次の一手とは独立した順");
   expect(text).toContain("所属のない項目は「未分類」にまとまります");
@@ -96,7 +100,15 @@ test("Overview and current spec stay concise and synchronized", () => {
   const specification = readFileSync("docs/spec/current-spec.md", "utf8");
 
   expect(overview.trimEnd().split(/\r?\n/).length).toBeLessThanOrEqual(100);
-  for (const text of ["v1.3候補", "プロジェクト", "実行記録", "ふりかえり", "今週を決める", "すべての記録", "計測"]) {
+  for (const text of [
+    "v1.3候補",
+    "プロジェクト",
+    "実行記録",
+    "ふりかえり",
+    "今週を決める",
+    "すべての記録",
+    "計測",
+  ]) {
     expect(overview).toContain(text);
     expect(specification).toContain(text);
   }
@@ -105,6 +117,8 @@ test("Overview and current spec stay concise and synchronized", () => {
   expect(specification).toContain("再表示時の検索語は復元せず空に戻す");
   expect(specification).toContain("章は「まず始める」");
   expect(specification).toContain("迷ったときに戻る「再開地点」");
+  expect(specification).toContain("＋ 今日やるものを選ぶ");
+  expect(specification).toContain("候補を限定するfilterにはしない");
   expect(specification).toContain("次の一手のProject表示順とは同期しない");
   expect(specification).toContain("所属のない項目は同じ独立順の「未分類」");
   expect(specification).toContain("古い一手を「やりたいことへ戻す」「完了にする」「キャンセル」");

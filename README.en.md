@@ -30,8 +30,8 @@ Note: it is not a complete port of the Windows product.
 - **Daily Victory / Today's Three**
   Define one condition for a successful day and limit today's work to at most three items. Start from project-colored cards; an item is completed after its planned timer expires and you confirm the session. Once all three are complete, choose the next three yourself.
 
-- **Today Builder / Wishlist**
-  Browse next-step and wishlist candidates five at a time, then add them to today. Each adopted item retains its text, instruction reference, launch-environment references, and timer durations; explicitly saving a source edit also updates its current Today's Three snapshot.
+- **Choose today's work / Wishlist**
+  Open the Picker from an empty Today's Three slot, then choose from Next Steps and Wishlist items. Adoption preserves the source and snapshots its text, instruction, launch environment, and timer durations. A drag-only removal Drop Zone or the item menu removes only the Today adoption.
 
 - **Remove from Today's Three**
   Use the card's lower-left button or context menu to remove only its adoption into today, without a confirmation dialog. The original source, candidate, and session records remain. Removal is blocked while that item's timer is running, paused, or awaiting expiry confirmation.
@@ -49,8 +49,8 @@ Note: it is not a complete port of the Windows product.
 
 ### Dictionary / Instruction Viewer
 
-| Dictionary | Instruction Viewer |
-| --- | --- |
+| Dictionary                                                | Instruction Viewer                                             |
+| --------------------------------------------------------- | -------------------------------------------------------------- |
 | ![Searchable dictionary](docs/screenshots/dictionary.png) | ![Instruction Viewer](docs/screenshots/instruction-viewer.png) |
 
 The screenshots are generated from synthetic data. They do not contain real user configuration, activity, paths, or notes.

@@ -137,7 +137,10 @@ test("P83-04 clean start remains usable through Session recording", async ({ pag
   expect(config.settings).toEqual(CANONICAL_FRESH_CONFIG.settings);
   await expect(page.locator(".projectsBand .disclosureCount")).toHaveText("0件");
 
-  await page.getByRole("button", { name: "プロジェクトを追加", exact: true }).click();
+  await page
+    .locator(".projectsBand")
+    .getByRole("button", { name: "プロジェクトを追加", exact: true })
+    .click();
   const projectDialog = page.getByRole("dialog", { name: "プロジェクトを追加" });
   await projectDialog
     .getByRole("textbox", { name: "プロジェクト名" })
