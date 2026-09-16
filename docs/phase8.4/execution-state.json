@@ -1,0 +1,53 @@
+{
+  "phase": "Phase 8.4",
+  "internal_phase_id": "P84",
+  "workflow": "single-start-human-gated",
+  "current_stage": "P84-00_COMPLETE",
+  "baseline_commit": "d180045",
+  "branch": "docs/p84-00-current-audit",
+  "release_allowed": false,
+  "released": false,
+  "fixed_decisions": {
+    "main_today_builder": "remove",
+    "today_candidate_logic": "retain_ui_independent_for_picker",
+    "picker_source": ["NextStep", "Wishlist"],
+    "picker_ignores_legacy_builder_visibility_state": true,
+    "today3_remove_dnd": "dedicated_drop_zone",
+    "do_now_eligibility": "all_projects_with_non_empty_nextstep",
+    "weekly_focus": "ranking_boost_not_filter"
+  },
+  "verification": {
+    "status": "PASS_WAITING_FOR_HUMAN_REVIEW",
+    "focused_visual": "PASS_66",
+    "focused_rust": "PASS_7",
+    "lint": "PASS_0_WARNINGS",
+    "build": "PASS",
+    "public_check": "PASS_357_FILES_0_BLOCKERS",
+    "git_diff_check": "PASS",
+    "pull_request_ci": "PASS_ATTEMPT_2_ON_F07DC44"
+  },
+  "stages": {
+    "P84-00": {
+      "status": "COMPLETE",
+      "approved": false,
+      "report": "docs/phase8.4/workreports/p84-00-report.md",
+      "pull_request": "https://github.com/Takuyakou/life-launcher/pull/85"
+    },
+    "P84-01": {
+      "status": "WAITING_FOR_P84-00_APPROVAL",
+      "approved": false
+    },
+    "P84-02": {
+      "status": "BLOCKED_BY_P84-01",
+      "approved": false
+    },
+    "P84-03": {
+      "status": "BLOCKED_BY_P84-02",
+      "approved": false
+    },
+    "P84-04": {
+      "status": "BLOCKED_BY_P84-03",
+      "approved": false
+    }
+  }
+}
