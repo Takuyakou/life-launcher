@@ -25,11 +25,20 @@ test("Today3 empty state reserves one row and opens Builder without moving its l
   const empty = page.locator(".todayEmptyState");
   await expect(empty.getByText("今日やるものを選びましょう", { exact: true })).toBeVisible();
   await expect(empty.getByText("次の一手・やりたいことから選べます", { exact: true })).toBeVisible();
+  const buildButton = empty.getByRole("button", { name: "今日を組み立てる" });
+  const projectButton = page.getByRole("button", { name: "プロジェクトを追加", exact: true });
+  await expect(buildButton).toHaveClass(/mainActionButton--gold/);
+  await expect(projectButton).toHaveClass(/mainActionButton--gold/);
+  const actionColors = (button: HTMLElement) => {
+    const style = getComputedStyle(button);
+    return [style.backgroundColor, style.borderColor, style.color];
+  };
+  expect(await buildButton.evaluate(actionColors)).toEqual(await projectButton.evaluate(actionColors));
   const beforeHeight = (await page.locator(".todayGrid").boundingBox())!.height;
   expect(beforeHeight).toBeGreaterThanOrEqual(104);
   expect(beforeHeight).toBeLessThan(160);
 
-  await empty.getByRole("button", { name: "今日を組み立てる" }).click();
+  await buildButton.click();
   await expect(page.locator(".todayBuilderDisclosure")).toHaveAttribute("aria-expanded", "true");
   await expect(page.locator(".todayBuilderRow").first()).toBeFocused();
   expect((await page.locator(".todayGrid").boundingBox())!.height).toBe(beforeHeight);

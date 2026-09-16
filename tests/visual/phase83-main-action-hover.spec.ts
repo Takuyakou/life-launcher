@@ -150,14 +150,14 @@ test("P83-03 semantic modifiers win existing selector specificity", async ({ pag
   });
 });
 
-test("P83-03 Today empty CTA receives the neutral normal palette", async ({ page }) => {
+test("P83-03 Today empty CTA matches the gold create palette", async ({ page }) => {
   const fixture = actionFixture();
   fixture.config.today.items = [];
   await prepare(page, fixture);
   expect(await readStyle(page.locator(".todayEmptyStateContent > button"))).toMatchObject({
-    backgroundColor: "rgb(33, 31, 26)",
-    borderColor: "rgb(74, 70, 57)",
-    color: "rgb(163, 156, 142)",
+    backgroundColor: "rgba(231, 185, 77, 0.1)",
+    borderColor: "rgba(231, 185, 77, 0.58)",
+    color: "rgb(255, 206, 91)",
   });
 });
 

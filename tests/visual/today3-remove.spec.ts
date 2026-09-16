@@ -254,9 +254,9 @@ for (const [width, columns] of [
     for (const card of await page.locator(".todayRow").all()) {
       const footer = card.locator(".todayCardFooter");
       expect(await footer.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
-      const cardWidth = (await card.boundingBox())?.width ?? 0;
+      const cardWidth = await card.evaluate((node) => node.clientWidth - 20);
       expect(await footer.evaluate((node) => getComputedStyle(node).flexDirection)).toBe(
-        cardWidth <= 380 ? "column" : "row",
+        cardWidth <= 300 ? "column" : "row",
       );
       const a = await card.locator(".todayRemoveButton").boundingBox();
       const b = await card.locator(".todayTimerActions, .todayCompletedLabel").boundingBox();

@@ -9996,7 +9996,7 @@ function DashboardApp() {
                         <strong>今日やるものを選びましょう</strong>
                         <span>次の一手・やりたいことから選べます</span>
                         <button
-                          className="mainActionButton mainActionButton--neutral"
+                          className="mainActionButton mainActionButton--gold"
                           onClick={focusTodayBuilder}
                           type="button"
                         >

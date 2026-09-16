@@ -8070,14 +8070,10 @@ input[type="number"]::-webkit-inner-spin-button {
   min-width: 0;
 }
 
-@container today-card (max-width: 380px) {
+@container today-card (max-width: 300px) {
   .todayCardFooter {
     flex-direction: column;
     align-items: stretch;
-  }
-
-  .todayTimerCluster {
-    margin-left: auto;
   }
 }
 
