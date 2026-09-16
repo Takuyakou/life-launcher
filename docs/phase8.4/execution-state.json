@@ -17,14 +17,14 @@
     "weekly_focus": "ranking_boost_not_filter"
   },
   "verification": {
-    "status": "LOCAL_PASS_CI_PENDING",
+    "status": "PASS_WAITING_FOR_HUMAN_REVIEW",
     "focused_visual": "PASS_66",
     "focused_rust": "PASS_7",
     "lint": "PASS_0_WARNINGS",
     "build": "PASS",
     "public_check": "PASS_357_FILES_0_BLOCKERS",
     "git_diff_check": "PASS",
-    "pull_request_ci": "PENDING"
+    "pull_request_ci": "PASS_ATTEMPT_2_ON_F07DC44"
   },
   "stages": {
     "P84-00": {

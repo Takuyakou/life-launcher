@@ -34,8 +34,11 @@ Review pull request: [#85](https://github.com/Takuyakou/life-launcher/pull/85)
 | Focused Playwright: Builder, Today3 D&D/removal, Do Now interaction | PASS: 66 tests |
 | Focused Rust: Do Now candidates, Today Undo, candidate exclusions | PASS: 7 tests |
 | `git diff --check` | PASS |
+| PR #85 GitHub CI | PASS on `f07dc44` (attempt 2, 8m33s) |
 
 P84-00 adds documentation only; no manual-only correctness claim is used. The preceding UI follow-up PR #84 passed its full GitHub CI before it was merged into this audit baseline. This audit PR's CI is checked separately and must not be inferred from local results.
+
+The first CI attempt had one non-reproducing failure in the existing 860px Builder D&D geometry test. The exact test passed 5/5 locally, and the unchanged PR head passed the full workflow on attempt 2.
 
 Visual QA in this audit means automated Chromium interaction/geometry regression on unchanged product code. No new Picker or Drop Zone exists yet, so P84-01/P84-02 must perform their own changed-UI Visual QA.
 
