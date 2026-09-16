@@ -49,7 +49,10 @@ for (const count of [0, 1, 2]) {
     const entry = page.getByRole("button", { name: "今日やるものを選ぶ" });
     await expect(entry).toBeVisible();
     await entry.click();
-    await expect(picker(page)).toBeVisible();
+    const dialog = picker(page);
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator("[data-today-picker-section]")).toHaveCount(3);
+    await dialog.screenshot({ path: `dist/visual-qa/phase84/picker-${count}-of-3.png` });
   });
 }
 
@@ -152,7 +155,14 @@ test("P84-01 selection preserves source and snapshot while marking the candidate
   const row = dialog.locator(".todayPickerRow", { hasText: source.nextStep!.text });
   await row.getByRole("button", { name: "今日へ" }).click();
 
-  await expect(row.getByText("✓ 今日の3件")).toBeVisible();
+  const selectedSection = dialog.locator('[data-today-picker-section="selected"]');
+  const nextStepSection = dialog.locator('[data-today-picker-section="next-step"]');
+  await expect(
+    selectedSection.locator(".todayPickerRow", { hasText: source.nextStep!.text }),
+  ).toContainText("✓ 選択済み");
+  await expect(
+    nextStepSection.locator(".todayPickerRow", { hasText: source.nextStep!.text }),
+  ).toHaveCount(0);
   const config = await currentConfig(page);
   expect(config.projects.find((project) => project.id === source.id)?.nextStep?.text).toBe(
     source.nextStep!.text,
@@ -170,22 +180,34 @@ test("P84-01 selection preserves source and snapshot while marking the candidate
   });
 });
 
-test("P84-01 reaching 3/3 closes the Picker and prevents duplicate selection", async ({ page }) => {
+test("P84-01 reaching 3/3 keeps the Picker visible and disables remaining additions", async ({
+  page,
+}) => {
   const fixture = createPublicFixture();
   await prepare(page, fixture);
 
   const entry = page.getByRole("button", { name: "今日やるものを選ぶ" });
   await entry.click();
   const dialog = picker(page);
-  await expect(dialog.getByText("✓ 今日の3件")).toHaveCount(1);
+  await expect(
+    dialog.locator('[data-today-picker-section="selected"] .todayPickerRow'),
+  ).toHaveCount(2);
   await dialog
     .locator(".todayPickerRow", { hasText: "5分だけ体を動かす" })
     .getByRole("button", { name: "今日へ" })
     .click();
 
-  await expect(dialog).toHaveCount(0);
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator(".todayPickerCounter strong")).toHaveText("3 / 3");
+  await expect(
+    dialog.locator('[data-today-picker-section="selected"] .todayPickerRow'),
+  ).toHaveCount(3);
+  for (const button of await dialog.getByRole("button", { name: "今日へ" }).all()) {
+    await expect(button).toBeDisabled();
+  }
   await expect(page.locator(".todayRow")).toHaveCount(3);
   expect((await currentConfig(page)).today.items).toHaveLength(3);
+  await dialog.screenshot({ path: "dist/visual-qa/phase84/picker-3-of-3.png" });
 });
 
 test("P84-01 save failure rolls back and leaves the Picker usable", async ({ page }) => {
@@ -202,7 +224,9 @@ test("P84-01 save failure rolls back and leaves the Picker usable", async ({ pag
     .click();
 
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByText("✓ 今日の3件")).toHaveCount(0);
+  await expect(
+    dialog.locator('[data-today-picker-section="selected"] .todayPickerRow'),
+  ).toHaveCount(0);
   expect((await currentConfig(page)).today.items).toHaveLength(0);
   await setSaveFailure(page, false);
   await expect(
@@ -268,7 +292,13 @@ test("P84 Picker selection preserves collapsed Wishlist groups", async ({
 
   const row = dialog.locator(".todayPickerRow", { hasText: "5分だけ体を動かす" });
   await row.getByRole("button", { name: "今日へ" }).click();
-  await expect(row.getByText("✓ 今日の3件")).toBeVisible();
+  await expect(
+    dialog
+      .locator('[data-today-picker-section="selected"] .todayPickerRow', {
+        hasText: "5分だけ体を動かす",
+      })
+      .getByText("✓ 選択済み"),
+  ).toBeVisible();
   await expect(projectHeader).toHaveAttribute("aria-expanded", "false");
   expect((await currentConfig(page)).today.items).toHaveLength(1);
 });
@@ -289,4 +319,71 @@ test("P84 Picker remains contained and keeps actions visible at narrow width", a
   expect(actionBoxes.every((box) => box.right <= dialogBox!.x + dialogBox!.width + 1)).toBe(true);
   expect(await dialog.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
   await dialog.screenshot({ path: "dist/visual-qa/phase84/picker-narrow-520.png" });
+});
+
+test("P84 Picker separates selected items from NextStep and Wishlist candidates", async ({
+  page,
+}) => {
+  const fixture = createPublicFixture();
+  await prepare(page, fixture);
+
+  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
+  const dialog = picker(page);
+  const sections = dialog.locator("[data-today-picker-section]");
+  await expect(sections).toHaveCount(3);
+  expect(await sections.evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-today-picker-section")))).toEqual([
+    "selected",
+    "next-step",
+    "wishlist",
+  ]);
+
+  const selected = dialog.locator('[data-today-picker-section="selected"]');
+  const nextStep = dialog.locator('[data-today-picker-section="next-step"]');
+  const wishlist = dialog.locator('[data-today-picker-section="wishlist"]');
+  await expect(selected).toContainText("資料を1ページ読む");
+  await expect(selected.getByText("✓ 選択済み")).toHaveCount(2);
+  await expect(nextStep).not.toContainText("資料を1ページ読む");
+  await expect(nextStep).toContainText("5分だけ体を動かす");
+  await expect(wishlist).toContainText("あとで確認するサンプル");
+});
+
+test("P84 Picker moves a selected Wishlist item only to Today3", async ({ page }) => {
+  const fixture = createPublicFixture();
+  const wishlistItem = fixture.config.inbox.find((item) => item.id === "sample-weekend")!;
+  fixture.config.today.items = [
+    {
+      text: wishlistItem.text,
+      done: false,
+      sourceKey: `wishlist:${wishlistItem.id}`,
+      projectId: wishlistItem.projectId,
+    },
+  ];
+  await prepare(page, fixture);
+
+  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
+  const dialog = picker(page);
+  const selected = dialog.locator('[data-today-picker-section="selected"]');
+  const wishlist = dialog.locator('[data-today-picker-section="wishlist"]');
+  await expect(selected).toContainText(wishlistItem.text);
+  await expect(selected.getByText("✓ 選択済み")).toHaveCount(1);
+  await expect(wishlist).not.toContainText(wishlistItem.text);
+  await expect(wishlist).toContainText("あとで確認するサンプル");
+});
+
+test("P84 Picker shows a clear empty NextStep section when every NextStep is selected", async ({
+  page,
+}) => {
+  const fixture = createPublicFixture();
+  fixture.config.today.items = fixture.config.projects.map((project) => ({
+    text: project.nextStep!.text,
+    done: false,
+    sourceKey: `project:${project.id}`,
+    projectId: project.id,
+  }));
+  await prepare(page, fixture);
+
+  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
+  const nextStep = picker(page).locator('[data-today-picker-section="next-step"]');
+  await expect(nextStep.locator(".todayPickerRow")).toHaveCount(0);
+  await expect(nextStep).toContainText("候補はありません");
 });

@@ -28,7 +28,9 @@ function picker(page: Page) {
 async function selectCandidate(page: Page, text: string) {
   const row = picker(page).locator(".todayPickerRow", { hasText: text });
   await row.getByRole("button", { name: "今日へ" }).click();
-  return row;
+  return picker(page).locator('[data-today-picker-section="selected"] .todayPickerRow', {
+    hasText: text,
+  });
 }
 
 async function dragToRemoveZone(page: Page, row: Locator) {
@@ -72,17 +74,21 @@ test("P84-04 empty Today selects NextStep then Wishlist while preserving sources
 
   const nextStepText = projectsBefore[0].nextStep!.text;
   const nextStepRow = await selectCandidate(page, nextStepText);
-  await expect(nextStepRow.getByText("✓ 今日の3件")).toBeVisible();
+  await expect(nextStepRow.getByText("✓ 選択済み")).toBeVisible();
   await picker(page).getByRole("button", { name: "今日やるものを選ぶを閉じる" }).click();
   await expect(page.locator(".todayRow")).toHaveCount(1);
 
   await entry.click();
   await expect(
-    picker(page).locator(".todayPickerRow", { hasText: nextStepText }).getByText("✓ 今日の3件"),
+    picker(page)
+      .locator('[data-today-picker-section="selected"] .todayPickerRow', {
+        hasText: nextStepText,
+      })
+      .getByText("✓ 選択済み"),
   ).toBeVisible();
   const wishlistText = inboxBefore[0].text;
   const wishlistRow = await selectCandidate(page, wishlistText);
-  await expect(wishlistRow.getByText("✓ 今日の3件")).toBeVisible();
+  await expect(wishlistRow.getByText("✓ 選択済み")).toBeVisible();
 
   let saved = await currentConfig(page);
   expect(saved.projects).toEqual(projectsBefore);
@@ -105,9 +111,13 @@ test("P84-04 empty Today selects NextStep then Wishlist while preserving sources
   expect(new Set(saved.today.items.map((item) => item.sourceKey)).size).toBe(2);
 
   await selectCandidate(page, projectsBefore[1].nextStep!.text);
-  await expect(picker(page)).toHaveCount(0);
+  await expect(picker(page)).toBeVisible();
+  await expect(picker(page).locator(".todayPickerCounter strong")).toHaveText("3 / 3");
+  for (const button of await picker(page).getByRole("button", { name: "今日へ" }).all()) {
+    await expect(button).toBeDisabled();
+  }
   await expect(page.locator(".todayRow")).toHaveCount(3);
-  await expect(page.getByRole("button", { name: "今日やるものを選ぶ" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "今日やるものを選ぶ", exact: true })).toHaveCount(0);
   saved = await currentConfig(page);
   expect(saved.today.items).toHaveLength(3);
   expect(new Set(saved.today.items.map((item) => item.sourceKey)).size).toBe(3);

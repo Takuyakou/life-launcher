@@ -326,8 +326,13 @@ test("NextStep and Wishlist use compact non-destructive Today actions", async ({
   const config = await currentConfig(page);
   expect(config.today.items).toHaveLength(3);
   expect(config.inbox).toHaveLength(2);
-  await expect(page.getByRole("dialog", { name: "今日やるものを選ぶ" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "今日やるものを選ぶ" })).toHaveCount(0);
+  const picker = page.getByRole("dialog", { name: "今日やるものを選ぶ" });
+  await expect(picker).toBeVisible();
+  await expect(picker.locator(".todayPickerCounter strong")).toHaveText("3 / 3");
+  for (const button of await picker.getByRole("button", { name: "今日へ" }).all()) {
+    await expect(button).toBeDisabled();
+  }
+  await expect(page.getByRole("button", { name: "今日やるものを選ぶ", exact: true })).toHaveCount(0);
 });
 
 test("same-text Wishlist items keep separate stable identities", async ({ page }) => {
@@ -345,7 +350,7 @@ test("same-text Wishlist items keep separate stable identities", async ({ page }
   const rows = page.locator(".todayPickerRow");
   await expect(rows).toHaveCount(2);
   await rows.nth(0).getByRole("button", { name: "今日へ" }).click();
-  await expect(rows.nth(0).locator(".todayPickerSelectedStatus")).toHaveText("✓ 今日の3件");
+  await expect(rows.nth(0).locator(".todayPickerSelectedStatus")).toHaveText("✓ 選択済み");
   await expect(rows.nth(1).getByRole("button", { name: "今日へ" })).toBeEnabled();
   await rows.nth(1).getByRole("button", { name: "今日へ" }).click();
 
@@ -376,7 +381,7 @@ test("legacy same-text Wishlist selection maps to only the first stable item", a
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const rows = page.locator(".todayPickerRow");
-  await expect(rows.nth(0).locator(".todayPickerSelectedStatus")).toHaveText("✓ 今日の3件");
+  await expect(rows.nth(0).locator(".todayPickerSelectedStatus")).toHaveText("✓ 選択済み");
   await expect(rows.nth(1).getByRole("button", { name: "今日へ" })).toBeEnabled();
   await rows.nth(1).getByRole("button", { name: "今日へ" }).click();
   expect((await currentConfig(page)).today.items.map((item) => item.sourceKey)).toEqual([
