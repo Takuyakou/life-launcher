@@ -94,8 +94,8 @@ test("Wishlist add uses one compact modal and saves once on a double click", asy
   expect(config.inbox.at(-1)).toMatchObject({ text: "気になっていた本を読む" });
   expect(config.inbox.at(-1)?.id).toBeTruthy();
 
-  await page.locator(".todayBuilderDisclosure").click();
-  await expect(page.locator(".todayBuilderRow", { hasText: "気になっていた本を読む" })).toBeVisible();
+  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
+  await expect(page.locator(".todayPickerRow", { hasText: "気になっていた本を読む" })).toBeVisible();
 });
 
 test("Wishlist cancel, Escape, and backdrop discard the draft and return focus", async ({

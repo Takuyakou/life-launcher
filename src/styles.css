@@ -8376,6 +8376,118 @@ input[type="number"]::-webkit-inner-spin-button {
   background: var(--surface-strong);
 }
 
+.todayPickerEntry {
+  min-height: 96px;
+  display: grid;
+  place-content: center;
+  grid-auto-flow: column;
+  align-items: center;
+  gap: 6px;
+  border-style: dashed;
+  background: rgba(241, 194, 76, 0.035);
+}
+
+.todayPickerDialog {
+  width: min(720px, 100%);
+  max-height: min(82vh, 720px);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+}
+
+.todayPickerDialog .modalTitleRow h2,
+.todayPickerDialog .modalTitleRow p {
+  margin: 0;
+}
+
+.todayPickerDialog .modalTitleRow p {
+  margin-top: 5px;
+  color: var(--text-muted-readable);
+  font-size: var(--dashboard-font-meta);
+  line-height: 1.5;
+}
+
+.todayPickerGroups {
+  min-height: 0;
+  display: grid;
+  gap: 18px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.todayPickerGroup {
+  display: grid;
+  gap: 6px;
+}
+
+.todayPickerGroup h3 {
+  margin: 0;
+  padding-bottom: 7px;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--dashboard-font-body);
+}
+
+.todayPickerList {
+  display: grid;
+}
+
+.todayPickerRow {
+  min-height: 52px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 14px;
+  border-bottom: 1px solid var(--line-soft);
+  padding: 7px 4px;
+}
+
+.todayPickerRow--selected {
+  background: rgba(117, 196, 143, 0.04);
+}
+
+.todayPickerCopy {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(110px, 180px) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.todayPickerCopy strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--dashboard-font-body);
+}
+
+.todayPickerRow > button {
+  min-width: 68px;
+}
+
+.todayPickerSelectedStatus {
+  min-width: 86px;
+  color: var(--good);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.todayPickerEmpty,
+.todayPickerFullMessage {
+  margin: 0;
+  color: var(--text-muted-readable);
+  font-size: var(--dashboard-font-meta);
+}
+
+.todayPickerFullMessage {
+  padding: 18px 0;
+}
+
+.todayPickerActions {
+  justify-content: flex-end;
+}
+
 .todayBuilderRow--selected {
   background: rgba(117, 196, 143, 0.04);
 }
@@ -8411,6 +8523,15 @@ input[type="number"]::-webkit-inner-spin-button {
 @media (max-width: 620px) {
   .todayEmptyStateContent {
     margin-inline-start: 2px;
+  }
+
+  .todayPickerCopy {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3px;
+  }
+
+  .todayPickerRow {
+    align-items: end;
   }
 }
 
