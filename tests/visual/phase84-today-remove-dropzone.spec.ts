@@ -117,9 +117,9 @@ for (const source of [
   { name: "NextStep", index: 0 },
   { name: "Wishlist", index: 1 },
 ]) {
-  test("P84-02 " + source.name + " drop removes only Today adoption and Undo restores only Today", async ({
-    page,
-  }) => {
+  test(
+    "P84-02 " + source.name + " drop removes only Today adoption and Undo restores only Today",
+    async ({ page }) => {
     const fixture = dropFixture();
     await prepare(page, fixture);
     const before = await currentConfig(page);
@@ -145,10 +145,13 @@ for (const source of [
     );
     expect(after.projects).toEqual(before.projects);
     expect(after.inbox).toEqual(before.inbox);
-  });
+    },
+  );
 }
 
-test("P84-02 save failure rolls the dropped card back and closes the Drop Zone", async ({ page }) => {
+test("P84-02 save failure rolls the dropped card back and closes the Drop Zone", async ({
+  page,
+}) => {
   await prepare(page);
   const before = await currentConfig(page);
   await page.evaluate(() => {
@@ -270,4 +273,15 @@ test("P84 Remove Drop Zone ignores a point outside its upper hit extension", asy
   await expect(zone).not.toHaveClass(/todayRemoveDropZone--active/);
   await page.mouse.up();
   await expect(page.locator(".todayRow")).toHaveCount(3);
+});
+test("P84 Remove Drop Zone accepts a lower drop on a narrow window", async ({ page }) => {
+  await prepare(page, dropFixture(), 860);
+  await beginTodayDrag(page, page.locator(".todayRow").first());
+  const zone = page.locator(".todayRemoveDropZone");
+  const box = await zone.boundingBox();
+  expect(box).not.toBeNull();
+  await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height + 28, { steps: 5 });
+  await expect(zone).toHaveClass(/todayRemoveDropZone--active/);
+  await page.mouse.up();
+  await expect(page.locator(".todayRow")).toHaveCount(2);
 });

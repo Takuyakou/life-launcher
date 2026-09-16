@@ -224,6 +224,7 @@ test("P82-01 refuses stale replacement snapshots and missing promoted sources", 
 
 test("P82-01 promotion returns the old NextStep and survives reload", async ({ page }) => {
   const fixture = createPublicFixture();
+  fixture.config.today.items = [];
   const oldToday = structuredClone(fixture.config.today);
   const oldNextStep = structuredClone(fixture.config.projects[0].nextStep);
   await prepare(page, fixture);
@@ -256,6 +257,7 @@ test("P82-01 promotion returns the old NextStep and survives reload", async ({ p
 
 test("P82-01 promotion cancel and save failure leave both sources unchanged", async ({ page }) => {
   const fixture = createPublicFixture();
+  fixture.config.today.items = [];
   const initial = structuredClone(fixture.config);
   await prepare(page, fixture);
 
@@ -266,7 +268,7 @@ test("P82-01 promotion cancel and save failure leave both sources unchanged", as
   expect(await currentConfig(page)).toEqual(initial);
 
   dialog = await openPromotion(page);
-  await dialog.getByRole("button", { name: "完了にする", exact: true }).click();
+  await dialog.getByRole("button", { name: "やりたいことへ戻す" }).click();
   await page.evaluate(() =>
     (
       window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: VisualQaControl }
@@ -333,7 +335,9 @@ test("P82-01 Wishlist renders Project groups, collapse, Today and excluded state
 });
 
 test("P82-01 promotion rejects a source removed after the form opened", async ({ page }) => {
-  await prepare(page);
+  const fixture = createPublicFixture();
+  fixture.config.today.items = [];
+  await prepare(page, fixture);
   const dialog = await openPromotion(page);
   await dialog.getByRole("button", { name: "やりたいことへ戻す" }).click();
   await page.evaluate(() => {

@@ -9078,21 +9078,18 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .wishlistNextStepSlot {
-  width: 92px;
-  min-width: 92px;
+  width: 120px;
+  min-width: 120px;
   display: flex;
   justify-content: flex-end;
 }
 
 .inboxRow .wishlistNextStepAction {
-  --main-action-bg: var(--surface-strong);
-  --main-action-border: rgba(231, 185, 77, 0.48);
-  --main-action-color: var(--accent-strong);
   --main-action-hover-bg: var(--surface-strong);
   --main-action-hover-border: rgba(231, 185, 77, 0.48);
   --main-action-hover-color: var(--accent-strong);
-  width: 92px;
-  min-width: 92px;
+  width: 120px;
+  min-width: 120px;
   min-height: 30px;
   border-radius: var(--radius);
   padding-inline: 8px;
@@ -9125,8 +9122,8 @@ input[type="number"]::-webkit-inner-spin-button {
 @media (max-width: 620px) {
   .wishlistNextStepSlot,
   .inboxRow .wishlistNextStepAction {
-    width: 84px;
-    min-width: 84px;
+    width: 112px;
+    min-width: 112px;
   }
 }
 
@@ -9514,6 +9511,220 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .nextStepEditDialog {
   width: min(720px, 100%);
+}
+
+.nextStepDecisionBlock {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  border-top: 1px solid var(--line-soft);
+  padding-top: 14px;
+}
+
+.nextStepDecisionBlock > h3,
+.nextStepDecisionBlock > p {
+  margin: 0;
+}
+
+.nextStepDecisionBlock > h3 {
+  font-size: 14px;
+}
+
+.nextStepDecisionBlock > p,
+.nextStepDecisionHint {
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.nextStepDecisionModes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.nextStepDecisionModeButton {
+  min-height: 42px;
+  border-radius: var(--radius);
+  font-weight: 750;
+}
+
+.nextStepDecisionModeButton--active {
+  --main-action-bg: var(--control-positive-bg);
+  --main-action-hover-bg: var(--control-positive-hover-bg);
+  --main-action-active-bg: var(--control-positive-active-bg);
+  --main-action-border: rgba(111, 207, 151, 0.45);
+  --main-action-hover-border: var(--control-positive-hover-border);
+  --main-action-active-border: var(--control-positive-active-border);
+  --main-action-color: var(--good);
+  --main-action-hover-color: var(--good);
+}
+
+.nextStepDecisionPanel {
+  min-width: 0;
+  display: grid;
+  gap: 9px;
+}
+
+.nextStepWishlistPickerHeading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.nextStepWishlistPickerHeading strong {
+  font-size: 13px;
+}
+
+.nextStepWishlistPickerHeading span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.nextStepWishlistPickerList {
+  display: grid;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface-soft);
+}
+
+.nextStepWishlistCandidate {
+  min-width: 0;
+  min-height: 46px;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  border-bottom: 1px solid var(--line-soft);
+  border-radius: 0;
+  padding: 8px 10px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.nextStepWishlistCandidate:last-child {
+  border-bottom: 0;
+}
+
+.nextStepWishlistCandidate:hover:not(:disabled),
+.nextStepWishlistCandidate:focus-visible {
+  background: var(--control-neutral-hover-bg);
+}
+
+.nextStepWishlistCandidate[aria-checked="true"] {
+  background: rgba(117, 196, 143, 0.07);
+}
+
+.nextStepWishlistCandidate:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.nextStepWishlistRadio {
+  width: 15px;
+  height: 15px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--muted);
+  border-radius: 50%;
+}
+
+.nextStepWishlistCandidate[aria-checked="true"] .nextStepWishlistRadio {
+  border-color: var(--good);
+}
+
+.nextStepWishlistCandidate[aria-checked="true"] .nextStepWishlistRadio::after {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--good);
+  content: "";
+}
+
+.nextStepWishlistCandidateText {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nextStepWishlistLock {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.nextStepWishlistEmpty {
+  margin: 0;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  padding: 18px 12px;
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  text-align: center;
+}
+
+.nextStepWishlistSelection {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid rgba(111, 207, 151, 0.45);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  background: rgba(117, 196, 143, 0.05);
+}
+
+.nextStepWishlistSelection > span:first-child {
+  color: var(--good);
+  font-weight: 800;
+}
+
+.nextStepWishlistSelectionCopy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.nextStepWishlistSelectionCopy small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.nextStepWishlistSelectionCopy strong {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nextStepWishlistSelection button {
+  min-height: 29px;
+  border-radius: 7px;
+  padding-inline: 9px;
+}
+
+.nextStepSwapSummary {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  border: 1px solid rgba(231, 185, 77, 0.42);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  background: rgba(231, 185, 77, 0.07);
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.nextStepSwapSummary strong {
+  color: var(--text);
 }
 
 .completionFollowupDialog {
@@ -11167,10 +11378,10 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 button.mainActionButton:is(
-  .mainActionButton--neutral,
-  .mainActionButton--gold,
-  .mainActionButton--positive
-):not([aria-disabled="true"]) {
+    .mainActionButton--neutral,
+    .mainActionButton--gold,
+    .mainActionButton--positive
+  ):not([aria-disabled="true"]) {
   border-color: var(--main-action-border);
   background: var(--main-action-bg);
   color: var(--main-action-color);
