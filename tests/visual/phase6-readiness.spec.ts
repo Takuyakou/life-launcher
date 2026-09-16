@@ -216,7 +216,7 @@ test("manual next batch accepts one, two, and three new items but no fourth", as
     await page
       .locator(".todayPickerRow")
       .nth(index)
-      .getByRole("button", { name: "選ぶ", exact: true })
+      .getByRole("button", { name: "＋ 今日へ", exact: true })
       .click();
     await expect(page.locator(".todayRow")).toHaveCount(index + 1);
   }

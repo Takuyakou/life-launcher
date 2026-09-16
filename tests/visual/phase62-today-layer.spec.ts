@@ -101,7 +101,7 @@ test.skip("Builder is the only persistent Today adoption surface and groups its 
   ).toHaveCount(4);
   await expect(page.locator(".todayBuilderProjectGroupHeader")).toHaveCount(1);
   await expect(
-    page.locator(".todayPickerRow").getByRole("button", { name: "選ぶ" }),
+    page.locator(".todayPickerRow").getByRole("button", { name: "今日へ" }),
   ).toHaveCount(5);
   const firstBuilderRow = page.locator(".todayPickerRow").first();
   const builderMenu = firstBuilderRow.locator(".sourceRowMenu");
@@ -121,7 +121,7 @@ test.skip("Builder is the only persistent Today adoption surface and groups its 
   await expect(page.locator(".todayPickerRow .projectIdentity")).toHaveCount(0);
   await expect(page.locator(".todayBuilderProjectGroupHeader")).toHaveCount(2);
   await expect(
-    page.locator(".todayPickerRow").getByRole("button", { name: "選ぶ" }),
+    page.locator(".todayPickerRow").getByRole("button", { name: "今日へ" }),
   ).toHaveCount(2);
 });
 

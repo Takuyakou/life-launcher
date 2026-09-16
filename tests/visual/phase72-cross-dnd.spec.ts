@@ -222,7 +222,7 @@ test.skip("P72-04 active Timer source rejects Builder adoption", async ({ page }
   await prepare(page, fixture);
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const builderRow = page.locator(".todayPickerRow", { hasText: "5分だけ体を動かす" });
-  await builderRow.getByRole("button", { name: "選ぶ", exact: true }).click();
+  await builderRow.getByRole("button", { name: "＋ 今日へ", exact: true }).click();
   const todayRow = page.locator(".todayRow", { hasText: "5分だけ体を動かす" });
   await todayRow.getByRole("button", { name: /短時間タイマー5分で開始/ }).click();
   await expect(todayRow).toHaveClass(/todayRow--running/);
@@ -337,7 +337,7 @@ test("Builder Today button keeps scroll position through the optimistic update",
   await source.scrollIntoViewIfNeeded();
   const scrollArea = page.locator(".mainScrollArea");
   const beforeClick = await scrollArea.evaluate((node) => node.scrollTop);
-  await source.getByRole("button", { name: "選ぶ", exact: true }).click();
+  await source.getByRole("button", { name: "＋ 今日へ", exact: true }).click();
   expect(await scrollArea.evaluate((node) => node.scrollTop)).toBe(beforeClick);
   await expect.poll(() => saveCount(page)).toBe(1);
   expect(await scrollArea.evaluate((node) => node.scrollTop)).toBe(beforeClick);

@@ -39,7 +39,7 @@ async function currentConfig(page: Page): Promise<AppConfig> {
 async function openPromotion(page: Page, itemId = "sample-weekend") {
   await page.locator(`[data-inbox-id="${itemId}"]`).click({ button: "right" });
   const menu = page.getByRole("menu");
-  await expect(menu.getByRole("menuitem", { name: "選ぶ", exact: true })).toHaveCount(0);
+  await expect(menu.getByRole("menuitem", { name: "＋ 今日へ", exact: true })).toHaveCount(0);
   await menu.getByRole("menuitem", { name: "次の一手にする" }).click();
   return page.getByRole("dialog", { name: /次の一手を(設定|変更)/ });
 }

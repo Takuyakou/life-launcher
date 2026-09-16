@@ -63,7 +63,7 @@ test("removes only Today adoption, preserves both sources, candidates and sessio
     await expect(
       page
         .locator(".todayPickerRow", { hasText: text })
-        .getByRole("button", { name: "選ぶ", exact: true }),
+        .getByRole("button", { name: "＋ 今日へ", exact: true }),
     ).toBeEnabled();
   }
 });

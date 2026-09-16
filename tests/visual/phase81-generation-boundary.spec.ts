@@ -160,7 +160,7 @@ test("generation boundary: adoption copies the marker and editing preserves it",
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   await page
     .locator(".todayPickerRow", { hasText: project.nextStep!.text })
-    .getByRole("button", { name: "選ぶ", exact: true })
+    .getByRole("button", { name: "＋ 今日へ", exact: true })
     .click();
 
   let saved = await currentConfig(page);

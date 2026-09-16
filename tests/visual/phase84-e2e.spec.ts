@@ -27,7 +27,7 @@ function picker(page: Page) {
 
 async function selectCandidate(page: Page, text: string) {
   const row = picker(page).locator(".todayPickerRow", { hasText: text });
-  await row.getByRole("button", { name: "選ぶ" }).click();
+  await row.getByRole("button", { name: "今日へ" }).click();
   return row;
 }
 

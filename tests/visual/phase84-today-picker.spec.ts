@@ -53,6 +53,27 @@ for (const count of [0, 1, 2]) {
   });
 }
 
+test("P84 Picker entry keeps the full card hit target with a compact gold visual", async ({
+  page,
+}) => {
+  const fixture = createPublicFixture();
+  fixture.config.today.items = fixture.config.today.items.slice(0, 1);
+  await prepare(page, fixture);
+
+  const entry = page.locator(".todayPickerEntry");
+  const visual = entry.locator(".todayPickerEntryVisual");
+  const entryBox = await entry.boundingBox();
+  const visualBox = await visual.boundingBox();
+  expect(entryBox).not.toBeNull();
+  expect(visualBox).not.toBeNull();
+  expect(entryBox!.height).toBeGreaterThanOrEqual(96);
+  expect(visualBox!.width).toBeLessThan(entryBox!.width * 0.6);
+  expect(visualBox!.height).toBeLessThan(entryBox!.height);
+
+  await entry.click({ position: { x: 8, y: 8 } });
+  await expect(picker(page)).toBeVisible();
+});
+
 test("P84-01 Today 3/3 does not expose the Picker entry", async ({ page }) => {
   const fixture = createPublicFixture();
   fixture.config.today.items.push({
@@ -85,6 +106,35 @@ test("P84-01 Picker shows NextStep and Wishlist candidates and ignores legacy di
   await expect(dialog).toContainText("あとで確認するサンプル");
 });
 
+test("P84 Picker groups Wishlist by project, starts expanded, and uses a danger cancel", async ({
+  page,
+}) => {
+  const fixture = createPublicFixture();
+  fixture.config.today.items = [];
+  fixture.config.inbox.push({
+    id: "sample-weekend-2",
+    text: "同じプロジェクトの候補",
+    projectId: "sample-learning",
+  });
+  await prepare(page, fixture);
+
+  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
+  const dialog = picker(page);
+  const projectGroup = dialog.locator(
+    '[data-today-picker-wishlist-group="project:sample-learning"]',
+  );
+  const header = projectGroup.locator(".todayPickerWishlistGroupHeader");
+  await expect(header).toHaveAttribute("aria-expanded", "true");
+  await expect(projectGroup.locator(".todayPickerRow")).toHaveCount(2);
+  await expect(header).toContainText("サンプル学習");
+  await expect(header).toContainText("2件");
+
+  await header.click();
+  await expect(header).toHaveAttribute("aria-expanded", "false");
+  await expect(projectGroup.locator(".todayPickerRow")).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: "キャンセル" })).toHaveClass(/dangerButton/);
+});
+
 test("P84-01 selection preserves source and snapshot while marking the candidate selected", async ({
   page,
 }) => {
@@ -96,7 +146,7 @@ test("P84-01 selection preserves source and snapshot while marking the candidate
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const dialog = picker(page);
   const row = dialog.locator(".todayPickerRow", { hasText: source.nextStep!.text });
-  await row.getByRole("button", { name: "選ぶ" }).click();
+  await row.getByRole("button", { name: "今日へ" }).click();
 
   await expect(row.getByText("✓ 今日の3件")).toBeVisible();
   const config = await currentConfig(page);
@@ -126,7 +176,7 @@ test("P84-01 reaching 3/3 closes the Picker and prevents duplicate selection", a
   await expect(dialog.getByText("✓ 今日の3件")).toHaveCount(1);
   await dialog
     .locator(".todayPickerRow", { hasText: "5分だけ体を動かす" })
-    .getByRole("button", { name: "選ぶ" })
+    .getByRole("button", { name: "今日へ" })
     .click();
 
   await expect(dialog).toHaveCount(0);
@@ -144,7 +194,7 @@ test("P84-01 save failure rolls back and leaves the Picker usable", async ({ pag
   await setSaveFailure(page, true);
   await dialog
     .locator(".todayPickerRow", { hasText: "5分だけ体を動かす" })
-    .getByRole("button", { name: "選ぶ" })
+    .getByRole("button", { name: "今日へ" })
     .click();
 
   await expect(dialog).toBeVisible();
@@ -154,7 +204,7 @@ test("P84-01 save failure rolls back and leaves the Picker usable", async ({ pag
   await expect(
     dialog
       .locator(".todayPickerRow", { hasText: "5分だけ体を動かす" })
-      .getByRole("button", { name: "選ぶ" }),
+      .getByRole("button", { name: "今日へ" }),
   ).toBeEnabled();
 });
 

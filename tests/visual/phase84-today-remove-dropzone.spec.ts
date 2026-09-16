@@ -88,6 +88,26 @@ test("P84-02 remove Drop Zone stays hidden until the actual drag threshold and E
   await expect(page.locator(".todayRow")).toHaveCount(3);
 });
 
+test("P84 Remove Drop Zone spans the Today area with a forgiving 64px target", async ({ page }) => {
+  await prepare(page);
+  await beginTodayDrag(page, page.locator(".todayRow").first());
+
+  const grid = page.locator(".todayGrid");
+  const zone = page.locator(".todayRemoveDropZone");
+  await expect(zone).toBeVisible();
+  const gridBox = await grid.boundingBox();
+  const zoneBox = await zone.boundingBox();
+  expect(gridBox).not.toBeNull();
+  expect(zoneBox).not.toBeNull();
+  expect(zoneBox!.height).toBeGreaterThanOrEqual(64);
+  expect(Math.abs(zoneBox!.width - gridBox!.width)).toBeLessThanOrEqual(1);
+  const gap = zoneBox!.y - (gridBox!.y + gridBox!.height);
+  expect(gap).toBeGreaterThanOrEqual(8);
+  expect(gap).toBeLessThanOrEqual(12);
+
+  await page.keyboard.press("Escape");
+});
+
 for (const source of [
   { name: "NextStep", index: 0 },
   { name: "Wishlist", index: 1 },

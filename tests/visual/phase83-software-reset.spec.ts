@@ -103,6 +103,19 @@ test("P83-02 backup choice cancel and final Escape perform no reset", async ({ p
   expect(await commandCalls(page, "software_reset")).toHaveLength(0);
 });
 
+test("P83-02 backup choice uses gold for backup and danger for no-backup", async ({ page }) => {
+  await prepare(page);
+  await installResetBackend(page);
+
+  const choice = await openResetChoice(page);
+  await expect(choice.getByRole("button", { name: "バックアップして続行" })).toHaveClass(
+    /mainActionButton--gold/,
+  );
+  await expect(choice.getByRole("button", { name: "バックアップせず続行" })).toHaveClass(
+    /dangerButton/,
+  );
+});
+
 test("P83-02 interrupted reset recovery restores audited localStorage on startup", async ({
   page,
 }) => {
