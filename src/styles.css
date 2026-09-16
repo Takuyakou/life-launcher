@@ -7839,6 +7839,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .projectDragGhost--restore,
+.projectDragGhost--today,
 .inboxDragGhost--restore,
 .todayBuilderDragGhost--today {
   border-color: var(--accent);
