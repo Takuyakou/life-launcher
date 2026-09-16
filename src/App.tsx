@@ -8580,7 +8580,8 @@ function DashboardApp() {
   const activeTimerProject = activeTimer?.projectId
     ? config.projects.find((project) => project.id === activeTimer.projectId)
     : undefined;
-  const focusedProjects = config.projects.filter((project) => project.weeklyFocus === true);
+  const nextStepSetupProject =
+    config.projects.find((project) => !project.nextStep?.text.trim()) ?? config.projects[0];
   const doNowCandidates = (doNowResponse?.candidates ?? []).flatMap((candidate) => {
     const project = config.projects.find((item) => item.id === candidate.projectId);
     return project ? [{ candidate, project }] : [];
@@ -8595,10 +8596,12 @@ function DashboardApp() {
       : doNowCandidateIndex > 0
         ? "固定ルール順の別候補です"
         : doNowSelection.candidate.reason === "noToday"
-          ? "今週の重点で、今日はまだ取り組んでいません"
+          ? doNowSelection.project.weeklyFocus === true
+            ? "今週の重点で、今日はまだ取り組んでいません"
+            : "今日はまだ取り組んでいない候補です"
           : doNowSelection.candidate.reason === "manualOrder"
             ? "同じ条件の中で、手動の優先順が最も高いプロジェクトです"
-            : "今日の中で最初に取り組んだため、次の候補です"
+            : "最後の実行が最も古い候補です"
     : "";
   const doNowDefaultTimerMinutes = doNowSelection
     ? (doNowSelection.project.nextStep?.defaultTimerMinutes ?? config.settings.defaultTimerMinutes)
@@ -9831,35 +9834,27 @@ function DashboardApp() {
                       </div>
                     </div>
                   </div>
-                ) : focusedProjects.length > 0 ? (
-                  <>
-                    <div className="doNowHeading">
-                      <h2 id="do-now-title">今やる一手</h2>
-                    </div>
-                    <div className="doNowEmpty">
-                      <span>重点プロジェクトに次の一手を設定すると、ここに提案されます。</span>
-                      <button
-                        className="mainActionButton mainActionButton--neutral"
-                        onClick={() => openNextStepEditor(focusedProjects[0])}
-                        type="button"
-                      >
-                        次の一手を設定
-                      </button>
-                    </div>
-                  </>
                 ) : (
                   <>
                     <div className="doNowHeading">
                       <h2 id="do-now-title">今やる一手</h2>
                     </div>
                     <div className="doNowEmpty">
-                      <span>今週の重点を選ぶと、今やる一手を提案できます。</span>
+                      <span>
+                        {nextStepSetupProject
+                          ? "次の一手を設定すると、ここに提案されます。"
+                          : "プロジェクトを作り、次の一手を設定すると提案されます。"}
+                      </span>
                       <button
                         className="mainActionButton mainActionButton--neutral"
-                        onClick={() => setActiveView("records")}
+                        onClick={() =>
+                          nextStepSetupProject
+                            ? openNextStepEditor(nextStepSetupProject)
+                            : openProjectAddDialog()
+                        }
                         type="button"
                       >
-                        重点を選ぶ
+                        {nextStepSetupProject ? "次の一手を設定" : "プロジェクトを追加"}
                       </button>
                     </div>
                   </>

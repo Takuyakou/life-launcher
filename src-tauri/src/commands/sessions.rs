@@ -226,43 +226,45 @@ fn build_do_now_candidates(
         .iter()
         .enumerate()
         .filter(|(_, project)| {
-            project.weekly_focus == Some(true)
-                && project
-                    .next_step
-                    .as_ref()
-                    .is_some_and(|step| !step.text.trim().is_empty())
+            project
+                .next_step
+                .as_ref()
+                .is_some_and(|step| !step.text.trim().is_empty())
         })
         .map(|(manual_index, project)| {
-            let last_started_at = entries
-                .iter()
-                .filter(|entry| {
-                    entry.date == date && entry.project_id.as_deref() == Some(project.id.as_str())
-                })
-                .map(|entry| entry.started_at.as_str())
-                .max()
-                .map(ToString::to_string);
-            let last_session_date = entries
+            let weekly_focus = project.weekly_focus == Some(true);
+            let executed_today = entries.iter().any(|entry| {
+                entry.date == date && entry.project_id.as_deref() == Some(project.id.as_str())
+            });
+            let last_session = entries
                 .iter()
                 .filter(|entry| entry.project_id.as_deref() == Some(project.id.as_str()))
-                .filter_map(|entry| NaiveDate::parse_from_str(&entry.date, "%Y-%m-%d").ok())
+                .filter_map(|entry| {
+                    NaiveDate::parse_from_str(&entry.date, "%Y-%m-%d")
+                        .ok()
+                        .map(|entry_date| (entry_date, entry.started_at.clone()))
+                })
                 .max();
             let restart_eligible = today
-                .zip(last_session_date)
+                .zip(last_session.as_ref().map(|(last_date, _)| *last_date))
                 .is_some_and(|(today, last)| today.signed_duration_since(last).num_days() >= 14);
             (
                 manual_index,
+                weekly_focus,
                 project.id.clone(),
-                last_started_at,
+                executed_today,
+                last_session,
                 restart_eligible,
             )
         })
         .collect::<Vec<_>>();
 
     candidates.sort_by(|left, right| {
-        left.2
-            .is_some()
-            .cmp(&right.2.is_some())
-            .then_with(|| left.2.cmp(&right.2))
+        right
+            .1
+            .cmp(&left.1)
+            .then_with(|| left.3.cmp(&right.3))
+            .then_with(|| left.4.cmp(&right.4))
             .then_with(|| left.0.cmp(&right.0))
     });
 
@@ -270,19 +272,25 @@ fn build_do_now_candidates(
         .iter()
         .enumerate()
         .map(
-            |(index, (_, project_id, last_started_at, restart_eligible))| {
-                let reason = if last_started_at.is_none() {
+            |(
+                index,
+                (_, weekly_focus, project_id, executed_today, last_session, restart_eligible),
+            )| {
+                let reason = if !executed_today {
                     "noToday"
                 } else if candidates
                     .iter()
                     .enumerate()
                     .any(|(other_index, candidate)| {
-                        other_index != index && candidate.2 == *last_started_at
+                        other_index != index
+                            && candidate.1 == *weekly_focus
+                            && candidate.3 == *executed_today
+                            && candidate.4 == *last_session
                     })
                 {
                     "manualOrder"
                 } else {
-                    "oldestToday"
+                    "oldestSession"
                 };
                 DoNowCandidate {
                     project_id: project_id.clone(),
@@ -1093,11 +1101,11 @@ mod tests {
             vec!["third", "second", "first"]
         );
         assert_eq!(candidates[0].reason, "noToday");
-        assert_eq!(candidates[1].reason, "oldestToday");
+        assert_eq!(candidates[1].reason, "oldestSession");
     }
 
     #[test]
-    fn do_now_candidates_exclude_non_focus_and_empty_steps_and_use_manual_order_for_ties() {
+    fn do_now_candidates_include_non_focus_exclude_empty_and_use_manual_order_for_ties() {
         let mut projects = crate::models::sample_config().projects;
         projects[0].id = "first".to_string();
         projects[0].weekly_focus = Some(true);
@@ -1129,10 +1137,125 @@ mod tests {
 
         let candidates = build_do_now_candidates(&projects, &entries, "2026-07-16");
 
-        assert_eq!(candidates.len(), 2);
-        assert_eq!(candidates[0].project_id, "first");
+        assert_eq!(candidates.len(), 3);
+        assert_eq!(
+            candidates
+                .iter()
+                .map(|candidate| candidate.project_id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["first", "second", "excluded"]
+        );
         assert_eq!(candidates[0].reason, "manualOrder");
-        assert_eq!(candidates[1].project_id, "second");
+        assert_eq!(candidates[1].reason, "manualOrder");
+        assert_eq!(candidates[2].reason, "noToday");
+    }
+
+    #[test]
+    fn do_now_candidates_rank_all_non_focus_projects_by_today_and_last_session() {
+        let mut projects = crate::models::sample_config().projects;
+        projects[0].id = "today".to_string();
+        projects[0].weekly_focus = Some(false);
+        projects[0].next_step.as_mut().expect("next step").text = "today step".to_string();
+        projects[1].id = "old".to_string();
+        projects[1].weekly_focus = None;
+        projects[1].next_step.as_mut().expect("next step").text = "old step".to_string();
+        let mut recent = projects[0].clone();
+        recent.id = "recent".to_string();
+        recent.name = "recent".to_string();
+        recent.next_step.as_mut().expect("next step").text = "recent step".to_string();
+        projects.push(recent);
+
+        let session = |project_id: &str, date: &str| SessionLogEntry {
+            id: None,
+            date: date.to_string(),
+            project_id: Some(project_id.to_string()),
+            label: project_id.to_string(),
+            started_at: "10:00".to_string(),
+            minutes: 10,
+            note: String::new(),
+            manual: false,
+        };
+        let entries = vec![
+            session("today", "2026-07-16"),
+            session("old", "2026-05-01"),
+            session("recent", "2026-07-01"),
+        ];
+
+        let candidates = build_do_now_candidates(&projects, &entries, "2026-07-16");
+
+        assert_eq!(
+            candidates
+                .iter()
+                .map(|candidate| candidate.project_id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["old", "recent", "today"]
+        );
+        assert_eq!(
+            candidates
+                .iter()
+                .map(|candidate| candidate.reason.as_str())
+                .collect::<Vec<_>>(),
+            vec!["noToday", "noToday", "oldestSession"]
+        );
+    }
+
+    #[test]
+    fn do_now_candidates_prioritize_focus_without_using_it_as_eligibility() {
+        let mut projects = crate::models::sample_config().projects;
+        projects[0].id = "focus".to_string();
+        projects[0].weekly_focus = Some(true);
+        projects[0].next_step.as_mut().expect("next step").text = "focus step".to_string();
+        projects[1].id = "available".to_string();
+        projects[1].weekly_focus = Some(false);
+        projects[1].next_step.as_mut().expect("next step").text = "available step".to_string();
+
+        let today_entry = SessionLogEntry {
+            id: None,
+            date: "2026-07-16".to_string(),
+            project_id: Some("focus".to_string()),
+            label: "focus".to_string(),
+            started_at: "10:00".to_string(),
+            minutes: 10,
+            note: String::new(),
+            manual: false,
+        };
+        let ranked = build_do_now_candidates(&projects, &[today_entry], "2026-07-16");
+        assert_eq!(
+            ranked
+                .iter()
+                .map(|candidate| candidate.project_id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["focus", "available"]
+        );
+
+        projects[0].next_step = None;
+        let fallback = build_do_now_candidates(&projects, &[], "2026-07-16");
+        assert_eq!(fallback.len(), 1);
+        assert_eq!(fallback[0].project_id, "available");
+    }
+
+    #[test]
+    fn do_now_candidates_use_manual_order_for_equal_state_and_empty_without_steps() {
+        let mut projects = crate::models::sample_config().projects;
+        projects[0].id = "first".to_string();
+        projects[0].weekly_focus = None;
+        projects[0].next_step.as_mut().expect("next step").text = "first step".to_string();
+        projects[1].id = "second".to_string();
+        projects[1].weekly_focus = Some(false);
+        projects[1].next_step.as_mut().expect("next step").text = "second step".to_string();
+
+        let tied = build_do_now_candidates(&projects, &[], "2026-07-16");
+        assert_eq!(
+            tied.iter()
+                .map(|candidate| candidate.project_id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["first", "second"]
+        );
+
+        projects
+            .iter_mut()
+            .for_each(|project| project.next_step = None);
+        assert!(build_do_now_candidates(&projects, &[], "2026-07-16").is_empty());
     }
 
     #[test]
