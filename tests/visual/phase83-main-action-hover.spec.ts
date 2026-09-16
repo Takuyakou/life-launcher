@@ -218,6 +218,20 @@ test("P83-03 edit and configure buttons use one neutral grammar", async ({ page 
   expect(configureStyle.backgroundColor).toBe(changeStyle.backgroundColor);
   expect(configureStyle.borderColor).toBe(changeStyle.borderColor);
   expect(configureStyle.color).toBe(changeStyle.color);
+
+  const autoStart = page.locator(".topPills .viewToggleButton").first();
+  await autoStart.hover();
+  await page.waitForTimeout(140);
+  const toolbarHover = await readStyle(autoStart);
+  for (const button of [change, configure]) {
+    await page.mouse.move(1, 1);
+    await button.hover();
+    await page.waitForTimeout(140);
+    const buttonHover = await readStyle(button);
+    expect(buttonHover.backgroundColor).toBe(toolbarHover.backgroundColor);
+    expect(buttonHover.borderColor).toBe(toolbarHover.borderColor);
+    expect(buttonHover.color).toBe(toolbarHover.color);
+  }
 });
 
 test.skip("P83-03 adoption matches NextStep configure while restore stays positive", async ({ page }) => {

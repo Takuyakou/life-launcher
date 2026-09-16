@@ -3350,6 +3350,7 @@ input[type="number"]::-webkit-inner-spin-button {
   min-width: 0;
   display: grid;
   gap: 9px;
+  padding-inline-start: 15px;
 }
 
 .doNowKicker {
@@ -3400,7 +3401,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .doNowCopy > strong {
   display: -webkit-box;
-  margin-inline-start: 15px;
+  margin-inline-start: 0;
   overflow: hidden;
   overflow-wrap: anywhere;
   font-size: 17px;
@@ -8610,7 +8611,7 @@ input[type="number"]::-webkit-inner-spin-button {
   width: 100%;
   min-height: 36px;
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr) max-content;
+  grid-template-columns: 16px minmax(106px, 152px) minmax(0, 1fr) 96px;
   align-items: center;
   gap: 8px;
   border: 0;
@@ -8636,6 +8637,8 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayPickerWishlistGroupCount {
+  grid-column: 4;
+  justify-self: end;
   color: var(--muted);
   font-size: 10px;
   font-weight: 700;
@@ -8648,7 +8651,11 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .todayPickerEmpty,
 .todayPickerFullMessage {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
   margin: 0;
+  padding-inline: 4px;
   color: var(--text-muted-readable);
   font-size: var(--dashboard-font-meta);
 }
@@ -8683,6 +8690,14 @@ input[type="number"]::-webkit-inner-spin-button {
   .todayPickerRow {
     grid-template-columns: minmax(0, 1fr) 96px;
     gap: 10px;
+  }
+
+  .todayPickerWishlistGroupHeader {
+    grid-template-columns: 16px minmax(0, 1fr) 96px;
+  }
+
+  .todayPickerWishlistGroupCount {
+    grid-column: 3;
   }
 
   .todayPickerCopy,
@@ -9308,6 +9323,9 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .nextStepCard .nextStepRowAction {
+  --main-action-hover-bg: var(--surface-strong);
+  --main-action-hover-border: rgba(231, 185, 77, 0.48);
+  --main-action-hover-color: var(--accent-strong);
   align-self: flex-end;
   min-height: 28px;
   margin-top: auto;
@@ -9320,9 +9338,9 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .nextStepCard .nextStepRowAction:hover:not(:disabled),
 .nextStepCard .nextStepRowAction:focus-visible {
-  border-color: color-mix(in srgb, var(--project-color) 62%, var(--line-strong));
-  background: color-mix(in srgb, var(--project-color) 7%, var(--surface-soft));
-  color: var(--text);
+  border-color: rgba(231, 185, 77, 0.48);
+  background: var(--surface-strong);
+  color: var(--accent-strong);
 }
 
 .nextStepCard .nextStepRegionMenu {

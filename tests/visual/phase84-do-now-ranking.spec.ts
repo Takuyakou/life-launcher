@@ -110,3 +110,23 @@ test("P84-03 empty Do Now guides to NextStep instead of weekly focus", async ({ 
   await empty.getByRole("button", { name: "次の一手を設定" }).click();
   await expect(page.getByRole("dialog", { name: "次の一手を設定" })).toBeVisible();
 });
+
+test("P84-03 Do Now kicker, task and metadata share the reference left edge", async ({ page }) => {
+  const fixture = createPublicFixture();
+  await prepare(page, fixture);
+
+  const card = page.locator(".doNowContent");
+  const [kicker, task, meta] = await Promise.all([
+    card.locator(".doNowKicker").boundingBox(),
+    card.locator(".doNowCopy > strong").boundingBox(),
+    card.locator(".doNowMeta").boundingBox(),
+  ]);
+  expect(kicker).not.toBeNull();
+  expect(task).not.toBeNull();
+  expect(meta).not.toBeNull();
+  expect(Math.abs(kicker!.x - task!.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(task!.x - meta!.x)).toBeLessThanOrEqual(1);
+  expect(task!.y).toBeGreaterThan(kicker!.y + kicker!.height);
+  expect(meta!.y).toBeGreaterThan(task!.y + task!.height);
+  await card.screenshot({ path: "dist/visual-qa/phase84/do-now-aligned.png" });
+});
