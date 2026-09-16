@@ -7935,6 +7935,37 @@ input[type="number"]::-webkit-inner-spin-button {
   pointer-events: none;
 }
 
+.todayRemoveDropZone {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 8px 10px 0 0;
+  border: 1px dashed rgba(231, 185, 77, 0.7);
+  border-radius: var(--radius);
+  background: rgba(231, 185, 77, 0.055);
+  color: var(--accent-strong);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 700;
+  pointer-events: none;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    box-shadow 120ms ease,
+    opacity 120ms ease;
+}
+
+.todayRemoveDropZone--active {
+  border-color: var(--accent);
+  background: rgba(231, 185, 77, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(231, 185, 77, 0.16);
+}
+
+.todayRemoveDropZone[aria-disabled="true"] {
+  opacity: 0.5;
+}
+
 .todayGrid > .quietText {
   grid-column: 1 / -1;
 }

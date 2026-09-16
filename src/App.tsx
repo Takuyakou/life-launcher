@@ -590,7 +590,8 @@ type TodayDragPreview = {
   offsetY: number;
   width: number;
   height: number;
-  builderRemoveEligible?: boolean;
+  removeEligible: boolean;
+  removeTargetActive: boolean;
   targetIndex?: number;
   placement?: "before" | "after";
   targetIndicator?: {
@@ -2181,9 +2182,7 @@ function DashboardApp() {
   const [wishlistGroupPointerDrag, setWishlistGroupPointerDrag] =
     useState<WishlistGroupDragPreview | null>(null);
   const builderRestoreGuidanceActive = Boolean(
-    projectPointerDrag?.restoreEligible ||
-      inboxPointerDrag?.restoreEligible ||
-      todayPointerDrag?.builderRemoveEligible,
+    projectPointerDrag?.restoreEligible || inboxPointerDrag?.restoreEligible,
   );
   const [miniTransitioning, setMiniTransitioning] = useState(false);
   const [numberInputDragging, setNumberInputDragging] = useState<NumberInputDragField | null>(null);
@@ -5068,10 +5067,12 @@ function DashboardApp() {
 
     const current = configRef.current;
     const item = current?.today.items[drag.index];
-    const builderRemoveEligible = Boolean(
+    const removeEligible = Boolean(
       item && activeTimerRef.current?.sourceId !== todayTimerSourceId(item, drag.index),
     );
-    updateBuilderRestoreHover(event.clientX, event.clientY, builderRemoveEligible);
+    const removeTargetActive =
+      removeEligible &&
+      pointWithinSelector(event.clientX, event.clientY, ".todayRemoveDropZone");
     const target = todayDropTargetFromPoint(event.clientX, event.clientY);
     setTodayPointerDrag({
       index: drag.index,
@@ -5081,7 +5082,8 @@ function DashboardApp() {
       offsetY: drag.offsetY,
       width: drag.width,
       height: drag.height,
-      builderRemoveEligible,
+      removeEligible,
+      removeTargetActive,
       targetIndex: target?.index,
       placement: target?.placement,
       targetIndicator: target && target.index !== drag.index ? target.indicator : undefined,
@@ -5093,21 +5095,20 @@ function DashboardApp() {
     const current = configRef.current;
     const item = current?.today.items[drag?.index ?? -1];
     const sourceKey = item && drag ? todaySourceKey(item, drag.index) : null;
-    const builderDrop =
+    const removeDrop =
       Boolean(
         item &&
           drag?.hasMoved &&
           activeTimerRef.current?.sourceId !== todayTimerSourceId(item, drag.index),
-      ) && builderRestoreTargetFromPoint(event.clientX, event.clientY);
+      ) && pointWithinSelector(event.clientX, event.clientY, ".todayRemoveDropZone");
     todayPointerDragRef.current = null;
     setTodayPointerDrag(null);
-    clearBuilderRestoreHover();
 
     if (!drag) return;
     event.preventDefault();
     event.stopPropagation();
     if (!drag.hasMoved) return;
-    if (builderDrop && sourceKey) {
+    if (removeDrop && sourceKey) {
       void removeTodayItem(sourceKey);
       return;
     }
@@ -5120,7 +5121,6 @@ function DashboardApp() {
   const cancelTodayPointerDrag = () => {
     todayPointerDragRef.current = null;
     setTodayPointerDrag(null);
-    clearBuilderRestoreHover();
   };
 
   const stopProjectAutoScroll = () => {
@@ -10329,6 +10329,22 @@ function DashboardApp() {
                     })()}
                 </div>
 
+                {todayPointerDrag && (
+                  <div
+                    aria-disabled={!todayPointerDrag.removeEligible}
+                    className={[
+                      "todayRemoveDropZone",
+                      todayPointerDrag.removeTargetActive
+                        ? "todayRemoveDropZone--active"
+                        : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  >
+                    <span>↓ ここにドロップして今日の3件から外す</span>
+                  </div>
+                )}
+
                 {completionFeedback?.kind === "todayAll" && (
                   <div className="todayAllCompletionReward" role="status">
                     <span aria-hidden="true">✓</span>
@@ -10406,7 +10422,7 @@ function DashboardApp() {
                   >
                     <span aria-hidden="true">↓</span>
                     <span>
-                      {todayPointerDrag?.builderRemoveEligible
+                      {todayPointerDrag?.removeEligible
                         ? "ここにドロップして今日の3件から外す"
                         : "ここにドロップして今日を組み立てるに入れる"}
                     </span>
