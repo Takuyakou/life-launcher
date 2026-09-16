@@ -107,8 +107,12 @@ test("P84-01 Picker shows NextStep and Wishlist candidates and ignores legacy di
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const dialog = picker(page);
-  await expect(dialog.getByRole("heading", { name: "次の一手" })).toBeVisible();
-  await expect(dialog.getByRole("heading", { name: "やりたいこと" })).toBeVisible();
+  await expect(
+    dialog.locator('[data-today-picker-section="next-step"] .todayPickerSectionHeader'),
+  ).toContainText("次の一手");
+  await expect(
+    dialog.locator('[data-today-picker-section="wishlist"] .todayPickerSectionHeader'),
+  ).toContainText("やりたいこと");
   await expect(dialog).toContainText("5分だけ体を動かす");
   await expect(dialog).toContainText("あとで確認するサンプル");
 });
@@ -263,10 +267,17 @@ test("P84 Picker aligns project, task, and action columns with readable long con
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const dialog = picker(page);
-  const taskXs = await dialog
-    .locator(".todayPickerCopy strong")
+  const structuredTaskXs = await dialog
+    .locator(
+      '[data-today-picker-section="selected"] .todayPickerCopy strong, [data-today-picker-section="next-step"] .todayPickerCopy strong',
+    )
     .evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().x));
-  expect(Math.max(...taskXs) - Math.min(...taskXs)).toBeLessThanOrEqual(1);
+  const wishlistTaskXs = await dialog
+    .locator(".todayPickerRow--groupedWishlist .todayPickerCopy strong")
+    .evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().x));
+  expect(Math.max(...structuredTaskXs) - Math.min(...structuredTaskXs)).toBeLessThanOrEqual(1);
+  expect(Math.max(...wishlistTaskXs) - Math.min(...wishlistTaskXs)).toBeLessThanOrEqual(1);
+  expect(wishlistTaskXs[0]).toBeLessThan(structuredTaskXs[0] - 80);
   const actionRights = await dialog
     .locator(".todayPickerRow > button, .todayPickerSelectedStatus")
     .evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().right));
@@ -386,4 +397,105 @@ test("P84 Picker shows a clear empty NextStep section when every NextStep is sel
   const nextStep = picker(page).locator('[data-today-picker-section="next-step"]');
   await expect(nextStep.locator(".todayPickerRow")).toHaveCount(0);
   await expect(nextStep).toContainText("候補はありません");
+});
+test("P84 v3 Picker section accordions default open, preserve state, and reset on reopen", async ({
+  page,
+}) => {
+  const fixture = createPublicFixture();
+  fixture.config.today.items = [];
+  await prepare(page, fixture);
+
+  const entry = page.getByRole("button", { name: "今日やるものを選ぶ" });
+  await entry.click();
+  let dialog = picker(page);
+  const nextStep = dialog.locator('[data-today-picker-section="next-step"]');
+  const wishlist = dialog.locator('[data-today-picker-section="wishlist"]');
+  const nextHeader = nextStep.locator(".todayPickerSectionHeader");
+  const wishlistHeader = wishlist.locator(".todayPickerSectionHeader");
+
+  await expect(nextHeader).toHaveAttribute("aria-expanded", "true");
+  await expect(wishlistHeader).toHaveAttribute("aria-expanded", "true");
+  await wishlistHeader.click();
+  await expect(wishlistHeader).toHaveAttribute("aria-expanded", "false");
+  await expect(wishlist.locator(".todayPickerWishlistGroups")).toHaveCount(0);
+
+  await nextStep
+    .locator(".todayPickerRow", { hasText: "5分だけ体を動かす" })
+    .getByRole("button", { name: "今日へ" })
+    .click();
+  await expect(wishlistHeader).toHaveAttribute("aria-expanded", "false");
+
+  await nextHeader.click();
+  await expect(nextHeader).toHaveAttribute("aria-expanded", "false");
+  await nextHeader.click();
+  await expect(nextHeader).toHaveAttribute("aria-expanded", "true");
+  await dialog.screenshot({ path: "dist/visual-qa/phase84/picker-v3-wishlist-collapsed.png" });
+
+  await dialog.getByRole("button", { name: "今日やるものを選ぶを閉じる" }).click();
+  await entry.click();
+  dialog = picker(page);
+  await expect(
+    dialog.locator('[data-today-picker-section="next-step"] .todayPickerSectionHeader'),
+  ).toHaveAttribute("aria-expanded", "true");
+  await expect(
+    dialog.locator('[data-today-picker-section="wishlist"] .todayPickerSectionHeader'),
+  ).toHaveAttribute("aria-expanded", "true");
+});
+
+test("P84 v3 selected rows use project identity and a non-interactive neutral status row", async ({
+  page,
+}) => {
+  const fixture = createPublicFixture();
+  await prepare(page, fixture);
+
+  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
+  const selected = picker(page).locator('[data-today-picker-section="selected"]');
+  const row = selected.locator(".todayPickerRow").first();
+  const status = row.locator(".todayPickerSelectedStatus");
+  await expect(row.locator(".projectIdentityDot")).toHaveCount(1);
+  await expect(row).toHaveCSS("border-left-width", "0px");
+  expect(await row.evaluate((node) => Number.parseFloat(getComputedStyle(node).paddingLeft))).toBeGreaterThanOrEqual(12);
+  await expect(status).toHaveText("✓ 選択済み");
+  expect(await status.evaluate((node) => node.tagName)).toBe("SPAN");
+  await expect(status).toHaveCSS("border-radius", "999px");
+});
+
+test("P84 v3 Today add reuses the Project gold grammar in every interaction state", async ({
+  page,
+}) => {
+  const fixture = createPublicFixture();
+  fixture.config.today.items = [];
+  await prepare(page, fixture);
+
+  const projectAdd = page.getByRole("button", { name: "プロジェクトを追加" });
+  const wishlistAdd = page.getByRole("button", { name: "やりたいことを追加" });
+  const style = async (locator: ReturnType<Page["locator"]>) =>
+    locator.evaluate((node) => {
+      const computed = getComputedStyle(node);
+      return {
+        backgroundColor: computed.backgroundColor,
+        borderColor: computed.borderColor,
+        color: computed.color,
+      };
+    });
+
+  let goldHoverStyle: Awaited<ReturnType<typeof style>> | null = null;
+  for (const button of [projectAdd, wishlistAdd]) {
+    await button.hover();
+    await page.waitForTimeout(140);
+    const buttonStyle = await style(button);
+    expect(buttonStyle).toEqual({
+      backgroundColor: "rgba(231, 185, 77, 0.18)",
+      borderColor: "rgb(231, 185, 77)",
+      color: "rgb(255, 206, 91)",
+    });
+    goldHoverStyle ??= buttonStyle;
+  }
+
+  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
+  const todayAdd = picker(page).getByRole("button", { name: "今日へ" }).first();
+  await expect(todayAdd).toHaveClass(/mainActionButton--gold/);
+  await todayAdd.hover();
+  await page.waitForTimeout(140);
+  expect(await style(todayAdd)).toEqual(goldHoverStyle);
 });

@@ -69,8 +69,8 @@ test("P84-04 empty Today selects NextStep then Wishlist while preserving sources
   await expect(page.locator(".todayBuilderBand")).toHaveCount(0);
   const entry = page.getByRole("button", { name: "今日やるものを選ぶ" });
   await entry.click();
-  await expect(picker(page).getByRole("heading", { name: "次の一手" })).toBeVisible();
-  await expect(picker(page).getByRole("heading", { name: "やりたいこと" })).toBeVisible();
+  await expect(picker(page).getByRole("button", { name: /^次の一手/ })).toBeVisible();
+  await expect(picker(page).getByRole("button", { name: /^やりたいこと/ })).toBeVisible();
 
   const nextStepText = projectsBefore[0].nextStep!.text;
   const nextStepRow = await selectCandidate(page, nextStepText);

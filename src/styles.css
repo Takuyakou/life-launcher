@@ -8353,6 +8353,14 @@ input[type="number"]::-webkit-inner-spin-button {
   width: auto;
 }
 
+.todayActivityBand .disclosureHeader {
+  grid-template-columns: max-content auto minmax(0, 1fr) max-content 32px;
+}
+
+.todayActivityBand .todayActivityAutoBadge {
+  grid-column: 4;
+}
+
 .todayBuilderHeader {
   grid-template-columns: max-content auto minmax(0, 1fr) max-content;
 }
@@ -8519,18 +8527,52 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayPickerGroup h3 {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
   margin: 0;
-  padding-bottom: 7px;
   border-bottom: 1px solid var(--line);
+  padding: 0 1px 6px;
   color: var(--text);
   font-size: var(--dashboard-font-body);
 }
 
-.todayPickerGroup h3 > span {
-  margin-left: 8px;
+.todayPickerGroup h3 > span,
+.todayPickerSectionCount {
   color: var(--muted);
   font-size: 10px;
   font-weight: 700;
+}
+
+.todayPickerSectionHeader {
+  width: 100%;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  padding: 0 1px 6px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.todayPickerSectionHeader:hover,
+.todayPickerSectionHeader:focus-visible {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.todayPickerSectionHeader .uiIcon {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+.todayPickerSectionTitle {
+  font-size: var(--dashboard-font-body);
+  font-weight: 800;
 }
 
 .todayPickerList {
@@ -8540,17 +8582,15 @@ input[type="number"]::-webkit-inner-spin-button {
 .todayPickerRow {
   min-height: 54px;
   display: grid;
-  grid-template-columns: minmax(130px, 180px) minmax(0, 1fr) 96px;
+  grid-template-columns: minmax(130px, 170px) minmax(0, 1fr) 96px;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   border-bottom: 1px solid var(--line-soft);
-  padding: 7px 4px;
+  padding: 7px 14px;
 }
 
 .todayPickerRow--selected {
-  border-left: 2px solid var(--good);
-  padding-left: 2px;
-  background: rgba(117, 196, 143, 0.04);
+  background: rgba(255, 255, 255, 0.018);
 }
 
 .todayPickerCopy {
@@ -8568,8 +8608,21 @@ input[type="number"]::-webkit-inner-spin-button {
   white-space: nowrap;
 }
 
+.todayPickerRow--groupedWishlist {
+  grid-template-columns: minmax(0, 1fr) 96px;
+  padding-left: 28px;
+}
+
 .todayPickerRow--groupedWishlist .todayPickerCopy {
   display: contents;
+}
+
+.todayPickerRow--groupedWishlist .todayPickerCopy strong {
+  grid-column: 1;
+}
+
+.todayPickerRow--groupedWishlist > button {
+  grid-column: 2;
 }
 
 .todayPickerCopy strong {
@@ -8592,10 +8645,16 @@ input[type="number"]::-webkit-inner-spin-button {
 .todayPickerSelectedStatus {
   grid-column: 3;
   width: 96px;
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(117, 196, 143, 0.28);
+  border-radius: 999px;
+  background: rgba(117, 196, 143, 0.055);
   color: var(--good);
   font-size: var(--dashboard-font-meta);
   font-weight: 700;
-  text-align: center;
   white-space: nowrap;
 }
 
@@ -8609,9 +8668,9 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .todayPickerWishlistGroupHeader {
   width: 100%;
-  min-height: 36px;
+  min-height: 38px;
   display: grid;
-  grid-template-columns: 16px minmax(106px, 152px) minmax(0, 1fr) 96px;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
   border: 0;
@@ -8637,7 +8696,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayPickerWishlistGroupCount {
-  grid-column: 4;
+  grid-column: 3;
   justify-self: end;
   color: var(--muted);
   font-size: 10px;
@@ -8693,7 +8752,7 @@ input[type="number"]::-webkit-inner-spin-button {
   }
 
   .todayPickerWishlistGroupHeader {
-    grid-template-columns: 16px minmax(0, 1fr) 96px;
+    grid-template-columns: 16px minmax(0, 1fr) auto;
   }
 
   .todayPickerWishlistGroupCount {
@@ -8716,6 +8775,11 @@ input[type="number"]::-webkit-inner-spin-button {
   .todayPickerRow > button,
   .todayPickerSelectedStatus {
     grid-column: 2;
+  }
+
+  .todayPickerRow--groupedWishlist {
+    grid-template-columns: minmax(0, 1fr) 96px;
+    padding-left: 18px;
   }
 }
 
@@ -8857,7 +8921,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .inboxRow.sourceListRow,
 .todayBuilderRow.sourceListRow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 32px;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   min-height: 48px;
   padding: 5px 10px;
@@ -9006,6 +9070,67 @@ input[type="number"]::-webkit-inner-spin-button {
   border-color: var(--line);
 }
 
+.wishlistRowActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.wishlistNextStepSlot {
+  width: 92px;
+  min-width: 92px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.inboxRow .wishlistNextStepAction {
+  --main-action-hover-bg: var(--surface-strong);
+  --main-action-hover-border: rgba(231, 185, 77, 0.48);
+  --main-action-hover-color: var(--accent-strong);
+  width: 92px;
+  min-width: 92px;
+  min-height: 30px;
+  padding-inline: 8px;
+  font-size: var(--dashboard-font-meta);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 100ms ease,
+    transform 120ms ease,
+    background 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.inboxRow:hover .wishlistNextStepAction,
+.inboxRow:focus-within .wishlistNextStepAction,
+.wishlistNextStepAction:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.inboxRow .sourceRowMenu {
+  flex: 0 0 32px;
+  opacity: 1;
+}
+
+@media (max-width: 620px) {
+  .wishlistNextStepSlot,
+  .inboxRow .wishlistNextStepAction {
+    width: 84px;
+    min-width: 84px;
+  }
+}
+
+@media (max-width: 520px) {
+  .wishlistNextStepSlot {
+    display: none;
+  }
+}
+
 .nextStepHeaderAdd--project {
   align-self: center;
   min-height: 28px;
@@ -9029,14 +9154,14 @@ input[type="number"]::-webkit-inner-spin-button {
 .nextStepHeaderAdd--wishlist:focus-visible {
   border-color: var(--accent);
   background: rgba(231, 185, 77, 0.18);
-  color: var(--text);
+  color: var(--accent-strong);
 }
 
 .nextStepHeaderAdd--project:hover:not(:disabled),
 .nextStepHeaderAdd--project:focus-visible {
   border-color: var(--accent);
   background: rgba(231, 185, 77, 0.18);
-  color: var(--text);
+  color: var(--accent-strong);
 }
 
 .nextStepRow.sourceListRow {
@@ -11022,7 +11147,7 @@ input[type="number"]::-webkit-inner-spin-button {
   --main-action-hover-border: var(--accent);
   --main-action-active-border: rgba(231, 185, 77, 0.7);
   --main-action-color: var(--accent-strong);
-  --main-action-hover-color: var(--text);
+  --main-action-hover-color: var(--accent-strong);
 }
 
 .mainActionButton--positive {
