@@ -483,7 +483,7 @@ test("Project creation, NextStep setup, and keyboard context menu are reachable"
   await expect(page.locator(".nextStepRow")).toHaveCount(3);
 
   const addedProject = (await currentConfig(page)).projects.at(-1)!;
-  const row = page.locator(`[data-project-id="${addedProject.id}"]`);
+  const row = page.locator(`.nextStepCard[data-project-id="${addedProject.id}"]`);
   await row.getByRole("button", { name: "次の一手を設定" }).click();
   const nextStepDialog = page.getByRole("dialog", { name: "次の一手を設定" });
   await nextStepDialog.getByRole("textbox", { name: "行動" }).fill("最初の1行を書く");
@@ -493,8 +493,8 @@ test("Project creation, NextStep setup, and keyboard context menu are reachable"
   await actionRegion.focus();
   await actionRegion.press("Shift+F10");
   await expect(page.getByRole("menuitem", { name: "次の一手を編集", exact: true })).toBeVisible();
-  await expect(page.getByRole("menuitem", { name: "今日へ", exact: true })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "次の一手を変更", exact: true })).toBeVisible();
   await expect(
-    page.getByRole("menuitem", { name: "次の一手を空にする", exact: true }),
+    page.getByRole("menuitem", { name: "次の一手を未設定にする", exact: true }),
   ).toBeVisible();
 });

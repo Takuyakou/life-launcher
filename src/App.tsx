@@ -104,7 +104,12 @@ import { ProjectIdentity } from "./components/ProjectIdentity";
 import { StartEnvironmentPicker } from "./StartEnvironmentPicker";
 import { InstructionPicker } from "./InstructionPicker";
 import { RecordsView } from "./RecordsView";
-import { canonicalSourceKey, timerSourceKey, resnapshotSource, SOURCE_EDIT_TIMER_REASON } from "./sourceEdit";
+import {
+  canonicalSourceKey,
+  timerSourceKey,
+  resnapshotSource,
+  SOURCE_EDIT_TIMER_REASON,
+} from "./sourceEdit";
 import {
   completeTodayItemAndPrepareSource,
   completeWishlistAfterToday,
@@ -114,7 +119,10 @@ import { PROJECT_COLOR_IDS, PROJECT_COLOR_LABELS, resolveProjectColorId } from "
 import { canRevealLauncherButton } from "./launcherReveal";
 import {
   groupWishlist,
+  prepareNextStepRemoval,
   prepareNextStepReplacement,
+  prepareWishlistPromotion,
+  reorderWishlistGroups,
   sameNextStepSnapshot,
   type NextStepReplacementChoice,
   wishlistGroupKey,
@@ -498,6 +506,9 @@ type ContextMenuTarget =
       index: number;
     }
   | {
+      kind: "todayBuilderBar";
+    }
+  | {
       kind: "doNow";
     }
   | {
@@ -542,6 +553,7 @@ type SidebarDragPreview = InternalButtonDrag & {
     left: number;
     top: number;
     width: number;
+    height?: number;
   };
   targetButtonId?: string;
   targetGroupName?: string;
@@ -628,9 +640,12 @@ type ProjectDragPreview = {
     left: number;
     top: number;
     width: number;
+    height?: number;
   };
   restoreTarget: boolean;
   restoreEligible: boolean;
+  wishlistTarget: boolean;
+  wishlistEligible: boolean;
 };
 
 type InboxPointerDrag = {
@@ -665,6 +680,38 @@ type InboxDragPreview = {
   };
   restoreTarget: boolean;
   restoreEligible: boolean;
+  nextStepEligible: boolean;
+  nextStepTargetProjectId?: string;
+};
+
+type WishlistGroupPointerDrag = {
+  key: string;
+  name: string;
+  startX: number;
+  startY: number;
+  hasMoved: boolean;
+  offsetX: number;
+  offsetY: number;
+  width: number;
+  height: number;
+};
+
+type WishlistGroupDragPreview = {
+  key: string;
+  name: string;
+  pointerX: number;
+  pointerY: number;
+  offsetX: number;
+  offsetY: number;
+  width: number;
+  height: number;
+  targetKey?: string;
+  placement?: "before" | "after";
+  targetIndicator?: {
+    left: number;
+    top: number;
+    width: number;
+  };
 };
 
 type TodayBuilderPointerDrag = {
@@ -705,6 +752,8 @@ type TodayBuilderDragPreview = {
     height: number;
   };
   todayGuidanceActive: boolean;
+  sourceTarget: "project" | "wishlist";
+  sourceTargetActive: boolean;
 };
 
 type NumberInputDragField =
@@ -754,6 +803,7 @@ const MINI_WINDOW_SAFE_MARGIN_PX = 16;
 const NUMBER_INPUT_DRAG_THRESHOLD_PX = 4;
 const NUMBER_INPUT_DRAG_PIXELS_PER_STEP = 8;
 const TODAY_BUILDER_PAGE_SIZE = 5;
+const PROJECT_CARD_COMPACT_LIMIT = 6;
 const SOURCE_LIST_COMPACT_LIMIT = 5;
 const SOURCE_LIST_PAGINATION_THRESHOLD = 20;
 const SOURCE_LIST_PAGE_SIZE = 10;
@@ -1653,13 +1703,16 @@ function todayAdoptionDropTargetFromPoint(
       },
     };
   }
-  const nearest = rows.reduce((best, row) => {
+  const nearest = rows.reduce(
+    (best, row) => {
     const rect = row.getBoundingClientRect();
     const dx = Math.max(rect.left - x, 0, x - rect.right);
     const dy = Math.max(rect.top - y, 0, y - rect.bottom);
     const distance = Math.hypot(dx, dy);
     return !best || distance < best.distance ? { row, distance } : best;
-  }, null as { row: HTMLElement; distance: number } | null);
+    },
+    null as { row: HTMLElement; distance: number } | null,
+  );
   if (!nearest) return null;
   const rect = nearest.row.getBoundingClientRect();
   const index = Number(nearest.row.dataset.todayIndex);
@@ -1707,21 +1760,34 @@ function projectDropTargetFromPoint(
   const element = document.elementFromPoint(x, y);
   if (!element) return nearestProjectDropTargetFromPoint(x, y);
 
-  const cardElement = element.closest<HTMLElement>("[data-project-id]");
+  const cardElement = element.closest<HTMLElement>(".nextStepCard[data-project-id]");
   if (!cardElement) return nearestProjectDropTargetFromPoint(x, y);
-  return projectDropTargetFromCard(cardElement, y);
+  return projectDropTargetFromCard(cardElement, x, y);
 }
 
 function projectDropTargetFromCard(
   cardElement: HTMLElement,
+  x: number,
   y: number,
 ): { id: string; placement: "before" | "after" } | null {
   const id = cardElement.dataset.projectId;
   if (!id) return null;
   const rect = cardElement.getBoundingClientRect();
+  const sharesRow = Array.from(
+    document.querySelectorAll<HTMLElement>(".nextStepCard[data-project-id]"),
+  ).some(
+    (candidate) =>
+      candidate !== cardElement && Math.abs(candidate.getBoundingClientRect().top - rect.top) < 2,
+  );
   return {
     id,
-    placement: y < rect.top + rect.height / 2 ? "before" : "after",
+    placement: sharesRow
+      ? x < rect.left + rect.width / 2
+        ? "before"
+        : "after"
+      : y < rect.top + rect.height / 2
+        ? "before"
+        : "after",
   };
 }
 
@@ -1729,7 +1795,9 @@ function nearestProjectDropTargetFromPoint(
   x: number,
   y: number,
 ): { id: string; placement: "before" | "after" } | null {
-  const cards = Array.from(document.querySelectorAll<HTMLElement>("[data-project-id]"));
+  const cards = Array.from(
+    document.querySelectorAll<HTMLElement>(".nextStepCard[data-project-id]"),
+  );
   if (cards.length === 0) return null;
 
   const nearest = cards.reduce<{ card: HTMLElement; distance: number } | null>((best, card) => {
@@ -1743,7 +1811,42 @@ function nearestProjectDropTargetFromPoint(
     return best;
   }, null);
 
-  return nearest ? projectDropTargetFromCard(nearest.card, y) : null;
+  return nearest ? projectDropTargetFromCard(nearest.card, x, y) : null;
+}
+
+function nextStepTargetProjectFromPoint(x: number, y: number): string | null {
+  const element = document.elementFromPoint(x, y);
+  const card = element?.closest<HTMLElement>(".nextStepCard[data-project-id]");
+  return card?.dataset.projectId ?? null;
+}
+
+function wishlistGroupDropTargetFromPoint(
+  x: number,
+  y: number,
+): {
+  key: string;
+  placement: "before" | "after";
+  indicator: { left: number; top: number; width: number };
+} | null {
+  const group = Array.from(document.querySelectorAll<HTMLElement>("[data-wishlist-group]")).find(
+    (candidate) => {
+    const rect = candidate.getBoundingClientRect();
+    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+    },
+  );
+  const key = group?.dataset.wishlistGroup;
+  if (!group || !key) return null;
+  const rect = group.getBoundingClientRect();
+  const placement = y < rect.top + rect.height / 2 ? "before" : "after";
+  return {
+    key,
+    placement,
+    indicator: {
+      left: rect.left + 6,
+      top: placement === "before" ? rect.top - 2 : rect.bottom + 1,
+      width: Math.max(0, rect.width - 12),
+    },
+  };
 }
 
 function inboxDropTargetFromPoint(
@@ -1811,10 +1914,26 @@ function todayBuilderDropTargetFromPoint(
 function projectDropIndicator(
   id: string,
   placement: "before" | "after",
-): { left: number; top: number; width: number } | undefined {
-  const card = document.querySelector<HTMLElement>(`[data-project-id="${CSS.escape(id)}"]`);
+): { left: number; top: number; width: number; height?: number } | undefined {
+  const card = document.querySelector<HTMLElement>(
+    `.nextStepCard[data-project-id="${CSS.escape(id)}"]`,
+  );
   if (!card) return undefined;
   const rect = card.getBoundingClientRect();
+  const sharesRow = Array.from(
+    document.querySelectorAll<HTMLElement>(".nextStepCard[data-project-id]"),
+  ).some(
+    (candidate) =>
+      candidate !== card && Math.abs(candidate.getBoundingClientRect().top - rect.top) < 2,
+  );
+  if (sharesRow) {
+    return {
+      left: placement === "before" ? rect.left - 2 : rect.right + 1,
+      top: rect.top + 6,
+      width: 3,
+      height: Math.max(0, rect.height - 12),
+    };
+  }
   return {
     left: rect.left + 6,
     top: placement === "before" ? rect.top - 2 : rect.bottom + 1,
@@ -2029,12 +2148,14 @@ function DashboardApp() {
   const [inboxOpen, setInboxOpen] = useState(false);
   const [projectsOpen, setProjectsOpen] = useState(true);
   const [projectsListExpanded, setProjectsListExpanded] = useState(false);
-  const [projectsListPage, setProjectsListPage] = useState(1);
-  const [wishlistGroupViews, setWishlistGroupViews] = useState<
-    Record<string, WishlistGroupView>
-  >({});
+  const [wishlistGroupViews, setWishlistGroupViews] = useState<Record<string, WishlistGroupView>>(
+    {},
+  );
   const [todayBuilderOpen, setTodayBuilderOpen] = useState(false);
   const [todayBuilderPage, setTodayBuilderPage] = useState(1);
+  const [todayBuilderWishlistCollapsed, setTodayBuilderWishlistCollapsed] = useState<
+    Record<string, boolean>
+  >({});
   const [, setTodayBuilderOrderRevision] = useState(0);
   const [todayBuilderPointerDrag, setTodayBuilderPointerDrag] =
     useState<TodayBuilderDragPreview | null>(null);
@@ -2125,6 +2246,8 @@ function DashboardApp() {
   const [todayPointerDrag, setTodayPointerDrag] = useState<TodayDragPreview | null>(null);
   const [projectPointerDrag, setProjectPointerDrag] = useState<ProjectDragPreview | null>(null);
   const [inboxPointerDrag, setInboxPointerDrag] = useState<InboxDragPreview | null>(null);
+  const [wishlistGroupPointerDrag, setWishlistGroupPointerDrag] =
+    useState<WishlistGroupDragPreview | null>(null);
   const builderRestoreGuidanceActive = Boolean(
     projectPointerDrag?.restoreEligible ||
       inboxPointerDrag?.restoreEligible ||
@@ -2141,6 +2264,7 @@ function DashboardApp() {
   const todayPointerDragRef = useRef<TodayPointerDrag | null>(null);
   const projectPointerDragRef = useRef<ProjectPointerDrag | null>(null);
   const inboxPointerDragRef = useRef<InboxPointerDrag | null>(null);
+  const wishlistGroupPointerDragRef = useRef<WishlistGroupPointerDrag | null>(null);
   const todayBuilderPointerDragRef = useRef<TodayBuilderPointerDrag | null>(null);
   const builderAutoOpenTimerRef = useRef<number | null>(null);
   const builderTemporarilyOpenedRef = useRef(false);
@@ -2373,7 +2497,9 @@ function DashboardApp() {
   const staleNextStepProjects = useMemo(() => {
     if (!config) return [];
     const staleIds = new Set(staleNextStepProjectIds);
-    return config.projects.filter((project) => staleIds.has(project.id) && project.nextStep?.text.trim());
+    return config.projects.filter(
+      (project) => staleIds.has(project.id) && project.nextStep?.text.trim(),
+    );
   }, [config, staleNextStepProjectIds]);
 
   const buttonGroups = useMemo<ButtonGroup[]>(() => {
@@ -2459,9 +2585,7 @@ function DashboardApp() {
     [launcherOverlayItems, launcherSearch, overlayPages, selectedOverlayPageButtons],
   );
   const timerProgressPercent =
-    activeTimer?.mode === "countdown" &&
-    activeTimer.targetMinutes !== null &&
-    currentTimerMetrics
+    activeTimer?.mode === "countdown" && activeTimer.targetMinutes !== null && currentTimerMetrics
       ? Math.min(
           100,
           Math.max(
@@ -2541,10 +2665,7 @@ function DashboardApp() {
         documentHidden: document.hidden,
       };
       if (!document.hidden) {
-        timerState.dismissTimer = window.setTimeout(
-          () => dismissToast(toast.id),
-          toast.durationMs,
-        );
+        timerState.dismissTimer = window.setTimeout(() => dismissToast(toast.id), toast.durationMs);
       } else {
         timerState.startedAt = null;
       }
@@ -2572,10 +2693,7 @@ function DashboardApp() {
         timers.dismissTimer = null;
       } else if (!shouldPause && timers.startedAt === null && timers.remainingMs > 0) {
         timers.startedAt = Date.now();
-        timers.dismissTimer = window.setTimeout(
-          () => dismissToast(id),
-          timers.remainingMs,
-        );
+        timers.dismissTimer = window.setTimeout(() => dismissToast(id), timers.remainingMs);
       }
       setToasts((current) =>
         current.map((toast) => (toast.id === id ? { ...toast, paused: shouldPause } : toast)),
@@ -2592,8 +2710,7 @@ function DashboardApp() {
     return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, [pauseToast]);
 
-  const showToast = useCallback(
-    (tone: ToastTone, message: string, options: ToastOptions = {}) => {
+  const showToast = useCallback((tone: ToastTone, message: string, options: ToastOptions = {}) => {
       toastIdRef.current += 1;
       const id = toastIdRef.current;
       const durationMs =
@@ -2604,10 +2721,7 @@ function DashboardApp() {
           !options.onAction &&
           current.some(
             (toast) =>
-              !toast.leaving &&
-              !toast.onAction &&
-              toast.tone === tone &&
-              toast.message === message,
+            !toast.leaving && !toast.onAction && toast.tone === tone && toast.message === message,
           )
         ) {
           return current;
@@ -2634,9 +2748,7 @@ function DashboardApp() {
           : combined;
       });
       return id;
-    },
-    [],
-  );
+  }, []);
 
   const runToastAction = async (id: number) => {
     const toast = toastsRef.current.find((item) => item.id === id);
@@ -2791,8 +2903,7 @@ function DashboardApp() {
     }
   }, [applyWeeklyReview, sessionDateScope, sessionProjectFilter, sessionSearch, showToast]);
 
-  const refreshNextStepSuggestions = useCallback(
-    async (projectId: string | null | undefined) => {
+  const refreshNextStepSuggestions = useCallback(async (projectId: string | null | undefined) => {
       if (!projectId) {
         setProjectNextStepSuggestions([]);
         return;
@@ -2804,9 +2915,7 @@ function DashboardApp() {
       } catch {
         setProjectNextStepSuggestions([]);
       }
-    },
-    [],
-  );
+  }, []);
 
   const refreshConfig = useCallback(
     async (toastOnSuccess = false) => {
@@ -3861,7 +3970,8 @@ function DashboardApp() {
     const projectNames = config.projects
       .filter(
         (project) =>
-          project.nextStep?.instructionPath && instructionPathWithin(project.nextStep.instructionPath, path),
+          project.nextStep?.instructionPath &&
+          instructionPathWithin(project.nextStep.instructionPath, path),
       )
       .map((project) => project.name);
     requestConfirmation({
@@ -4696,9 +4806,7 @@ function DashboardApp() {
     const targetItem = config.inbox[targetIndex];
     if (!draggedItem || !targetItem) return;
     const projectIds = new Set(config.projects.map((project) => project.id));
-    if (
-      wishlistGroupKey(draggedItem, projectIds) !== wishlistGroupKey(targetItem, projectIds)
-    )
+    if (wishlistGroupKey(draggedItem, projectIds) !== wishlistGroupKey(targetItem, projectIds))
       return;
 
     const withoutDragged = config.inbox.filter((_, index) => index !== draggedIndex);
@@ -4709,6 +4817,18 @@ function DashboardApp() {
     const inbox = [...withoutDragged];
     inbox.splice(insertIndex, 0, draggedItem);
     void persistConfig({ ...config, inbox });
+  };
+
+  const moveWishlistGroup = (
+    draggedKey: string,
+    targetKey: string,
+    placement: "before" | "after",
+  ) => {
+    const current = configRef.current;
+    if (!current || draggedKey === targetKey) return;
+    const nextConfig = reorderWishlistGroups(current, draggedKey, targetKey, placement);
+    if (nextConfig === current) return;
+    void persistConfig(nextConfig);
   };
 
   const announceReorder = (label: string, position: number) => {
@@ -4993,8 +5113,7 @@ function DashboardApp() {
     const current = configRef.current;
     const item = current?.today.items[drag.index];
     const builderRemoveEligible = Boolean(
-      item &&
-        activeTimerRef.current?.sourceId !== todayTimerSourceId(item, drag.index),
+      item && activeTimerRef.current?.sourceId !== todayTimerSourceId(item, drag.index),
     );
     updateBuilderRestoreHover(event.clientX, event.clientY, builderRemoveEligible);
     const target = todayDropTargetFromPoint(event.clientX, event.clientY);
@@ -5215,13 +5334,19 @@ function DashboardApp() {
     }
     if (drag.hasMoved) {
       const overBuilder = builderRestoreTargetFromPoint(event.clientX, event.clientY);
+      const overWishlist = pointWithinSelector(event.clientX, event.clientY, ".inboxBand");
       const restoreEligible = sourceCanReturnToBuilder(drag.sourceKey, drag.dayKey);
+      const project = configRef.current?.projects.find((candidate) => candidate.id === drag.id);
+      const wishlistEligible = Boolean(
+        project?.nextStep?.text.trim() && !sourceEditBlocked(drag.sourceKey),
+      );
       const restoreTarget = updateBuilderRestoreHover(
         event.clientX,
         event.clientY,
         restoreEligible,
       );
-      const target = overBuilder
+      const target =
+        overBuilder || overWishlist
         ? null
         : projectDropTargetFromPoint(event.clientX, event.clientY);
       const placement = target ? resolveProjectDropPlacement(drag.id, target) : undefined;
@@ -5241,6 +5366,8 @@ function DashboardApp() {
             : undefined,
         restoreTarget,
         restoreEligible,
+        wishlistTarget: overWishlist && wishlistEligible,
+        wishlistEligible,
       });
       updateProjectAutoScroll(event.clientY);
     }
@@ -5262,6 +5389,14 @@ function DashboardApp() {
     }
     clearBuilderRestoreHover();
     if (builderRestoreTargetFromPoint(event.clientX, event.clientY)) return;
+
+    if (pointWithinSelector(event.clientX, event.clientY, ".inboxBand")) {
+      const project = configRef.current?.projects.find((candidate) => candidate.id === drag.id);
+      if (project?.nextStep?.text.trim() && !sourceEditBlocked(drag.sourceKey)) {
+        void removeProjectNextStep(project, "return");
+      }
+      return;
+    }
 
     const target = projectDropTargetFromPoint(event.clientX, event.clientY);
     if (!target) return;
@@ -5315,16 +5450,25 @@ function DashboardApp() {
     if (!drag.hasMoved) return;
 
     const restoreEligible = sourceCanReturnToBuilder(drag.sourceKey, drag.dayKey);
-    const restoreTarget = updateBuilderRestoreHover(
-      event.clientX,
-      event.clientY,
-      restoreEligible,
-    );
-    const candidateTarget = builderRestoreTargetFromPoint(event.clientX, event.clientY)
-      ? null
-      : inboxDropTargetFromPoint(event.clientX, event.clientY);
-    const projectIds = new Set((current?.projects ?? []).map((project) => project.id));
+    const restoreTarget = updateBuilderRestoreHover(event.clientX, event.clientY, restoreEligible);
     const sourceItem = current?.inbox[sourceIndex];
+    const sourceEditable = Boolean(
+      sourceItem?.id && !sourceEditBlocked(`wishlist:${sourceItem.id}`),
+    );
+    const hoveredProjectId = nextStepTargetProjectFromPoint(event.clientX, event.clientY);
+    const nextStepEligible = Boolean(
+      sourceEditable &&
+        current?.projects.some((project) => !sourceEditBlocked(`project:${project.id}`)),
+    );
+    const nextStepTargetProjectId =
+      hoveredProjectId && sourceEditable && !sourceEditBlocked(`project:${hoveredProjectId}`)
+        ? hoveredProjectId
+        : undefined;
+    const candidateTarget =
+      builderRestoreTargetFromPoint(event.clientX, event.clientY) || nextStepTargetProjectId
+        ? null
+        : inboxDropTargetFromPoint(event.clientX, event.clientY);
+    const projectIds = new Set((current?.projects ?? []).map((project) => project.id));
     const targetItem = candidateTarget ? current?.inbox[candidateTarget.index] : undefined;
     const target =
       sourceItem &&
@@ -5347,6 +5491,8 @@ function DashboardApp() {
         !restoreTarget && target && target.index !== drag.index ? target.indicator : undefined,
       restoreTarget,
       restoreEligible,
+      nextStepEligible,
+      nextStepTargetProjectId,
     });
     updateProjectAutoScroll(event.clientY);
   };
@@ -5369,10 +5515,20 @@ function DashboardApp() {
 
     const current = configRef.current;
     const sourceIndex =
-      current?.inbox.findIndex(
-        (item) => item.id === drag.sourceKey.slice("wishlist:".length),
-      ) ?? -1;
+      current?.inbox.findIndex((item) => item.id === drag.sourceKey.slice("wishlist:".length)) ??
+      -1;
     if (sourceIndex < 0) return;
+    const targetProjectId = nextStepTargetProjectFromPoint(event.clientX, event.clientY);
+    const sourceItem = current?.inbox[sourceIndex];
+    if (
+      targetProjectId &&
+      sourceItem?.id &&
+      !sourceEditBlocked(`wishlist:${sourceItem.id}`) &&
+      !sourceEditBlocked(`project:${targetProjectId}`)
+    ) {
+      void promoteWishlistToProject(sourceItem.id, targetProjectId);
+      return;
+    }
     const target = inboxDropTargetFromPoint(event.clientX, event.clientY);
     if (!target) return;
     const placement =
@@ -5390,6 +5546,88 @@ function DashboardApp() {
     setInboxPointerDrag(null);
     stopProjectAutoScroll();
     clearBuilderRestoreHover();
+  };
+
+  const toggleWishlistGroup = (key: string) => {
+    setWishlistGroupViews((current) => ({
+      ...current,
+      [key]: {
+        ...current[key],
+        collapsed: !current[key]?.collapsed,
+      },
+    }));
+  };
+
+  const startWishlistGroupPointerDrag = (
+    event: PointerEvent<HTMLElement>,
+    key: string,
+    name: string,
+  ) => {
+    if (event.button !== 0) return;
+    const header = (event.target as Element).closest<HTMLElement>(".wishlistGroupHeader");
+    if (!header || !event.currentTarget.contains(header)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const rect = header.getBoundingClientRect();
+    wishlistGroupPointerDragRef.current = {
+      key,
+      name,
+      startX: event.clientX,
+      startY: event.clientY,
+      hasMoved: false,
+      offsetX: event.clientX - rect.left,
+      offsetY: event.clientY - rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+  };
+
+  const updateWishlistGroupPointerDrag = (event: PointerEvent<HTMLElement>) => {
+    const drag = wishlistGroupPointerDragRef.current;
+    if (!drag) return;
+    const distance = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
+    if (!drag.hasMoved && distance >= SIDEBAR_DRAG_THRESHOLD_PX) drag.hasMoved = true;
+    if (!drag.hasMoved) return;
+    const target = wishlistGroupDropTargetFromPoint(event.clientX, event.clientY);
+    setWishlistGroupPointerDrag({
+      key: drag.key,
+      name: drag.name,
+      pointerX: event.clientX,
+      pointerY: event.clientY,
+      offsetX: drag.offsetX,
+      offsetY: drag.offsetY,
+      width: drag.width,
+      height: drag.height,
+      targetKey: target?.key,
+      placement: target?.placement,
+      targetIndicator: target && target.key !== drag.key ? target.indicator : undefined,
+    });
+    updateProjectAutoScroll(event.clientY);
+  };
+
+  const finishWishlistGroupPointerDrag = (event: PointerEvent<HTMLElement>) => {
+    const drag = wishlistGroupPointerDragRef.current;
+    wishlistGroupPointerDragRef.current = null;
+    setWishlistGroupPointerDrag(null);
+    stopProjectAutoScroll();
+    if (!drag) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (!drag.hasMoved) {
+      toggleWishlistGroup(drag.key);
+      return;
+    }
+    const target = wishlistGroupDropTargetFromPoint(event.clientX, event.clientY);
+    if (target && target.key !== drag.key) {
+      moveWishlistGroup(drag.key, target.key, target.placement);
+    }
+  };
+
+  const cancelWishlistGroupPointerDrag = () => {
+    wishlistGroupPointerDragRef.current = null;
+    setWishlistGroupPointerDrag(null);
+    stopProjectAutoScroll();
   };
 
   const startTodayBuilderPointerDrag = (event: PointerEvent<HTMLDivElement>, index: number) => {
@@ -5425,8 +5663,7 @@ function DashboardApp() {
 
     const sourceIndex = todayBuilderCandidates.findIndex(
       (candidate) =>
-        candidate.sourceKey === drag.sourceKey ||
-        candidate.sourceAliases?.includes(drag.sourceKey),
+        candidate.sourceKey === drag.sourceKey || candidate.sourceAliases?.includes(drag.sourceKey),
     );
     const candidate = sourceIndex >= 0 ? todayBuilderCandidates[sourceIndex] : undefined;
     const current = configRef.current;
@@ -5444,6 +5681,15 @@ function DashboardApp() {
     const todayTarget = canAdopt
       ? todayAdoptionDropTargetFromPoint(event.clientX, event.clientY)
       : null;
+    const sourceTarget =
+      candidate?.source === "やりたいこと" || drag.sourceKey.startsWith("wishlist:")
+        ? "wishlist"
+        : "project";
+    const sourceTargetActive = pointWithinSelector(
+      event.clientX,
+      event.clientY,
+      sourceTarget === "wishlist" ? ".inboxBand" : ".projectsBand",
+    );
     const target = todayBuilderDropTargetFromPoint(event.clientX, event.clientY);
     setTodayBuilderPointerDrag({
       index: sourceIndex >= 0 ? sourceIndex : drag.index,
@@ -5461,12 +5707,15 @@ function DashboardApp() {
       todayTargetIndex: todayTarget?.insertionIndex,
       todayTargetIndicator: todayTarget?.indicator,
       todayGuidanceActive: canAdopt,
+      sourceTarget,
+      sourceTargetActive,
     });
     updateProjectAutoScroll(event.clientY);
   };
 
   const finishTodayBuilderPointerDrag = (event: PointerEvent<HTMLDivElement>) => {
     const drag = todayBuilderPointerDragRef.current;
+    const preview = todayBuilderPointerDrag;
     todayBuilderPointerDragRef.current = null;
     setTodayBuilderPointerDrag(null);
     if (!drag) return;
@@ -5476,11 +5725,19 @@ function DashboardApp() {
 
     const sourceIndex = todayBuilderCandidates.findIndex(
       (candidate) =>
-        candidate.sourceKey === drag.sourceKey ||
-        candidate.sourceAliases?.includes(drag.sourceKey),
+        candidate.sourceKey === drag.sourceKey || candidate.sourceAliases?.includes(drag.sourceKey),
     );
     const candidate = sourceIndex >= 0 ? todayBuilderCandidates[sourceIndex] : undefined;
     const current = configRef.current;
+    const sourceTarget =
+      candidate?.source === "やりたいこと" || drag.sourceKey.startsWith("wishlist:")
+        ? ".inboxBand"
+        : ".projectsBand";
+    if (candidate && pointWithinSelector(event.clientX, event.clientY, sourceTarget)) {
+      void excludeTodayBuilderCandidate(sourceIndex);
+      stopProjectAutoScroll();
+      return;
+    }
     const todayTarget = todayAdoptionDropTargetFromPoint(event.clientX, event.clientY);
     if (
       candidate &&
@@ -5496,7 +5753,13 @@ function DashboardApp() {
     }
     stopProjectAutoScroll();
     if (pointWithinSelector(event.clientX, event.clientY, ".todayGrid")) return;
-    const target = todayBuilderDropTargetFromPoint(event.clientX, event.clientY);
+    const target =
+      todayBuilderDropTargetFromPoint(event.clientX, event.clientY) ??
+      (pointWithinSelector(event.clientX, event.clientY, ".todayBuilderBand") &&
+      preview?.targetIndex !== undefined &&
+      preview.placement
+        ? { index: preview.targetIndex, placement: preview.placement }
+        : null);
     if (!target) return;
     if (sourceIndex >= 0) {
       moveTodayBuilderCandidate(sourceIndex, target.index, target.placement);
@@ -5558,10 +5821,24 @@ function DashboardApp() {
           projects: config.projects.map((project) => ({
             ...project,
             ...(project.nextStep
-              ? { nextStep: { ...project.nextStep, buttonIds: project.nextStep.buttonIds.filter((buttonId) => buttonId !== button.id) } }
+              ? {
+                  nextStep: {
+                    ...project.nextStep,
+                    buttonIds: project.nextStep.buttonIds.filter(
+                      (buttonId) => buttonId !== button.id,
+                    ),
+                  },
+                }
               : {}),
             ...(project.legacyNextStepSettings
-              ? { legacyNextStepSettings: { ...project.legacyNextStepSettings, buttonIds: project.legacyNextStepSettings.buttonIds.filter((buttonId) => buttonId !== button.id) } }
+              ? {
+                  legacyNextStepSettings: {
+                    ...project.legacyNextStepSettings,
+                    buttonIds: project.legacyNextStepSettings.buttonIds.filter(
+                      (buttonId) => buttonId !== button.id,
+                    ),
+                  },
+                }
               : {}),
           })),
         });
@@ -5953,10 +6230,24 @@ function DashboardApp() {
         : config.projects.map((project) => ({
             ...project,
             ...(project.nextStep
-              ? { nextStep: { ...project.nextStep, buttonIds: project.nextStep.buttonIds.filter((buttonId) => buttonId !== buttonEditDraft.id) } }
+              ? {
+                  nextStep: {
+                    ...project.nextStep,
+                    buttonIds: project.nextStep.buttonIds.filter(
+                      (buttonId) => buttonId !== buttonEditDraft.id,
+                    ),
+                  },
+                }
               : {}),
             ...(project.legacyNextStepSettings
-              ? { legacyNextStepSettings: { ...project.legacyNextStepSettings, buttonIds: project.legacyNextStepSettings.buttonIds.filter((buttonId) => buttonId !== buttonEditDraft.id) } }
+              ? {
+                  legacyNextStepSettings: {
+                    ...project.legacyNextStepSettings,
+                    buttonIds: project.legacyNextStepSettings.buttonIds.filter(
+                      (buttonId) => buttonId !== buttonEditDraft.id,
+                    ),
+                  },
+                }
               : {}),
           }));
 
@@ -6229,8 +6520,7 @@ function DashboardApp() {
             createStableId(),
           );
           const completedSourceKey = prepared.config === current ? null : pending.sourceKey;
-          const saved =
-            prepared.config === current ? true : await persistConfig(prepared.config);
+          const saved = prepared.config === current ? true : await persistConfig(prepared.config);
           if (saved && completedSourceKey) {
             showTimerCompletionFeedback(
               pending.timer,
@@ -6332,12 +6622,11 @@ function DashboardApp() {
         : undefined;
       const sourceGenerationId = sourceId.startsWith("today:")
         ? directTodayItem?.sourceGenerationId
-        :
-        (projectId !== null && sourceId === projectId
+        : projectId !== null && sourceId === projectId
           ? timerConfig.projects.find((project) => project.id === projectId)?.nextStep?.generationId
-          : undefined);
+          : undefined;
       const resolvedTargetMinutes =
-        mode === "countdown" ? targetMinutes ?? config.settings.defaultTimerMinutes : null;
+        mode === "countdown" ? (targetMinutes ?? config.settings.defaultTimerMinutes) : null;
       const fallbackNote =
         projectId !== null
           ? (config.projects.find((project) => project.id === projectId)?.nextStep?.text ?? "")
@@ -6461,7 +6750,8 @@ function DashboardApp() {
         const directSourceKey = completedTimer.sourceId.startsWith("today:")
           ? completedTimer.sourceId.slice("today:".length)
           : null;
-        const projectSourceKey = completedTimer.projectId && completedTimer.sourceId === completedTimer.projectId
+        const projectSourceKey =
+          completedTimer.projectId && completedTimer.sourceId === completedTimer.projectId
           ? `project:${completedTimer.projectId}`
           : null;
         const targetSourceKey = directSourceKey ?? projectSourceKey;
@@ -6470,7 +6760,8 @@ function DashboardApp() {
           .find(
             ({ item, sourceKey }) =>
               !item.done &&
-              targetSourceKey !== null && sourceKey === targetSourceKey &&
+              targetSourceKey !== null &&
+              sourceKey === targetSourceKey &&
               item.sourceGenerationId === completedTimer.sourceGenerationId,
           );
         const prepared = completedEntry
@@ -6654,9 +6945,7 @@ function DashboardApp() {
 
   const sourceSnapshotForUndo = (current: AppConfig, sourceKey: string): unknown | null => {
     if (sourceKey.startsWith("project:")) {
-      return (
-        current.projects.find((project) => `project:${project.id}` === sourceKey) ?? null
-      );
+      return current.projects.find((project) => `project:${project.id}` === sourceKey) ?? null;
     }
     if (sourceKey.startsWith("wishlist:")) {
       return current.inbox.find((item) => `wishlist:${item.id}` === sourceKey) ?? null;
@@ -6712,13 +7001,12 @@ function DashboardApp() {
       return;
     }
     // Keep legacy timer identities stable when an earlier card is removed.
-    const stableItems = current.today.items
-      .map((item, itemIndex) =>
+    const stableItems = current.today.items.map((item, itemIndex) =>
         item.sourceKey?.trim() ? item : { ...item, sourceKey: todaySourceKey(item, itemIndex) },
       );
     const removedItem = stableItems[index];
     const operationId = createStableId();
-    const previousSourceKey = index > 0 ? stableItems[index - 1]?.sourceKey ?? null : null;
+    const previousSourceKey = index > 0 ? (stableItems[index - 1]?.sourceKey ?? null) : null;
     const nextSourceKey = stableItems[index + 1]?.sourceKey ?? null;
     const items = stableItems.filter((_, itemIndex) => itemIndex !== index);
     setTodayTriggerEditingIndex(null);
@@ -6830,8 +7118,14 @@ function DashboardApp() {
 
   const sourceEditBlocked = (key: string) => {
     const current = configRef.current;
-    return sourceEditBusyRef.current !== null || Boolean(current && activeTimerRef.current &&
-      timerSourceKey(current, activeTimerRef.current.sourceId) === key);
+    return (
+      sourceEditBusyRef.current !== null ||
+      Boolean(
+        current &&
+        activeTimerRef.current &&
+        timerSourceKey(current, activeTimerRef.current.sourceId) === key,
+      )
+    );
   };
 
   const saveSourceEdit = async (previous: AppConfig, next: AppConfig, key: string) => {
@@ -6844,9 +7138,7 @@ function DashboardApp() {
     try {
       const resnapshotted = resnapshotSource(previous, next, key);
       const todayUpdated = resnapshotted.today !== next.today;
-      return (await persistConfig(resnapshotted))
-        ? { todayUpdated }
-        : null;
+      return (await persistConfig(resnapshotted)) ? { todayUpdated } : null;
     } catch (error) {
       showToast("error", error instanceof Error ? error.message : String(error));
       return null;
@@ -6856,10 +7148,7 @@ function DashboardApp() {
     }
   };
 
-  const beginInboxEdit = (
-    index: number,
-    origin: "source" | "today" | "builder" = "source",
-  ) => {
+  const beginInboxEdit = (index: number, origin: "source" | "today" | "builder" = "source") => {
     const item = configRef.current?.inbox[index];
     if (!item) return;
     if (!item.id || sourceEditBlocked(`wishlist:${item.id}`)) {
@@ -6885,7 +7174,7 @@ function DashboardApp() {
     const config = configRef.current;
     if (!config || inboxEditingIndex === null) return;
     const editingId = inboxEditingIdRef.current;
-    if (!editingId || !config.inbox.some(item => item.id === editingId)) {
+    if (!editingId || !config.inbox.some((item) => item.id === editingId)) {
       showToast("warn", "元の登録が見つかりません");
       return;
     }
@@ -7095,10 +7384,7 @@ function DashboardApp() {
     });
   };
 
-  const addCandidateToToday = async (
-    candidate: TodayBuilderCandidate,
-    insertionIndex?: number,
-  ) => {
+  const addCandidateToToday = async (candidate: TodayBuilderCandidate, insertionIndex?: number) => {
     const current = configRef.current;
     if (!current || !candidate.text.trim()) return false;
     if (current.today.items.length >= TODAY_ITEM_LIMIT) {
@@ -7112,20 +7398,17 @@ function DashboardApp() {
       showToast("warn", "今日の3件に既にあります");
       return false;
     }
+    const scrollArea = mainScrollAreaRef.current;
+    const scrollTopBeforeSave = scrollArea?.scrollTop;
 
     const selectionMutationTokens = { ...current.today.selectionMutationTokens };
     delete selectionMutationTokens[candidate.sourceKey];
     const items = [...current.today.items];
-    items.splice(
-      Math.min(Math.max(0, insertionIndex ?? items.length), items.length),
-      0,
-      {
+    items.splice(Math.min(Math.max(0, insertionIndex ?? items.length), items.length), 0, {
         text: candidate.text,
         done: false,
         sourceKey: candidate.sourceKey,
-        ...(candidate.sourceGenerationId
-          ? { sourceGenerationId: candidate.sourceGenerationId }
-          : {}),
+      ...(candidate.sourceGenerationId ? { sourceGenerationId: candidate.sourceGenerationId } : {}),
         ...(candidate.trigger ? { trigger: candidate.trigger } : {}),
         ...(candidate.projectId ? { projectId: candidate.projectId } : {}),
         ...(candidate.buttonIds?.length ? { buttonIds: [...candidate.buttonIds] } : {}),
@@ -7137,9 +7420,8 @@ function DashboardApp() {
           : {}),
         defaultTimerMinutes: candidate.defaultTimerMinutes,
         shortTimerMinutes: candidate.shortTimerMinutes,
-      },
-    );
-    const saved = await persistConfig({
+    });
+    const savePromise = persistConfig({
       ...current,
       today: {
         ...current.today,
@@ -7147,6 +7429,16 @@ function DashboardApp() {
         selectionMutationTokens,
       },
     });
+    if (scrollArea && scrollTopBeforeSave !== undefined) {
+      scrollArea.scrollTop = scrollTopBeforeSave;
+      window.requestAnimationFrame(() => {
+        if (scrollArea.isConnected) scrollArea.scrollTop = scrollTopBeforeSave;
+      });
+    }
+    const saved = await savePromise;
+    if (saved && scrollArea && scrollTopBeforeSave !== undefined) {
+      scrollArea.scrollTop = scrollTopBeforeSave;
+    }
     if (saved) showToast("ok", "今日の3件に追加しました");
     return saved;
   };
@@ -7287,9 +7579,7 @@ function DashboardApp() {
         !editingExisting && !project.nextStep && project.legacyNextStepSettings ? null : "discard",
       replacementChoice: null,
       replacedNextStep: mode === "promote" ? project.nextStep : undefined,
-      ...(options?.promotedWishlistId
-        ? { promotedWishlistId: options.promotedWishlistId }
-        : {}),
+      ...(options?.promotedWishlistId ? { promotedWishlistId: options.promotedWishlistId } : {}),
     });
     void refreshNextStepSuggestions(project.id);
     void refreshInstructionChoices();
@@ -7345,6 +7635,78 @@ function DashboardApp() {
     void refreshInstructionChoices();
   };
 
+  const promoteWishlistToProject = async (wishlistId: string, projectId: string) => {
+    const current = configRef.current;
+    const item = current?.inbox.find((candidate) => candidate.id === wishlistId);
+    const project = current?.projects.find((candidate) => candidate.id === projectId);
+    if (!current || !item || !project || sourceEditBusyRef.current) return false;
+    const wishlistSource = `wishlist:${wishlistId}`;
+    const projectSource = `project:${projectId}`;
+    if (sourceEditBlocked(wishlistSource) || sourceEditBlocked(projectSource)) {
+      showToast("warn", SOURCE_EDIT_TIMER_REASON);
+      return false;
+    }
+
+    const legacyExecution = project.nextStep ? undefined : project.legacyNextStepSettings;
+    const instructionPath = item.instructionPath ?? legacyExecution?.instructionPath;
+    const nextStep: LauncherNextStep = {
+      text: item.text.trim(),
+      generationId: createStableId(),
+      buttonIds: [...(item.buttonIds ?? legacyExecution?.buttonIds ?? [])],
+      ...(legacyExecution?.defaultTimerMinutes
+        ? { defaultTimerMinutes: legacyExecution.defaultTimerMinutes }
+        : {}),
+      ...(legacyExecution?.shortTimerMinutes
+        ? { shortTimerMinutes: legacyExecution.shortTimerMinutes }
+        : {}),
+      ...(legacyExecution?.startNoteTemplate
+        ? { startNoteTemplate: legacyExecution.startNoteTemplate }
+        : {}),
+      ...(instructionPath
+        ? {
+            instructionPath,
+            instructionOpenOnStart:
+              item.instructionPath !== undefined
+                ? item.instructionOpenOnStart !== false
+                : legacyExecution?.instructionOpenOnStart !== false,
+          }
+        : {}),
+      updatedAt: new Date().toISOString(),
+    };
+    let nextConfig: AppConfig;
+    try {
+      nextConfig = prepareWishlistPromotion(current, {
+        wishlistId,
+        projectId,
+        nextStep,
+        expectedCurrent: project.nextStep,
+        createId: createStableId,
+      });
+    } catch (error) {
+      showToast("warn", error instanceof Error ? error.message : String(error));
+      return false;
+    }
+
+    sourceEditBusyRef.current = projectSource;
+    try {
+      const saved = await persistConfig(nextConfig);
+      if (saved) {
+        showToast(
+          "ok",
+          project.nextStep?.text.trim() ? "次の一手を変更しました" : "次の一手に設定しました",
+          {
+          detail: project.nextStep?.text.trim()
+            ? "元の次の一手はやりたいことへ戻しました"
+            : undefined,
+          },
+        );
+      }
+      return saved;
+    } finally {
+      sourceEditBusyRef.current = null;
+    }
+  };
+
   const selectNextStepProject = (projectId: string) => {
     if (!nextStepEditDraft || nextStepEditDraft.projectLocked) return;
     const project = configRef.current?.projects.find((candidate) => candidate.id === projectId);
@@ -7372,9 +7734,7 @@ function DashboardApp() {
     );
     setNextStepEditDraft({
       ...nextStepEditDraft,
-      ...nextStepExecutionDraft(
-        choice === "inherit" ? project?.legacyNextStepSettings : undefined,
-      ),
+      ...nextStepExecutionDraft(choice === "inherit" ? project?.legacyNextStepSettings : undefined),
       legacyChoice: choice,
     });
   };
@@ -7409,11 +7769,7 @@ function DashboardApp() {
       showToast("warn", "現在の次の一手が変更されたため、内容を確認し直してください");
       return;
     }
-    if (
-      !project.nextStep &&
-      project.legacyNextStepSettings &&
-      draft.legacyChoice === null
-    ) {
+    if (!project.nextStep && project.legacyNextStepSettings && draft.legacyChoice === null) {
       showToast("warn", "以前の実行設定を引き継ぐか破棄するか選んでください");
       return;
     }
@@ -7455,9 +7811,7 @@ function DashboardApp() {
     const existing = draft.mode === "edit" ? project.nextStep : undefined;
     const nextStep: LauncherNextStep = {
       text,
-      ...(existing
-        ? { generationId: existing.generationId }
-        : { generationId: createStableId() }),
+      ...(existing ? { generationId: existing.generationId } : { generationId: createStableId() }),
       buttonIds: [...draft.buttonIds],
       ...(draft.trigger.trim() ? { trigger: draft.trigger.trim() } : {}),
       ...(defaultTimerMinutes ? { defaultTimerMinutes } : {}),
@@ -7471,8 +7825,7 @@ function DashboardApp() {
             instructionOpenOnStart: draft.instructionOpenOnStart,
           }
         : {}),
-      updatedAt:
-        existing?.updatedAt && text === draft.originalText ? existing.updatedAt : now,
+      updatedAt: existing?.updatedAt && text === draft.originalText ? existing.updatedAt : now,
       ...(existing?.reviewedAt ? { reviewedAt: existing.reviewedAt } : {}),
     };
     const nextProject: LauncherProject = {
@@ -7498,9 +7851,7 @@ function DashboardApp() {
           nextStep,
           expectedCurrent: draft.replacedNextStep,
           choice: draft.replacementChoice,
-          ...(draft.promotedWishlistId
-            ? { promotedWishlistId: draft.promotedWishlistId }
-            : {}),
+          ...(draft.promotedWishlistId ? { promotedWishlistId: draft.promotedWishlistId } : {}),
           completedAt: now,
           createId: createStableId,
         });
@@ -7539,6 +7890,39 @@ function DashboardApp() {
     }
   };
 
+  const removeProjectNextStep = async (project: LauncherProject, choice: "return" | "delete") => {
+    const current = configRef.current;
+    const liveProject = current?.projects.find((candidate) => candidate.id === project.id);
+    if (!current || !liveProject?.nextStep?.text.trim()) return false;
+    const sourceKey = `project:${project.id}`;
+    if (sourceEditBlocked(sourceKey)) {
+      setContextMenu(null);
+      showToast("warn", SOURCE_EDIT_TIMER_REASON);
+      return false;
+    }
+    let nextConfig: AppConfig;
+    try {
+      nextConfig = prepareNextStepRemoval(current, {
+        projectId: liveProject.id,
+        expectedCurrent: liveProject.nextStep,
+        choice,
+        createId: createStableId,
+      });
+    } catch (error) {
+      showToast("warn", error instanceof Error ? error.message : String(error));
+      return false;
+    }
+    const saved = await persistConfig(nextConfig);
+    if (saved) {
+      setContextMenu(null);
+      showToast(
+        "ok",
+        choice === "return" ? "やりたいことへ戻しました" : "次の一手を未設定にしました",
+      );
+    }
+    return saved;
+  };
+
   const clearProjectNextStep = (project: LauncherProject) => {
     const current = configRef.current;
     const liveProject = current?.projects.find((candidate) => candidate.id === project.id);
@@ -7551,27 +7935,18 @@ function DashboardApp() {
     }
     setContextMenu(null);
     requestConfirmation({
-      title: "次の一手を空にしますか？",
+      title: "次の一手を未設定にしますか？",
       subject: `「${liveProject.nextStep.text}」`,
       message: "今日の3件に採用済みの内容と実行記録は変更しません。",
-      confirmLabel: "空にする",
+      confirmLabel: "やりたいことへ戻す",
+      alternateLabel: "削除して未設定にする",
+      alternateTone: "danger",
       processingLabel: "保存しています…",
+      alternateProcessingLabel: "保存しています…",
       tone: "warning",
-      onConfirm: () =>
-        persistConfig({
-          ...current,
-          projects: current.projects.map((candidate) =>
-            candidate.id === project.id ? { ...candidate, nextStep: undefined } : candidate,
-          ),
-        }),
+      onConfirm: () => removeProjectNextStep(liveProject, "return"),
+      onAlternate: () => removeProjectNextStep(liveProject, "delete"),
     });
-  };
-
-  const addProjectNextStepToToday = (project: LauncherProject) => {
-    const current = configRef.current;
-    if (!current || !project.nextStep?.text.trim()) return;
-    setContextMenu(null);
-    void addCandidateToToday(projectTodayCandidate(project, current.settings));
   };
 
   const openProjectManagement = () => {
@@ -7588,7 +7963,7 @@ function DashboardApp() {
   const saveProjectEdit = async () => {
     const config = configRef.current;
     if (!config || !projectEditDraft || projectEditSavingRef.current) return;
-    if (!projectEditDraft.isNew && !config.projects.some(p => p.id === projectEditDraft.id)) {
+    if (!projectEditDraft.isNew && !config.projects.some((p) => p.id === projectEditDraft.id)) {
       showToast("warn", "元の登録が見つかりません");
       return;
     }
@@ -7720,6 +8095,24 @@ function DashboardApp() {
     window.requestAnimationFrame(() => {
       const label = source === "project" ? "次の一手を追加" : "やりたいことを追加";
       document.querySelector<HTMLElement>(`button[aria-label="${label}"]`)?.focus();
+    });
+  };
+
+  const navigateToCandidateSource = (source: "project" | "wishlist") => {
+    setContextMenu(null);
+    if (source === "project") setProjectsOpen(true);
+    else setInboxOpen(true);
+    window.requestAnimationFrame(() => {
+      const band = document.querySelector<HTMLElement>(
+        source === "project" ? ".projectsBand" : ".inboxBand",
+      );
+      band?.querySelector<HTMLElement>(".disclosure")?.focus({ preventScroll: true });
+      band?.scrollIntoView({
+        block: "start",
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
+      });
     });
   };
 
@@ -7865,8 +8258,6 @@ function DashboardApp() {
 
   useEffect(() => {
     const projects = config?.projects ?? [];
-    const pageCount = Math.max(1, Math.ceil(projects.length / SOURCE_LIST_PAGE_SIZE));
-    setProjectsListPage((page) => Math.min(Math.max(1, page), pageCount));
     const anchor = projectListAnchorRef.current;
     if (!anchor || projects.length === 0) return;
     let index = projects.findIndex((project) => project.id === anchor.id);
@@ -7874,17 +8265,13 @@ function DashboardApp() {
     const project = projects[index];
     if (!project) return;
     projectListAnchorRef.current = { id: project.id, index };
-    if (projects.length >= SOURCE_LIST_PAGINATION_THRESHOLD) {
-      setProjectsListPage(Math.floor(index / SOURCE_LIST_PAGE_SIZE) + 1);
-    } else if (projects.length > SOURCE_LIST_COMPACT_LIMIT && index >= SOURCE_LIST_COMPACT_LIMIT) {
+    if (projects.length > PROJECT_CARD_COMPACT_LIMIT && index >= PROJECT_CARD_COMPACT_LIMIT) {
       setProjectsListExpanded(true);
     }
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
         document
-          .querySelector<HTMLElement>(
-            `[data-project-id="${CSS.escape(project.id)}"] .nextStepActionRegion`,
-          )
+          .querySelector<HTMLElement>(`.nextStepCard[data-project-id="${CSS.escape(project.id)}"]`)
           ?.focus();
       });
     });
@@ -7920,7 +8307,9 @@ function DashboardApp() {
     }
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
-        document.querySelector<HTMLElement>(`[data-inbox-id="${CSS.escape(item.id ?? "")}"]`)?.focus();
+        document
+          .querySelector<HTMLElement>(`[data-inbox-id="${CSS.escape(item.id ?? "")}"]`)
+          ?.focus();
       });
     });
   }, [config]);
@@ -7929,9 +8318,10 @@ function DashboardApp() {
     const cancelPointerDrag = (event?: globalThis.KeyboardEvent) => {
       if (event && event.key !== "Escape") return;
       const hadDrag = Boolean(
-        todayPointerDragRef.current ||
+          todayPointerDragRef.current ||
           projectPointerDragRef.current ||
           inboxPointerDragRef.current ||
+          wishlistGroupPointerDragRef.current ||
           todayBuilderPointerDragRef.current,
       );
       if (!hadDrag) return;
@@ -7939,10 +8329,12 @@ function DashboardApp() {
       todayPointerDragRef.current = null;
       projectPointerDragRef.current = null;
       inboxPointerDragRef.current = null;
+      wishlistGroupPointerDragRef.current = null;
       todayBuilderPointerDragRef.current = null;
       setTodayPointerDrag(null);
       setProjectPointerDrag(null);
       setInboxPointerDrag(null);
+      setWishlistGroupPointerDrag(null);
       setTodayBuilderPointerDrag(null);
       setBuilderRestoreTargetActive(false);
       if (builderAutoOpenTimerRef.current !== null) {
@@ -7985,12 +8377,9 @@ function DashboardApp() {
   }
 
   const todayCompletedCount = config.today.items.filter((item) => item.done).length;
-  const projectListRange = sourceListRange(
-    config.projects.length,
-    projectsListExpanded,
-    projectsListPage,
-  );
-  const visibleProjects = config.projects.slice(projectListRange.start, projectListRange.end);
+  const visibleProjects = projectsListExpanded
+    ? config.projects
+    : config.projects.slice(0, PROJECT_CARD_COMPACT_LIMIT);
   const wishlistGroups = groupWishlist(config);
   const inboxNeighborIndex = (index: number, offset: -1 | 1) => {
     const item = config.inbox[index];
@@ -8048,7 +8437,9 @@ function DashboardApp() {
       const project = current.projects.find(
         (item) => item.id === sourceKey.slice("project:".length),
       );
-      return project?.nextStep?.text.trim() ? projectTodayCandidate(project, current.settings) : undefined;
+      return project?.nextStep?.text.trim()
+        ? projectTodayCandidate(project, current.settings)
+        : undefined;
     }
     if (sourceKey.startsWith("wishlist:")) {
       const id = sourceKey.slice("wishlist:".length);
@@ -8123,6 +8514,10 @@ function DashboardApp() {
     const inboxIndex = config.inbox.findIndex((item) => `wishlist:${item.id}` === key);
     if (inboxIndex >= 0) beginInboxEdit(inboxIndex, "builder");
   };
+  const todayBuilderWishlistGroupKey = (candidate: TodayBuilderCandidate) =>
+    candidate.projectId && projectsById.has(candidate.projectId)
+      ? `project:${candidate.projectId}`
+      : "unassigned";
   const todayBuilderCandidates = (() => {
     const excludedSourceKeys = new Set(config.today.candidateExcludedSourceKeys);
     const activeCandidates = rawTodayBuilderCandidates.filter(
@@ -8137,7 +8532,7 @@ function DashboardApp() {
       [candidate.key, ...(candidate.legacyOrderKeys ?? [])]
         .map((key) => order.get(key))
         .find((index) => index !== undefined);
-    return [...activeCandidates].sort((left, right) => {
+    const orderedCandidates = [...activeCandidates].sort((left, right) => {
       const sourceOrder = (candidate: TodayBuilderCandidate) =>
         candidate.source === "次の一手" ? 0 : 1;
       const sourceDifference = sourceOrder(left) - sourceOrder(right);
@@ -8149,7 +8544,27 @@ function DashboardApp() {
       if (rightIndex === undefined) return -1;
       return leftIndex - rightIndex;
     });
+    const wishlistGroups = new Map<string, TodayBuilderCandidate[]>();
+    orderedCandidates
+      .filter((candidate) => candidate.source === "やりたいこと")
+      .forEach((candidate) => {
+        const key = todayBuilderWishlistGroupKey(candidate);
+        wishlistGroups.set(key, [...(wishlistGroups.get(key) ?? []), candidate]);
+      });
+    return [
+      ...orderedCandidates.filter((candidate) => candidate.source !== "やりたいこと"),
+      ...Array.from(wishlistGroups.values()).flat(),
+    ];
   })();
+  const todayBuilderWishlistGroupCounts = todayBuilderCandidates.reduce<Map<string, number>>(
+    (counts, candidate) => {
+      if (candidate.source !== "やりたいこと") return counts;
+      const key = todayBuilderWishlistGroupKey(candidate);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+      return counts;
+    },
+    new Map(),
+  );
   const todayBuilderPageCount = Math.max(
     1,
     Math.ceil(todayBuilderCandidates.length / TODAY_BUILDER_PAGE_SIZE),
@@ -8184,17 +8599,15 @@ function DashboardApp() {
     );
     const removedItem = removedIndex >= 0 ? stableItems[removedIndex] : null;
     const previousSourceKey =
-      removedIndex > 0 ? stableItems[removedIndex - 1]?.sourceKey ?? null : null;
+      removedIndex > 0 ? (stableItems[removedIndex - 1]?.sourceKey ?? null) : null;
     const nextSourceKey =
-      removedIndex >= 0 ? stableItems[removedIndex + 1]?.sourceKey ?? null : null;
+      removedIndex >= 0 ? (stableItems[removedIndex + 1]?.sourceKey ?? null) : null;
     const operationId = createStableId();
     const saved = await persistConfig({
       ...current,
       today: {
         ...current.today,
-        items: stableItems.filter(
-          (item) => !matchingSourceKeys.has(item.sourceKey ?? ""),
-        ),
+        items: stableItems.filter((item) => !matchingSourceKeys.has(item.sourceKey ?? "")),
         candidateExcludedSourceKeys: Array.from(
           new Set([...current.today.candidateExcludedSourceKeys, candidate.sourceKey]),
         ),
@@ -8650,8 +9063,7 @@ function DashboardApp() {
             activeTimer
               ? timerClock
               : String(
-                  Number.parseInt(defaultTimerDraft, 10) ||
-                    config.settings.defaultTimerMinutes,
+                  Number.parseInt(defaultTimerDraft, 10) || config.settings.defaultTimerMinutes,
                 ) + "分"
           }
           clockAdjustable={!activeTimer}
@@ -8673,8 +9085,7 @@ function DashboardApp() {
           onClockPointerCancel={!activeTimer ? cancelNumberInputDrag : undefined}
           onClockPointerDown={
             !activeTimer
-              ? (event) =>
-                  startNumberInputDrag(event, "timer", config.settings.defaultTimerMinutes)
+              ? (event) => startNumberInputDrag(event, "timer", config.settings.defaultTimerMinutes)
               : undefined
           }
           onClockPointerMove={!activeTimer ? updateNumberInputDrag : undefined}
@@ -9234,7 +9645,8 @@ function DashboardApp() {
               weekSessions={recordsWeekSessions}
               weeklyReview={weeklyReview}
               weeklyReviewProjects={weeklyReviewProjects}
-            />          ) : (
+            />
+          ) : (
             <>
               <section
                 className={[
@@ -9533,7 +9945,9 @@ function DashboardApp() {
                 )}
                 {completionFeedback?.kind === "doNow" && (
                   <div className="doNowCompletionEcho" role="status">
-                    <span className="doNowCompletionCheck" aria-hidden="true">✓</span>
+                    <span className="doNowCompletionCheck" aria-hidden="true">
+                      ✓
+                    </span>
                     <span>
                       <strong>{completionFeedback.label}</strong>
                       <small>一手進みました</small>
@@ -9564,15 +9978,9 @@ function DashboardApp() {
                   className={[
                     "todayGrid",
                     config.today.items.length === 0 ? "todayGrid--empty" : "",
-                    completionFeedback?.kind === "todayAll"
-                      ? "todayGrid--allCompleteReward"
-                      : "",
-                    todayBuilderPointerDrag?.todayGuidanceActive
-                      ? "todayGrid--dropGuidance"
-                      : "",
-                    todayBuilderPointerDrag?.todayTargetIndicator
-                      ? "todayGrid--dropTarget"
-                      : "",
+                    completionFeedback?.kind === "todayAll" ? "todayGrid--allCompleteReward" : "",
+                    todayBuilderPointerDrag?.todayGuidanceActive ? "todayGrid--dropGuidance" : "",
+                    todayBuilderPointerDrag?.todayTargetIndicator ? "todayGrid--dropTarget" : "",
                   ]
                     .filter(Boolean)
                     .join(" ")}
@@ -9588,7 +9996,7 @@ function DashboardApp() {
                         <strong>今日やるものを選びましょう</strong>
                         <span>次の一手・やりたいことから選べます</span>
                         <button
-                          className="mainActionButton mainActionButton--neutral"
+                          className="mainActionButton mainActionButton--gold"
                           onClick={focusTodayBuilder}
                           type="button"
                         >
@@ -9671,7 +10079,7 @@ function DashboardApp() {
                           title="操作メニュー"
                           type="button"
                         >
-                          <span aria-hidden="true">⋯</span>
+                          <span aria-hidden="true">…</span>
                         </button>
                         <span
                           aria-label={item.done ? "今日の分は完了" : "未完了"}
@@ -9826,7 +10234,11 @@ function DashboardApp() {
                                   type="button"
                                 >
                                   <UiIcon name={activeTimer.paused ? "play" : "pause"} size={16} />
-                                  {activeTimer.paused ? "再開" : "一時停止"}
+                                  {activeTimer.paused
+                                    ? "再開"
+                                    : activeTimer.mode === "measure"
+                                      ? "止"
+                                      : "一時停止"}
                                 </button>
                                 <button
                                   className="runningStopButton"
@@ -9868,7 +10280,7 @@ function DashboardApp() {
                                     <UiIcon name="play" size={16} />
                                   </span>
                                   <span aria-hidden="true" className="nextStepStartDuration">
-                                    {shortMinutes}分で始める
+                                    {shortMinutes}分
                                   </span>
                                 </button>
                                 <button
@@ -9900,7 +10312,7 @@ function DashboardApp() {
                                     <UiIcon name="play" size={16} />
                                   </span>
                                   <span aria-hidden="true" className="nextStepStartDuration">
-                                    通常 {defaultMinutes}分
+                                    {defaultMinutes}分
                                   </span>
                                 </button>
                                 <button
@@ -10018,7 +10430,20 @@ function DashboardApp() {
               >
                 <div
                   className="disclosureHeader todayBuilderHeader"
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    openContextMenu(
+                      { kind: "todayBuilderBar" },
+                      event.clientX,
+                      event.clientY,
+                      event.currentTarget,
+                    );
+                  }}
+                  onKeyDown={(event) =>
+                    openContextMenuFromKeyboard(event, { kind: "todayBuilderBar" })
+                  }
                   onClick={(event) => toggleDisclosureFromBar(event, toggleTodayBuilder)}
+                  tabIndex={0}
                 >
                   <button
                     aria-expanded={todayBuilderOpen}
@@ -10049,7 +10474,7 @@ function DashboardApp() {
                     <span>
                       {todayPointerDrag?.builderRemoveEligible
                         ? "ここにドロップして今日の3件から外す"
-                        : "ここにドロップして今日の候補に戻す"}
+                        : "ここにドロップして今日を組み立てるに入れる"}
                     </span>
                   </div>
                 )}
@@ -10079,16 +10504,45 @@ function DashboardApp() {
                       visibleTodayBuilderCandidates.map((candidate, pageIndex) => {
                         const index =
                           (visibleTodayBuilderPage - 1) * TODAY_BUILDER_PAGE_SIZE + pageIndex;
+                        const wishlistGroupKey =
+                          candidate.source === "やりたいこと"
+                            ? todayBuilderWishlistGroupKey(candidate)
+                            : null;
+                        const previousVisibleCandidate =
+                          visibleTodayBuilderCandidates[pageIndex - 1];
+                        const showWishlistGroupHeading = Boolean(
+                          wishlistGroupKey &&
+                          (pageIndex === 0 ||
+                            previousVisibleCandidate?.source !== "やりたいこと" ||
+                            todayBuilderWishlistGroupKey(previousVisibleCandidate) !==
+                              wishlistGroupKey),
+                        );
+                        const wishlistGroupCollapsed = Boolean(
+                          wishlistGroupKey && todayBuilderWishlistCollapsed[wishlistGroupKey],
+                        );
+                        const wishlistGroupProject =
+                          candidate.projectId && projectsById.has(candidate.projectId)
+                            ? projectsById.get(candidate.projectId)
+                            : undefined;
                         const matchingSourceKeys = new Set([
                           candidate.sourceKey,
                           ...(candidate.sourceAliases ?? []),
                         ]);
-                        const isSelected = config.today.items.some((item, todayIndex) =>
+                        const selectedIndex = config.today.items.findIndex((item, todayIndex) =>
                           matchingSourceKeys.has(todaySourceKey(item, todayIndex)),
                         );
+                        const isSelected = selectedIndex >= 0;
+                        const selectedTimerRunning =
+                          isSelected &&
+                          activeTimer?.sourceId ===
+                            todayTimerSourceId(config.today.items[selectedIndex], selectedIndex);
                         const isFull = config.today.items.length >= TODAY_ITEM_LIMIT;
                         return (
-                          <div className="todayBuilderCandidate" key={candidate.key}>
+                          <div
+                            className="todayBuilderCandidate"
+                            data-today-builder-wishlist-group={wishlistGroupKey ?? undefined}
+                            key={candidate.key}
+                          >
                             {(index === 0 ||
                               todayBuilderCandidates[index - 1]?.source !== candidate.source) && (
                               <div className="todayBuilderGroupHeading">
@@ -10103,87 +10557,153 @@ function DashboardApp() {
                                 </span>
                               </div>
                             )}
-                            <div
-                              className={[
-                                "todayBuilderRow sourceListRow",
-                                isSelected ? "todayBuilderRow--selected" : "",
-                                todayBuilderPointerDrag?.index === index
-                                  ? "todayBuilderRow--dragging"
-                                  : "",
-                              ]
-                                .filter(Boolean)
-                                .join(" ")}
-                              data-today-builder-index={index}
-                              onContextMenu={(event) => {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                openContextMenu(
-                                  { kind: "todayBuilder", index },
-                                  event.clientX,
-                                  event.clientY,
-                                  event.currentTarget,
-                                );
-                              }}
-                              onKeyDown={(event) =>
-                                openContextMenuFromKeyboard(event, {
-                                  kind: "todayBuilder",
-                                  index,
-                                })
-                              }
-                              onPointerCancel={cancelTodayBuilderPointerDrag}
-                              onPointerDown={(event) => startTodayBuilderPointerDrag(event, index)}
-                              onPointerMove={updateTodayBuilderPointerDrag}
-                              onPointerUp={finishTodayBuilderPointerDrag}
-                              tabIndex={0}
-                            >
-                              <div className="sourceListCopy">
-                                <span className="inboxProjectIdentity">
-                                {candidate.projectId && projectsById.has(candidate.projectId) ? (
+                            {showWishlistGroupHeading && wishlistGroupKey && (
+                              <button
+                                aria-expanded={!wishlistGroupCollapsed}
+                                className="todayBuilderProjectGroupHeader"
+                                data-today-builder-project-group={wishlistGroupKey}
+                                onClick={() =>
+                                  setTodayBuilderWishlistCollapsed((current) => ({
+                                    ...current,
+                                    [wishlistGroupKey]: !current[wishlistGroupKey],
+                                  }))
+                                }
+                                type="button"
+                              >
+                                <UiIcon
+                                  name={wishlistGroupCollapsed ? "chevronRight" : "chevronDown"}
+                                  size={16}
+                                />
+                                {wishlistGroupProject ? (
                                   <ProjectIdentity
-                                    colorId={projectsById.get(candidate.projectId)?.colorId}
+                                    colorId={wishlistGroupProject.colorId}
                                     compact
-                                    name={projectsById.get(candidate.projectId)?.name ?? ""}
-                                    projectId={candidate.projectId}
+                                    name={wishlistGroupProject.name}
+                                    projectId={wishlistGroupProject.id}
                                   />
-                                ) : <span className="sourceProjectNone">プロジェクトなし</span>}
-                                </span>
-                                <strong title={candidate.text}>{candidate.text}</strong>
-                              </div>
-                              <div className="todayBuilderActions">
-                                {isSelected ? (
-                                  <span className="todayBuilderSelectedStatus">✓ 選択済み</span>
                                 ) : (
+                                  <strong>未分類</strong>
+                                )}
+                                <span>
+                                  {todayBuilderWishlistGroupCounts.get(wishlistGroupKey) ?? 0}件
+                                </span>
+                              </button>
+                            )}
+                            {!wishlistGroupCollapsed && (
+                              <div
+                                className={[
+                                  "todayBuilderRow sourceListRow",
+                                  wishlistGroupKey ? "todayBuilderRow--groupedWishlist" : "",
+                                  isSelected ? "todayBuilderRow--selected" : "",
+                                  todayBuilderPointerDrag?.index === index
+                                    ? "todayBuilderRow--dragging"
+                                    : "",
+                                ]
+                                  .filter(Boolean)
+                                  .join(" ")}
+                                data-today-builder-index={index}
+                                onContextMenu={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  openContextMenu(
+                                    { kind: "todayBuilder", index },
+                                    event.clientX,
+                                    event.clientY,
+                                    event.currentTarget,
+                                  );
+                                }}
+                                onKeyDown={(event) =>
+                                  openContextMenuFromKeyboard(event, {
+                                    kind: "todayBuilder",
+                                    index,
+                                  })
+                                }
+                                onPointerCancel={cancelTodayBuilderPointerDrag}
+                                onPointerDown={(event) =>
+                                  startTodayBuilderPointerDrag(event, index)
+                                }
+                                onPointerMove={updateTodayBuilderPointerDrag}
+                                onPointerUp={finishTodayBuilderPointerDrag}
+                                tabIndex={0}
+                              >
+                                <div
+                                  className={
+                                    wishlistGroupKey
+                                      ? "sourceListCopy sourceListCopy--groupedWishlist"
+                                      : "sourceListCopy"
+                                  }
+                                >
+                                  {!wishlistGroupKey && (
+                                    <span className="inboxProjectIdentity">
+                                      {candidate.projectId &&
+                                      projectsById.has(candidate.projectId) ? (
+                                        <ProjectIdentity
+                                          colorId={projectsById.get(candidate.projectId)?.colorId}
+                                          compact
+                                          name={projectsById.get(candidate.projectId)?.name ?? ""}
+                                          projectId={candidate.projectId}
+                                        />
+                                      ) : (
+                                        <span className="sourceProjectNone">プロジェクトなし</span>
+                                      )}
+                                    </span>
+                                  )}
+                                  <strong title={candidate.text}>{candidate.text}</strong>
+                                </div>
+                                <div className="todayBuilderActions">
+                                  {isSelected ? (
+                                    <button
+                                      className="todayBuilderSelectedStatus"
+                                      disabled={selectedTimerRunning}
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        void removeTodayItem(
+                                          todaySourceKey(config.today.items[selectedIndex], selectedIndex),
+                                        );
+                                      }}
+                                      onPointerDown={(event) => event.stopPropagation()}
+                                      title={
+                                        selectedTimerRunning
+                                          ? "タイマーを停止してから外してください"
+                                          : "今日の3件から外す"
+                                      }
+                                      type="button"
+                                    >
+                                      ✓ 選択済み
+                                    </button>
+                                  ) : (
+                                    <button
+                                      className="moveTodayButton todayBuilderAddButton mainActionButton mainActionButton--neutral"
+                                      disabled={isFull}
+                                      onClick={() => void addCandidateToToday(candidate)}
+                                      title={isFull ? "いま選べるのは3件までです" : "今日へ"}
+                                      type="button"
+                                    >
+                                      今日へ
+                                    </button>
+                                  )}
                                   <button
-                                    className="moveTodayButton todayBuilderAddButton mainActionButton mainActionButton--positive"
-                                    disabled={isFull}
-                                    onClick={() => void addCandidateToToday(candidate)}
-                                    title={isFull ? "いま選べるのは3件までです" : "今日へ"}
+                                    aria-label={`${candidate.text}の操作`}
+                                    aria-haspopup="menu"
+                                    className="sourceRowMenu"
+                                    onClick={(event) => {
+                                      const rect = event.currentTarget.getBoundingClientRect();
+                                      openContextMenu(
+                                        { kind: "todayBuilder", index },
+                                        rect.left,
+                                        rect.bottom,
+                                        event.currentTarget,
+                                      );
+                                    }}
+                                    onPointerDown={(event) => event.stopPropagation()}
+                                    title="操作メニュー"
                                     type="button"
                                   >
-                                    今日へ
+                                    <span aria-hidden="true">…</span>
                                   </button>
-                                )}
-                                <button
-                                  aria-label={`${candidate.text}の操作`}
-                                  aria-haspopup="menu"
-                                  className="sourceRowMenu"
-                                  onClick={(event) => {
-                                    const rect = event.currentTarget.getBoundingClientRect();
-                                    openContextMenu(
-                                      { kind: "todayBuilder", index },
-                                      rect.left,
-                                      rect.bottom,
-                                      event.currentTarget,
-                                    );
-                                  }}
-                                  onPointerDown={(event) => event.stopPropagation()}
-                                  title="操作メニュー"
-                                  type="button"
-                                >
-                                  <span aria-hidden="true">⋯</span>
-                                </button>
+                                </div>
                               </div>
-                            </div>
+                            )}
                           </div>
                         );
                       })
@@ -10229,7 +10749,7 @@ function DashboardApp() {
                         style={todayBuilderPointerDrag.todayTargetIndicator}
                       />
                     )}
-                    {todayBuilderPointerDrag && (
+                    {todayBuilderPointerDrag &&
                       (() => {
                         const candidate = todayBuilderCandidates.find(
                           (item) =>
@@ -10254,11 +10774,9 @@ function DashboardApp() {
                             }
                             style={{
                               left:
-                                todayBuilderPointerDrag.pointerX -
-                                todayBuilderPointerDrag.offsetX,
+                                todayBuilderPointerDrag.pointerX - todayBuilderPointerDrag.offsetX,
                               top:
-                                todayBuilderPointerDrag.pointerY -
-                                todayBuilderPointerDrag.offsetY,
+                                todayBuilderPointerDrag.pointerY - todayBuilderPointerDrag.offsetY,
                               width: Math.min(300, todayBuilderPointerDrag.width),
                             }}
                           >
@@ -10275,14 +10793,26 @@ function DashboardApp() {
                             <strong>{candidate?.text}</strong>
                           </div>
                         );
-                      })()
-                    )}
+                      })()}
                   </div>
                 )}
               </section>
 
               <section
-                className="projectsBand"
+                className={[
+                  "projectsBand",
+                  inboxPointerDrag?.nextStepEligible ? "sourceReturnBand--target" : "",
+                  inboxPointerDrag?.nextStepTargetProjectId ? "sourceReturnBand--active" : "",
+                  todayBuilderPointerDrag?.sourceTarget === "project"
+                    ? "sourceReturnBand--target"
+                    : "",
+                  todayBuilderPointerDrag?.sourceTarget === "project" &&
+                  todayBuilderPointerDrag.sourceTargetActive
+                    ? "sourceReturnBand--active"
+                    : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
                 onContextMenu={(event) => {
                   event.preventDefault();
                   openContextMenu(
@@ -10321,24 +10851,70 @@ function DashboardApp() {
                       <strong>次の一手</strong>
                     </span>
                   </button>
-                  <button
-                    aria-label="プロジェクトを追加"
-                    className="sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd nextStepHeaderAdd--project mainActionButton mainActionButton--gold"
-                    onPointerDown={(event) => event.stopPropagation()}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      openProjectAddDialog();
-                    }}
-                    title="プロジェクトを追加"
-                    type="button"
-                  >
-                    ＋ プロジェクト
-                  </button>
                   <span className="disclosureCount">{config.projects.length}件</span>
                   <span className="disclosureDescription">
                     迷ったときに戻る「次の一手」を、プロジェクトごとに1つ決めます。
                   </span>
+                  <div className="disclosureHeaderActions">
+                    <button
+                      aria-label="プロジェクトを追加"
+                      className="sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd nextStepHeaderAdd--project mainActionButton mainActionButton--gold"
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        openProjectAddDialog();
+                      }}
+                      title="プロジェクトを追加"
+                      type="button"
+                    >
+                      ＋ プロジェクト
+                    </button>
+                    <button
+                      aria-label="次の一手の操作"
+                      aria-haspopup="menu"
+                      className="sectionMenuButton"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        const rect = event.currentTarget.getBoundingClientRect();
+                        openContextMenu(
+                          { kind: "projects" },
+                          rect.left,
+                          rect.bottom,
+                          event.currentTarget,
+                        );
+                      }}
+                      onPointerDown={(event) => event.stopPropagation()}
+                      title="次の一手の操作"
+                      type="button"
+                    >
+                      <span aria-hidden="true">…</span>
+                    </button>
+                  </div>
                 </div>
+                {todayBuilderPointerDrag?.sourceTarget === "project" && (
+                  <div
+                    className={
+                      todayBuilderPointerDrag.sourceTargetActive
+                        ? "sourceReturnDropZone sourceReturnDropZone--active"
+                        : "sourceReturnDropZone"
+                    }
+                  >
+                    <span aria-hidden="true">↓</span>
+                    <span>ここにドロップして今日の候補から外す</span>
+                  </div>
+                )}
+                {inboxPointerDrag?.nextStepEligible && (
+                  <div
+                    className={
+                      inboxPointerDrag.nextStepTargetProjectId
+                        ? "sourceReturnDropZone sourceReturnDropZone--active"
+                        : "sourceReturnDropZone"
+                    }
+                  >
+                    <span aria-hidden="true">↓</span>
+                    <span>ここにドロップして次の一手を設定する</span>
+                  </div>
+                )}
                 {projectsOpen && (
                   <div className="nextStepBody">
                     <div className="projectGrid">
@@ -10347,17 +10923,40 @@ function DashboardApp() {
                           <article
                             className={[
                               "nextStepRow sourceListRow",
+                              "nextStepCard",
                               projectPointerDrag?.id === project.id ? "nextStepRow--dragging" : "",
+                              inboxPointerDrag?.nextStepTargetProjectId === project.id
+                                ? "nextStepCard--dropTarget"
+                                : "",
                             ]
                               .filter(Boolean)
                               .join(" ")}
                             data-project-color={resolveProjectColorId(project.id, project.colorId)}
                             data-project-id={project.id}
                             key={project.id}
+                            onContextMenu={(event) => {
+                              event.preventDefault();
+                              openContextMenu(
+                                { kind: "nextStep", project },
+                                event.clientX,
+                                event.clientY,
+                                event.currentTarget,
+                              );
+                            }}
+                            onFocus={() => {
+                              const index = config.projects.findIndex(
+                                (item) => item.id === project.id,
+                              );
+                              projectListAnchorRef.current = { id: project.id, index };
+                            }}
+                            onKeyDown={(event) =>
+                              openContextMenuFromKeyboard(event, { kind: "nextStep", project })
+                            }
                             onPointerCancel={cancelProjectPointerDrag}
                             onPointerDown={(event) => startProjectPointerDrag(event, project.id)}
                             onPointerMove={updateProjectPointerDrag}
                             onPointerUp={finishProjectPointerDrag}
+                            tabIndex={0}
                           >
                             <div
                               className="nextStepProjectRegion"
@@ -10365,20 +10964,14 @@ function DashboardApp() {
                                 event.preventDefault();
                                 event.stopPropagation();
                                 openContextMenu(
-                                  { kind: "project", project },
+                                  { kind: "nextStep", project },
                                   event.clientX,
                                   event.clientY,
                                   event.currentTarget,
                                 );
                               }}
-                              onFocus={() => {
-                                const index = config.projects.findIndex(
-                                  (item) => item.id === project.id,
-                                );
-                                projectListAnchorRef.current = { id: project.id, index };
-                              }}
                               onKeyDown={(event) =>
-                                openContextMenuFromKeyboard(event, { kind: "project", project })
+                                openContextMenuFromKeyboard(event, { kind: "nextStep", project })
                               }
                               tabIndex={0}
                             >
@@ -10390,26 +10983,6 @@ function DashboardApp() {
                                   projectId={project.id}
                                 />
                               </h3>
-                              <button
-                                aria-label={`${project.name}のプロジェクト操作`}
-                                aria-haspopup="menu"
-                                className="sourceRowMenu nextStepRegionMenu"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  const rect = event.currentTarget.getBoundingClientRect();
-                                  openContextMenu(
-                                    { kind: "project", project },
-                                    rect.left,
-                                    rect.bottom,
-                                    event.currentTarget,
-                                  );
-                                }}
-                                onPointerDown={(event) => event.stopPropagation()}
-                                title="プロジェクト操作"
-                                type="button"
-                              >
-                                <span aria-hidden="true">⋯</span>
-                              </button>
                             </div>
                             <div
                               className="nextStepActionRegion"
@@ -10423,12 +10996,6 @@ function DashboardApp() {
                                   event.currentTarget,
                                 );
                               }}
-                              onFocus={() => {
-                                const index = config.projects.findIndex(
-                                  (item) => item.id === project.id,
-                                );
-                                projectListAnchorRef.current = { id: project.id, index };
-                              }}
                               onKeyDown={(event) =>
                                 openContextMenuFromKeyboard(event, { kind: "nextStep", project })
                               }
@@ -10438,76 +11005,76 @@ function DashboardApp() {
                                 className={
                                   project.nextStep?.text.trim() ? "" : "projectNextStepPlaceholder"
                                 }
-                                title={project.nextStep?.text.trim() || "次の一手は未設定です"}
+                                title={project.nextStep?.text.trim() || "まだ次の一手がありません"}
                               >
                                 {project.nextStep?.trigger?.trim() && (
                                   <span className="projectNextStepTrigger">
                                     {project.nextStep.trigger.trim()} ▸{" "}
                                   </span>
                                 )}
-                                {project.nextStep?.text.trim() || "次の一手は未設定です"}
+                                {project.nextStep?.text.trim() || "まだ次の一手がありません"}
                               </p>
                               <button
-                                className="nextStepRowAction mainActionButton mainActionButton--neutral"
+                                className={
+                                  project.nextStep?.text.trim()
+                                    ? "nextStepRowAction nextStepRowAction--change mainActionButton mainActionButton--neutral"
+                                    : "nextStepRowAction nextStepRowAction--set mainActionButton mainActionButton--neutral"
+                                }
                                 disabled={sourceEditBlocked(`project:${project.id}`)}
                                 onClick={(event) => {
                                   event.stopPropagation();
                                   openNextStepEditor(project);
                                 }}
                                 onPointerDown={(event) => event.stopPropagation()}
-                                title={SOURCE_EDIT_TIMER_REASON}
+                                title={
+                                  sourceEditBlocked(`project:${project.id}`)
+                                    ? SOURCE_EDIT_TIMER_REASON
+                                    : undefined
+                                }
                                 type="button"
                               >
                                 {project.nextStep?.text.trim() ? "変更" : "次の一手を設定"}
+                              </button>
+                              <button
+                                aria-label={`${project.name}の次の一手の操作`}
+                                aria-haspopup="menu"
+                                className="sourceRowMenu nextStepRegionMenu"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  const rect = event.currentTarget.getBoundingClientRect();
+                                  openContextMenu(
+                                    { kind: "nextStep", project },
+                                    rect.left,
+                                    rect.bottom,
+                                    event.currentTarget,
+                                  );
+                                }}
+                                onPointerDown={(event) => event.stopPropagation()}
+                                title="次の一手の操作"
+                                type="button"
+                              >
+                                <span aria-hidden="true">…</span>
                               </button>
                             </div>
                           </article>
                         );
                       })}
                     </div>
-                    {config.projects.length > SOURCE_LIST_COMPACT_LIMIT &&
-                      config.projects.length < SOURCE_LIST_PAGINATION_THRESHOLD && (
-                        <div className="sourceListControls">
-                          <button
-                            className="mainActionButton mainActionButton--neutral"
-                            onClick={() => {
-                              projectListAnchorRef.current = null;
-                              setProjectsListExpanded((expanded) => !expanded);
-                            }}
-                            type="button"
-                          >
-                            {projectsListExpanded
-                              ? "5件だけ表示"
-                              : `残り${config.projects.length - SOURCE_LIST_COMPACT_LIMIT}件をもっと見る`}
-                          </button>
-                        </div>
-                      )}
-                    {config.projects.length >= SOURCE_LIST_PAGINATION_THRESHOLD && (
-                      <nav aria-label="次の一手のページ" className="sourceListPagination">
+                    {config.projects.length > PROJECT_CARD_COMPACT_LIMIT && (
+                      <div className="sourceListControls nextStepCardControls">
                         <button
                           className="mainActionButton mainActionButton--neutral"
-                          disabled={projectListRange.page <= 1}
                           onClick={() => {
                             projectListAnchorRef.current = null;
-                            setProjectsListPage((page) => Math.max(1, page - 1));
+                            setProjectsListExpanded((expanded) => !expanded);
                           }}
                           type="button"
                         >
-                          <UiIcon name="chevronLeft" size={16} /> 前へ
+                          {projectsListExpanded
+                            ? "− 折りたたむ"
+                            : `＋ 残り${config.projects.length - PROJECT_CARD_COMPACT_LIMIT}件を表示`}
                         </button>
-                        <span>{projectListRange.page} / {projectListRange.pageCount}</span>
-                        <button
-                          className="mainActionButton mainActionButton--neutral"
-                          disabled={projectListRange.page >= projectListRange.pageCount}
-                          onClick={() => {
-                            projectListAnchorRef.current = null;
-                            setProjectsListPage((page) => Math.min(projectListRange.pageCount, page + 1));
-                          }}
-                          type="button"
-                        >
-                          次へ <UiIcon name="chevronRight" size={16} />
-                        </button>
-                      </nav>
+                      </div>
                     )}
                     {projectPointerDrag?.targetIndicator && (
                       <div
@@ -10552,7 +11119,22 @@ function DashboardApp() {
                 )}
               </section>
 
-              <section className="inboxBand">
+              <section
+                className={[
+                  "inboxBand",
+                  projectPointerDrag?.wishlistEligible ||
+                  todayBuilderPointerDrag?.sourceTarget === "wishlist"
+                    ? "sourceReturnBand--target"
+                    : "",
+                  projectPointerDrag?.wishlistTarget ||
+                  (todayBuilderPointerDrag?.sourceTarget === "wishlist" &&
+                    todayBuilderPointerDrag.sourceTargetActive)
+                    ? "sourceReturnBand--active"
+                    : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
                 <div
                   className="disclosureHeader"
                   data-inbox-header
@@ -10582,24 +11164,66 @@ function DashboardApp() {
                       <strong>やりたいこと</strong>
                     </span>
                   </button>
-                  <button
-                    aria-label="やりたいことを追加"
-                    className="sectionAddButton sectionAddButton--barHitTarget mainActionButton mainActionButton--gold"
-                    disabled={inboxAddOpen}
-                    onPointerDown={(event) => event.stopPropagation()}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      openInboxAddDialog(event.currentTarget);
-                    }}
-                    title="やりたいことを追加"
-                    type="button"
-                  >
-                    <UiIcon name="add" size={16} />
-                    追加
-                  </button>
                   <span className="disclosureCount">{config.inbox.length}件</span>
-                  <span className="disclosureDescription">あとで整理する一時置き場</span>
+                  <span className="disclosureDescription">
+                    他にやりたいこと。今日やるものは「今日を組み立てる」から選べます。
+                  </span>
+                  <div className="disclosureHeaderActions">
+                    <button
+                      aria-label="やりたいことを追加"
+                      className="sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd nextStepHeaderAdd--wishlist mainActionButton mainActionButton--gold"
+                      disabled={inboxAddOpen}
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        openInboxAddDialog(event.currentTarget);
+                      }}
+                      title="やりたいことを追加"
+                      type="button"
+                    >
+                      ＋ やりたいこと
+                    </button>
+                    <button
+                      aria-label="やりたいことの操作"
+                      aria-haspopup="menu"
+                      className="sectionMenuButton"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        const rect = event.currentTarget.getBoundingClientRect();
+                        openContextMenu(
+                          { kind: "inboxes" },
+                          rect.left,
+                          rect.bottom,
+                          event.currentTarget,
+                        );
+                      }}
+                      onPointerDown={(event) => event.stopPropagation()}
+                      title="やりたいことの操作"
+                      type="button"
+                    >
+                      <span aria-hidden="true">…</span>
+                    </button>
+                  </div>
                 </div>
+
+                {(projectPointerDrag?.wishlistEligible ||
+                  todayBuilderPointerDrag?.sourceTarget === "wishlist") && (
+                  <div
+                    className={
+                      projectPointerDrag?.wishlistTarget ||
+                      todayBuilderPointerDrag?.sourceTargetActive
+                        ? "sourceReturnDropZone sourceReturnDropZone--active"
+                        : "sourceReturnDropZone"
+                    }
+                  >
+                    <span aria-hidden="true">↓</span>
+                    <span>
+                      {projectPointerDrag?.wishlistEligible
+                        ? "ここにドロップしてやりたいことへ戻す"
+                        : "ここにドロップして今日の候補から外す"}
+                    </span>
+                  </div>
+                )}
 
                 {inboxOpen && (
                   <div className="inboxBody">
@@ -10617,18 +11241,50 @@ function DashboardApp() {
                           ? projectsById.get(group.projectId)
                           : undefined;
                         return (
-                          <section className="wishlistGroup" data-wishlist-group={group.key} key={group.key}>
+                          <section
+                            className={
+                              wishlistGroupPointerDrag?.key === group.key
+                                ? "wishlistGroup wishlistGroup--dragging"
+                                : "wishlistGroup"
+                            }
+                            data-wishlist-group={group.key}
+                            key={group.key}
+                            onPointerCancel={cancelWishlistGroupPointerDrag}
+                            onPointerDown={(event) =>
+                              startWishlistGroupPointerDrag(event, group.key, group.name)
+                            }
+                            onPointerMove={updateWishlistGroupPointerDrag}
+                            onPointerUp={finishWishlistGroupPointerDrag}
+                          >
                             <button
                               aria-expanded={!collapsed}
                               className="wishlistGroupHeader"
-                              onClick={() =>
-                                setWishlistGroupViews((current) => ({
-                                  ...current,
-                                  [group.key]: {
-                                    ...current[group.key],
-                                    collapsed: !collapsed,
-                                  },
-                                }))
+                              onClick={(event) => {
+                                if (event.detail === 0) toggleWishlistGroup(group.key);
+                              }}
+                              onContextMenu={(event) => {
+                                if (!groupProject) return;
+                                event.preventDefault();
+                                event.stopPropagation();
+                                openContextMenu(
+                                  { kind: "project", project: groupProject },
+                                  event.clientX,
+                                  event.clientY,
+                                  event.currentTarget,
+                                );
+                              }}
+                              onKeyDown={(event) => {
+                                if (groupProject) {
+                                  openContextMenuFromKeyboard(event, {
+                                    kind: "project",
+                                    project: groupProject,
+                                  });
+                                }
+                              }}
+                              title={
+                                groupProject
+                                  ? `${group.name}（ドラッグでグループを並べ替え、右クリックで編集）`
+                                  : "ドラッグでグループを並べ替え"
                               }
                               type="button"
                             >
@@ -10655,7 +11311,8 @@ function DashboardApp() {
                                         config.today.items.some(
                                           (todayItem) =>
                                             todayItem.sourceKey &&
-                                            canonicalSourceKey(config, todayItem.sourceKey) === sourceKey,
+                                          canonicalSourceKey(config, todayItem.sourceKey) ===
+                                            sourceKey,
                                         ),
                                     );
                                     const excluded = Boolean(
@@ -10672,7 +11329,8 @@ function DashboardApp() {
                                         data-inbox-id={item.id}
                                         key={item.id ?? `${item.text}-${index}`}
                                         onFocus={() => {
-                                          if (item.id) inboxListAnchorRef.current = { id: item.id, index };
+                                          if (item.id)
+                                            inboxListAnchorRef.current = { id: item.id, index };
                                         }}
                                         onContextMenu={(event) => {
                                           event.preventDefault();
@@ -10692,14 +11350,19 @@ function DashboardApp() {
                                           })
                                         }
                                         onPointerCancel={cancelInboxPointerDrag}
-                                        onPointerDown={(event) => startInboxPointerDrag(event, index)}
+                                        onPointerDown={(event) =>
+                                          startInboxPointerDrag(event, index)
+                                        }
                                         onPointerMove={updateInboxPointerDrag}
                                         onPointerUp={finishInboxPointerDrag}
                                         tabIndex={0}
                                       >
-                                        <span aria-hidden="true" className="wishlistDragHandle">≡</span>
-                                        <span className="inboxItemText" title={item.text}>{item.text}</span>
-                                        {selected && <span className="wishlistTodayStatus">✓ 今日の3件</span>}
+                                        <span className="inboxItemText" title={item.text}>
+                                          {item.text}
+                                        </span>
+                                        {selected && (
+                                          <span className="wishlistTodayStatus">✓ 今日の3件</span>
+                                        )}
                                         {!selected && excluded && sourceKey && (
                                           <button
                                             className="wishlistRestoreButton mainActionButton mainActionButton--positive"
@@ -10715,8 +11378,14 @@ function DashboardApp() {
                                           aria-haspopup="menu"
                                           className="sourceRowMenu"
                                           onClick={(event) => {
-                                            const rect = event.currentTarget.getBoundingClientRect();
-                                            openContextMenu({ kind: "inbox", index, itemText: item.text }, rect.left, rect.bottom, event.currentTarget);
+                                            const rect =
+                                              event.currentTarget.getBoundingClientRect();
+                                            openContextMenu(
+                                              { kind: "inbox", index, itemText: item.text },
+                                              rect.left,
+                                              rect.bottom,
+                                              event.currentTarget,
+                                            );
                                           }}
                                           title="操作メニュー"
                                           type="button"
@@ -10750,7 +11419,10 @@ function DashboardApp() {
                                     </div>
                                   )}
                                 {group.items.length >= SOURCE_LIST_PAGINATION_THRESHOLD && (
-                                  <nav aria-label={`${group.name}のやりたいことページ`} className="sourceListPagination">
+                                  <nav
+                                    aria-label={`${group.name}のやりたいことページ`}
+                                    className="sourceListPagination"
+                                  >
                                     <button
                                       className="mainActionButton mainActionButton--neutral"
                                       disabled={range.page <= 1}
@@ -10767,7 +11439,9 @@ function DashboardApp() {
                                     >
                                       <UiIcon name="chevronLeft" size={16} /> 前へ
                                     </button>
-                                    <span>{range.page} / {range.pageCount}</span>
+                                    <span>
+                                      {range.page} / {range.pageCount}
+                                    </span>
                                     <button
                                       className="mainActionButton mainActionButton--neutral"
                                       disabled={range.page >= range.pageCount}
@@ -10799,13 +11473,36 @@ function DashboardApp() {
                         style={inboxPointerDrag.targetIndicator}
                       />
                     )}
-                    {inboxPointerDrag && (
+                    {wishlistGroupPointerDrag?.targetIndicator && (
+                      <div
+                        aria-hidden="true"
+                        className="wishlistGroupDropIndicator"
+                        style={wishlistGroupPointerDrag.targetIndicator}
+                      />
+                    )}
+                    {wishlistGroupPointerDrag && (
+                      <div
+                        aria-hidden="true"
+                        className="wishlistGroupDragGhost"
+                        style={{
+                          left:
+                            wishlistGroupPointerDrag.pointerX - wishlistGroupPointerDrag.offsetX,
+                          top: wishlistGroupPointerDrag.pointerY - wishlistGroupPointerDrag.offsetY,
+                          width: Math.min(320, wishlistGroupPointerDrag.width),
+                        }}
+                      >
+                        {wishlistGroupPointerDrag.name}
+                      </div>
+                    )}
+                    {inboxPointerDrag &&
                       (() => {
                         const item = config.inbox.find(
                           (entry) =>
                             entry.id === inboxPointerDrag.sourceKey.slice("wishlist:".length),
                         );
-                        const project = item?.projectId ? projectsById.get(item.projectId) : undefined;
+                        const project = item?.projectId
+                          ? projectsById.get(item.projectId)
+                          : undefined;
                         return item ? (
                           <div
                             aria-hidden="true"
@@ -10835,8 +11532,7 @@ function DashboardApp() {
                             <strong>{item.text}</strong>
                           </div>
                         ) : null;
-                      })()
-                    )}
+                      })()}
                   </div>
                 )}
               </section>
@@ -10910,8 +11606,7 @@ function DashboardApp() {
         {reorderAnnouncement}
       </div>
 
-      {(completionFeedback?.kind === "victory" ||
-        completionFeedback?.kind === "todayAll") && (
+      {(completionFeedback?.kind === "victory" || completionFeedback?.kind === "todayAll") && (
         <div aria-hidden="true" className="completionParticleLayer">
           {Array.from({ length: 6 }, (_, index) => (
             <span className="completionParticle" key={index} />
@@ -10921,7 +11616,9 @@ function DashboardApp() {
 
       {toasts.some((toast) => !toast.queued) && (
         <div aria-live="polite" aria-relevant="additions text" className="toastStack">
-          {toasts.filter((toast) => !toast.queued).map((toast) => (
+          {toasts
+            .filter((toast) => !toast.queued)
+            .map((toast) => (
             <div
               className={`toast toast--${toast.tone}${toast.leaving ? " toast--leaving" : ""}${toast.paused ? " toast--paused" : ""}`}
               data-toast-id={toast.id}
@@ -10954,10 +11651,10 @@ function DashboardApp() {
                   disabled={toast.actionPending}
                   onClick={() => void runToastAction(toast.id)}
                   type="button"
-                >
-                  <UiIcon name="back" size={16} />
-                  {toast.actionPending ? "処理中…" : toast.actionLabel ?? "元に戻す"}
-                </button>
+              >
+                <UiIcon name="back" size={16} />
+                {toast.actionPending ? "処理中…" : (toast.actionLabel ?? "元に戻す")}
+              </button>
               )}
               <button
                 aria-label="通知を閉じる"
@@ -11088,9 +11785,14 @@ function DashboardApp() {
           ) : contextMenu.kind === "today" ? (
             <>
               <ContextMenuItem
-                disabled={!config.today.items[contextMenu.index]?.sourceKey ||
+                disabled={
+                  !config.today.items[contextMenu.index]?.sourceKey ||
                   !canonicalSourceKey(config, config.today.items[contextMenu.index].sourceKey!) ||
-                  sourceEditBlocked(canonicalSourceKey(config, config.today.items[contextMenu.index].sourceKey!) ?? "")}
+                  sourceEditBlocked(
+                    canonicalSourceKey(config, config.today.items[contextMenu.index].sourceKey!) ??
+                      "",
+                  )
+                }
                 title={SOURCE_EDIT_TIMER_REASON}
                 onClick={() => {
                   const current = configRef.current;
@@ -11098,28 +11800,30 @@ function DashboardApp() {
                   if (!current || !item?.sourceKey) return;
                   const key = canonicalSourceKey(current, item.sourceKey);
                   if (!key || sourceEditBlocked(key)) return;
-                  const project = current.projects.find(p => `project:${p.id}` === key);
+                  const project = current.projects.find((p) => `project:${p.id}` === key);
                   if (project) openNextStepEditor(project);
                   else {
-                    const index = current.inbox.findIndex(i => `wishlist:${i.id}` === key);
+                    const index = current.inbox.findIndex((i) => `wishlist:${i.id}` === key);
                     if (index >= 0) beginInboxEdit(index, "today");
                   }
                 }}
                 type="button"
-              >編集</ContextMenuItem>
+              >
+                編集
+              </ContextMenuItem>
               <ContextMenuItem
                 disabled={contextMenu.index <= 0}
                 onClick={() => void moveTodayItemByOffset(contextMenu.index, -1)}
                 type="button"
               >
-                上へ移動
+                左へ移動
               </ContextMenuItem>
               <ContextMenuItem
                 disabled={contextMenu.index >= (config?.today.items.length ?? 0) - 1}
                 onClick={() => void moveTodayItemByOffset(contextMenu.index, 1)}
                 type="button"
               >
-                下へ移動
+                右へ移動
               </ContextMenuItem>
               <ContextMenuItem
                 disabled={
@@ -11142,6 +11846,21 @@ function DashboardApp() {
                 type="button"
               >
                 今日の3件から外す
+              </ContextMenuItem>
+            </>
+          ) : contextMenu.kind === "todayBuilderBar" ? (
+            <>
+              <ContextMenuItem
+                onClick={() => navigateToCandidateSource("project")}
+                type="button"
+              >
+                次の一手から追加
+              </ContextMenuItem>
+              <ContextMenuItem
+                onClick={() => navigateToCandidateSource("wishlist")}
+                type="button"
+              >
+                やりたいことから追加
               </ContextMenuItem>
             </>
           ) : contextMenu.kind === "todayBuilder" ? (
@@ -11196,12 +11915,6 @@ function DashboardApp() {
               >
                 次の一手にする
               </ContextMenuItem>
-              <ContextMenuItem
-                onClick={() => openInboxAddDialog()}
-                type="button"
-              >
-                やりたいことを追加
-              </ContextMenuItem>
               {config?.inbox[contextMenu.index]?.id &&
                 explicitlyExcludedCandidate(`wishlist:${config.inbox[contextMenu.index].id}`) && (
                   <ContextMenuItem
@@ -11229,7 +11942,12 @@ function DashboardApp() {
               >
                 下へ移動
               </ContextMenuItem>
-              <ContextMenuItem disabled={sourceEditBlocked(`wishlist:${config.inbox[contextMenu.index]?.id}`)} title={SOURCE_EDIT_TIMER_REASON} onClick={() => beginInboxEdit(contextMenu.index)} type="button">
+              <ContextMenuItem
+                disabled={sourceEditBlocked(`wishlist:${config.inbox[contextMenu.index]?.id}`)}
+                title={SOURCE_EDIT_TIMER_REASON}
+                onClick={() => beginInboxEdit(contextMenu.index)}
+                type="button"
+              >
                 編集
               </ContextMenuItem>
               <ContextMenuItem
@@ -11262,6 +11980,15 @@ function DashboardApp() {
             </>
           ) : contextMenu.kind === "nextStep" ? (
             <>
+              <ContextMenuItem
+                onClick={() => openProjectEditDialog(contextMenu.project)}
+                type="button"
+              >
+                プロジェクトを編集
+              </ContextMenuItem>
+              <ContextMenuItem onClick={openProjectManagement} type="button">
+                プロジェクトを管理
+              </ContextMenuItem>
               {contextMenu.project.nextStep?.text.trim() ? (
                 <>
                   <ContextMenuItem
@@ -11273,19 +12000,36 @@ function DashboardApp() {
                     次の一手を編集
                   </ContextMenuItem>
                   <ContextMenuItem
-                    onClick={() => addProjectNextStepToToday(contextMenu.project)}
+                    disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
+                    onClick={() =>
+                      openNextStepEditor(contextMenu.project, {
+                        mode: "promote",
+                        text: "",
+                        projectLocked: true,
+                      })
+                    }
+                    title={SOURCE_EDIT_TIMER_REASON}
                     type="button"
                   >
-                    今日へ
+                    次の一手を変更
                   </ContextMenuItem>
                   <ContextMenuItem
-                    className="contextMenuSeparatorBefore"
                     disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
                     onClick={() => clearProjectNextStep(contextMenu.project)}
                     title={SOURCE_EDIT_TIMER_REASON}
                     type="button"
                   >
-                    次の一手を空にする
+                    次の一手を未設定にする
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    className="contextMenuSeparatorBefore"
+                    disabled={!explicitlyExcludedCandidate(`project:${contextMenu.project.id}`)}
+                    onClick={() =>
+                      void restoreTodayBuilderCandidate(`project:${contextMenu.project.id}`)
+                    }
+                    type="button"
+                  >
+                    今日を組み立てるに登録する
                   </ContextMenuItem>
                 </>
               ) : (
@@ -11308,17 +12052,11 @@ function DashboardApp() {
                 プロジェクトを編集
               </ContextMenuItem>
               <ContextMenuItem
-                onClick={() => openInboxAddDialog(undefined, contextMenu.project.id)}
-                type="button"
-              >
-                やりたいことを追加
-              </ContextMenuItem>
-              <ContextMenuItem
                 className="contextMenuSeparatorBefore"
                 onClick={openProjectManagement}
                 type="button"
               >
-                プロジェクト管理
+                プロジェクトを管理
               </ContextMenuItem>
             </>
           ) : contextMenu.kind === "projects" ? (
@@ -11326,10 +12064,7 @@ function DashboardApp() {
               プロジェクトを追加
             </ContextMenuItem>
           ) : contextMenu.kind === "inboxes" ? (
-            <ContextMenuItem
-              onClick={() => openInboxAddDialog()}
-              type="button"
-            >
+            <ContextMenuItem onClick={() => openInboxAddDialog()} type="button">
               やりたいことを追加
             </ContextMenuItem>
           ) : contextMenu.kind === "session" ? (
@@ -11463,21 +12198,40 @@ function DashboardApp() {
             </fieldset>
 
             <h3 className="formSectionHeading">開始環境</h3>
-            <p className="formSectionDescription">一緒に使う道具や、開始時に確認する手順を設定します。</p>
-            <StartEnvironmentPicker buttons={projectSelectableButtons} onChange={setInboxEditButtonIds} overlayPages={overlayPages} renderIcon={renderButtonIcon} selectedIds={inboxEditButtonIds} />
+            <p className="formSectionDescription">
+              一緒に使う道具や、開始時に確認する手順を設定します。
+            </p>
+            <StartEnvironmentPicker
+              buttons={projectSelectableButtons}
+              onChange={setInboxEditButtonIds}
+              overlayPages={overlayPages}
+              renderIcon={renderButtonIcon}
+              selectedIds={inboxEditButtonIds}
+            />
             <InstructionPicker
               choices={instructionChoices}
               error={instructionChoicesError}
               loading={instructionChoicesLoading}
               onChange={(instructionPath) => {
                 setInboxEditInstructionPath(instructionPath);
-                setInboxEditInstructionOpenOnStart(instructionPath ? (inboxEditInstructionPath ? inboxEditInstructionOpenOnStart : true) : false);
+                setInboxEditInstructionOpenOnStart(
+                  instructionPath
+                    ? inboxEditInstructionPath
+                      ? inboxEditInstructionOpenOnStart
+                      : true
+                    : false,
+                );
               }}
               onRetry={() => void refreshInstructionChoices()}
               selectedPath={inboxEditInstructionPath}
             />
             <label className="projectWeeklyFocusToggle projectInstructionStartToggle">
-              <input checked={inboxEditInstructionOpenOnStart} disabled={!inboxEditInstructionPath} onChange={(event) => setInboxEditInstructionOpenOnStart(event.target.checked)} type="checkbox" />
+              <input
+                checked={inboxEditInstructionOpenOnStart}
+                disabled={!inboxEditInstructionPath}
+                onChange={(event) => setInboxEditInstructionOpenOnStart(event.target.checked)}
+                type="checkbox"
+              />
               <span>開始時に手順書を開く</span>
             </label>
             <div className="dialogActions formDialogActions">
@@ -11489,7 +12243,11 @@ function DashboardApp() {
               >
                 保存
               </button>
-              <button className="secondaryButton dialogCancelButton" onClick={cancelInboxEdit} type="button">
+              <button
+                className="secondaryButton dialogCancelButton"
+                onClick={cancelInboxEdit}
+                type="button"
+              >
                 キャンセル
               </button>
             </div>
@@ -12883,9 +13641,7 @@ function DashboardApp() {
             <div>
               <p className="eyebrow">Next Step</p>
               <h2>次の一手を決めますか？</h2>
-              <p className="dialogLead">
-                {completionFollowup.source.projectName}のやりたいこと
-              </p>
+              <p className="dialogLead">{completionFollowup.source.projectName}のやりたいこと</p>
             </div>
             <div className="completionFollowupChoices">
               {config.inbox
@@ -12948,8 +13704,7 @@ function DashboardApp() {
               nextStepEditDraft.legacyChoice === null,
           );
           const replacingExisting = Boolean(
-            nextStepEditDraft.mode === "promote" &&
-              nextStepProject?.nextStep?.text.trim(),
+            nextStepEditDraft.mode === "promote" && nextStepProject?.nextStep?.text.trim(),
           );
           return (
             <div className="modalBackdrop" role="presentation">
@@ -12957,6 +13712,8 @@ function DashboardApp() {
                 aria-label={
                   nextStepEditDraft.mode === "edit"
                     ? "次の一手を編集"
+                    : replacingExisting
+                      ? "次の一手を変更"
                     : "次の一手を設定"
                 }
                 aria-modal="true"
@@ -12969,6 +13726,8 @@ function DashboardApp() {
                   <h2>
                     {nextStepEditDraft.mode === "edit"
                       ? "次の一手を編集"
+                      : replacingExisting
+                        ? "次の一手を変更"
                       : "次の一手を設定"}
                   </h2>
                   <p className="dialogLead">今進める1件と、始めるための環境を設定します。</p>
@@ -13184,7 +13943,12 @@ function DashboardApp() {
                 <div className="projectTimerGrid">
                   {(
                     [
-                      ["shortTimerMinutes", "projectShort", "短時間", config.settings.shortTimerMinutes],
+                      [
+                        "shortTimerMinutes",
+                        "projectShort",
+                        "短時間",
+                        config.settings.shortTimerMinutes,
+                      ],
                       [
                         "defaultTimerMinutes",
                         "projectDefault",
@@ -13359,9 +14123,7 @@ function DashboardApp() {
                 placeholder="EPを1枚完成させる"
                 value={projectEditDraft.northStar}
               />
-              <small className="fieldHint">
-                このプロジェクトで実現したい目標を1行で書きます。
-              </small>
+              <small className="fieldHint">このプロジェクトで実現したい目標を1行で書きます。</small>
             </label>
 
             <label className="projectWeeklyFocusToggle">
@@ -13402,7 +14164,6 @@ function DashboardApp() {
                 ))}
               </div>
             </div>
-
 
             <div className="dialogActions formDialogActions">
               <button

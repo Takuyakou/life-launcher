@@ -150,14 +150,14 @@ test("P83-03 semantic modifiers win existing selector specificity", async ({ pag
   });
 });
 
-test("P83-03 Today empty CTA receives the neutral normal palette", async ({ page }) => {
+test("P83-03 Today empty CTA matches the gold create palette", async ({ page }) => {
   const fixture = actionFixture();
   fixture.config.today.items = [];
   await prepare(page, fixture);
   expect(await readStyle(page.locator(".todayEmptyStateContent > button"))).toMatchObject({
-    backgroundColor: "rgb(33, 31, 26)",
-    borderColor: "rgb(74, 70, 57)",
-    color: "rgb(163, 156, 142)",
+    backgroundColor: "rgba(231, 185, 77, 0.1)",
+    borderColor: "rgba(231, 185, 77, 0.58)",
+    color: "rgb(255, 206, 91)",
   });
 });
 
@@ -220,27 +220,34 @@ test("P83-03 edit and configure buttons use one neutral grammar", async ({ page 
   expect(configureStyle.color).toBe(changeStyle.color);
 });
 
-test("P83-03 adoption and restore actions preserve the positive semantic", async ({ page }) => {
+test("P83-03 adoption matches NextStep configure while restore stays positive", async ({ page }) => {
   await prepare(page);
   await openDisclosure(page.locator(".todayBuilderDisclosure"));
   await openDisclosure(page.locator(".inboxBand .disclosure"));
 
   const adoption = page.locator(".todayBuilderAddButton").first();
+  const configure = page.getByRole("button", { name: "次の一手を設定", exact: true });
   const restore = page.locator(".wishlistRestoreButton");
   await expect(adoption).toBeVisible();
   await expect(restore).toBeVisible();
-  await expect(adoption).toHaveClass(/mainActionButton--positive/);
+  await expect(adoption).toHaveClass(/mainActionButton--neutral/);
   await expect(restore).toHaveClass(/mainActionButton--positive/);
 
   const adoptionStyle = await readStyle(adoption);
-  const restoreStyle = await readStyle(restore);
-  expect(adoptionStyle.color).toBe(restoreStyle.color);
-  expect(adoptionStyle.backgroundColor).toBe(restoreStyle.backgroundColor);
+  const configureStyle = await readStyle(configure);
+  expect(adoptionStyle.color).toBe(configureStyle.color);
+  expect(adoptionStyle.backgroundColor).toBe(configureStyle.backgroundColor);
+  expect(adoptionStyle.borderColor).toBe(configureStyle.borderColor);
 
   const { initial, hovered } = await expectActionHover(page, adoption);
-  expect(hovered.backgroundColor).toBe("rgb(48, 66, 53)");
+  await configure.hover();
+  await page.waitForTimeout(140);
+  const configureHovered = await readStyle(configure);
+  expect(hovered.backgroundColor).toBe(configureHovered.backgroundColor);
+  expect(hovered.borderColor).toBe(configureHovered.borderColor);
+  expect(hovered.color).toBe(configureHovered.color);
   const pressed = await pressStyle(page, adoption);
-  expect(pressed.backgroundColor).toBe("rgb(34, 49, 40)");
+  expect(pressed.backgroundColor).toBe("rgb(27, 26, 23)");
   expect(pressed.transform).toContain("0.985");
   expect(pressed.width).toBe(initial.width);
   expect(pressed.height).toBe(initial.height);
@@ -326,7 +333,7 @@ test("P83-03 excluded controls retain their weak hover geometry and colors", asy
   await expectExcludedHover(page, page.locator(".quickButton").first());
   await expectExcludedHover(page, page.locator(".todayBuilderDisclosure"));
   await expectExcludedHover(page, page.locator(".todayBuilderRow").first());
-  await expectExcludedHover(page, page.locator(".todayBuilderSelectedStatus"));
+  await expectExcludedHover(page, page.locator(".todayBuilderSelectedStatus"), "weak-change");
   await expectExcludedHover(
     page,
     page.locator(".topPills .viewToggleButton").first(),
@@ -360,14 +367,14 @@ test("P83-03 timer controls and NextStep cards keep their established dimensions
       button: page.locator(".doNowStartPrimary"),
       color: "rgb(111, 207, 151)",
       height: 38,
-      width: 100,
+      width: 112,
     },
     {
       backgroundColor: "rgb(37, 45, 56)",
       button: page.locator(".doNowStartSecondary"),
       color: "rgb(169, 208, 255)",
       height: 38,
-      width: 100,
+      width: 112,
     },
     {
       backgroundColor: "rgba(190, 181, 164, 0.08)",
@@ -380,22 +387,22 @@ test("P83-03 timer controls and NextStep cards keep their established dimensions
       backgroundColor: "rgb(39, 52, 43)",
       button: page.locator(".todayRow").first().locator(".todayStartButton--short"),
       color: "rgb(111, 207, 151)",
-      height: 38,
-      width: 88,
+      height: 36,
+      width: 78,
     },
     {
       backgroundColor: "rgb(37, 45, 56)",
       button: page.locator(".todayRow").first().locator(".todayStartButton--normal"),
       color: "rgb(169, 208, 255)",
-      height: 38,
-      width: 88,
+      height: 36,
+      width: 78,
     },
     {
       backgroundColor: "rgba(190, 181, 164, 0.08)",
       button: page.locator(".todayRow").first().locator(".todayMeasureButton"),
-      color: "rgb(209, 201, 187)",
-      height: 38,
-      width: 36,
+      color: "rgb(184, 176, 160)",
+      height: 36,
+      width: 34,
     },
   ];
   for (const { backgroundColor, button, color, height, width } of timerContracts) {

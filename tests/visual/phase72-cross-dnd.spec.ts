@@ -98,7 +98,7 @@ test("P72-04 excluded source restores to a closed Builder after 500ms and saves 
   await expect(page.locator(".todayBuilderBand--restoreHover")).toBeVisible();
   await expect(page.locator(".todayBuilderRestoreDropZone--active")).toBeVisible();
   await expect(page.locator(".todayBuilderRestoreDropZone")).toHaveText(
-    /ここにドロップして今日の候補に戻す/,
+    /ここにドロップして今日を組み立てるに入れる/,
   );
   expect(await saveCount(page)).toBe(before);
   await page.clock.fastForward(510);
@@ -302,6 +302,45 @@ test("Today3 active Timer is not a valid Builder removal target", async ({ page 
   await expect(page.locator(".todayBuilderBand--restoreTarget")).toHaveCount(0);
   await page.mouse.up();
   expect((await config(page)).today.items).toHaveLength(fixture.config.today.items.length);
+});
+
+test("Builder adoption keeps the current scroll position after save", async ({ page }) => {
+  const fixture = createPublicFixture();
+  await prepare(page, fixture, 860);
+  await page.locator(".todayBuilderDisclosure").click();
+  const source = page.locator(".todayBuilderRow", { hasText: "5分だけ体を動かす" });
+  const target = page.locator(".todayRow").first();
+  await source.scrollIntoViewIfNeeded();
+  const from = (await source.boundingBox())!;
+  const to = (await target.boundingBox())!;
+  await page.mouse.move(from.x + from.width * 0.45, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(from.x + from.width * 0.45 + 12, from.y + from.height / 2, {
+    steps: 2,
+  });
+  await page.mouse.move(to.x + to.width * 0.2, to.y + to.height * 0.35, { steps: 6 });
+  const scrollArea = page.locator(".mainScrollArea");
+  const beforeDrop = await scrollArea.evaluate((node) => node.scrollTop);
+  await page.mouse.up();
+  await expect.poll(() => saveCount(page)).toBe(1);
+  await page.waitForTimeout(50);
+  expect(await scrollArea.evaluate((node) => node.scrollTop)).toBe(beforeDrop);
+});
+
+test("Builder Today button keeps scroll position through the optimistic update", async ({
+  page,
+}) => {
+  const fixture = createPublicFixture();
+  await prepare(page, fixture, 860);
+  await page.locator(".todayBuilderDisclosure").click();
+  const source = page.locator(".todayBuilderRow", { hasText: "5分だけ体を動かす" });
+  await source.scrollIntoViewIfNeeded();
+  const scrollArea = page.locator(".mainScrollArea");
+  const beforeClick = await scrollArea.evaluate((node) => node.scrollTop);
+  await source.getByRole("button", { name: "今日へ", exact: true }).click();
+  expect(await scrollArea.evaluate((node) => node.scrollTop)).toBe(beforeClick);
+  await expect.poll(() => saveCount(page)).toBe(1);
+  expect(await scrollArea.evaluate((node) => node.scrollTop)).toBe(beforeClick);
 });
 
 test("Today3 Builder removal save failure rolls the card back", async ({ page }) => {

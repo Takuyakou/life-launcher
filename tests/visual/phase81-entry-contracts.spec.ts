@@ -286,7 +286,7 @@ test("Phase 8.1 Wishlist promotion starts from a reset execution package", async
   await openWishlistSection(page);
   await page.locator('[data-inbox-id="sample-weekend"]').click({ button: "right" });
   await page.getByRole("menuitem", { name: "次の一手にする" }).click();
-  const dialog = page.getByRole("dialog", { name: "次の一手を設定" });
+  const dialog = page.getByRole("dialog", { name: "次の一手を変更" });
 
   await expect(dialog.getByRole("textbox", { name: "行動" })).toHaveValue("週末に試すアイデア");
   await expect(dialog.getByText("開始環境は選択されていません", { exact: true })).toBeVisible();

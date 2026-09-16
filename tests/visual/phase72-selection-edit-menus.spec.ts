@@ -38,8 +38,11 @@ test("Phase 8.1 separates NextStep actions from Wishlist candidate restore", asy
   const nextStep = page.locator(".nextStepRow").first().locator(".nextStepActionRegion");
   await nextStep.click({ button: "right" });
   await expect(page.getByRole("menuitem", { name: "次の一手を編集" })).toBeVisible();
-  await expect(page.getByRole("menuitem", { name: "今日へ", exact: true })).toBeVisible();
-  await expect(page.getByRole("menuitem", { name: "次の一手を空にする" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "次の一手を変更" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "次の一手を未設定にする" })).toBeVisible();
+  await expect(
+    page.getByRole("menuitem", { name: "今日を組み立てるに登録する" }),
+  ).toBeVisible();
   await expect(page.getByRole("menuitem", { name: "今日の候補に戻す" })).toHaveCount(0);
   await page.keyboard.press("Escape");
   expect((await currentConfig(page)).today.candidateExcludedSourceKeys).toEqual([
@@ -156,13 +159,16 @@ test("timer actions keep time subtly right of center and slide play in from the 
   await expect(doNowShort.locator(".timerStartDuration")).toHaveText("5分で始める");
   await expect(doNowNormal.locator(".timerStartDuration")).toHaveText("通常 25分");
   expect((await doNowShort.boundingBox())?.width).toBe((await doNowNormal.boundingBox())?.width);
-  expect((await doNowShort.boundingBox())?.width).toBe(100);
+  expect((await doNowShort.boundingBox())?.width).toBe(112);
   expect((await doNowShort.boundingBox())?.height).toBe(38);
   await expect(doNowShort.locator(".timerStartDuration")).toHaveCSS("opacity", "1");
-  await expect(doNowShort.locator(".timerStartHoverGlyph")).toHaveCSS("opacity", "0");
+  await expect(doNowShort.locator(".timerStartHoverGlyph")).toHaveCSS("opacity", "1");
   const doNowBefore = await doNowShort.boundingBox();
   const doNowTimeBefore = await doNowShort.locator(".timerStartDuration").boundingBox();
   const doNowPlayBefore = await doNowShort.locator(".timerStartHoverGlyph").boundingBox();
+  const accentBefore = await doNowShort.evaluate(
+    (node) => getComputedStyle(node, "::after").transform,
+  );
   await doNowShort.hover();
   await expect(doNowShort.locator(".timerStartDuration")).toHaveCSS("opacity", "1");
   await expect(doNowShort.locator(".timerStartHoverGlyph")).toHaveCSS("opacity", "1");
@@ -170,10 +176,18 @@ test("timer actions keep time subtly right of center and slide play in from the 
   const doNowTimeAfter = await doNowShort.locator(".timerStartDuration").boundingBox();
   const doNowPlayAfter = await doNowShort.locator(".timerStartHoverGlyph").boundingBox();
   expect(doNowBefore && doNowAfter && doNowTimeBefore && doNowTimeAfter).toBeTruthy();
-  expect(doNowTimeBefore!.x + doNowTimeBefore!.width / 2 - (doNowBefore!.x + doNowBefore!.width / 2)).toBeCloseTo(2, 1);
-  expect(doNowTimeAfter!.x + doNowTimeAfter!.width / 2 - (doNowAfter!.x + doNowAfter!.width / 2)).toBeCloseTo(2, 1);
-  expect(doNowPlayAfter!.x).toBeGreaterThan(doNowPlayBefore!.x);
-  expect(doNowAfter!.y).toBeLessThan(doNowBefore!.y);
+  expect(doNowTimeBefore!.x + doNowTimeBefore!.width / 2 - (doNowBefore!.x + doNowBefore!.width / 2)).toBeCloseTo(5, 1);
+  expect(doNowTimeAfter!.x + doNowTimeAfter!.width / 2 - (doNowAfter!.x + doNowAfter!.width / 2)).toBeCloseTo(5, 1);
+  expect(doNowPlayAfter!.x).toBeCloseTo(doNowPlayBefore!.x, 1);
+  expect(doNowPlayAfter!.x + doNowPlayAfter!.width).toBeLessThan(doNowTimeAfter!.x);
+  expect(doNowAfter!.y).toBeCloseTo(doNowBefore!.y, 1);
+  expect(accentBefore).toContain("0");
+  expect(await doNowShort.evaluate((node) => getComputedStyle(node, "::after").transform)).not.toBe(
+    accentBefore,
+  );
+  await page.locator(".doNowBand").screenshot({
+    path: "dist/visual-qa/v13-nextstep-wishlist/do-now-timer-hover.png",
+  });
   await page.mouse.move(0, 0);
   await doNowNormal.focus();
   await expect(doNowNormal.locator(".timerStartDuration")).toHaveCSS("opacity", "1");
@@ -185,11 +199,11 @@ test("timer actions keep time subtly right of center and slide play in from the 
   const todayNormal = page.locator(".todayRow").first().getByRole("button", {
     name: "通常タイマー25分で開始",
   });
-  await expect(todayShort.locator(".nextStepStartDuration")).toHaveText("5分で始める");
-  await expect(todayNormal.locator(".nextStepStartDuration")).toHaveText("通常 25分");
-  expect((await doNowShort.boundingBox())?.width).toBe(100);
-  expect((await todayShort.boundingBox())?.width).toBe(88);
-  expect((await doNowShort.boundingBox())?.height).toBe((await todayShort.boundingBox())?.height);
+  await expect(todayShort.locator(".nextStepStartDuration")).toHaveText("5分");
+  await expect(todayNormal.locator(".nextStepStartDuration")).toHaveText("25分");
+  expect((await doNowShort.boundingBox())?.width).toBe(112);
+  expect((await todayShort.boundingBox())?.width).toBe(78);
+  expect((await todayShort.boundingBox())?.height).toBe(36);
   await expect(todayShort.locator(".nextStepStartDuration")).toHaveCSS("opacity", "1");
   await expect(todayShort.locator(".nextStepStartGlyph")).toHaveCSS("opacity", "0");
   const todayBefore = await todayShort.boundingBox();

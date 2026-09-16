@@ -131,7 +131,7 @@ test("Project picker preserves order, enforces two selections, and restores focu
 }) => {
   await prepare(page);
   await page.locator('[data-project-id="sample-learning"]').click({ button: "right" });
-  await page.getByRole("menuitem", { name: "編集" }).click();
+  await page.getByRole("menuitem", { name: "次の一手を編集", exact: true }).click();
   const projectDialog = page.getByRole("dialog", { name: "次の一手を編集" });
   const opener = projectDialog.getByRole("button", { name: "開始環境を選ぶ" });
   await expect(projectDialog.locator(".startEnvironmentSelectedItem")).toHaveCount(1);
@@ -177,7 +177,7 @@ test("Wishlist edit uses the shared picker and keeps a cancelled picker draft", 
   await page.getByRole("button", { name: "やりたいこと", exact: true }).click();
   const row = page.locator(".inboxRow", { hasText: "あとで確認するサンプル" });
   await row.click({ button: "right" });
-  await page.getByRole("menuitem", { name: "編集" }).click();
+  await page.getByRole("menuitem", { name: "編集", exact: true }).click();
   const wishlistDialog = page.getByRole("dialog", { name: "やりたいこと編集" });
   const opener = wishlistDialog.getByRole("button", { name: "開始環境を選ぶ" });
   await opener.click();
@@ -212,7 +212,7 @@ test("Legacy selections over the limit are preserved and picker fits the narrow 
   ];
   await prepare(page, fixture, { width: 860, height: 700 });
   await page.locator('[data-project-id="sample-learning"]').click({ button: "right" });
-  await page.getByRole("menuitem", { name: "編集" }).click();
+  await page.getByRole("menuitem", { name: "次の一手を編集", exact: true }).click();
   const projectDialog = page.getByRole("dialog", { name: "次の一手を編集" });
   await expect(projectDialog.locator(".startEnvironmentCount")).toContainText("3 / 2");
   await projectDialog.getByRole("button", { name: "開始環境を選ぶ" }).click();

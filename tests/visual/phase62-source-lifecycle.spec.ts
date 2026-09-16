@@ -37,24 +37,24 @@ async function setSaveFailure(page: Page, failed: boolean) {
   }, failed);
 }
 
-test("clearing a NextStep keeps the Project and adopted Today3 snapshot", async ({ page }) => {
+test("unsetting a NextStep keeps the Project and adopted Today3 snapshot", async ({ page }) => {
   const fixture = createPublicFixture();
   await prepare(page, fixture);
   const row = page.locator(".nextStepRow", { hasText: "資料を1ページ読む" });
   await row.click({ button: "right" });
   await expect(page.getByRole("menuitem", { name: "完了にする" })).toHaveCount(0);
-  await page.getByRole("menuitem", { name: "次の一手を空にする" }).click();
-  const dialog = page.getByRole("dialog", { name: "次の一手を空にしますか？" });
+  await page.getByRole("menuitem", { name: "次の一手を未設定にする" }).click();
+  const dialog = page.getByRole("dialog", { name: "次の一手を未設定にしますか？" });
   await expect(dialog.getByRole("button", { name: "キャンセル" })).toBeFocused();
   await expect(dialog).toContainText("今日の3件に採用済みの内容と実行記録は変更しません");
   await page.keyboard.press("Escape");
   expect((await currentConfig(page)).projects[0].nextStep?.text).toBe("資料を1ページ読む");
 
   await row.click({ button: "right" });
-  await page.getByRole("menuitem", { name: "次の一手を空にする" }).click();
+  await page.getByRole("menuitem", { name: "次の一手を未設定にする" }).click();
   await page
-    .getByRole("dialog", { name: "次の一手を空にしますか？" })
-    .getByRole("button", { name: "空にする" })
+    .getByRole("dialog", { name: "次の一手を未設定にしますか？" })
+    .getByRole("button", { name: "削除して未設定にする" })
     .dblclick();
   let config = await currentConfig(page);
   expect(config.projects.some((project) => project.id === "sample-learning")).toBe(true);

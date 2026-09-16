@@ -199,10 +199,10 @@ test("generation boundary: clearing A and recreating same-text B leaves adopted 
 
   const action = page.locator('[data-project-id="sample-learning"] .nextStepActionRegion');
   await action.click({ button: "right" });
-  await page.getByRole("menuitem", { name: "次の一手を空にする", exact: true }).click();
+  await page.getByRole("menuitem", { name: "次の一手を未設定にする", exact: true }).click();
   await page
-    .getByRole("dialog", { name: "次の一手を空にしますか？", exact: true })
-    .getByRole("button", { name: "空にする", exact: true })
+    .getByRole("dialog", { name: "次の一手を未設定にしますか？", exact: true })
+    .getByRole("button", { name: "削除して未設定にする", exact: true })
     .click();
   expect((await currentConfig(page)).today.items[0]).toEqual(adoptedA);
 

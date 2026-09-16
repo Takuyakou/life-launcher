@@ -2342,7 +2342,9 @@ h3 {
   border-radius: var(--radius);
   cursor: ns-resize;
   touch-action: none;
-  transition: color 120ms ease, background-color 120ms ease;
+  transition:
+    color 120ms ease,
+    background-color 120ms ease;
 }
 
 .timerClock--adjustable:hover {
@@ -3177,7 +3179,12 @@ input[type="number"]::-webkit-inner-spin-button {
 .victoryBar--done {
   border-color: rgba(231, 185, 77, 0.72);
   background:
-    linear-gradient(120deg, rgba(231, 185, 77, 0.1), rgba(231, 185, 77, 0.025) 48%, transparent 75%),
+    linear-gradient(
+      120deg,
+      rgba(231, 185, 77, 0.1),
+      rgba(231, 185, 77, 0.025) 48%,
+      transparent 75%
+    ),
     var(--surface);
 }
 
@@ -3471,8 +3478,8 @@ input[type="number"]::-webkit-inner-spin-button {
 .doNowActions .doNowStartPrimary,
 .doNowActions .doNowStartSecondary {
   position: relative;
-  width: 100px;
-  min-width: 100px;
+  width: 112px;
+  min-width: 112px;
   height: 38px;
   min-height: 38px;
   overflow: hidden;
@@ -3487,7 +3494,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .timerStartDuration {
   position: absolute;
   top: 50%;
-  left: calc(50% + 2px);
+  left: calc(50% + 5px);
   display: grid;
   place-items: center;
   transform: translate(-50%, -50%);
@@ -3500,12 +3507,12 @@ input[type="number"]::-webkit-inner-spin-button {
 .timerStartHoverGlyph {
   position: absolute;
   top: 50%;
-  left: 14px;
+  left: 12px;
   width: 16px;
   display: grid;
   place-items: center;
-  opacity: 0;
-  transform: translate(-3px, -50%);
+  opacity: 1;
+  transform: translate(0, -50%);
   transition:
     opacity 130ms ease,
     transform 130ms ease;
@@ -3710,9 +3717,20 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .todayRowMenu {
   position: absolute;
-  top: 5px;
-  right: 5px;
+  top: 4px;
+  right: 4px;
   z-index: 1;
+  width: 28px;
+  height: 28px;
+  border-color: transparent;
+  border-radius: var(--radius);
+  background: transparent;
+}
+
+.todayRowMenu:hover,
+.todayRowMenu:focus-visible {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.055);
 }
 
 .todayRow:hover .todayRowMenu,
@@ -4207,8 +4225,8 @@ input[type="number"]::-webkit-inner-spin-button {
 .todayTimerActions--running .runningPauseButton,
 .todayTimerActions--running .runningStopButton {
   width: 90px;
-  height: 38px;
-  min-height: 38px;
+  height: 36px;
+  min-height: 36px;
 }
 
 .doNowActions .runningPauseButton,
@@ -4371,10 +4389,10 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayBuilderGroupHeading > strong {
-  color: var(--muted);
-  font-size: var(--dashboard-font-body);
-  font-weight: 650;
-  line-height: 1.35;
+  color: var(--text-muted-readable);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 750;
+  line-height: 1.3;
 }
 
 .todayBuilderRow {
@@ -4413,6 +4431,10 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .todayBuilderRow strong {
   overflow: hidden;
+  color: var(--text);
+  font-size: var(--dashboard-font-body);
+  font-weight: 650;
+  line-height: 1.4;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -4782,6 +4804,14 @@ input[type="number"]::-webkit-inner-spin-button {
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.18);
 }
 
+.doNowStartPrimary:hover:not(:disabled),
+.doNowStartPrimary:focus-visible,
+.doNowStartSecondary:hover:not(:disabled),
+.doNowStartSecondary:focus-visible {
+  transform: none;
+  box-shadow: none;
+}
+
 .runningStopButton:hover:not(:disabled) {
   border-color: var(--control-danger-hover-border);
   background: var(--control-danger-hover-bg);
@@ -4947,15 +4977,14 @@ input[type="number"]::-webkit-inner-spin-button {
   width: 100%;
   min-height: 72px;
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) auto 28px;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
   border: 1px solid rgba(184, 176, 160, 0.3);
   border-radius: 11px;
-  padding: 11px 10px 13px 12px;
+  padding: 11px 42px 13px 12px;
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.025), transparent 62%),
-    var(--surface-strong);
+    linear-gradient(145deg, rgba(255, 255, 255, 0.025), transparent 62%), var(--surface-strong);
   color: var(--text);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.035),
@@ -5026,6 +5055,9 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .toastClose {
+  position: absolute;
+  top: 8px;
+  right: 8px;
   width: 28px;
   height: 28px;
   padding: 0;
@@ -5083,8 +5115,12 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 @keyframes toast-lifetime {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -5099,32 +5135,54 @@ input[type="number"]::-webkit-inner-spin-button {
   color: var(--good);
 }
 
-.toast--ok .toastAccent { background: var(--good); }
-.toast--ok .toastIconBadge { color: var(--good); }
-.toast--ok .toastCopy strong { color: var(--text); }
+.toast--ok .toastAccent {
+  background: var(--good);
+}
+.toast--ok .toastIconBadge {
+  color: var(--good);
+}
+.toast--ok .toastCopy strong {
+  color: var(--text);
+}
 
 .toast--neutral {
   color: var(--accent);
 }
 
-.toast--neutral .toastCopy strong { color: var(--text); }
-.toast--neutral .toastIconBadge { color: var(--accent-strong); }
+.toast--neutral .toastCopy strong {
+  color: var(--text);
+}
+.toast--neutral .toastIconBadge {
+  color: var(--accent-strong);
+}
 
 .toast--warn {
   color: var(--warn);
 }
 
-.toast--warn .toastAccent { background: var(--warn); }
-.toast--warn .toastIconBadge { color: var(--warn); }
-.toast--warn .toastCopy strong { color: var(--text); }
+.toast--warn .toastAccent {
+  background: var(--warn);
+}
+.toast--warn .toastIconBadge {
+  color: var(--warn);
+}
+.toast--warn .toastCopy strong {
+  color: var(--text);
+}
 
 .toast--error {
   color: var(--error);
 }
 
-.toast--error .toastAccent { background: var(--error); }
-.toast--error .toastIconBadge { color: var(--error); }
-.toast--error .toastCopy strong { color: var(--text); }
+.toast--error .toastAccent {
+  background: var(--error);
+}
+.toast--error .toastIconBadge {
+  color: var(--error);
+}
+.toast--error .toastCopy strong {
+  color: var(--text);
+}
 
 @media (max-width: 520px) {
   .toastStack {
@@ -7882,7 +7940,8 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayRow {
-  min-height: 104px;
+  container: today-card / inline-size;
+  min-height: 154px;
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr) auto;
@@ -8006,26 +8065,56 @@ input[type="number"]::-webkit-inner-spin-button {
   grid-row: 2;
   display: flex;
   align-items: flex-end;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
   min-width: 0;
+}
+
+@container today-card (max-width: 300px) {
+  .todayCardFooter {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 
 .todayTimerCluster {
   display: grid;
   justify-items: end;
   gap: 4px;
-  width: 224px;
+  width: 200px;
   max-width: 100%;
   margin-left: auto;
 }
 
 .todayTimerCluster .todayTimerActions:not(.todayTimerActions--running) {
-  grid-template-columns: 88px 88px 36px;
+  grid-template-columns: 78px 78px 34px;
+  gap: 5px;
 }
 
 .todayTimerCluster .todayStartButton {
-  width: 88px;
+  width: 78px;
+  height: 36px;
+  min-height: 36px;
+}
+
+.todayTimerCluster .todayMeasureButton {
+  width: 34px;
+  min-width: 34px;
+  height: 36px;
+  min-height: 36px;
+  border-color: rgba(190, 181, 164, 0.32);
+  background: rgba(190, 181, 164, 0.08);
+  box-shadow: none;
+  color: var(--muted);
+}
+
+.todayTimerCluster .todayMeasureButton:hover:not(:disabled),
+.todayTimerCluster .todayMeasureButton:focus-visible {
+  border-color: rgba(209, 201, 187, 0.62);
+  background: rgba(190, 181, 164, 0.14);
+  box-shadow: none;
+  color: #d1c9bb;
+  transform: none;
 }
 
 .todayTriggerZone {
@@ -8074,6 +8163,10 @@ input[type="number"]::-webkit-inner-spin-button {
   font-size: var(--dashboard-font-meta);
   font-weight: 650;
   white-space: nowrap;
+}
+
+.todayRow .todayRemoveButton {
+  padding-inline: 4px;
 }
 
 .todayRow .todayInstructionButton:hover:not(:disabled),
@@ -8303,6 +8396,18 @@ input[type="number"]::-webkit-inner-spin-button {
   white-space: nowrap;
 }
 
+.todayBuilderSelectedStatus:hover:not(:disabled),
+.todayBuilderSelectedStatus:focus-visible {
+  border-color: var(--good);
+  background: rgba(117, 196, 143, 0.16);
+  color: #92e5ae;
+}
+
+.todayBuilderSelectedStatus:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 @media (max-width: 620px) {
   .todayEmptyStateContent {
     margin-inline-start: 2px;
@@ -8313,7 +8418,12 @@ input[type="number"]::-webkit-inner-spin-button {
 .inboxBand .disclosureDescription,
 .todayBuilderHeader .disclosureDescription,
 .todayActivityBand .disclosureDescription {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   justify-self: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .nextStepBody {
@@ -8354,8 +8464,34 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .projectsBand .disclosureHeader,
 .inboxBand .disclosureHeader {
-  grid-template-columns: max-content max-content max-content minmax(0, 1fr);
+  grid-template-columns: max-content max-content minmax(0, 1fr) max-content;
   min-height: 48px;
+}
+
+.disclosureHeaderActions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.sectionMenuButton {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  padding: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 18px;
+}
+
+.sectionMenuButton:hover,
+.sectionMenuButton:focus-visible {
+  border-color: var(--line);
+  background: var(--control-neutral-hover-bg);
+  color: var(--accent-strong);
 }
 
 .projectGrid,
@@ -8391,8 +8527,31 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayBuilderRow .todayBuilderAddButton {
+  min-height: 30px;
   padding-inline: 8px;
   white-space: nowrap;
+}
+
+.todayBuilderRow .inboxProjectIdentity .projectIdentity,
+.todayBuilderRow .sourceProjectNone {
+  color: var(--text-muted-readable);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.todayBuilderRow .sourceRowMenu {
+  width: 28px;
+  height: 28px;
+  border-color: transparent;
+  background: transparent;
+  opacity: 1;
+}
+
+.todayBuilderRow .sourceRowMenu:hover,
+.todayBuilderRow .sourceRowMenu:focus-visible {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.055);
 }
 
 .sourceListRow .sourceListCopy,
@@ -8421,8 +8580,54 @@ input[type="number"]::-webkit-inner-spin-button {
   font-size: var(--dashboard-font-meta);
 }
 
-.sourceListRow:not(.nextStepRow--dragging):not(.inboxRow--dragging):not(.todayBuilderRow--dragging):hover,
-.sourceListRow:not(.nextStepRow--dragging):not(.inboxRow--dragging):not(.todayBuilderRow--dragging):focus-within {
+.todayBuilderProjectGroupHeader {
+  width: 100%;
+  min-height: 36px;
+  display: grid;
+  grid-template-columns: 16px minmax(0, max-content) max-content minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-bottom: 1px solid var(--line-soft);
+  border-radius: 0;
+  padding: 4px 10px;
+  background: transparent;
+  color: var(--text-muted-readable);
+  text-align: left;
+}
+
+.todayBuilderProjectGroupHeader:hover,
+.todayBuilderProjectGroupHeader:focus-visible {
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--text);
+}
+
+.todayBuilderProjectGroupHeader .projectIdentity,
+.todayBuilderProjectGroupHeader > strong {
+  min-width: 0;
+  color: inherit;
+  font-size: var(--dashboard-font-meta);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.todayBuilderProjectGroupHeader > span:last-child {
+  color: var(--muted);
+  font-size: var(--dashboard-font-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+.todayBuilderRow.sourceListRow .sourceListCopy--groupedWishlist {
+  grid-template-columns: minmax(0, 1fr);
+  padding-left: 22px;
+}
+
+.sourceListRow:not(.nextStepRow--dragging):not(.inboxRow--dragging):not(
+    .todayBuilderRow--dragging
+  ):hover,
+.sourceListRow:not(.nextStepRow--dragging):not(.inboxRow--dragging):not(
+    .todayBuilderRow--dragging
+  ):focus-within {
   background: var(--control-neutral-hover-bg);
   border-bottom-color: var(--line);
 }
@@ -8450,12 +8655,29 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .nextStepHeaderAdd--project {
-  align-self: stretch;
+  align-self: center;
+  min-height: 28px;
   border: 1px solid rgba(231, 185, 77, 0.58);
   border-radius: var(--radius);
   padding-inline: 10px;
   background: rgba(231, 185, 77, 0.1);
   color: var(--accent-strong);
+}
+
+.nextStepHeaderAdd--wishlist {
+  align-self: center;
+  min-height: 28px;
+  border: 1px solid rgba(231, 185, 77, 0.58);
+  padding-inline: 9px;
+  background: rgba(231, 185, 77, 0.1);
+  color: var(--accent-strong);
+}
+
+.nextStepHeaderAdd--wishlist:hover:not(:disabled),
+.nextStepHeaderAdd--wishlist:focus-visible {
+  border-color: var(--accent);
+  background: rgba(231, 185, 77, 0.18);
+  color: var(--text);
 }
 
 .nextStepHeaderAdd--project:hover:not(:disabled),
@@ -8492,8 +8714,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .nextStepProjectRegion {
-  grid-template-columns: minmax(0, 1fr) 32px;
-  gap: 4px;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .nextStepProjectRegion h3 {
@@ -8510,8 +8731,8 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .nextStepActionRegion {
-  grid-template-columns: minmax(0, 1fr) max-content;
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) max-content 32px;
+  gap: 8px;
 }
 
 .nextStepActionRegion p {
@@ -8520,6 +8741,10 @@ input[type="number"]::-webkit-inner-spin-button {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--text);
+  font-size: var(--dashboard-font-body);
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .nextStepProjectRegion:hover,
@@ -8533,7 +8758,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .nextStepRow .sourceRowMenu {
-  opacity: 0;
+  opacity: 1;
 }
 
 .nextStepProjectRegion:hover .sourceRowMenu,
@@ -8542,6 +8767,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .nextStepRowAction {
+  position: relative;
   min-height: 30px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -8553,8 +8779,58 @@ input[type="number"]::-webkit-inner-spin-button {
   white-space: nowrap;
 }
 
-.nextStepRowAction:hover:not(:disabled),
-.nextStepRowAction:focus-visible {
+.nextStepRowAction::before {
+  position: absolute;
+  inset: -8px 0;
+  content: "";
+}
+
+.nextStepRowAction--set {
+  border-color: rgba(117, 196, 143, 0.42);
+  background: var(--control-positive-bg);
+  color: var(--good);
+}
+
+.nextStepRowAction--set:hover:not(:disabled),
+.nextStepRowAction--set:focus-visible {
+  border-color: var(--good);
+  background: rgba(117, 196, 143, 0.16);
+  color: #92e5ae;
+}
+
+.todayTimerCluster .todayTimerActions--measure {
+  width: 200px;
+  height: 36px;
+  justify-content: flex-end;
+  gap: 5px;
+  border: 1px solid rgba(190, 181, 164, 0.32);
+  border-radius: var(--radius);
+  padding: 0 6px;
+  background: var(--surface-soft);
+}
+
+.todayTimerCluster .todayTimerActions--measure .measureElapsedClock {
+  min-width: 44px;
+}
+
+.todayTimerCluster .todayTimerActions--measure .runningPauseButton,
+.todayTimerCluster .todayTimerActions--measure .runningStopButton {
+  width: auto;
+  min-width: 46px;
+  height: 25px;
+  min-height: 25px;
+  padding-inline: 6px;
+  font-size: var(--dashboard-font-meta);
+}
+
+.nextStepRowAction--change {
+  border-color: rgba(231, 185, 77, 0.3);
+  background: rgba(231, 185, 77, 0.055);
+  color: var(--accent-strong);
+}
+
+.nextStepRowAction--change:hover:not(:disabled),
+.nextStepRowAction--change:focus-visible {
   border-color: var(--accent);
   color: var(--accent-strong);
 }
@@ -8562,6 +8838,194 @@ input[type="number"]::-webkit-inner-spin-button {
 .nextStepRowAction:disabled {
   cursor: not-allowed;
   opacity: 0.48;
+}
+
+.projectsBand {
+  container-type: inline-size;
+}
+
+.projectsBand .nextStepBody {
+  gap: 9px;
+  padding: 10px 8px 2px;
+}
+
+.projectsBand .projectGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  border-left: 0;
+  padding-left: 0;
+}
+
+.nextStepCard.nextStepRow.sourceListRow {
+  position: relative;
+  height: 120px;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 9px 9px 7px 12px;
+  background: var(--surface-soft);
+  cursor: grab;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    transform 120ms ease;
+}
+
+.nextStepCard::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--project-color);
+  content: "";
+}
+
+.nextStepCard.nextStepRow.sourceListRow:hover,
+.nextStepCard.nextStepRow.sourceListRow:focus-within {
+  border-color: var(--line-strong);
+  background: var(--control-neutral-hover-bg);
+  transform: translateY(-1px);
+}
+
+.nextStepCard.nextStepRow.sourceListRow:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.nextStepCard--dropTarget.nextStepRow.sourceListRow {
+  border-color: var(--accent);
+  background: rgba(231, 185, 77, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(231, 185, 77, 0.18);
+}
+
+.nextStepCard .nextStepProjectRegion {
+  min-height: 20px;
+  display: block;
+  border: 0;
+  padding: 0 30px 0 0;
+  text-align: left;
+}
+
+.nextStepCard .nextStepProjectRegion:hover,
+.nextStepCard .nextStepProjectRegion:focus-within {
+  border-color: transparent;
+  background: transparent;
+}
+
+.nextStepCard .nextStepProjectRegion h3 .projectIdentity {
+  color: var(--muted);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.nextStepCard .nextStepActionRegion {
+  min-height: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  border: 0;
+  padding: 0 0 0 3px;
+}
+
+.nextStepCard .nextStepActionRegion:hover,
+.nextStepCard .nextStepActionRegion:focus-within {
+  border-color: transparent;
+  background: transparent;
+}
+
+.nextStepCard .nextStepActionRegion p {
+  min-height: 31px;
+  display: -webkit-box;
+  margin: 9px 0 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: var(--dashboard-font-body);
+  font-weight: 650;
+  line-height: 1.45;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.nextStepCard .nextStepActionRegion .projectNextStepPlaceholder {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 7px;
+  border: 1px dashed color-mix(in srgb, var(--project-color) 52%, var(--line));
+  border-radius: var(--radius);
+  padding: 0 9px;
+  background: color-mix(in srgb, var(--project-color) 5%, transparent);
+  color: var(--text-muted-readable) !important;
+  font-size: var(--dashboard-font-meta);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.nextStepCard .nextStepRowAction {
+  align-self: flex-end;
+  min-height: 28px;
+  margin-top: auto;
+  padding-inline: 8px;
+  border-color: var(--line-strong);
+  background: rgba(255, 255, 255, 0.018);
+  color: var(--muted);
+  font-size: var(--dashboard-font-meta);
+}
+
+.nextStepCard .nextStepRowAction:hover:not(:disabled),
+.nextStepCard .nextStepRowAction:focus-visible {
+  border-color: color-mix(in srgb, var(--project-color) 62%, var(--line-strong));
+  background: color-mix(in srgb, var(--project-color) 7%, var(--surface-soft));
+  color: var(--text);
+}
+
+.nextStepCard .nextStepRegionMenu {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 28px;
+  height: 28px;
+  border-color: transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  opacity: 1;
+  z-index: 2;
+}
+
+.nextStepCard .nextStepRegionMenu:hover,
+.nextStepCard .nextStepRegionMenu:focus-visible {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.nextStepCardControls {
+  padding: 1px 0 7px;
+}
+
+.nextStepCardControls button {
+  min-height: 30px;
+}
+
+@container (max-width: 900px) {
+  .projectsBand .projectGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (max-width: 680px) {
+  .projectsBand .projectGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .nextStepEditDialog {
@@ -8662,8 +9126,13 @@ input[type="number"]::-webkit-inner-spin-button {
   border-bottom: 1px solid var(--line-soft);
   border-radius: 0;
   background: transparent;
-  color: var(--muted);
+  color: var(--text-muted-readable);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 650;
   text-align: left;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
 }
 
 .wishlistGroupHeader:hover {
@@ -8673,6 +9142,14 @@ input[type="number"]::-webkit-inner-spin-button {
 .wishlistGroupHeader .projectIdentity {
   min-width: 0;
   color: var(--text);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 650;
+}
+
+.wishlistGroupHeader > strong {
+  color: var(--text);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 650;
 }
 
 .wishlistGroupHeader > span:last-child {
@@ -8681,18 +9158,134 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .wishlistGroup .inboxRow.sourceListRow {
-  grid-template-columns: 20px minmax(0, 1fr) auto 32px;
+  grid-template-columns: minmax(0, 1fr) auto 32px;
   gap: 8px;
 }
 
-.wishlistGroup .sourceRowMenu {
-  grid-column: 4;
+.wishlistGroup .inboxItemText {
+  font-size: var(--dashboard-font-meta);
+  font-weight: 600;
 }
 
-.wishlistDragHandle {
-  color: var(--muted);
-  font-size: 18px;
-  text-align: center;
+.wishlistGroup .sourceRowMenu {
+  grid-column: 3;
+}
+
+.todayRow .todayRowMenu {
+  opacity: 1;
+}
+
+.wishlistGroup--dragging {
+  opacity: 0.5;
+}
+
+.wishlistGroupDropIndicator {
+  position: fixed;
+  z-index: 80;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 6px rgba(231, 185, 77, 0.4);
+  pointer-events: none;
+}
+
+.doNowStartPrimary::after,
+.doNowStartSecondary::after,
+.todayStartButton::after {
+  position: absolute;
+  right: 12px;
+  bottom: 0;
+  left: 12px;
+  height: 2px;
+  background: currentColor;
+  content: "";
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 150ms ease;
+}
+
+.doNowStartPrimary:hover:not(:disabled)::after,
+.doNowStartPrimary:focus-visible::after,
+.doNowStartSecondary:hover:not(:disabled)::after,
+.doNowStartSecondary:focus-visible::after,
+.todayStartButton:hover:not(:disabled)::after,
+.todayStartButton:focus-visible::after {
+  transform: scaleX(1);
+}
+
+.wishlistGroupDragGhost {
+  position: fixed;
+  z-index: 90;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  background: var(--surface-strong);
+  color: var(--text);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 700;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.34);
+  pointer-events: none;
+}
+
+.todayBuilderRow .sourceRowMenu {
+  width: 28px;
+  height: 28px;
+  opacity: 1;
+}
+
+.todayBuilderRow .sourceRowMenu:hover,
+.todayBuilderRow .sourceRowMenu:focus-visible {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.todayBuilderRow .todayBuilderAddButton {
+  min-height: 30px;
+  height: 30px;
+  padding-inline: 8px;
+  font-size: var(--dashboard-font-meta);
+}
+
+.projectsBand,
+.inboxBand {
+  position: relative;
+}
+
+.sourceReturnBand--target {
+  border-radius: var(--radius);
+  outline: 2px solid rgba(231, 185, 77, 0.58);
+  outline-offset: 3px;
+  background: rgba(231, 185, 77, 0.055);
+}
+
+.sourceReturnBand--active {
+  outline-color: var(--accent);
+  background: rgba(231, 185, 77, 0.09);
+}
+
+.sourceReturnDropZone {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px dashed var(--accent);
+  border-radius: var(--radius);
+  background: rgba(231, 185, 77, 0.065);
+  color: var(--accent-strong);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 650;
+  pointer-events: none;
+}
+
+.sourceReturnDropZone--active {
+  background: rgba(231, 185, 77, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(231, 185, 77, 0.16);
 }
 
 .wishlistTodayStatus,
@@ -8775,7 +9368,16 @@ input[type="number"]::-webkit-inner-spin-button {
   }
 
   .nextStepActionRegion {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) 32px;
+  }
+
+  .nextStepActionRegion p {
+    grid-column: 1 / -1;
+  }
+
+  .nextStepActionRegion .sourceRowMenu {
+    grid-column: 2;
+    grid-row: 2;
   }
 
   .nextStepRowAction {
@@ -8789,7 +9391,9 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 @media (hover: none) {
-  .sourceRowMenu { opacity: 1; }
+  .sourceRowMenu {
+    opacity: 1;
+  }
 }
 .sectionEmptyActions {
   grid-column: 1 / -1;
@@ -8891,6 +9495,11 @@ input[type="number"]::-webkit-inner-spin-button {
 @media (max-width: 900px) {
   .todayGrid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .projectsBand .disclosureDescription,
+  .inboxBand .disclosureDescription {
+    display: none;
   }
 }
 
@@ -9403,45 +10012,102 @@ input[type="number"]::-webkit-inner-spin-button {
   animation: completion-particle 900ms ease-out forwards;
 }
 
-.completionParticle:nth-child(1) { --completion-x: -96px; --completion-y: -38px; }
-.completionParticle:nth-child(2) { --completion-x: -62px; --completion-y: 42px; animation-delay: 35ms; }
-.completionParticle:nth-child(3) { --completion-x: -24px; --completion-y: -58px; animation-delay: 60ms; }
-.completionParticle:nth-child(4) { --completion-x: 28px; --completion-y: -52px; animation-delay: 25ms; }
-.completionParticle:nth-child(5) { --completion-x: 68px; --completion-y: 38px; animation-delay: 70ms; }
-.completionParticle:nth-child(6) { --completion-x: 102px; --completion-y: -30px; animation-delay: 45ms; }
+.completionParticle:nth-child(1) {
+  --completion-x: -96px;
+  --completion-y: -38px;
+}
+.completionParticle:nth-child(2) {
+  --completion-x: -62px;
+  --completion-y: 42px;
+  animation-delay: 35ms;
+}
+.completionParticle:nth-child(3) {
+  --completion-x: -24px;
+  --completion-y: -58px;
+  animation-delay: 60ms;
+}
+.completionParticle:nth-child(4) {
+  --completion-x: 28px;
+  --completion-y: -52px;
+  animation-delay: 25ms;
+}
+.completionParticle:nth-child(5) {
+  --completion-x: 68px;
+  --completion-y: 38px;
+  animation-delay: 70ms;
+}
+.completionParticle:nth-child(6) {
+  --completion-x: 102px;
+  --completion-y: -30px;
+  animation-delay: 45ms;
+}
 
 @keyframes completion-sweep {
-  to { transform: translateX(110%); }
+  to {
+    transform: translateX(110%);
+  }
 }
 
 @keyframes completion-gold-pulse {
-  0%, 100% { box-shadow: none; }
-  42% { box-shadow: 0 0 16px rgba(231, 185, 77, 0.13); }
+  0%,
+  100% {
+    box-shadow: none;
+  }
+  42% {
+    box-shadow: 0 0 16px rgba(231, 185, 77, 0.13);
+  }
 }
 
 @keyframes completion-card-pop {
-  0%, 100% { transform: scale(1); }
-  42% { transform: scale(1.012); }
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  42% {
+    transform: scale(1.012);
+  }
 }
 
 @keyframes completion-check-pop {
-  0% { opacity: 0; transform: scale(0.7); }
-  100% { opacity: 1; transform: scale(1); }
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 @keyframes completion-grid-glow {
-  0%, 100% { filter: none; }
-  40% { filter: drop-shadow(0 0 12px rgba(231, 185, 77, 0.14)); }
+  0%,
+  100% {
+    filter: none;
+  }
+  40% {
+    filter: drop-shadow(0 0 12px rgba(231, 185, 77, 0.14));
+  }
 }
 
 @keyframes completion-label-in {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes completion-particle {
-  0% { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(0.65); }
-  14% { opacity: 1; }
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0deg) scale(0.65);
+  }
+  14% {
+    opacity: 1;
+  }
   100% {
     opacity: 0;
     transform: translate(var(--completion-x), var(--completion-y)) rotate(170deg) scale(0.8);
@@ -9472,6 +10138,9 @@ input[type="number"]::-webkit-inner-spin-button {
   .doNowStartSecondary,
   .todayStartButton,
   .timerStartHoverGlyph,
+  .doNowStartPrimary::after,
+  .doNowStartSecondary::after,
+  .todayStartButton::after,
   .todayStartButton .nextStepStartGlyph {
     transition: none !important;
   }

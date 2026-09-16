@@ -114,7 +114,7 @@ test("P8 instruction picker searches, applies and cancels a draft", async ({ pag
   await environmentCancel.click();
 });
 
-test("P8 add actions are independent and available from bars and rows", async ({ page }) => {
+test("P8 add actions are independent and available from source bars", async ({ page }) => {
   await prepare(page);
   const projectDisclosure = page.locator(".projectsBand .disclosure");
   const projectAdd = page.getByRole("button", { name: "プロジェクトを追加", exact: true });
@@ -134,9 +134,7 @@ test("P8 add actions are independent and available from bars and rows", async ({
   await expect(page.getByRole("dialog", { name: "プロジェクトを追加" })).toBeVisible();
   await page.keyboard.press("Escape");
   await page.locator(".nextStepProjectRegion").first().click({ button: "right" });
-  await page.getByRole("menuitem", { name: "やりたいことを追加" }).click();
-  const contextualWishlist = page.getByRole("dialog", { name: "やりたいことを追加" });
-  await expect(contextualWishlist.getByRole("combobox", { name: "プロジェクト（任意）" })).toHaveValue("sample-learning");
+  await expect(page.getByRole("menuitem", { name: "やりたいことを追加" })).toHaveCount(0);
   await page.keyboard.press("Escape");
   await page.locator(".nextStepActionRegion").first().click({ button: "right" });
   await page.getByRole("menuitem", { name: "次の一手を編集" }).click();
@@ -144,6 +142,9 @@ test("P8 add actions are independent and available from bars and rows", async ({
   await page.keyboard.press("Escape");
 
   const wishlistDisclosure = page.locator(".inboxBand .disclosure");
+  if ((await wishlistDisclosure.getAttribute("aria-expanded")) === "false") {
+    await wishlistDisclosure.click();
+  }
   await expect(wishlistDisclosure).toHaveAttribute("aria-expanded", "true");
   await expectBarEdgeClick(
     page,
@@ -159,8 +160,7 @@ test("P8 add actions are independent and available from bars and rows", async ({
   if (await wishlistDisclosure.getAttribute("aria-expanded") === "false") await wishlistDisclosure.click();
   await expect(page.locator(".inboxBody")).toBeVisible();
   await page.locator(".inboxRow").first().click({ button: "right" });
-  await page.getByRole("menuitem", { name: "やりたいことを追加" }).click();
-  await expect(page.getByRole("dialog", { name: "やりたいことを追加" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "やりたいことを追加" })).toHaveCount(0);
 });
 
 test("P8 form actions fit at 860 and use apply/cancel semantics", async ({ page }) => {

@@ -6,6 +6,7 @@ import type {
 } from "./types";
 
 export type NextStepReplacementChoice = "return" | "complete";
+export type NextStepRemovalChoice = "return" | "delete";
 
 export type WishlistGroup = {
   key: string;
@@ -23,6 +24,7 @@ export function wishlistGroupKey(item: InboxItem, projectIds: ReadonlySet<string
 export function groupWishlist(config: AppConfig): WishlistGroup[] {
   const projectIds = new Set(config.projects.map((project) => project.id));
   const groups = new Map<string, WishlistGroup>();
+  const groupOrder: string[] = [];
   config.projects.forEach((project) => {
     groups.set(`project:${project.id}`, {
       key: `project:${project.id}`,
@@ -34,15 +36,39 @@ export function groupWishlist(config: AppConfig): WishlistGroup[] {
   const unassigned: WishlistGroup = { key: "unassigned", name: "未分類", items: [] };
   config.inbox.forEach((item, index) => {
     const key = wishlistGroupKey(item, projectIds);
+    if (!groupOrder.includes(key)) groupOrder.push(key);
     (key === "unassigned" ? unassigned : groups.get(key))?.items.push({ item, index });
   });
-  return [
-    ...config.projects.flatMap((project) => {
-      const group = groups.get(`project:${project.id}`);
-      return group?.items.length ? [group] : [];
-    }),
-    ...(unassigned.items.length ? [unassigned] : []),
-  ];
+  return groupOrder.flatMap((key) => {
+    const group = key === "unassigned" ? unassigned : groups.get(key);
+    return group?.items.length ? [group] : [];
+  });
+}
+
+export function reorderWishlistGroups(
+  config: AppConfig,
+  draggedKey: string,
+  targetKey: string,
+  placement: "before" | "after",
+): AppConfig {
+  if (draggedKey === targetKey) return config;
+  const keys = groupWishlist(config).map((group) => group.key);
+  if (!keys.includes(draggedKey) || !keys.includes(targetKey)) return config;
+
+  const nextKeys = keys.filter((key) => key !== draggedKey);
+  const targetIndex = nextKeys.indexOf(targetKey);
+  nextKeys.splice(targetIndex + (placement === "after" ? 1 : 0), 0, draggedKey);
+
+  const projectIds = new Set(config.projects.map((project) => project.id));
+  const itemsByGroup = new Map<string, InboxItem[]>();
+  config.inbox.forEach((item) => {
+    const key = wishlistGroupKey(item, projectIds);
+    itemsByGroup.set(key, [...(itemsByGroup.get(key) ?? []), item]);
+  });
+  return {
+    ...config,
+    inbox: nextKeys.flatMap((key) => itemsByGroup.get(key) ?? []),
+  };
 }
 
 export function sameNextStepSnapshot(
@@ -50,6 +76,39 @@ export function sameNextStepSnapshot(
   expected: LauncherNextStep | undefined,
 ): boolean {
   return JSON.stringify(current) === JSON.stringify(expected);
+}
+
+export function prepareNextStepRemoval(
+  config: AppConfig,
+  input: {
+    projectId: string;
+    expectedCurrent: LauncherNextStep;
+    choice: NextStepRemovalChoice;
+    createId: () => string;
+  },
+): AppConfig {
+  const project = config.projects.find((candidate) => candidate.id === input.projectId);
+  if (!project?.nextStep || !sameNextStepSnapshot(project.nextStep, input.expectedCurrent)) {
+    throw new Error("現在の次の一手が変更されたため、内容を確認し直してください");
+  }
+
+  return {
+    ...config,
+    projects: config.projects.map((candidate) =>
+      candidate.id === project.id ? { ...candidate, nextStep: undefined } : candidate,
+    ),
+    inbox:
+      input.choice === "return"
+        ? [
+            ...config.inbox,
+            {
+              id: input.createId(),
+              text: project.nextStep.text,
+              projectId: project.id,
+            },
+          ]
+        : config.inbox,
+  };
 }
 
 export function prepareNextStepReplacement(
@@ -113,5 +172,45 @@ export function prepareNextStepReplacement(
     sourceCompletions: completion
       ? [...config.sourceCompletions, completion]
       : config.sourceCompletions,
+  };
+}
+
+export function prepareWishlistPromotion(
+  config: AppConfig,
+  input: {
+    wishlistId: string;
+    projectId: string;
+    nextStep: LauncherNextStep;
+    expectedCurrent: LauncherNextStep | undefined;
+    createId: () => string;
+  },
+): AppConfig {
+  const project = config.projects.find((candidate) => candidate.id === input.projectId);
+  const wishlistItem = config.inbox.find((item) => item.id === input.wishlistId);
+  if (!project || !sameNextStepSnapshot(project.nextStep, input.expectedCurrent)) {
+    throw new Error("現在の次の一手が変更されたため、内容を確認し直してください");
+  }
+  if (!wishlistItem) {
+    throw new Error("元のやりたいことが見つかりません");
+  }
+
+  const retainedInbox = config.inbox.filter((item) => item.id !== input.wishlistId);
+  return {
+    ...config,
+    projects: config.projects.map((candidate) =>
+      candidate.id === project.id
+        ? { ...candidate, nextStep: input.nextStep, legacyNextStepSettings: undefined }
+        : candidate,
+    ),
+    inbox: project.nextStep?.text.trim()
+      ? [
+          ...retainedInbox,
+          {
+            id: input.createId(),
+            text: project.nextStep.text,
+            projectId: project.id,
+          },
+        ]
+      : retainedInbox,
   };
 }
