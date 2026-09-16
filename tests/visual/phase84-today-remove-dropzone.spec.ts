@@ -23,9 +23,9 @@ function dropFixture(): VisualQaFixture {
   return fixture;
 }
 
-async function prepare(page: Page, fixture = dropFixture()) {
+async function prepare(page: Page, fixture = dropFixture(), width = 1440) {
   await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
-  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.setViewportSize({ width, height: 1000 });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
   await expect(page.locator(".todayRow")).toHaveCount(fixture.config.today.items.length);
@@ -88,25 +88,30 @@ test("P84-02 remove Drop Zone stays hidden until the actual drag threshold and E
   await expect(page.locator(".todayRow")).toHaveCount(3);
 });
 
-test("P84 Remove Drop Zone spans the Today area with a forgiving 64px target", async ({ page }) => {
-  await prepare(page);
-  await beginTodayDrag(page, page.locator(".todayRow").first());
+for (const width of [1440, 1000, 860]) {
+  test(`P84 Remove Drop Zone spans the Today area with a 76px visual target at ${width}`, async ({
+    page,
+  }) => {
+    await prepare(page, dropFixture(), width);
+    await beginTodayDrag(page, page.locator(".todayRow").first());
 
-  const grid = page.locator(".todayGrid");
-  const zone = page.locator(".todayRemoveDropZone");
-  await expect(zone).toBeVisible();
-  const gridBox = await grid.boundingBox();
-  const zoneBox = await zone.boundingBox();
-  expect(gridBox).not.toBeNull();
-  expect(zoneBox).not.toBeNull();
-  expect(zoneBox!.height).toBeGreaterThanOrEqual(64);
-  expect(Math.abs(zoneBox!.width - gridBox!.width)).toBeLessThanOrEqual(1);
-  const gap = zoneBox!.y - (gridBox!.y + gridBox!.height);
-  expect(gap).toBeGreaterThanOrEqual(8);
-  expect(gap).toBeLessThanOrEqual(12);
+    const grid = page.locator(".todayGrid");
+    const zone = page.locator(".todayRemoveDropZone");
+    await expect(zone).toBeVisible();
+    const gridBox = await grid.boundingBox();
+    const zoneBox = await zone.boundingBox();
+    expect(gridBox).not.toBeNull();
+    expect(zoneBox).not.toBeNull();
+    expect(zoneBox!.height).toBeGreaterThanOrEqual(72);
+    expect(zoneBox!.height).toBeLessThanOrEqual(80);
+    expect(Math.abs(zoneBox!.width - gridBox!.width)).toBeLessThanOrEqual(1);
+    const gap = zoneBox!.y - (gridBox!.y + gridBox!.height);
+    expect(gap).toBeGreaterThanOrEqual(8);
+    expect(gap).toBeLessThanOrEqual(12);
 
-  await page.keyboard.press("Escape");
-});
+    await page.keyboard.press("Escape");
+  });
+}
 
 for (const source of [
   { name: "NextStep", index: 0 },
@@ -235,4 +240,34 @@ test("P84-02 completed card and keyboard context fallback share the remove handl
   await expect(remove).toBeVisible();
   await remove.click();
   await expect(page.locator(".todayRow")).toHaveCount(1);
+});
+
+for (const target of [
+  { name: "20px upper extension", edge: "top", offset: -18 },
+  { name: "6px lower extension", edge: "bottom", offset: 5 },
+] as const) {
+  test(`P84 Remove Drop Zone activates and drops within the ${target.name}`, async ({ page }) => {
+    await prepare(page);
+    await beginTodayDrag(page, page.locator(".todayRow").first());
+    const zone = page.locator(".todayRemoveDropZone");
+    const box = await zone.boundingBox();
+    expect(box).not.toBeNull();
+    const y = target.edge === "top" ? box!.y + target.offset : box!.y + box!.height + target.offset;
+    await page.mouse.move(box!.x + box!.width / 2, y, { steps: 5 });
+    await expect(zone).toHaveClass(/todayRemoveDropZone--active/);
+    await page.mouse.up();
+    await expect(page.locator(".todayRow")).toHaveCount(2);
+  });
+}
+
+test("P84 Remove Drop Zone ignores a point outside its upper hit extension", async ({ page }) => {
+  await prepare(page);
+  await beginTodayDrag(page, page.locator(".todayRow").first());
+  const zone = page.locator(".todayRemoveDropZone");
+  const box = await zone.boundingBox();
+  expect(box).not.toBeNull();
+  await page.mouse.move(box!.x + box!.width / 2, box!.y - 28, { steps: 5 });
+  await expect(zone).not.toHaveClass(/todayRemoveDropZone--active/);
+  await page.mouse.up();
+  await expect(page.locator(".todayRow")).toHaveCount(3);
 });
