@@ -1759,11 +1759,6 @@ function nearestProjectDropTargetFromPoint(
   return nearest ? projectDropTargetFromCard(nearest.card, x, y) : null;
 }
 
-function nextStepTargetProjectFromPoint(x: number, y: number): string | null {
-  const element = document.elementFromPoint(x, y);
-  const card = element?.closest<HTMLElement>(".nextStepCard[data-project-id]");
-  return card?.dataset.projectId ?? null;
-}
 
 function wishlistGroupDropTargetFromPoint(
   x: number,
@@ -5434,14 +5429,15 @@ function DashboardApp() {
     const sourceEditable = Boolean(
       sourceItem?.id && !sourceEditBlocked(`wishlist:${sourceItem.id}`),
     );
-    const hoveredProjectId = nextStepTargetProjectFromPoint(event.clientX, event.clientY);
+    const sourceProject = sourceItem?.projectId
+      ? current?.projects.find((project) => project.id === sourceItem.projectId)
+      : undefined;
     const nextStepEligible = Boolean(
-      sourceEditable &&
-        current?.projects.some((project) => !sourceEditBlocked(`project:${project.id}`)),
+      sourceEditable && sourceProject && !sourceEditBlocked(`project:${sourceProject.id}`),
     );
     const nextStepTargetProjectId =
-      hoveredProjectId && sourceEditable && !sourceEditBlocked(`project:${hoveredProjectId}`)
-        ? hoveredProjectId
+      nextStepEligible && pointWithinSelector(event.clientX, event.clientY, ".projectsBand")
+        ? sourceProject?.id
         : undefined;
     const candidateTarget =
       builderRestoreTargetFromPoint(event.clientX, event.clientY) || nextStepTargetProjectId
@@ -5497,17 +5493,22 @@ function DashboardApp() {
       current?.inbox.findIndex((item) => item.id === drag.sourceKey.slice("wishlist:".length)) ??
       -1;
     if (sourceIndex < 0) return;
-    const targetProjectId = nextStepTargetProjectFromPoint(event.clientX, event.clientY);
     const sourceItem = current?.inbox[sourceIndex];
+    const sourceProject = sourceItem?.projectId
+      ? current?.projects.find((project) => project.id === sourceItem.projectId)
+      : undefined;
+    const overNextStep = pointWithinSelector(event.clientX, event.clientY, ".projectsBand");
     if (
-      targetProjectId &&
+      overNextStep &&
       sourceItem?.id &&
+      sourceProject &&
       !sourceEditBlocked(`wishlist:${sourceItem.id}`) &&
-      !sourceEditBlocked(`project:${targetProjectId}`)
+      !sourceEditBlocked(`project:${sourceProject.id}`)
     ) {
-      void promoteWishlistToProject(sourceItem.id, targetProjectId);
+      void promoteWishlistToProject(sourceItem.id);
       return;
     }
+    if (overNextStep) return;
     const target = inboxDropTargetFromPoint(event.clientX, event.clientY);
     if (!target) return;
     const placement =
@@ -7621,11 +7622,14 @@ function DashboardApp() {
     void refreshInstructionChoices();
   };
 
-  const promoteWishlistToProject = async (wishlistId: string, projectId: string) => {
+  const promoteWishlistToProject = async (wishlistId: string) => {
     const current = configRef.current;
     const item = current?.inbox.find((candidate) => candidate.id === wishlistId);
-    const project = current?.projects.find((candidate) => candidate.id === projectId);
+    const project = item?.projectId
+      ? current?.projects.find((candidate) => candidate.id === item.projectId)
+      : undefined;
     if (!current || !item || !project || sourceEditBusyRef.current) return false;
+    const projectId = project.id;
     const wishlistSource = `wishlist:${wishlistId}`;
     const projectSource = `project:${projectId}`;
     if (sourceEditBlocked(wishlistSource) || sourceEditBlocked(projectSource)) {

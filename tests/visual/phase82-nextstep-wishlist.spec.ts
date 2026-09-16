@@ -758,6 +758,50 @@ test("v1.3 Wishlist project groups reorder independently and expose Project edit
   await expect(page.getByRole("dialog", { name: "プロジェクトを編集" })).toBeVisible();
 });
 
+test("v1.3 Wishlist D&D always promotes to the source Project", async ({ page }) => {
+  const fixture = createPublicFixture();
+  const sourceProject = fixture.config.projects[0];
+  const otherProject = fixture.config.projects[1];
+  const otherNextStepBefore = structuredClone(otherProject.nextStep);
+  fixture.config.inbox = [
+    {
+      id: "source-project-locked-drop",
+      text: "所属プロジェクトにだけ登録する",
+      projectId: sourceProject.id,
+      buttonIds: [],
+    },
+  ];
+  await prepare(page, fixture);
+
+  const source = page.locator('[data-inbox-id="source-project-locked-drop"]');
+  const sourceCard = page.locator(`.nextStepCard[data-project-id="${sourceProject.id}"]`);
+  const otherCard = page.locator(`.nextStepCard[data-project-id="${otherProject.id}"]`);
+  await source.scrollIntoViewIfNeeded();
+  const from = (await source.boundingBox())!;
+  const to = (await otherCard.boundingBox())!;
+
+  await page.mouse.move(from.x + 20, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(from.x + 32, from.y + from.height / 2, { steps: 2 });
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 6 });
+  await expect(sourceCard).toHaveClass(/nextStepCard--dropTarget/);
+  await expect(otherCard).not.toHaveClass(/nextStepCard--dropTarget/);
+  await page.mouse.up();
+
+  await expect
+    .poll(
+      async () =>
+        (await currentConfig(page)).projects.find(({ id }) => id === sourceProject.id)?.nextStep
+          ?.text,
+    )
+    .toBe("所属プロジェクトにだけ登録する");
+  const saved = await currentConfig(page);
+  expect(saved.projects.find(({ id }) => id === otherProject.id)?.nextStep).toEqual(
+    otherNextStepBefore,
+  );
+  expect(saved.inbox.some(({ id }) => id === "source-project-locked-drop")).toBe(false);
+});
+
 test("v1.3 Wishlist item drop sets or replaces a NextStep and returns the old one", async ({
   page,
 }) => {

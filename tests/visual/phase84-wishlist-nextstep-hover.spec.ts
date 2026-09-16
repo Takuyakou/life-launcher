@@ -35,6 +35,8 @@ async function style(locator: Locator) {
       backgroundColor: computed.backgroundColor,
       borderColor: computed.borderColor,
       color: computed.color,
+      borderRadius: computed.borderRadius,
+      fontWeight: computed.fontWeight,
       right: rect.right,
       height: rect.height,
     };
@@ -86,6 +88,12 @@ test("P84 Wishlist promote action is status-aware, stable, keyboard reachable, a
     ),
   ).toEqual(["wishlistNextStepSlot", "wishlistTodayStatus", "sourceRowMenu"]);
 
+  const setButton = page.getByRole("button", { name: "次の一手を設定", exact: true });
+  await setButton.hover();
+  await page.waitForTimeout(140);
+  const setHover = await style(setButton);
+  await page.mouse.move(1, 1);
+
   const plainBefore = await style(plain);
   const plainMenuBefore = await style(plainMenu);
   await page.locator(".inboxBand").screenshot({
@@ -94,6 +102,12 @@ test("P84 Wishlist promote action is status-aware, stable, keyboard reachable, a
   await plain.hover();
   await page.waitForTimeout(140);
   await expect(plainAction).toHaveCSS("opacity", "1");
+  const revealedAction = await style(plainAction);
+  expect(revealedAction.backgroundColor).toBe(setHover.backgroundColor);
+  expect(revealedAction.borderColor).toBe(setHover.borderColor);
+  expect(revealedAction.color).toBe(setHover.color);
+  expect(revealedAction.borderRadius).toBe("8px");
+  expect(revealedAction.fontWeight).toBe(setHover.fontWeight);
   const plainAfter = await style(plain);
   const plainMenuAfter = await style(plainMenu);
   expect(plainAfter.height).toBe(plainBefore.height);
@@ -110,10 +124,6 @@ test("P84 Wishlist promote action is status-aware, stable, keyboard reachable, a
     path: "dist/visual-qa/phase84/wishlist-promote-selected-hover.png",
   });
 
-  const setButton = page.getByRole("button", { name: "次の一手を設定", exact: true });
-  await setButton.hover();
-  await page.waitForTimeout(140);
-  const setHover = await style(setButton);
   await selected.hover();
   await selectedAction.hover();
   await page.waitForTimeout(140);

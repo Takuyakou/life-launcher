@@ -9085,14 +9085,19 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .inboxRow .wishlistNextStepAction {
+  --main-action-bg: var(--surface-strong);
+  --main-action-border: rgba(231, 185, 77, 0.48);
+  --main-action-color: var(--accent-strong);
   --main-action-hover-bg: var(--surface-strong);
   --main-action-hover-border: rgba(231, 185, 77, 0.48);
   --main-action-hover-color: var(--accent-strong);
   width: 92px;
   min-width: 92px;
   min-height: 30px;
+  border-radius: var(--radius);
   padding-inline: 8px;
   font-size: var(--dashboard-font-meta);
+  font-weight: 700;
   white-space: nowrap;
   opacity: 0;
   pointer-events: none;
