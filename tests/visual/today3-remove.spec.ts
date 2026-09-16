@@ -58,12 +58,12 @@ test("removes only Today adoption, preserves both sources, candidates and sessio
   expect(mutations).toEqual([]);
   await page.reload();
   await expect(page.locator(".todayRow")).toHaveCount(1);
-  await page.locator(".todayBuilderDisclosure").click();
+  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   for (const text of [fixture.config.projects[0].nextStep!.text, fixture.config.inbox[0].text]) {
     await expect(
       page
-        .locator(".todayBuilderRow", { hasText: text })
-        .getByRole("button", { name: "今日へ", exact: true }),
+        .locator(".todayPickerRow", { hasText: text })
+        .getByRole("button", { name: "選ぶ", exact: true }),
     ).toBeEnabled();
   }
 });
@@ -100,12 +100,6 @@ test("active and paused item cannot be removed even through its React handler; a
   const remove = card.locator(".todayRemoveButton");
   await expect(remove).toBeDisabled();
   await expect(remove).toHaveAttribute("title", "タイマーを停止してから外してください");
-  await page.locator(".todayBuilderDisclosure").click();
-  const selectedButton = page
-    .locator(".todayBuilderRow", { hasText: "資料を1ページ読む" })
-    .getByRole("button", { name: "選択済み" });
-  await expect(selectedButton).toBeDisabled();
-  await expect(selectedButton).toHaveAttribute("title", "タイマーを停止してから外してください");
   await remove.evaluate((node) => (node as HTMLButtonElement).click());
   await remove.press("Enter");
   await remove.press("Space");

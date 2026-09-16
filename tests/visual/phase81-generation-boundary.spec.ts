@@ -157,10 +157,10 @@ test("generation boundary: adoption copies the marker and editing preserves it",
   fixture.config.today.items = [];
   await prepare(page, fixture, 0);
 
-  await page.locator(".todayBuilderDisclosure").click();
+  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   await page
-    .locator(".todayBuilderRow", { hasText: project.nextStep!.text })
-    .getByRole("button", { name: "今日へ", exact: true })
+    .locator(".todayPickerRow", { hasText: project.nextStep!.text })
+    .getByRole("button", { name: "選ぶ", exact: true })
     .click();
 
   let saved = await currentConfig(page);
@@ -169,6 +169,7 @@ test("generation boundary: adoption copies the marker and editing preserves it",
     sourceKey: PROJECT_KEY,
     sourceGenerationId: "gen-a",
   });
+  await page.getByRole("button", { name: "キャンセル", exact: true }).click();
 
   const action = page.locator('[data-project-id="sample-learning"] .nextStepActionRegion');
   await action.click({ button: "right" });

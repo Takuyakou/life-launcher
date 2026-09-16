@@ -171,13 +171,14 @@ test("P83-04 clean start remains usable through Session recording", async ({ pag
     expect.objectContaining({ text: "Clean Start Wishlist", projectId: project.id }),
   ]);
 
-  await openDisclosure(page.locator(".todayBuilderDisclosure"));
-  const candidate = page.locator(".todayBuilderRow", { hasText: "Clean Start Action" });
+  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
+  const candidate = page.locator(".todayPickerRow", { hasText: "Clean Start Action" });
   await expect(candidate).toBeVisible();
-  await candidate.getByRole("button", { name: "今日へ" }).click();
+  await candidate.getByRole("button", { name: "選ぶ" }).click();
   const todayCard = page.locator(".todayRow", { hasText: "Clean Start Action" });
   await expect(todayCard).toBeVisible();
   expect((await currentConfig(page)).today.items).toHaveLength(1);
+  await page.getByRole("button", { name: "キャンセル", exact: true }).click();
 
   await todayCard.getByRole("button", { name: "通常タイマー25分で開始" }).click();
   await page.clock.fastForward(65_000);

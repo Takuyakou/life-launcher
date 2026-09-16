@@ -86,7 +86,6 @@ import {
   ProjectColorId,
   MiniWindowPosition,
   NotesHistoryResponse,
-  InboxItem,
   SessionEntriesResponse,
   SessionEntryRow,
   SessionSummaryResponse,
@@ -128,6 +127,13 @@ import {
   wishlistGroupKey,
 } from "./nextStepWishlist";
 import { TimerPanel } from "./components/TimerPanel";
+import {
+  buildTodayCandidates,
+  legacyWishlistSourceKey,
+  todayCandidateFromConfig,
+  wishlistSourceKey,
+  type TodayCandidate,
+} from "./todayCandidates";
 import {
   SESSION_MINIMUM_MINUTES,
   sessionMinutes,
@@ -451,23 +457,6 @@ type CompletionFollowup = {
   key: string;
   source: TodayCompletionSource;
   text: string;
-};
-
-type TodayBuilderCandidate = {
-  key: string;
-  text: string;
-  source: string;
-  sourceKey: string;
-  sourceGenerationId?: string;
-  legacyOrderKeys?: string[];
-  sourceAliases?: string[];
-  trigger?: string;
-  projectId?: string;
-  buttonIds?: string[];
-  instructionPath?: string;
-  instructionOpenOnStart?: boolean;
-  defaultTimerMinutes: number;
-  shortTimerMinutes: number;
 };
 
 type ContextMenuTarget =
@@ -853,73 +842,14 @@ function todayTimerSourceId(item: TodayItem, index: number): string {
   return `today:${todaySourceKey(item, index)}`;
 }
 
-function wishlistSourceKey(item: InboxItem, index: number): string {
-  return `wishlist:${item.id?.trim() || `legacy-${index + 1}`}`;
-}
-
-function legacyWishlistSourceKey(item: InboxItem): string {
-  return `wishlist:${item.projectId ?? "none"}:${item.text.trim()}`;
-}
-
 function toggleDisclosureFromBar(event: ReactMouseEvent<HTMLElement>, toggle: () => void) {
   const target = event.target;
   if (target instanceof Element && target.closest("button, a, input, select, textarea")) return;
   toggle();
 }
 
-function projectTodayCandidate(
-  project: LauncherProject,
-  settings: AppConfig["settings"],
-): TodayBuilderCandidate {
-  const nextStep = project.nextStep;
-  const text = nextStep?.text.trim() ?? "";
-  return {
-    key: `project:${project.id}`,
-    text,
-    source: "次の一手",
-    sourceKey: `project:${project.id}`,
-    ...(nextStep?.generationId ? { sourceGenerationId: nextStep.generationId } : {}),
-    legacyOrderKeys: [`project:${project.id}:${text}`],
-    projectId: project.id,
-    ...(nextStep?.trigger?.trim() ? { trigger: nextStep.trigger.trim() } : {}),
-    ...(nextStep?.buttonIds.length ? { buttonIds: [...nextStep.buttonIds] } : {}),
-    ...(nextStep?.instructionPath
-      ? {
-          instructionPath: nextStep.instructionPath,
-          instructionOpenOnStart: nextStep.instructionOpenOnStart !== false,
-        }
-      : {}),
-    defaultTimerMinutes: nextStep?.defaultTimerMinutes ?? settings.defaultTimerMinutes,
-    shortTimerMinutes: nextStep?.shortTimerMinutes ?? settings.shortTimerMinutes,
-  };
-}
-
-function wishlistTodayCandidate(
-  item: InboxItem,
-  index: number,
-  project: LauncherProject | undefined,
-  settings: AppConfig["settings"],
-  includeLegacyAlias: boolean,
-): TodayBuilderCandidate {
-  const text = item.text.trim();
-  return {
-    key: wishlistSourceKey(item, index),
-    text,
-    source: "やりたいこと",
-    sourceKey: wishlistSourceKey(item, index),
-    legacyOrderKeys: [`inbox:${item.projectId ?? "none"}:${text}`],
-    ...(includeLegacyAlias ? { sourceAliases: [legacyWishlistSourceKey(item)] } : {}),
-    ...(item.projectId ? { projectId: item.projectId } : {}),
-    ...(item.buttonIds?.length ? { buttonIds: [...item.buttonIds] } : {}),
-    ...(item.instructionPath
-      ? {
-          instructionPath: item.instructionPath,
-          instructionOpenOnStart: item.instructionOpenOnStart !== false,
-        }
-      : {}),
-    defaultTimerMinutes: project?.nextStep?.defaultTimerMinutes ?? settings.defaultTimerMinutes,
-    shortTimerMinutes: project?.nextStep?.shortTimerMinutes ?? settings.shortTimerMinutes,
-  };
+function legacyTodayBuilderVisible(): boolean {
+  return false;
 }
 
 function formatActionSummary(results: ActionResult[]): { tone: ToastTone; message: string } {
@@ -2160,6 +2090,8 @@ function DashboardApp() {
   const [todayBuilderPointerDrag, setTodayBuilderPointerDrag] =
     useState<TodayBuilderDragPreview | null>(null);
   const [builderRestoreTargetActive, setBuilderRestoreTargetActive] = useState(false);
+  const [todayPickerOpen, setTodayPickerOpen] = useState(false);
+  const [todayPickerSavingSourceKey, setTodayPickerSavingSourceKey] = useState<string | null>(null);
   const [todayActivityOpen, setTodayActivityOpen] = useState(false);
   const [, setNotesSaveStatus] = useState<NotesSaveStatus>("saved");
   const [launcherOverlayOpen, setLauncherOverlayOpen] = useState(false);
@@ -2279,6 +2211,7 @@ function DashboardApp() {
   const softwareResetProgressRef = useRef<HTMLElement | null>(null);
   const confirmDialogRef = useRef<ConfirmDialogRequest | null>(null);
   const inboxAddOpenerRef = useRef<HTMLButtonElement | null>(null);
+  const todayPickerOpenerRef = useRef<HTMLElement | null>(null);
   const sourceEditOriginRef = useRef<"source" | "today" | "builder">("source");
   const projectListAnchorRef = useRef<{ id: string; index: number } | null>(null);
   const inboxListAnchorRef = useRef<{ id: string; index: number } | null>(null);
@@ -3634,8 +3567,28 @@ function DashboardApp() {
     window.requestAnimationFrame(() => opener?.focus());
   }, []);
 
+  const closeTodayPicker = useCallback(() => {
+    const opener = todayPickerOpenerRef.current;
+    todayPickerOpenerRef.current = null;
+    setTodayPickerOpen(false);
+    setTodayPickerSavingSourceKey(null);
+    window.requestAnimationFrame(() => {
+      if (opener?.isConnected) opener.focus();
+    });
+  }, []);
+
+  const openTodayPicker = useCallback((opener: HTMLElement) => {
+    if ((configRef.current?.today.items.length ?? TODAY_ITEM_LIMIT) >= TODAY_ITEM_LIMIT) return;
+    todayPickerOpenerRef.current = opener;
+    setTodayPickerOpen(true);
+  }, []);
+
   const dismissNonCriticalModal = useCallback(() => {
     if (sourceEditBusyRef.current || projectEditSavingRef.current) return;
+    if (todayPickerOpen) {
+      closeTodayPicker();
+      return;
+    }
     if (inboxAddOpen) {
       closeInboxAddDialog();
       return;
@@ -3712,10 +3665,13 @@ function DashboardApp() {
     requestCloseSettings,
     sessionEditDraft,
     settingsDraft,
+    todayPickerOpen,
+    closeTodayPicker,
   ]);
 
   const hasDismissibleModal = Boolean(
     inboxAddOpen ||
+    todayPickerOpen ||
     inboxEditingIndex !== null ||
     helpGuideOpen ||
     settingsDraft ||
@@ -7384,7 +7340,7 @@ function DashboardApp() {
     });
   };
 
-  const addCandidateToToday = async (candidate: TodayBuilderCandidate, insertionIndex?: number) => {
+  const addCandidateToToday = async (candidate: TodayCandidate, insertionIndex?: number) => {
     const current = configRef.current;
     if (!current || !candidate.text.trim()) return false;
     if (current.today.items.length >= TODAY_ITEM_LIMIT) {
@@ -7441,6 +7397,16 @@ function DashboardApp() {
     }
     if (saved) showToast("ok", "今日の3件に追加しました");
     return saved;
+  };
+
+  const chooseTodayCandidate = async (candidate: TodayCandidate) => {
+    if (todayPickerSavingSourceKey) return;
+    setTodayPickerSavingSourceKey(candidate.sourceKey);
+    const saved = await addCandidateToToday(candidate);
+    setTodayPickerSavingSourceKey(null);
+    if (saved && (configRef.current?.today.items.length ?? 0) >= TODAY_ITEM_LIMIT) {
+      closeTodayPicker();
+    }
   };
 
   const refreshInstructionChoices = async () => {
@@ -8403,65 +8369,20 @@ function DashboardApp() {
     ],
     5,
   );
-  const legacyWishlistFirstIndexes = config.inbox.reduce<Map<string, number>>(
-    (indexes, item, index) => {
-      const key = legacyWishlistSourceKey(item);
-      if (!indexes.has(key)) indexes.set(key, index);
-      return indexes;
-    },
-    new Map(),
+  const rawTodayBuilderCandidates = buildTodayCandidates(config);
+  const todayPickerNextStepCandidates = rawTodayBuilderCandidates.filter(
+    (candidate) => candidate.source === "次の一手",
   );
-  const rawTodayBuilderCandidates: TodayBuilderCandidate[] = [
-    ...config.projects.flatMap((project) => {
-      const text = project.nextStep?.text.trim() ?? "";
-      return text ? [projectTodayCandidate(project, config.settings)] : [];
-    }),
-    ...config.inbox.flatMap((item, index) => {
-      const text = item.text.trim();
-      const project = item.projectId ? projectsById.get(item.projectId) : undefined;
-      return text
-        ? [
-            wishlistTodayCandidate(
-              item,
-              index,
-              project,
-              config.settings,
-              legacyWishlistFirstIndexes.get(legacyWishlistSourceKey(item)) === index,
-            ),
-          ]
-        : [];
-    }),
-  ];
-  const candidateFromConfig = (current: AppConfig, sourceKey: string) => {
-    if (sourceKey.startsWith("project:")) {
-      const project = current.projects.find(
-        (item) => item.id === sourceKey.slice("project:".length),
-      );
-      return project?.nextStep?.text.trim()
-        ? projectTodayCandidate(project, current.settings)
-        : undefined;
-    }
-    if (sourceKey.startsWith("wishlist:")) {
-      const id = sourceKey.slice("wishlist:".length);
-      const index = current.inbox.findIndex((item) => item.id === id);
-      const item = current.inbox[index];
-      if (!item?.text.trim()) return undefined;
-      const firstLegacyIndex = current.inbox.findIndex(
-        (entry) => legacyWishlistSourceKey(entry) === legacyWishlistSourceKey(item),
-      );
-      const project = item.projectId
-        ? current.projects.find((entry) => entry.id === item.projectId)
-        : undefined;
-      return wishlistTodayCandidate(
-        item,
-        index,
-        project,
-        current.settings,
-        firstLegacyIndex === index,
-      );
-    }
-    return undefined;
+  const todayPickerWishlistCandidates = rawTodayBuilderCandidates.filter(
+    (candidate) => candidate.source === "やりたいこと",
+  );
+  const todayCandidateSelected = (candidate: TodayCandidate) => {
+    const matchingSourceKeys = new Set([candidate.sourceKey, ...(candidate.sourceAliases ?? [])]);
+    return config.today.items.some((item, index) =>
+      matchingSourceKeys.has(todaySourceKey(item, index)),
+    );
   };
+  const candidateFromConfig = todayCandidateFromConfig;
   const explicitlyExcludedCandidate = (sourceKey: string, current = config) => {
     const candidate = candidateFromConfig(current, sourceKey);
     if (!candidate) return undefined;
@@ -8499,7 +8420,7 @@ function DashboardApp() {
       syncedTargets: ["todayBuilder"] as const,
     };
   };
-  const editTodayBuilderCandidate = (candidate?: TodayBuilderCandidate) => {
+  const editTodayBuilderCandidate = (candidate?: TodayCandidate) => {
     if (!candidate) return;
     const key = canonicalSourceKey(config, candidate.sourceKey);
     if (!key || sourceEditBlocked(key)) {
@@ -8514,7 +8435,7 @@ function DashboardApp() {
     const inboxIndex = config.inbox.findIndex((item) => `wishlist:${item.id}` === key);
     if (inboxIndex >= 0) beginInboxEdit(inboxIndex, "builder");
   };
-  const todayBuilderWishlistGroupKey = (candidate: TodayBuilderCandidate) =>
+  const todayBuilderWishlistGroupKey = (candidate: TodayCandidate) =>
     candidate.projectId && projectsById.has(candidate.projectId)
       ? `project:${candidate.projectId}`
       : "unassigned";
@@ -8528,12 +8449,12 @@ function DashboardApp() {
     );
     const savedOrder = readStoredStringArray(TODAY_BUILDER_ORDER_STORAGE_KEY);
     const order = new Map(savedOrder.map((key, index) => [key, index]));
-    const orderIndex = (candidate: TodayBuilderCandidate) =>
+    const orderIndex = (candidate: TodayCandidate) =>
       [candidate.key, ...(candidate.legacyOrderKeys ?? [])]
         .map((key) => order.get(key))
         .find((index) => index !== undefined);
     const orderedCandidates = [...activeCandidates].sort((left, right) => {
-      const sourceOrder = (candidate: TodayBuilderCandidate) =>
+      const sourceOrder = (candidate: TodayCandidate) =>
         candidate.source === "次の一手" ? 0 : 1;
       const sourceDifference = sourceOrder(left) - sourceOrder(right);
       if (sourceDifference !== 0) return sourceDifference;
@@ -8544,7 +8465,7 @@ function DashboardApp() {
       if (rightIndex === undefined) return -1;
       return leftIndex - rightIndex;
     });
-    const wishlistGroups = new Map<string, TodayBuilderCandidate[]>();
+    const wishlistGroups = new Map<string, TodayCandidate[]>();
     orderedCandidates
       .filter((candidate) => candidate.source === "やりたいこと")
       .forEach((candidate) => {
@@ -8574,7 +8495,7 @@ function DashboardApp() {
     (visibleTodayBuilderPage - 1) * TODAY_BUILDER_PAGE_SIZE,
     visibleTodayBuilderPage * TODAY_BUILDER_PAGE_SIZE,
   );
-  const isTodayBuilderCandidateActive = (candidate?: TodayBuilderCandidate) =>
+  const isTodayBuilderCandidateActive = (candidate?: TodayCandidate) =>
     candidate
       ? isTimerActiveForSource(
           [candidate.sourceKey, ...(candidate.sourceAliases ?? [])],
@@ -9997,11 +9918,11 @@ function DashboardApp() {
                         <span>次の一手・やりたいことから選べます</span>
                         <button
                           className="mainActionButton mainActionButton--gold"
-                          onClick={focusTodayBuilder}
+                          onClick={(event) => openTodayPicker(event.currentTarget)}
                           type="button"
                         >
                           <UiIcon name="add" size={16} />
-                          今日を組み立てる
+                          今日やるものを選ぶ
                         </button>
                       </div>
                     </div>
@@ -10350,6 +10271,18 @@ function DashboardApp() {
                       </article>
                     );
                   })}
+                  {config.today.items.length > 0 &&
+                    config.today.items.length < TODAY_ITEM_LIMIT &&
+                    !todayPointerDrag && (
+                      <button
+                        className="todayPickerEntry mainActionButton mainActionButton--gold"
+                        onClick={(event) => openTodayPicker(event.currentTarget)}
+                        type="button"
+                      >
+                        <UiIcon name="add" size={16} />
+                        今日やるものを選ぶ
+                      </button>
+                    )}
                   {todayPointerDrag?.targetIndicator && (
                     <div
                       aria-hidden="true"
@@ -10418,6 +10351,7 @@ function DashboardApp() {
                 )}
               </section>
 
+              {legacyTodayBuilderVisible() && (
               <section
                 className={[
                   "todayBuilderBand",
@@ -10797,6 +10731,7 @@ function DashboardApp() {
                   </div>
                 )}
               </section>
+              )}
 
               <section
                 className={[
@@ -12248,6 +12183,108 @@ function DashboardApp() {
                 onClick={cancelInboxEdit}
                 type="button"
               >
+                キャンセル
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {todayPickerOpen && (
+        <div className="modalBackdrop" role="presentation">
+          <section
+            aria-label="今日やるものを選ぶ"
+            aria-modal="true"
+            className="dropDialog todayPickerDialog"
+            role="dialog"
+            tabIndex={-1}
+          >
+            <div className="modalTitleRow">
+              <div>
+                <h2>今日やるものを選ぶ</h2>
+                <p>次の一手・やりたいことから、今日の3件へ追加します。</p>
+              </div>
+              <button
+                aria-label="今日やるものを選ぶを閉じる"
+                autoFocus
+                className="iconButton"
+                onClick={closeTodayPicker}
+                title="閉じる"
+                type="button"
+              >
+                <UiIcon name="close" size={16} />
+              </button>
+            </div>
+
+            {config.today.items.length >= TODAY_ITEM_LIMIT ? (
+              <p className="todayPickerFullMessage" role="status">
+                今日の3件が揃いました。
+              </p>
+            ) : (
+              <div className="todayPickerGroups app-scrollbar">
+                {[
+                  ["次の一手", todayPickerNextStepCandidates],
+                  ["やりたいこと", todayPickerWishlistCandidates],
+                ].map(([label, candidates]) => (
+                  <section className="todayPickerGroup" key={label as string}>
+                    <h3>{label as string}</h3>
+                    {(candidates as TodayCandidate[]).length === 0 ? (
+                      <p className="todayPickerEmpty">候補はありません</p>
+                    ) : (
+                      <div className="todayPickerList">
+                        {(candidates as TodayCandidate[]).map((candidate) => {
+                          const selected = todayCandidateSelected(candidate);
+                          const project = candidate.projectId
+                            ? projectsById.get(candidate.projectId)
+                            : undefined;
+                          return (
+                            <div
+                              className={
+                                selected
+                                  ? "todayPickerRow todayPickerRow--selected"
+                                  : "todayPickerRow"
+                              }
+                              key={candidate.key}
+                            >
+                              <div className="todayPickerCopy">
+                                {project ? (
+                                  <ProjectIdentity
+                                    colorId={project.colorId}
+                                    compact
+                                    name={project.name}
+                                    projectId={project.id}
+                                  />
+                                ) : (
+                                  <span className="sourceProjectNone">プロジェクトなし</span>
+                                )}
+                                <strong>{candidate.text}</strong>
+                              </div>
+                              {selected ? (
+                                <span className="todayPickerSelectedStatus">✓ 今日の3件</span>
+                              ) : (
+                                <button
+                                  className="mainActionButton mainActionButton--gold"
+                                  disabled={todayPickerSavingSourceKey !== null}
+                                  onClick={() => void chooseTodayCandidate(candidate)}
+                                  type="button"
+                                >
+                                  {todayPickerSavingSourceKey === candidate.sourceKey
+                                    ? "追加中…"
+                                    : "選ぶ"}
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </section>
+                ))}
+              </div>
+            )}
+
+            <div className="dialogActions todayPickerActions">
+              <button className="secondaryButton" onClick={closeTodayPicker} type="button">
                 キャンセル
               </button>
             </div>
