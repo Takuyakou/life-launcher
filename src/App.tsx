@@ -2109,6 +2109,10 @@ function DashboardApp() {
   const [todayPickerWishlistCollapsed, setTodayPickerWishlistCollapsed] = useState<
     Record<string, boolean>
   >({});
+  const [todayPickerSectionsCollapsed, setTodayPickerSectionsCollapsed] = useState({
+    nextStep: false,
+    wishlist: false,
+  });
   const [todayPickerSavingSourceKey, setTodayPickerSavingSourceKey] = useState<string | null>(null);
   const [todayActivityOpen, setTodayActivityOpen] = useState(false);
   const [, setNotesSaveStatus] = useState<NotesSaveStatus>("saved");
@@ -3597,6 +3601,7 @@ function DashboardApp() {
     if ((configRef.current?.today.items.length ?? TODAY_ITEM_LIMIT) >= TODAY_ITEM_LIMIT) return;
     todayPickerOpenerRef.current = opener;
     setTodayPickerWishlistCollapsed({});
+    setTodayPickerSectionsCollapsed({ nextStep: false, wishlist: false });
     setTodayPickerOpen(true);
   }, []);
 
@@ -11398,28 +11403,52 @@ function DashboardApp() {
                                         <span className="inboxItemText" title={item.text}>
                                           {item.text}
                                         </span>
-                                        {selected && (
-                                          <span className="wishlistTodayStatus">✓ 今日の3件</span>
-                                        )}
-                                        <button
-                                          aria-label={`${item.text}の操作`}
-                                          aria-haspopup="menu"
-                                          className="sourceRowMenu"
-                                          onClick={(event) => {
-                                            const rect =
-                                              event.currentTarget.getBoundingClientRect();
-                                            openContextMenu(
-                                              { kind: "inbox", index, itemText: item.text },
-                                              rect.left,
-                                              rect.bottom,
-                                              event.currentTarget,
-                                            );
-                                          }}
-                                          title="操作メニュー"
-                                          type="button"
-                                        >
-                                          <span aria-hidden="true">⋯</span>
-                                        </button>
+                                        <div className="wishlistRowActions">
+                                          <span className="wishlistNextStepSlot">
+                                            <button
+                                              aria-label={`${item.text}を次の一手にする`}
+                                              className="wishlistNextStepAction mainActionButton mainActionButton--neutral"
+                                              disabled={
+                                                !item.id || sourceEditBlocked(`wishlist:${item.id}`)
+                                              }
+                                              onClick={(event) => {
+                                                event.stopPropagation();
+                                                promoteInboxToNextStep(index);
+                                              }}
+                                              onPointerDown={(event) => event.stopPropagation()}
+                                              title={
+                                                item.id && sourceEditBlocked(`wishlist:${item.id}`)
+                                                  ? SOURCE_EDIT_TIMER_REASON
+                                                  : "次の一手にする"
+                                              }
+                                              type="button"
+                                            >
+                                              ▷ 次の一手
+                                            </button>
+                                          </span>
+                                          {selected && (
+                                            <span className="wishlistTodayStatus">✓ 今日の3件</span>
+                                          )}
+                                          <button
+                                            aria-label={`${item.text}の操作`}
+                                            aria-haspopup="menu"
+                                            className="sourceRowMenu"
+                                            onClick={(event) => {
+                                              const rect =
+                                                event.currentTarget.getBoundingClientRect();
+                                              openContextMenu(
+                                                { kind: "inbox", index, itemText: item.text },
+                                                rect.left,
+                                                rect.bottom,
+                                                event.currentTarget,
+                                              );
+                                            }}
+                                            title="操作メニュー"
+                                            type="button"
+                                          >
+                                            <span aria-hidden="true">⋯</span>
+                                          </button>
+                                        </div>
                                       </div>
                                     );
                                   })}
@@ -12312,90 +12341,135 @@ function DashboardApp() {
                 )}
               </section>
 
-              <section className="todayPickerGroup" data-today-picker-section="next-step">
-                <h3>
-                  次の一手
-                  <span>{todayPickerNextStepCandidates.length}件</span>
-                </h3>
-                {todayPickerNextStepCandidates.length === 0 ? (
-                  <p className="todayPickerEmpty">候補はありません</p>
-                ) : (
-                  <div className="todayPickerList">
-                    {todayPickerNextStepCandidates.map((candidate) =>
-                      renderTodayPickerCandidate(candidate),
-                    )}
-                  </div>
-                )}
+              <section
+                className={
+                  todayPickerSectionsCollapsed.nextStep
+                    ? "todayPickerGroup todayPickerGroup--collapsed"
+                    : "todayPickerGroup"
+                }
+                data-today-picker-section="next-step"
+              >
+                <button
+                  aria-expanded={!todayPickerSectionsCollapsed.nextStep}
+                  className="todayPickerSectionHeader"
+                  onClick={() =>
+                    setTodayPickerSectionsCollapsed((current) => ({
+                      ...current,
+                      nextStep: !current.nextStep,
+                    }))
+                  }
+                  type="button"
+                >
+                  <UiIcon
+                    name={todayPickerSectionsCollapsed.nextStep ? "chevronRight" : "chevronDown"}
+                    size={16}
+                  />
+                  <span className="todayPickerSectionTitle">次の一手</span>
+                  <span className="todayPickerSectionCount">
+                    {todayPickerNextStepCandidates.length}件
+                  </span>
+                </button>
+                {!todayPickerSectionsCollapsed.nextStep &&
+                  (todayPickerNextStepCandidates.length === 0 ? (
+                    <p className="todayPickerEmpty">候補はありません</p>
+                  ) : (
+                    <div className="todayPickerList">
+                      {todayPickerNextStepCandidates.map((candidate) =>
+                        renderTodayPickerCandidate(candidate),
+                      )}
+                    </div>
+                  ))}
               </section>
 
               <section
-                className="todayPickerGroup todayPickerGroup--wishlist"
+                className={
+                  todayPickerSectionsCollapsed.wishlist
+                    ? "todayPickerGroup todayPickerGroup--wishlist todayPickerGroup--collapsed"
+                    : "todayPickerGroup todayPickerGroup--wishlist"
+                }
                 data-today-picker-section="wishlist"
               >
-                <h3>
-                  やりたいこと
-                  <span>{todayPickerWishlistCandidates.length}件</span>
-                </h3>
-                {todayPickerWishlistGroups.length === 0 ? (
-                  <p className="todayPickerEmpty">候補はありません</p>
-                ) : (
-                  <div className="todayPickerWishlistGroups">
-                    {todayPickerWishlistGroups.map((group) => {
-                      const collapsed = Boolean(todayPickerWishlistCollapsed[group.key]);
-                      const project = group.projectId
-                        ? projectsById.get(group.projectId)
-                        : undefined;
-                      return (
-                        <section
-                          className={
-                            collapsed
-                              ? "todayPickerWishlistGroup todayPickerWishlistGroup--collapsed"
-                              : "todayPickerWishlistGroup"
-                          }
-                          data-today-picker-wishlist-group={group.key}
-                          key={group.key}
-                        >
-                          <button
-                            aria-expanded={!collapsed}
-                            className="todayPickerWishlistGroupHeader"
-                            onClick={() =>
-                              setTodayPickerWishlistCollapsed((current) => ({
-                                ...current,
-                                [group.key]: !current[group.key],
-                              }))
+                <button
+                  aria-expanded={!todayPickerSectionsCollapsed.wishlist}
+                  className="todayPickerSectionHeader"
+                  onClick={() =>
+                    setTodayPickerSectionsCollapsed((current) => ({
+                      ...current,
+                      wishlist: !current.wishlist,
+                    }))
+                  }
+                  type="button"
+                >
+                  <UiIcon
+                    name={todayPickerSectionsCollapsed.wishlist ? "chevronRight" : "chevronDown"}
+                    size={16}
+                  />
+                  <span className="todayPickerSectionTitle">やりたいこと</span>
+                  <span className="todayPickerSectionCount">
+                    {todayPickerWishlistCandidates.length}件
+                  </span>
+                </button>
+                {!todayPickerSectionsCollapsed.wishlist &&
+                  (todayPickerWishlistGroups.length === 0 ? (
+                    <p className="todayPickerEmpty">候補はありません</p>
+                  ) : (
+                    <div className="todayPickerWishlistGroups">
+                      {todayPickerWishlistGroups.map((group) => {
+                        const collapsed = Boolean(todayPickerWishlistCollapsed[group.key]);
+                        const project = group.projectId
+                          ? projectsById.get(group.projectId)
+                          : undefined;
+                        return (
+                          <section
+                            className={
+                              collapsed
+                                ? "todayPickerWishlistGroup todayPickerWishlistGroup--collapsed"
+                                : "todayPickerWishlistGroup"
                             }
-                            type="button"
+                            data-today-picker-wishlist-group={group.key}
+                            key={group.key}
                           >
-                            <UiIcon
-                              name={collapsed ? "chevronRight" : "chevronDown"}
-                              size={16}
-                            />
-                            {project ? (
-                              <ProjectIdentity
-                                colorId={project.colorId}
-                                compact
-                                name={project.name}
-                                projectId={project.id}
+                            <button
+                              aria-expanded={!collapsed}
+                              className="todayPickerWishlistGroupHeader"
+                              onClick={() =>
+                                setTodayPickerWishlistCollapsed((current) => ({
+                                  ...current,
+                                  [group.key]: !current[group.key],
+                                }))
+                              }
+                              type="button"
+                            >
+                              <UiIcon
+                                name={collapsed ? "chevronRight" : "chevronDown"}
+                                size={16}
                               />
-                            ) : (
-                              <span className="sourceProjectNone">未分類</span>
-                            )}
-                            <span className="todayPickerWishlistGroupCount">
-                              {group.candidates.length}件
-                            </span>
-                          </button>
-                          {!collapsed && (
-                            <div className="todayPickerList todayPickerWishlistGroupBody">
-                              {group.candidates.map((candidate) =>
-                                renderTodayPickerCandidate(candidate, true),
+                              {project ? (
+                                <ProjectIdentity
+                                  colorId={project.colorId}
+                                  compact
+                                  name={project.name}
+                                  projectId={project.id}
+                                />
+                              ) : (
+                                <span className="sourceProjectNone">未分類</span>
                               )}
-                            </div>
-                          )}
-                        </section>
-                      );
-                    })}
-                  </div>
-                )}
+                              <span className="todayPickerWishlistGroupCount">
+                                {group.candidates.length}件
+                              </span>
+                            </button>
+                            {!collapsed && (
+                              <div className="todayPickerList todayPickerWishlistGroupBody">
+                                {group.candidates.map((candidate) =>
+                                  renderTodayPickerCandidate(candidate, true),
+                                )}
+                              </div>
+                            )}
+                          </section>
+                        );
+                      })}
+                    </div>
+                  ))}
               </section>
             </div>
             <div className="dialogActions todayPickerActions">

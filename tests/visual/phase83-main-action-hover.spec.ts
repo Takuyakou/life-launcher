@@ -273,6 +273,7 @@ test("P83-03 gold create hover and active keep their dimensions", async ({ page 
   const { initial, hovered } = await expectActionHover(page, gold);
   expect(hovered.backgroundColor).toBe("rgba(231, 185, 77, 0.18)");
   expect(hovered.borderColor).toBe("rgb(231, 185, 77)");
+  expect(hovered.color).toBe("rgb(255, 206, 91)");
   const pressed = await pressStyle(page, gold);
   expect(pressed.backgroundColor).toBe("rgba(231, 185, 77, 0.08)");
   expect(pressed.transform).toContain("0.985");
