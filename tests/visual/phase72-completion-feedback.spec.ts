@@ -74,7 +74,7 @@ async function finishPlannedToday(page: Page, rowIndex = 2) {
   return row;
 }
 
-test("P72-05 Victory feedback fires only for the first saved false-to-true transition", async ({
+test("P72-05 Victory feedback fires for every saved false-to-true transition", async ({
   page,
 }) => {
   const fixture = createPublicFixture();
@@ -89,7 +89,8 @@ test("P72-05 Victory feedback fires only for the first saved false-to-true trans
   await expect(page.getByText("今日の勝利、達成", { exact: true })).toHaveCount(0);
   await checkbox.uncheck();
   await checkbox.check();
-  await expect(page.getByText("今日の勝利、達成", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("今日の勝利、達成", { exact: true })).toBeVisible();
+  await expect(page.locator(".completionParticle")).toHaveCount(6);
 });
 
 test("P72-05 failed Victory save never rewards", async ({ page }) => {

@@ -35,6 +35,8 @@ const CONFIG_FILE_NAME: &str = "config.json";
 const CONFIG_SCHEMA_FILE_NAME: &str = "config.schema.json";
 const CONFIG_SCHEMA_REF: &str = "./config.schema.json";
 const BACKUP_DIR_NAME: &str = "backups";
+const ICON_CACHE_DIR_NAME: &str = "icons";
+const ICON_BACKUP_PREFIX: &str = "icons/";
 const BACKUP_KEEP_COUNT: usize = 5;
 const PROJECT_NORTH_STAR_MAX_CHARS: usize = 60;
 const OVERLAY_ALL_PAGE_NAME: &str = "すべて";
@@ -1083,7 +1085,45 @@ fn daily_backup_entries() -> Result<Vec<ZipEntry>, String> {
             data,
         });
     }
+    let icons_dir = data_dir.join(ICON_CACHE_DIR_NAME);
+    if icons_dir.is_dir() {
+        let mut icon_paths = fs::read_dir(&icons_dir)
+            .map_err(|error| format!("failed to read {}: {error}", icons_dir.display()))?
+            .filter_map(Result::ok)
+            .filter(|entry| entry.file_type().is_ok_and(|kind| kind.is_file()))
+            .map(|entry| entry.path())
+            .collect::<Vec<_>>();
+        icon_paths.sort();
+        for path in icon_paths {
+            let Some(file_name) = path.file_name().and_then(|name| name.to_str()) else {
+                continue;
+            };
+            let entry_name = format!("{ICON_BACKUP_PREFIX}{file_name}");
+            if icon_backup_file_name(&entry_name).is_none() {
+                continue;
+            }
+            let data = fs::read(&path)
+                .map_err(|error| format!("failed to read {}: {error}", path.display()))?;
+            entries.push(ZipEntry {
+                name: entry_name,
+                data,
+            });
+        }
+    }
     Ok(entries)
+}
+
+fn icon_backup_file_name(entry_name: &str) -> Option<&str> {
+    let file_name = entry_name.strip_prefix(ICON_BACKUP_PREFIX)?;
+    let stem = file_name.strip_suffix(".png")?;
+    if stem.is_empty()
+        || !stem
+            .chars()
+            .all(|ch| ch.is_ascii_alphanumeric() || ch == '-' || ch == '_')
+    {
+        return None;
+    }
+    Some(file_name)
 }
 
 fn restore_backup_from_path(zip_path: &PathBuf) -> Result<PathBuf, String> {
@@ -1107,6 +1147,14 @@ fn restore_backup_from_path(zip_path: &PathBuf) -> Result<PathBuf, String> {
         .ok_or_else(|| "backup ZIP does not contain config.json".to_string())?;
     serde_json::from_slice::<Value>(&config_entry.data)
         .map_err(|error| format!("backup config.json is not valid JSON: {error}"))?;
+    for entry in entries
+        .iter()
+        .filter(|entry| icon_backup_file_name(&entry.name).is_some())
+    {
+        if !entry.data.starts_with(b"\x89PNG\r\n\x1a\n") {
+            return Err(format!("backup icon is not a PNG file: {}", entry.name));
+        }
+    }
 
     let data_dir = config_dir_path()?;
     fs::create_dir_all(&data_dir)
@@ -1134,6 +1182,32 @@ fn restore_backup_from_path(zip_path: &PathBuf) -> Result<PathBuf, String> {
             })?;
         }
     }
+    let current_icons_dir = data_dir.join(ICON_CACHE_DIR_NAME);
+    if current_icons_dir.is_dir() {
+        let retreat_icons_dir = pre_restore_dir.join(ICON_CACHE_DIR_NAME);
+        fs::create_dir_all(&retreat_icons_dir).map_err(|error| {
+            format!(
+                "failed to create pre-restore icon backup {}: {error}",
+                retreat_icons_dir.display()
+            )
+        })?;
+        for entry in fs::read_dir(&current_icons_dir)
+            .map_err(|error| format!("failed to read {}: {error}", current_icons_dir.display()))?
+            .filter_map(Result::ok)
+            .filter(|entry| entry.file_type().is_ok_and(|kind| kind.is_file()))
+        {
+            let file_name = entry.file_name();
+            let entry_name = format!("{ICON_BACKUP_PREFIX}{}", file_name.to_string_lossy());
+            if icon_backup_file_name(&entry_name).is_some() {
+                fs::copy(entry.path(), retreat_icons_dir.join(file_name)).map_err(|error| {
+                    format!(
+                        "failed to retreat icon cache {}: {error}",
+                        entry.path().display()
+                    )
+                })?;
+            }
+        }
+    }
 
     for name in RUNTIME_BACKUP_FILES {
         let restored = entries
@@ -1142,6 +1216,26 @@ fn restore_backup_from_path(zip_path: &PathBuf) -> Result<PathBuf, String> {
             .map(|entry| entry.data.as_slice())
             .unwrap_or_default();
         atomic_write_bytes(&data_dir.join(name), restored)?;
+    }
+    let restored_icons = entries
+        .iter()
+        .filter_map(|entry| icon_backup_file_name(&entry.name).map(|name| (name, &entry.data)))
+        .collect::<Vec<_>>();
+    if !restored_icons.is_empty() {
+        if current_icons_dir.exists() {
+            fs::remove_dir_all(&current_icons_dir).map_err(|error| {
+                format!(
+                    "failed to replace icon cache {}: {error}",
+                    current_icons_dir.display()
+                )
+            })?;
+        }
+        fs::create_dir_all(&current_icons_dir).map_err(|error| {
+            format!("failed to create {}: {error}", current_icons_dir.display())
+        })?;
+        for (file_name, data) in restored_icons {
+            atomic_write_bytes(&current_icons_dir.join(file_name), data)?;
+        }
     }
 
     Ok(pre_restore_dir)
@@ -1299,6 +1393,7 @@ fn read_zip(bytes: &[u8]) -> Result<Vec<ZipEntry>, String> {
     }
 
     let mut entries = Vec::new();
+    let mut entry_names = HashSet::new();
     let mut offset = central_offset;
     for _ in 0..entry_count {
         if read_u32(bytes, offset)? != 0x0201_4b50 {
@@ -1333,8 +1428,12 @@ fn read_zip(bytes: &[u8]) -> Result<Vec<ZipEntry>, String> {
         }
         let name = String::from_utf8(bytes[name_start..name_end].to_vec())
             .map_err(|error| format!("backup ZIP entry name is not UTF-8: {error}"))?;
-        if !RUNTIME_BACKUP_FILES.contains(&name.as_str()) {
+        if !RUNTIME_BACKUP_FILES.contains(&name.as_str()) && icon_backup_file_name(&name).is_none()
+        {
             return Err(format!("backup ZIP contains unexpected entry: {name}"));
+        }
+        if !entry_names.insert(name.clone()) {
+            return Err(format!("backup ZIP contains duplicate entry: {name}"));
         }
 
         let data = read_zip_entry_data(bytes, local_offset, compressed_size)?;
@@ -3789,6 +3888,24 @@ mod tests {
     static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
+    fn backup_icon_entries_allow_only_flat_png_cache_names() {
+        assert_eq!(
+            icon_backup_file_name("icons/cached-button_1.png"),
+            Some("cached-button_1.png")
+        );
+        for invalid in [
+            "icons/",
+            "icons/../outside.png",
+            "icons/nested/icon.png",
+            "icons/icon.ico",
+            "icons/icon name.png",
+            "other/icon.png",
+        ] {
+            assert_eq!(icon_backup_file_name(invalid), None, "{invalid}");
+        }
+    }
+
+    #[test]
     fn keeps_only_latest_five_config_backups() {
         let _guard = ENV_LOCK.lock().expect("env lock");
         let root = std::env::temp_dir().join(format!(
@@ -3851,6 +3968,12 @@ mod tests {
         write_config(&config_path, &config).expect("write config");
         fs::write(data_dir.join("sessions.jsonl"), b"{}\n").expect("write sessions");
         fs::write(data_dir.join("notes.json"), b"{}").expect("write notes");
+        fs::create_dir_all(data_dir.join(ICON_CACHE_DIR_NAME)).expect("create icons");
+        fs::write(
+            data_dir.join(ICON_CACHE_DIR_NAME).join("cached-button.png"),
+            b"\x89PNG\r\n\x1a\nicon",
+        )
+        .expect("write cached icon");
         ensure_config_schema_file().expect("write schema");
 
         for day in 1..=31 {
@@ -3872,6 +3995,14 @@ mod tests {
         assert!(backup_text.contains("sessions.jsonl"));
         assert!(backup_text.contains("notes.json"));
         assert!(backup_text.contains(CONFIG_SCHEMA_FILE_NAME));
+        let backup_entries = read_zip(&backup_bytes).expect("read backup entries");
+        assert_eq!(
+            backup_entries
+                .iter()
+                .find(|entry| entry.name == "icons/cached-button.png")
+                .map(|entry| entry.data.as_slice()),
+            Some(b"\x89PNG\r\n\x1a\nicon".as_slice())
+        );
 
         let backup_count = fs::read_dir(&backup_dir)
             .expect("read backup dir")
@@ -3934,6 +4065,10 @@ mod tests {
                     name: CONFIG_SCHEMA_FILE_NAME.to_string(),
                     data: b"{}".to_vec(),
                 },
+                ZipEntry {
+                    name: "icons/restored-button.png".to_string(),
+                    data: b"\x89PNG\r\n\x1a\nrestored".to_vec(),
+                },
             ],
         )
         .expect("write backup zip");
@@ -3956,6 +4091,15 @@ mod tests {
         assert!(data_dir.join("sessions.jsonl").exists());
         assert!(data_dir.join("notes.json").exists());
         assert!(data_dir.join(CONFIG_SCHEMA_FILE_NAME).exists());
+        assert_eq!(
+            fs::read(
+                data_dir
+                    .join(ICON_CACHE_DIR_NAME)
+                    .join("restored-button.png")
+            )
+            .expect("read restored icon"),
+            b"\x89PNG\r\n\x1a\nrestored"
+        );
 
         if let Some(value) = previous_appdata {
             std::env::set_var("APPDATA", value);
@@ -3979,6 +4123,14 @@ mod tests {
         let data_dir = config_dir_path().expect("config dir");
         fs::create_dir_all(&data_dir).expect("create data dir");
         fs::write(data_dir.join(CONFIG_FILE_NAME), b"{\"version\":2}").expect("write current");
+        fs::create_dir_all(data_dir.join(ICON_CACHE_DIR_NAME)).expect("create icons");
+        fs::write(
+            data_dir
+                .join(ICON_CACHE_DIR_NAME)
+                .join("current-button.png"),
+            b"\x89PNG\r\n\x1a\ncurrent",
+        )
+        .expect("write current icon");
 
         let backup_path = root.join("lifelauncher-backup-20260708.zip");
         let config_bytes = serde_json::to_vec_pretty(&sample_config()).expect("serialize config");
@@ -3993,6 +4145,14 @@ mod tests {
 
         let pre_restore_dir = restore_backup_from_path(&backup_path).expect("restore backup");
         assert!(pre_restore_dir.join(CONFIG_FILE_NAME).exists());
+        assert!(pre_restore_dir
+            .join(ICON_CACHE_DIR_NAME)
+            .join("current-button.png")
+            .exists());
+        assert!(data_dir
+            .join(ICON_CACHE_DIR_NAME)
+            .join("current-button.png")
+            .exists());
 
         if let Some(value) = previous_appdata {
             std::env::set_var("APPDATA", value);

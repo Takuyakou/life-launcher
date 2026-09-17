@@ -2327,7 +2327,8 @@ function DashboardApp() {
   const miniModeOpenRef = useRef(false);
   const miniTransitioningRef = useRef(false);
   const miniSnapshotRef = useRef<MiniTimerSnapshot>(inactiveMiniSnapshot());
-  const iconRequestIdsRef = useRef<Set<string>>(new Set());
+  const iconRequestIdsRef = useRef<Map<string, number>>(new Map());
+  const iconRefreshGenerationRef = useRef(0);
   const notesSaveTimersRef = useRef<Map<string, number>>(new Map());
   const completionPromptRef = useRef<TimerCompletionPrompt | null>(null);
   completionPromptRef.current = completionPrompt;
@@ -2846,10 +2847,11 @@ function DashboardApp() {
   };
 
   const refreshButtonIcon = useCallback(async (button: LauncherButton, force = false) => {
+    const generation = iconRefreshGenerationRef.current;
     if (!buttonHasIconCacheSource(button)) return;
     if (iconRequestIdsRef.current.has(button.id)) return;
 
-    iconRequestIdsRef.current.add(button.id);
+    iconRequestIdsRef.current.set(button.id, generation);
     try {
       if (force) {
         setButtonIconSources((current) => {
@@ -2860,6 +2862,7 @@ function DashboardApp() {
         await deleteButtonIconCache(button.id);
       }
       const source = await ensureButtonIconCache(button);
+      if (generation !== iconRefreshGenerationRef.current) return;
       if (source) {
         setButtonIconSources((current) => ({
           ...current,
@@ -2873,7 +2876,7 @@ function DashboardApp() {
         });
       }
     } catch {
-      if (force) {
+      if (force && generation === iconRefreshGenerationRef.current) {
         setButtonIconSources((current) => {
           const next = { ...current };
           delete next[button.id];
@@ -2881,7 +2884,9 @@ function DashboardApp() {
         });
       }
     } finally {
-      iconRequestIdsRef.current.delete(button.id);
+      if (iconRequestIdsRef.current.get(button.id) === generation) {
+        iconRequestIdsRef.current.delete(button.id);
+      }
     }
   }, []);
 
@@ -4550,6 +4555,9 @@ function DashboardApp() {
     }
 
     configSaveBlockedRef.current = response.saveBlocked;
+    iconRefreshGenerationRef.current += 1;
+    iconRequestIdsRef.current.clear();
+    setButtonIconSources({});
     setConfig(response.config);
     setMorningVictorySuggestion(response.morningVictorySuggestion ?? null);
     setBackupPath(response.backupPath);
@@ -7304,6 +7312,11 @@ function DashboardApp() {
           kind: "victory",
           label: text,
         });
+      } else if (saved) {
+        seenCompletionFeedbackRef.current.delete(`victory:${current.today.date}`);
+        setCompletionFeedback((feedback) =>
+          feedback?.kind === "victory" ? null : feedback,
+        );
       }
     });
   };
