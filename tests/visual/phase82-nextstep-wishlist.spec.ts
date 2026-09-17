@@ -473,6 +473,7 @@ test("Phase 8.4 NextStep menu offers edit, change and unset without legacy regis
     "次の一手を編集",
     "次の一手を変更",
     "次の一手を未設定にする",
+    "プロジェクトを削除…",
   ]);
   await menu.getByRole("menuitem", { name: "次の一手を未設定にする" }).click();
   const dialog = page.getByRole("dialog", { name: "次の一手を未設定にしますか？" });

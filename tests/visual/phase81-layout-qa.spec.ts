@@ -249,6 +249,7 @@ test("Phase 8.1 unassigned Wishlist and empty Project require explicit keyboard 
     "プロジェクトを編集",
     "プロジェクトを管理",
     "次の一手を設定",
+    "プロジェクトを削除…",
   ]);
   await page.getByRole("menuitem", { name: "次の一手を設定", exact: true }).click();
   const setup = page.getByRole("dialog", { name: "次の一手を設定", exact: true });
@@ -279,6 +280,7 @@ test("Phase 8.1 NextStep cards expose one combined keyboard context menu", async
     "次の一手を編集",
     "次の一手を変更",
     "次の一手を未設定にする",
+    "プロジェクトを削除…",
   ]);
   await expect(menu.getByRole("menuitem", { name: "やりたいことを追加" })).toHaveCount(0);
   await expectInsideViewport(page, menu, "Combined NextStep context menu");
@@ -295,6 +297,7 @@ test("Phase 8.1 NextStep cards expose one combined keyboard context menu", async
     "次の一手を編集",
     "次の一手を変更",
     "次の一手を未設定にする",
+    "プロジェクトを削除…",
   ]);
   await expectInsideViewport(page, menu, "Combined NextStep action context menu");
   await page.keyboard.press("Escape");
