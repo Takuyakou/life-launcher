@@ -82,10 +82,31 @@ test("P72-05 Victory feedback fires for every saved false-to-true transition", a
   const checkbox = page.getByRole("checkbox", { name: "勝利条件を達成" });
   await checkbox.focus();
   await checkbox.check();
-  await expect(page.locator(".victoryBadge--reward")).toHaveText("✓ 今日の勝利、達成");
+  const rewardBadge = page.locator(".victoryBadge--reward");
+  await expect(rewardBadge).toHaveText("✓ 今日の勝利、達成");
+  const readBadgeMotion = () =>
+    rewardBadge.evaluate((node) => {
+      const style = getComputedStyle(node);
+      return {
+        animationName: style.animationName,
+        opacity: style.opacity,
+        transform: style.transform,
+      };
+    });
+  await expect.poll(readBadgeMotion).toEqual({
+    animationName: "none",
+    opacity: "1",
+    transform: "none",
+  });
+  await page.clock.fastForward(180);
+  await expect.poll(readBadgeMotion).toEqual({
+    animationName: "none",
+    opacity: "1",
+    transform: "none",
+  });
   await expect(page.locator(".completionParticle")).toHaveCount(6);
   await expect(checkbox).toBeFocused();
-  await page.clock.fastForward(1_200);
+  await page.clock.fastForward(1_020);
   await expect(page.locator(".victoryBadge")).toHaveText("✓ 今日の勝利、達成");
   await expect(page.locator(".victoryBadge--reward")).toHaveCount(0);
   await checkbox.uncheck();

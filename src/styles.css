@@ -11205,7 +11205,9 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .victoryBadge--reward {
   color: var(--accent-strong);
-  animation: completion-label-in 360ms ease-out;
+  opacity: 1;
+  transform: none;
+  animation: none;
 }
 
 .todayRow--justCompleted {
