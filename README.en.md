@@ -31,7 +31,7 @@ Note: it is not a complete port of the Windows product.
   Define one condition for a successful day and limit today's work to at most three items. Start from project-colored cards; an item is completed after its planned timer expires and you confirm the session. Once all three are complete, choose the next three yourself.
 
 - **Choose today's work / Wishlist**
-  Open the Picker from an empty Today's Three slot, then choose from Next Steps and Wishlist items. Adoption preserves the source and snapshots its text, instruction, launch environment, and timer durations. A drag-only removal Drop Zone or the item menu removes only the Today adoption.
+  Open the Picker from an empty Today's Three slot, then use “+ Add to Today” for Next Steps and Wishlist items. The third item confirms automatically, while Cancel restores the opening selection. Adoption preserves the source and snapshots its text, instruction, launch environment, and timer durations. A drag-only removal Drop Zone or the item menu removes only the Today adoption.
 
 - **Remove from Today's Three**
   Use the card's lower-left button or context menu to remove only its adoption into today, without a confirmation dialog. The original source, candidate, and session records remain. Removal is blocked while that item's timer is running, paused, or awaiting expiry confirmation.
@@ -40,7 +40,7 @@ Note: it is not a complete port of the Windows product.
   Register apps, folders, files, and URLs, then open them from the sidebar or `Ctrl+K` search. Navigate the dictionary with arrow keys; on multiple monitors, it opens on the same screen as the main app.
 
 - **Timer / Session Records**
-  Start a short or normal timer and store sessions of at least one minute locally. Stopping early does not complete today's item. Session completion is also separate from completing or deleting the source entry itself.
+  Start a short or normal timer, or use Measure to count up from 0:00, and store sessions of at least one minute locally. Stopping early does not automatically complete today's item. Session completion is also separate from completing or deleting the source entry itself.
 
 - **Instruction Viewer**
   Read Markdown, text, and sanitized HTML files from registered folders in a separate window.
@@ -57,25 +57,25 @@ The screenshots are generated from synthetic data. They do not contain real user
 
 ## Download
 
-Download Life Launcher from [GitHub Releases](https://github.com/Takuyakou/life-launcher/releases/latest). The current stable release is **v1.2.0**.
+Download Life Launcher from [GitHub Releases](https://github.com/Takuyakou/life-launcher/releases/latest). The current stable release is **v1.3.0**.
 
 ### Installer - Recommended
 
 Use this for the standard installation flow.
 
-`Life-Launcher-v1.2.0-windows-x64-setup.exe`
+`Life-Launcher-v1.3.0-windows-x64-setup.exe`
 
 ### Standalone EXE
 
 Run the app directly without installing it.
 
-`Life-Launcher-v1.2.0-windows-x64.exe`
+`Life-Launcher-v1.3.0-windows-x64.exe`
 
 ### Portable ZIP
 
 Extract the ZIP archive and run the app.
 
-`Life-Launcher-v1.2.0-windows-x64-portable.zip`
+`Life-Launcher-v1.3.0-windows-x64-portable.zip`
 
 The ZIP edition also stores user data in `%APPDATA%\life-launcher`. It does not carry your data alongside the executable on a USB drive.
 
@@ -87,9 +87,9 @@ You can verify the release files with the included `SHA256SUMS.txt`.
 
 Fully exit Life Launcher and back up the `%APPDATA%\life-launcher` folder to another location before updating. There is no automatic updater.
 
-Updating from v1.1 to v1.2 does not change the config schema. Legacy v1.0 Today's Three items without a source key revert from completed to incomplete during migration. Session records are not deleted.
+The first launch after updating from v1.2 to v1.3 migrates config schema `2` to `3`. The app creates a raw pre-migration backup and leaves the original config unchanged if migration, validation, or backup fails. Session records are not deleted.
 
-See the [v1.2.0 release notes](docs/releases/v1.2.0.md) and [changelog](CHANGELOG.md) for details. The [overview](docs/OVERVIEW.md) and [current specification](docs/spec/current-spec.md) cover the wider feature set. These detailed documents are currently in Japanese.
+See the [v1.3.0 release notes](docs/releases/v1.3.0.md) and [changelog](CHANGELOG.md) for details. The [overview](docs/OVERVIEW.md) and [current specification](docs/spec/current-spec.md) cover the wider feature set. These detailed documents are currently in Japanese.
 
 ## Runtime Requirements
 

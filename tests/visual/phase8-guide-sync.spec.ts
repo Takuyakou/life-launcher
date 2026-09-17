@@ -49,7 +49,7 @@ test("Guide has the current ten-section structure and a three-step start", async
   await expect(sections.first()).toContainText("実行記録を残します");
 });
 
-test("Guide uses current labels and explains the Phase 8.2 state contracts", async ({ page }) => {
+test("Guide uses current labels and explains the v1.3 state contracts", async ({ page }) => {
   const dialog = await openGuide(page);
   const text = await dialog.innerText();
 
@@ -60,7 +60,8 @@ test("Guide uses current labels and explains the Phase 8.2 state contracts", asy
     "始めるきっかけ",
     "実行記録",
     "他の一手",
-    "✓ 今日の3件",
+    "✓ 今日の3件に設定済み",
+    "✓ 次の一手に設定済み",
     "ふりかえり",
     "今週を決める",
     "すべての記録",
@@ -72,6 +73,11 @@ test("Guide uses current labels and explains the Phase 8.2 state contracts", asy
   expect(text).toContain("優先順や保存データは書き換えません");
   expect(text).toContain("今週の重点は優先順位を上げますが、候補を限定しません");
   expect(text).toContain("↓ ここにドロップして今日の3件から外す");
+  expect(text).toContain("候補の「＋ 今日へ」");
+  expect(text).toContain("Picker内の解除はボタン操作だけで、D&Dはありません");
+  expect(text).toContain("3件目の保存に成功すると「決定」と同じ扱いで自動的に閉じ");
+  expect(text).toContain("変更がある場合だけ破棄確認");
+  expect(text).toContain("アイコンキャッシュの日次ZIPバックアップ");
   expect(text).toContain("各プロジェクト0〜1件の再開地点");
   expect(text).toContain("次の一手とは独立した順");
   expect(text).toContain("所属のない項目は「未分類」にまとまります");
@@ -101,7 +107,7 @@ test("Overview and current spec stay concise and synchronized", () => {
 
   expect(overview.trimEnd().split(/\r?\n/).length).toBeLessThanOrEqual(100);
   for (const text of [
-    "v1.3候補",
+    "1.3.0",
     "プロジェクト",
     "実行記録",
     "ふりかえり",

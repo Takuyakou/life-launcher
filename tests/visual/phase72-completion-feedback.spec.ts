@@ -82,14 +82,15 @@ test("P72-05 Victory feedback fires for every saved false-to-true transition", a
   const checkbox = page.getByRole("checkbox", { name: "勝利条件を達成" });
   await checkbox.focus();
   await checkbox.check();
-  await expect(page.getByText("今日の勝利、達成", { exact: true })).toBeVisible();
+  await expect(page.locator(".victoryBadge--reward")).toHaveText("✓ 今日の勝利、達成");
   await expect(page.locator(".completionParticle")).toHaveCount(6);
   await expect(checkbox).toBeFocused();
   await page.clock.fastForward(1_200);
-  await expect(page.getByText("今日の勝利、達成", { exact: true })).toHaveCount(0);
+  await expect(page.locator(".victoryBadge")).toHaveText("✓ 今日の勝利、達成");
+  await expect(page.locator(".victoryBadge--reward")).toHaveCount(0);
   await checkbox.uncheck();
   await checkbox.check();
-  await expect(page.getByText("今日の勝利、達成", { exact: true })).toBeVisible();
+  await expect(page.locator(".victoryBadge--reward")).toHaveText("✓ 今日の勝利、達成");
   await expect(page.locator(".completionParticle")).toHaveCount(6);
 });
 
@@ -98,7 +99,7 @@ test("P72-05 failed Victory save never rewards", async ({ page }) => {
   await prepare(page, fixture);
   await setSaveFailure(page, true);
   await page.getByRole("checkbox", { name: "勝利条件を達成" }).click();
-  await expect(page.locator(".victoryRewardLabel")).toHaveCount(0);
+  await expect(page.locator(".victoryBadge--reward")).toHaveCount(0);
   expect((await currentConfig(page)).today.victory.done).toBe(false);
 });
 
@@ -117,7 +118,7 @@ test("Victory completion rewards again after the completed text is cleared and r
   await input.fill("新しく入力した勝利条件");
   await input.press("Enter");
   await checkbox.check();
-  await expect(page.locator(".victoryRewardLabel")).toHaveText("今日の勝利、達成");
+  await expect(page.locator(".victoryBadge--reward")).toHaveText("✓ 今日の勝利、達成");
   await expect(page.locator(".completionParticle")).toHaveCount(6);
 });
 
@@ -126,7 +127,7 @@ test("P72-05 a new day may reward its own first saved Victory completion", async
   await prepare(page, fixture);
   const victory = page.getByRole("checkbox", { name: "勝利条件を達成" });
   await victory.check();
-  await expect(page.locator(".victoryRewardLabel")).toBeVisible();
+  await expect(page.locator(".victoryBadge--reward")).toBeVisible();
   await page.clock.fastForward(1_100);
   await page.evaluate(() => {
     const qa = (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: Control })
@@ -143,7 +144,7 @@ test("P72-05 a new day may reward its own first saved Victory completion", async
   });
   await expect(victory).not.toBeChecked();
   await victory.check();
-  await expect(page.locator(".victoryRewardLabel")).toBeVisible();
+  await expect(page.locator(".victoryBadge--reward")).toBeVisible();
 });
 
 test("P72-05 existing completed state on initial load is static", async ({ page }) => {
@@ -152,7 +153,7 @@ test("P72-05 existing completed state on initial load is static", async ({ page 
   fixture.config.today.items = fixture.config.today.items.map((item) => ({ ...item, done: true }));
   await prepare(page, fixture);
   await expect(page.locator(".victoryBadge")).toHaveText("✓ 今日の勝利、達成");
-  await expect(page.locator(".victoryRewardLabel, .todayAllCompletionReward, .completionParticle"))
+  await expect(page.locator(".victoryBadge--reward, .todayAllCompletionReward, .completionParticle"))
     .toHaveCount(0);
 });
 
@@ -280,7 +281,7 @@ test("P72-05 reduced motion keeps labels and colors without animation", async ({
   await page.getByRole("checkbox", { name: "勝利条件を達成" }).check();
   const reward = page.locator(".victoryBar--reward");
   await expect(reward).toBeVisible();
-  await expect(page.getByText("今日の勝利、達成", { exact: true })).toBeVisible();
+  await expect(page.locator(".victoryBadge--reward")).toHaveText("✓ 今日の勝利、達成");
   await expect(page.locator(".completionParticleLayer")).toBeHidden();
   expect(await reward.evaluate((node) => getComputedStyle(node).animationName)).toBe("none");
 });

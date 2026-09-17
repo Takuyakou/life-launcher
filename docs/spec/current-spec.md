@@ -1,20 +1,20 @@
-# Life Launcher v1.3候補 UI/UX・機能仕様書
+# Life Launcher v1.3.0 UI/UX・機能仕様書
 
 ## 0. 文書情報
 
-| 項目             | 内容                                                                  |
-| ---------------- | --------------------------------------------------------------------- |
-| 文書版           | 1.3候補 / Phase 8.3実装作業ツリー                                     |
-| 対象             | Windowsデスクトップ版 Life Launcher                                   |
-| 実装基準         | Public repository `Takuyakou/life-launcher` のPhase 8.3実装作業ツリー |
-| 作業branch       | `feature/p83-04-clean-start-e2e-docs`                                 |
-| 監査基準コミット | `f2c0dd5c1475e16864beefe7bb0efae0a85cdf72`                            |
-| 確認日           | 2026-09-15                                                            |
-| UI実装           | Tauri 2 / React 18 / TypeScript / CSS                                 |
+| 項目             | 内容                                                                   |
+| ---------------- | ---------------------------------------------------------------------- |
+| 文書版           | 1.3.0                                                                  |
+| 対象             | Windowsデスクトップ版 Life Launcher                                    |
+| 実装基準         | Public repository `Takuyakou/life-launcher` のv1.3.0 release candidate |
+| 作業branch       | `fix/v13-victory-guide-release`                                        |
+| 監査基準コミット | v1.3.0リリース準備時のHEAD                                             |
+| 確認日           | 2026-09-17                                                             |
+| UI実装           | Tauri 2 / React 18 / TypeScript / CSS                                  |
 
-本書は、Life Launcher v1.3候補のUI/UXと主要機能を、Phase 8.3作業ツリーのコード、型、設定、capability、テストから整理した現行仕様書である。Phase 8.3の実装とフルgateは完了しており、Release作業はこのPhaseに含めない。
+本書は、Life Launcher v1.3.0のUI/UXと主要機能を、現在のコード、型、設定、capability、テストから整理した現行仕様書である。
 
-Public repository内の製品バージョンは引き続き`1.2.0`、config schemaは`3`である。Phase 8.3はSettingsの情報設計、ソフトウェアリセット、Main本文ボタンの操作feedback、clean-start検証と文書同期を扱い、version bumpやReleaseは行わない。機能の入口は [Overview](../OVERVIEW.md) を参照する。
+製品バージョンは`1.3.0`、config schemaは`3`である。Phase 8〜8.4のProject / NextStep / Wishlist再構成、Settings、ソフトウェアリセット、Today Picker、Source Lock、UI改善を含む。機能の入口は [Overview](../OVERVIEW.md) を参照する。
 
 ## 1. プロダクト概要
 
@@ -223,13 +223,13 @@ Main Window
 ## 9. 今日やるものを選ぶ
 
 - Mainに常設の「今日を組み立てる」sectionは置かない。Today3が0〜2件のときだけ、Today3内に「＋ 今日やるものを選ぶ」を表示し、3件時は表示しない。
-- 追加入口はmodal / overlay型のPickerを開く。閉じる、Escape、backdrop操作では元の追加入口へfocusを戻す。
+- 追加入口はmodal / overlay型のPickerを開く。backdrop操作では閉じない。閉じる、Escape、キャンセルは変更がなければそのまま閉じ、変更がある場合だけ破棄確認を表示する。破棄時はPickerを開く前のToday3へ戻し、元の追加入口へfocusを戻す。
 - Picker上部は他の追加dialogと同じeyebrow、見出し、閉じる操作を持つ。「追加先: 今日の3件」には現在の採用数を示す緑の3段階progress indicatorを隣接させ、選択成功時に滑らかに更新する。追加元のsection見出しは同じ文字サイズとprimary colorへ揃え、footerのキャンセルは候補の「＋ 今日へ」と同じ高さにする。
 - 候補はUI非依存の共通生成処理でNextStepとWishlistから作る。勝利条件、Session、Do Now順位、完了履歴、weeklyFocusは候補生成へ混在させない。
-- Pickerは「次の一手」「やりたいこと」の2groupを表示し、各候補のProject識別、本文、未採用時の「選ぶ」を示す。新規ProjectやWishlistの登録操作は置かない。
-- 採用済み候補はstable source identityとlegacy aliasで判定し、弱いgreenの「✓ 今日の3件」をstatusとして表示する。採用解除toggleにはしない。同じ本文でもstable identityが異なるWishlistは別候補として扱う。
-- 「選ぶ」は既存のToday adoption境界を再利用する。元のNextStep / Wishlistを変更せず、本文、generationId、trigger、projectId、buttonIds、手順書path / 開始時表示、通常 / 短時間TimerをToday snapshotへ保存する。
-- handlerは保存直前にも空本文、重複、最大3件を確認する。3件目の保存成功時はPickerを閉じ、以後は追加入口を表示しない。
+- Pickerは「次の一手」「やりたいこと」の2groupを表示し、各候補のProject識別、本文、未採用時の「＋ 今日へ」を示す。新規ProjectやWishlistの登録操作は置かない。
+- 採用済み候補はstable source identityとlegacy aliasで判定して候補一覧から外し、上部の選択済み枠へ弱いgreenの「✓ 選択済み」と「今日から外す」を表示する。Picker内の採用解除はbuttonだけで、D&D affordanceと解除Drop Zoneは置かない。同じ本文でもstable identityが異なるWishlistは別候補として扱う。
+- 「＋ 今日へ」は既存のToday adoption境界を再利用する。元のNextStep / Wishlistを変更せず、本文、generationId、trigger、projectId、buttonIds、手順書path / 開始時表示、通常 / 短時間TimerをToday snapshotへ保存する。
+- handlerは保存直前にも空本文、重複、最大3件を確認する。選択と解除はPicker内表示へ即時反映し、「決定」で現在状態を維持する。3件目の保存成功時は「決定」と同義でPickerを閉じ、緑の「今日の3件を選択しました」Toastを表示し、以後は追加入口を表示しない。
 - 保存は既存のoptimistic rollback契約に従い、失敗時はPickerを開いたまま採用前のToday3へ戻す。選択操作でMainのscroll位置を動かさない。
 - candidateExcludedSourceKeys、旧dismiss、旧Builder順、pagination、group開閉状態は互換性のため読み書きを維持するが、Pickerの表示可否・順序・操作へ適用しない。登録元側にも旧候補復帰操作を表示しない。
 
@@ -275,7 +275,7 @@ Main Window
 ### 完了フィードバック
 
 - 保存済みの未完了から完了への遷移だけを起点に、約1秒の一時フィードバックを表示する。既存doneの読込、reload、画面復帰、編集、並べ替え、採用、除外、Undo、source自体の完了、保存失敗では発火しない。
-- 今日の勝利条件は金色のsweep、check、少量のparticleと「今日の勝利、達成」を表示する。同じ日では解除後に再達成しても強い演出を繰り返さない。
+- 今日の勝利条件は金色のsweep、check、少量のparticleを表示する。達成表示は演出中と演出後で同じ「✓ 今日の勝利、達成」nodeと文言を維持し、解除後に再達成したfalse-to-true遷移でも演出を再生する。
 - Today3個別完了は対象カードだけを緑のcheckと短いpopで示す。3件目で正確に3/3へ遷移した場合は個別演出より「今日の3件、完了！」の金色節目表示を優先し、既存の「次の3件を選ぶ」は演出中も操作できる。
 - 今やる一手だけに対応する完了は、終了したitem snapshotへ「一手進みました」を軽く表示する。同じSessionがToday3にも対応する場合はToday3側だけを表示し、3/3では節目表示だけを出す。
 - Timer Sessionと日付を含むevent identityで同一完了の重複表示を抑止する。一時表示はfocusを移さずpointer eventを受けず、非表示windowを前面化しない。
@@ -313,7 +313,7 @@ Main Window
 
 - canonicalはNextStep(Project.id) / Wishlist(stable inbox.id)。Project NextStepの`sourceKey`は`project:{id}`を維持し、同じProject内の世代はoptionalな`generationId`で区別する。Today3右クリック「編集」は元editorを開く。曖昧な旧aliasや元データなしは編集不可。
 - 未完了Today3が参照するcanonical sourceはSource Lock状態にする。NextStepは同一Projectかつ同一generation、Wishlistは同一stable IDだけを対象とし、本文一致ではロックしない。Today3が完了するか採用解除されると即座に解除する。
-- Source Lock中のNextStepはProject名、鍵、緑の「✓ 今日の3件」を同じ行へ順に表示し、カード右下には重複した使用中文字を置かない。登録元からの編集、完了、削除、昇格、置換、未設定化、領域間D&DをUIとhandlerの両方で拒否する。未設定NextStepや別generation、別IDのWishlistはロックしない。
+- Source Lock中のNextStepはProject名、鍵、緑の「✓ 今日の3件に設定済み」を同じ行へ順に表示し、カード右下には重複した使用中文字を置かない。登録元からの編集、完了、削除、昇格、置換、未設定化、領域間D&DをUIとhandlerの両方で拒否する。未設定NextStepや別generation、別IDのWishlistはロックしない。
 - Source Lock中でもToday3カードの「編集」から開いた元editorだけは保存できる。この経路は元sourceと一致する現在のToday3 snapshotを1回のconfig保存で同時更新し、Timer実行中・一時停止中・確認中の既存guardは迂回しない。
 - 明示保存時だけ、generationが一致するToday3へtext/trigger/projectId/buttonIds/instructionPath/instructionOpenOnStart/defaultTimerMinutes/shortTimerMinutesを再snapshotする。解除した任意値は残さない。[詳細matrix](../phase7.1/00-field-sync-matrix.md)。
 - 現在のToday3のsourceKey、done、配列順、個数、date、勝利条件は保持する。完了済みの現在カードもdoneを維持して更新し、Session/今日の実行/sourceCompletionsは書き換えない。部分補充なし。
@@ -604,12 +604,12 @@ URLはWindowsの既定ブラウザで開き、登録ごとのブラウザ指定�
 | ミニモード      | ON     | チェック                     |
 | 今週の重点      | 未設定 | 最大3件                      |
 
-| ショートカット | 既定値      |
-| -------------- | ----------- |
+| ショートカット | 既定値           |
+| -------------- | ---------------- |
 | メイン画面     | `Ctrl+Alt+Space` |
-| 辞書           | `Ctrl+K`    |
-| ミニ           | 未設定      |
-| 手順書         | 未設定      |
+| 辞書           | `Ctrl+K`         |
+| ミニ           | 未設定           |
+| 手順書         | 未設定           |
 
 - ショートカットは登録ボタンを押した後のキー入力を記録する。
 - 記録中は既存ショートカットを一時解除する。
@@ -622,7 +622,7 @@ URLはWindowsの既定ブラウザで開き、登録ごとのブラウザ指定�
 ### 19.1 バックアップとメンテナンス
 
 - バックアップ先と保持数を設定でき、既定保持数は30。
-- 設定済みの場合、1日1回 `config.json`、`sessions.jsonl`、`notes.json`、`config.schema.json` の4ファイルをZIP保存する。
+- 設定済みの場合、1日1回 `config.json`、`sessions.jsonl`、`notes.json`、`config.schema.json` と安全なPNGアイコンキャッシュをZIP保存する。復元ZIPにアイコンが含まれる場合はキャッシュを置き換え、旧ZIPに含まれない場合は現在のキャッシュを保持する。
 - ZIPを選択して復元し、復元前に現在データを退避する。
 - ZIPの名前、エントリー、サイズ、圧縮形式、チェックサムを検証する。
 - 設定フッターは左に緑の「保存」、右に控えめな赤の「キャンセル」を置く。保存可否と未保存確認の既存契約は維持する。
@@ -653,7 +653,7 @@ URLはWindowsの既定ブラウザで開き、登録ごとのブラウザ指定�
 - 章は「まず始める」「毎日の基本」「今日やるものを選ぶ」「今日の3件」「Timerと完了」「開始環境と手順書」「辞書 / Quick」「記録と今週の見直し」「設定とデータ」「Life Launcherがしないこと」の10件。
 - 画面表示語は「プロジェクト」「目標」「次の一手」「始めるきっかけ」「実行記録」を使う。
 - 「他の一手」は候補が2件以上のときだけ表示し、buttonと右クリックが同じhandlerを使い、優先順や保存データを変更しないことを説明する。
-- Today3の最大3件、Pickerの2source、「✓ 今日の3件」、完了後もカードを保持すること、3/3後の次batch、専用Drop Zoneによる採用解除とUndoを説明する。
+- Today3の最大3件、Pickerの2sourceと「＋ 今日へ」・「今日から外す」・決定/キャンセル・3件目の自動確定、登録元の「✓ 今日の3件に設定済み」、完了後もカードを保持すること、3/3後の次batch、Today3専用Drop Zoneによる採用解除とUndoを説明する。
 - 記録画面の3tab、辞書のactive pageとkeyboard focusの区別、再表示時の復元と検索resetを説明する。
 - 目次から各節へ移動でき、移動先見出しへfocusする。狭幅では目次を開閉でき、dialog内でTabを循環する。
 - 公開済みREADMEやReleaseへ未公開版の操作説明を先行反映しない。

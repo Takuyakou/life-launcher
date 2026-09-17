@@ -11203,10 +11203,8 @@ input[type="number"]::-webkit-inner-spin-button {
   z-index: 1;
 }
 
-.victoryRewardLabel {
+.victoryBadge--reward {
   color: var(--accent-strong);
-  font-size: 13px;
-  font-weight: 800;
   animation: completion-label-in 360ms ease-out;
 }
 
@@ -11412,7 +11410,7 @@ input[type="number"]::-webkit-inner-spin-button {
   .doNowContent--reward,
   .victoryBar--reward,
   .victoryRewardSweep,
-  .victoryRewardLabel,
+  .victoryBadge--reward,
   .todayRow--justCompleted,
   .todayRow--justCompleted .todayCompletionStatus--complete,
   .todayGrid--allCompleteReward,

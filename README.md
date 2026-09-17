@@ -31,7 +31,7 @@ Web Demoでは合成データを使い、今日の候補選択・タイマー・
   今日の基準を1つ決め、取り組む項目は最大3件に絞ります。プロジェクト色付きのカードから開始し、予定時間の満了後に終了を確定すると完了になります。3件すべて完了したら、自分で次の3件を選びます。
 
 - **今日やるものを選ぶ / やりたいこと**
-  今日の3件の空き枠からPickerを開き、次の一手・やりたいことを「選ぶ」で採用します。採用時の本文・手順書・開始環境の参照・タイマー分数を保持し、登録元は残します。Today3から外すときは、ドラッグ中だけ現れる専用Drop Zoneまたは操作メニューを使えます。
+  今日の3件の空き枠からPickerを開き、次の一手・やりたいことを「＋ 今日へ」で採用します。3件目は自動確定し、キャンセルでは変更前へ戻ります。採用時の本文・手順書・開始環境・タイマー分数を保持し、登録元は残します。Today3から外すときは、ドラッグ中だけ現れる専用Drop Zoneまたは操作メニューを使えます。
 
 - **今日の3件から外す**
   カード左下または右クリックから、今日への採用だけを確認ダイアログなしで解除できます。元の登録・候補・実行記録は残ります。対象のタイマー実行中・一時停止中・満了確認中は解除できません。
@@ -40,7 +40,7 @@ Web Demoでは合成データを使い、今日の候補選択・タイマー・
   アプリ・フォルダ・ファイル・URLを登録し、サイドバーや`Ctrl+K`検索から呼び出せます。辞書は矢印キーで移動でき、複数モニターでは本体がある画面に開きます。
 
 - **タイマー / セッション記録**
-  短時間または通常タイマーで開始し、1分以上の実行内容をローカルに記録します。途中終了では今日の項目を完了にせず、登録そのものの「完了にする」「削除」とも区別します。
+  短時間・通常タイマー、または0:00から数える「計測」で開始し、1分以上の実行内容をローカルに記録します。途中終了では今日の項目を自動完了にせず、登録そのものの「完了にする」「削除」とも区別します。
 
 - **手順書ビューア**
   登録フォルダ内のMarkdown・テキスト・サニタイズ済みHTMLを別ウィンドウで参照できます。
@@ -57,25 +57,25 @@ Web Demoでは合成データを使い、今日の候補選択・タイマー・
 
 ## Download
 
-Life Launcherは、[GitHub Releases](https://github.com/Takuyakou/life-launcher/releases/latest)からダウンロードできます。現在の正式リリースは **v1.2.0** です。
+Life Launcherは、[GitHub Releases](https://github.com/Takuyakou/life-launcher/releases/latest)からダウンロードできます。現在の正式リリースは **v1.3.0** です。
 
 ### Installer - Recommended
 
 通常はこちらを利用してください。
 
-`Life-Launcher-v1.2.0-windows-x64-setup.exe`
+`Life-Launcher-v1.3.0-windows-x64-setup.exe`
 
 ### Standalone EXE
 
 インストールせず直接起動できます。
 
-`Life-Launcher-v1.2.0-windows-x64.exe`
+`Life-Launcher-v1.3.0-windows-x64.exe`
 
 ### Portable ZIP
 
 ZIPを展開して利用できます。
 
-`Life-Launcher-v1.2.0-windows-x64-portable.zip`
+`Life-Launcher-v1.3.0-windows-x64-portable.zip`
 
 ZIP版もユーザーデータは`%APPDATA%\life-launcher`へ保存します。USBなどへデータごと持ち運ぶ方式ではありません。
 
@@ -87,9 +87,9 @@ ZIP版もユーザーデータは`%APPDATA%\life-launcher`へ保存します。U
 
 更新前にLife Launcherを完全終了し、`%APPDATA%\life-launcher`フォルダーを別の場所へコピーしてバックアップしてください。自動アップデーターはありません。
 
-v1.1からv1.2への更新ではconfig schemaを変更していません。v1.0の今日の3件で識別用のsource keyがない項目は、移行時に「完了」が「未完了」に戻ります。Sessionの実行記録は削除しません。
+v1.2からv1.3への初回更新ではconfig schemaを`2`から`3`へ移行します。変換前のraw backupを作成し、移行・検証・backupに失敗した場合は元のconfigを書き換えません。Sessionの実行記録は削除しません。
 
-詳しくは [v1.2.0 Release notes](docs/releases/v1.2.0.md) と [CHANGELOG](CHANGELOG.md) を参照してください。機能の全体像は [OVERVIEW](docs/OVERVIEW.md)、詳細は [現行仕様書](docs/spec/current-spec.md) にまとめています。
+詳しくは [v1.3.0 Release notes](docs/releases/v1.3.0.md) と [CHANGELOG](CHANGELOG.md) を参照してください。機能の全体像は [OVERVIEW](docs/OVERVIEW.md)、詳細は [現行仕様書](docs/spec/current-spec.md) にまとめています。
 
 ## 動作要件
 

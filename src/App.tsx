@@ -10404,12 +10404,17 @@ function DashboardApp() {
                     </button>
                   )}
                 </div>
-                {completionFeedback?.kind === "victory" ? (
-                  <span className="victoryRewardLabel" role="status">
-                    今日の勝利、達成
+                {victoryDone ? (
+                  <span
+                    className={
+                      completionFeedback?.kind === "victory"
+                        ? "victoryBadge victoryBadge--reward"
+                        : "victoryBadge"
+                    }
+                    role={completionFeedback?.kind === "victory" ? "status" : undefined}
+                  >
+                    ✓ 今日の勝利、達成
                   </span>
-                ) : victoryDone ? (
-                  <span className="victoryBadge">✓ 今日の勝利、達成</span>
                 ) : null}
               </section>
 
