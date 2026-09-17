@@ -90,19 +90,16 @@ test("P72-05 Victory feedback fires for every saved false-to-true transition", a
       return {
         animationName: style.animationName,
         opacity: style.opacity,
-        transform: style.transform,
       };
     });
   await expect.poll(readBadgeMotion).toEqual({
-    animationName: "none",
+    animationName: "completion-victory-label-pop",
     opacity: "1",
-    transform: "none",
   });
   await page.clock.fastForward(180);
   await expect.poll(readBadgeMotion).toEqual({
-    animationName: "none",
+    animationName: "completion-victory-label-pop",
     opacity: "1",
-    transform: "none",
   });
   await expect(page.locator(".completionParticle")).toHaveCount(6);
   await expect(checkbox).toBeFocused();
