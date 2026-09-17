@@ -224,7 +224,7 @@ Main Window
 
 - Mainに常設の「今日を組み立てる」sectionは置かない。Today3が0〜2件のときだけ、Today3内に「＋ 今日やるものを選ぶ」を表示し、3件時は表示しない。
 - 追加入口はmodal / overlay型のPickerを開く。閉じる、Escape、backdrop操作では元の追加入口へfocusを戻す。
-- Picker上部は他の追加dialogと同じeyebrow、見出し、閉じる操作を持つ。「追加先: 今日の3件」には現在の採用数を示す3段階のprogress indicatorを隣接させ、選択成功時に滑らかに更新する。
+- Picker上部は他の追加dialogと同じeyebrow、見出し、閉じる操作を持つ。「追加先: 今日の3件」には現在の採用数を示す緑の3段階progress indicatorを隣接させ、選択成功時に滑らかに更新する。追加元のsection見出しは同じ文字サイズとprimary colorへ揃え、footerのキャンセルは候補の「＋ 今日へ」と同じ高さにする。
 - 候補はUI非依存の共通生成処理でNextStepとWishlistから作る。勝利条件、Session、Do Now順位、完了履歴、weeklyFocusは候補生成へ混在させない。
 - Pickerは「次の一手」「やりたいこと」の2groupを表示し、各候補のProject識別、本文、未採用時の「選ぶ」を示す。新規ProjectやWishlistの登録操作は置かない。
 - 採用済み候補はstable source identityとlegacy aliasで判定し、弱いgreenの「✓ 今日の3件」をstatusとして表示する。採用解除toggleにはしない。同じ本文でもstable identityが異なるWishlistは別候補として扱う。
@@ -257,12 +257,12 @@ Main Window
 - 最終行に重複した罫線を表示しない。
 - Today3カードを約6px以上dragすると、grid直下に「↓ ここにドロップして今日の3件から外す」の専用Drop Zoneを表示する。pointerまたは掴んだカードの上端がDrop Zone内に入った状態でdropすると、対象のToday3採用だけを解除する。通常時とdrag閾値未満では表示しない。
 - カードの右クリックと常時表示する「…」は同じ操作メニューを開く。並べ替え表記は画面上の配置に合わせて「左へ移動」「右へ移動」とする。キーボードではShift+F10、メニュー内の矢印キー、Escapeとフォーカス復帰を利用できる。
-- D&Dと右クリックの「今日の3件から外す」は同じ解除処理を使い、元の次の一手・やりたいこと、Session、今日の実行を保持する。sourceの完了・削除や候補除外にはせず、保存成功後は8秒間の「元に戻す」を表示する。
+- D&Dと右クリックの「今日の3件から外す」は同じ解除処理を使い、元の次の一手・やりたいこと、Session、今日の実行を保持する。sourceの完了・削除や候補除外にはせず、保存成功後は黄色の情報Toastで8秒間の「元に戻す」を表示する。
 - 対象Today3をsourceとするタイマーが実行中・一時停止中・満了確認中はUIとhandlerで解除を拒否する。他のToday3のタイマーは解除を妨げない。保存失敗時は既存の保存契約でsnapshotと表示順をrollbackする。
 - 完了済みも従来の右クリック解除と同じく対象とする。「次の3件を選ぶ」は引き続き3件全完了時のみ表示し、1件外した場合は残る完了状態を保ったまま空き枠へ再採用できる。
 - 短時間開始、通常開始、時間を決めない計測を常時表示する。
 - ボタンは高さ36px、短時間・通常は幅82px、計測は幅34pxのicon controlとし、6pxの間隔を含む210pxのclusterへ収めて3/2/1列を崩さない。計測中は経過時間・一時停止/再開・終了を202px幅のcompact stripへ収める。中間幅では余白だけを縮め、カードの高さは変えない。
-- 短時間と通常は初期状態でcompactな「N分」を表示し、ホバーまたはkeyboard focusで左側の再生アイコンを重ねる。文言の中心位置と既存アニメーションは維持する。計測は時計アイコンと「計測」を常時表示する。
+- 短時間と通常は初期状態でcompactな「N分」を表示し、ホバーまたはkeyboard focusで左側の再生アイコンを重ねる。文言の中心位置と既存アニメーションは維持する。計測は時計アイコンと「計測」を常時表示し、icon buttonでも違和感なく認識できる長さの下端hover lineを表示する。
 - 短時間は緑、通常は青、計測は中立色にする。
 - 実行中は一時停止と終了、一時停止中は再開と終了へ切り替える。
 - プロジェクト、ランチャー、手順書が紐づく場合は開始時に同じ実行環境を利用する。
@@ -300,6 +300,9 @@ Main Window
 - Projectは継続テーマの入れ物で、`id`、名称、目標、今週の重点、色だけを所有する。
 - NextStepは各Projectが0〜1件所有する、迷ったときに戻る「再開地点」で、本文、始めるきっかけ、開始環境、手順書、Timer、鮮度時刻、optionalな`generationId`を所有する。NextStepだけが実行を許された作業ではなく、Wishlistから別の項目をToday3へ採用しても現在のNextStepは残す。
 - 見出しの黄色い`＋ プロジェクト`からProjectを追加する。Projectの追加・編集画面にはNextStepの実行設定を混在させない。
+- Projectのcontext menu最下部とProject編集画面のDanger ZoneからProjectを削除できる。未完了Today3でProject由来のNextStepまたはWishlistが使用中、または同Project由来sourceのTimerが実行中・一時停止中の場合は確認前とmutation直前の共通guardで拒否する。
+- 削除確認にはProject名、現在のNextStep件数、所属Wishlist件数と「過去の実行記録は残ります」を表示する。「関連項目も削除」はProject・current NextStep・所属Wishlistだけを削除し、「残っている項目を完了扱いにして削除」は既存source completion形式へ未完了source snapshotを追加してから同じ削除を行う。Session、Today Activity、完了済みToday3、既存completion、他Project、未分類Wishlistは保持する。
+- Project・NextStep・Wishlist・任意completionの変更は1回のconfig保存で確定する。保存失敗時は全体をrollbackし、部分削除やcompletionだけの残存を許さない。削除後もSession/Recordsは保存済みlabel・Project名snapshotを使用する。
 - NextStep cardのProject領域、本文領域、右上の「…」は同じcontext menuを開く。順序は「プロジェクトを編集」「プロジェクトを管理」、次の一手関連操作とする。旧Builderへの登録操作と「やりたいことを追加」は混在させない。
 - NextStep未設定は警告色を使わない中立状態とし、後から設定できる。
 - 新しいNextStepまたは置換では、前の開始環境、手順書、Timer overrideを自動継承しない。開始環境と手順書は空、Timerは全体設定を使用する。
@@ -323,7 +326,7 @@ Main Window
 - 次回すぐ再開する内容を、プロジェクト色・名称・次の一手・任意の開始トリガーを持つcompact rowで表示する。
 - 今やる一手、Today3、NextStep cardはhover / keyboard focusで黄色の境界を共有する。今やる一手の切替表示は「他の一手」とし、計測buttonにも短時間・通常開始と同じ下端accent feedbackを適用する。
 - このセクションには短時間・通常タイマー、完了チェック、常設編集ボタン、常設「今日へ」ボタンを置かない。
-- 今日の3件への採用はToday3内の「＋ 今日やるものを選ぶ」からPickerを開き、「選ぶ」で行う。現在NextStepの`generationId`をToday snapshotの`sourceGenerationId`へcopyし、元のプロジェクトを残す。
+- 今日の3件への採用はToday3内のPicker、またはNextStep cardからToday3へのD&D/「＋ 今日へ」で行う。現在NextStepの`generationId`をToday snapshotの`sourceGenerationId`へcopyし、元のプロジェクトを残す。
 - NextStep専用フォームは対象Project、次の一手、始めるきっかけ、開始環境、手順書、短時間/通常Timerを表示する。Project文脈から開いた場合は対象Projectを固定する。
 - 新規設定・置換・Wishlist昇格はstableな新しいgenerationを作り、既存NextStepの編集はgenerationを保持する。完了、再snapshot、直接Do NowからTodayへの対応付けは同じgenerationだけを対象とする。両field欠落はlegacy同世代として扱う。
 - 行はD&Dで並べ替えでき、ゴーストと挿入位置を区別する。設定済みNextStepを「やりたいこと」へdropすると、本文とProjectだけを新しいstable IDのWishlistへ戻し、そのProjectのNextStepを未設定にする。開始環境、手順書、Timer等の実行設定はWishlistへ持ち込まない。
@@ -347,7 +350,7 @@ Main Window
 - プロジェクトごとのグループをWishlist自身の保存順で並べ、次の一手のProject表示順とは同期しない。所属のない項目は同じ独立順の「未分類」にまとめる。各グループは独立して開閉状態、件数、ページ状態を持つ。
 - グループ見出しはD&Dで並べ替えられ、ゴーストと黄色挿入線を表示する。グループ順は含まれるWishlist項目のまとまりとして保存し、グループ内の項目順とProject表示順を変えない。Projectグループの右クリックから既存Project編集を開き、Project名・色の変更は同じProjectを参照する各表示へ反映する。
 - 項目のD&Dと上下移動は同じプロジェクトグループ内だけで手動順序を変更し、ゴーストと黄色挿入線を表示する。別グループへのdropでは所属Projectを変更しない。
-- 右クリックから次の一手にする、上へ移動、下へ移動、編集、完了にする、削除を行う。項目menuには「やりたいことを追加」を置かず、追加入口は見出しへ集約する。Wishlist自身にはToday採用操作を置かず、Today3への採用はPickerから行う。完了は項目を一覧から外してsnapshotを作り、削除はsnapshotを作らない。どちらも確認を必須とする。
+- 右クリックから次の一手にする、上へ移動、下へ移動、編集、完了にする、削除を行う。項目menuには「やりたいことを追加」を置かず、追加入口は見出しへ集約する。Wishlist自身には常設Today採用buttonを置かないが、各項目をToday3へD&Dすると黄色の追加誘導と挿入位置を表示し、Pickerの「＋ 今日へ」と同じadoption handlerで採用する。完了は項目を一覧から外してsnapshotを作り、削除はsnapshotを作らない。どちらも確認を必須とする。
 - 「次の一手にする」はNextStep専用フォームで内容を確認してから確定する。未所属WishlistはProject選択を必須とし、Projectを推測しない。既存NextStepを置き換える場合は現在の本文を明示し、古い一手を「やりたいことへ戻す」「完了にする」「キャンセル」から選ぶ。
 - 「やりたいことへ戻す」は古いNextStepの本文とProjectだけを新しいstable IDのWishlistとして残し、開始環境、手順書、Timer等の実行設定を持ち込まない。「完了にする」は古いNextStepのsource完了を記録する。「キャンセル」は何も変更しない。
 - 昇格保存は対象ProjectのNextStep設定、選んだ旧NextStep処理、stable IDで指定したWishlist削除を1回のconfig保存で行う。Today3 snapshotとSessionは維持し、成功前にWishlistを消さず、stale source、キャンセル、保存失敗ではすべてを変更しない。
@@ -359,7 +362,7 @@ Main Window
 - 次の一手・やりたいことの行は最小48px、上下余白5pxを基準にする。Today PickerのProject識別は本文と競合しないreadable muted metaとする。
 - 行のホバーまたはキーボードフォーカス時に背景を強調する。次の一手は「変更」と右端の「…」操作を常時表示し、やりたいことはhover/focus時に右端操作を表示する。クリックで既存の右クリックメニューを開き、D&Dは開始しない。タッチ環境では操作を常時表示する。
 - 旧Builderの候補除外・登録元復帰D&Dは表示しない。既存の候補除外データは保存互換のため保持するが、Picker候補には適用しない。
-- 今日の3件への採用はPickerから行い、stable source identityの重複と3件上限を超えない。
+- 今日の3件への採用はPickerまたはWishlist項目のD&Dから行い、stable source identityの重複と3件上限を超えない。
 
 ## 13. 今日の実行
 

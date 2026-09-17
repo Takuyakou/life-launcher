@@ -100,6 +100,12 @@ import { earlyCompletionItem } from "./earlyCompletion";
 import { ContextMenu, ContextMenuItem } from "./components/ContextMenu";
 import { HelpGuideDialog } from "./components/HelpGuideDialog";
 import { ProjectIdentity } from "./components/ProjectIdentity";
+import {
+  prepareProjectDeletion,
+  projectDeletionBlockReason,
+  projectDeletionSummary,
+  type ProjectDeletionMode,
+} from "./projectDeletion";
 import { StartEnvironmentPicker } from "./StartEnvironmentPicker";
 import { InstructionPicker } from "./InstructionPicker";
 import { RecordsView } from "./RecordsView";
@@ -685,6 +691,14 @@ type InboxDragPreview = {
   restoreEligible: boolean;
   nextStepEligible: boolean;
   nextStepTargetProjectId?: string;
+  todayTargetIndex?: number;
+  todayTargetIndicator?: {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  };
+  todayGuidanceActive: boolean;
 };
 
 type WishlistGroupPointerDrag = {
@@ -5556,6 +5570,26 @@ function DashboardApp() {
     const sourceProject = sourceItem?.projectId
       ? current?.projects.find((project) => project.id === sourceItem.projectId)
       : undefined;
+    const candidate = current ? todayCandidateFromConfig(current, drag.sourceKey) : undefined;
+    const matchingSourceKeys = candidate
+      ? new Set([candidate.sourceKey, ...(candidate.sourceAliases ?? [])])
+      : new Set<string>();
+    const todayGuidanceActive = Boolean(
+      candidate &&
+        current &&
+        current.today.date === drag.dayKey &&
+        current.today.items.length < TODAY_ITEM_LIMIT &&
+        !current.today.items.some((item, index) =>
+          matchingSourceKeys.has(todaySourceKey(item, index)),
+        ) &&
+        !isTimerActiveForSource(
+          [candidate.sourceKey, ...(candidate.sourceAliases ?? [])],
+          candidate.projectId,
+        ),
+    );
+    const todayTarget = todayGuidanceActive
+      ? todayAdoptionDropTargetFromPoint(event.clientX, event.clientY)
+      : null;
     const nextStepEligible = Boolean(
       sourceEditable && sourceProject && !sourceEditBlocked(`project:${sourceProject.id}`),
     );
@@ -5564,7 +5598,9 @@ function DashboardApp() {
         ? sourceProject?.id
         : undefined;
     const candidateTarget =
-      builderRestoreTargetFromPoint(event.clientX, event.clientY) || nextStepTargetProjectId
+      builderRestoreTargetFromPoint(event.clientX, event.clientY) ||
+      nextStepTargetProjectId ||
+      todayTarget
         ? null
         : inboxDropTargetFromPoint(event.clientX, event.clientY);
     const projectIds = new Set((current?.projects ?? []).map((project) => project.id));
@@ -5584,14 +5620,19 @@ function DashboardApp() {
       offsetY: drag.offsetY,
       width: drag.width,
       height: drag.height,
-      targetIndex: restoreTarget ? undefined : target?.index,
-      placement: restoreTarget ? undefined : target?.placement,
+      targetIndex: restoreTarget || todayTarget ? undefined : target?.index,
+      placement: restoreTarget || todayTarget ? undefined : target?.placement,
       targetIndicator:
-        !restoreTarget && target && target.index !== drag.index ? target.indicator : undefined,
+        !restoreTarget && !todayTarget && target && target.index !== drag.index
+          ? target.indicator
+          : undefined,
       restoreTarget,
       restoreEligible,
       nextStepEligible,
       nextStepTargetProjectId,
+      todayTargetIndex: todayTarget?.insertionIndex,
+      todayTargetIndicator: todayTarget?.indicator,
+      todayGuidanceActive,
     });
     updateProjectAutoScroll(event.clientY);
   };
@@ -5618,6 +5659,29 @@ function DashboardApp() {
       -1;
     if (sourceIndex < 0) return;
     const sourceItem = current?.inbox[sourceIndex];
+    const candidate = current ? todayCandidateFromConfig(current, drag.sourceKey) : undefined;
+    const matchingSourceKeys = candidate
+      ? new Set([candidate.sourceKey, ...(candidate.sourceAliases ?? [])])
+      : new Set<string>();
+    const todayTarget = todayAdoptionDropTargetFromPoint(event.clientX, event.clientY);
+    const canAdoptToday = Boolean(
+      candidate &&
+        current &&
+        current.today.date === drag.dayKey &&
+        current.today.items.length < TODAY_ITEM_LIMIT &&
+        !current.today.items.some((item, index) =>
+          matchingSourceKeys.has(todaySourceKey(item, index)),
+        ) &&
+        !isTimerActiveForSource(
+          [candidate.sourceKey, ...(candidate.sourceAliases ?? [])],
+          candidate.projectId,
+        ),
+    );
+    if (candidate && todayTarget && canAdoptToday) {
+      void addCandidateToToday(candidate, todayTarget.insertionIndex);
+      return;
+    }
+    if (pointWithinSelector(event.clientX, event.clientY, ".todayGrid")) return;
     const sourceProject = sourceItem?.projectId
       ? current?.projects.find((project) => project.id === sourceItem.projectId)
       : undefined;
@@ -7134,7 +7198,7 @@ function DashboardApp() {
         },
       })
     ) {
-      showToast("ok", "今日の3件から外しました", {
+      showToast("neutral", "今日の3件から外しました", {
         detail: "元の次の一手・やりたいことは残ります",
         actionLabel: "元に戻す",
         onAction: () =>
@@ -8148,6 +8212,75 @@ function DashboardApp() {
       tone: "warning",
       onConfirm: () => removeProjectNextStep(liveProject, "return"),
       onAlternate: () => removeProjectNextStep(liveProject, "delete"),
+    });
+  };
+
+  const projectDeleteBlockReason = (projectId: string) => {
+    const current = configRef.current;
+    if (!current) return "設定を読み込んでから削除してください";
+    if (sourceEditBusyRef.current !== null || projectEditSavingRef.current) {
+      return "保存処理が完了してから削除してください";
+    }
+    return projectDeletionBlockReason(current, projectId, activeTimerRef.current?.sourceId);
+  };
+
+  const executeProjectDeletion = async (projectId: string, mode: ProjectDeletionMode) => {
+    const current = configRef.current;
+    if (!current) return false;
+    const reason = projectDeleteBlockReason(projectId);
+    if (reason) {
+      showToast("warn", reason);
+      return false;
+    }
+    const summary = projectDeletionSummary(current, projectId);
+    if (!summary) {
+      showToast("warn", "削除するプロジェクトが見つかりません");
+      return false;
+    }
+    const nextConfig = prepareProjectDeletion(current, projectId, mode, {
+      completedAt: new Date().toISOString(),
+      createId: createStableId,
+    });
+    if (!nextConfig) return false;
+    if (!(await persistConfig(nextConfig))) return false;
+
+    if (projectEditDraft?.id === projectId) closeProjectEditDialog(true);
+    showToast(
+      "ok",
+      mode === "complete"
+        ? `残っている項目を完了扱いにして、プロジェクト「${summary.project.name}」を削除しました`
+        : `プロジェクト「${summary.project.name}」を削除しました`,
+    );
+    return true;
+  };
+
+  const requestProjectDeletion = (project: LauncherProject) => {
+    setContextMenu(null);
+    const current = configRef.current;
+    if (!current) return;
+    const reason = projectDeleteBlockReason(project.id);
+    if (reason) {
+      showToast("warn", reason);
+      return;
+    }
+    const summary = projectDeletionSummary(current, project.id);
+    if (!summary) {
+      showToast("warn", "削除するプロジェクトが見つかりません");
+      return;
+    }
+    requestConfirmation({
+      title: "プロジェクトを削除しますか？",
+      subject: `「${summary.project.name}」と、現在登録されている関連項目が対象です。`,
+      message: `次の一手: ${summary.nextStepCount}件\nやりたいこと: ${summary.wishlistCount}件\n\n過去の実行記録は残ります。`,
+      confirmLabel: "関連項目も削除",
+      alternateLabel: "残っている項目を完了扱いにして削除",
+      processingLabel: "削除しています…",
+      alternateProcessingLabel: "完了扱いにして削除しています…",
+      tone: "danger",
+      alternateTone: "danger",
+      initialFocus: "cancel",
+      onConfirm: () => executeProjectDeletion(project.id, "delete"),
+      onAlternate: () => executeProjectDeletion(project.id, "complete"),
     });
   };
 
@@ -10213,11 +10346,13 @@ function DashboardApp() {
                     config.today.items.length === 0 ? "todayGrid--empty" : "",
                     completionFeedback?.kind === "todayAll" ? "todayGrid--allCompleteReward" : "",
                     todayBuilderPointerDrag?.todayGuidanceActive ||
-                    projectPointerDrag?.todayGuidanceActive
+                    projectPointerDrag?.todayGuidanceActive ||
+                    inboxPointerDrag?.todayGuidanceActive
                       ? "todayGrid--dropGuidance"
                       : "",
                     todayBuilderPointerDrag?.todayTargetIndicator ||
-                    projectPointerDrag?.todayTargetIndicator
+                    projectPointerDrag?.todayTargetIndicator ||
+                    inboxPointerDrag?.todayTargetIndicator
                       ? "todayGrid--dropTarget"
                       : "",
                   ]
@@ -10225,7 +10360,8 @@ function DashboardApp() {
                     .join(" ")}
                 >
                   {(todayBuilderPointerDrag?.todayGuidanceActive ||
-                    projectPointerDrag?.todayGuidanceActive) && (
+                    projectPointerDrag?.todayGuidanceActive ||
+                    inboxPointerDrag?.todayGuidanceActive) && (
                     <div aria-hidden="true" className="todayDropGuidanceOverlay">
                       ↓ ここにドロップして「今日の3件」に追加
                     </div>
@@ -11881,6 +12017,13 @@ function DashboardApp() {
                         style={inboxPointerDrag.targetIndicator}
                       />
                     )}
+                    {inboxPointerDrag?.todayTargetIndicator && (
+                      <div
+                        aria-hidden="true"
+                        className="todayDropIndicator"
+                        style={inboxPointerDrag.todayTargetIndicator}
+                      />
+                    )}
                     {wishlistGroupPointerDrag?.targetIndicator && (
                       <div
                         aria-hidden="true"
@@ -12446,6 +12589,13 @@ function DashboardApp() {
                   次の一手を設定
                 </ContextMenuItem>
               )}
+              <ContextMenuItem
+                className="contextMenuDanger contextMenuSeparatorBefore"
+                onClick={() => requestProjectDeletion(contextMenu.project)}
+                type="button"
+              >
+                プロジェクトを削除…
+              </ContextMenuItem>
             </>
           ) : contextMenu.kind === "project" ? (
             <>
@@ -12461,6 +12611,13 @@ function DashboardApp() {
                 type="button"
               >
                 プロジェクトを管理
+              </ContextMenuItem>
+              <ContextMenuItem
+                className="contextMenuDanger contextMenuSeparatorBefore"
+                onClick={() => requestProjectDeletion(contextMenu.project)}
+                type="button"
+              >
+                プロジェクトを削除…
               </ContextMenuItem>
             </>
           ) : contextMenu.kind === "projects" ? (
@@ -14940,6 +15097,28 @@ function DashboardApp() {
                 ))}
               </div>
             </div>
+
+            {!projectEditDraft.isNew && (
+              <section className="projectDangerZone" aria-labelledby="project-danger-zone-title">
+                <h3 id="project-danger-zone-title">危険な操作</h3>
+                <p>
+                  このプロジェクトと、現在登録されている関連項目を削除します。過去の実行記録は残ります。
+                </p>
+                <button
+                  className="dangerButton projectDeleteButton"
+                  disabled={projectEditSaving}
+                  onClick={() => {
+                    const project = config.projects.find(
+                      (candidate) => candidate.id === projectEditDraft.id,
+                    );
+                    if (project) requestProjectDeletion(project);
+                  }}
+                  type="button"
+                >
+                  プロジェクトを削除…
+                </button>
+              </section>
+            )}
 
             <div className="dialogActions formDialogActions">
               <button

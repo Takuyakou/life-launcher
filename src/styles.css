@@ -5280,6 +5280,12 @@ input[type="number"]::-webkit-inner-spin-button {
   color: #ffb4ad !important;
 }
 
+.contextMenuDanger:hover:not(:disabled),
+.contextMenuDanger:focus-visible {
+  background: var(--control-danger-hover-bg) !important;
+  color: #ffd0cb !important;
+}
+
 .contextMenuSeparatorBefore {
   margin-top: 5px;
   border-top: 1px solid var(--line-soft) !important;
@@ -6830,6 +6836,36 @@ input[type="number"]::-webkit-inner-spin-button {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.projectDangerZone {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  margin-top: 12px;
+  border-top: 1px solid rgba(255, 128, 120, 0.24);
+  padding-top: 16px;
+}
+
+.projectDangerZone h3,
+.projectDangerZone p {
+  margin: 0;
+}
+
+.projectDangerZone h3 {
+  color: #ffb4ad;
+  font-size: 13px;
+}
+
+.projectDangerZone p {
+  max-width: 52ch;
+  color: var(--text-muted-readable);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.projectDeleteButton {
+  margin-top: 2px;
 }
 
 .projectWeeklyFocusToggle {
@@ -8705,8 +8741,8 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayPickerProgress {
-  width: 72px;
-  height: 5px;
+  width: 104px;
+  height: 6px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--line-soft);
@@ -8717,7 +8753,8 @@ input[type="number"]::-webkit-inner-spin-button {
   height: 100%;
   display: block;
   border-radius: inherit;
-  background: var(--accent);
+  background: var(--good);
+  box-shadow: 0 0 5px rgba(117, 196, 143, 0.24);
   transform-origin: left center;
   transition: transform 220ms cubic-bezier(0.23, 1, 0.32, 1);
 }
@@ -8895,8 +8932,9 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayPickerPanelHeading strong {
-  color: var(--text-muted-readable);
-  font-size: 12px;
+  color: var(--text);
+  font-size: var(--today-picker-font-body);
+  font-weight: 800;
 }
 
 .todayPickerPanelHeading span {
@@ -9056,6 +9094,8 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayPickerActions > button {
+  min-height: 30px;
+  height: 30px;
   min-width: 94px;
   padding-inline: 12px;
 }
@@ -9745,12 +9785,17 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .sourceLockBadge {
+  width: 22px;
+  height: 22px;
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--accent-strong);
+  border-radius: 6px;
+  color: #c8b892;
   line-height: 1;
+  align-self: center;
+  margin-inline-start: 2px;
 }
 
 .sourceLockBadge:focus-visible {
@@ -10248,7 +10293,9 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .sourceLockBadge--wishlist {
-  margin-inline-start: 1px;
+  width: 20px;
+  height: 26px;
+  margin-inline: 0 2px;
 }
 
 .wishlistGroup .sourceRowMenu {
@@ -10301,6 +10348,11 @@ input[type="number"]::-webkit-inner-spin-button {
 .todayMeasureButton:hover:not(:disabled)::after,
 .todayMeasureButton:focus-visible::after {
   transform: scaleX(1);
+}
+
+.todayMeasureButton::after {
+  right: 6px;
+  left: 6px;
 }
 
 .wishlistGroupDragGhost {
