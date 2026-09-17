@@ -240,6 +240,7 @@ test("Phase 8.1 unassigned Wishlist and empty Project require explicit keyboard 
   await promotion.getByRole("button", { name: "キャンセル", exact: true }).click();
   await page.getByRole("button", { name: "破棄して閉じる" }).click();
   await expect(unassigned).toBeVisible();
+  await expect(unassigned).toBeFocused();
 
   const emptyAction = page.locator(
     '.nextStepCard[data-project-id="phase81-empty-project"] .nextStepActionRegion',
@@ -263,7 +264,9 @@ test("Phase 8.1 unassigned Wishlist and empty Project require explicit keyboard 
   await expectInsideViewport(page, setup, "empty Project NextStep dialog");
   await page.screenshot({ path: resolve(SCREENSHOT_DIR, "empty-project-nextstep-620x900.png") });
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "破棄して閉じる" }).click();
+  await expect(page.getByRole("dialog", { name: "入力内容を破棄して閉じますか？" })).toHaveCount(
+    0,
+  );
   await expect(emptyAction).toBeFocused();
 });
 

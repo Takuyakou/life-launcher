@@ -214,6 +214,8 @@ test("P84-01 reaching 3/3 closes the Picker after the saved third selection", as
 
   await expect(dialog).toHaveCount(0);
   await expect(page.locator(".todayRow")).toHaveCount(3);
+  const completionToast = page.locator(".toast", { hasText: "今日の3件を選択しました" });
+  await expect(completionToast).toHaveClass(/toast--ok/);
   expect((await currentConfig(page)).today.items).toHaveLength(3);
 });
 
@@ -262,45 +264,34 @@ test("P84 Picker removes selected cards directly and exposes a longer green prog
   expect(progressBox?.width).toBeGreaterThanOrEqual(150);
   await expect(progress).toHaveAttribute("aria-valuenow", "1");
 
-  await dialog.getByRole("button", { name: "今日の3件から外す" }).click();
+  const selectedCard = dialog.locator(".todayPickerSlot--selected");
+  const removeButton = dialog.getByRole("button", { name: "今日の3件から外す" });
+  const cardBox = await selectedCard.boundingBox();
+  const removeBox = await removeButton.boundingBox();
+  expect(cardBox && removeBox).toBeTruthy();
+  expect(removeBox!.x + removeBox!.width).toBeLessThanOrEqual(cardBox!.x + cardBox!.width - 5);
+  expect(removeBox!.y + removeBox!.height).toBeLessThanOrEqual(cardBox!.y + cardBox!.height - 5);
+  expect(removeBox!.y).toBeGreaterThan(cardBox!.y + cardBox!.height / 2);
+  expect(await removeButton.evaluate((node) => getComputedStyle(node).whiteSpace)).toBe("nowrap");
+  expect(removeBox!.height).toBeLessThanOrEqual(24);
+  await removeButton.click();
   await expect(dialog.locator(".todayPickerSlot--selected")).toHaveCount(0);
   expect((await currentConfig(page)).today.items).toHaveLength(0);
   await dialog.getByRole("button", { name: "決定" }).click();
   await expect(dialog).toHaveCount(0);
 });
 
-test("P84 Picker exposes gold removal guidance while dragging a selected card", async ({ page }) => {
+test("P84 Picker removal is button-only and exposes no drag-and-drop affordance", async ({ page }) => {
   const fixture = createPublicFixture();
   fixture.config.today.items = fixture.config.today.items.slice(0, 1);
   await prepare(page, fixture);
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const dialog = picker(page);
-  await dialog.locator(".todayPickerSlot--selected").evaluate((node) => {
-    const dataTransfer = new DataTransfer();
-    (
-      window as Window & { __todayPickerDragDataTransfer?: DataTransfer }
-    ).__todayPickerDragDataTransfer = dataTransfer;
-    node.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer }));
-  });
-  const zone = dialog.locator(".todayPickerRemoveDropZone");
-  await expect(zone).toBeVisible();
-  await expect(zone).toContainText("ここにドロップして今日の3件から外す");
-  await zone.evaluate((node) => {
-    const dataTransfer = (
-      window as Window & { __todayPickerDragDataTransfer?: DataTransfer }
-    ).__todayPickerDragDataTransfer;
-    node.dispatchEvent(new DragEvent("dragenter", { bubbles: true, dataTransfer }));
-  });
-  await expect(zone).toHaveClass(/todayPickerRemoveDropZone--active/);
-  await zone.evaluate((node) => {
-    const dataTransfer = (
-      window as Window & { __todayPickerDragDataTransfer?: DataTransfer }
-    ).__todayPickerDragDataTransfer;
-    node.dispatchEvent(new DragEvent("drop", { bubbles: true, dataTransfer }));
-  });
-  await expect(dialog.locator(".todayPickerSlot--selected")).toHaveCount(0);
-  expect((await currentConfig(page)).today.items).toHaveLength(0);
+  const selectedCard = dialog.locator(".todayPickerSlot--selected");
+  await expect(selectedCard).not.toHaveAttribute("draggable", "true");
+  await expect(dialog.locator(".todayPickerRemoveDropZone")).toHaveCount(0);
+  await expect(dialog.getByText(/ここにドロップして今日の3件から外す/)).toHaveCount(0);
 });
 
 test("P84-01 save failure rolls back and leaves the Picker usable", async ({ page }) => {
@@ -547,6 +538,8 @@ test("P84 destination slots separate project identity, task, and selected status
   const selected = dialog.locator('[data-today-picker-section="selected"]');
   const row = selected.locator(".todayPickerRow").first();
   const status = row.locator(".todayPickerSelectedStatus");
+  const projectName = row.locator(".projectIdentity");
+  const taskName = row.locator(".todayPickerSlotTask");
   await expect(dialog.locator(".modalTitleRow .eyebrow")).toHaveText("Today");
   await expect(dialog.locator(".modalTitleRow .eyebrow")).toHaveCSS("color", "rgb(184, 176, 160)");
   await expect(dialog.locator(".todayPickerIntro")).toHaveCSS("font-size", "12px");
@@ -559,6 +552,18 @@ test("P84 destination slots separate project identity, task, and selected status
   await expect(status).toHaveCSS("font-size", "10px");
   expect(await status.evaluate((node) => node.tagName)).toBe("SPAN");
   await expect(status).toHaveCSS("border-top-width", "0px");
+  expect(await projectName.evaluate((node) => getComputedStyle(node).fontSize)).toBe(
+    await taskName.evaluate((node) => getComputedStyle(node).fontSize),
+  );
+  const confirm = dialog.getByRole("button", { name: "決定" });
+  const cancel = dialog.getByRole("button", { name: "キャンセル" });
+  expect(await confirm.evaluate((node) => getComputedStyle(node).fontSize)).toBe(
+    await cancel.evaluate((node) => getComputedStyle(node).fontSize),
+  );
+  const confirmBox = await confirm.boundingBox();
+  const cancelBox = await cancel.boundingBox();
+  expect(confirmBox && cancelBox).toBeTruthy();
+  expect(cancelBox!.x - (confirmBox!.x + confirmBox!.width)).toBeGreaterThanOrEqual(11);
 });
 
 test("P84 add dialogs expose a consistent top-right close action", async ({ page }) => {
@@ -583,8 +588,12 @@ test("P84 add dialogs expose a consistent top-right close action", async ({ page
   const nextStepOpener = page.getByRole("button", { name: "次の一手を設定", exact: true });
   await nextStepOpener.click();
   const nextStepDialog = page.getByRole("dialog", { name: "次の一手を設定" });
+  await nextStepDialog.getByRole("tab", { name: "＋ 新しく入力" }).click();
   await nextStepDialog.getByRole("button", { name: "次の一手を設定を閉じる" }).click();
   await expect(nextStepDialog).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "入力内容を破棄して閉じますか？" })).toHaveCount(
+    0,
+  );
   await expect(nextStepOpener).toBeFocused();
 });
 

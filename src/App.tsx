@@ -2171,8 +2171,6 @@ function DashboardApp() {
   const [todayPickerSource, setTodayPickerSource] = useState<"nextStep" | "wishlist">("nextStep");
   const [todayPickerDraftItems, setTodayPickerDraftItems] = useState<TodayItem[]>([]);
   const [todayPickerSaving, setTodayPickerSaving] = useState(false);
-  const [todayPickerDraggedIndex, setTodayPickerDraggedIndex] = useState<number | null>(null);
-  const [todayPickerRemoveTargetActive, setTodayPickerRemoveTargetActive] = useState(false);
   const [todayActivityOpen, setTodayActivityOpen] = useState(false);
   const [, setNotesSaveStatus] = useState<NotesSaveStatus>("saved");
   const [launcherOverlayOpen, setLauncherOverlayOpen] = useState(false);
@@ -2290,6 +2288,7 @@ function DashboardApp() {
   const softwareResetProgressRef = useRef<HTMLElement | null>(null);
   const confirmDialogRef = useRef<ConfirmDialogRequest | null>(null);
   const inboxAddOpenerRef = useRef<HTMLButtonElement | null>(null);
+  const inboxAddInitialProjectIdRef = useRef("");
   const todayPickerOpenerRef = useRef<HTMLElement | null>(null);
   const todayPickerInitialItemsRef = useRef<TodayItem[]>([]);
   const projectEditInitialDraftRef = useRef<ProjectEditDraft | null>(null);
@@ -2429,9 +2428,11 @@ function DashboardApp() {
   const closeProjectEditDialog = useCallback(
     (afterSuccessfulSave = false) => {
       if (!projectEditDraft || (!afterSuccessfulSave && projectEditSavingRef.current)) return;
+      const initialDraft = projectEditInitialDraftRef.current;
       const dirty =
         !afterSuccessfulSave &&
-        JSON.stringify(projectEditDraft) !== JSON.stringify(projectEditInitialDraftRef.current);
+        Boolean(initialDraft) &&
+        JSON.stringify(projectEditDraft) !== JSON.stringify(initialDraft);
       if (dirty) {
         requestDiscardConfirmation(() => {
           projectEditInitialDraftRef.current = null;
@@ -2453,9 +2454,24 @@ function DashboardApp() {
   const closeNextStepEditDialog = useCallback(
     (afterSuccessfulSave = false) => {
       if (!nextStepEditDraft || (!afterSuccessfulSave && sourceEditBusyRef.current)) return;
+      const initialDraft = nextStepEditInitialDraftRef.current;
+      const hasNewInput = Boolean(
+        nextStepEditDraft.text.trim() ||
+          nextStepEditDraft.trigger.trim() ||
+          nextStepEditDraft.buttonIds.length ||
+          nextStepEditDraft.defaultTimerMinutes.trim() ||
+          nextStepEditDraft.shortTimerMinutes.trim() ||
+          nextStepEditDraft.startNoteTemplate.trim() ||
+          nextStepEditDraft.instructionPath.trim() ||
+          nextStepEditDraft.projectId !== initialDraft?.projectId ||
+          nextStepEditDraft.legacyChoice !== initialDraft?.legacyChoice ||
+          nextStepEditDraft.replacementChoice !== initialDraft?.replacementChoice,
+      );
       const dirty =
         !afterSuccessfulSave &&
-        JSON.stringify(nextStepEditDraft) !== JSON.stringify(nextStepEditInitialDraftRef.current);
+        (nextStepEditDraft.mode === "edit"
+          ? Boolean(initialDraft) && JSON.stringify(nextStepEditDraft) !== JSON.stringify(initialDraft)
+          : hasNewInput);
       if (dirty) {
         requestDiscardConfirmation(() => {
           nextStepEditInitialDraftRef.current = null;
@@ -3664,7 +3680,10 @@ function DashboardApp() {
 
   const closeInboxAddDialog = useCallback((afterSuccessfulSave = false) => {
     if (inboxAddSavingRef.current) return;
-    if (!afterSuccessfulSave && (inboxDraft.trim() || inboxAddProjectId)) {
+    const dirty = Boolean(
+      inboxDraft.trim() || inboxAddProjectId !== inboxAddInitialProjectIdRef.current,
+    );
+    if (!afterSuccessfulSave && dirty) {
       requestDiscardConfirmation(() => closeInboxAddDialog(true));
       return;
     }
@@ -3673,6 +3692,7 @@ function DashboardApp() {
     setInboxAddOpen(false);
     setInboxDraft("");
     setInboxAddProjectId("");
+    inboxAddInitialProjectIdRef.current = "";
     setInboxAddError(null);
     setInboxAddSaving(false);
     window.requestAnimationFrame(() => opener?.focus());
@@ -3719,8 +3739,6 @@ function DashboardApp() {
     setTodayPickerOpen(false);
     setTodayPickerDraftItems([]);
     setTodayPickerSaving(false);
-    setTodayPickerDraggedIndex(null);
-    setTodayPickerRemoveTargetActive(false);
     window.requestAnimationFrame(() => {
       if (opener?.isConnected) opener.focus();
     });
@@ -7172,7 +7190,7 @@ function DashboardApp() {
   };
 
   const updateVictoryText = (text: string) => {
-    if (!config) return;
+    if (!config) return Promise.resolve(false);
     if (!text.trim()) {
       seenCompletionFeedbackRef.current.delete(`victory:${config.today.date}`);
       setCompletionFeedback((current) => (current?.kind === "victory" ? null : current));
@@ -7181,14 +7199,21 @@ function DashboardApp() {
       text,
       done: text.trim() ? config.today.victory.done : false,
     };
-    void persistConfig({ ...config, today: { ...config.today, victory } });
+    return persistConfig({ ...config, today: { ...config.today, victory } });
   };
 
   const applyVictorySuggestion = (text: string) => {
-    updateVictoryText(text);
+    const scrollArea = mainScrollAreaRef.current;
+    const scrollTop = scrollArea?.scrollTop ?? 0;
     setVictoryEditing(true);
-    window.requestAnimationFrame(() => {
-      victoryInputRef.current?.focus();
+    void updateVictoryText(text).then(() => {
+      window.requestAnimationFrame(() => {
+        if (scrollArea?.isConnected) scrollArea.scrollTop = scrollTop;
+        victoryInputRef.current?.focus({ preventScroll: true });
+        window.requestAnimationFrame(() => {
+          if (scrollArea?.isConnected) scrollArea.scrollTop = scrollTop;
+        });
+      });
     });
   };
 
@@ -7773,7 +7798,7 @@ function DashboardApp() {
     });
     if (saved) {
       closeTodayPicker();
-      showToast("ok", "今日の3件を決定しました");
+      showToast("ok", "今日の3件を選択しました");
       return true;
     }
     setTodayPickerSaving(false);
@@ -7803,8 +7828,10 @@ function DashboardApp() {
       return;
     }
     setTodayPickerDraftItems(nextItems);
-    if (nextItems.length >= TODAY_ITEM_LIMIT) closeTodayPicker();
-    else setTodayPickerSaving(false);
+    if (nextItems.length >= TODAY_ITEM_LIMIT) {
+      closeTodayPicker();
+      showToast("ok", "今日の3件を選択しました");
+    } else setTodayPickerSaving(false);
   };
 
   const removeTodayPickerDraftItem = async (index: number) => {
@@ -7819,8 +7846,6 @@ function DashboardApp() {
     }
     setTodayPickerDraftItems(nextItems);
     setTodayPickerSaving(false);
-    setTodayPickerDraggedIndex(null);
-    setTodayPickerRemoveTargetActive(false);
   };
 
   const refreshInstructionChoices = async () => {
@@ -7865,9 +7890,10 @@ function DashboardApp() {
     setContextMenu(null);
     setInboxOpen(true);
     setInboxDraft("");
-    setInboxAddProjectId(
-      projectId && config?.projects.some((project) => project.id === projectId) ? projectId : "",
-    );
+    const initialProjectId =
+      projectId && config?.projects.some((project) => project.id === projectId) ? projectId : "";
+    inboxAddInitialProjectIdRef.current = initialProjectId;
+    setInboxAddProjectId(initialProjectId);
     setInboxAddError(null);
     setInboxAddOpen(true);
   };
@@ -8954,17 +8980,7 @@ function DashboardApp() {
     return (
       <div
         className="todayPickerSlot todayPickerSlot--selected todayPickerRow todayPickerRow--selected"
-        draggable={!todayPickerSaving}
         key={`today-selected:${todaySourceKey(item, index)}`}
-        onDragEnd={() => {
-          setTodayPickerDraggedIndex(null);
-          setTodayPickerRemoveTargetActive(false);
-        }}
-        onDragStart={(event) => {
-          event.dataTransfer.effectAllowed = "move";
-          event.dataTransfer.setData("text/plain", todaySourceKey(item, index));
-          setTodayPickerDraggedIndex(index);
-        }}
       >
         <div className="todayPickerSlotProject">
           {project ? (
@@ -10261,7 +10277,7 @@ function DashboardApp() {
                           }
                         maxLength={90}
                         onBlur={() => setVictoryEditing(false)}
-                        onChange={(event) => updateVictoryText(event.target.value)}
+                        onChange={(event) => void updateVictoryText(event.target.value)}
                         onKeyDown={handleVictoryKeyDown}
                         placeholder="今日はこれができれば勝ち"
                         ref={victoryInputRef}
@@ -13252,34 +13268,6 @@ function DashboardApp() {
                 </section>
               )}
             </section>
-            {todayPickerDraggedIndex !== null && (
-              <div
-                className={
-                  todayPickerRemoveTargetActive
-                    ? "todayPickerRemoveDropZone todayPickerRemoveDropZone--active"
-                    : "todayPickerRemoveDropZone"
-                }
-                onDragEnter={(event) => {
-                  event.preventDefault();
-                  setTodayPickerRemoveTargetActive(true);
-                }}
-                onDragLeave={(event) => {
-                  if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-                    setTodayPickerRemoveTargetActive(false);
-                  }
-                }}
-                onDragOver={(event) => {
-                  event.preventDefault();
-                  event.dataTransfer.dropEffect = "move";
-                }}
-                onDrop={(event) => {
-                  event.preventDefault();
-                  removeTodayPickerDraftItem(todayPickerDraggedIndex);
-                }}
-              >
-                <span>↓ ここにドロップして今日の3件から外す</span>
-              </div>
-            )}
             <div className="dialogActions todayPickerActions">
               <span>
                 {todayPickerSource === "wishlist"

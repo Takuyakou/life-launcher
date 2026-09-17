@@ -85,6 +85,32 @@ function withOneMinuteProjectTimer(): VisualQaFixture {
   return fixture;
 }
 
+for (const width of [860, 1440]) {
+  test(`victory suggestion preserves the main scroll position at ${width}px`, async ({ page }) => {
+    const fixture = createPublicFixture();
+    fixture.config.today.victory = { text: "", done: false };
+    await page.setViewportSize({ width, height: 700 });
+    await prepare(page, fixture);
+    await page.setViewportSize({ width, height: 700 });
+
+    const scrollArea = page.locator(".mainScrollArea");
+    const suggestion = page
+      .locator('[aria-label="勝利条件の候補"]')
+      .getByRole("button")
+      .first();
+    await expect(suggestion).toBeVisible();
+    await scrollArea.evaluate((node) => {
+      node.scrollTop = 24;
+    });
+    const before = await scrollArea.evaluate((node) => node.scrollTop);
+    await suggestion.click();
+    await expect(page.getByRole("textbox", { name: "今日の勝利条件" })).not.toHaveValue("");
+    await expect
+      .poll(() => scrollArea.evaluate((node) => node.scrollTop))
+      .toBeCloseTo(before, 0);
+  });
+}
+
 test.skip("Main hierarchy and Today3 three-column layout match Phase 6", async ({ page }) => {
   await prepare(page, withThreeTodayItems());
   const selectors = [

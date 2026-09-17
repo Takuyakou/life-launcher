@@ -18,6 +18,7 @@ test("unfinished Today3 locks its current NextStep source and removal unlocks it
 
   const card = page.locator('.nextStepCard[data-project-id="sample-learning"]');
   await expect(card.locator(".sourceLockBadge")).toHaveCount(1);
+  await expect(card.locator(".sourceLockBadge")).toHaveCSS("color", "rgb(255, 206, 91)");
   await expect(card.locator(".nextStepTodayStatus")).toHaveText("✓ 今日の3件");
   const lockBox = await card.locator(".sourceLockBadge").boundingBox();
   const statusBox = await card.locator(".nextStepTodayStatus").boundingBox();
@@ -60,9 +61,17 @@ test("unfinished Today3 locks only the matching Wishlist identity", async ({ pag
   const lockedRow = page.locator('[data-inbox-id="sample-weekend"]');
   const unlockedRow = page.locator('[data-inbox-id="sample-later"]');
   await expect(lockedRow.locator(".sourceLockBadge--wishlist")).toHaveCount(1);
+  await expect(lockedRow.locator(".sourceLockBadge--wishlist")).toHaveCSS(
+    "color",
+    "rgb(255, 206, 91)",
+  );
   await expect(lockedRow.locator(".wishlistNextStepAction")).toHaveCount(0);
   await expect(lockedRow.locator(".wishlistTodayStatus")).toHaveText("✓ 今日の3件");
   await expect(unlockedRow.locator(".sourceLockBadge--wishlist")).toHaveCount(0);
+  const rowBox = await lockedRow.boundingBox();
+  const menuBox = await lockedRow.locator(".sourceRowMenu").boundingBox();
+  expect(rowBox && menuBox).toBeTruthy();
+  expect(rowBox!.x + rowBox!.width - (menuBox!.x + menuBox!.width)).toBeLessThanOrEqual(1);
 
   await lockedRow.click({ button: "right" });
   await expect(page.getByRole("menuitem", { name: "次の一手にする" })).toBeDisabled();
