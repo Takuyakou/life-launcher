@@ -142,9 +142,16 @@ test("P82-01 returning the previous NextStep is atomic and strips execution payl
     createId: () => "returned-stable-id",
   });
 
-  expect(result.projects[0].nextStep).toEqual(promoted);
-  expect(result.inbox.map(({ id }) => id)).toEqual(["wish-keep", "returned-stable-id"]);
-  expect(result.inbox[1]).toEqual({
+  expect(result.projects[0].nextStep).toEqual({
+    ...promoted,
+    sourceWishlistId: "wish-promote",
+  });
+  expect(result.inbox.map(({ id }) => id)).toEqual([
+    "wish-promote",
+    "wish-keep",
+    "returned-stable-id",
+  ]);
+  expect(result.inbox[2]).toEqual({
     id: "returned-stable-id",
     text: current.text,
     projectId: config.projects[0].id,
@@ -166,9 +173,16 @@ test("v1.3 Wishlist drop promotion returns the old NextStep and preserves unrela
     createId: () => "returned-from-drop",
   });
 
-  expect(result.projects[0].nextStep).toEqual(promoted);
-  expect(result.inbox.map(({ id }) => id)).toEqual(["wish-keep", "returned-from-drop"]);
-  expect(result.inbox[1]).toEqual({
+  expect(result.projects[0].nextStep).toEqual({
+    ...promoted,
+    sourceWishlistId: "wish-promote",
+  });
+  expect(result.inbox.map(({ id }) => id)).toEqual([
+    "wish-promote",
+    "wish-keep",
+    "returned-from-drop",
+  ]);
+  expect(result.inbox[2]).toEqual({
     id: "returned-from-drop",
     text: current.text,
     projectId: config.projects[0].id,
@@ -189,7 +203,7 @@ test("P82-01 completing the previous NextStep records history without returning 
     createId: () => "completion-stable-id",
   });
 
-  expect(result.inbox.map(({ id }) => id)).toEqual(["wish-keep"]);
+  expect(result.inbox.map(({ id }) => id)).toEqual(["wish-promote", "wish-keep"]);
   expect(result.sourceCompletions.at(-1)).toMatchObject({
     id: "completion-stable-id",
     sourceType: "nextStep",
@@ -239,7 +253,11 @@ test("P82-01 promotion returns the old NextStep and survives reload", async ({ p
 
   const saved = await currentConfig(page);
   expect(saved.projects[0].nextStep?.text).toBe("週末に試すアイデア");
-  expect(saved.inbox.some(({ id }) => id === "sample-weekend")).toBe(false);
+  expect(saved.inbox.some(({ id }) => id === "sample-weekend")).toBe(true);
+  expect(saved.projects[0].nextStep?.sourceWishlistId).toBe("sample-weekend");
+  await expect(
+    page.locator('[data-inbox-id="sample-weekend"] .wishlistNextStepStatus'),
+  ).toHaveText("✓ 次の一手に設定済み");
   const returned = saved.inbox.find(({ text }) => text === oldNextStep?.text);
   expect(returned).toEqual({
     id: expect.any(String),
@@ -455,6 +473,27 @@ test("v1.3 removing a NextStep can return it to Wishlist without touching Today 
   });
   expect(deleted.projects[0].nextStep).toBeUndefined();
   expect(deleted.inbox).toEqual(config.inbox);
+});
+
+test("P84 removing a Wishlist-backed NextStep does not duplicate its retained source", () => {
+  const config = structuredClone(createPublicFixture().config);
+  const project = config.projects[0];
+  const retained = config.inbox.find((item) => item.projectId === project.id)!;
+  project.nextStep = {
+    ...project.nextStep!,
+    sourceWishlistId: retained.id,
+  };
+
+  const result = prepareNextStepRemoval(config, {
+    projectId: project.id,
+    expectedCurrent: project.nextStep,
+    choice: "return",
+    createId: () => "must-not-be-created",
+  });
+
+  expect(result.projects[0].nextStep).toBeUndefined();
+  expect(result.inbox).toEqual(config.inbox);
+  expect(result.inbox.some(({ id }) => id === "must-not-be-created")).toBe(false);
 });
 
 test("Phase 8.4 NextStep menu offers edit, change and unset without legacy registration", async ({
@@ -809,7 +848,10 @@ test("v1.3 Wishlist D&D always promotes to the source Project", async ({ page })
   expect(saved.projects.find(({ id }) => id === otherProject.id)?.nextStep).toEqual(
     otherNextStepBefore,
   );
-  expect(saved.inbox.some(({ id }) => id === "source-project-locked-drop")).toBe(false);
+  expect(saved.inbox.some(({ id }) => id === "source-project-locked-drop")).toBe(true);
+  expect(
+    saved.projects.find(({ id }) => id === sourceProject.id)?.nextStep?.sourceWishlistId,
+  ).toBe("source-project-locked-drop");
 });
 
 test("v1.3 Wishlist item drop sets or replaces a NextStep and returns the old one", async ({
@@ -852,7 +894,8 @@ test("v1.3 Wishlist item drop sets or replaces a NextStep and returns the old on
     )
     .toBe("ドロップして設定する次の一手");
   const saved = await currentConfig(page);
-  expect(saved.inbox.some(({ id }) => id === "drop-to-next-step")).toBe(false);
+  expect(saved.inbox.some(({ id }) => id === "drop-to-next-step")).toBe(true);
+  expect(saved.projects[0].nextStep?.sourceWishlistId).toBe("drop-to-next-step");
   expect(
     saved.inbox.some(({ text, projectId }) => text === oldText && projectId === project.id),
   ).toBe(true);

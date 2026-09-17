@@ -8709,6 +8709,7 @@ input[type="number"]::-webkit-inner-spin-button {
   --today-picker-font-body: 13px;
   --today-picker-font-meta: 11px;
   width: min(720px, 100%);
+  height: min(720px, calc(100vh - 24px));
   max-height: min(82vh, 720px);
   grid-template-rows: auto auto minmax(0, 1fr) auto;
   gap: 0;
@@ -8730,7 +8731,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayPickerCounter {
-  margin-left: auto;
+  margin-left: 0;
   display: flex;
   align-items: baseline;
   gap: 7px;
@@ -8789,9 +8790,10 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayPickerProgress {
-  width: 154px;
+  width: min(230px, 34vw);
+  flex: 0 1 230px;
   height: 6px;
-  margin-left: 10px;
+  margin-left: auto;
   overflow: hidden;
   border-radius: 999px;
   background: var(--line-soft);
@@ -8832,10 +8834,10 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .todayPickerSlot {
   min-width: 0;
-  min-height: 68px;
+  min-height: 90px;
   border: 1px solid var(--line-soft);
   border-radius: var(--radius);
-  padding: 10px 9px;
+  padding: 9px 9px 8px;
   background: var(--surface);
 }
 
@@ -8850,10 +8852,12 @@ input[type="number"]::-webkit-inner-spin-button {
 .todayPickerRemoveButton {
   width: auto;
   min-width: 0;
-  min-height: 22px;
+  min-height: 31px;
+  height: 31px;
   justify-self: end;
-  padding: 2px 6px;
-  font-size: 9px;
+  padding: 0 11px;
+  font-size: 10px;
+  font-weight: 800;
   line-height: 1;
   white-space: nowrap;
 }
@@ -9156,7 +9160,7 @@ input[type="number"]::-webkit-inner-spin-button {
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
-  padding: 10px 22px 10px 14px;
+  padding: 10px 32px 10px 14px;
   border-top: 1px solid var(--line);
 }
 
@@ -9206,7 +9210,7 @@ input[type="number"]::-webkit-inner-spin-button {
   }
 
   .todayPickerSlot {
-    min-height: 60px;
+    min-height: 82px;
   }
 
   .todayPickerRow:not(.todayPickerSlot) {
@@ -9567,6 +9571,16 @@ input[type="number"]::-webkit-inner-spin-button {
     border-color 120ms ease,
     color 120ms ease,
     box-shadow 120ms ease;
+}
+
+.wishlistNextStepStatus {
+  min-height: 22px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--good);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .inboxRow:hover .wishlistNextStepAction,

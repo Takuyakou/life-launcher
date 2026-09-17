@@ -54,6 +54,10 @@ test("P84 Wishlist promote action is status-aware, stable, keyboard reachable, a
     colorId: "amber",
   });
   const selectedWishlist = fixture.config.inbox.find((item) => item.id === "sample-weekend")!;
+  fixture.config.projects[0].nextStep = {
+    ...fixture.config.projects[0].nextStep!,
+    sourceWishlistId: selectedWishlist.id,
+  };
   fixture.config.today.items.push({
     text: selectedWishlist.text,
     done: false,
@@ -72,14 +76,19 @@ test("P84 Wishlist promote action is status-aware, stable, keyboard reachable, a
   const plainMenu = plain.locator(".sourceRowMenu");
   const selectedMenu = selected.locator(".sourceRowMenu");
   const selectedStatus = selected.locator(".wishlistTodayStatus");
+  const selectedNextStepStatus = selected.locator(".wishlistNextStepStatus");
 
   await expect(plain.locator(".wishlistTodayStatus")).toHaveCount(0);
   await expect(selectedStatus).toHaveText("✓ 今日の3件");
+  await expect(selectedNextStepStatus).toHaveText("✓ 次の一手に設定済み");
   await expect(plainAction).toHaveCSS("opacity", "0");
   await expect(selectedAction).toHaveCount(0);
   await expect(selected.locator(".sourceLockBadge--wishlist")).toHaveCount(1);
   await expect(plainMenu).toHaveCSS("opacity", "1");
   await expect(selectedMenu).toHaveCSS("opacity", "1");
+  await selected.click({ button: "right" });
+  await expect(page.getByRole("menuitem", { name: "次の一手に設定済み" })).toBeDisabled();
+  await page.keyboard.press("Escape");
   expect(
     await plain
       .locator(".wishlistRowActions > *")
@@ -89,7 +98,12 @@ test("P84 Wishlist promote action is status-aware, stable, keyboard reachable, a
     await selected
       .locator(".wishlistRowActions > *")
       .evaluateAll((nodes) => nodes.map((node) => node.className)),
-  ).toEqual(["wishlistNextStepSlot", "wishlistTodayStatus", "sourceRowMenu"]);
+  ).toEqual([
+    "wishlistNextStepSlot",
+    "wishlistNextStepStatus",
+    "wishlistTodayStatus",
+    "sourceRowMenu",
+  ]);
 
   const setButton = page.getByRole("button", { name: "次の一手を設定", exact: true });
   const setBase = await style(setButton);
@@ -150,6 +164,7 @@ test("P84 Wishlist promote action is status-aware, stable, keyboard reachable, a
 
   await page.setViewportSize({ width: 520, height: 900 });
   await expect(selected.locator(".wishlistNextStepSlot")).toHaveCSS("display", "none");
+  await expect(selectedNextStepStatus).toBeVisible();
   await expect(selectedStatus).toBeVisible();
   await expect(selectedMenu).toBeVisible();
   expect(

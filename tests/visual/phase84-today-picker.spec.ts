@@ -255,17 +255,27 @@ test("P84 Picker removes selected cards directly and exposes a longer green prog
 }) => {
   const fixture = createPublicFixture();
   fixture.config.today.items = fixture.config.today.items.slice(0, 1);
+  fixture.config.projects[0].name =
+    "選択枠で長いプロジェクト名が省略されても解除操作を守るプロジェクト";
+  fixture.config.today.items[0].text =
+    "選択枠でとても長いタスク名が省略されても今日から外す操作は右下に残る";
   await prepare(page, fixture);
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const dialog = picker(page);
+  const dialogBoxBefore = await dialog.boundingBox();
   const progress = dialog.locator(".todayPickerProgress");
   const progressBox = await progress.boundingBox();
-  expect(progressBox?.width).toBeGreaterThanOrEqual(150);
+  const counterBox = await dialog.locator(".todayPickerCounter").boundingBox();
+  expect(dialogBoxBefore?.height).toBeGreaterThanOrEqual(718);
+  expect(dialogBoxBefore?.height).toBeLessThanOrEqual(722);
+  expect(progressBox?.width).toBeGreaterThanOrEqual(220);
+  expect(progressBox && counterBox).toBeTruthy();
+  expect(progressBox!.x + progressBox!.width).toBeLessThanOrEqual(counterBox!.x);
   await expect(progress).toHaveAttribute("aria-valuenow", "1");
 
   const selectedCard = dialog.locator(".todayPickerSlot--selected");
-  const removeButton = dialog.getByRole("button", { name: "今日の3件から外す" });
+  const removeButton = dialog.getByRole("button", { name: "今日から外す", exact: true });
   const cardBox = await selectedCard.boundingBox();
   const removeBox = await removeButton.boundingBox();
   expect(cardBox && removeBox).toBeTruthy();
@@ -273,9 +283,32 @@ test("P84 Picker removes selected cards directly and exposes a longer green prog
   expect(removeBox!.y + removeBox!.height).toBeLessThanOrEqual(cardBox!.y + cardBox!.height - 5);
   expect(removeBox!.y).toBeGreaterThan(cardBox!.y + cardBox!.height / 2);
   expect(await removeButton.evaluate((node) => getComputedStyle(node).whiteSpace)).toBe("nowrap");
-  expect(removeBox!.height).toBeLessThanOrEqual(24);
-  await removeButton.click();
+  expect(cardBox!.height).toBeGreaterThanOrEqual(90);
+  expect(removeBox!.height).toBeGreaterThanOrEqual(30);
+  expect(removeBox!.height).toBeLessThanOrEqual(32);
+  const baseStyle = await removeButton.evaluate((node) => {
+    const style = getComputedStyle(node);
+    return { backgroundColor: style.backgroundColor, borderColor: style.borderColor };
+  });
+  await removeButton.hover();
+  await page.waitForTimeout(140);
+  const hoverStyle = await removeButton.evaluate((node) => {
+    const style = getComputedStyle(node);
+    return {
+      backgroundColor: style.backgroundColor,
+      borderColor: style.borderColor,
+      transform: style.transform,
+    };
+  });
+  expect(hoverStyle.backgroundColor).not.toBe(baseStyle.backgroundColor);
+  expect(hoverStyle.borderColor).not.toBe(baseStyle.borderColor);
+  expect(hoverStyle.transform).not.toBe("none");
+  await removeButton.focus();
+  await expect(removeButton).toBeFocused();
+  await removeButton.press("Space");
   await expect(dialog.locator(".todayPickerSlot--selected")).toHaveCount(0);
+  const dialogBoxAfter = await dialog.boundingBox();
+  expect(Math.abs(dialogBoxAfter!.height - dialogBoxBefore!.height)).toBeLessThanOrEqual(1);
   expect((await currentConfig(page)).today.items).toHaveLength(0);
   await dialog.getByRole("button", { name: "決定" }).click();
   await expect(dialog).toHaveCount(0);
@@ -370,6 +403,9 @@ test("P84 Picker aligns project, task, and action columns with readable long con
   expect(Math.max(...wishlistActionRights) - Math.min(...wishlistActionRights)).toBeLessThanOrEqual(
     1,
   );
+  const cancelBox = await dialog.getByRole("button", { name: "キャンセル", exact: true }).boundingBox();
+  expect(cancelBox).not.toBeNull();
+  expect(Math.abs(cancelBox!.x + cancelBox!.width - wishlistActionRights[0])).toBeLessThanOrEqual(16);
   await expect(dialog.locator(".todayPickerRow--groupedWishlist").first()).toHaveCSS(
     "min-height",
     "60px",
@@ -408,7 +444,7 @@ test("P84 Picker selection preserves collapsed Wishlist groups", async ({ page }
 
 test("P84 Picker remains contained and keeps actions visible at narrow width", async ({ page }) => {
   const fixture = createPublicFixture();
-  fixture.config.today.items = [];
+  fixture.config.today.items = fixture.config.today.items.slice(0, 1);
   fixture.config.projects[0].name = "長いプロジェクト名の狭幅表示確認";
   await prepare(page, fixture, 520);
 
@@ -420,6 +456,9 @@ test("P84 Picker remains contained and keeps actions visible at narrow width", a
     .evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect()));
   expect(dialogBox).not.toBeNull();
   expect(actionBoxes.every((box) => box.right <= dialogBox!.x + dialogBox!.width + 1)).toBe(true);
+  const removeButton = dialog.getByRole("button", { name: "今日から外す", exact: true });
+  await expect(removeButton).toBeVisible();
+  expect((await removeButton.boundingBox())!.height).toBeGreaterThanOrEqual(30);
   expect(await dialog.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
   await dialog.screenshot({ path: "dist/visual-qa/phase84/picker-narrow-520.png" });
 });

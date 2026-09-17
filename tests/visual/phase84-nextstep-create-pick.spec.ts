@@ -98,7 +98,11 @@ test("P84 Wishlist selection swaps atomically and returns the previous NextStep"
 
   const saved = await currentConfig(page);
   expect(saved.projects[0].nextStep?.text).toBe("週末に試すアイデア");
-  expect(saved.inbox.some((item) => item.id === "sample-weekend")).toBe(false);
+  expect(saved.inbox.some((item) => item.id === "sample-weekend")).toBe(true);
+  expect(saved.projects[0].nextStep?.sourceWishlistId).toBe("sample-weekend");
+  await expect(
+    page.locator('[data-inbox-id="sample-weekend"] .wishlistNextStepStatus'),
+  ).toHaveText("✓ 次の一手に設定済み");
   expect(saved.inbox).toContainEqual({
     id: expect.any(String),
     text: previous.text,
