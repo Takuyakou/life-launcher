@@ -110,8 +110,9 @@ test("Wishlist cancel, Escape, and backdrop discard the draft and return focus",
   let dialog = wishlistDialog(page);
   const firstInput = dialog.getByRole("textbox", { name: "やりたいこと" });
   const cancelButton = dialog.getByRole("button", { name: "キャンセル" });
+  const closeButton = dialog.getByRole("button", { name: "やりたいことを追加を閉じる" });
   await page.keyboard.press("Shift+Tab");
-  await expect(cancelButton).toBeFocused();
+  await expect(closeButton).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(firstInput).toBeFocused();
   await firstInput.fill("キャンセルする入力");

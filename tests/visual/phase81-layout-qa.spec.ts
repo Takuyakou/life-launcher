@@ -252,6 +252,7 @@ test("Phase 8.1 unassigned Wishlist and empty Project require explicit keyboard 
   ]);
   await page.getByRole("menuitem", { name: "次の一手を設定", exact: true }).click();
   const setup = page.getByRole("dialog", { name: "次の一手を設定", exact: true });
+  await setup.getByRole("tab", { name: "＋ 新しく入力" }).click();
   await expect(setup.getByRole("textbox", { name: "行動" })).toBeFocused();
   await expect(setup.getByRole("textbox", { name: "行動" })).toHaveValue("");
   await expect(setup.getByRole("combobox", { name: "プロジェクト", exact: true })).toHaveCount(0);

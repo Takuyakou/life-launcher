@@ -362,6 +362,7 @@ test("registration stays in source sections and persists after reload", async ({
   const addedProjectRow = page.locator(`[data-project-id="${addedProject.id}"]`);
   await addedProjectRow.getByRole("button", { name: "次の一手を設定" }).click();
   const nextStepDialog = page.getByRole("dialog", { name: "次の一手を設定" });
+  await nextStepDialog.getByRole("tab", { name: "＋ 新しく入力" }).click();
   await nextStepDialog.getByRole("textbox", { name: "行動" }).fill("再起動後も残る一手");
   await nextStepDialog.getByRole("button", { name: "保存", exact: true }).click();
   await expect(nextStepDialog).toHaveCount(0);

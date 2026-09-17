@@ -112,16 +112,19 @@ test("Phase 8.4 opening the Picker does not rewrite legacy exclusion state", asy
   ]);
   await expect(page.locator(".toast")).toHaveCount(0);
 });
-test("v1.3 Do Now switches candidates from the action row and context menu", async ({ page }) => {
+test("v1.3 Do Now switches candidates from the copy area and context menu", async ({ page }) => {
   const fixture = createPublicFixture();
   await prepare(page, fixture);
   const band = page.locator(".doNowContent");
   const actions = band.locator(".doNowActions");
-  const alternate = actions.getByRole("button", { name: "他の一手", exact: true });
+  const alternate = band.locator(".doNowCopy").getByRole("button", {
+    name: "別の候補",
+    exact: true,
+  });
   await expect(alternate).toBeVisible();
+  await expect(actions.getByRole("button", { name: "別の候補", exact: true })).toHaveCount(0);
   const labels = await actions.getByRole("button").allTextContents();
-  expect(labels[0]?.trim()).toBe("他の一手");
-  expect(labels[1]?.trim()).toBe("5分で始める");
+  expect(labels[0]?.trim()).toBe("5分で始める");
 
   await alternate.click();
   await expect(band.locator(".doNowCopy > strong")).toHaveText("5分だけ体を動かす");
@@ -135,7 +138,7 @@ test("v1.3 Do Now hides alternate actions when there is no other candidate", asy
   fixture.doNowCandidates = fixture.doNowCandidates.slice(0, 1);
   await prepare(page, fixture);
   const band = page.locator(".doNowContent");
-  await expect(band.getByRole("button", { name: "他の一手", exact: true })).toHaveCount(0);
+  await expect(band.getByRole("button", { name: "別の候補", exact: true })).toHaveCount(0);
   await band.click({ button: "right" });
   await expect(page.getByRole("menuitem", { name: "他の一手", exact: true })).toHaveCount(0);
 });
@@ -197,7 +200,7 @@ test("timer actions keep time subtly right of center and slide play in from the 
   await expect(todayShort.locator(".nextStepStartDuration")).toHaveText("5分");
   await expect(todayNormal.locator(".nextStepStartDuration")).toHaveText("25分");
   expect((await doNowShort.boundingBox())?.width).toBe(112);
-  expect((await todayShort.boundingBox())?.width).toBe(78);
+  expect((await todayShort.boundingBox())?.width).toBe(82);
   expect((await todayShort.boundingBox())?.height).toBe(36);
   await expect(todayShort.locator(".nextStepStartDuration")).toHaveCSS("opacity", "1");
   await expect(todayShort.locator(".nextStepStartGlyph")).toHaveCSS("opacity", "0");

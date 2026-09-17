@@ -9959,18 +9959,19 @@ function DashboardApp() {
                         )}
                         <span className="doNowReason">{doNowReason}</span>
                       </div>
+                      {doNowCandidates.length > 1 && (
+                        <button
+                          className="doNowAlternateButton"
+                          onClick={showNextDoNowCandidate}
+                          type="button"
+                        >
+                          <UiIcon name="refresh" size={16} />
+                          別の候補
+                        </button>
+                      )}
                     </div>
                     <div className="doNowFooter">
                       <div className="doNowActions">
-                        {doNowCandidates.length > 1 && (
-                          <button
-                            className="doNowAlternateButton mainActionButton mainActionButton--neutral"
-                            onClick={showNextDoNowCandidate}
-                            type="button"
-                          >
-                            他の一手
-                          </button>
-                        )}
                         {isDoNowRunning && activeTimer ? (
                           <>
                             {activeTimer.mode === "measure" && (
@@ -12448,8 +12449,11 @@ function DashboardApp() {
           >
             <div className="modalTitleRow">
               <div>
+                <p className="eyebrow">Today</p>
                 <h2>今日やるものを選ぶ</h2>
-                <p>次の一手・やりたいことから、今日の3件へ追加します。</p>
+                <p className="todayPickerIntro">
+                  次の一手・やりたいことから、今日の3件へ追加します。
+                </p>
               </div>
               <div className="todayPickerHeaderActions">
                 <div
@@ -13915,10 +13919,22 @@ function DashboardApp() {
             role="dialog"
             tabIndex={-1}
           >
-            <div className="wishlistAddHeader">
-              <p className="eyebrow">Wishlist</p>
-              <h2>やりたいことを追加</h2>
-              <p>あとでやりたいことを、ひとまず残しておきます。</p>
+            <div className="wishlistAddHeader modalTitleRow">
+              <div>
+                <p className="eyebrow">Wishlist</p>
+                <h2>やりたいことを追加</h2>
+                <p>あとでやりたいことを、ひとまず残しておきます。</p>
+              </div>
+              <button
+                aria-label="やりたいことを追加を閉じる"
+                className="iconButton"
+                disabled={inboxAddSaving}
+                onClick={closeInboxAddDialog}
+                title="閉じる"
+                type="button"
+              >
+                <UiIcon name="close" size={16} />
+              </button>
             </div>
 
             <form
@@ -14123,10 +14139,22 @@ function DashboardApp() {
                 role="dialog"
                 tabIndex={-1}
               >
-                <div>
-                  <p className="eyebrow">Next Step</p>
-                  <h2>{dialogTitle}</h2>
-                  <p className="dialogLead">今進める1件と、始めるための環境を設定します。</p>
+                <div className="modalTitleRow">
+                  <div>
+                    <p className="eyebrow">Next Step</p>
+                    <h2>{dialogTitle}</h2>
+                    <p className="dialogLead">今進める1件と、始めるための環境を設定します。</p>
+                  </div>
+                  <button
+                    aria-label={`${dialogTitle}を閉じる`}
+                    className="iconButton"
+                    disabled={sourceEditSaving}
+                    onClick={() => closeNextStepEditDialog()}
+                    title="閉じる"
+                    type="button"
+                  >
+                    <UiIcon name="close" size={16} />
+                  </button>
                 </div>
 
                 <h3 className="formSectionHeading">プロジェクト</h3>
@@ -14586,12 +14614,24 @@ function DashboardApp() {
             role="dialog"
             tabIndex={-1}
           >
-            <div>
-              <p className="eyebrow">Project</p>
-              <h2>{projectEditDraft.isNew ? "プロジェクトを追加" : "プロジェクトを編集"}</h2>
-              {projectEditDraft.isNew && (
-                <p className="dialogLead">継続して進めるテーマを登録します。</p>
-              )}
+            <div className="modalTitleRow">
+              <div>
+                <p className="eyebrow">Project</p>
+                <h2>{projectEditDraft.isNew ? "プロジェクトを追加" : "プロジェクトを編集"}</h2>
+                {projectEditDraft.isNew && (
+                  <p className="dialogLead">継続して進めるテーマを登録します。</p>
+                )}
+              </div>
+              <button
+                aria-label={`${projectEditDraft.isNew ? "プロジェクトを追加" : "プロジェクトを編集"}を閉じる`}
+                className="iconButton"
+                disabled={projectEditSaving}
+                onClick={() => closeProjectEditDialog()}
+                title="閉じる"
+                type="button"
+              >
+                <UiIcon name="close" size={16} />
+              </button>
             </div>
 
             <h3 className="formSectionHeading">基本</h3>

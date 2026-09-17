@@ -209,6 +209,7 @@ test("generation boundary: clearing A and recreating same-text B leaves adopted 
 
   await action.getByRole("button", { name: "次の一手を設定", exact: true }).click();
   const setup = page.getByRole("dialog", { name: "次の一手を設定", exact: true });
+  await setup.getByRole("tab", { name: "＋ 新しく入力" }).click();
   await setup.getByRole("textbox", { name: "行動", exact: true }).fill(adoptedA.text);
   await setup.getByRole("button", { name: "保存", exact: true }).click();
 
