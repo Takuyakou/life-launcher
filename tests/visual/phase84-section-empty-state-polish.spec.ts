@@ -130,7 +130,9 @@ test("Wishlist mode is gold while settings neutral and warning actions hover gol
   await newMode.click();
   await expect(newMode).toHaveClass(/mainActionButton--positive/);
   await dialog.getByRole("button", { name: "次の一手を設定を閉じる" }).click();
-  await page.getByRole("button", { name: "破棄して閉じる" }).click();
+  await expect(page.getByRole("dialog", { name: "入力内容を破棄して閉じますか？" })).toHaveCount(
+    0,
+  );
 
   const reference = page
     .locator(".projectsBand")
