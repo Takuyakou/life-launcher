@@ -28,12 +28,11 @@ Assert-PathInsideRepo $InstallerTarget
 
 Set-Location $RepoRoot
 
-$ReleaseRustFlags = @(
+$ReleaseRustFlags = [string[]]@(
   "--remap-path-prefix=$env:USERPROFILE=<USERPROFILE>",
   "--remap-path-prefix=$RepoRoot=<SOURCE_ROOT>"
-) -join " "
-$env:RUSTFLAGS = (@($env:RUSTFLAGS, $ReleaseRustFlags) |
-  Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) -join " "
+)
+$env:CARGO_ENCODED_RUSTFLAGS = $ReleaseRustFlags -join [char]0x1f
 
 $CargoBin = Join-Path $env:USERPROFILE ".cargo\bin"
 if (Test-Path (Join-Path $CargoBin "cargo.exe")) {
