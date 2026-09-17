@@ -129,7 +129,9 @@ test("Dictionary to Quick move rolls the display back when saving fails", async 
 test("Project picker preserves order, enforces two selections, and restores focus", async ({
   page,
 }) => {
-  await prepare(page);
+  const fixture = createPublicFixture();
+  fixture.config.today.items = [];
+  await prepare(page, fixture);
   await page.locator('[data-project-id="sample-learning"]').click({ button: "right" });
   await page.getByRole("menuitem", { name: "次の一手を編集", exact: true }).click();
   const projectDialog = page.getByRole("dialog", { name: "次の一手を編集" });
@@ -194,6 +196,7 @@ test("Legacy selections over the limit are preserved and picker fits the narrow 
   page,
 }) => {
   const fixture = createPublicFixture();
+  fixture.config.today.items = [];
   const longButton: LauncherButton = {
     id: "long-start-environment",
     label: "非常に長い日本語の開始環境名でも横方向にはみ出さず省略表示される確認項目",

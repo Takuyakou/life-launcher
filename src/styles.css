@@ -2511,17 +2511,23 @@ input[type="number"]::-webkit-inner-spin-button {
   padding: 22px 24px 0;
 }
 
-.mainPanel > * {
+.mainPanel > .topBar {
   width: min(100%, 1180px);
   margin-inline: auto;
 }
 
 .mainScrollArea {
+  width: 100%;
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
   padding: 0 0 16px;
   overscroll-behavior: contain;
+}
+
+.mainScrollContent {
+  width: min(100%, 1180px);
+  margin-inline: auto;
 }
 
 .topBar {
@@ -3350,6 +3356,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .doNowAlternateButton .uiIcon {
   width: 16px;
   height: 16px;
+  align-self: center;
 }
 
 .doNowContent {
@@ -3362,11 +3369,27 @@ input[type="number"]::-webkit-inner-spin-button {
   border-radius: var(--radius);
   padding: 14px;
   background: var(--dashboard-action-surface);
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    transform 120ms ease;
+}
+
+.doNowContent:hover,
+.doNowContent:focus-within {
+  border-color: var(--accent);
+  background: var(--control-neutral-hover-bg);
+  transform: translateY(-1px);
 }
 
 .doNowContent[data-project-color] {
   border-left: 3px solid var(--project-color);
   padding-left: 12px;
+}
+
+.doNowContent[data-project-color]:hover,
+.doNowContent[data-project-color]:focus-within {
+  border-left-color: var(--accent);
 }
 
 .doNowCopy {
@@ -3463,6 +3486,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .doNowMetaItem .uiIcon {
   flex: 0 0 auto;
+  align-self: center;
 }
 
 .doNowFooter {
@@ -3560,6 +3584,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .doNowActions .doNowMeasureButton,
 .todayMeasureButton {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3573,6 +3598,7 @@ input[type="number"]::-webkit-inner-spin-button {
     background-color 130ms ease,
     border-color 130ms ease,
     transform 130ms ease;
+  overflow: hidden;
 }
 
 .doNowActions .doNowMeasureButton {
@@ -7928,6 +7954,47 @@ input[type="number"]::-webkit-inner-spin-button {
   container-type: inline-size;
 }
 
+.todaySectionBar {
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: max-content max-content max-content minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  background: var(--surface-soft);
+}
+
+.todaySectionBar h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--dashboard-font-heading);
+  font-weight: 850;
+}
+
+.todaySectionCount,
+.todayCompletionSummary,
+.todaySectionDescription {
+  font-size: var(--dashboard-font-meta);
+}
+
+.todaySectionCount,
+.todayCompletionSummary {
+  color: var(--text-muted-readable);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.todaySectionDescription {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .todayGrid {
   position: relative;
   display: grid;
@@ -8022,14 +8089,14 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .todayRow:not(.todayRow--dragging):hover,
 .todayRow:not(.todayRow--dragging):focus-within {
-  border-color: var(--line-strong);
+  border-color: var(--accent);
   background: var(--control-neutral-hover-bg);
   transform: translateY(-1px);
 }
 
 .todayRow[data-project-color]:not(.todayRow--dragging):hover,
 .todayRow[data-project-color]:not(.todayRow--dragging):focus-within {
-  border-top-color: var(--project-color);
+  border-top-color: var(--accent);
 }
 
 .todayRow--running:not(.todayRow--dragging):hover,
@@ -8259,20 +8326,46 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayRow .todayRemoveButton {
-  padding-inline: 2px;
+  padding-inline: 3px 5px;
 }
 
 .todayRow .todayInstructionButton:hover:not(:disabled),
 .todayRow .todayInstructionButton:focus-visible,
-.todayRow .todayRemoveButton:hover:not(:disabled) {
-  border-color: var(--muted);
-  background: var(--surface-soft);
-  color: var(--text);
+.todayRow .todayRemoveButton:hover:not(:disabled),
+.todayRow .todayRemoveButton:focus-visible {
+  border-color: rgba(231, 185, 77, 0.48);
+  background: var(--surface-strong);
+  color: var(--accent-strong);
 }
 
 .todayRow .todayRemoveButton:disabled {
   cursor: not-allowed;
   opacity: 0.45;
+}
+
+.todayRow .todayRemoveButton.mainActionButton--neutral:hover:not(:disabled),
+.todayRow .todayRemoveButton.mainActionButton--neutral:focus-visible {
+  border-color: rgba(231, 185, 77, 0.48);
+  background: var(--surface-strong);
+  color: var(--accent-strong);
+}
+
+@container today-card (min-width: 301px) and (max-width: 370px) {
+  .todayCardFooter {
+    gap: 2px;
+  }
+
+  .todayRow .todayRemoveButton {
+    gap: 2px;
+    padding-inline: 2px 3px;
+    font-size: 10px;
+  }
+
+  .todayRow .todayRemoveButton .uiIcon {
+    width: 14px;
+    height: 14px;
+  }
+
 }
 
 .todayNextBatch {
@@ -8599,8 +8692,8 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .todayPickerDestination {
   display: grid;
-  gap: 8px;
-  padding: 12px 14px 13px;
+  gap: 9px;
+  padding: 14px 14px 16px;
   border-bottom: 1px solid var(--line);
   background: var(--surface-soft);
 }
@@ -8609,6 +8702,24 @@ input[type="number"]::-webkit-inner-spin-button {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.todayPickerProgress {
+  width: 72px;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--line-soft);
+}
+
+.todayPickerProgress > span {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  background: var(--accent);
+  transform-origin: left center;
+  transition: transform 220ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .todayPickerDestinationHeader h3,
@@ -8635,10 +8746,10 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .todayPickerSlot {
   min-width: 0;
-  min-height: 62px;
+  min-height: 68px;
   border: 1px solid var(--line-soft);
   border-radius: var(--radius);
-  padding: 8px 9px;
+  padding: 10px 9px;
   background: var(--surface);
 }
 
@@ -8701,8 +8812,8 @@ input[type="number"]::-webkit-inner-spin-button {
   min-height: 0;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
-  gap: 9px;
-  padding: 11px 14px 0;
+  gap: 10px;
+  padding: 18px 14px 0;
 }
 
 .todayPickerSourceHeading > span {
@@ -8772,11 +8883,11 @@ input[type="number"]::-webkit-inner-spin-button {
   min-height: 0;
   overflow-y: auto;
   border-top: 1px solid var(--line);
-  padding-right: 4px;
+  padding: 4px 4px 0 0;
 }
 
 .todayPickerPanelHeading {
-  min-height: 34px;
+  min-height: 38px;
   display: flex;
   align-items: center;
   gap: 7px;
@@ -8798,13 +8909,13 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayPickerRow:not(.todayPickerSlot) {
-  min-height: 54px;
+  min-height: 60px;
   display: grid;
   grid-template-columns: minmax(130px, 170px) minmax(0, 1fr) 96px;
   align-items: center;
   gap: 14px;
   border-top: 1px solid var(--line-soft);
-  padding: 7px 4px;
+  padding: 9px 4px;
 }
 
 .todayPickerCopy {
@@ -8972,7 +9083,7 @@ input[type="number"]::-webkit-inner-spin-button {
   }
 
   .todayPickerSlot {
-    min-height: 48px;
+    min-height: 60px;
   }
 
   .todayPickerRow:not(.todayPickerSlot) {
@@ -9590,7 +9701,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .nextStepCard.nextStepRow.sourceListRow:hover,
 .nextStepCard.nextStepRow.sourceListRow:focus-within {
-  border-color: var(--line-strong);
+  border-color: var(--accent);
   background: var(--control-neutral-hover-bg);
   transform: translateY(-1px);
 }
@@ -9625,6 +9736,51 @@ input[type="number"]::-webkit-inner-spin-button {
   font-size: var(--dashboard-font-meta);
   font-weight: 600;
   line-height: 1.3;
+}
+
+.nextStepCard .nextStepProjectRegion h3 {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.sourceLockBadge {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-strong);
+  line-height: 1;
+}
+
+.sourceLockBadge:focus-visible {
+  border-radius: 3px;
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.nextStepCardActions {
+  align-self: flex-end;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+}
+
+.nextStepCard .nextStepTodayAdd {
+  min-height: 28px;
+  border-radius: var(--radius);
+  padding-inline: 8px;
+  font-size: var(--dashboard-font-meta);
+  font-weight: 700;
+}
+
+.nextStepLockedStatus {
+  align-self: flex-end;
+  margin-top: auto;
+  color: var(--text-muted-readable);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 650;
 }
 
 .nextStepCard .nextStepActionRegion {
@@ -10061,13 +10217,13 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .wishlistGroupHeader .projectIdentity {
   min-width: 0;
-  color: var(--text);
+  color: var(--text-muted-readable);
   font-size: var(--dashboard-font-meta);
   font-weight: 650;
 }
 
 .wishlistGroupHeader > strong {
-  color: var(--text);
+  color: var(--text-muted-readable);
   font-size: var(--dashboard-font-meta);
   font-weight: 650;
 }
@@ -10083,8 +10239,16 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .wishlistGroup .inboxItemText {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text);
   font-size: var(--dashboard-font-meta);
   font-weight: 600;
+}
+
+.sourceLockBadge--wishlist {
+  margin-inline-start: 1px;
 }
 
 .wishlistGroup .sourceRowMenu {
@@ -10111,7 +10275,9 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .doNowStartPrimary::after,
 .doNowStartSecondary::after,
-.todayStartButton::after {
+.doNowMeasureButton::after,
+.todayStartButton::after,
+.todayMeasureButton::after {
   position: absolute;
   right: 12px;
   bottom: 0;
@@ -10128,8 +10294,12 @@ input[type="number"]::-webkit-inner-spin-button {
 .doNowStartPrimary:focus-visible::after,
 .doNowStartSecondary:hover:not(:disabled)::after,
 .doNowStartSecondary:focus-visible::after,
+.doNowMeasureButton:hover:not(:disabled)::after,
+.doNowMeasureButton:focus-visible::after,
 .todayStartButton:hover:not(:disabled)::after,
-.todayStartButton:focus-visible::after {
+.todayStartButton:focus-visible::after,
+.todayMeasureButton:hover:not(:disabled)::after,
+.todayMeasureButton:focus-visible::after {
   transform: scaleX(1);
 }
 

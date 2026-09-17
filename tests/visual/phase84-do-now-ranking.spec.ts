@@ -40,7 +40,7 @@ test("P84-03 one focus-OFF Project with NextStep still renders Do Now", async ({
     fixture.config.projects[0].nextStep!.text,
   );
   await expect(doNow.locator(".doNowReason")).toHaveText("今日はまだ取り組んでいない候補です");
-  await expect(doNow.getByRole("button", { name: "別の候補" })).toHaveCount(0);
+  await expect(doNow.getByRole("button", { name: "他の一手" })).toHaveCount(0);
 });
 
 test("P84-03 mixed focus response shows the eligible non-focus Project when focus has no NextStep", async ({
@@ -85,7 +85,7 @@ test("P84-03 Other Step cycles every ranked candidate without mutating config", 
   await prepare(page, fixture);
   const before = await currentConfig(page);
   const action = page.locator(".doNowCopy > strong");
-  const alternate = page.getByRole("button", { name: "別の候補", exact: true });
+  const alternate = page.getByRole("button", { name: "他の一手", exact: true });
 
   await expect(action).toHaveText(fixture.config.projects[0].nextStep!.text);
   await alternate.click();
@@ -125,7 +125,7 @@ test("P84 Do Now task offset and metadata icon rows follow the reference alignme
     card.locator(".doNowKicker").boundingBox(),
     card.locator(".doNowCopy > strong").boundingBox(),
     card.locator(".doNowMeta").boundingBox(),
-    card.getByRole("button", { name: "別の候補" }).boundingBox(),
+    card.getByRole("button", { name: "他の一手" }).boundingBox(),
   ]);
   expect(cardBox).not.toBeNull();
   expect(kicker).not.toBeNull();

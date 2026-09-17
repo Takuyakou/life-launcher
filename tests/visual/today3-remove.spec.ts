@@ -88,11 +88,19 @@ test("Today card shows its effective instruction action above remove and opens t
   ]);
   const instructionBox = await instruction.boundingBox();
   const removeBox = await card.locator(".todayRemoveButton").boundingBox();
-  expect(instructionBox && removeBox && instructionBox.y + instructionBox.height <= removeBox.y).toBe(true);
+  expect(
+    instructionBox && removeBox && instructionBox.y + instructionBox.height <= removeBox.y,
+  ).toBe(true);
 
   const beforeCalls = (await state(page)).calls.length;
   await instruction.click();
-  await expect.poll(async () => (await state(page)).calls.slice(beforeCalls).some((call) => call.command === "plugin:window|get_all_windows")).toBe(true);
+  await expect
+    .poll(async () =>
+      (await state(page)).calls
+        .slice(beforeCalls)
+        .some((call) => call.command === "plugin:window|get_all_windows"),
+    )
+    .toBe(true);
 });
 
 test("active and paused item cannot be removed even through its React handler; another item can", async ({
@@ -146,6 +154,33 @@ test("failed save restores exact Today snapshots and order with no success toast
   await expect(page.locator(".todayTextButton")).toHaveText(before.today.items.map((i) => i.text));
   await page.reload();
   expect((await state(page)).config).toEqual(before);
+});
+
+test("remove drop accepts the dragged card top edge even when the pointer is below the zone", async ({
+  page,
+}) => {
+  await prepare(page);
+  const card = page.locator(".todayRow").first();
+  const cardBox = await card.boundingBox();
+  expect(cardBox).not.toBeNull();
+  const offsetX = 6;
+  const offsetY = cardBox!.height - 8;
+  await page.mouse.move(cardBox!.x + offsetX, cardBox!.y + offsetY);
+  await page.mouse.down();
+  await page.mouse.move(cardBox!.x + offsetX, cardBox!.y + offsetY + 12, { steps: 3 });
+
+  const zone = page.locator(".todayRemoveDropZone");
+  await expect(zone).toBeVisible();
+  const zoneBox = await zone.boundingBox();
+  expect(zoneBox).not.toBeNull();
+  const pointerY = zoneBox!.y + offsetY;
+  expect(pointerY).toBeGreaterThan(zoneBox!.y + zoneBox!.height);
+  await page.mouse.move(zoneBox!.x + zoneBox!.width / 2, pointerY, { steps: 4 });
+  await expect(zone).toHaveClass(/todayRemoveDropZone--active/);
+  await page.mouse.up();
+
+  await expect(page.locator(".todayRow")).toHaveCount(2);
+  await expect(page.locator(".toast").last()).toContainText("今日の3件から外しました");
 });
 
 test("completed removal preserves existing batch rules and reusable sources", async ({ page }) => {
@@ -214,7 +249,9 @@ for (const [width, columns] of [
   [1000, 2],
   [860, 1],
 ]) {
-  test(`remove action layout, long text, hover, focus and running at ${width}`, async ({ page }) => {
+  test(`remove action layout, long text, hover, focus and running at ${width}`, async ({
+    page,
+  }) => {
     const fixture = fixture3();
     fixture.config.today.items[0].text =
       "長い行動文でも短時間と通常のタイマーおよび今日の3件から外すボタンが重ならず操作できることを確認する";
@@ -238,9 +275,9 @@ for (const [width, columns] of [
     await expect(runningBadge).toHaveText("実行中");
     const identityBox = await card.locator(".todayProjectIdentity").boundingBox();
     const runningBadgeBox = await runningBadge.boundingBox();
-    expect(identityBox && runningBadgeBox && runningBadgeBox.x >= identityBox.x + identityBox.width).toBe(
-      true,
-    );
+    expect(
+      identityBox && runningBadgeBox && runningBadgeBox.x >= identityBox.x + identityBox.width,
+    ).toBe(true);
     expect((await card.boundingBox())?.height).toBe(idleHeight);
     await card.getByRole("button", { name: "このセッションを一時停止" }).click();
     await expect(card.locator(".runningBadge")).toHaveText("一時停止");
@@ -258,7 +295,10 @@ for (const [width, columns] of [
       );
       const a = await card.locator(".todayRemoveButton").boundingBox();
       const b = await card.locator(".todayTimerActions, .todayCompletedLabel").boundingBox();
-      expect(a && b && (a.x + a.width <= b.x || a.y + a.height <= b.y)).toBeTruthy();
+      expect(
+        a && b && (a.x + a.width <= b.x || a.y + a.height <= b.y),
+        JSON.stringify({ remove: a, timer: b, cardWidth }),
+      ).toBeTruthy();
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,

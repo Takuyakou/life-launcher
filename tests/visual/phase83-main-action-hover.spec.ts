@@ -205,7 +205,9 @@ test("P83-03 gold and neutral actions share the 120ms interaction primitive", as
 });
 
 test("P83-03 edit and configure buttons use one neutral grammar", async ({ page }) => {
-  await prepare(page);
+  const fixture = actionFixture();
+  fixture.config.today.items = fixture.config.today.items.map((item) => ({ ...item, done: true }));
+  await prepare(page, fixture);
   const change = page.getByRole("button", { name: "変更", exact: true });
   const configure = page.getByRole("button", { name: "次の一手を設定", exact: true });
   await expect(change).toHaveCount(1);
@@ -286,9 +288,9 @@ test("P83-03 gold create hover and active keep their dimensions", async ({ page 
 
 test("P84 Do Now alternate uses the top toolbar hover grammar", async ({ page }) => {
   await prepare(page, createPublicFixture());
-  const alternate = page.getByRole("button", { name: "別の候補" });
-  await expect(page.locator(".doNowCopy").getByRole("button", { name: "別の候補" })).toBeVisible();
-  await expect(page.locator(".doNowActions").getByRole("button", { name: "別の候補" })).toHaveCount(
+  const alternate = page.getByRole("button", { name: "他の一手" });
+  await expect(page.locator(".doNowCopy").getByRole("button", { name: "他の一手" })).toBeVisible();
+  await expect(page.locator(".doNowActions").getByRole("button", { name: "他の一手" })).toHaveCount(
     0,
   );
   const initial = await readStyle(alternate);
@@ -397,7 +399,9 @@ test("P84 Today3 cards use the same clear hover surface and lift as NextStep car
 test("P83-03 timer controls and NextStep cards keep their established dimensions", async ({
   page,
 }) => {
-  await prepare(page);
+  const fixture = actionFixture();
+  fixture.config.today.items[0].sourceGenerationId = "older-generation";
+  await prepare(page, fixture);
   const timerContracts: Array<{
     backgroundColor: string;
     button: Locator;

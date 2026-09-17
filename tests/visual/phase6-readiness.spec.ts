@@ -224,13 +224,8 @@ test("manual next batch accepts one, two, and three new items but no fourth", as
     await expect(page.locator(".todayRow")).toHaveCount(index + 1);
   }
   const picker = page.getByRole("dialog", { name: "今日やるものを選ぶ" });
-  await expect(picker).toBeVisible();
-  await expect(picker.locator(".todayPickerCounter strong")).toHaveText("3 / 3");
-  for (const button of await picker.getByRole("button", { name: "今日へ" }).all()) {
-    await expect(button).toBeDisabled();
-  }
+  await expect(picker).toHaveCount(0);
   await expect(page.getByRole("button", { name: "今日やるものを選ぶ", exact: true })).toHaveCount(0);
-  await picker.getByRole("button", { name: "今日やるものを選ぶを閉じる" }).click();
 
   await page.locator(".inboxBand .disclosure").click();
   await expect(page.locator(".inboxRow .moveTodayButton")).toHaveCount(0);

@@ -120,11 +120,11 @@ test("v1.3 Do Now switches candidates from the copy area and context menu", asyn
   const band = page.locator(".doNowContent");
   const actions = band.locator(".doNowActions");
   const alternate = band.locator(".doNowCopy").getByRole("button", {
-    name: "別の候補",
+    name: "他の一手",
     exact: true,
   });
   await expect(alternate).toBeVisible();
-  await expect(actions.getByRole("button", { name: "別の候補", exact: true })).toHaveCount(0);
+  await expect(actions.getByRole("button", { name: "他の一手", exact: true })).toHaveCount(0);
   const labels = await actions.getByRole("button").allTextContents();
   expect(labels[0]?.trim()).toBe("5分で始める");
 
@@ -140,7 +140,7 @@ test("v1.3 Do Now hides alternate actions when there is no other candidate", asy
   fixture.doNowCandidates = fixture.doNowCandidates.slice(0, 1);
   await prepare(page, fixture);
   const band = page.locator(".doNowContent");
-  await expect(band.getByRole("button", { name: "別の候補", exact: true })).toHaveCount(0);
+  await expect(band.getByRole("button", { name: "他の一手", exact: true })).toHaveCount(0);
   await band.click({ button: "right" });
   await expect(page.getByRole("menuitem", { name: "他の一手", exact: true })).toHaveCount(0);
 });

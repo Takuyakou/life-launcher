@@ -202,9 +202,9 @@ test("P84-02 invalid drop keeps Today unchanged and normal Today reorder still w
   const before = await currentConfig(page);
   const first = page.locator(".todayRow").first();
   await beginTodayDrag(page, first);
-  const projects = await page.locator(".projectsBand").boundingBox();
-  expect(projects).not.toBeNull();
-  await page.mouse.move(projects!.x + 20, projects!.y + 20, { steps: 4 });
+  const topBar = await page.locator(".topBar").boundingBox();
+  expect(topBar).not.toBeNull();
+  await page.mouse.move(topBar!.x + 20, topBar!.y + 20, { steps: 4 });
   await page.mouse.up();
   expect((await currentConfig(page)).today.items).toEqual(before.today.items);
 

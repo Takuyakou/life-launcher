@@ -88,10 +88,8 @@ test("Phase 8.1 separates Project metadata from the NextStep execution package",
 
 test("P8 instruction picker searches, applies and cancels a draft", async ({ page }) => {
   await prepare(page);
-  await page
-    .locator('[data-project-id="sample-learning"] .nextStepActionRegion')
-    .click({ button: "right" });
-  await page.getByRole("menuitem", { name: "次の一手を編集", exact: true }).click();
+  await page.locator(".todayRow").first().click({ button: "right" });
+  await page.getByRole("menuitem", { name: "編集", exact: true }).click();
   const editor = page.getByRole("dialog", { name: "次の一手を編集" });
   await editor.getByRole("button", { name: "手順書を選ぶ" }).click();
   let picker = page.getByRole("dialog", { name: "手順書を選ぶ" });
@@ -150,8 +148,8 @@ test("P8 add actions are independent and available from source bars", async ({ p
   await page.locator(".nextStepProjectRegion").first().click({ button: "right" });
   await expect(page.getByRole("menuitem", { name: "やりたいことを追加" })).toHaveCount(0);
   await page.keyboard.press("Escape");
-  await page.locator(".nextStepActionRegion").first().click({ button: "right" });
-  await page.getByRole("menuitem", { name: "次の一手を編集" }).click();
+  await page.locator(".todayRow").first().click({ button: "right" });
+  await page.getByRole("menuitem", { name: "編集", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "次の一手を編集" })).toBeVisible();
   await page.keyboard.press("Escape");
 
