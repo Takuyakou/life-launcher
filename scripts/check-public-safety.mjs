@@ -55,6 +55,7 @@ function extension(path) {
 function walk(directory) {
   const files = [];
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    if (directory === ROOT && entry.name === ".git") continue;
     if (entry.isDirectory() && skippedDirectories.has(entry.name)) continue;
     const absolute = resolve(directory, entry.name);
     const rel = slash(relative(ROOT, absolute));

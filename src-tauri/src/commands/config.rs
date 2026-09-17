@@ -957,7 +957,7 @@ fn replace_file_atomically(destination: &Path, replacement: &Path) -> Result<(),
     })
 }
 
-pub fn write_config(path: &PathBuf, config: &AppConfig) -> Result<(), String> {
+pub fn write_config(path: &Path, config: &AppConfig) -> Result<(), String> {
     let json = serde_json::to_string_pretty(config)
         .map_err(|error| format!("failed to serialize config: {error}"))?;
     write_bytes_atomically(path, json.as_bytes(), "config")
@@ -1296,7 +1296,7 @@ struct CentralDirectoryEntry {
     offset: u32,
 }
 
-fn write_zip(path: &PathBuf, entries: &[ZipEntry]) -> Result<(), String> {
+fn write_zip(path: &Path, entries: &[ZipEntry]) -> Result<(), String> {
     let mut bytes = Vec::new();
     let mut central_entries = Vec::new();
     for entry in entries {
@@ -1481,7 +1481,7 @@ fn read_zip_entry_data(
     Ok(bytes[data_start..data_end].to_vec())
 }
 
-pub(crate) fn atomic_write_bytes(path: &PathBuf, bytes: &[u8]) -> Result<(), String> {
+pub(crate) fn atomic_write_bytes(path: &Path, bytes: &[u8]) -> Result<(), String> {
     write_bytes_atomically(path, bytes, "restore")
 }
 
