@@ -3005,21 +3005,9 @@ function DashboardApp() {
         if (!response.backupError) {
           lastBackupErrorRef.current = null;
         }
-        let settingsApplyFailed = false;
-        try {
-          await reapplyDashboardSettings();
-          lastSettingsApplyErrorRef.current = null;
-        } catch (error) {
-          settingsApplyFailed = true;
-          const message = error instanceof Error ? error.message : String(error);
-          if (message !== lastSettingsApplyErrorRef.current) {
-            lastSettingsApplyErrorRef.current = message;
-            showToast("warn", `設定は読み込みました。ショートカットを登録できません: ${message}`);
-          }
-        }
         await refreshSessions();
         await refreshTodayActivity();
-        if (toastOnSuccess && !settingsApplyFailed) {
+        if (toastOnSuccess) {
           showToast("ok", "設定を再読み込みしました");
         }
       } catch (error) {
@@ -3132,7 +3120,7 @@ function DashboardApp() {
   }, [buttonIconSources, config, refreshButtonIcon]);
 
   const persistConfig = useCallback(
-    async (nextConfig: AppConfig, settingsApplyMustSucceed = false) => {
+    async (nextConfig: AppConfig, applySettingsAfterSave = false) => {
       if (resetInProgressRef.current) return false;
       if (configSaveBlockedRef.current) {
         const message = "設定ファイルに問題があるため、元データを保護して保存を停止しています";
@@ -3168,6 +3156,10 @@ function DashboardApp() {
         return false;
       }
 
+      if (!applySettingsAfterSave) {
+        return true;
+      }
+
       try {
         await reapplyDashboardSettings();
         lastSettingsApplyErrorRef.current = null;
@@ -3180,7 +3172,7 @@ function DashboardApp() {
           lastSettingsApplyErrorRef.current = message;
           showToast("warn", warning);
         }
-        return !settingsApplyMustSucceed;
+        return false;
       }
     },
     [showToast],
@@ -7326,7 +7318,6 @@ function DashboardApp() {
       configRef.current = response.config;
       setConfig(response.config);
       setBanner(null);
-      await reapplyDashboardSettings();
       return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

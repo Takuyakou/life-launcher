@@ -13,6 +13,7 @@ use super::config::{
     atomic_write_bytes, config_dir_path, config_schema_json, create_forced_user_backup,
 };
 use crate::models::{initial_config, AppConfig, CONFIG_VERSION};
+use crate::startup::suspend_dashboard_shortcuts;
 use crate::state::AppState;
 
 const RESET_MARKER_FILE: &str = "reset-transaction.json";
@@ -304,6 +305,9 @@ pub fn software_reset(
         return Err(error);
     }
     drop(guard);
+    if let Err(error) = suspend_dashboard_shortcuts(app.clone()) {
+        eprintln!("failed to release shortcuts before restart: {error}");
+    }
     app.request_restart();
     Ok(SoftwareResetResponse {
         restart_requested: true,

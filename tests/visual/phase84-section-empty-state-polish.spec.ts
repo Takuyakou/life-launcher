@@ -167,7 +167,7 @@ test("empty NextStep and Wishlist sections offer direct setup actions", async ({
   await expect(page.getByRole("dialog", { name: "やりたいことを追加" })).toBeVisible();
 });
 
-test("successful saves close add dialogs even when shortcut reapply fails", async ({ page }) => {
+test("content saves do not reapply dashboard shortcuts", async ({ page }) => {
   const fixture = createPublicFixture();
   fixture.config.projects = [];
   fixture.config.inbox = [];
@@ -183,6 +183,18 @@ test("successful saves close add dialogs even when shortcut reapply fails", asyn
       }
     ).__LIFE_LAUNCHER_VISUAL_QA__.setReapplyDashboardSettingsFailure(true);
   });
+  const reapplyCount = async () =>
+    page.evaluate(
+      () =>
+        (
+          window as Window & {
+            __LIFE_LAUNCHER_VISUAL_QA__: { invokeCalls: Array<{ command: string }> };
+          }
+        ).__LIFE_LAUNCHER_VISUAL_QA__.invokeCalls.filter(
+          ({ command }) => command === "reapply_dashboard_settings",
+        ).length,
+    );
+  const initialReapplyCount = await reapplyCount();
 
   await page
     .locator(".projectsBand .sectionEmptyState")
@@ -193,9 +205,8 @@ test("successful saves close add dialogs even when shortcut reapply fails", asyn
   await projectDialog.getByRole("button", { name: "プロジェクトを追加", exact: true }).click();
   await expect(projectDialog).toHaveCount(0);
   await expect(page.locator(".nextStepCard", { hasText: "保存済みProject" })).toBeVisible();
-  await expect(page.locator(".toast--warn").last()).toContainText(
-    "保存しましたが、ショートカットを登録できません",
-  );
+  expect(await reapplyCount()).toBe(initialReapplyCount);
+  await expect(page.locator(".toast--warn")).toHaveCount(0);
   await expect(page.locator(".toast--error")).toHaveCount(0);
 
   const inboxDisclosure = page.locator(".inboxBand .disclosure");
@@ -211,6 +222,8 @@ test("successful saves close add dialogs even when shortcut reapply fails", asyn
   await wishlistDialog.getByRole("button", { name: "保存", exact: true }).click();
   await expect(wishlistDialog).toHaveCount(0);
   await expect(page.locator(".inboxRow", { hasText: "保存済みWishlist" })).toBeVisible();
+  expect(await reapplyCount()).toBe(initialReapplyCount);
+  await expect(page.locator(".toast--warn")).toHaveCount(0);
 });
 
 test("Wishlist mode is gold while settings neutral and warning actions hover gold", async ({
