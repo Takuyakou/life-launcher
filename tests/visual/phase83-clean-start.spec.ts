@@ -129,6 +129,7 @@ test("P83-04 clean start remains usable through Session recording", async ({ pag
   expect(state.externalSentinel).toEqual(originalSentinel);
 
   await page.reload();
+  await page.waitForLoadState("networkidle");
   await expect(page.locator(".doNowBand")).toBeVisible();
   let config = await currentConfig(page);
   expect(config).toEqual(CANONICAL_FRESH_CONFIG);
