@@ -76,7 +76,8 @@ test("P84 Wishlist promote action is status-aware, stable, keyboard reachable, a
   await expect(plain.locator(".wishlistTodayStatus")).toHaveCount(0);
   await expect(selectedStatus).toHaveText("✓ 今日の3件");
   await expect(plainAction).toHaveCSS("opacity", "0");
-  await expect(selectedAction).toHaveCSS("opacity", "0");
+  await expect(selectedAction).toHaveCount(0);
+  await expect(selected.locator(".sourceLockBadge--wishlist")).toHaveCount(1);
   await expect(plainMenu).toHaveCSS("opacity", "1");
   await expect(selectedMenu).toHaveCSS("opacity", "1");
   expect(
@@ -120,31 +121,30 @@ test("P84 Wishlist promote action is status-aware, stable, keyboard reachable, a
   const selectedStatusBefore = await style(selectedStatus);
   await selected.hover();
   await page.waitForTimeout(140);
-  await expect(selectedAction).toHaveCSS("opacity", "1");
+  await expect(selectedAction).toHaveCount(0);
   expect((await style(selectedMenu)).right).toBeCloseTo(selectedMenuBefore.right, 1);
   expect((await style(selectedStatus)).right).toBeCloseTo(selectedStatusBefore.right, 1);
   await page.locator(".inboxBand").screenshot({
     path: "dist/visual-qa/phase84/wishlist-promote-selected-hover.png",
   });
 
-  await selected.hover();
-  await selectedAction.hover();
+  await plain.hover();
+  await plainAction.hover();
   await page.waitForTimeout(140);
-  const promoteHover = await style(selectedAction);
+  const promoteHover = await style(plainAction);
   expect(promoteHover.backgroundColor).toBe(setHover.backgroundColor);
   expect(promoteHover.borderColor).toBe(setHover.borderColor);
   expect(promoteHover.color).toBe(setHover.color);
 
   await page.mouse.move(1, 1);
   await page.waitForTimeout(140);
-  await expect(selectedAction).toHaveCSS("opacity", "0");
-  await selectedAction.focus();
-  await expect(selectedAction).toBeFocused();
-  await expect(selectedAction).toHaveCSS("opacity", "1");
-  await selectedAction.press("Enter");
+  await expect(plainAction).toHaveCSS("opacity", "0");
+  await plainAction.focus();
+  await expect(plainAction).toBeFocused();
+  await expect(plainAction).toHaveCSS("opacity", "1");
+  await plainAction.press("Enter");
   const dialog = page.getByRole("dialog", { name: /次の一手を(設定|変更)/ });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole("button", { name: "やりたいことへ戻す" })).toBeVisible();
   expect((await currentConfig(page)).today).toEqual(originalToday);
   await dialog.getByRole("button", { name: "キャンセル", exact: true }).click();
 

@@ -132,10 +132,9 @@ test("P71 running/paused blocks Today and source edit, other source stays editab
   await expect(page.getByRole("dialog",{name:"次の一手を編集",exact:true})).toBeVisible();
 });
 
-test("P71 source editor changes the next early threshold without changing history",async({page})=>{
+test("P71 Today editor changes the next early threshold without changing history",async({page})=>{
   await prepare(page);
-  await page.locator(".nextStepRow").first().click({button:"right"});
-  await page.getByRole("menuitem",{name:"次の一手を編集",exact:true}).click();
+  await edit(page);
   const editor=page.getByRole("dialog",{name:"次の一手を編集",exact:true});
   await editor.getByRole("spinbutton",{name:"短時間タイマー分数"}).fill("2");
   await editor.getByRole("button",{name:"保存",exact:true}).click();

@@ -328,11 +328,7 @@ test("NextStep and Wishlist use compact non-destructive Today actions", async ({
   expect(config.today.items).toHaveLength(3);
   expect(config.inbox).toHaveLength(2);
   const picker = page.getByRole("dialog", { name: "今日やるものを選ぶ" });
-  await expect(picker).toBeVisible();
-  await expect(picker.locator(".todayPickerCounter strong")).toHaveText("3 / 3");
-  for (const button of await picker.getByRole("button", { name: "今日へ" }).all()) {
-    await expect(button).toBeDisabled();
-  }
+  await expect(picker).toHaveCount(0);
   await expect(page.getByRole("button", { name: "今日やるものを選ぶ", exact: true })).toHaveCount(0);
 });
 

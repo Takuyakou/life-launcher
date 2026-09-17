@@ -68,7 +68,7 @@ function createPhase81LayoutFixture(): VisualQaFixture {
   fixture.config.today.items = [
     {
       text: LONG_NEXT_STEP,
-      done: false,
+      done: true,
       sourceKey: `project:${projects[0].id}`,
       projectId: projects[0].id,
       trigger: projects[0].nextStep?.trigger,

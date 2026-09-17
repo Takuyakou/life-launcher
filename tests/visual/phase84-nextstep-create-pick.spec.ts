@@ -127,9 +127,10 @@ test("P84 NextStep picker blocks unfinished Today sources", async ({ page }) => 
 
   const row = page.locator('[data-inbox-id="sample-weekend"]');
   await row.hover();
-  await row.getByRole("button", { name: "週末に試すアイデアの次の一手を設定" }).click();
-  const dialog = page.getByRole("dialog", { name: "次の一手を変更" });
-  await expect(dialog.getByRole("radio", { name: /週末に試すアイデア/ })).toBeDisabled();
-  await expect(dialog.getByText("今日の3件で未完了", { exact: true })).toBeVisible();
-  await expect(dialog.getByRole("button", { name: "保存", exact: true })).toBeDisabled();
+  await expect(row.locator(".sourceLockBadge--wishlist")).toHaveCount(1);
+  await expect(
+    row.getByRole("button", { name: "週末に試すアイデアの次の一手を設定" }),
+  ).toHaveCount(0);
+  await row.click({ button: "right" });
+  await expect(page.getByRole("menuitem", { name: "次の一手にする" })).toBeDisabled();
 });

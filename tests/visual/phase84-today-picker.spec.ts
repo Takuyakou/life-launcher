@@ -197,9 +197,7 @@ test("P84-01 selection preserves source and snapshot while marking the candidate
   });
 });
 
-test("P84-01 reaching 3/3 keeps the Picker visible and disables remaining additions", async ({
-  page,
-}) => {
+test("P84-01 reaching 3/3 closes the Picker after the saved third selection", async ({ page }) => {
   const fixture = createPublicFixture();
   await prepare(page, fixture);
 
@@ -214,17 +212,9 @@ test("P84-01 reaching 3/3 keeps the Picker visible and disables remaining additi
     .getByRole("button", { name: "今日へ" })
     .click();
 
-  await expect(dialog).toBeVisible();
-  await expect(dialog.locator(".todayPickerCounter strong")).toHaveText("3 / 3");
-  await expect(
-    dialog.locator('[data-today-picker-section="selected"] .todayPickerRow'),
-  ).toHaveCount(3);
-  for (const button of await dialog.getByRole("button", { name: "今日へ" }).all()) {
-    await expect(button).toBeDisabled();
-  }
+  await expect(dialog).toHaveCount(0);
   await expect(page.locator(".todayRow")).toHaveCount(3);
   expect((await currentConfig(page)).today.items).toHaveLength(3);
-  await dialog.screenshot({ path: "dist/visual-qa/phase84/picker-3-of-3.png" });
 });
 
 test("P84-01 save failure rolls back and leaves the Picker usable", async ({ page }) => {
@@ -305,7 +295,7 @@ test("P84 Picker aligns project, task, and action columns with readable long con
   );
   await expect(dialog.locator(".todayPickerRow--groupedWishlist").first()).toHaveCSS(
     "min-height",
-    "54px",
+    "60px",
   );
   await dialog.screenshot({ path: "dist/visual-qa/phase84/picker-aligned-1280.png" });
 });
@@ -472,10 +462,7 @@ test("P84 destination slots separate project identity, task, and selected status
   const row = selected.locator(".todayPickerRow").first();
   const status = row.locator(".todayPickerSelectedStatus");
   await expect(dialog.locator(".modalTitleRow .eyebrow")).toHaveText("Today");
-  await expect(dialog.locator(".modalTitleRow .eyebrow")).toHaveCSS(
-    "color",
-    "rgb(184, 176, 160)",
-  );
+  await expect(dialog.locator(".modalTitleRow .eyebrow")).toHaveCSS("color", "rgb(184, 176, 160)");
   await expect(dialog.locator(".todayPickerIntro")).toHaveCSS("font-size", "12px");
   await expect(row.locator(".projectIdentityDot")).toHaveCount(1);
   await expect(row).toHaveCSS("border-left-width", "1px");

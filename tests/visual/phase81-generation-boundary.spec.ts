@@ -1,7 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
 import { completeTodayItemAndPrepareSource } from "../../src/completionFollowup";
 import { earlyCompletionItem } from "../../src/earlyCompletion";
-import { resnapshotSource } from "../../src/sourceEdit";
+import {
+  resnapshotSource,
+  sourceLockedByUnfinishedToday,
+  unfinishedTodayUsesSource,
+} from "../../src/sourceEdit";
 import type { AppConfig } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
@@ -73,6 +77,27 @@ test("generation boundary: editing B does not resnapshot adopted A", () => {
 
   expect(result.projects[0].nextStep?.text).toBe("編集後の世代B");
   expect(result.today.items[0]).toEqual(oldToday);
+});
+
+test("source lock follows unfinished stable identity and exact NextStep generation", () => {
+  const config = replacementFixture().config;
+  expect(unfinishedTodayUsesSource(config, PROJECT_KEY, "gen-a")).toBe(true);
+  expect(sourceLockedByUnfinishedToday(config, PROJECT_KEY)).toBe(false);
+
+  config.projects[0].nextStep!.generationId = "gen-a";
+  expect(sourceLockedByUnfinishedToday(config, PROJECT_KEY)).toBe(true);
+
+  config.today.items[0].done = true;
+  expect(sourceLockedByUnfinishedToday(config, PROJECT_KEY)).toBe(false);
+});
+
+test("source lock does not match same-text Wishlist with another stable id", () => {
+  const config = createPublicFixture().config;
+  config.inbox.push({ id: "same-a", text: "同じ文" }, { id: "same-b", text: "同じ文" });
+  config.today.items = [{ text: "同じ文", done: false, sourceKey: "wishlist:same-a" }];
+
+  expect(sourceLockedByUnfinishedToday(config, "wishlist:same-a")).toBe(true);
+  expect(sourceLockedByUnfinishedToday(config, "wishlist:same-b")).toBe(false);
 });
 
 test("generation boundary: same-text A completion leaves B and history unchanged", () => {
@@ -171,9 +196,8 @@ test("generation boundary: adoption copies the marker and editing preserves it",
   });
   await page.getByRole("button", { name: "キャンセル", exact: true }).click();
 
-  const action = page.locator('[data-project-id="sample-learning"] .nextStepActionRegion');
-  await action.click({ button: "right" });
-  await page.getByRole("menuitem", { name: "次の一手を編集", exact: true }).click();
+  await page.locator(".todayRow").first().click({ button: "right" });
+  await page.getByRole("menuitem", { name: "編集", exact: true }).click();
   const editor = page.getByRole("dialog", { name: "次の一手を編集", exact: true });
   await editor.getByRole("textbox", { name: "行動", exact: true }).fill("編集した世代Aの一手");
   await editor.getByRole("button", { name: "保存", exact: true }).click();
@@ -195,6 +219,7 @@ test("generation boundary: clearing A and recreating same-text B leaves adopted 
   const fixture = replacementFixture(true);
   fixture.config.projects[0].nextStep!.generationId = "gen-a";
   fixture.config.today.items[0].sourceGenerationId = "gen-a";
+  fixture.config.today.items[0].done = true;
   const adoptedA = structuredClone(fixture.config.today.items[0]);
   await prepare(page, fixture);
 

@@ -460,6 +460,7 @@ test("Phase 8.4 NextStep menu offers edit, change and unset without legacy regis
   page,
 }) => {
   const fixture = createPublicFixture();
+  fixture.config.today.items = fixture.config.today.items.map((item) => ({ ...item, done: true }));
   fixture.config.today.candidateExcludedSourceKeys.push("project:sample-learning");
   await prepare(page, fixture);
   const row = page.locator('[data-project-id="sample-learning"]');
@@ -494,6 +495,7 @@ test("v1.3 dragging a NextStep to Wishlist highlights the target and returns it 
   page,
 }) => {
   const fixture = createPublicFixture();
+  fixture.config.today.items = fixture.config.today.items.map((item) => ({ ...item, done: true }));
   const originalToday = structuredClone(fixture.config.today);
   const sourceText = fixture.config.projects[0].nextStep!.text;
   await prepare(page, fixture);
@@ -617,6 +619,7 @@ test("v1.3 NextStep uses a compact 3x2 grid with aligned actions and six-item ex
   page,
 }) => {
   const fixture = createPublicFixture();
+  fixture.config.today.items[0].sourceGenerationId = "older-generation";
   const template = fixture.config.projects[0];
   while (fixture.config.projects.length < 8) {
     const index = fixture.config.projects.length;
@@ -764,6 +767,7 @@ test("v1.3 Wishlist project groups reorder independently and expose Project edit
 
 test("v1.3 Wishlist D&D always promotes to the source Project", async ({ page }) => {
   const fixture = createPublicFixture();
+  fixture.config.today.items = fixture.config.today.items.map((item) => ({ ...item, done: true }));
   const sourceProject = fixture.config.projects[0];
   const otherProject = fixture.config.projects[1];
   const otherNextStepBefore = structuredClone(otherProject.nextStep);
@@ -810,6 +814,7 @@ test("v1.3 Wishlist item drop sets or replaces a NextStep and returns the old on
   page,
 }) => {
   const fixture = createPublicFixture();
+  fixture.config.today.items = fixture.config.today.items.map((item) => ({ ...item, done: true }));
   const project = fixture.config.projects[0];
   const oldText = project.nextStep!.text;
   fixture.config.inbox = [

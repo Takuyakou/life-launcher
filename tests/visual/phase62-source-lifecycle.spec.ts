@@ -39,6 +39,7 @@ async function setSaveFailure(page: Page, failed: boolean) {
 
 test("unsetting a NextStep keeps the Project and adopted Today3 snapshot", async ({ page }) => {
   const fixture = createPublicFixture();
+  fixture.config.today.items = fixture.config.today.items.map((item) => ({ ...item, done: true }));
   await prepare(page, fixture);
   const row = page.locator(".nextStepRow", { hasText: "資料を1ページ読む" });
   await row.click({ button: "right" });
@@ -75,7 +76,7 @@ test("completing a Wishlist item removes only its active source and records its 
   fixture.config.today.items = [
     {
       text: fixture.config.inbox[1].text,
-      done: false,
+      done: true,
       sourceKey: "wishlist:sample-weekend",
       projectId: "sample-learning",
     },
@@ -109,7 +110,7 @@ test("deleting a source removes linked Today3 without creating completion histor
   fixture.config.today.items = [
     {
       text: fixture.config.inbox[1].text,
-      done: false,
+      done: true,
       sourceKey: "wishlist:sample-weekend",
       projectId: "sample-learning",
     },
@@ -138,7 +139,7 @@ test("completion save failure rolls back source, Today3, and history together", 
   fixture.config.today.items = [
     {
       text: fixture.config.inbox[1].text,
-      done: false,
+      done: true,
       sourceKey: "wishlist:sample-weekend",
       projectId: "sample-learning",
     },

@@ -105,9 +105,12 @@ import { InstructionPicker } from "./InstructionPicker";
 import { RecordsView } from "./RecordsView";
 import {
   canonicalSourceKey,
-  timerSourceKey,
   resnapshotSource,
   SOURCE_EDIT_TIMER_REASON,
+  SOURCE_LOCK_REASON,
+  sourceLockedByUnfinishedToday,
+  timerSourceKey,
+  unfinishedTodayUsesSource,
 } from "./sourceEdit";
 import {
   completeTodayItemAndPrepareSource,
@@ -851,23 +854,6 @@ function todaySourceKey(item: TodayItem, index: number): string {
 
 function todayTimerSourceId(item: TodayItem, index: number): string {
   return `today:${todaySourceKey(item, index)}`;
-}
-
-function unfinishedTodayUsesSource(
-  config: AppConfig,
-  sourceKey: string,
-  sourceGenerationId?: string,
-): boolean {
-  return config.today.items.some((item) => {
-    if (item.done || !item.sourceKey || canonicalSourceKey(config, item.sourceKey) !== sourceKey) {
-      return false;
-    }
-    return !(
-      sourceGenerationId &&
-      item.sourceGenerationId &&
-      item.sourceGenerationId !== sourceGenerationId
-    );
-  });
 }
 
 function toggleDisclosureFromBar(event: ReactMouseEvent<HTMLElement>, toggle: () => void) {
@@ -1731,6 +1717,31 @@ function pointWithinTodayRemoveDropZone(x: number, y: number): boolean {
   );
 }
 
+function draggedCardTopWithinTodayRemoveDropZone(
+  pointerX: number,
+  pointerY: number,
+  offsetX: number,
+  offsetY: number,
+  width: number,
+): boolean {
+  const element = document.querySelector<HTMLElement>(".todayRemoveDropZone");
+  if (!element) return false;
+  const rect = element.getBoundingClientRect();
+  const cardLeft = pointerX - offsetX;
+  const cardRight = cardLeft + width;
+  const cardTop = pointerY - offsetY;
+  const bottomExtension =
+    window.innerWidth <= TODAY_REMOVE_DROP_NARROW_WIDTH_PX
+      ? TODAY_REMOVE_DROP_HIT_BOTTOM_NARROW_PX
+      : TODAY_REMOVE_DROP_HIT_BOTTOM_PX;
+  return (
+    cardRight >= rect.left &&
+    cardLeft <= rect.right &&
+    cardTop >= rect.top - TODAY_REMOVE_DROP_HIT_TOP_PX &&
+    cardTop <= rect.bottom + bottomExtension
+  );
+}
+
 function projectDropTargetFromPoint(
   x: number,
   y: number,
@@ -2136,9 +2147,7 @@ function DashboardApp() {
   const [todayPickerWishlistCollapsed, setTodayPickerWishlistCollapsed] = useState<
     Record<string, boolean>
   >({});
-  const [todayPickerSource, setTodayPickerSource] = useState<"nextStep" | "wishlist">(
-    "nextStep",
-  );
+  const [todayPickerSource, setTodayPickerSource] = useState<"nextStep" | "wishlist">("nextStep");
   const [todayPickerSavingSourceKey, setTodayPickerSavingSourceKey] = useState<string | null>(null);
   const [todayActivityOpen, setTodayActivityOpen] = useState(false);
   const [, setNotesSaveStatus] = useState<NotesSaveStatus>("saved");
@@ -5137,7 +5146,15 @@ function DashboardApp() {
       item && activeTimerRef.current?.sourceId !== todayTimerSourceId(item, drag.index),
     );
     const removeTargetActive =
-      removeEligible && pointWithinTodayRemoveDropZone(event.clientX, event.clientY);
+      removeEligible &&
+      (pointWithinTodayRemoveDropZone(event.clientX, event.clientY) ||
+        draggedCardTopWithinTodayRemoveDropZone(
+          event.clientX,
+          event.clientY,
+          drag.offsetX,
+          drag.offsetY,
+          drag.width,
+        ));
     const target = todayDropTargetFromPoint(event.clientX, event.clientY);
     setTodayPointerDrag({
       index: drag.index,
@@ -5165,7 +5182,15 @@ function DashboardApp() {
         item &&
           drag?.hasMoved &&
           activeTimerRef.current?.sourceId !== todayTimerSourceId(item, drag.index),
-      ) && pointWithinTodayRemoveDropZone(event.clientX, event.clientY);
+      ) &&
+      (pointWithinTodayRemoveDropZone(event.clientX, event.clientY) ||
+        draggedCardTopWithinTodayRemoveDropZone(
+          event.clientX,
+          event.clientY,
+          drag?.offsetX ?? 0,
+          drag?.offsetY ?? 0,
+          drag?.width ?? 0,
+        ));
     todayPointerDragRef.current = null;
     setTodayPointerDrag(null);
 
@@ -5465,6 +5490,8 @@ function DashboardApp() {
       const project = configRef.current?.projects.find((candidate) => candidate.id === drag.id);
       if (project?.nextStep?.text.trim() && !sourceEditBlocked(drag.sourceKey)) {
         void removeProjectNextStep(project, "return");
+      } else if (project?.nextStep?.text.trim()) {
+        warnSourceEditBlocked(drag.sourceKey);
       }
       return;
     }
@@ -5605,7 +5632,14 @@ function DashboardApp() {
       void promoteWishlistToProject(sourceItem.id);
       return;
     }
-    if (overNextStep) return;
+    if (overNextStep) {
+      const blockReason = sourceItem?.id
+        ? (sourceEditBlockReason(`wishlist:${sourceItem.id}`) ??
+          (sourceProject ? sourceEditBlockReason(`project:${sourceProject.id}`) : null))
+        : null;
+      showToast("warn", blockReason ?? "このやりたいことは次の一手へ移動できません");
+      return;
+    }
     const target = inboxDropTargetFromPoint(event.clientX, event.clientY);
     if (!target) return;
     const placement =
@@ -7193,21 +7227,34 @@ function DashboardApp() {
     closeInboxAddDialog();
   };
 
-  const sourceEditBlocked = (key: string) => {
+  const sourceEditBlockReason = (key: string, allowTodaySourceSync = false) => {
     const current = configRef.current;
-    return (
-      sourceEditBusyRef.current !== null ||
-      Boolean(
+    if (sourceEditBusyRef.current !== null) return "保存処理が完了してから変更してください";
+    if (
         current &&
         activeTimerRef.current &&
-        timerSourceKey(current, activeTimerRef.current.sourceId) === key,
-      )
-    );
+      timerSourceKey(current, activeTimerRef.current.sourceId) === key
+    ) {
+      return SOURCE_EDIT_TIMER_REASON;
+    }
+    if (current && !allowTodaySourceSync && sourceLockedByUnfinishedToday(current, key)) {
+      return SOURCE_LOCK_REASON;
+    }
+    return null;
+  };
+
+  const sourceEditBlocked = (key: string, allowTodaySourceSync = false) =>
+    sourceEditBlockReason(key, allowTodaySourceSync) !== null;
+
+  const warnSourceEditBlocked = (key: string, allowTodaySourceSync = false) => {
+    const reason = sourceEditBlockReason(key, allowTodaySourceSync);
+    if (reason) showToast("warn", reason);
+    return Boolean(reason);
   };
 
   const saveSourceEdit = async (previous: AppConfig, next: AppConfig, key: string) => {
-    if (sourceEditBlocked(key)) {
-      showToast("warn", SOURCE_EDIT_TIMER_REASON);
+    const allowTodaySourceSync = sourceEditOriginRef.current === "today";
+    if (warnSourceEditBlocked(key, allowTodaySourceSync)) {
       return null;
     }
     sourceEditBusyRef.current = key;
@@ -7228,8 +7275,8 @@ function DashboardApp() {
   const beginInboxEdit = (index: number, origin: "source" | "today" | "builder" = "source") => {
     const item = configRef.current?.inbox[index];
     if (!item) return;
-    if (!item.id || sourceEditBlocked(`wishlist:${item.id}`)) {
-      showToast("warn", SOURCE_EDIT_TIMER_REASON);
+    if (!item.id) return;
+    if (warnSourceEditBlocked(`wishlist:${item.id}`, origin === "today")) {
       return;
     }
     inboxEditingIdRef.current = item.id;
@@ -7255,8 +7302,7 @@ function DashboardApp() {
       showToast("warn", "元の登録が見つかりません");
       return;
     }
-    if (sourceEditBlocked(`wishlist:${editingId}`)) {
-      showToast("warn", SOURCE_EDIT_TIMER_REASON);
+    if (warnSourceEditBlocked(`wishlist:${editingId}`, sourceEditOriginRef.current === "today")) {
       return;
     }
     const text = inboxEditDraft.trim();
@@ -7336,6 +7382,11 @@ function DashboardApp() {
     const item = config.inbox[index];
     if (!item) return;
     const sourceKeys = [wishlistSourceKey(item, index), legacyWishlistSourceKey(item)];
+    const canonicalKey = canonicalSourceKey(config, sourceKeys[0]) ?? sourceKeys[0];
+    if (warnSourceEditBlocked(canonicalKey)) {
+      setContextMenu(null);
+      return;
+    }
     if (isTimerActiveForSource(sourceKeys)) {
       setContextMenu(null);
       showToast("warn", "タイマーを停止してから完了してください");
@@ -7373,6 +7424,11 @@ function DashboardApp() {
     const item = config.inbox[index];
     if (!item) return;
     const sourceKeys = [wishlistSourceKey(item, index), legacyWishlistSourceKey(item)];
+    const canonicalKey = canonicalSourceKey(config, sourceKeys[0]) ?? sourceKeys[0];
+    if (warnSourceEditBlocked(canonicalKey)) {
+      setContextMenu(null);
+      return;
+    }
     if (isTimerActiveForSource(sourceKeys)) {
       setContextMenu(null);
       showToast("warn", "タイマーを停止してから削除してください");
@@ -7523,7 +7579,11 @@ function DashboardApp() {
   const chooseTodayCandidate = async (candidate: TodayCandidate) => {
     if (todayPickerSavingSourceKey) return;
     setTodayPickerSavingSourceKey(candidate.sourceKey);
-    await addCandidateToToday(candidate);
+    const saved = await addCandidateToToday(candidate);
+    if (saved && (configRef.current?.today.items.length ?? 0) >= TODAY_ITEM_LIMIT) {
+      closeTodayPicker();
+      return;
+    }
     setTodayPickerSavingSourceKey(null);
   };
 
@@ -7639,12 +7699,13 @@ function DashboardApp() {
       text?: string;
       promotedWishlistId?: string;
       projectLocked?: boolean;
+      origin?: "source" | "today" | "builder";
     },
   ) => {
     const sourceKey = `project:${project.id}`;
-    if (sourceEditBlocked(sourceKey)) {
+    const origin = options?.origin ?? "source";
+    if (warnSourceEditBlocked(sourceKey, origin === "today")) {
       setContextMenu(null);
-      showToast("warn", SOURCE_EDIT_TIMER_REASON);
       return;
     }
     const mode = options?.mode ?? (project.nextStep?.text.trim() ? "edit" : "set");
@@ -7652,6 +7713,7 @@ function DashboardApp() {
     const editingExisting = mode === "edit" && Boolean(project.nextStep);
     const initialDecisionMode: NextStepDecisionMode =
       promotingWishlist || mode === "set" ? "wishlist" : "new";
+    sourceEditOriginRef.current = origin;
     captureDialogReturnFocus(nextStepEditReturnFocusRef);
     setContextMenu(null);
     setNextStepEditDraft({
@@ -7659,7 +7721,8 @@ function DashboardApp() {
       decisionMode: initialDecisionMode,
       projectId: project.id,
       projectLocked: options?.projectLocked ?? true,
-      text: initialDecisionMode === "wishlist" ? "" : (options?.text ?? project.nextStep?.text ?? ""),
+      text:
+        initialDecisionMode === "wishlist" ? "" : (options?.text ?? project.nextStep?.text ?? ""),
       originalText: project.nextStep?.text ?? "",
       trigger: editingExisting ? (project.nextStep?.trigger ?? "") : "",
       ...nextStepExecutionDraft(editingExisting ? project.nextStep : undefined),
@@ -7682,9 +7745,8 @@ function DashboardApp() {
       showToast("warn", "この項目にはstable IDがないため、先に編集して保存してください");
       return;
     }
-    if (sourceEditBlocked(`wishlist:${item.id}`)) {
+    if (warnSourceEditBlocked(`wishlist:${item.id}`)) {
       setContextMenu(null);
-      showToast("warn", SOURCE_EDIT_TIMER_REASON);
       return;
     }
     const project = item.projectId
@@ -7734,8 +7796,10 @@ function DashboardApp() {
     const projectId = project.id;
     const wishlistSource = `wishlist:${wishlistId}`;
     const projectSource = `project:${projectId}`;
-    if (sourceEditBlocked(wishlistSource) || sourceEditBlocked(projectSource)) {
-      showToast("warn", SOURCE_EDIT_TIMER_REASON);
+    const blockReason =
+      sourceEditBlockReason(wishlistSource) ?? sourceEditBlockReason(projectSource);
+    if (blockReason) {
+      showToast("warn", blockReason);
       return false;
     }
 
@@ -7802,8 +7866,7 @@ function DashboardApp() {
   const selectNextStepProject = (projectId: string) => {
     if (!nextStepEditDraft || nextStepEditDraft.projectLocked) return;
     const project = configRef.current?.projects.find((candidate) => candidate.id === projectId);
-    if (project && sourceEditBlocked(`project:${project.id}`)) {
-      showToast("warn", SOURCE_EDIT_TIMER_REASON);
+    if (project && warnSourceEditBlocked(`project:${project.id}`)) {
       return;
     }
     setNextStepEditDraft({
@@ -7927,11 +7990,12 @@ function DashboardApp() {
     }
     const projectSourceKey = `project:${project.id}`;
     const wishlistSourceKey = selectedWishlist ? `wishlist:${selectedWishlist.id}` : null;
-    if (
-      sourceEditBlocked(projectSourceKey) ||
-      (wishlistSourceKey && sourceEditBlocked(wishlistSourceKey))
-    ) {
-      showToast("warn", SOURCE_EDIT_TIMER_REASON);
+    const allowTodaySourceSync = sourceEditOriginRef.current === "today" && !promotingWishlist;
+    const blockReason =
+      sourceEditBlockReason(projectSourceKey, allowTodaySourceSync) ??
+      (wishlistSourceKey ? sourceEditBlockReason(wishlistSourceKey) : null);
+    if (blockReason) {
+      showToast("warn", blockReason);
       return;
     }
     if (selectedWishlist && unfinishedTodayUsesSource(current, `wishlist:${selectedWishlist.id}`)) {
@@ -8035,9 +8099,8 @@ function DashboardApp() {
     const liveProject = current?.projects.find((candidate) => candidate.id === project.id);
     if (!current || !liveProject?.nextStep?.text.trim()) return false;
     const sourceKey = `project:${project.id}`;
-    if (sourceEditBlocked(sourceKey)) {
+    if (warnSourceEditBlocked(sourceKey)) {
       setContextMenu(null);
-      showToast("warn", SOURCE_EDIT_TIMER_REASON);
       return false;
     }
     let nextConfig: AppConfig;
@@ -8068,9 +8131,8 @@ function DashboardApp() {
     const liveProject = current?.projects.find((candidate) => candidate.id === project.id);
     if (!current || !liveProject?.nextStep?.text.trim()) return;
     const sourceKey = `project:${project.id}`;
-    if (sourceEditBlocked(sourceKey)) {
+    if (warnSourceEditBlocked(sourceKey)) {
       setContextMenu(null);
-      showToast("warn", SOURCE_EDIT_TIMER_REASON);
       return;
     }
     setContextMenu(null);
@@ -8677,7 +8739,7 @@ function DashboardApp() {
     if (!candidate) return;
     const key = canonicalSourceKey(config, candidate.sourceKey);
     if (!key || sourceEditBlocked(key)) {
-      if (key) showToast("warn", SOURCE_EDIT_TIMER_REASON);
+      if (key) warnSourceEditBlocked(key);
       return;
     }
     const project = config.projects.find((item) => `project:${item.id}` === key);
@@ -9757,6 +9819,7 @@ function DashboardApp() {
         </header>
 
         <div className="mainScrollArea app-scrollbar" id="main-content" ref={mainScrollAreaRef}>
+          <div className="mainScrollContent">
           {banner && (
             <section className="banner">
               <span>{banner}</span>
@@ -9854,7 +9917,9 @@ function DashboardApp() {
                     <>
                       <input
                         aria-label="今日の勝利条件"
-                        className={victoryDone ? "victoryInput victoryInput--done" : "victoryInput"}
+                          className={
+                            victoryDone ? "victoryInput victoryInput--done" : "victoryInput"
+                          }
                         maxLength={90}
                         onBlur={() => setVictoryEditing(false)}
                         onChange={(event) => updateVictoryText(event.target.value)}
@@ -9992,7 +10057,7 @@ function DashboardApp() {
                           type="button"
                         >
                           <UiIcon name="refresh" size={16} />
-                          別の候補
+                            他の一手
                         </button>
                       )}
                     </div>
@@ -10126,11 +10191,9 @@ function DashboardApp() {
               </section>
 
               <section className="focusBand">
-                <div className="sectionHeading sectionHeading--compact sectionHeading--inlineActions">
+                  <div className="todaySectionBar">
                   <h2>今日の3件</h2>
-                  <div className="sectionHeadingActions">
-                    <span>{config.today.items.length}件</span>
-                    {config.today.items.length > 0 && (
+                    <span className="todaySectionCount">{config.today.items.length}件</span>
                       <span
                         className={
                           todayAllCompleted
@@ -10140,8 +10203,9 @@ function DashboardApp() {
                       >
                         {todayCompletedCount} / {config.today.items.length} 完了
                       </span>
-                    )}
-                  </div>
+                    <span className="todaySectionDescription">
+                      今日やると決めた、今進める3つです。
+                    </span>
                 </div>
                 <div
                   className={[
@@ -10409,7 +10473,10 @@ function DashboardApp() {
                                   }
                                   type="button"
                                 >
-                                  <UiIcon name={activeTimer.paused ? "play" : "pause"} size={16} />
+                                    <UiIcon
+                                      name={activeTimer.paused ? "play" : "pause"}
+                                      size={16}
+                                    />
                                   {activeTimer.paused
                                     ? "再開"
                                     : activeTimer.mode === "measure"
@@ -10656,7 +10723,10 @@ function DashboardApp() {
                     onClick={toggleTodayBuilder}
                     type="button"
                   >
-                    <UiIcon name={todayBuilderOpen ? "chevronDown" : "chevronRight"} size={16} />
+                        <UiIcon
+                          name={todayBuilderOpen ? "chevronDown" : "chevronRight"}
+                          size={16}
+                        />
                     <span className="disclosureLabel">
                       <strong>今日を組み立てる</strong>
                     </span>
@@ -10742,7 +10812,10 @@ function DashboardApp() {
                         const selectedTimerRunning =
                           isSelected &&
                           activeTimer?.sourceId ===
-                            todayTimerSourceId(config.today.items[selectedIndex], selectedIndex);
+                                todayTimerSourceId(
+                                  config.today.items[selectedIndex],
+                                  selectedIndex,
+                                );
                         const isFull = config.today.items.length >= TODAY_ITEM_LIMIT;
                         return (
                           <div
@@ -10751,7 +10824,8 @@ function DashboardApp() {
                             key={candidate.key}
                           >
                             {(index === 0 ||
-                              todayBuilderCandidates[index - 1]?.source !== candidate.source) && (
+                                  todayBuilderCandidates[index - 1]?.source !==
+                                    candidate.source) && (
                               <div className="todayBuilderGroupHeading">
                                 <strong>{candidate.source}</strong>
                                 <span>
@@ -10845,9 +10919,13 @@ function DashboardApp() {
                                       {candidate.projectId &&
                                       projectsById.has(candidate.projectId) ? (
                                         <ProjectIdentity
-                                          colorId={projectsById.get(candidate.projectId)?.colorId}
+                                              colorId={
+                                                projectsById.get(candidate.projectId)?.colorId
+                                              }
                                           compact
-                                          name={projectsById.get(candidate.projectId)?.name ?? ""}
+                                              name={
+                                                projectsById.get(candidate.projectId)?.name ?? ""
+                                              }
                                           projectId={candidate.projectId}
                                         />
                                       ) : (
@@ -11137,19 +11215,35 @@ function DashboardApp() {
                   <div className="nextStepBody">
                     <div className="projectGrid">
                       {visibleProjects.map((project) => {
+                          const projectSourceKey = `project:${project.id}`;
+                          const sourceLocked = Boolean(
+                            project.nextStep &&
+                            sourceLockedByUnfinishedToday(config, projectSourceKey),
+                          );
+                          const todayCandidate = rawTodayBuilderCandidates.find(
+                            (candidate) => candidate.sourceKey === projectSourceKey,
+                          );
+                          const alreadySelected = Boolean(
+                            todayCandidate && todayCandidateSelected(todayCandidate),
+                          );
                         return (
                           <article
                             className={[
                               "nextStepRow sourceListRow",
                               "nextStepCard",
-                              projectPointerDrag?.id === project.id ? "nextStepRow--dragging" : "",
+                                projectPointerDrag?.id === project.id
+                                  ? "nextStepRow--dragging"
+                                  : "",
                               inboxPointerDrag?.nextStepTargetProjectId === project.id
                                 ? "nextStepCard--dropTarget"
                                 : "",
                             ]
                               .filter(Boolean)
                               .join(" ")}
-                            data-project-color={resolveProjectColorId(project.id, project.colorId)}
+                              data-project-color={resolveProjectColorId(
+                                project.id,
+                                project.colorId,
+                              )}
                             data-project-id={project.id}
                             key={project.id}
                             onContextMenu={(event) => {
@@ -11200,6 +11294,16 @@ function DashboardApp() {
                                   name={project.name}
                                   projectId={project.id}
                                 />
+                                  {sourceLocked && (
+                                    <span
+                                      aria-label="今日の3件で使用中のためロック中"
+                                      className="sourceLockBadge"
+                                      tabIndex={0}
+                                      title={SOURCE_LOCK_REASON}
+                                    >
+                                      <UiIcon name="lock" size={16} />
+                                    </span>
+                                  )}
                               </h3>
                             </div>
                             <div
@@ -11221,9 +11325,13 @@ function DashboardApp() {
                             >
                               <p
                                 className={
-                                  project.nextStep?.text.trim() ? "" : "projectNextStepPlaceholder"
+                                    project.nextStep?.text.trim()
+                                      ? ""
+                                      : "projectNextStepPlaceholder"
+                                  }
+                                  title={
+                                    project.nextStep?.text.trim() || "まだ次の一手がありません"
                                 }
-                                title={project.nextStep?.text.trim() || "まだ次の一手がありません"}
                               >
                                 {project.nextStep?.trigger?.trim() && (
                                   <span className="projectNextStepTrigger">
@@ -11232,27 +11340,65 @@ function DashboardApp() {
                                 )}
                                 {project.nextStep?.text.trim() || "まだ次の一手がありません"}
                               </p>
+                                {project.nextStep?.text.trim() ? (
+                                  sourceLocked ? (
+                                    <span className="nextStepLockedStatus">今日の3件で使用中</span>
+                                  ) : (
+                                    <div className="nextStepCardActions">
                               <button
-                                className={
-                                  project.nextStep?.text.trim()
-                                    ? "nextStepRowAction nextStepRowAction--change mainActionButton mainActionButton--neutral"
-                                    : "nextStepRowAction nextStepRowAction--set mainActionButton mainActionButton--neutral"
+                                        className="nextStepTodayAdd mainActionButton mainActionButton--gold"
+                                        disabled={
+                                          !todayCandidate ||
+                                          alreadySelected ||
+                                          config.today.items.length >= TODAY_ITEM_LIMIT
                                 }
-                                disabled={sourceEditBlocked(`project:${project.id}`)}
                                 onClick={(event) => {
                                   event.stopPropagation();
-                                  openNextStepEditor(project);
+                                          if (todayCandidate)
+                                            void addCandidateToToday(todayCandidate);
                                 }}
                                 onPointerDown={(event) => event.stopPropagation()}
                                 title={
-                                  sourceEditBlocked(`project:${project.id}`)
-                                    ? SOURCE_EDIT_TIMER_REASON
-                                    : undefined
+                                          alreadySelected
+                                            ? "今日の3件にあります"
+                                            : config.today.items.length >= TODAY_ITEM_LIMIT
+                                              ? "今日の3件は3件埋まっています"
+                                              : "今日の3件に追加"
                                 }
                                 type="button"
                               >
-                                {project.nextStep?.text.trim() ? "変更" : "次の一手を設定"}
+                                        ＋ 今日へ
                               </button>
+                                      <button
+                                        className="nextStepRowAction nextStepRowAction--change mainActionButton mainActionButton--neutral"
+                                        disabled={sourceEditBlocked(projectSourceKey)}
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          openNextStepEditor(project);
+                                        }}
+                                        onPointerDown={(event) => event.stopPropagation()}
+                                        title={sourceEditBlockReason(projectSourceKey) ?? undefined}
+                                        type="button"
+                                      >
+                                        変更
+                                      </button>
+                                    </div>
+                                  )
+                                ) : (
+                                  <button
+                                    className="nextStepRowAction nextStepRowAction--set mainActionButton mainActionButton--neutral"
+                                    disabled={sourceEditBlocked(projectSourceKey)}
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      openNextStepEditor(project);
+                                    }}
+                                    onPointerDown={(event) => event.stopPropagation()}
+                                    title={sourceEditBlockReason(projectSourceKey) ?? undefined}
+                                    type="button"
+                                  >
+                                    次の一手を設定
+                                  </button>
+                                )}
                               <button
                                 aria-label={`${project.name}の次の一手の操作`}
                                 aria-haspopup="menu"
@@ -11515,7 +11661,10 @@ function DashboardApp() {
                               }
                               type="button"
                             >
-                              <UiIcon name={collapsed ? "chevronRight" : "chevronDown"} size={16} />
+                                <UiIcon
+                                  name={collapsed ? "chevronRight" : "chevronDown"}
+                                  size={16}
+                                />
                               {groupProject ? (
                                 <ProjectIdentity
                                   colorId={groupProject.colorId}
@@ -11533,6 +11682,10 @@ function DashboardApp() {
                                 <div className="inboxList">
                                   {visibleItems.map(({ item, index }) => {
                                     const sourceKey = item.id ? `wishlist:${item.id}` : null;
+                                      const sourceLocked = Boolean(
+                                        sourceKey &&
+                                        sourceLockedByUnfinishedToday(config, sourceKey),
+                                      );
                                     const selected = Boolean(
                                       sourceKey &&
                                         config.today.items.some(
@@ -11582,15 +11735,27 @@ function DashboardApp() {
                                         tabIndex={0}
                                       >
                                         <span className="inboxItemText" title={item.text}>
+                                            {sourceLocked && (
+                                              <span
+                                                aria-label="今日の3件で使用中のためロック中"
+                                                className="sourceLockBadge sourceLockBadge--wishlist"
+                                                tabIndex={0}
+                                                title={SOURCE_LOCK_REASON}
+                                              >
+                                                <UiIcon name="lock" size={16} />
+                                              </span>
+                                            )}
                                           {item.text}
                                         </span>
                                         <div className="wishlistRowActions">
                                           <span className="wishlistNextStepSlot">
+                                              {!sourceLocked && (
                                             <button
                                               aria-label={`${item.text}の次の一手を設定`}
                                               className="wishlistNextStepAction nextStepRowAction nextStepRowAction--set mainActionButton mainActionButton--neutral"
                                               disabled={
-                                                !item.id || sourceEditBlocked(`wishlist:${item.id}`)
+                                                    !item.id ||
+                                                    sourceEditBlocked(`wishlist:${item.id}`)
                                               }
                                               onClick={(event) => {
                                                 event.stopPropagation();
@@ -11598,17 +11763,22 @@ function DashboardApp() {
                                               }}
                                               onPointerDown={(event) => event.stopPropagation()}
                                               title={
-                                                item.id && sourceEditBlocked(`wishlist:${item.id}`)
-                                                  ? SOURCE_EDIT_TIMER_REASON
+                                                    item.id
+                                                      ? (sourceEditBlockReason(
+                                                          `wishlist:${item.id}`,
+                                                        ) ?? "次の一手を設定")
                                                   : "次の一手を設定"
                                               }
                                               type="button"
                                             >
                                               ▷ 次の一手を設定
                                             </button>
+                                              )}
                                           </span>
                                           {selected && (
-                                            <span className="wishlistTodayStatus">✓ 今日の3件</span>
+                                              <span className="wishlistTodayStatus">
+                                                ✓ 今日の3件
+                                              </span>
                                           )}
                                           <button
                                             aria-label={`${item.text}の操作`}
@@ -11725,7 +11895,8 @@ function DashboardApp() {
                         style={{
                           left:
                             wishlistGroupPointerDrag.pointerX - wishlistGroupPointerDrag.offsetX,
-                          top: wishlistGroupPointerDrag.pointerY - wishlistGroupPointerDrag.offsetY,
+                            top:
+                              wishlistGroupPointerDrag.pointerY - wishlistGroupPointerDrag.offsetY,
                           width: Math.min(320, wishlistGroupPointerDrag.width),
                         }}
                       >
@@ -11837,6 +12008,7 @@ function DashboardApp() {
               </section>
             </>
           )}
+        </div>
         </div>
       </section>
 
@@ -12029,17 +12201,28 @@ function DashboardApp() {
                   sourceEditBlocked(
                     canonicalSourceKey(config, config.today.items[contextMenu.index].sourceKey!) ??
                       "",
+                    true,
                   )
                 }
-                title={SOURCE_EDIT_TIMER_REASON}
+                title={
+                  config.today.items[contextMenu.index]?.sourceKey
+                    ? (sourceEditBlockReason(
+                        canonicalSourceKey(
+                          config,
+                          config.today.items[contextMenu.index].sourceKey!,
+                        ) ?? "",
+                        true,
+                      ) ?? undefined)
+                    : undefined
+                }
                 onClick={() => {
                   const current = configRef.current;
                   const item = current?.today.items[contextMenu.index];
                   if (!current || !item?.sourceKey) return;
                   const key = canonicalSourceKey(current, item.sourceKey);
-                  if (!key || sourceEditBlocked(key)) return;
+                  if (!key || sourceEditBlocked(key, true)) return;
                   const project = current.projects.find((p) => `project:${p.id}` === key);
-                  if (project) openNextStepEditor(project);
+                  if (project) openNextStepEditor(project, { origin: "today" });
                   else {
                     const index = current.inbox.findIndex((i) => `wishlist:${i.id}` === key);
                     if (index >= 0) beginInboxEdit(index, "today");
@@ -12103,7 +12286,11 @@ function DashboardApp() {
                   sourceEditBlocked(todayBuilderCandidates[contextMenu.index]?.sourceKey ?? "")
                 }
                 onClick={() => editTodayBuilderCandidate(todayBuilderCandidates[contextMenu.index])}
-                title={SOURCE_EDIT_TIMER_REASON}
+                title={
+                  sourceEditBlockReason(
+                    todayBuilderCandidates[contextMenu.index]?.sourceKey ?? "",
+                  ) ?? undefined
+                }
                 type="button"
               >
                 編集
@@ -12142,7 +12329,10 @@ function DashboardApp() {
                   `wishlist:${config?.inbox[contextMenu.index]?.id ?? ""}`,
                 )}
                 onClick={() => promoteInboxToNextStep(contextMenu.index)}
-                title={SOURCE_EDIT_TIMER_REASON}
+                title={
+                  sourceEditBlockReason(`wishlist:${config?.inbox[contextMenu.index]?.id ?? ""}`) ??
+                  undefined
+                }
                 type="button"
               >
                 次の一手にする
@@ -12163,7 +12353,10 @@ function DashboardApp() {
               </ContextMenuItem>
               <ContextMenuItem
                 disabled={sourceEditBlocked(`wishlist:${config.inbox[contextMenu.index]?.id}`)}
-                title={SOURCE_EDIT_TIMER_REASON}
+                title={
+                  sourceEditBlockReason(`wishlist:${config.inbox[contextMenu.index]?.id}`) ??
+                  undefined
+                }
                 onClick={() => beginInboxEdit(contextMenu.index)}
                 type="button"
               >
@@ -12172,6 +12365,7 @@ function DashboardApp() {
               <ContextMenuItem
                 disabled={
                   !config?.inbox[contextMenu.index] ||
+                  sourceEditBlocked(`wishlist:${config?.inbox[contextMenu.index]?.id ?? ""}`) ||
                   isTimerActiveForSource([
                     wishlistSourceKey(config.inbox[contextMenu.index], contextMenu.index),
                     legacyWishlistSourceKey(config.inbox[contextMenu.index]),
@@ -12186,6 +12380,7 @@ function DashboardApp() {
                 className="contextMenuDanger"
                 disabled={
                   !config?.inbox[contextMenu.index] ||
+                  sourceEditBlocked(`wishlist:${config?.inbox[contextMenu.index]?.id ?? ""}`) ||
                   isTimerActiveForSource([
                     wishlistSourceKey(config.inbox[contextMenu.index], contextMenu.index),
                     legacyWishlistSourceKey(config.inbox[contextMenu.index]),
@@ -12213,7 +12408,7 @@ function DashboardApp() {
                   <ContextMenuItem
                     disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
                     onClick={() => openNextStepEditor(contextMenu.project)}
-                    title={SOURCE_EDIT_TIMER_REASON}
+                    title={sourceEditBlockReason(`project:${contextMenu.project.id}`) ?? undefined}
                     type="button"
                   >
                     次の一手を編集
@@ -12227,7 +12422,7 @@ function DashboardApp() {
                         projectLocked: true,
                       })
                     }
-                    title={SOURCE_EDIT_TIMER_REASON}
+                    title={sourceEditBlockReason(`project:${contextMenu.project.id}`) ?? undefined}
                     type="button"
                   >
                     次の一手を変更
@@ -12235,7 +12430,7 @@ function DashboardApp() {
                   <ContextMenuItem
                     disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
                     onClick={() => clearProjectNextStep(contextMenu.project)}
-                    title={SOURCE_EDIT_TIMER_REASON}
+                    title={sourceEditBlockReason(`project:${contextMenu.project.id}`) ?? undefined}
                     type="button"
                   >
                     次の一手を未設定にする
@@ -12245,7 +12440,7 @@ function DashboardApp() {
                 <ContextMenuItem
                   disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
                   onClick={() => openNextStepEditor(contextMenu.project)}
-                  title={SOURCE_EDIT_TIMER_REASON}
+                  title={sourceEditBlockReason(`project:${contextMenu.project.id}`) ?? undefined}
                   type="button"
                 >
                   次の一手を設定
@@ -12477,9 +12672,7 @@ function DashboardApp() {
               <div>
                 <p className="eyebrow">Today</p>
                 <h2>今日やるものを選ぶ</h2>
-                <p className="todayPickerIntro">
-                  上の「今日の3件」に、下の候補から追加します。
-                </p>
+                <p className="todayPickerIntro">上の「今日の3件」に、下の候補から追加します。</p>
               </div>
               <button
                 aria-label="今日やるものを選ぶを閉じる"
@@ -12493,12 +12686,23 @@ function DashboardApp() {
               </button>
             </div>
 
-            <section
-              className="todayPickerDestination"
-              data-today-picker-section="selected"
-            >
+            <section className="todayPickerDestination" data-today-picker-section="selected">
               <div className="todayPickerDestinationHeader">
                 <h3>追加先：今日の3件</h3>
+                <div
+                  aria-label={`今日の3件の選択状況 ${config.today.items.length}/3`}
+                  aria-valuemax={TODAY_ITEM_LIMIT}
+                  aria-valuemin={0}
+                  aria-valuenow={config.today.items.length}
+                  className="todayPickerProgress"
+                  role="progressbar"
+                >
+                  <span
+                    style={{
+                      transform: `scaleX(${config.today.items.length / TODAY_ITEM_LIMIT})`,
+                    }}
+                  />
+                </div>
                 <div
                   aria-label={`今日の3件 ${config.today.items.length}件`}
                   className="todayPickerCounter"
@@ -12529,11 +12733,7 @@ function DashboardApp() {
                 <span>追加元</span>
                 <h3>どこから選びますか？</h3>
               </div>
-              <div
-                aria-label="追加元を選ぶ"
-                className="todayPickerSourceTabs"
-                role="tablist"
-              >
+              <div aria-label="追加元を選ぶ" className="todayPickerSourceTabs" role="tablist">
                 <button
                   aria-controls="today-picker-next-step-panel"
                   aria-selected={todayPickerSource === "nextStep"}
@@ -12541,9 +12741,7 @@ function DashboardApp() {
                   data-today-picker-tab="nextStep"
                   id="today-picker-next-step-tab"
                   onClick={() => setTodayPickerSource("nextStep")}
-                  onKeyDown={(event) =>
-                    handleTodayPickerTabKeyDown(event, "nextStep")
-                  }
+                  onKeyDown={(event) => handleTodayPickerTabKeyDown(event, "nextStep")}
                   role="tab"
                   tabIndex={todayPickerSource === "nextStep" ? 0 : -1}
                   type="button"
@@ -12558,9 +12756,7 @@ function DashboardApp() {
                   data-today-picker-tab="wishlist"
                   id="today-picker-wishlist-tab"
                   onClick={() => setTodayPickerSource("wishlist")}
-                  onKeyDown={(event) =>
-                    handleTodayPickerTabKeyDown(event, "wishlist")
-                  }
+                  onKeyDown={(event) => handleTodayPickerTabKeyDown(event, "wishlist")}
                   role="tab"
                   tabIndex={todayPickerSource === "wishlist" ? 0 : -1}
                   type="button"
