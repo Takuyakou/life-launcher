@@ -238,6 +238,7 @@ test("Phase 8.1 unassigned Wishlist and empty Project require explicit keyboard 
   await projectSelection.selectOption("phase81-empty-project");
   await expect(promotion.locator(".nextStepReplacementNotice")).toHaveCount(0);
   await promotion.getByRole("button", { name: "キャンセル", exact: true }).click();
+  await page.getByRole("button", { name: "破棄して閉じる" }).click();
   await expect(unassigned).toBeVisible();
 
   const emptyAction = page.locator(
@@ -262,6 +263,7 @@ test("Phase 8.1 unassigned Wishlist and empty Project require explicit keyboard 
   await expectInsideViewport(page, setup, "empty Project NextStep dialog");
   await page.screenshot({ path: resolve(SCREENSHOT_DIR, "empty-project-nextstep-620x900.png") });
   await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "破棄して閉じる" }).click();
   await expect(emptyAction).toBeFocused();
 });
 
@@ -320,6 +322,8 @@ test("Phase 8.1 dialogs restore their canonical context target on every close pa
     .locator(".modalBackdrop")
     .last()
     .click({ position: { x: 4, y: 4 } });
+  await expect(metadata).toBeVisible();
+  await metadata.getByRole("button", { name: "プロジェクトを編集を閉じる" }).click();
   await expect(metadata).toHaveCount(0);
   await expect(projectRegion).toBeFocused();
 

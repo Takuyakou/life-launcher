@@ -87,7 +87,7 @@ test("Today removal toast, picker alignment, progress, typography and measure un
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const dialog = page.getByRole("dialog", { name: "今日やるものを選ぶ" });
   const progress = dialog.locator(".todayPickerProgress");
-  await expect(progress).toHaveCSS("width", "104px");
+  await expect(progress).toHaveCSS("width", "154px");
   await expect(progress.locator("span")).toHaveCSS("background-color", "rgb(111, 207, 151)");
   const addButton = dialog.locator(".todayPickerAddButton").first();
   const cancelButton = dialog.getByRole("button", { name: "キャンセル", exact: true });

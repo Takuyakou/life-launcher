@@ -264,6 +264,7 @@ test("P82-01 promotion cancel and save failure leave both sources unchanged", as
   let dialog = await openPromotion(page);
   await dialog.getByRole("button", { name: "やりたいことへ戻す" }).click();
   await dialog.getByRole("button", { name: "キャンセル", exact: true }).click();
+  await page.getByRole("button", { name: "破棄して閉じる" }).click();
   await expect(dialog).toBeHidden();
   expect(await currentConfig(page)).toEqual(initial);
 

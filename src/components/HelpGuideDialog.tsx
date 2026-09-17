@@ -255,12 +255,11 @@ export function HelpGuideDialog({ onClose, onCopyResult }: HelpGuideDialogProps)
   };
 
   return (
-    <div className="modalBackdrop helpGuideBackdrop" onClick={onClose} role="presentation">
+    <div className="modalBackdrop helpGuideBackdrop" role="presentation">
       <section
         aria-labelledby="help-guide-title"
         aria-modal="true"
         className="dropDialog helpGuideDialog"
-        onClick={(event) => event.stopPropagation()}
         onKeyDown={keepFocusInside}
         role="dialog"
       >

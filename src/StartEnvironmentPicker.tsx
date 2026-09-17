@@ -161,13 +161,7 @@ export function StartEnvironmentPicker({
       </button>
 
       {open ? (
-        <div
-          className="modalBackdrop startEnvironmentBackdrop"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) closePicker();
-          }}
-          role="presentation"
-        >
+        <div className="modalBackdrop startEnvironmentBackdrop" role="presentation">
           <section
             aria-label="開始環境を選ぶ"
             aria-modal="true"

@@ -2135,6 +2135,13 @@ function DashboardApp() {
   const [inboxAddError, setInboxAddError] = useState<string | null>(null);
   const [inboxEditingIndex, setInboxEditingIndex] = useState<number | null>(null);
   const inboxEditingIdRef = useRef<string | null>(null);
+  const inboxEditInitialDraftRef = useRef<{
+    text: string;
+    projectId: string;
+    buttonIds: string[];
+    instructionPath: string;
+    instructionOpenOnStart: boolean;
+  } | null>(null);
   const sourceEditBusyRef = useRef<string | null>(null);
   const [sourceEditSaving, setSourceEditSaving] = useState(false);
   const [inboxEditDraft, setInboxEditDraft] = useState("");
@@ -2162,7 +2169,10 @@ function DashboardApp() {
     Record<string, boolean>
   >({});
   const [todayPickerSource, setTodayPickerSource] = useState<"nextStep" | "wishlist">("nextStep");
-  const [todayPickerSavingSourceKey, setTodayPickerSavingSourceKey] = useState<string | null>(null);
+  const [todayPickerDraftItems, setTodayPickerDraftItems] = useState<TodayItem[]>([]);
+  const [todayPickerSaving, setTodayPickerSaving] = useState(false);
+  const [todayPickerDraggedIndex, setTodayPickerDraggedIndex] = useState<number | null>(null);
+  const [todayPickerRemoveTargetActive, setTodayPickerRemoveTargetActive] = useState(false);
   const [todayActivityOpen, setTodayActivityOpen] = useState(false);
   const [, setNotesSaveStatus] = useState<NotesSaveStatus>("saved");
   const [launcherOverlayOpen, setLauncherOverlayOpen] = useState(false);
@@ -2281,6 +2291,9 @@ function DashboardApp() {
   const confirmDialogRef = useRef<ConfirmDialogRequest | null>(null);
   const inboxAddOpenerRef = useRef<HTMLButtonElement | null>(null);
   const todayPickerOpenerRef = useRef<HTMLElement | null>(null);
+  const todayPickerInitialItemsRef = useRef<TodayItem[]>([]);
+  const projectEditInitialDraftRef = useRef<ProjectEditDraft | null>(null);
+  const nextStepEditInitialDraftRef = useRef<NextStepEditDraft | null>(null);
   const sourceEditOriginRef = useRef<"source" | "today" | "builder">("source");
   const projectListAnchorRef = useRef<{ id: string; index: number } | null>(null);
   const inboxListAnchorRef = useRef<{ id: string; index: number } | null>(null);
@@ -2326,6 +2339,21 @@ function DashboardApp() {
       return next;
     });
   }, []);
+
+  const requestDiscardConfirmation = useCallback(
+    (onConfirm: () => void | boolean | Promise<void | boolean>) => {
+      requestConfirmation({
+        title: "入力内容を破棄して閉じますか？",
+        message: "保存していない変更は失われます。",
+        confirmLabel: "破棄して閉じる",
+        cancelLabel: "戻る",
+        tone: "danger",
+        initialFocus: "cancel",
+        onConfirm,
+      });
+    },
+    [requestConfirmation],
+  );
 
   const showCompletionFeedback = useCallback((feedback: CompletionFeedback) => {
     if (document.hidden || seenCompletionFeedbackRef.current.has(feedback.key)) return;
@@ -2401,25 +2429,49 @@ function DashboardApp() {
   const closeProjectEditDialog = useCallback(
     (afterSuccessfulSave = false) => {
       if (!projectEditDraft || (!afterSuccessfulSave && projectEditSavingRef.current)) return;
+      const dirty =
+        !afterSuccessfulSave &&
+        JSON.stringify(projectEditDraft) !== JSON.stringify(projectEditInitialDraftRef.current);
+      if (dirty) {
+        requestDiscardConfirmation(() => {
+          projectEditInitialDraftRef.current = null;
+          setProjectEditDraft(null);
+          restoreDialogFocus(projectEditReturnFocusRef);
+        });
+        return;
+      }
       const fallbackSelector = projectEditDraft.isNew
         ? undefined
         : `[data-project-id="${CSS.escape(projectEditDraft.id)}"] .nextStepProjectRegion`;
       setProjectEditDraft(null);
+      projectEditInitialDraftRef.current = null;
       restoreDialogFocus(projectEditReturnFocusRef, fallbackSelector);
     },
-    [projectEditDraft, restoreDialogFocus],
+    [projectEditDraft, requestDiscardConfirmation, restoreDialogFocus],
   );
 
   const closeNextStepEditDialog = useCallback(
     (afterSuccessfulSave = false) => {
       if (!nextStepEditDraft || (!afterSuccessfulSave && sourceEditBusyRef.current)) return;
+      const dirty =
+        !afterSuccessfulSave &&
+        JSON.stringify(nextStepEditDraft) !== JSON.stringify(nextStepEditInitialDraftRef.current);
+      if (dirty) {
+        requestDiscardConfirmation(() => {
+          nextStepEditInitialDraftRef.current = null;
+          setNextStepEditDraft(null);
+          restoreDialogFocus(nextStepEditReturnFocusRef);
+        });
+        return;
+      }
       const fallbackSelector = nextStepEditDraft.projectId
         ? `[data-project-id="${CSS.escape(nextStepEditDraft.projectId)}"] .nextStepActionRegion`
         : undefined;
       setNextStepEditDraft(null);
+      nextStepEditInitialDraftRef.current = null;
       restoreDialogFocus(nextStepEditReturnFocusRef, fallbackSelector);
     },
-    [nextStepEditDraft, restoreDialogFocus],
+    [nextStepEditDraft, requestDiscardConfirmation, restoreDialogFocus],
   );
 
   const openLauncherOverlay = useCallback((opener?: HTMLElement | null) => {
@@ -3581,18 +3633,11 @@ function DashboardApp() {
 
   const requestCloseSettings = useCallback(() => {
     if (settingsHaveUnsavedChanges) {
-      requestConfirmation({
-        title: "変更を破棄しますか？",
-        message: "保存していない設定内容は失われます。",
-        confirmLabel: "破棄して閉じる",
-        cancelLabel: "編集を続ける",
-        tone: "danger",
-        onConfirm: () => setSettingsDraft(null),
-      });
+      requestDiscardConfirmation(() => setSettingsDraft(null));
       return;
     }
     setSettingsDraft(null);
-  }, [requestConfirmation, settingsHaveUnsavedChanges]);
+  }, [requestDiscardConfirmation, settingsHaveUnsavedChanges]);
 
   const requestCloseButtonEdit = useCallback(() => {
     if (!buttonEditDraft) return;
@@ -3600,22 +3645,15 @@ function DashboardApp() {
       !buttonEditInitialDraft ||
       JSON.stringify(buttonEditDraft) !== JSON.stringify(buttonEditInitialDraft);
     if (hasChanges) {
-      requestConfirmation({
-        title: "変更を破棄しますか？",
-        message: "保存していないボタン編集内容は失われます。",
-        confirmLabel: "破棄して閉じる",
-        cancelLabel: "編集を続ける",
-        tone: "danger",
-        onConfirm: () => {
+      requestDiscardConfirmation(() => {
           setButtonEditDraft(null);
           setButtonEditInitialDraft(null);
-        },
       });
       return;
     }
     setButtonEditDraft(null);
     setButtonEditInitialDraft(null);
-  }, [buttonEditDraft, buttonEditInitialDraft, requestConfirmation]);
+  }, [buttonEditDraft, buttonEditInitialDraft, requestDiscardConfirmation]);
 
   const closeOverlayPageDialog = useCallback(() => {
     setOverlayPageDraft(null);
@@ -3624,8 +3662,12 @@ function DashboardApp() {
     window.requestAnimationFrame(() => opener?.focus());
   }, []);
 
-  const closeInboxAddDialog = useCallback(() => {
+  const closeInboxAddDialog = useCallback((afterSuccessfulSave = false) => {
     if (inboxAddSavingRef.current) return;
+    if (!afterSuccessfulSave && (inboxDraft.trim() || inboxAddProjectId)) {
+      requestDiscardConfirmation(() => closeInboxAddDialog(true));
+      return;
+    }
     const opener = inboxAddOpenerRef.current;
     inboxAddOpenerRef.current = null;
     setInboxAddOpen(false);
@@ -3634,21 +3676,99 @@ function DashboardApp() {
     setInboxAddError(null);
     setInboxAddSaving(false);
     window.requestAnimationFrame(() => opener?.focus());
-  }, []);
+  }, [inboxAddProjectId, inboxDraft, requestDiscardConfirmation]);
+
+  const closeInboxEditDialog = useCallback(
+    (afterSuccessfulSave = false) => {
+      if (sourceEditBusyRef.current) return;
+      const currentDraft = {
+        text: inboxEditDraft,
+        projectId: inboxEditProjectId,
+        buttonIds: inboxEditButtonIds,
+        instructionPath: inboxEditInstructionPath,
+        instructionOpenOnStart: inboxEditInstructionOpenOnStart,
+      };
+      const dirty =
+        !afterSuccessfulSave &&
+        JSON.stringify(currentDraft) !== JSON.stringify(inboxEditInitialDraftRef.current);
+      if (dirty) {
+        requestDiscardConfirmation(() => closeInboxEditDialog(true));
+        return;
+      }
+      inboxEditInitialDraftRef.current = null;
+      setInboxEditingIndex(null);
+      setInboxEditDraft("");
+      setInboxEditProjectId("");
+      setInboxEditButtonIds([]);
+      setInboxEditInstructionPath("");
+      setInboxEditInstructionOpenOnStart(false);
+    },
+    [
+      inboxEditButtonIds,
+      inboxEditDraft,
+      inboxEditInstructionOpenOnStart,
+      inboxEditInstructionPath,
+      inboxEditProjectId,
+      requestDiscardConfirmation,
+    ],
+  );
 
   const closeTodayPicker = useCallback(() => {
     const opener = todayPickerOpenerRef.current;
     todayPickerOpenerRef.current = null;
     setTodayPickerOpen(false);
-    setTodayPickerSavingSourceKey(null);
+    setTodayPickerDraftItems([]);
+    setTodayPickerSaving(false);
+    setTodayPickerDraggedIndex(null);
+    setTodayPickerRemoveTargetActive(false);
     window.requestAnimationFrame(() => {
       if (opener?.isConnected) opener.focus();
     });
   }, []);
 
+  const requestCloseTodayPicker = useCallback(() => {
+    if (todayPickerSaving) return;
+    const dirty =
+      JSON.stringify(todayPickerDraftItems) !== JSON.stringify(todayPickerInitialItemsRef.current);
+    if (dirty) {
+      requestDiscardConfirmation(async () => {
+        const current = configRef.current;
+        if (!current) return false;
+        setTodayPickerSaving(true);
+        const restored = await persistConfig({
+          ...current,
+          today: {
+            ...current.today,
+            items: todayPickerInitialItemsRef.current,
+          },
+        });
+        if (!restored) {
+          setTodayPickerSaving(false);
+          return false;
+        }
+        closeTodayPicker();
+        return true;
+      });
+      return;
+    }
+    closeTodayPicker();
+  }, [
+    closeTodayPicker,
+    persistConfig,
+    requestDiscardConfirmation,
+    todayPickerDraftItems,
+    todayPickerSaving,
+  ]);
+
   const openTodayPicker = useCallback((opener: HTMLElement) => {
     if ((configRef.current?.today.items.length ?? TODAY_ITEM_LIMIT) >= TODAY_ITEM_LIMIT) return;
+    const initialItems = (configRef.current?.today.items ?? []).map((item) => ({
+      ...item,
+      ...(item.buttonIds ? { buttonIds: [...item.buttonIds] } : {}),
+    }));
     todayPickerOpenerRef.current = opener;
+    todayPickerInitialItemsRef.current = initialItems;
+    setTodayPickerDraftItems(initialItems);
     setTodayPickerWishlistCollapsed({});
     setTodayPickerSource("nextStep");
     setTodayPickerOpen(true);
@@ -3677,7 +3797,7 @@ function DashboardApp() {
   const dismissNonCriticalModal = useCallback(() => {
     if (sourceEditBusyRef.current || projectEditSavingRef.current) return;
     if (todayPickerOpen) {
-      closeTodayPicker();
+      requestCloseTodayPicker();
       return;
     }
     if (inboxAddOpen) {
@@ -3685,9 +3805,7 @@ function DashboardApp() {
       return;
     }
     if (inboxEditingIndex !== null) {
-      setInboxEditingIndex(null);
-      setInboxEditDraft("");
-      setInboxEditProjectId("");
+      closeInboxEditDialog();
       return;
     }
     if (helpGuideOpen) {
@@ -3740,6 +3858,7 @@ function DashboardApp() {
     closeNextStepEditDialog,
     closeProjectEditDialog,
     closeInboxAddDialog,
+    closeInboxEditDialog,
     closeOverlayPageDialog,
     dropDraft,
     groupDraft,
@@ -3757,7 +3876,7 @@ function DashboardApp() {
     sessionEditDraft,
     settingsDraft,
     todayPickerOpen,
-    closeTodayPicker,
+    requestCloseTodayPicker,
   ]);
 
   const hasDismissibleModal = Boolean(
@@ -3794,21 +3913,6 @@ function DashboardApp() {
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [completionPrompt, confirmDialog, earlyStop, dismissNonCriticalModal, hasDismissibleModal]);
-
-  useEffect(() => {
-    const closeOnBackdrop = (event: MouseEvent) => {
-      if (
-        !(event.target instanceof HTMLElement) ||
-        !event.target.classList.contains("modalBackdrop")
-      ) {
-        return;
-      }
-      if (confirmDialog || earlyStop) return;
-      if (!completionPrompt) dismissNonCriticalModal();
-    };
-    document.addEventListener("click", closeOnBackdrop);
-    return () => document.removeEventListener("click", closeOnBackdrop);
-  }, [completionPrompt, confirmDialog, earlyStop, dismissNonCriticalModal]);
 
   useEffect(() => {
     if (
@@ -7288,7 +7392,7 @@ function DashboardApp() {
       setInboxAddError("保存できませんでした。内容を残したまま、もう一度お試しください");
       return;
     }
-    closeInboxAddDialog();
+    closeInboxAddDialog(true);
   };
 
   const sourceEditBlockReason = (key: string, allowTodaySourceSync = false) => {
@@ -7348,6 +7452,15 @@ function DashboardApp() {
     setContextMenu(null);
     setInboxOpen(true);
     setInboxEditingIndex(index);
+    inboxEditInitialDraftRef.current = {
+      text: item.text,
+      projectId: item.projectId ?? "",
+      buttonIds: [...(item.buttonIds ?? [])],
+      instructionPath: item.instructionPath ?? "",
+      instructionOpenOnStart: Boolean(
+        item.instructionPath && item.instructionOpenOnStart !== false,
+      ),
+    };
     setInboxEditDraft(item.text);
     setInboxEditProjectId(item.projectId ?? "");
     setInboxEditButtonIds(item.buttonIds ?? []);
@@ -7371,7 +7484,7 @@ function DashboardApp() {
     }
     const text = inboxEditDraft.trim();
     if (!text) {
-      cancelInboxEdit();
+      closeInboxEditDialog(true);
       return;
     }
     const inbox = config.inbox.map((item) =>
@@ -7392,12 +7505,7 @@ function DashboardApp() {
     );
     const result = await saveSourceEdit(config, { ...config, inbox }, `wishlist:${editingId}`);
     if (!result) return;
-    setInboxEditingIndex(null);
-    setInboxEditDraft("");
-    setInboxEditProjectId("");
-    setInboxEditButtonIds([]);
-    setInboxEditInstructionPath("");
-    setInboxEditInstructionOpenOnStart(false);
+    closeInboxEditDialog(true);
     const detail =
       sourceEditOriginRef.current === "source"
         ? result.todayUpdated
@@ -7405,16 +7513,6 @@ function DashboardApp() {
           : undefined
         : "元の「やりたいこと」にも反映しました";
     showToast("ok", "変更を保存しました", { detail });
-  };
-
-  const cancelInboxEdit = () => {
-    if (sourceEditBusyRef.current) return;
-    setInboxEditingIndex(null);
-    setInboxEditDraft("");
-    setInboxEditProjectId("");
-    setInboxEditButtonIds([]);
-    setInboxEditInstructionPath("");
-    setInboxEditInstructionOpenOnStart(false);
   };
 
   const isTimerActiveForSource = (sourceKeys: string[], projectId?: string) => {
@@ -7640,15 +7738,89 @@ function DashboardApp() {
     return saved;
   };
 
-  const chooseTodayCandidate = async (candidate: TodayCandidate) => {
-    if (todayPickerSavingSourceKey) return;
-    setTodayPickerSavingSourceKey(candidate.sourceKey);
-    const saved = await addCandidateToToday(candidate);
-    if (saved && (configRef.current?.today.items.length ?? 0) >= TODAY_ITEM_LIMIT) {
+  const todayItemFromCandidate = (candidate: TodayCandidate): TodayItem => ({
+    text: candidate.text,
+    done: false,
+    sourceKey: candidate.sourceKey,
+    ...(candidate.sourceGenerationId ? { sourceGenerationId: candidate.sourceGenerationId } : {}),
+    ...(candidate.trigger ? { trigger: candidate.trigger } : {}),
+    ...(candidate.projectId ? { projectId: candidate.projectId } : {}),
+    ...(candidate.buttonIds?.length ? { buttonIds: [...candidate.buttonIds] } : {}),
+    ...(candidate.instructionPath
+      ? {
+          instructionPath: candidate.instructionPath,
+          instructionOpenOnStart: candidate.instructionOpenOnStart !== false,
+        }
+      : {}),
+    defaultTimerMinutes: candidate.defaultTimerMinutes,
+    shortTimerMinutes: candidate.shortTimerMinutes,
+  });
+
+  const saveTodayPickerDraft = async (items = todayPickerDraftItems) => {
+    const current = configRef.current;
+    if (!current || todayPickerSaving) return false;
+    if (JSON.stringify(items) === JSON.stringify(current.today.items)) {
       closeTodayPicker();
+      return true;
+    }
+    setTodayPickerSaving(true);
+    const saved = await persistConfig({
+      ...current,
+      today: {
+        ...current.today,
+        items,
+      },
+    });
+    if (saved) {
+      closeTodayPicker();
+      showToast("ok", "今日の3件を決定しました");
+      return true;
+    }
+    setTodayPickerSaving(false);
+    return false;
+  };
+
+  const chooseTodayCandidate = async (candidate: TodayCandidate) => {
+    if (todayPickerSaving || todayPickerDraftItems.length >= TODAY_ITEM_LIMIT) return;
+    const matchingSourceKeys = new Set([candidate.sourceKey, ...(candidate.sourceAliases ?? [])]);
+    if (
+      todayPickerDraftItems.some((item, index) =>
+        matchingSourceKeys.has(todaySourceKey(item, index)),
+      )
+    ) {
       return;
     }
-    setTodayPickerSavingSourceKey(null);
+    const nextItems = [...todayPickerDraftItems, todayItemFromCandidate(candidate)];
+    const current = configRef.current;
+    if (!current) return;
+    setTodayPickerSaving(true);
+    const saved = await persistConfig({
+      ...current,
+      today: { ...current.today, items: nextItems },
+    });
+    if (!saved) {
+      setTodayPickerSaving(false);
+      return;
+    }
+    setTodayPickerDraftItems(nextItems);
+    if (nextItems.length >= TODAY_ITEM_LIMIT) closeTodayPicker();
+    else setTodayPickerSaving(false);
+  };
+
+  const removeTodayPickerDraftItem = async (index: number) => {
+    if (todayPickerSaving) return;
+    const current = configRef.current;
+    if (!current) return;
+    const nextItems = todayPickerDraftItems.filter((_, itemIndex) => itemIndex !== index);
+    setTodayPickerSaving(true);
+    if (!(await persistConfig({ ...current, today: { ...current.today, items: nextItems } }))) {
+      setTodayPickerSaving(false);
+      return;
+    }
+    setTodayPickerDraftItems(nextItems);
+    setTodayPickerSaving(false);
+    setTodayPickerDraggedIndex(null);
+    setTodayPickerRemoveTargetActive(false);
   };
 
   const refreshInstructionChoices = async () => {
@@ -7704,14 +7876,16 @@ function DashboardApp() {
     if (!config) return;
     captureDialogReturnFocus(projectEditReturnFocusRef);
     setContextMenu(null);
-    setProjectEditDraft({
+    const draft: ProjectEditDraft = {
       id: "",
       name: "",
       northStar: "",
       weeklyFocus: false,
       colorId: "amber",
       isNew: true,
-    });
+    };
+    projectEditInitialDraftRef.current = draft;
+    setProjectEditDraft(draft);
   };
 
   const openProjectEditDialog = (
@@ -7721,14 +7895,16 @@ function DashboardApp() {
     sourceEditOriginRef.current = origin;
     captureDialogReturnFocus(projectEditReturnFocusRef);
     setContextMenu(null);
-    setProjectEditDraft({
+    const draft: ProjectEditDraft = {
       id: project.id,
       name: project.name,
       northStar: project.northStar ?? "",
       weeklyFocus: project.weeklyFocus === true,
       colorId: resolveProjectColorId(project.id, project.colorId),
       isNew: false,
-    });
+    };
+    projectEditInitialDraftRef.current = draft;
+    setProjectEditDraft(draft);
   };
 
   const nextStepExecutionDraft = (
@@ -7780,7 +7956,7 @@ function DashboardApp() {
     sourceEditOriginRef.current = origin;
     captureDialogReturnFocus(nextStepEditReturnFocusRef);
     setContextMenu(null);
-    setNextStepEditDraft({
+    const draft: NextStepEditDraft = {
       mode,
       decisionMode: initialDecisionMode,
       projectId: project.id,
@@ -7795,7 +7971,9 @@ function DashboardApp() {
       replacementChoice: null,
       replacedNextStep: promotingWishlist ? project.nextStep : undefined,
       ...(options?.promotedWishlistId ? { promotedWishlistId: options.promotedWishlistId } : {}),
-    });
+    };
+    nextStepEditInitialDraftRef.current = draft;
+    setNextStepEditDraft(draft);
     void refreshNextStepSuggestions(project.id);
     void refreshInstructionChoices();
   };
@@ -7832,7 +8010,7 @@ function DashboardApp() {
     }
     captureDialogReturnFocus(nextStepEditReturnFocusRef);
     setContextMenu(null);
-    setNextStepEditDraft({
+    const draft: NextStepEditDraft = {
       mode: "promote",
       decisionMode: "wishlist",
       projectId: "",
@@ -7845,7 +8023,9 @@ function DashboardApp() {
       replacementChoice: null,
       replacedNextStep: undefined,
       promotedWishlistId: item.id,
-    });
+    };
+    nextStepEditInitialDraftRef.current = draft;
+    setNextStepEditDraft(draft);
     setProjectNextStepSuggestions([]);
     void refreshInstructionChoices();
   };
@@ -8743,11 +8923,17 @@ function DashboardApp() {
       matchingSourceKeys.has(todaySourceKey(item, index)),
     );
   };
+  const todayPickerCandidateSelected = (candidate: TodayCandidate) => {
+    const matchingSourceKeys = new Set([candidate.sourceKey, ...(candidate.sourceAliases ?? [])]);
+    return todayPickerDraftItems.some((item, index) =>
+      matchingSourceKeys.has(todaySourceKey(item, index)),
+    );
+  };
   const todayPickerNextStepCandidates = rawTodayBuilderCandidates.filter(
-    (candidate) => candidate.source === "次の一手" && !todayCandidateSelected(candidate),
+    (candidate) => candidate.source === "次の一手" && !todayPickerCandidateSelected(candidate),
   );
   const todayPickerWishlistCandidates = rawTodayBuilderCandidates.filter(
-    (candidate) => candidate.source === "やりたいこと" && !todayCandidateSelected(candidate),
+    (candidate) => candidate.source === "やりたいこと" && !todayPickerCandidateSelected(candidate),
   );
   const todayPickerWishlistCandidatesBySourceKey = new Map(
     todayPickerWishlistCandidates.map((candidate) => [candidate.sourceKey, candidate]),
@@ -8768,7 +8954,17 @@ function DashboardApp() {
     return (
       <div
         className="todayPickerSlot todayPickerSlot--selected todayPickerRow todayPickerRow--selected"
+        draggable={!todayPickerSaving}
         key={`today-selected:${todaySourceKey(item, index)}`}
+        onDragEnd={() => {
+          setTodayPickerDraggedIndex(null);
+          setTodayPickerRemoveTargetActive(false);
+        }}
+        onDragStart={(event) => {
+          event.dataTransfer.effectAllowed = "move";
+          event.dataTransfer.setData("text/plain", todaySourceKey(item, index));
+          setTodayPickerDraggedIndex(index);
+        }}
       >
         <div className="todayPickerSlotProject">
           {project ? (
@@ -8786,6 +8982,16 @@ function DashboardApp() {
         <strong className="todayPickerSlotTask" title={item.text}>
           {item.text}
         </strong>
+        <button
+          className="todayPickerRemoveButton todayRemoveButton mainActionButton mainActionButton--neutral"
+          disabled={todayPickerSaving}
+          onClick={() => removeTodayPickerDraftItem(index)}
+          onPointerDown={(event) => event.stopPropagation()}
+          type="button"
+        >
+          <UiIcon name="back" size={16} />
+          今日の3件から外す
+        </button>
       </div>
     );
   };
@@ -8815,17 +9021,17 @@ function DashboardApp() {
         <button
           className="todayPickerAddButton mainActionButton mainActionButton--gold"
           disabled={
-            todayPickerSavingSourceKey !== null || config.today.items.length >= TODAY_ITEM_LIMIT
+            todayPickerSaving || todayPickerDraftItems.length >= TODAY_ITEM_LIMIT
           }
           onClick={() => void chooseTodayCandidate(candidate)}
           title={
-            config.today.items.length >= TODAY_ITEM_LIMIT
+            todayPickerDraftItems.length >= TODAY_ITEM_LIMIT
               ? "今日の3件は3件埋まっています"
               : undefined
           }
           type="button"
         >
-          {todayPickerSavingSourceKey === candidate.sourceKey ? "追加中…" : "＋ 今日へ"}
+          ＋ 今日へ
         </button>
       </div>
     );
@@ -11967,7 +12173,7 @@ function DashboardApp() {
                                             title="操作メニュー"
                                             type="button"
                                           >
-                                            <span aria-hidden="true">⋯</span>
+                                            <span aria-hidden="true">…</span>
                                           </button>
                                         </div>
                                       </div>
@@ -12733,13 +12939,7 @@ function DashboardApp() {
       )}
 
       {inboxEditingIndex !== null && config.inbox[inboxEditingIndex] && (
-        <div
-          className="modalBackdrop"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) commitInboxEdit();
-          }}
-          role="presentation"
-        >
+        <div className="modalBackdrop" role="presentation">
           <section
             aria-label="やりたいこと編集"
             aria-modal="true"
@@ -12840,7 +13040,7 @@ function DashboardApp() {
               </button>
               <button
                 className="secondaryButton dialogCancelButton"
-                onClick={cancelInboxEdit}
+                onClick={() => closeInboxEditDialog()}
                 type="button"
               >
                 キャンセル
@@ -12869,7 +13069,8 @@ function DashboardApp() {
                 aria-label="今日やるものを選ぶを閉じる"
                 autoFocus
                 className="iconButton"
-                onClick={closeTodayPicker}
+                disabled={todayPickerSaving}
+                onClick={requestCloseTodayPicker}
                 title="閉じる"
                 type="button"
               >
@@ -12881,33 +13082,33 @@ function DashboardApp() {
               <div className="todayPickerDestinationHeader">
                 <h3>追加先：今日の3件</h3>
                 <div
-                  aria-label={`今日の3件の選択状況 ${config.today.items.length}/3`}
+                  aria-label={`今日の3件の選択状況 ${todayPickerDraftItems.length}/3`}
                   aria-valuemax={TODAY_ITEM_LIMIT}
                   aria-valuemin={0}
-                  aria-valuenow={config.today.items.length}
+                  aria-valuenow={todayPickerDraftItems.length}
                   className="todayPickerProgress"
                   role="progressbar"
                 >
                   <span
                     style={{
-                      transform: `scaleX(${config.today.items.length / TODAY_ITEM_LIMIT})`,
+                      transform: `scaleX(${todayPickerDraftItems.length / TODAY_ITEM_LIMIT})`,
                     }}
                   />
                 </div>
                 <div
-                  aria-label={`今日の3件 ${config.today.items.length}件`}
+                  aria-label={`今日の3件 ${todayPickerDraftItems.length}件`}
                   className="todayPickerCounter"
                 >
-                  <strong>{config.today.items.length} / 3</strong>
-                  {config.today.items.length < TODAY_ITEM_LIMIT && (
-                    <span>あと{TODAY_ITEM_LIMIT - config.today.items.length}件</span>
+                  <strong>{todayPickerDraftItems.length} / 3</strong>
+                  {todayPickerDraftItems.length < TODAY_ITEM_LIMIT && (
+                    <span>あと{TODAY_ITEM_LIMIT - todayPickerDraftItems.length}件</span>
                   )}
                 </div>
               </div>
               <p className="todayPickerDestinationHelp">今日やると決めたもの。最大3件まで。</p>
               <div className="todayPickerSlots">
                 {Array.from({ length: TODAY_ITEM_LIMIT }, (_, index) => {
-                  const item = config.today.items[index];
+                  const item = todayPickerDraftItems[index];
                   return item ? (
                     renderTodayPickerSelectedItem(item, index)
                   ) : (
@@ -13051,13 +13252,54 @@ function DashboardApp() {
                 </section>
               )}
             </section>
+            {todayPickerDraggedIndex !== null && (
+              <div
+                className={
+                  todayPickerRemoveTargetActive
+                    ? "todayPickerRemoveDropZone todayPickerRemoveDropZone--active"
+                    : "todayPickerRemoveDropZone"
+                }
+                onDragEnter={(event) => {
+                  event.preventDefault();
+                  setTodayPickerRemoveTargetActive(true);
+                }}
+                onDragLeave={(event) => {
+                  if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                    setTodayPickerRemoveTargetActive(false);
+                  }
+                }}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = "move";
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  removeTodayPickerDraftItem(todayPickerDraggedIndex);
+                }}
+              >
+                <span>↓ ここにドロップして今日の3件から外す</span>
+              </div>
+            )}
             <div className="dialogActions todayPickerActions">
               <span>
                 {todayPickerSource === "wishlist"
                   ? "プロジェクト見出しで開閉できます。"
                   : "選ぶと上の今日の3件へ追加されます。"}
               </span>
-              <button className="dangerButton" onClick={closeTodayPicker} type="button">
+              <button
+                className="primaryButton todayPickerConfirmButton"
+                disabled={todayPickerSaving}
+                onClick={() => void saveTodayPickerDraft()}
+                type="button"
+              >
+                {todayPickerSaving ? "保存中…" : "決定"}
+              </button>
+              <button
+                className="dangerButton todayPickerCancelButton"
+                disabled={todayPickerSaving}
+                onClick={requestCloseTodayPicker}
+                type="button"
+              >
                 キャンセル
               </button>
             </div>
@@ -13235,13 +13477,7 @@ function DashboardApp() {
       )}
 
       {settingsDraft && (
-        <div
-          className="modalBackdrop"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) requestCloseSettings();
-          }}
-          role="presentation"
-        >
+        <div className="modalBackdrop" role="presentation">
           <section
             aria-label="設定"
             aria-modal="true"
@@ -14360,7 +14596,7 @@ function DashboardApp() {
                 aria-label="やりたいことを追加を閉じる"
                 className="iconButton"
                 disabled={inboxAddSaving}
-                onClick={closeInboxAddDialog}
+                onClick={() => closeInboxAddDialog()}
                 title="閉じる"
                 type="button"
               >
@@ -14434,7 +14670,7 @@ function DashboardApp() {
                 <button
                   className="secondaryButton dialogCancelButton"
                   disabled={inboxAddSaving}
-                  onClick={closeInboxAddDialog}
+                  onClick={() => closeInboxAddDialog()}
                   type="button"
                 >
                   キャンセル
@@ -14637,7 +14873,7 @@ function DashboardApp() {
                       role="tab"
                       type="button"
                     >
-                      やりたいことから選ぶ
+                      ＋ やりたいことから選ぶ
                     </button>
                     <button
                       aria-selected={!wishlistMode}
@@ -15339,12 +15575,6 @@ function DashboardApp() {
       {softwareResetChoiceOpen && (
         <div
           className="modalBackdrop confirmBackdrop softwareResetChoiceBackdrop"
-          onClick={(event) => {
-            event.stopPropagation();
-            if (event.target === event.currentTarget && !softwareResetChoiceBusy) {
-              closeSoftwareResetChoice();
-            }
-          }}
           role="presentation"
         >
           <section

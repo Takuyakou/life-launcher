@@ -75,7 +75,7 @@ test("P84-04 empty Today selects NextStep then Wishlist while preserving sources
   const nextStepText = projectsBefore[0].nextStep!.text;
   const nextStepRow = await selectCandidate(page, nextStepText);
   await expect(nextStepRow.getByText("✓ 選択済み")).toBeVisible();
-  await picker(page).getByRole("button", { name: "今日やるものを選ぶを閉じる" }).click();
+  await picker(page).getByRole("button", { name: "決定", exact: true }).click();
   await expect(page.locator(".todayRow")).toHaveCount(1);
 
   await entry.click();

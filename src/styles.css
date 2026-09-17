@@ -6655,8 +6655,11 @@ input[type="number"]::-webkit-inner-spin-button {
 .secondaryButton.settingsButton--warning:hover:not(:disabled),
 .secondaryButton.settingsButton--warning:focus-visible {
   border-color: var(--accent);
-  background: rgba(231, 185, 77, 0.14);
+  background: rgba(231, 185, 77, 0.18);
   color: var(--accent-strong);
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.22);
+  filter: brightness(1.04);
+  transform: translateY(-1px);
 }
 
 .settingsButton--danger:hover {
@@ -8786,8 +8789,9 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayPickerProgress {
-  width: 104px;
+  width: 154px;
   height: 6px;
+  margin-left: 10px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--line-soft);
@@ -8838,9 +8842,24 @@ input[type="number"]::-webkit-inner-spin-button {
 .todayPickerSlot.todayPickerRow {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   align-items: start;
   gap: 5px;
+}
+
+.todayPickerRow--selected {
+  cursor: grab;
+}
+
+.todayPickerRow--selected:active {
+  cursor: grabbing;
+}
+
+.todayPickerRemoveButton {
+  min-height: 24px;
+  justify-self: end;
+  padding-inline: 7px;
+  font-size: 10px;
 }
 
 .todayPickerSlot--empty {
@@ -9134,8 +9153,41 @@ input[type="number"]::-webkit-inner-spin-button {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding: 10px 14px;
+  gap: 8px;
+  padding: 10px 22px 10px 14px;
   border-top: 1px solid var(--line);
+}
+
+.todayPickerConfirmButton {
+  border-color: rgba(117, 196, 143, 0.45);
+  background: var(--control-positive-bg);
+  color: var(--good);
+}
+
+.todayPickerConfirmButton:hover:not(:disabled),
+.todayPickerConfirmButton:focus-visible {
+  border-color: var(--good);
+  background: var(--control-positive-hover-bg);
+  color: #92e5ae;
+}
+
+.todayPickerRemoveDropZone {
+  min-height: 42px;
+  display: grid;
+  place-items: center;
+  margin: 0 14px;
+  border: 1px dashed rgba(231, 185, 77, 0.58);
+  border-radius: var(--radius);
+  background: rgba(231, 185, 77, 0.06);
+  color: var(--accent-strong);
+  font-size: var(--today-picker-font-meta);
+  font-weight: 700;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.todayPickerRemoveDropZone--active {
+  border-color: var(--accent);
+  background: rgba(231, 185, 77, 0.16);
 }
 
 .todayPickerActions > button {
@@ -9493,6 +9545,8 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .wishlistRowActions {
+  min-width: 190px;
+  margin-left: auto;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -9818,6 +9872,9 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .nextStepCard .nextStepProjectRegion h3 .projectIdentity {
+  width: auto;
+  max-width: min(180px, 55%);
+  flex: 0 1 auto;
   color: var(--muted);
   font-size: var(--dashboard-font-meta);
   font-weight: 600;
@@ -9838,7 +9895,7 @@ input[type="number"]::-webkit-inner-spin-button {
   align-items: center;
   justify-content: center;
   border-radius: 6px;
-  color: #c8b892;
+  color: var(--text-muted-readable);
   line-height: 1;
   align-self: center;
   margin-inline-start: 2px;
@@ -10361,6 +10418,10 @@ input[type="number"]::-webkit-inner-spin-button {
   width: 20px;
   height: 26px;
   margin-inline: 0 2px;
+}
+
+.wishlistGroup .inboxRow.sourceListRow {
+  padding-right: 0;
 }
 
 .wishlistGroup .sourceRowMenu {

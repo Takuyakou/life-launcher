@@ -194,7 +194,7 @@ test("generation boundary: adoption copies the marker and editing preserves it",
     sourceKey: PROJECT_KEY,
     sourceGenerationId: "gen-a",
   });
-  await page.getByRole("button", { name: "キャンセル", exact: true }).click();
+  await page.getByRole("button", { name: "決定", exact: true }).click();
 
   await page.locator(".todayRow").first().click({ button: "right" });
   await page.getByRole("menuitem", { name: "編集", exact: true }).click();

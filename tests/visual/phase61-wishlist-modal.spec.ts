@@ -99,7 +99,7 @@ test("Wishlist add uses one compact modal and saves once on a double click", asy
   await expect(page.locator(".todayPickerRow", { hasText: "気になっていた本を読む" })).toBeVisible();
 });
 
-test("Wishlist cancel, Escape, and backdrop discard the draft and return focus", async ({
+test("Wishlist explicit close protects drafts and backdrop clicks do nothing", async ({
   page,
 }) => {
   const fixture = createPublicFixture();
@@ -118,6 +118,7 @@ test("Wishlist cancel, Escape, and backdrop discard the draft and return focus",
   await expect(firstInput).toBeFocused();
   await firstInput.fill("キャンセルする入力");
   await cancelButton.click();
+  await page.getByRole("button", { name: "破棄して閉じる" }).click();
   await expect(dialog).toHaveCount(0);
   await expect(opener).toBeFocused();
 
@@ -127,13 +128,19 @@ test("Wishlist cancel, Escape, and backdrop discard the draft and return focus",
   await expect(reopenedInput).toHaveValue("");
   await reopenedInput.fill("Escapeで閉じる入力");
   await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "破棄して閉じる" }).click();
   await expect(dialog).toHaveCount(0);
   await expect(opener).toBeFocused();
 
   await opener.click();
   dialog = wishlistDialog(page);
-  await dialog.getByRole("textbox", { name: "やりたいこと" }).fill("外側で閉じる入力");
+  const backdropDraft = dialog.getByRole("textbox", { name: "やりたいこと" });
+  await backdropDraft.fill("外側では閉じない入力");
   await page.locator(".modalBackdrop").click({ position: { x: 2, y: 2 } });
+  await expect(dialog).toBeVisible();
+  await expect(backdropDraft).toHaveValue("外側では閉じない入力");
+  await dialog.getByRole("button", { name: "やりたいことを追加を閉じる" }).click();
+  await page.getByRole("button", { name: "破棄して閉じる" }).click();
   await expect(dialog).toHaveCount(0);
   await expect(opener).toBeFocused();
   expect((await currentConfig(page)).inbox).toEqual(initialItems);
@@ -165,6 +172,32 @@ test("Wishlist IME confirmation does not submit until a later Enter", async ({ p
   await input.press("Enter");
   await expect(dialog).toHaveCount(0);
   expect((await currentConfig(page)).inbox).toHaveLength(initialCount + 1);
+});
+
+test("Wishlist edit keeps every dirty field through backdrop clicks and discard Return", async ({
+  page,
+}) => {
+  const fixture = createPublicFixture();
+  const original = structuredClone(fixture.config.inbox);
+  await prepare(page, fixture);
+  await page.getByRole("button", { name: "やりたいこと", exact: true }).click();
+  const row = page.locator('[data-inbox-id="sample-later"]');
+  await row.click({ button: "right" });
+  await page.getByRole("menuitem", { name: "編集", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "やりたいこと編集" });
+  const text = dialog.getByRole("textbox", { name: "やりたいこと" });
+  await text.fill("編集中のやりたいこと");
+
+  await page.locator(".modalBackdrop").click({ position: { x: 2, y: 2 } });
+  await expect(dialog).toBeVisible();
+  await expect(text).toHaveValue("編集中のやりたいこと");
+  await dialog.getByRole("button", { name: "キャンセル" }).click();
+  const confirmation = page.getByRole("dialog", { name: "入力内容を破棄して閉じますか？" });
+  await confirmation.getByRole("button", { name: "戻る" }).click();
+  await expect(text).toHaveValue("編集中のやりたいこと");
+  await dialog.getByRole("button", { name: "キャンセル" }).click();
+  await page.getByRole("button", { name: "破棄して閉じる" }).click();
+  expect((await currentConfig(page)).inbox).toEqual(original);
 });
 
 test("Wishlist save failure keeps the dialog and draft for retry", async ({ page }) => {
