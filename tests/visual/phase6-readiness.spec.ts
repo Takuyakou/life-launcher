@@ -213,6 +213,9 @@ test("manual next batch accepts one, two, and three new items but no fourth", as
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
 
   for (let index = 0; index < 3; index += 1) {
+    if (index === 2) {
+      await page.getByRole("tab", { name: /やりたいこと/ }).click();
+    }
     await page
       .locator(".todayPickerRow")
       .nth(index)

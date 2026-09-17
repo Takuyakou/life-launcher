@@ -113,7 +113,9 @@ test("P84-03 empty Do Now guides to NextStep instead of weekly focus", async ({ 
   await expect(page.getByRole("dialog", { name: "次の一手を設定" })).toBeVisible();
 });
 
-test("P84-03 Do Now kicker, task and metadata share the reference left edge", async ({ page }) => {
+test("P84 Do Now task offset and metadata icon rows follow the reference alignment", async ({
+  page,
+}) => {
   const fixture = createPublicFixture();
   await prepare(page, fixture);
 
@@ -131,9 +133,30 @@ test("P84-03 Do Now kicker, task and metadata share the reference left edge", as
   expect(meta).not.toBeNull();
   expect(alternate).not.toBeNull();
   expect(cardBox!.height).toBeGreaterThanOrEqual(112);
-  expect(Math.abs(kicker!.x - task!.x)).toBeLessThanOrEqual(1);
-  expect(Math.abs(task!.x - meta!.x)).toBeLessThanOrEqual(1);
-  expect(Math.abs(meta!.x - alternate!.x)).toBeLessThanOrEqual(1);
+  expect(task!.x - kicker!.x).toBeGreaterThanOrEqual(2);
+  expect(task!.x - kicker!.x).toBeLessThanOrEqual(4);
+  expect(Math.abs(kicker!.x - meta!.x)).toBeLessThanOrEqual(1);
+  const [clockText, alternateText] = await Promise.all([
+    card.locator(".doNowMetaTimer").evaluate((node) => {
+      const text = [...node.childNodes].find(
+        (child) => child.nodeType === Node.TEXT_NODE && child.textContent?.trim(),
+      );
+      if (!text) return 0;
+      const range = document.createRange();
+      range.selectNodeContents(text);
+      return range.getBoundingClientRect().x;
+    }),
+    card.locator(".doNowAlternateButton").evaluate((node) => {
+      const text = [...node.childNodes].find(
+        (child) => child.nodeType === Node.TEXT_NODE && child.textContent?.trim(),
+      );
+      if (!text) return 0;
+      const range = document.createRange();
+      range.selectNodeContents(text);
+      return range.getBoundingClientRect().x;
+    }),
+  ]);
+  expect(Math.abs(clockText - alternateText)).toBeLessThanOrEqual(1);
   expect(task!.y).toBeGreaterThan(kicker!.y + kicker!.height);
   expect(meta!.y).toBeGreaterThan(task!.y + task!.height);
   expect(alternate!.y).toBeGreaterThan(meta!.y + meta!.height);

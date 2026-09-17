@@ -50,6 +50,7 @@ test("Phase 8.4 keeps legacy candidate exclusions inert and removes restore acti
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const picker = page.getByRole("dialog", { name: "今日やるものを選ぶ" });
   await expect(picker).toContainText("資料を1ページ読む");
+  await picker.getByRole("tab", { name: /やりたいこと/ }).click();
   await expect(picker.locator(".todayPickerRow", { hasText: "同じ本文" })).toHaveCount(2);
   expect((await currentConfig(page)).today.candidateExcludedSourceKeys).toEqual([
     "project:sample-learning",
@@ -106,6 +107,7 @@ test("Phase 8.4 opening the Picker does not rewrite legacy exclusion state", asy
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const picker = page.getByRole("dialog", { name: "今日やるものを選ぶ" });
+  await picker.getByRole("tab", { name: /やりたいこと/ }).click();
   await expect(picker).toContainText("あとで確認するサンプル");
   expect((await currentConfig(page)).today.candidateExcludedSourceKeys).toEqual([
     "wishlist:sample-later",

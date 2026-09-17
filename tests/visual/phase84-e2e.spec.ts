@@ -69,8 +69,8 @@ test("P84-04 empty Today selects NextStep then Wishlist while preserving sources
   await expect(page.locator(".todayBuilderBand")).toHaveCount(0);
   const entry = page.getByRole("button", { name: "今日やるものを選ぶ" });
   await entry.click();
-  await expect(picker(page).getByRole("button", { name: /^次の一手/ })).toBeVisible();
-  await expect(picker(page).getByRole("button", { name: /^やりたいこと/ })).toBeVisible();
+  await expect(picker(page).getByRole("tab", { name: /^次の一手/ })).toBeVisible();
+  await expect(picker(page).getByRole("tab", { name: /^やりたいこと/ })).toBeVisible();
 
   const nextStepText = projectsBefore[0].nextStep!.text;
   const nextStepRow = await selectCandidate(page, nextStepText);
@@ -87,6 +87,7 @@ test("P84-04 empty Today selects NextStep then Wishlist while preserving sources
       .getByText("✓ 選択済み"),
   ).toBeVisible();
   const wishlistText = inboxBefore[0].text;
+  await picker(page).getByRole("tab", { name: /^やりたいこと/ }).click();
   const wishlistRow = await selectCandidate(page, wishlistText);
   await expect(wishlistRow.getByText("✓ 選択済み")).toBeVisible();
 
@@ -110,6 +111,7 @@ test("P84-04 empty Today selects NextStep then Wishlist while preserving sources
   });
   expect(new Set(saved.today.items.map((item) => item.sourceKey)).size).toBe(2);
 
+  await picker(page).getByRole("tab", { name: /^次の一手/ }).click();
   await selectCandidate(page, projectsBefore[1].nextStep!.text);
   await expect(picker(page)).toBeVisible();
   await expect(picker(page).locator(".todayPickerCounter strong")).toHaveText("3 / 3");

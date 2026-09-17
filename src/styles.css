@@ -3319,28 +3319,37 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .doNowAlternateButton {
   width: max-content;
-  min-height: 20px;
+  min-height: 26px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  border: 0;
-  padding: 0;
+  align-self: start;
+  margin-inline-start: -6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 3px 6px;
   background: transparent;
   color: var(--muted);
   font-size: 12px;
   font-weight: 650;
+  line-height: 1.4;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
 }
 
 .doNowAlternateButton:hover,
 .doNowAlternateButton:focus-visible {
-  background: transparent;
-  color: var(--text);
+  border-color: rgba(231, 185, 77, 0.48);
+  background: var(--surface-strong);
+  color: var(--accent-strong);
   transform: none;
 }
 
 .doNowAlternateButton .uiIcon {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
 }
 
 .doNowContent {
@@ -3415,7 +3424,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .doNowCopy > strong {
   display: -webkit-box;
-  margin-inline-start: 0;
+  margin-inline-start: 3px;
   overflow: hidden;
   overflow-wrap: anywhere;
   font-size: 17px;
@@ -8005,6 +8014,32 @@ input[type="number"]::-webkit-inner-spin-button {
   border-radius: var(--radius);
   padding: 9px 10px;
   background: var(--surface);
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    transform 120ms ease;
+}
+
+.todayRow:not(.todayRow--dragging):hover,
+.todayRow:not(.todayRow--dragging):focus-within {
+  border-color: var(--line-strong);
+  background: var(--control-neutral-hover-bg);
+  transform: translateY(-1px);
+}
+
+.todayRow[data-project-color]:not(.todayRow--dragging):hover,
+.todayRow[data-project-color]:not(.todayRow--dragging):focus-within {
+  border-top-color: var(--project-color);
+}
+
+.todayRow--running:not(.todayRow--dragging):hover,
+.todayRow--running:not(.todayRow--dragging):focus-within {
+  border-color: var(--accent);
+}
+
+.todayRow--complete:not(.todayRow--dragging):hover,
+.todayRow--complete:not(.todayRow--dragging):focus-within {
+  border-color: rgba(117, 196, 143, 0.48);
 }
 
 .todayRow--running {
@@ -8493,35 +8528,48 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayPickerDialog {
+  --today-picker-font-action: 15px;
+  --today-picker-font-body: 13px;
+  --today-picker-font-meta: 11px;
   width: min(720px, 100%);
   max-height: min(82vh, 720px);
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 0;
   overflow: hidden;
+  padding: 0;
 }
 
-.todayPickerHeaderActions {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
+.todayPickerDialog .modalTitleRow {
+  padding: 15px 16px 13px;
+  border-bottom: 1px solid var(--line);
+}
+
+.todayPickerDialog .modalTitleRow > div {
+  min-width: 0;
+}
+
+.todayPickerDialog .modalTitleRow > .iconButton {
+  flex: 0 0 auto;
 }
 
 .todayPickerCounter {
-  min-width: 70px;
-  display: grid;
-  justify-items: end;
-  gap: 2px;
-  padding-top: 2px;
+  margin-left: auto;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  white-space: nowrap;
 }
 
 .todayPickerCounter strong {
   color: var(--text);
-  font-size: var(--dashboard-font-action);
+  font-size: var(--today-picker-font-body);
+  font-variant-numeric: tabular-nums;
   line-height: 1.2;
 }
 
 .todayPickerCounter span {
   color: var(--text-muted-readable);
-  font-size: 10px;
+  font-size: var(--today-picker-font-meta);
   line-height: 1.2;
 }
 
@@ -8530,98 +8578,233 @@ input[type="number"]::-webkit-inner-spin-button {
   margin: 0;
 }
 
+.todayPickerDialog .modalTitleRow h2 {
+  font-size: 20px;
+}
+
 .todayPickerDialog .modalTitleRow .todayPickerIntro {
-  margin-top: 5px;
+  margin-top: 4px;
   color: var(--text-muted-readable);
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.5;
 }
 
 .todayPickerDialog .modalTitleRow .eyebrow {
-  margin-bottom: 4px;
-  color: var(--accent-strong);
+  margin-bottom: 3px;
+  color: var(--muted);
   font-size: 11px;
+  font-weight: 800;
   line-height: 1.2;
 }
 
-.todayPickerGroups {
-  min-height: 0;
+.todayPickerDestination {
   display: grid;
-  gap: 12px;
-  overflow-y: auto;
-  padding: 0 4px 2px 0;
+  gap: 8px;
+  padding: 12px 14px 13px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-soft);
 }
 
-.todayPickerGroup {
+.todayPickerDestinationHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.todayPickerDestinationHeader h3,
+.todayPickerSourceHeading h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--today-picker-font-body);
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.todayPickerDestinationHelp {
+  margin: 0;
+  color: var(--text-muted-readable);
+  font-size: var(--today-picker-font-meta);
+  line-height: 1.35;
+}
+
+.todayPickerSlots {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.todayPickerSlot {
+  min-width: 0;
+  min-height: 62px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 8px 9px;
+  background: var(--surface);
+}
+
+.todayPickerSlot.todayPickerRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 5px;
+}
+
+.todayPickerSlot--empty {
+  display: grid;
+  place-items: center;
+  border-style: dashed;
+  background: transparent;
+  color: color-mix(in srgb, var(--muted) 68%, transparent);
+  font-size: var(--today-picker-font-meta);
+}
+
+.todayPickerSlotProject {
+  min-width: 0;
+  display: flex;
+  align-items: center;
   gap: 6px;
 }
 
-.todayPickerGroup h3 {
-  min-height: 32px;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin: 0;
-  border-bottom: 1px solid var(--line);
-  padding: 0 1px 6px;
-  color: var(--text);
-  font-size: var(--dashboard-font-body);
+.todayPickerSlotProject .projectIdentity,
+.todayPickerSlotProject .sourceProjectNone {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted-readable);
+  font-size: 10px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.todayPickerGroup h3 > span,
-.todayPickerSectionCount {
+.todayPickerSlotTask {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: var(--today-picker-font-body);
+  font-weight: 700;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todayPickerSelectedStatus {
+  margin-left: auto;
+  color: var(--good);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.todayPickerSource {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 9px;
+  padding: 11px 14px 0;
+}
+
+.todayPickerSourceHeading > span {
+  display: block;
+  margin-bottom: 2px;
   color: var(--muted);
   font-size: 10px;
   font-weight: 700;
 }
 
-.todayPickerSectionHeader {
-  width: 100%;
-  min-height: 32px;
+.todayPickerSourceTabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.todayPickerSourceTab {
+  min-width: 0;
+  min-height: 46px;
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 7px 10px;
+  background: var(--surface-soft);
+  color: var(--text-muted-readable);
+  text-align: left;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+}
+
+.todayPickerSourceTab:hover,
+.todayPickerSourceTab:focus-visible {
+  border-color: var(--line-strong);
+  background: var(--control-neutral-hover-bg);
+}
+
+.todayPickerSourceTab[aria-selected="true"] {
+  border-color: rgba(231, 185, 77, 0.42);
+  background: rgba(231, 185, 77, 0.07);
+}
+
+.todayPickerSourceTab strong {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.todayPickerSourceTab[aria-selected="true"] strong {
+  color: var(--accent-strong);
+}
+
+.todayPickerSourceTab span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todayPickerSourcePanel {
+  min-height: 0;
+  overflow-y: auto;
+  border-top: 1px solid var(--line);
+  padding-right: 4px;
+}
+
+.todayPickerPanelHeading {
+  min-height: 34px;
   display: flex;
   align-items: center;
   gap: 7px;
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  border-radius: 0;
-  padding: 0 1px 6px;
-  background: transparent;
-  color: var(--text);
-  text-align: left;
+  padding: 0 3px;
 }
 
-.todayPickerSectionHeader:hover,
-.todayPickerSectionHeader:focus-visible {
-  background: rgba(255, 255, 255, 0.025);
+.todayPickerPanelHeading strong {
+  color: var(--text-muted-readable);
+  font-size: 12px;
 }
 
-.todayPickerSectionHeader .uiIcon {
-  flex: 0 0 auto;
+.todayPickerPanelHeading span {
   color: var(--muted);
-}
-
-.todayPickerSectionTitle {
-  font-size: var(--dashboard-font-body);
-  font-weight: 800;
+  font-size: 10px;
 }
 
 .todayPickerList {
   display: grid;
 }
 
-.todayPickerRow {
+.todayPickerRow:not(.todayPickerSlot) {
   min-height: 54px;
   display: grid;
   grid-template-columns: minmax(130px, 170px) minmax(0, 1fr) 96px;
   align-items: center;
   gap: 14px;
-  border-bottom: 1px solid var(--line-soft);
-  padding: 7px 14px;
-}
-
-.todayPickerRow--selected {
-  background: rgba(255, 255, 255, 0.018);
+  border-top: 1px solid var(--line-soft);
+  padding: 7px 4px;
 }
 
 .todayPickerCopy {
@@ -8634,14 +8817,28 @@ input[type="number"]::-webkit-inner-spin-button {
   min-width: 0;
   overflow: hidden;
   color: var(--text-muted-readable);
-  font-size: var(--dashboard-font-meta);
+  font-size: var(--today-picker-font-meta);
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.todayPickerCopy strong {
+  grid-column: 2;
+  min-width: 0;
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--text);
+  font-size: var(--today-picker-font-body);
+  font-weight: 700;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .todayPickerRow--groupedWishlist {
-  grid-template-columns: minmax(0, 1fr) 96px;
-  padding-left: 28px;
+  grid-template-columns: minmax(0, 1fr) 96px !important;
+  padding-left: 28px !important;
 }
 
 .todayPickerRow--groupedWishlist .todayPickerCopy {
@@ -8656,17 +8853,6 @@ input[type="number"]::-webkit-inner-spin-button {
   grid-column: 2;
 }
 
-.todayPickerCopy strong {
-  grid-column: 2;
-  min-width: 0;
-  display: -webkit-box;
-  overflow: hidden;
-  font-size: var(--dashboard-font-body);
-  line-height: 1.4;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
 .todayPickerRow > button {
   grid-column: 3;
   width: 96px;
@@ -8677,25 +8863,9 @@ input[type="number"]::-webkit-inner-spin-button {
   min-height: 30px;
   border-radius: var(--radius);
   padding: 0 11px;
-  font-size: var(--dashboard-font-meta, 11px);
+  font-size: var(--today-picker-font-meta);
   font-weight: 700;
   line-height: 1;
-}
-
-.todayPickerSelectedStatus {
-  grid-column: 3;
-  width: 96px;
-  min-height: 30px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(117, 196, 143, 0.28);
-  border-radius: 999px;
-  background: rgba(117, 196, 143, 0.055);
-  color: var(--good);
-  font-size: var(--dashboard-font-meta, 11px);
-  font-weight: 700;
-  white-space: nowrap;
 }
 
 .todayPickerWishlistGroups {
@@ -8716,7 +8886,7 @@ input[type="number"]::-webkit-inner-spin-button {
   border: 0;
   padding: 0 7px;
   background: transparent;
-  color: var(--text);
+  color: var(--text-muted-readable);
   text-align: left;
   cursor: pointer;
   transition: background 120ms ease;
@@ -8731,6 +8901,9 @@ input[type="number"]::-webkit-inner-spin-button {
 .todayPickerWishlistGroupHeader .sourceProjectNone {
   min-width: 0;
   overflow: hidden;
+  color: var(--text-muted-readable);
+  font-size: var(--today-picker-font-meta);
+  font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -8756,7 +8929,7 @@ input[type="number"]::-webkit-inner-spin-button {
   margin: 0;
   padding-inline: 4px;
   color: var(--text-muted-readable);
-  font-size: var(--dashboard-font-meta);
+  font-size: var(--today-picker-font-meta);
 }
 
 .todayPickerFullMessage {
@@ -8767,6 +8940,8 @@ input[type="number"]::-webkit-inner-spin-button {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
 }
 
 .todayPickerActions > button {
@@ -8781,12 +8956,26 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 @media (max-width: 560px) {
-  .todayPickerCounter,
   .todayPickerActions > span {
     display: none;
   }
 
-  .todayPickerRow {
+  .todayPickerDialog .modalTitleRow,
+  .todayPickerDestination,
+  .todayPickerSource,
+  .todayPickerActions {
+    padding-inline: 12px;
+  }
+
+  .todayPickerSlots {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .todayPickerSlot {
+    min-height: 48px;
+  }
+
+  .todayPickerRow:not(.todayPickerSlot) {
     grid-template-columns: minmax(0, 1fr) 96px;
     gap: 10px;
   }
@@ -8813,10 +9002,6 @@ input[type="number"]::-webkit-inner-spin-button {
   }
 
   .todayPickerRow > button,
-  .todayPickerSelectedStatus {
-    grid-column: 2;
-  }
-
   .todayPickerRow--groupedWishlist {
     grid-template-columns: minmax(0, 1fr) 96px;
     padding-left: 18px;

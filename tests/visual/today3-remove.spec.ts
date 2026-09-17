@@ -59,13 +59,17 @@ test("removes only Today adoption, preserves both sources, candidates and sessio
   await page.reload();
   await expect(page.locator(".todayRow")).toHaveCount(1);
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
-  for (const text of [fixture.config.projects[0].nextStep!.text, fixture.config.inbox[0].text]) {
-    await expect(
-      page
-        .locator(".todayPickerRow", { hasText: text })
-        .getByRole("button", { name: "＋ 今日へ", exact: true }),
-    ).toBeEnabled();
-  }
+  await expect(
+    page
+      .locator(".todayPickerRow", { hasText: fixture.config.projects[0].nextStep!.text })
+      .getByRole("button", { name: "＋ 今日へ", exact: true }),
+  ).toBeEnabled();
+  await page.getByRole("tab", { name: /やりたいこと/ }).click();
+  await expect(
+    page
+      .locator(".todayPickerRow", { hasText: fixture.config.inbox[0].text })
+      .getByRole("button", { name: "＋ 今日へ", exact: true }),
+  ).toBeEnabled();
 });
 
 test("Today card shows its effective instruction action above remove and opens the viewer", async ({
