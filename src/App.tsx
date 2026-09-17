@@ -4326,6 +4326,33 @@ function DashboardApp() {
       setSoftwareResetChoiceBusy(true);
       try {
         if (createBackup) {
+          let backupFolder =
+            settingsDraft?.backupFolder.trim() ||
+            configRef.current?.settings.backupFolder?.trim() ||
+            "";
+          if (!backupFolder) {
+            const selected = await selectBackupFolder();
+            if (!selected) {
+              showToast("warn", "バックアップ保存先を選択してください");
+              return;
+            }
+            backupFolder = selected;
+          }
+
+          const current = configRef.current;
+          if (!current) throw new Error("現在の設定を確認できませんでした");
+          if ((current.settings.backupFolder ?? "") !== backupFolder) {
+            const saved = await persistConfig({
+              ...current,
+              settings: {
+                ...current.settings,
+                backupFolder,
+              },
+            });
+            if (!saved) throw new Error("バックアップ保存先を保存できませんでした");
+            setSettingsDraft((draft) => (draft ? { ...draft, backupFolder } : draft));
+          }
+
           const backup = await createSoftwareResetBackup();
           if (!backup?.path) throw new Error("バックアップ先を確認できませんでした");
         }
@@ -4343,6 +4370,8 @@ function DashboardApp() {
     [
       rejectSoftwareResetForTimer,
       requestFinalSoftwareResetConfirmation,
+      persistConfig,
+      settingsDraft?.backupFolder,
       showToast,
       softwareResetChoiceBusy,
       closeSoftwareResetChoice,
@@ -10574,6 +10603,7 @@ function DashboardApp() {
                       今日やると決めたもの。タイマーから開始します。
                     </span>
                 </div>
+                <div className="todayGridRegion">
                 <div
                   className={[
                     "todayGrid",
@@ -11036,6 +11066,7 @@ function DashboardApp() {
                     <span>↓ ここにドロップして今日の3件から外す</span>
                   </div>
                 )}
+                </div>
 
                 {completionFeedback?.kind === "todayAll" && (
                   <div className="todayAllCompletionReward" role="status">
@@ -12195,7 +12226,7 @@ function DashboardApp() {
                                           )}
                                           {selected && (
                                               <span className="wishlistTodayStatus">
-                                                ✓ 今日の3件
+                                                ✓ 今日の3件に設定済み
                                               </span>
                                           )}
                                           <button

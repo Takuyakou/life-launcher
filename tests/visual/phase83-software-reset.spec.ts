@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
+import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 
 type InvokeCall = { command: string; args: Record<string, unknown> };
@@ -7,6 +7,7 @@ type ResetBackendOptions = {
   backupFailure?: string;
   resetFailure?: string;
   restartRequested?: boolean;
+  selectedBackupFolder?: string | null;
 };
 
 type VisualQaControl = {
@@ -16,10 +17,14 @@ type VisualQaControl = {
 
 const RESET_TIMER_MESSAGE = "実行中のタイマーを終了してからリセットしてください。";
 
-async function prepare(page: Page, softwareResetRecovery: unknown = null) {
+async function prepare(
+  page: Page,
+  softwareResetRecovery: unknown = null,
+  fixture: VisualQaFixture = createPublicFixture(),
+) {
   await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
   await page.setViewportSize({ width: 1100, height: 900 });
-  await installTauriMock(page, createPublicFixture(), "main", softwareResetRecovery);
+  await installTauriMock(page, fixture, "main", softwareResetRecovery);
   await page.goto("/");
   await expect(page.locator("main, [role=main]").first()).toBeVisible();
 }
@@ -34,6 +39,13 @@ async function installResetBackend(page: Page, options: ResetBackendOptions = {}
     };
     const originalInvoke = target.__TAURI_INTERNALS__.invoke.bind(target.__TAURI_INTERNALS__);
     target.__TAURI_INTERNALS__.invoke = async (command, args = {}) => {
+      if (
+        command === "select_backup_folder" &&
+        resetOptions.selectedBackupFolder !== undefined
+      ) {
+        target.__LIFE_LAUNCHER_VISUAL_QA__.invokeCalls.push({ command, args });
+        return resetOptions.selectedBackupFolder;
+      }
       if (command === "create_software_reset_backup") {
         target.__LIFE_LAUNCHER_VISUAL_QA__.invokeCalls.push({ command, args });
         if (resetOptions.backupFailure) throw new Error(resetOptions.backupFailure);
@@ -113,6 +125,46 @@ test("P83-02 backup choice uses gold for backup and danger for no-backup", async
   );
   await expect(choice.getByRole("button", { name: "バックアップせず続行" })).toHaveClass(
     /dangerButton/,
+  );
+});
+
+test("P83-02 backup reset asks for and saves a folder when none is configured", async ({
+  page,
+}) => {
+  const fixture = createPublicFixture();
+  fixture.config.settings.backupFolder = null;
+  await prepare(page, null, fixture);
+  const selectedBackupFolder = "C:\\Selected\\Life Launcher Backups";
+  await installResetBackend(page, { selectedBackupFolder });
+
+  const choice = await openResetChoice(page);
+  await choice.getByRole("button", { name: "バックアップして続行" }).click();
+
+  await expect(
+    page.getByRole("dialog", { name: "ソフトウェアリセットを実行しますか？" }),
+  ).toBeVisible();
+  expect(await commandCalls(page, "select_backup_folder")).toHaveLength(1);
+  const saveCalls = await commandCalls(page, "save_config");
+  expect(saveCalls.at(-1)?.args).toMatchObject({
+    config: {
+      settings: {
+        backupFolder: selectedBackupFolder,
+      },
+    },
+  });
+  expect(await commandCalls(page, "create_software_reset_backup")).toHaveLength(1);
+
+  const allCalls = await page.evaluate(
+    () =>
+      (
+        window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: VisualQaControl }
+      ).__LIFE_LAUNCHER_VISUAL_QA__.invokeCalls,
+  );
+  expect(allCalls.findIndex((call) => call.command === "select_backup_folder")).toBeLessThan(
+    allCalls.findIndex((call) => call.command === "save_config"),
+  );
+  expect(allCalls.findIndex((call) => call.command === "save_config")).toBeLessThan(
+    allCalls.findIndex((call) => call.command === "create_software_reset_backup"),
   );
 });
 

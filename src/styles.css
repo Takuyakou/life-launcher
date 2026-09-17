@@ -8049,6 +8049,10 @@ input[type="number"]::-webkit-inner-spin-button {
   padding-inline-end: 10px;
 }
 
+.todayGridRegion {
+  position: relative;
+}
+
 .todayGrid--dropGuidance {
   border-radius: var(--radius);
   outline: 2px solid rgba(231, 185, 77, 0.58);
@@ -8079,6 +8083,11 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayRemoveDropZone {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  left: 0;
+  z-index: 10;
   width: 100%;
   min-height: 76px;
   box-sizing: border-box;
@@ -8086,7 +8095,7 @@ input[type="number"]::-webkit-inner-spin-button {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  margin: 10px 0 0;
+  margin: 0;
   border: 1px dashed rgba(231, 185, 77, 0.7);
   border-radius: 8px;
   background: rgba(231, 185, 77, 0.055);
@@ -9160,7 +9169,7 @@ input[type="number"]::-webkit-inner-spin-button {
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
-  padding: 10px 32px 10px 14px;
+  padding: 10px 22px 10px 14px;
   border-top: 1px solid var(--line);
 }
 
