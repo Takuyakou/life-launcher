@@ -79,7 +79,7 @@ test("P84 Wishlist promote action is status-aware, stable, keyboard reachable, a
   const selectedNextStepStatus = selected.locator(".wishlistNextStepStatus");
 
   await expect(plain.locator(".wishlistTodayStatus")).toHaveCount(0);
-  await expect(selectedStatus).toHaveText("✓ 今日の3件");
+  await expect(selectedStatus).toHaveText("✓ 今日の3件に設定済み");
   await expect(selectedNextStepStatus).toHaveText("✓ 次の一手に設定済み");
   await expect(plainAction).toHaveCSS("opacity", "0");
   await expect(selectedAction).toHaveCount(0);

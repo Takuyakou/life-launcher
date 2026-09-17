@@ -170,6 +170,21 @@ test("P84-02 save failure rolls the dropped card back and closes the Drop Zone",
   expect(await currentConfig(page)).toEqual(before);
 });
 
+test("P84 Today removal drop keeps the dashboard scroll position stable", async ({ page }) => {
+  await prepare(page);
+  const scrollArea = page.locator(".mainScrollArea");
+  await scrollArea.evaluate((node) => {
+    node.scrollTop = 80;
+  });
+  const before = await scrollArea.evaluate((node) => node.scrollTop);
+
+  await dropOnRemoveZone(page, page.locator(".todayRow").first());
+  await expect(page.locator(".todayRow")).toHaveCount(2);
+  await expect
+    .poll(() => scrollArea.evaluate((node) => node.scrollTop))
+    .toBeCloseTo(before, 0);
+});
+
 test("P84-02 running and paused Today items cannot activate or use the Drop Zone", async ({
   page,
 }) => {

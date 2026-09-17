@@ -405,7 +405,7 @@ test("P84 Picker aligns project, task, and action columns with readable long con
   );
   const cancelBox = await dialog.getByRole("button", { name: "キャンセル", exact: true }).boundingBox();
   expect(cancelBox).not.toBeNull();
-  expect(Math.abs(cancelBox!.x + cancelBox!.width - wishlistActionRights[0])).toBeLessThanOrEqual(16);
+  expect(Math.abs(cancelBox!.x + cancelBox!.width - wishlistActionRights[0])).toBeLessThanOrEqual(1);
   await expect(dialog.locator(".todayPickerRow--groupedWishlist").first()).toHaveCSS(
     "min-height",
     "60px",

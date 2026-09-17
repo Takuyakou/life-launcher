@@ -332,7 +332,7 @@ test("P82-01 Wishlist renders Project groups, collapse, Today and excluded state
   await expect(stretchGroup.locator(".wishlistGroupHeader")).toContainText("2件");
   await expect(stretchGroup.locator(".inboxRow")).toHaveCount(2);
   await expect(page.locator('[data-inbox-id="wish-selected"] .wishlistTodayStatus')).toHaveText(
-    "✓ 今日の3件",
+    "✓ 今日の3件に設定済み",
   );
   await expect(
     page.locator('[data-inbox-id="wish-excluded"]').getByRole("button", { name: "候補に戻す" }),

@@ -66,7 +66,9 @@ test("unfinished Today3 locks only the matching Wishlist identity", async ({ pag
     "rgb(255, 206, 91)",
   );
   await expect(lockedRow.locator(".wishlistNextStepAction")).toHaveCount(0);
-  await expect(lockedRow.locator(".wishlistTodayStatus")).toHaveText("✓ 今日の3件");
+  await expect(lockedRow.locator(".wishlistTodayStatus")).toHaveText(
+    "✓ 今日の3件に設定済み",
+  );
   await expect(unlockedRow.locator(".sourceLockBadge--wishlist")).toHaveCount(0);
   const rowBox = await lockedRow.boundingBox();
   const menuBox = await lockedRow.locator(".sourceRowMenu").boundingBox();
