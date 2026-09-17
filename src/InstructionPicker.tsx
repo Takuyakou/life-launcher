@@ -72,9 +72,7 @@ export function InstructionPicker({ choices, error, loading, onChange, onRetry, 
         </div>
       ) : null}
       {open ? (
-        <div className="modalBackdrop startEnvironmentBackdrop" onClick={(event) => {
-          if (event.target === event.currentTarget) close();
-        }} role="presentation">
+        <div className="modalBackdrop startEnvironmentBackdrop" role="presentation">
           <section
             aria-label="手順書を選ぶ"
             aria-modal="true"

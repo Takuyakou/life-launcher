@@ -49,7 +49,7 @@ test("Guide contents move focus to a section and mark the current location", asy
   await expect(dialog.getByRole("button", { name: "目次へ戻る" })).toHaveCount(0);
 });
 
-test("Guide traps focus and returns it after Escape or backdrop dismissal", async ({ page }) => {
+test("Guide traps focus, ignores backdrop clicks, and returns focus after explicit close", async ({ page }) => {
   await prepare(page);
   const opener = guideOpener(page);
   let dialog = await openGuide(page);
@@ -65,6 +65,8 @@ test("Guide traps focus and returns it after Escape or backdrop dismissal", asyn
 
   dialog = await openGuide(page);
   await page.locator(".helpGuideBackdrop").click({ position: { x: 2, y: 2 } });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "使い方を閉じる" }).click();
   await expect(dialog).toHaveCount(0);
   await expect(opener).toBeFocused();
 });

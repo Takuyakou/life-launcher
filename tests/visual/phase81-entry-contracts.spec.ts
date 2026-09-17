@@ -228,6 +228,7 @@ test("Phase 8.1 resolves pending legacy execution settings only after a successf
   await dialog.getByRole("tab", { name: "＋ 新しく入力" }).click();
   await dialog.getByRole("button", { name: "引き継ぐ" }).click();
   await dialog.getByRole("button", { name: "キャンセル" }).click();
+  await page.getByRole("button", { name: "破棄して閉じる" }).click();
   const pendingAfterCancel = (await currentConfig(page)).projects.find(
     (project) => project.id === "legacy-inherit",
   );

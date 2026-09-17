@@ -1397,13 +1397,7 @@ export function InstructionTree({
       ) : null}
 
       {operationDialog ? (
-        <div
-          className="modalBackdrop instructionOperationBackdrop"
-          onClick={(event) => {
-            if (event.target === event.currentTarget && !operationSubmitting) setOperationDialog(null);
-          }}
-          role="presentation"
-        >
+        <div className="modalBackdrop instructionOperationBackdrop" role="presentation">
           <section aria-label="手順書操作" aria-modal="true" className="dropDialog instructionOperationDialog" ref={operationDialogRef} role="dialog" tabIndex={-1}>
             <div className="confirmDialogHeader">
               <h2>
@@ -1466,15 +1460,7 @@ export function InstructionTree({
       ) : null}
 
       {projectLinkDialog ? (
-        <div
-          className="modalBackdrop instructionOperationBackdrop"
-          onClick={(event) => {
-            if (event.target === event.currentTarget && !projectLinkSubmitting) {
-              setProjectLinkDialog(null);
-            }
-          }}
-          role="presentation"
-        >
+        <div className="modalBackdrop instructionOperationBackdrop" role="presentation">
           <section
             aria-label="次の一手に手順書を紐づける"
             aria-modal="true"

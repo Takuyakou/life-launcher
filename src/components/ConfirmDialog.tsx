@@ -39,7 +39,6 @@ export function ConfirmDialog({
   alternateTone = "warning",
   tone = "normal",
   isProcessing = false,
-  closeOnBackdrop = false,
   initialFocus = "cancel",
   onConfirm,
   onAlternate,
@@ -149,14 +148,7 @@ export function ConfirmDialog({
   const descriptionIds = message || subject || errorMessage ? descriptionId : undefined;
 
   return (
-    <div
-      className="modalBackdrop confirmBackdrop"
-      onClick={(event) => {
-        event.stopPropagation();
-        if (event.target === event.currentTarget && closeOnBackdrop && !processing) onCancel();
-      }}
-      role="presentation"
-    >
+    <div className="modalBackdrop confirmBackdrop" role="presentation">
       <section
         aria-describedby={descriptionIds}
         aria-labelledby={titleId}

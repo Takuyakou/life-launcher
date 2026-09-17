@@ -71,7 +71,9 @@ test("P83-01 Settings footer preserves behavior with Save left and Cancel right"
   await settings.getByRole("tab", { name: "基本" }).click();
   await settings.getByRole("checkbox", { name: "常に手前" }).click();
   await cancel.click();
-  await expect(page.getByRole("dialog", { name: "変更を破棄しますか？" })).toBeVisible();
+  await expect(
+    page.getByRole("dialog", { name: "入力内容を破棄して閉じますか？" }),
+  ).toBeVisible();
 });
 
 test("P83-01 Maintenance groups keep immediate and confirmed handlers", async ({ page }) => {

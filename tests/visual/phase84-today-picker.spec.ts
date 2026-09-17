@@ -217,6 +217,92 @@ test("P84-01 reaching 3/3 closes the Picker after the saved third selection", as
   expect((await currentConfig(page)).today.items).toHaveLength(3);
 });
 
+test("P84 Picker keeps backdrop clicks inert and restores the opening snapshot on confirmed cancel", async ({
+  page,
+}) => {
+  const fixture = createPublicFixture();
+  fixture.config.today.items = [];
+  await prepare(page, fixture);
+
+  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
+  const dialog = picker(page);
+  await dialog
+    .locator(".todayPickerRow", { hasText: "5分だけ体を動かす" })
+    .getByRole("button", { name: "今日へ" })
+    .click();
+  expect((await currentConfig(page)).today.items).toHaveLength(1);
+
+  await page.locator(".modalBackdrop").click({ position: { x: 2, y: 2 } });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator(".todayPickerSlot--selected")).toHaveCount(1);
+
+  await dialog.getByRole("button", { name: "キャンセル" }).click();
+  const confirmation = page.getByRole("dialog", { name: "入力内容を破棄して閉じますか？" });
+  await expect(confirmation.getByRole("button", { name: "戻る" })).toBeFocused();
+  await confirmation.getByRole("button", { name: "戻る" }).click();
+  await expect(dialog).toBeVisible();
+
+  await dialog.getByRole("button", { name: "キャンセル" }).click();
+  await page.getByRole("button", { name: "破棄して閉じる" }).click();
+  await expect(dialog).toHaveCount(0);
+  expect((await currentConfig(page)).today.items).toHaveLength(0);
+});
+
+test("P84 Picker removes selected cards directly and exposes a longer green progress indicator", async ({
+  page,
+}) => {
+  const fixture = createPublicFixture();
+  fixture.config.today.items = fixture.config.today.items.slice(0, 1);
+  await prepare(page, fixture);
+
+  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
+  const dialog = picker(page);
+  const progress = dialog.locator(".todayPickerProgress");
+  const progressBox = await progress.boundingBox();
+  expect(progressBox?.width).toBeGreaterThanOrEqual(150);
+  await expect(progress).toHaveAttribute("aria-valuenow", "1");
+
+  await dialog.getByRole("button", { name: "今日の3件から外す" }).click();
+  await expect(dialog.locator(".todayPickerSlot--selected")).toHaveCount(0);
+  expect((await currentConfig(page)).today.items).toHaveLength(0);
+  await dialog.getByRole("button", { name: "決定" }).click();
+  await expect(dialog).toHaveCount(0);
+});
+
+test("P84 Picker exposes gold removal guidance while dragging a selected card", async ({ page }) => {
+  const fixture = createPublicFixture();
+  fixture.config.today.items = fixture.config.today.items.slice(0, 1);
+  await prepare(page, fixture);
+
+  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
+  const dialog = picker(page);
+  await dialog.locator(".todayPickerSlot--selected").evaluate((node) => {
+    const dataTransfer = new DataTransfer();
+    (
+      window as Window & { __todayPickerDragDataTransfer?: DataTransfer }
+    ).__todayPickerDragDataTransfer = dataTransfer;
+    node.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer }));
+  });
+  const zone = dialog.locator(".todayPickerRemoveDropZone");
+  await expect(zone).toBeVisible();
+  await expect(zone).toContainText("ここにドロップして今日の3件から外す");
+  await zone.evaluate((node) => {
+    const dataTransfer = (
+      window as Window & { __todayPickerDragDataTransfer?: DataTransfer }
+    ).__todayPickerDragDataTransfer;
+    node.dispatchEvent(new DragEvent("dragenter", { bubbles: true, dataTransfer }));
+  });
+  await expect(zone).toHaveClass(/todayPickerRemoveDropZone--active/);
+  await zone.evaluate((node) => {
+    const dataTransfer = (
+      window as Window & { __todayPickerDragDataTransfer?: DataTransfer }
+    ).__todayPickerDragDataTransfer;
+    node.dispatchEvent(new DragEvent("drop", { bubbles: true, dataTransfer }));
+  });
+  await expect(dialog.locator(".todayPickerSlot--selected")).toHaveCount(0);
+  expect((await currentConfig(page)).today.items).toHaveLength(0);
+});
+
 test("P84-01 save failure rolls back and leaves the Picker usable", async ({ page }) => {
   const fixture = createPublicFixture();
   fixture.config.today.items = [];

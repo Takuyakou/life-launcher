@@ -44,7 +44,7 @@ test("P84 NextStep editor defaults to Wishlist and picks only same-project items
   await card.getByRole("button", { name: "次の一手を設定", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "次の一手を設定" });
   const modes = dialog.getByRole("tab");
-  await expect(modes).toHaveText(["やりたいことから選ぶ", "＋ 新しく入力"]);
+  await expect(modes).toHaveText(["＋ やりたいことから選ぶ", "＋ 新しく入力"]);
   await expect(modes.nth(0)).toHaveAttribute("aria-selected", "true");
   await expect(modes.nth(1)).toHaveAttribute("aria-selected", "false");
   await expect(dialog.getByLabel("行動")).toHaveCount(0);
