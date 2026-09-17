@@ -235,7 +235,8 @@ Main Window
 
 ### 登録元一覧の件数表示
 
-- 次の一手はProjectを高さ約120pxのcompact cardとして、広幅3列・中幅2列・狭幅1列で表示する。左上のProject名と本文はToday3と同じ文字階層にし、本文左端はProject色dotの中心線へ揃える。操作menuを右上、設定・変更操作を右下へ揃え、D&D順序変更と右クリック操作を維持する。未設定本文は「まだ次の一手がありません」とし、Project色の薄い破線と背景Tintで囲む。
+- 次の一手はProjectを高さ112pxのcompact cardとして、広幅3列・中幅2列・狭幅1列で表示する。左上のProject名と本文はToday3と同じ文字階層にし、本文左端はProject色dotの中心線へ揃える。操作menuを右上、設定・変更操作を右下へ揃え、未設定本文と設定buttonが重ならない通常flowを維持する。D&D順序変更と右クリック操作を維持し、未設定本文は「まだ次の一手がありません」としてProject色の薄い破線と背景Tintで囲む。
+- Projectが0件のときは「プロジェクトを設定しましょう」、補足、黄色の「＋ プロジェクトを設定」をToday3と同じ空状態grammarで表示し、Project追加dialogを開く。
 - 次の一手は初期6件まで表示し、7件以上では `＋ 残りN件を表示` で全件を展開し、`− 折りたたむ` で6件へ戻す。専用ページ送りは設けず、展開だけではconfigを保存しない。
 - やりたいことはプロジェクトグループごとに既存の件数規則を適用する。見出し件数と保存対象は常に全件で、展開・ページ移動だけではconfigを保存しない。Today Pickerは登録元の保存順を変更しない。
 - 追加、編集、削除、完了、並べ替え後もstable IDを基準に展開状態を保ち、可能な限りフォーカスを維持する。
@@ -244,7 +245,7 @@ Main Window
 
 - 当日に取り組む項目は最大3件。
 - 見出しの隣に `N件`、`完了数 / 現在件数 完了` の順で表示する。完了表示は全件完了時だけ緑にする。
-- 見出し、件数、完了数、説明「今日やると決めた、今進める3つです。」は開閉しない共通section bar内へ置き、各情報が密着しない間隔を保つ。
+- 見出し、件数、完了数、説明「今日やると決めたもの。タイマーから開始します。」は開閉しない共通section bar内へ置く。見出しは他section barと同じサイズ・weight、件数はprimary colorとreadableなweightを使い、各情報が密着しない間隔を保つ。
 - Today3が0件のときは「今日やるものを選びましょう」と「＋ 今日やるものを選ぶ」を表示する。1〜2件ではカードと同じgrid内の空き枠に同じ追加入口を表示し、3件時は表示しない。
 - 3件時は横3列を保ち、常設の開始操作を収めながら過剰な高さと余白を持たないcompact cardで表示する。
 - 3件制限を解除する設定や回避経路は持たない。
@@ -312,7 +313,7 @@ Main Window
 
 - canonicalはNextStep(Project.id) / Wishlist(stable inbox.id)。Project NextStepの`sourceKey`は`project:{id}`を維持し、同じProject内の世代はoptionalな`generationId`で区別する。Today3右クリック「編集」は元editorを開く。曖昧な旧aliasや元データなしは編集不可。
 - 未完了Today3が参照するcanonical sourceはSource Lock状態にする。NextStepは同一Projectかつ同一generation、Wishlistは同一stable IDだけを対象とし、本文一致ではロックしない。Today3が完了するか採用解除されると即座に解除する。
-- Source Lock中は登録元に鍵と「今日の3件で使用中」を表示し、登録元からの編集、完了、削除、昇格、置換、未設定化、領域間D&DをUIとhandlerの両方で拒否する。未設定NextStepや別generation、別IDのWishlistはロックしない。
+- Source Lock中のNextStepはProject名、鍵、緑の「✓ 今日の3件」を同じ行へ順に表示し、カード右下には重複した使用中文字を置かない。登録元からの編集、完了、削除、昇格、置換、未設定化、領域間D&DをUIとhandlerの両方で拒否する。未設定NextStepや別generation、別IDのWishlistはロックしない。
 - Source Lock中でもToday3カードの「編集」から開いた元editorだけは保存できる。この経路は元sourceと一致する現在のToday3 snapshotを1回のconfig保存で同時更新し、Timer実行中・一時停止中・確認中の既存guardは迂回しない。
 - 明示保存時だけ、generationが一致するToday3へtext/trigger/projectId/buttonIds/instructionPath/instructionOpenOnStart/defaultTimerMinutes/shortTimerMinutesを再snapshotする。解除した任意値は残さない。[詳細matrix](../phase7.1/00-field-sync-matrix.md)。
 - 現在のToday3のsourceKey、done、配列順、個数、date、勝利条件は保持する。完了済みの現在カードもdoneを維持して更新し、Session/今日の実行/sourceCompletionsは書き換えない。部分補充なし。
@@ -327,7 +328,7 @@ Main Window
 - 今やる一手、Today3、NextStep cardはhover / keyboard focusで黄色の境界を共有する。今やる一手の切替表示は「他の一手」とし、計測buttonにも短時間・通常開始と同じ下端accent feedbackを適用する。
 - このセクションには短時間・通常タイマー、完了チェック、常設編集ボタン、常設「今日へ」ボタンを置かない。
 - 今日の3件への採用はToday3内のPicker、またはNextStep cardからToday3へのD&D/「＋ 今日へ」で行う。現在NextStepの`generationId`をToday snapshotの`sourceGenerationId`へcopyし、元のプロジェクトを残す。
-- NextStep専用フォームは対象Project、次の一手、始めるきっかけ、開始環境、手順書、短時間/通常Timerを表示する。Project文脈から開いた場合は対象Projectを固定する。
+- NextStep専用フォームは対象Project、次の一手、始めるきっかけ、開始環境、手順書、短時間/通常Timerを表示する。Project文脈から開いた場合は対象Projectを固定する。「やりたいことから選ぶ」は初期選択かつ黄色、「＋ 新しく入力」の選択色は緑を維持する。
 - 新規設定・置換・Wishlist昇格はstableな新しいgenerationを作り、既存NextStepの編集はgenerationを保持する。完了、再snapshot、直接Do NowからTodayへの対応付けは同じgenerationだけを対象とする。両field欠落はlegacy同世代として扱う。
 - 行はD&Dで並べ替えでき、ゴーストと挿入位置を区別する。設定済みNextStepを「やりたいこと」へdropすると、本文とProjectだけを新しいstable IDのWishlistへ戻し、そのProjectのNextStepを未設定にする。開始環境、手順書、Timer等の実行設定はWishlistへ持ち込まない。
 - Wishlist項目をNextStep cardへdropすると、未設定cardではそのProjectの次の一手に設定し、設定済みcardでは置き換える。置換前の次の一手は本文とProjectだけをWishlistへ戻す。drag開始直後からNextStep領域を黄色で誘導し、「ここにドロップして次の一手を設定する」と表示する。保存は1回で行い、Today3、Session、完了履歴を変更せず、失敗時は全変更をrollbackする。
@@ -341,6 +342,7 @@ Main Window
 
 - あとで取り組む候補の置き場で、初期状態は折りたたむ。
 - 見出し補足は「他にやりたいこと。今日やるものは『今日の3件』から選べます。」。
+- Wishlistが0件のときは「やりたいことを設定しましょう」、補足、黄色の「＋ やりたいことを追加する」をToday3と同じ空状態grammarで表示し、追加dialogを開く。
 - 各項目は後方互換な安定IDを持つ。旧データで欠けているIDは読み込み時に一度だけ補完して保存する。
 - 小さな追加ボタンと件数は見出し枠内に置く。
 - 展開本文には常設の追加行を置かない。見出しの追加ボタンから、本文と任意のProject所属を登録する小型ダイアログを開く。
@@ -624,6 +626,7 @@ URLはWindowsの既定ブラウザで開き、登録ごとのブラウザ指定�
 - ZIPを選択して復元し、復元前に現在データを退避する。
 - ZIPの名前、エントリー、サイズ、圧縮形式、チェックサムを検証する。
 - 設定フッターは左に緑の「保存」、右に控えめな赤の「キャンセル」を置く。保存可否と未保存確認の既存契約は維持する。
+- 手順書、バックアップ、メンテナンス内の黄色actionと灰色neutral actionは、hover / keyboard focus時に緑を使わず黄色の境界・背景・文字へ統一する。
 - メンテナンスは「データ・フォルダ」「表示・キャッシュ」「手順書」「初期化」に分類する。
 - 「データ・フォルダ」から今日の活動ログをコピーし、configフォルダとバックアップフォルダを開ける。
 - 「表示・キャッシュ」からアイコンキャッシュ、ミニウィンドウ位置、手順書ウィンドウ位置を管理する。

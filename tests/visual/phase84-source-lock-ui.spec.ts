@@ -18,7 +18,12 @@ test("unfinished Today3 locks its current NextStep source and removal unlocks it
 
   const card = page.locator('.nextStepCard[data-project-id="sample-learning"]');
   await expect(card.locator(".sourceLockBadge")).toHaveCount(1);
-  await expect(card.locator(".nextStepLockedStatus")).toHaveText("今日の3件で使用中");
+  await expect(card.locator(".nextStepTodayStatus")).toHaveText("✓ 今日の3件");
+  const lockBox = await card.locator(".sourceLockBadge").boundingBox();
+  const statusBox = await card.locator(".nextStepTodayStatus").boundingBox();
+  expect(lockBox && statusBox).toBeTruthy();
+  expect(statusBox!.x).toBeGreaterThan(lockBox!.x + lockBox!.width - 1);
+  await expect(card.locator(".nextStepLockedStatus")).toHaveCount(0);
   await expect(card.getByRole("button", { name: "今日へ" })).toHaveCount(0);
   await expect(card.getByRole("button", { name: "変更", exact: true })).toHaveCount(0);
 
@@ -30,6 +35,7 @@ test("unfinished Today3 locks its current NextStep source and removal unlocks it
 
   await page.locator(".todayRow").first().locator(".todayRemoveButton").click();
   await expect(card.locator(".sourceLockBadge")).toHaveCount(0);
+  await expect(card.locator(".nextStepTodayStatus")).toHaveCount(0);
   await expect(card.getByRole("button", { name: "今日へ" })).toBeVisible();
   await expect(card.getByRole("button", { name: "変更", exact: true })).toBeVisible();
 });

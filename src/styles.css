@@ -6650,12 +6650,13 @@ input[type="number"]::-webkit-inner-spin-button {
   color: #ffb4ad;
 }
 
-.settingsButton--neutral:hover {
-  border-color: var(--muted);
-}
-
-.settingsButton--warning:hover {
-  border-color: var(--accent-strong);
+.secondaryButton.settingsButton--neutral:hover:not(:disabled),
+.secondaryButton.settingsButton--neutral:focus-visible,
+.secondaryButton.settingsButton--warning:hover:not(:disabled),
+.secondaryButton.settingsButton--warning:focus-visible {
+  border-color: var(--accent);
+  background: rgba(231, 185, 77, 0.14);
+  color: var(--accent-strong);
 }
 
 .settingsButton--danger:hover {
@@ -8006,8 +8007,9 @@ input[type="number"]::-webkit-inner-spin-button {
 .todaySectionBar h2 {
   margin: 0;
   color: var(--text);
-  font-size: var(--dashboard-font-heading);
-  font-weight: 850;
+  font-size: var(--dashboard-font-section);
+  font-weight: 650;
+  line-height: 1.35;
 }
 
 .todaySectionCount,
@@ -8016,7 +8018,12 @@ input[type="number"]::-webkit-inner-spin-button {
   font-size: var(--dashboard-font-meta);
 }
 
-.todaySectionCount,
+.todaySectionCount {
+  color: var(--text);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
 .todayCompletionSummary {
   color: var(--text-muted-readable);
   font-weight: 700;
@@ -8606,6 +8613,44 @@ input[type="number"]::-webkit-inner-spin-button {
   background: var(--surface-strong);
 }
 
+.sectionEmptyState {
+  min-height: 124px;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  background: var(--surface);
+}
+
+.sectionEmptyStateContent {
+  width: min(520px, 100%);
+  display: grid;
+  justify-items: start;
+  gap: 5px;
+  margin-inline-start: 14px;
+}
+
+.sectionEmptyStateContent > strong {
+  font-size: var(--dashboard-font-action);
+}
+
+.sectionEmptyStateContent > span {
+  color: var(--text-muted-readable);
+  font-size: var(--dashboard-font-meta);
+}
+
+.sectionEmptyStateContent > button {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 7px;
+  padding-inline: 12px;
+  font-size: var(--dashboard-font-meta);
+  font-weight: 700;
+}
+
 .todayPickerEntry {
   width: 100%;
   min-height: 154px;
@@ -9192,7 +9237,8 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 @media (max-width: 620px) {
-  .todayEmptyStateContent {
+  .todayEmptyStateContent,
+  .sectionEmptyStateContent {
     margin-inline-start: 2px;
   }
 
@@ -9713,8 +9759,8 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .nextStepCard.nextStepRow.sourceListRow {
   position: relative;
-  height: 120px;
-  min-height: 120px;
+  height: 112px;
+  min-height: 112px;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -9820,12 +9866,20 @@ input[type="number"]::-webkit-inner-spin-button {
   font-weight: 700;
 }
 
-.nextStepLockedStatus {
-  align-self: flex-end;
-  margin-top: auto;
-  color: var(--text-muted-readable);
+.nextStepTodayStatus {
+  min-height: 22px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(117, 196, 143, 0.34);
+  border-radius: 999px;
+  padding-inline: 7px;
+  background: rgba(117, 196, 143, 0.07);
+  color: var(--good);
   font-size: var(--dashboard-font-meta);
-  font-weight: 650;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .nextStepCard .nextStepActionRegion {
@@ -9984,6 +10038,17 @@ input[type="number"]::-webkit-inner-spin-button {
   --main-action-active-border: var(--control-positive-active-border);
   --main-action-color: var(--good);
   --main-action-hover-color: var(--good);
+}
+
+.nextStepDecisionModeButton--wishlistActive {
+  --main-action-bg: rgba(231, 185, 77, 0.1);
+  --main-action-hover-bg: rgba(231, 185, 77, 0.18);
+  --main-action-active-bg: rgba(231, 185, 77, 0.08);
+  --main-action-border: rgba(231, 185, 77, 0.58);
+  --main-action-hover-border: var(--accent);
+  --main-action-active-border: rgba(231, 185, 77, 0.7);
+  --main-action-color: var(--accent-strong);
+  --main-action-hover-color: var(--accent-strong);
 }
 
 .nextStepDecisionPanel {

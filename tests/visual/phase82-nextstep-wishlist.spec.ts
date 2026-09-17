@@ -675,7 +675,7 @@ test("v1.3 NextStep uses a compact 3x2 grid with aligned actions and six-item ex
   ).toBeLessThan(1);
   const configuredCard = page.locator(".nextStepCard", { hasText: template.nextStep!.text });
   const cardBox = (await configuredCard.boundingBox())!;
-  expect(cardBox.height).toBe(120);
+  expect(cardBox.height).toBe(112);
   const projectBox = (await configuredCard.locator(".nextStepProjectRegion").boundingBox())!;
   const taskBox = (await configuredCard.locator(".nextStepActionRegion p").boundingBox())!;
   const projectDotBox = (await configuredCard.locator(".projectIdentityDot").boundingBox())!;
