@@ -322,6 +322,7 @@ test("NextStep and Wishlist use compact non-destructive Today actions", async ({
   const builderRows = page.locator(".todayPickerRow");
   await builderRows.nth(0).getByRole("button", { name: "今日へ" }).click();
   await builderRows.nth(1).getByRole("button", { name: "今日へ" }).click();
+  await page.getByRole("tab", { name: /やりたいこと/ }).click();
   await builderRows.nth(2).getByRole("button", { name: "今日へ" }).click();
   const config = await currentConfig(page);
   expect(config.today.items).toHaveLength(3);
@@ -347,6 +348,7 @@ test("same-text Wishlist items keep separate stable identities", async ({ page }
   await prepare(page, fixture);
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
+  await page.getByRole("tab", { name: /やりたいこと/ }).click();
   const rows = page.locator(".todayPickerRow");
   await expect(rows).toHaveCount(2);
   await rows.nth(0).getByRole("button", { name: "今日へ" }).click();
@@ -380,6 +382,7 @@ test("legacy same-text Wishlist selection maps to only the first stable item", a
   await prepare(page, fixture);
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
+  await page.getByRole("tab", { name: /やりたいこと/ }).click();
   const rows = page.locator(".todayPickerRow");
   await expect(rows.nth(0).locator(".todayPickerSelectedStatus")).toHaveText("✓ 選択済み");
   await expect(rows.nth(1).getByRole("button", { name: "今日へ" })).toBeEnabled();

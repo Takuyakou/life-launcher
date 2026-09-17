@@ -51,7 +51,10 @@ for (const count of [0, 1, 2]) {
     await entry.click();
     const dialog = picker(page);
     await expect(dialog).toBeVisible();
-    await expect(dialog.locator("[data-today-picker-section]")).toHaveCount(3);
+    await expect(dialog.locator("[data-today-picker-section]")).toHaveCount(2);
+    await expect(dialog.locator(".todayPickerSlot")).toHaveCount(3);
+    await expect(dialog.locator(".todayPickerSlot--selected")).toHaveCount(count);
+    await expect(dialog.locator(".todayPickerSlot--empty")).toHaveCount(3 - count);
     await dialog.screenshot({ path: `dist/visual-qa/phase84/picker-${count}-of-3.png` });
   });
 }
@@ -107,13 +110,12 @@ test("P84-01 Picker shows NextStep and Wishlist candidates and ignores legacy di
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const dialog = picker(page);
-  await expect(
-    dialog.locator('[data-today-picker-section="next-step"] .todayPickerSectionHeader'),
-  ).toContainText("次の一手");
-  await expect(
-    dialog.locator('[data-today-picker-section="wishlist"] .todayPickerSectionHeader'),
-  ).toContainText("やりたいこと");
+  await expect(dialog.getByRole("tab", { name: /次の一手/ })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
   await expect(dialog).toContainText("5分だけ体を動かす");
+  await dialog.getByRole("tab", { name: /やりたいこと/ }).click();
   await expect(dialog).toContainText("あとで確認するサンプル");
 });
 
@@ -131,6 +133,7 @@ test("P84 Picker groups Wishlist by project, starts expanded, and uses a danger 
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const dialog = picker(page);
+  await dialog.getByRole("tab", { name: /やりたいこと/ }).click();
   const addButton = dialog.locator(".todayPickerAddButton").first();
   const addButtonStyle = await addButton.evaluate((node) => {
     const styles = getComputedStyle(node);
@@ -277,22 +280,33 @@ test("P84 Picker aligns project, task, and action columns with readable long con
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const dialog = picker(page);
-  const structuredTaskXs = await dialog
-    .locator(
-      '[data-today-picker-section="selected"] .todayPickerCopy strong, [data-today-picker-section="next-step"] .todayPickerCopy strong',
-    )
+  const nextStepTaskXs = await dialog
+    .locator('[data-today-picker-section="next-step"] .todayPickerCopy strong')
     .evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().x));
+  expect(Math.max(...nextStepTaskXs) - Math.min(...nextStepTaskXs)).toBeLessThanOrEqual(1);
+  const nextStepActionRights = await dialog
+    .locator('[data-today-picker-section="next-step"] .todayPickerRow > button')
+    .evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().right));
+  expect(Math.max(...nextStepActionRights) - Math.min(...nextStepActionRights)).toBeLessThanOrEqual(
+    1,
+  );
+
+  await dialog.getByRole("tab", { name: /やりたいこと/ }).click();
   const wishlistTaskXs = await dialog
     .locator(".todayPickerRow--groupedWishlist .todayPickerCopy strong")
     .evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().x));
-  expect(Math.max(...structuredTaskXs) - Math.min(...structuredTaskXs)).toBeLessThanOrEqual(1);
   expect(Math.max(...wishlistTaskXs) - Math.min(...wishlistTaskXs)).toBeLessThanOrEqual(1);
-  expect(wishlistTaskXs[0]).toBeLessThan(structuredTaskXs[0] - 80);
-  const actionRights = await dialog
-    .locator(".todayPickerRow > button, .todayPickerSelectedStatus")
+  expect(wishlistTaskXs[0]).toBeLessThan(nextStepTaskXs[0] - 80);
+  const wishlistActionRights = await dialog
+    .locator(".todayPickerRow--groupedWishlist > button")
     .evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().right));
-  expect(Math.max(...actionRights) - Math.min(...actionRights)).toBeLessThanOrEqual(1);
-  await expect(dialog.locator(".todayPickerRow").first()).toHaveCSS("min-height", "54px");
+  expect(Math.max(...wishlistActionRights) - Math.min(...wishlistActionRights)).toBeLessThanOrEqual(
+    1,
+  );
+  await expect(dialog.locator(".todayPickerRow--groupedWishlist").first()).toHaveCSS(
+    "min-height",
+    "54px",
+  );
   await dialog.screenshot({ path: "dist/visual-qa/phase84/picker-aligned-1280.png" });
 });
 
@@ -303,12 +317,14 @@ test("P84 Picker selection preserves collapsed Wishlist groups", async ({ page }
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const dialog = picker(page);
+  await dialog.getByRole("tab", { name: /やりたいこと/ }).click();
   const projectHeader = dialog
     .locator('[data-today-picker-wishlist-group="project:sample-learning"]')
     .locator(".todayPickerWishlistGroupHeader");
   await projectHeader.click();
   await expect(projectHeader).toHaveAttribute("aria-expanded", "false");
 
+  await dialog.getByRole("tab", { name: /次の一手/ }).click();
   const row = dialog.locator(".todayPickerRow", { hasText: "5分だけ体を動かす" });
   await row.getByRole("button", { name: "今日へ" }).click();
   await expect(
@@ -318,6 +334,7 @@ test("P84 Picker selection preserves collapsed Wishlist groups", async ({ page }
       })
       .getByText("✓ 選択済み"),
   ).toBeVisible();
+  await dialog.getByRole("tab", { name: /やりたいこと/ }).click();
   await expect(projectHeader).toHaveAttribute("aria-expanded", "false");
   expect((await currentConfig(page)).today.items).toHaveLength(1);
 });
@@ -349,20 +366,21 @@ test("P84 Picker separates selected items from NextStep and Wishlist candidates"
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const dialog = picker(page);
   const sections = dialog.locator("[data-today-picker-section]");
-  await expect(sections).toHaveCount(3);
+  await expect(sections).toHaveCount(2);
   expect(
     await sections.evaluateAll((nodes) =>
       nodes.map((node) => node.getAttribute("data-today-picker-section")),
     ),
-  ).toEqual(["selected", "next-step", "wishlist"]);
+  ).toEqual(["selected", "next-step"]);
 
   const selected = dialog.locator('[data-today-picker-section="selected"]');
   const nextStep = dialog.locator('[data-today-picker-section="next-step"]');
-  const wishlist = dialog.locator('[data-today-picker-section="wishlist"]');
   await expect(selected).toContainText("資料を1ページ読む");
   await expect(selected.getByText("✓ 選択済み")).toHaveCount(2);
   await expect(nextStep).not.toContainText("資料を1ページ読む");
   await expect(nextStep).toContainText("5分だけ体を動かす");
+  await dialog.getByRole("tab", { name: /やりたいこと/ }).click();
+  const wishlist = dialog.locator('[data-today-picker-section="wishlist"]');
   await expect(wishlist).toContainText("あとで確認するサンプル");
 });
 
@@ -382,6 +400,7 @@ test("P84 Picker moves a selected Wishlist item only to Today3", async ({ page }
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const dialog = picker(page);
   const selected = dialog.locator('[data-today-picker-section="selected"]');
+  await dialog.getByRole("tab", { name: /やりたいこと/ }).click();
   const wishlist = dialog.locator('[data-today-picker-section="wishlist"]');
   await expect(selected).toContainText(wishlistItem.text);
   await expect(selected.getByText("✓ 選択済み")).toHaveCount(1);
@@ -404,9 +423,9 @@ test("P84 Picker shows a clear empty NextStep section when every NextStep is sel
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const nextStep = picker(page).locator('[data-today-picker-section="next-step"]');
   await expect(nextStep.locator(".todayPickerRow")).toHaveCount(0);
-  await expect(nextStep).toContainText("候補はありません");
+  await expect(nextStep).toContainText("追加できる次の一手はありません");
 });
-test("P84 v3 Picker section accordions default open, preserve state, and reset on reopen", async ({
+test("P84 Picker source tabs default to NextStep, support arrows, and reset on reopen", async ({
   page,
 }) => {
   const fixture = createPublicFixture();
@@ -416,41 +435,32 @@ test("P84 v3 Picker section accordions default open, preserve state, and reset o
   const entry = page.getByRole("button", { name: "今日やるものを選ぶ" });
   await entry.click();
   let dialog = picker(page);
-  const nextStep = dialog.locator('[data-today-picker-section="next-step"]');
-  const wishlist = dialog.locator('[data-today-picker-section="wishlist"]');
-  const nextHeader = nextStep.locator(".todayPickerSectionHeader");
-  const wishlistHeader = wishlist.locator(".todayPickerSectionHeader");
+  const nextTab = dialog.getByRole("tab", { name: /次の一手/ });
+  const wishlistTab = dialog.getByRole("tab", { name: /やりたいこと/ });
+  await expect(nextTab).toHaveAttribute("aria-selected", "true");
+  await expect(dialog.locator('[data-today-picker-section="next-step"]')).toBeVisible();
+  await expect(dialog.locator('[data-today-picker-section="wishlist"]')).toHaveCount(0);
 
-  await expect(nextHeader).toHaveAttribute("aria-expanded", "true");
-  await expect(wishlistHeader).toHaveAttribute("aria-expanded", "true");
-  await wishlistHeader.click();
-  await expect(wishlistHeader).toHaveAttribute("aria-expanded", "false");
-  await expect(wishlist.locator(".todayPickerWishlistGroups")).toHaveCount(0);
-
-  await nextStep
-    .locator(".todayPickerRow", { hasText: "5分だけ体を動かす" })
-    .getByRole("button", { name: "今日へ" })
-    .click();
-  await expect(wishlistHeader).toHaveAttribute("aria-expanded", "false");
-
-  await nextHeader.click();
-  await expect(nextHeader).toHaveAttribute("aria-expanded", "false");
-  await nextHeader.click();
-  await expect(nextHeader).toHaveAttribute("aria-expanded", "true");
-  await dialog.screenshot({ path: "dist/visual-qa/phase84/picker-v3-wishlist-collapsed.png" });
+  await nextTab.focus();
+  await nextTab.press("ArrowRight");
+  await expect(wishlistTab).toBeFocused();
+  await expect(wishlistTab).toHaveAttribute("aria-selected", "true");
+  await expect(dialog.locator('[data-today-picker-section="next-step"]')).toHaveCount(0);
+  await expect(dialog.locator('[data-today-picker-section="wishlist"]')).toBeVisible();
+  await wishlistTab.press("ArrowLeft");
+  await expect(nextTab).toBeFocused();
+  await expect(nextTab).toHaveAttribute("aria-selected", "true");
 
   await dialog.getByRole("button", { name: "今日やるものを選ぶを閉じる" }).click();
   await entry.click();
   dialog = picker(page);
-  await expect(
-    dialog.locator('[data-today-picker-section="next-step"] .todayPickerSectionHeader'),
-  ).toHaveAttribute("aria-expanded", "true");
-  await expect(
-    dialog.locator('[data-today-picker-section="wishlist"] .todayPickerSectionHeader'),
-  ).toHaveAttribute("aria-expanded", "true");
+  await expect(dialog.getByRole("tab", { name: /次の一手/ })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
 });
 
-test("P84 v3 selected rows use project identity and a non-interactive neutral status row", async ({
+test("P84 destination slots separate project identity, task, and selected status", async ({
   page,
 }) => {
   const fixture = createPublicFixture();
@@ -462,16 +472,20 @@ test("P84 v3 selected rows use project identity and a non-interactive neutral st
   const row = selected.locator(".todayPickerRow").first();
   const status = row.locator(".todayPickerSelectedStatus");
   await expect(dialog.locator(".modalTitleRow .eyebrow")).toHaveText("Today");
-  await expect(dialog.locator(".todayPickerIntro")).toHaveCSS("font-size", "13px");
+  await expect(dialog.locator(".modalTitleRow .eyebrow")).toHaveCSS(
+    "color",
+    "rgb(184, 176, 160)",
+  );
+  await expect(dialog.locator(".todayPickerIntro")).toHaveCSS("font-size", "12px");
   await expect(row.locator(".projectIdentityDot")).toHaveCount(1);
-  await expect(row).toHaveCSS("border-left-width", "0px");
+  await expect(row).toHaveCSS("border-left-width", "1px");
   expect(
     await row.evaluate((node) => Number.parseFloat(getComputedStyle(node).paddingLeft)),
-  ).toBeGreaterThanOrEqual(12);
+  ).toBeGreaterThanOrEqual(8);
   await expect(status).toHaveText("✓ 選択済み");
-  await expect(status).toHaveCSS("font-size", "11px");
+  await expect(status).toHaveCSS("font-size", "10px");
   expect(await status.evaluate((node) => node.tagName)).toBe("SPAN");
-  await expect(status).toHaveCSS("border-radius", "999px");
+  await expect(status).toHaveCSS("border-top-width", "0px");
 });
 
 test("P84 add dialogs expose a consistent top-right close action", async ({ page }) => {

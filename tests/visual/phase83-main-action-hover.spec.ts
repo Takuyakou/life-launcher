@@ -284,7 +284,7 @@ test("P83-03 gold create hover and active keep their dimensions", async ({ page 
   await page.keyboard.press("Escape");
 });
 
-test("P83-03 Do Now alternate is an unframed copy action", async ({ page }) => {
+test("P84 Do Now alternate uses the top toolbar hover grammar", async ({ page }) => {
   await prepare(page, createPublicFixture());
   const alternate = page.getByRole("button", { name: "別の候補" });
   await expect(page.locator(".doNowCopy").getByRole("button", { name: "別の候補" })).toBeVisible();
@@ -296,12 +296,14 @@ test("P83-03 Do Now alternate is an unframed copy action", async ({ page }) => {
     backgroundColor: "rgba(0, 0, 0, 0)",
     color: "rgb(184, 176, 160)",
   });
-  await expect(alternate).toHaveCSS("border-top-width", "0px");
+  await expect(alternate).toHaveCSS("border-top-width", "1px");
+  await expect(alternate).toHaveCSS("border-top-color", "rgba(0, 0, 0, 0)");
   await alternate.hover();
   await page.waitForTimeout(140);
   const hovered = await readStyle(alternate);
-  expect(hovered.backgroundColor).toBe("rgba(0, 0, 0, 0)");
-  expect(hovered.color).toBe("rgb(244, 240, 232)");
+  expect(hovered.backgroundColor).toBe("rgb(43, 41, 34)");
+  expect(hovered.borderColor).toBe("rgba(231, 185, 77, 0.48)");
+  expect(hovered.color).toBe("rgb(255, 206, 91)");
   expect(hovered.transform).toBe("none");
   expect(hovered.width).toBe(initial.width);
   expect(hovered.height).toBe(initial.height);
@@ -368,6 +370,28 @@ test.skip("P83-03 excluded controls retain their weak hover geometry and colors"
   const contextRow = page.locator(".contextMenu button").first();
   await expect(contextRow).toBeVisible();
   await expectExcludedHover(page, contextRow);
+});
+
+test("P84 Today3 cards use the same clear hover surface and lift as NextStep cards", async ({
+  page,
+}) => {
+  await prepare(page);
+  const todayCard = page.locator(".todayRow").first();
+  const nextStepCard = page.locator(".nextStepCard").first();
+  const todayInitial = await readStyle(todayCard);
+
+  await todayCard.hover();
+  await page.waitForTimeout(140);
+  const todayHovered = await readStyle(todayCard);
+  await nextStepCard.hover();
+  await page.waitForTimeout(140);
+  const nextStepHovered = await readStyle(nextStepCard);
+
+  expect(todayHovered.backgroundColor).toBe(nextStepHovered.backgroundColor);
+  expect(todayHovered.backgroundColor).not.toBe(todayInitial.backgroundColor);
+  expect(todayHovered.transform).toBe(nextStepHovered.transform);
+  expect(todayHovered.width).toBe(todayInitial.width);
+  expect(todayHovered.height).toBe(todayInitial.height);
 });
 
 test("P83-03 timer controls and NextStep cards keep their established dimensions", async ({
