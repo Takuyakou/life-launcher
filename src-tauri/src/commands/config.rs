@@ -541,6 +541,11 @@ pub fn restore_backup(
         .config_write_lock
         .lock()
         .map_err(|_| "failed to lock config writes".to_string())?;
+    *state
+        .suppress_reload_until
+        .lock()
+        .map_err(|_| "failed to lock reload state".to_string())? =
+        Some(Instant::now() + Duration::from_secs(5));
     restore_backup_from_path(&PathBuf::from(zip_path))?;
     load_config_internal(&app)
 }

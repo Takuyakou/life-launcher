@@ -137,8 +137,13 @@ pub fn start_config_watcher(app: AppHandle) -> Result<(), String> {
                 continue;
             }
 
-            let _ = apply_dashboard_settings(&app);
-            let _ = app.emit("config-changed", ());
+            let main_thread_app = app.clone();
+            if let Err(error) = app.run_on_main_thread(move || {
+                let _ = apply_dashboard_settings(&main_thread_app);
+                let _ = main_thread_app.emit("config-changed", ());
+            }) {
+                eprintln!("failed to dispatch config reload: {error}");
+            }
         }
     });
 

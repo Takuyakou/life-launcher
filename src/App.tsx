@@ -4534,29 +4534,60 @@ function DashboardApp() {
   };
 
   const confirmBackupRestore = async (zipPath: string) => {
+    let shortcutsSuspended = false;
+    let response: Awaited<ReturnType<typeof restoreBackup>>;
     try {
-      const response = await restoreBackup(zipPath);
-      configSaveBlockedRef.current = response.saveBlocked;
-      setConfig(response.config);
-      setMorningVictorySuggestion(response.morningVictorySuggestion ?? null);
-      setBackupPath(response.backupPath);
-      setBanner(response.error ?? null);
-      setActiveTimer(null);
-      setCompletionPrompt(null);
+      await suspendDashboardShortcuts();
+      shortcutsSuspended = true;
+      response = await restoreBackup(zipPath);
+    } catch (error) {
+      if (shortcutsSuspended) {
+        await resumeDashboardShortcuts().catch(() => undefined);
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      showToast("error", `復元できません: ${message}`);
+      return false;
+    }
+
+    configSaveBlockedRef.current = response.saveBlocked;
+    setConfig(response.config);
+    setMorningVictorySuggestion(response.morningVictorySuggestion ?? null);
+    setBackupPath(response.backupPath);
+    setBanner(response.error ?? null);
+    setActiveTimer(null);
+    setCompletionPrompt(null);
+
+    let settingsWarning: string | null = null;
+    try {
       await reapplyDashboardSettings();
+      lastSettingsApplyErrorRef.current = null;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      lastSettingsApplyErrorRef.current = message;
+      settingsWarning = `ショートカットを登録できません: ${message}`;
+    }
+
+    let refreshWarning: string | null = null;
+    try {
       await refreshSessions();
       await refreshTodayActivity();
       if (activeView === "records") {
         await refreshRecords();
       }
-      setSettingsDraft(null);
-      showToast("ok", "バックアップから復元しました");
-      return true;
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      showToast("error", `復元できません: ${message}`);
-      return false;
+      refreshWarning = `表示を更新できません: ${error instanceof Error ? error.message : String(error)}`;
     }
+
+    setSettingsDraft(null);
+    const warnings = [settingsWarning, refreshWarning].filter(
+      (warning): warning is string => warning !== null,
+    );
+    if (warnings.length > 0) {
+      showToast("warn", `バックアップから復元しましたが、${warnings.join(" / ")}`);
+    } else {
+      showToast("ok", "バックアップから復元しました");
+    }
+    return true;
   };
 
   const runActions = useCallback(

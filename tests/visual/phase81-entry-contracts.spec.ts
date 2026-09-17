@@ -10,6 +10,7 @@ type VisualQaControl = {
   currentConfig: () => AppConfig;
   emit: (event: string, payload?: unknown) => void;
   setSaveConfigFailure: (failed: boolean) => void;
+  setReapplyDashboardSettingsFailure: (failed: boolean) => void;
   updateConfig: (config: AppConfig) => void;
   releasePendingConfigSave?: () => void;
   setLoadSaveBlocked?: (blocked: boolean) => void;
@@ -464,4 +465,49 @@ test("Phase 8.1 reload and restore both clear a recovered saveBlocked state", as
   expect((await currentConfig(page)).projects.map((project) => project.name)).toEqual(
     expect.arrayContaining(["再読込後に保存", "復元後に保存"]),
   );
+});
+
+test("backup restore completes and remains retryable when shortcut registration fails", async ({
+  page,
+}) => {
+  await prepare(page);
+  await page.evaluate(() => {
+    const runtime = (window as Window & { __TAURI_INTERNALS__: TauriRuntime }).__TAURI_INTERNALS__;
+    const control = (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: VisualQaControl })
+      .__LIFE_LAUNCHER_VISUAL_QA__;
+    const originalInvoke = runtime.invoke.bind(runtime);
+    runtime.invoke = async (command, args = {}) => {
+      if (command === "select_backup_zip") return "C:\\PublicDemo\\Backups\\restore.zip";
+      if (command === "restore_backup") {
+        control.invokeCalls.push({ command, args });
+        return originalInvoke("load_config", {});
+      }
+      return originalInvoke(command, args);
+    };
+    control.setReapplyDashboardSettingsFailure(true);
+  });
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    await page.getByRole("button", { name: "設定を開く" }).click();
+    const settings = page.getByRole("dialog", { name: "設定" });
+    await settings.getByRole("tab", { name: "バックアップ" }).click();
+    await settings.getByRole("button", { name: "バックアップから復元", exact: true }).click();
+    const confirm = page.getByRole("dialog", { name: "バックアップから復元しますか？" });
+    await confirm.getByRole("button", { name: "復元する" }).click();
+    await expect(confirm).toHaveCount(0);
+    await expect(settings).toHaveCount(0);
+    await expect(page.locator(".toast--warn").last()).toContainText(
+      "バックアップから復元しましたが、ショートカットを登録できません",
+    );
+    await expect(page.locator(".toast--error")).toHaveCount(0);
+  }
+
+  const commands = await page.evaluate(() =>
+    (
+      window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: VisualQaControl }
+    ).__LIFE_LAUNCHER_VISUAL_QA__.invokeCalls.map(({ command }) => command),
+  );
+  expect(commands.filter((command) => command === "restore_backup")).toHaveLength(2);
+  expect(commands.filter((command) => command === "suspend_dashboard_shortcuts")).toHaveLength(2);
+  expect(commands.filter((command) => command === "reapply_dashboard_settings")).toHaveLength(2);
 });
