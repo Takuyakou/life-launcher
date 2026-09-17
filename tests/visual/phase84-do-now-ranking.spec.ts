@@ -97,6 +97,49 @@ test("P84-03 Other Step cycles every ranked candidate without mutating config", 
   expect(await currentConfig(page)).toEqual(before);
 });
 
+test("P84 Do Now hover follows the Project color and does not stick after Other Step", async ({
+  page,
+}) => {
+  const fixture = createPublicFixture();
+  await prepare(page, fixture);
+  const card = page.locator(".doNowContent");
+  const alternate = card.getByRole("button", { name: "他の一手", exact: true });
+
+  await card.hover();
+  await page.waitForTimeout(140);
+  const firstHover = await card.evaluate((node) => {
+    const style = getComputedStyle(node);
+    return { left: style.borderLeftColor, right: style.borderRightColor };
+  });
+  expect(firstHover.right).toBe(firstHover.left);
+
+  await alternate.click();
+  await expect(card.locator(".doNowCopy > strong")).toHaveText(
+    fixture.config.projects[1].nextStep!.text,
+  );
+  await page.mouse.move(1, 1);
+  await page.waitForTimeout(140);
+  const resting = await card.evaluate((node) => {
+    const style = getComputedStyle(node);
+    return {
+      left: style.borderLeftColor,
+      right: style.borderRightColor,
+      transform: style.transform,
+    };
+  });
+  expect(resting.right).not.toBe(resting.left);
+  expect(resting.transform).toBe("none");
+
+  await card.hover();
+  await page.waitForTimeout(140);
+  const secondHover = await card.evaluate((node) => {
+    const style = getComputedStyle(node);
+    return { left: style.borderLeftColor, right: style.borderRightColor };
+  });
+  expect(secondHover.right).toBe(secondHover.left);
+  expect(secondHover.right).not.toBe(firstHover.right);
+});
+
 test("P84-03 empty Do Now guides to NextStep instead of weekly focus", async ({ page }) => {
   const fixture = createPublicFixture();
   fixture.config.projects.forEach((project) => {

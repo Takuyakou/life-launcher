@@ -167,6 +167,22 @@ struct TauriResetPlatform<'a> {
     app: &'a AppHandle,
 }
 
+fn reconcile_autostart_state(
+    enabled: bool,
+    update: impl FnOnce() -> Result<(), String>,
+    read: impl Fn() -> Result<bool, String>,
+) -> Result<(), String> {
+    let update_error = update().err();
+    let actual = read().map_err(|error| format!("failed to verify autostart: {error}"))?;
+    if actual == enabled {
+        return Ok(());
+    }
+    if let Some(error) = update_error {
+        return Err(format!("failed to update autostart: {error}"));
+    }
+    Err("autostart verification failed".to_string())
+}
+
 impl ResetPlatform for TauriResetPlatform<'_> {
     fn autostart_enabled(&self) -> Result<bool, String> {
         #[cfg(desktop)]
@@ -186,19 +202,18 @@ impl ResetPlatform for TauriResetPlatform<'_> {
         #[cfg(desktop)]
         {
             let manager = self.app.autolaunch();
-            if enabled {
-                manager.enable()
-            } else {
-                manager.disable()
-            }
-            .map_err(|error| format!("failed to update autostart: {error}"))?;
-            if manager
-                .is_enabled()
-                .map_err(|error| format!("failed to verify autostart: {error}"))?
-                != enabled
-            {
-                return Err("autostart verification failed".to_string());
-            }
+            reconcile_autostart_state(
+                enabled,
+                || {
+                    if enabled {
+                        manager.enable()
+                    } else {
+                        manager.disable()
+                    }
+                    .map_err(|error| error.to_string())
+                },
+                || manager.is_enabled().map_err(|error| error.to_string()),
+            )?;
         }
         #[cfg(not(desktop))]
         let _ = enabled;
@@ -1042,6 +1057,29 @@ mod tests {
         fn remove_window_state_plugin(&self) -> bool {
             true
         }
+    }
+
+    #[test]
+    fn autostart_reconciliation_accepts_an_idempotent_disable_error() {
+        let result = reconcile_autostart_state(
+            false,
+            || Err("指定されたファイルが見つかりません。 (os error 2)".to_string()),
+            || Ok(false),
+        );
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn autostart_reconciliation_keeps_a_real_state_mismatch_fatal() {
+        let error = reconcile_autostart_state(
+            false,
+            || Err("registry access denied".to_string()),
+            || Ok(true),
+        )
+        .unwrap_err();
+
+        assert_eq!(error, "failed to update autostart: registry access denied");
     }
 
     struct FailAt(&'static str);
