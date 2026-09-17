@@ -1442,6 +1442,7 @@ function firstDroppedUrl(text: string): string | null {
 
 const SHORTCUT_PATTERN =
   /^(?:(?:Ctrl|Alt|Shift|Super|Command)\+)*(?:[A-Za-z0-9]|F(?:[1-9]|1[0-2])|Space)$/i;
+const WINDOWS_RESERVED_SHORTCUTS = ["alt+space", "ctrl+esc", "ctrl+alt+delete"];
 
 function shortcutFromKeyboardEvent(event: globalThis.KeyboardEvent): string | null | undefined {
   if (["Control", "Alt", "Shift", "Meta"].includes(event.key)) return undefined;
@@ -1474,7 +1475,7 @@ function shortcutValidationMessage(value: string, others: string[]): string {
   if (others.some((other) => other.trim().toLowerCase() === clean.toLowerCase())) {
     return "競合しています";
   }
-  if (["ctrl+esc", "ctrl+alt+delete"].includes(clean.toLowerCase())) {
+  if (WINDOWS_RESERVED_SHORTCUTS.includes(clean.toLowerCase())) {
     return "OS予約キーのため登録できません。別のキーを入力してください";
   }
   return "登録済み（保存時に再登録）";
@@ -1498,7 +1499,7 @@ function validateShortcutSettings(draft: SettingsCenterDraft): string | null {
   const invalid = values.find((value) => !SHORTCUT_PATTERN.test(value));
   if (invalid) return `ショートカットの形式を確認してください: ${invalid}`;
   const reserved = values.find((value) =>
-    ["ctrl+esc", "ctrl+alt+delete"].includes(value.toLowerCase()),
+    WINDOWS_RESERVED_SHORTCUTS.includes(value.toLowerCase()),
   );
   return reserved ? `OS予約キーは登録できません。別のキーを入力してください: ${reserved}` : null;
 }
@@ -3131,7 +3132,7 @@ function DashboardApp() {
   }, [buttonIconSources, config, refreshButtonIcon]);
 
   const persistConfig = useCallback(
-    async (nextConfig: AppConfig) => {
+    async (nextConfig: AppConfig, settingsApplyMustSucceed = false) => {
       if (resetInProgressRef.current) return false;
       if (configSaveBlockedRef.current) {
         const message = "設定ファイルに問題があるため、元データを保護して保存を停止しています";
@@ -3144,16 +3145,15 @@ function DashboardApp() {
       const writeGeneration = writeGenerationRef.current;
       configRef.current = safeConfig;
       setConfig(safeConfig);
+      let response: Awaited<ReturnType<typeof saveConfig>>;
       try {
-        const response = await saveConfig(safeConfig);
+        response = await saveConfig(safeConfig);
         if (resetInProgressRef.current || writeGeneration !== writeGenerationRef.current) {
           return false;
         }
         configRef.current = response.config;
         setConfig(response.config);
         setBanner(null);
-        await reapplyDashboardSettings();
-        return true;
       } catch (error) {
         if (resetInProgressRef.current || writeGeneration !== writeGenerationRef.current) {
           return false;
@@ -3166,6 +3166,21 @@ function DashboardApp() {
         setBanner(message);
         showToast("error", `保存できません: ${message}`);
         return false;
+      }
+
+      try {
+        await reapplyDashboardSettings();
+        lastSettingsApplyErrorRef.current = null;
+        return true;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        const warning = `保存しましたが、ショートカットを登録できません: ${message}`;
+        setBanner(warning);
+        if (message !== lastSettingsApplyErrorRef.current) {
+          lastSettingsApplyErrorRef.current = message;
+          showToast("warn", warning);
+        }
+        return !settingsApplyMustSucceed;
       }
     },
     [showToast],
@@ -4478,7 +4493,7 @@ function DashboardApp() {
           backupFolder: settingsDraft.backupFolder.trim() || null,
           backupKeep,
         },
-      });
+      }, true);
       if (!saved) {
         try {
           const restored = await saveConfig(previousConfig);
@@ -10554,22 +10569,25 @@ function DashboardApp() {
                       <h2 id="do-now-title">今やる一手</h2>
                     </div>
                     <div className="doNowEmpty">
-                      <span>
-                        {nextStepSetupProject
-                          ? "次の一手を設定すると、ここに提案されます。"
-                          : "プロジェクトを作り、次の一手を設定すると提案されます。"}
-                      </span>
-                      <button
-                        className="mainActionButton mainActionButton--neutral"
-                        onClick={() =>
-                          nextStepSetupProject
-                            ? openNextStepEditor(nextStepSetupProject)
-                            : openProjectAddDialog()
-                        }
-                        type="button"
-                      >
-                        {nextStepSetupProject ? "次の一手を設定" : "プロジェクトを追加"}
-                      </button>
+                      <div className="doNowEmptyContent">
+                        <strong>
+                          {nextStepSetupProject
+                            ? "次の一手を設定すると、ここに提案されます。"
+                            : "プロジェクトを作り、次の一手を設定すると提案されます。"}
+                        </strong>
+                        <button
+                          className="mainActionButton mainActionButton--gold"
+                          onClick={() =>
+                            nextStepSetupProject
+                              ? openNextStepEditor(nextStepSetupProject)
+                              : openProjectAddDialog()
+                          }
+                          type="button"
+                        >
+                          <UiIcon name="add" size={16} />
+                          {nextStepSetupProject ? "次の一手を設定" : "プロジェクトを追加"}
+                        </button>
+                      </div>
                     </div>
                   </>
                 )}
@@ -11613,7 +11631,13 @@ function DashboardApp() {
                   </div>
                 )}
                 {projectsOpen && (
-                  <div className="nextStepBody">
+                  <div
+                    className={
+                      config.projects.length === 0
+                        ? "nextStepBody nextStepBody--empty"
+                        : "nextStepBody"
+                    }
+                  >
                     {config.projects.length === 0 && (
                       <div className="sectionEmptyState">
                         <div className="sectionEmptyStateContent">

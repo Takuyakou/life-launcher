@@ -81,9 +81,7 @@ test("empty NextStep and Wishlist sections offer direct setup actions", async ({
 
   const projectEmpty = page.locator(".projectsBand .sectionEmptyState");
   await expect(projectEmpty.getByText("プロジェクトを設定しましょう")).toBeVisible();
-  await expect(projectEmpty).toContainText(
-    "取り組みたいことをまとめると、次の一手を決められます",
-  );
+  await expect(projectEmpty).toContainText("取り組みたいことをまとめると、次の一手を決められます");
   const projectAction = projectEmpty.getByRole("button", { name: "プロジェクトを設定" });
   await expect(projectAction).toHaveClass(/mainActionButton--gold/);
   await projectAction.click();
@@ -97,19 +95,83 @@ test("empty NextStep and Wishlist sections offer direct setup actions", async ({
   }
   const wishlistEmpty = page.locator(".inboxBand .sectionEmptyState");
   await expect(wishlistEmpty.getByText("やりたいことを設定しましょう")).toBeVisible();
-  await expect(wishlistEmpty).toContainText(
-    "あとでやりたいことを登録して、今日やる候補にできます",
-  );
+  await expect(wishlistEmpty).toContainText("あとでやりたいことを登録して、今日やる候補にできます");
   const wishlistAction = wishlistEmpty.getByRole("button", {
     name: "やりたいことを追加する",
   });
   await expect(wishlistAction).toHaveClass(/mainActionButton--gold/);
+  const todayEmpty = page.locator(".todayEmptyState");
+  const [todayBox, projectBox, wishlistBox] = await Promise.all([
+    todayEmpty.boundingBox(),
+    projectEmpty.boundingBox(),
+    wishlistEmpty.boundingBox(),
+  ]);
+  expect(todayBox && projectBox && wishlistBox).toBeTruthy();
+  for (const box of [todayBox!, projectBox!]) {
+    expect(Math.abs(box.x - wishlistBox!.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(box.width - wishlistBox!.width)).toBeLessThanOrEqual(1);
+    expect(Math.abs(box.height - wishlistBox!.height)).toBeLessThanOrEqual(1);
+  }
+  const radii = await Promise.all(
+    [
+      todayEmpty.getByRole("button", { name: "今日やるものを選ぶ" }),
+      projectAction,
+      wishlistAction,
+    ].map((button) => button.evaluate((node) => getComputedStyle(node).borderRadius)),
+  );
+  expect(new Set(radii).size).toBe(1);
   await page.screenshot({
     path: "dist/visual-qa/phase84/section-empty-states-1440.png",
     fullPage: true,
   });
   await wishlistAction.click();
   await expect(page.getByRole("dialog", { name: "やりたいことを追加" })).toBeVisible();
+});
+
+test("successful saves close add dialogs even when shortcut reapply fails", async ({ page }) => {
+  const fixture = createPublicFixture();
+  fixture.config.projects = [];
+  fixture.config.inbox = [];
+  fixture.config.today.items = [];
+  fixture.doNowCandidates = [];
+  await prepare(page, fixture);
+  await page.evaluate(() => {
+    (
+      window as Window & {
+        __LIFE_LAUNCHER_VISUAL_QA__: {
+          setReapplyDashboardSettingsFailure: (shouldFail: boolean) => void;
+        };
+      }
+    ).__LIFE_LAUNCHER_VISUAL_QA__.setReapplyDashboardSettingsFailure(true);
+  });
+
+  await page
+    .locator(".projectsBand .sectionEmptyState")
+    .getByRole("button", { name: "プロジェクトを設定" })
+    .click();
+  const projectDialog = page.getByRole("dialog", { name: "プロジェクトを追加" });
+  await projectDialog.getByRole("textbox", { name: "プロジェクト名" }).fill("保存済みProject");
+  await projectDialog.getByRole("button", { name: "プロジェクトを追加", exact: true }).click();
+  await expect(projectDialog).toHaveCount(0);
+  await expect(page.locator(".nextStepCard", { hasText: "保存済みProject" })).toBeVisible();
+  await expect(page.locator(".toast--warn").last()).toContainText(
+    "保存しましたが、ショートカットを登録できません",
+  );
+  await expect(page.locator(".toast--error")).toHaveCount(0);
+
+  const inboxDisclosure = page.locator(".inboxBand .disclosure");
+  if ((await inboxDisclosure.getAttribute("aria-expanded")) !== "true") {
+    await inboxDisclosure.click();
+  }
+  await page
+    .locator(".inboxBand .sectionEmptyState")
+    .getByRole("button", { name: "やりたいことを追加する" })
+    .click();
+  const wishlistDialog = page.getByRole("dialog", { name: "やりたいことを追加" });
+  await wishlistDialog.getByRole("textbox", { name: "やりたいこと" }).fill("保存済みWishlist");
+  await wishlistDialog.getByRole("button", { name: "保存", exact: true }).click();
+  await expect(wishlistDialog).toHaveCount(0);
+  await expect(page.locator(".inboxRow", { hasText: "保存済みWishlist" })).toBeVisible();
 });
 
 test("Wishlist mode is gold while settings neutral and warning actions hover gold", async ({
@@ -130,9 +192,7 @@ test("Wishlist mode is gold while settings neutral and warning actions hover gol
   await newMode.click();
   await expect(newMode).toHaveClass(/mainActionButton--positive/);
   await dialog.getByRole("button", { name: "次の一手を設定を閉じる" }).click();
-  await expect(page.getByRole("dialog", { name: "入力内容を破棄して閉じますか？" })).toHaveCount(
-    0,
-  );
+  await expect(page.getByRole("dialog", { name: "入力内容を破棄して閉じますか？" })).toHaveCount(0);
 
   const reference = page
     .locator(".projectsBand")

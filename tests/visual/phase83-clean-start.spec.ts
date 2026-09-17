@@ -27,7 +27,7 @@ const CANONICAL_FRESH_CONFIG: AppConfig = {
   sourceCompletions: [],
   settings: {
     alwaysOnTop: false,
-    focusHotkey: "Alt+Space",
+    focusHotkey: "Ctrl+Alt+Space",
     launcherHotkey: "Ctrl+K",
     miniHotkey: null,
     autoStart: false,

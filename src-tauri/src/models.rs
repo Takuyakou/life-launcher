@@ -762,6 +762,10 @@ pub fn default_launcher_hotkey() -> Option<String> {
     Some("Ctrl+K".to_string())
 }
 
+pub fn default_focus_hotkey() -> Option<String> {
+    Some("Ctrl+Alt+Space".to_string())
+}
+
 pub fn default_button_visibility() -> bool {
     true
 }
@@ -786,7 +790,7 @@ pub fn week_start_date(date: chrono::NaiveDate) -> chrono::NaiveDate {
 fn default_settings() -> Settings {
     Settings {
         always_on_top: false,
-        focus_hotkey: Some("Alt+Space".to_string()),
+        focus_hotkey: default_focus_hotkey(),
         launcher_hotkey: default_launcher_hotkey(),
         mini_hotkey: None,
         auto_start: false,
@@ -1004,6 +1008,10 @@ mod tests {
         assert!(config.inbox.is_empty());
         assert_eq!(config.settings.default_timer_minutes, DEFAULT_TIMER_MINUTES);
         assert_eq!(config.settings.short_timer_minutes, SHORT_TIMER_MINUTES);
+        assert_eq!(
+            config.settings.focus_hotkey.as_deref(),
+            Some("Ctrl+Alt+Space")
+        );
     }
 
     #[test]

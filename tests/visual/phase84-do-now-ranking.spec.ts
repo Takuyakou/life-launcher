@@ -156,6 +156,34 @@ test("P84-03 empty Do Now guides to NextStep instead of weekly focus", async ({ 
   await expect(page.getByRole("dialog", { name: "次の一手を設定" })).toBeVisible();
 });
 
+test("P84 empty Do Now with no Projects uses the shared gold setup state", async ({ page }) => {
+  const fixture = createPublicFixture();
+  fixture.config.projects = [];
+  fixture.config.today.items = [];
+  fixture.doNowCandidates = [];
+  await prepare(page, fixture);
+
+  const empty = page.locator(".doNowEmpty");
+  const message = empty.getByText("プロジェクトを作り、次の一手を設定すると提案されます。", {
+    exact: true,
+  });
+  const action = empty.getByRole("button", { name: "プロジェクトを追加" });
+  await expect(message).toBeVisible();
+  await expect(action).toHaveClass(/mainActionButton--gold/);
+  await expect(action.locator(".uiIcon")).toHaveCount(1);
+  const [emptyBox, messageBox, actionBox] = await Promise.all([
+    empty.boundingBox(),
+    message.boundingBox(),
+    action.boundingBox(),
+  ]);
+  expect(emptyBox && messageBox && actionBox).toBeTruthy();
+  expect(emptyBox!.height).toBe(124);
+  expect(actionBox!.y).toBeGreaterThan(messageBox!.y + messageBox!.height);
+
+  await action.click();
+  await expect(page.getByRole("dialog", { name: "プロジェクトを追加" })).toBeVisible();
+});
+
 test("P84 Do Now task offset and metadata icon rows follow the reference alignment", async ({
   page,
 }) => {

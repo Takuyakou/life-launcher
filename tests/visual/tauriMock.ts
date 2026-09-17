@@ -103,7 +103,7 @@ export async function installTauriMock(
         sourceCompletions: [],
         settings: {
           alwaysOnTop: false,
-          focusHotkey: "Alt+Space",
+          focusHotkey: "Ctrl+Alt+Space",
           launcherHotkey: "Ctrl+K",
           miniHotkey: null,
           autoStart: false,
@@ -169,6 +169,7 @@ export async function installTauriMock(
       let executeMode: "success" | "failure" | "delayed" = "success";
       let failWindowHide = false;
       let failSaveConfig = false;
+      let failReapplyDashboardSettings = false;
       let failRecordSession = false;
       let instructionRootChoices: Array<{
         name: string;
@@ -202,6 +203,9 @@ export async function installTauriMock(
         },
         setSaveConfigFailure: (shouldFail: boolean) => {
           failSaveConfig = shouldFail;
+        },
+        setReapplyDashboardSettingsFailure: (shouldFail: boolean) => {
+          failReapplyDashboardSettings = shouldFail;
         },
         setRecordSessionFailure: (shouldFail: boolean) => {
           failRecordSession = shouldFail;
@@ -672,6 +676,10 @@ export async function installTauriMock(
               case "plugin:window|set_focus":
               case "plugin:webview|set_focus":
               case "reapply_dashboard_settings":
+                if (failReapplyDashboardSettings) {
+                  throw new Error("failed to register shortcut: HotKey already registered");
+                }
+                return null;
               case "suspend_dashboard_shortcuts":
               case "resume_dashboard_shortcuts":
               case "focus_dashboard_window":

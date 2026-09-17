@@ -23,11 +23,9 @@ pub fn suspend_dashboard_shortcuts(app: AppHandle) -> Result<(), String> {
         .registered_shortcuts
         .lock()
         .map_err(|_| "failed to lock shortcut state".to_string())?;
-    for (shortcut, _) in registered.iter() {
-        app.global_shortcut()
-            .unregister(*shortcut)
-            .map_err(|error| format!("failed to suspend shortcut: {error}"))?;
-    }
+    app.global_shortcut()
+        .unregister_all()
+        .map_err(|error| format!("failed to suspend shortcuts: {error}"))?;
     registered.clear();
     Ok(())
 }
@@ -196,9 +194,9 @@ fn register_shortcuts(
     }
 
     let previous = registered.clone();
-    for (shortcut, _) in &previous {
-        let _ = app.global_shortcut().unregister(*shortcut);
-    }
+    app.global_shortcut()
+        .unregister_all()
+        .map_err(|error| format!("failed to clear registered shortcuts: {error}"))?;
 
     let mut next = Vec::new();
     for (shortcut, action) in parsed {

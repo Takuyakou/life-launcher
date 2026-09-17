@@ -6,6 +6,7 @@ use std::os::windows::ffi::OsStrExt;
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 use serde_json::Value;
@@ -20,12 +21,12 @@ use super::instructions::{
     normalize_instruction_folder_settings, reconcile_instruction_folder_settings,
 };
 use crate::models::{
-    default_backup_keep, default_day_start_hour, default_timer_minutes, initial_config,
-    short_timer_minutes, today_date, AppConfig, InboxItem, InstructionReferenceUpdateResponse,
-    LauncherButton, LegacyProjectV2, LoadConfigResponse, NextStepFreshnessResponse, OverlayPage,
-    Project, ProjectV3, SaveConfigResponse, Settings, TodayVictory, UndoTodaySelectionInput,
-    CONFIG_VERSION, EXECUTION_TRIGGER_MAX_CHARS, OVERLAY_PAGE_NAME_MAX_CHARS, TODAY_ITEM_LIMIT,
-    WEEKLY_FOCUS_LIMIT,
+    default_backup_keep, default_day_start_hour, default_focus_hotkey, default_timer_minutes,
+    initial_config, short_timer_minutes, today_date, AppConfig, InboxItem,
+    InstructionReferenceUpdateResponse, LauncherButton, LegacyProjectV2, LoadConfigResponse,
+    NextStepFreshnessResponse, OverlayPage, Project, ProjectV3, SaveConfigResponse, Settings,
+    TodayVictory, UndoTodaySelectionInput, CONFIG_VERSION, EXECUTION_TRIGGER_MAX_CHARS,
+    OVERLAY_PAGE_NAME_MAX_CHARS, TODAY_ITEM_LIMIT, WEEKLY_FOCUS_LIMIT,
 };
 use crate::state::AppState;
 
@@ -49,6 +50,7 @@ const RUNTIME_BACKUP_FILES: [&str; 4] = [
     "notes.json",
     CONFIG_SCHEMA_FILE_NAME,
 ];
+static TEMP_FILE_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 #[tauri::command]
 pub fn load_config(
@@ -849,25 +851,63 @@ pub fn configured_day_start_hour() -> u8 {
 
 pub fn ensure_config_schema_file() -> Result<(), String> {
     let path = schema_path()?;
+    let schema = config_schema_json();
+    if fs::read(&path).ok().as_deref() == Some(schema.as_bytes()) {
+        return Ok(());
+    }
+    write_bytes_atomically(&path, schema.as_bytes(), "schema")
+}
+
+fn unique_temp_path(path: &Path, purpose: &str) -> PathBuf {
+    let sequence = TEMP_FILE_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("life-launcher");
+    path.with_file_name(format!(
+        ".{file_name}.{}.{}.{}.tmp",
+        std::process::id(),
+        sequence,
+        purpose
+    ))
+}
+
+fn write_bytes_atomically(path: &Path, bytes: &[u8], purpose: &str) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)
             .map_err(|error| format!("failed to create {}: {error}", parent.display()))?;
     }
 
-    let temp_path = path.with_extension("json.tmp");
-    fs::write(&temp_path, config_schema_json())
-        .map_err(|error| format!("failed to write {}: {error}", temp_path.display()))?;
-    if path.exists() {
-        replace_file_atomically(&path, &temp_path)
-    } else {
-        fs::rename(&temp_path, &path).map_err(|error| {
-            format!(
-                "failed to rename {} to {}: {error}",
-                temp_path.display(),
-                path.display()
-            )
-        })
+    let temp_path = unique_temp_path(path, purpose);
+    let result = (|| {
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&temp_path)
+            .map_err(|error| format!("failed to create {}: {error}", temp_path.display()))?;
+        file.write_all(bytes)
+            .map_err(|error| format!("failed to write {}: {error}", temp_path.display()))?;
+        file.sync_all()
+            .map_err(|error| format!("failed to flush {}: {error}", temp_path.display()))?;
+        drop(file);
+
+        if path.exists() {
+            replace_file_atomically(path, &temp_path)
+        } else {
+            fs::rename(&temp_path, path).map_err(|error| {
+                format!(
+                    "failed to rename {} to {}: {error}",
+                    temp_path.display(),
+                    path.display()
+                )
+            })
+        }
+    })();
+
+    if result.is_err() {
+        let _ = fs::remove_file(&temp_path);
     }
+    result
 }
 
 #[cfg(windows)]
@@ -911,28 +951,9 @@ fn replace_file_atomically(destination: &Path, replacement: &Path) -> Result<(),
 }
 
 pub fn write_config(path: &PathBuf, config: &AppConfig) -> Result<(), String> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)
-            .map_err(|error| format!("failed to create {}: {error}", parent.display()))?;
-    }
-
-    let temp_path = path.with_extension("json.tmp");
     let json = serde_json::to_string_pretty(config)
         .map_err(|error| format!("failed to serialize config: {error}"))?;
-    fs::write(&temp_path, json)
-        .map_err(|error| format!("failed to write {}: {error}", temp_path.display()))?;
-
-    if path.exists() {
-        replace_file_atomically(path, &temp_path)
-    } else {
-        fs::rename(&temp_path, path).map_err(|error| {
-            format!(
-                "failed to rename {} to {}: {error}",
-                temp_path.display(),
-                path.display()
-            )
-        })
-    }
+    write_bytes_atomically(path, json.as_bytes(), "config")
 }
 
 fn backup_existing_config(path: &PathBuf) -> Result<(), String> {
@@ -1177,17 +1198,6 @@ struct CentralDirectoryEntry {
 }
 
 fn write_zip(path: &PathBuf, entries: &[ZipEntry]) -> Result<(), String> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)
-            .map_err(|error| format!("failed to create {}: {error}", parent.display()))?;
-    }
-
-    let temp_path = path.with_extension("zip.tmp");
-    if temp_path.exists() {
-        fs::remove_file(&temp_path)
-            .map_err(|error| format!("failed to remove {}: {error}", temp_path.display()))?;
-    }
-
     let mut bytes = Vec::new();
     let mut central_entries = Vec::new();
     for entry in entries {
@@ -1263,35 +1273,7 @@ fn write_zip(path: &PathBuf, entries: &[ZipEntry]) -> Result<(), String> {
     push_u32(&mut bytes, central_offset);
     push_u16(&mut bytes, 0);
 
-    let mut file = fs::File::create(&temp_path)
-        .map_err(|error| format!("failed to create {}: {error}", temp_path.display()))?;
-    file.write_all(&bytes)
-        .map_err(|error| format!("failed to write {}: {error}", temp_path.display()))?;
-    file.sync_all()
-        .map_err(|error| format!("failed to flush {}: {error}", temp_path.display()))?;
-
-    match fs::rename(&temp_path, path) {
-        Ok(_) => Ok(()),
-        Err(first_error) => {
-            if path.exists() {
-                fs::remove_file(path)
-                    .map_err(|error| format!("failed to replace {}: {error}", path.display()))?;
-                fs::rename(&temp_path, path).map_err(|error| {
-                    format!(
-                        "failed to rename {} to {} after replace attempt ({first_error}): {error}",
-                        temp_path.display(),
-                        path.display()
-                    )
-                })
-            } else {
-                Err(format!(
-                    "failed to rename {} to {}: {first_error}",
-                    temp_path.display(),
-                    path.display()
-                ))
-            }
-        }
-    }
+    write_bytes_atomically(path, &bytes, "backup")
 }
 
 fn read_zip(bytes: &[u8]) -> Result<Vec<ZipEntry>, String> {
@@ -1396,36 +1378,7 @@ fn read_zip_entry_data(
 }
 
 pub(crate) fn atomic_write_bytes(path: &PathBuf, bytes: &[u8]) -> Result<(), String> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)
-            .map_err(|error| format!("failed to create {}: {error}", parent.display()))?;
-    }
-
-    let temp_path = path.with_extension("restore.tmp");
-    fs::write(&temp_path, bytes)
-        .map_err(|error| format!("failed to write {}: {error}", temp_path.display()))?;
-    match fs::rename(&temp_path, path) {
-        Ok(_) => Ok(()),
-        Err(first_error) => {
-            if path.exists() {
-                fs::remove_file(path)
-                    .map_err(|error| format!("failed to replace {}: {error}", path.display()))?;
-                fs::rename(&temp_path, path).map_err(|error| {
-                    format!(
-                        "failed to rename {} to {} after replace attempt ({first_error}): {error}",
-                        temp_path.display(),
-                        path.display()
-                    )
-                })
-            } else {
-                Err(format!(
-                    "failed to rename {} to {}: {first_error}",
-                    temp_path.display(),
-                    path.display()
-                ))
-            }
-        }
-    }
+    write_bytes_atomically(path, bytes, "restore")
 }
 
 fn push_u16(bytes: &mut Vec<u8>, value: u16) {
@@ -2625,6 +2578,9 @@ fn normalize_settings(settings: &mut Settings, changed: &mut bool) {
         if hotkey.trim().is_empty() {
             settings.focus_hotkey = None;
             *changed = true;
+        } else if hotkey.trim().eq_ignore_ascii_case("Alt+Space") {
+            settings.focus_hotkey = default_focus_hotkey();
+            *changed = true;
         }
     }
     if settings.default_timer_minutes == 0 {
@@ -2685,6 +2641,22 @@ mod tests {
     use crate::models::{sample_config, TodayItem};
     use std::sync::Mutex;
     use std::time::Duration;
+
+    #[test]
+    fn legacy_windows_system_menu_shortcut_migrates_once() {
+        let mut settings = sample_config().settings;
+        settings.focus_hotkey = Some(" alt+space ".to_string());
+        let mut changed = false;
+
+        normalize_settings(&mut settings, &mut changed);
+
+        assert!(changed);
+        assert_eq!(settings.focus_hotkey.as_deref(), Some("Ctrl+Alt+Space"));
+
+        changed = false;
+        normalize_settings(&mut settings, &mut changed);
+        assert!(!changed);
+    }
 
     #[test]
     fn generated_config_schema_is_valid_json_with_project_fields() {
@@ -4437,7 +4409,6 @@ mod tests {
                 .expect("lock original against replacement");
             write_config(&destination, &sample_config())
                 .expect_err("locked destination must reject atomic replacement");
-            assert!(destination.with_extension("json.tmp").exists());
             drop(locked_destination);
         }
         #[cfg(not(windows))]
@@ -4449,6 +4420,52 @@ mod tests {
         assert_eq!(
             fs::read(&destination).expect("read retained destination"),
             original
+        );
+        assert!(fs::read_dir(&root)
+            .expect("read replacement root")
+            .filter_map(Result::ok)
+            .all(|entry| !entry.file_name().to_string_lossy().ends_with(".tmp")));
+
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn unique_atomic_write_ignores_a_locked_legacy_temp_file() {
+        let root = std::env::temp_dir().join(format!(
+            "life-launcher-unique-temp-{}",
+            chrono::Local::now()
+                .timestamp_nanos_opt()
+                .unwrap_or_default()
+        ));
+        fs::create_dir_all(&root).expect("create unique temp root");
+        let destination = root.join("config.schema.json");
+        let legacy_temp = destination.with_extension("json.tmp");
+        fs::write(&legacy_temp, b"legacy temp").expect("write legacy temp");
+
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::OpenOptionsExt;
+
+            let locked_legacy_temp = fs::OpenOptions::new()
+                .read(true)
+                .share_mode(0)
+                .open(&legacy_temp)
+                .expect("lock legacy temp file");
+            write_bytes_atomically(&destination, b"new schema", "schema")
+                .expect("unique temp name should avoid the locked legacy file");
+            drop(locked_legacy_temp);
+        }
+        #[cfg(not(windows))]
+        write_bytes_atomically(&destination, b"new schema", "schema")
+            .expect("unique temp name should avoid the legacy file");
+
+        assert_eq!(
+            fs::read(&destination).expect("read destination"),
+            b"new schema"
+        );
+        assert_eq!(
+            fs::read(&legacy_temp).expect("read legacy temp"),
+            b"legacy temp"
         );
 
         let _ = fs::remove_dir_all(root);

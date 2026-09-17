@@ -3639,24 +3639,35 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .doNowEmpty {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  border: 1px dashed var(--line);
+  min-height: 124px;
+  border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 12px;
-  color: var(--muted);
-  font-size: 13px;
+  padding: 16px 20px;
+  background: var(--surface);
 }
 
-.doNowEmpty > span {
-  max-width: 56ch;
+.doNowEmptyContent {
+  width: min(520px, 100%);
+  display: grid;
+  justify-items: start;
+  gap: 5px;
+  margin-inline-start: 14px;
 }
 
-.doNowEmpty button {
-  background: var(--surface-soft);
+.doNowEmptyContent > strong {
   color: var(--text);
+  font-size: var(--dashboard-font-action);
+}
+
+.doNowEmptyContent > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 7px;
+  border-radius: var(--radius);
+  padding-inline: 12px;
+  font-size: var(--dashboard-font-meta);
 }
 
 @container (max-width: 700px) {
@@ -8572,7 +8583,11 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .todayGrid--empty,
 .todayEmptyState {
-  min-height: 144px;
+  min-height: 124px;
+}
+
+.todayGrid--empty {
+  padding-inline-end: 0;
 }
 
 .todayEmptyState {
@@ -8656,6 +8671,7 @@ input[type="number"]::-webkit-inner-spin-button {
   align-items: center;
   gap: 5px;
   margin-top: 7px;
+  border-radius: var(--radius);
   padding-inline: 12px;
   font-size: var(--dashboard-font-meta);
   font-weight: 700;
@@ -9291,6 +9307,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 @media (max-width: 620px) {
+  .doNowEmptyContent,
   .todayEmptyStateContent,
   .sectionEmptyStateContent {
     margin-inline-start: 2px;
@@ -9813,6 +9830,10 @@ input[type="number"]::-webkit-inner-spin-button {
 .projectsBand .nextStepBody {
   gap: 9px;
   padding: 10px 8px 2px;
+}
+
+.projectsBand .nextStepBody--empty {
+  padding-inline: 0;
 }
 
 .projectsBand .projectGrid {
