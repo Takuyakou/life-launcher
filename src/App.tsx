@@ -10337,7 +10337,7 @@ function DashboardApp() {
                         {todayCompletedCount} / {config.today.items.length} 完了
                       </span>
                     <span className="todaySectionDescription">
-                      今日やると決めた、今進める3つです。
+                      今日やると決めたもの。タイマーから開始します。
                     </span>
                 </div>
                 <div
@@ -11285,7 +11285,7 @@ function DashboardApp() {
                   </button>
                   <span className="disclosureCount">{config.projects.length}件</span>
                   <span className="disclosureDescription">
-                    迷ったときに戻る「次の一手」を、プロジェクトごとに1つ決めます。
+                    迷ったときに戻る再開地点。プロジェクトごとに1つだけ設定。
                   </span>
                   <div className="disclosureHeaderActions">
                     <button
@@ -11349,6 +11349,22 @@ function DashboardApp() {
                 )}
                 {projectsOpen && (
                   <div className="nextStepBody">
+                    {config.projects.length === 0 && (
+                      <div className="sectionEmptyState">
+                        <div className="sectionEmptyStateContent">
+                          <strong>プロジェクトを設定しましょう</strong>
+                          <span>取り組みたいことをまとめると、次の一手を決められます</span>
+                          <button
+                            className="mainActionButton mainActionButton--gold"
+                            onClick={openProjectAddDialog}
+                            type="button"
+                          >
+                            <UiIcon name="add" size={16} />
+                            プロジェクトを設定
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     <div className="projectGrid">
                       {visibleProjects.map((project) => {
                           const projectSourceKey = `project:${project.id}`;
@@ -11440,6 +11456,9 @@ function DashboardApp() {
                                       <UiIcon name="lock" size={16} />
                                     </span>
                                   )}
+                                  {alreadySelected && (
+                                    <span className="nextStepTodayStatus">✓ 今日の3件</span>
+                                  )}
                               </h3>
                             </div>
                             <div
@@ -11477,9 +11496,7 @@ function DashboardApp() {
                                 {project.nextStep?.text.trim() || "まだ次の一手がありません"}
                               </p>
                                 {project.nextStep?.text.trim() ? (
-                                  sourceLocked ? (
-                                    <span className="nextStepLockedStatus">今日の3件で使用中</span>
-                                  ) : (
+                                  !sourceLocked && (
                                     <div className="nextStepCardActions">
                               <button
                                         className="nextStepTodayAdd mainActionButton mainActionButton--gold"
@@ -11736,6 +11753,23 @@ function DashboardApp() {
 
                 {inboxOpen && (
                   <div className="inboxBody">
+                    {config.inbox.length === 0 && (
+                      <div className="sectionEmptyState">
+                        <div className="sectionEmptyStateContent">
+                          <strong>やりたいことを設定しましょう</strong>
+                          <span>あとでやりたいことを登録して、今日やる候補にできます</span>
+                          <button
+                            className="mainActionButton mainActionButton--gold"
+                            disabled={inboxAddOpen}
+                            onClick={(event) => openInboxAddDialog(event.currentTarget)}
+                            type="button"
+                          >
+                            <UiIcon name="add" size={16} />
+                            やりたいことを追加する
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     <div className="inboxGroups">
                       {wishlistGroups.map((group) => {
                         const view = wishlistGroupViews[group.key] ?? {};
@@ -14595,7 +14629,7 @@ function DashboardApp() {
                       aria-selected={wishlistMode}
                       className={
                         wishlistMode
-                          ? "nextStepDecisionModeButton nextStepDecisionModeButton--active mainActionButton mainActionButton--positive"
+                          ? "nextStepDecisionModeButton nextStepDecisionModeButton--active nextStepDecisionModeButton--wishlistActive mainActionButton mainActionButton--gold"
                           : "nextStepDecisionModeButton mainActionButton mainActionButton--neutral"
                       }
                       disabled={sourceEditSaving}
