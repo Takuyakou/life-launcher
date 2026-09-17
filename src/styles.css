@@ -8056,7 +8056,6 @@ input[type="number"]::-webkit-inner-spin-button {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
-  padding-inline-end: 10px;
 }
 
 .todayGridRegion {
@@ -8159,11 +8158,6 @@ input[type="number"]::-webkit-inner-spin-button {
   transform: translateY(-1px);
 }
 
-.todayRow[data-project-color]:not(.todayRow--dragging):hover,
-.todayRow[data-project-color]:not(.todayRow--dragging):focus-within {
-  border-top-color: var(--accent);
-}
-
 .todayRow--running:not(.todayRow--dragging):hover,
 .todayRow--running:not(.todayRow--dragging):focus-within {
   border-color: var(--accent);
@@ -8172,6 +8166,11 @@ input[type="number"]::-webkit-inner-spin-button {
 .todayRow--complete:not(.todayRow--dragging):hover,
 .todayRow--complete:not(.todayRow--dragging):focus-within {
   border-color: rgba(117, 196, 143, 0.48);
+}
+
+.todayRow[data-project-color]:not(.todayRow--dragging):hover,
+.todayRow[data-project-color]:not(.todayRow--dragging):focus-within {
+  border-color: var(--project-color);
 }
 
 .todayRow--running {
@@ -8584,10 +8583,6 @@ input[type="number"]::-webkit-inner-spin-button {
 .todayGrid--empty,
 .todayEmptyState {
   min-height: 124px;
-}
-
-.todayGrid--empty {
-  padding-inline-end: 0;
 }
 
 .todayEmptyState {
@@ -9829,11 +9824,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .projectsBand .nextStepBody {
   gap: 9px;
-  padding: 10px 8px 2px;
-}
-
-.projectsBand .nextStepBody--empty {
-  padding-inline: 0;
+  padding: 10px 0 2px;
 }
 
 .projectsBand .projectGrid {
@@ -10386,6 +10377,11 @@ input[type="number"]::-webkit-inner-spin-button {
   display: grid;
   gap: 10px;
   min-width: 0;
+}
+
+.inboxBand .inboxList {
+  border-left: 0;
+  padding-left: 0;
 }
 
 .wishlistGroup {

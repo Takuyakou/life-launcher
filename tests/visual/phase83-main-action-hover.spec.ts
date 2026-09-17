@@ -394,6 +394,28 @@ test("P84 Today3 cards use the same clear hover surface and lift as NextStep car
   expect(todayHovered.transform).toBe(nextStepHovered.transform);
   expect(todayHovered.width).toBe(todayInitial.width);
   expect(todayHovered.height).toBe(todayInitial.height);
+  await todayCard.hover();
+  await page.waitForTimeout(140);
+  const projectBorder = await todayCard.evaluate((node) => {
+    const style = getComputedStyle(node);
+    const dot = node.querySelector<HTMLElement>(".projectIdentityDot");
+    return {
+      project: dot ? getComputedStyle(dot).backgroundColor : "",
+      top: style.borderTopColor,
+      right: style.borderRightColor,
+      bottom: style.borderBottomColor,
+      left: style.borderLeftColor,
+    };
+  });
+  expect(projectBorder.project).not.toBe("");
+  expect(
+    new Set([
+      projectBorder.top,
+      projectBorder.right,
+      projectBorder.bottom,
+      projectBorder.left,
+    ]),
+  ).toEqual(new Set([projectBorder.project]));
 });
 
 test("P83-03 timer controls and NextStep cards keep their established dimensions", async ({

@@ -71,6 +71,45 @@ test("section bars, compact NextStep cards, and selected status share the refine
   });
 });
 
+test("populated Today, NextStep, and Wishlist content share the same horizontal bounds", async ({
+  page,
+}) => {
+  const fixture = createPublicFixture();
+  const thirdProject = structuredClone(fixture.config.projects[1]);
+  thirdProject.id = "sample-third";
+  thirdProject.name = "第三Project";
+  thirdProject.nextStep!.text = "第三の一手";
+  fixture.config.projects.push(thirdProject);
+  fixture.config.today.items.push({
+    text: "三つ目の今日の項目",
+    done: false,
+    sourceKey: "project:sample-third",
+    projectId: "sample-third",
+  });
+  await prepare(page, fixture);
+
+  const inboxDisclosure = page.locator(".inboxBand .disclosure");
+  if ((await inboxDisclosure.getAttribute("aria-expanded")) !== "true") {
+    await inboxDisclosure.click();
+  }
+  const [todayFirst, todayLast, projectFirst, projectLast, wishlistRow] = await Promise.all([
+    page.locator(".todayRow").first().boundingBox(),
+    page.locator(".todayRow").last().boundingBox(),
+    page.locator(".nextStepCard").first().boundingBox(),
+    page.locator(".nextStepCard").last().boundingBox(),
+    page.locator(".inboxRow").first().boundingBox(),
+  ]);
+  expect(todayFirst && todayLast && projectFirst && projectLast && wishlistRow).toBeTruthy();
+  const wishlistRight = wishlistRow!.x + wishlistRow!.width;
+  for (const [first, last] of [
+    [todayFirst!, todayLast!],
+    [projectFirst!, projectLast!],
+  ]) {
+    expect(Math.abs(first.x - wishlistRow!.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(last.x + last.width - wishlistRight)).toBeLessThanOrEqual(1);
+  }
+});
+
 test("empty NextStep and Wishlist sections offer direct setup actions", async ({ page }) => {
   const fixture = createPublicFixture();
   fixture.config.projects = [];

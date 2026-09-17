@@ -85,7 +85,7 @@ test("unfinished Today3 locks only the matching Wishlist identity", async ({ pag
   await expect(lockedRow.locator(".wishlistNextStepAction")).toHaveCount(1);
 });
 
-test("Do Now uses its Project hover color while Today3 and NextStep keep gold feedback", async ({
+test("Do Now and Today3 use their Project hover color while NextStep keeps gold feedback", async ({
   page,
 }) => {
   const fixture = createPublicFixture();
@@ -107,8 +107,8 @@ test("Do Now uses its Project hover color while Today3 and NextStep keep gold fe
   const todayBorder = await hoverBorder(".todayRow");
   const nextStepBorder = await hoverBorder(".nextStepCard");
   expect(doNowBorders.right).toBe(doNowBorders.left);
-  expect(todayBorder).toBe(nextStepBorder);
-  expect(todayBorder).not.toBe(doNowBorders.right);
+  expect(todayBorder).toBe(doNowBorders.right);
+  expect(nextStepBorder).not.toBe(todayBorder);
 
   for (const selector of [".doNowMeasureButton", ".todayMeasureButton"]) {
     const button = page.locator(selector).first();
