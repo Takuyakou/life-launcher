@@ -296,9 +296,7 @@ test("P84 Picker aligns project, task, and action columns with readable long con
   await dialog.screenshot({ path: "dist/visual-qa/phase84/picker-aligned-1280.png" });
 });
 
-test("P84 Picker selection preserves collapsed Wishlist groups", async ({
-  page,
-}) => {
+test("P84 Picker selection preserves collapsed Wishlist groups", async ({ page }) => {
   const fixture = createPublicFixture();
   fixture.config.today.items = [];
   await prepare(page, fixture);
@@ -352,11 +350,11 @@ test("P84 Picker separates selected items from NextStep and Wishlist candidates"
   const dialog = picker(page);
   const sections = dialog.locator("[data-today-picker-section]");
   await expect(sections).toHaveCount(3);
-  expect(await sections.evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-today-picker-section")))).toEqual([
-    "selected",
-    "next-step",
-    "wishlist",
-  ]);
+  expect(
+    await sections.evaluateAll((nodes) =>
+      nodes.map((node) => node.getAttribute("data-today-picker-section")),
+    ),
+  ).toEqual(["selected", "next-step", "wishlist"]);
 
   const selected = dialog.locator('[data-today-picker-section="selected"]');
   const nextStep = dialog.locator('[data-today-picker-section="next-step"]');
@@ -459,15 +457,48 @@ test("P84 v3 selected rows use project identity and a non-interactive neutral st
   await prepare(page, fixture);
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
-  const selected = picker(page).locator('[data-today-picker-section="selected"]');
+  const dialog = picker(page);
+  const selected = dialog.locator('[data-today-picker-section="selected"]');
   const row = selected.locator(".todayPickerRow").first();
   const status = row.locator(".todayPickerSelectedStatus");
+  await expect(dialog.locator(".modalTitleRow .eyebrow")).toHaveText("Today");
+  await expect(dialog.locator(".todayPickerIntro")).toHaveCSS("font-size", "13px");
   await expect(row.locator(".projectIdentityDot")).toHaveCount(1);
   await expect(row).toHaveCSS("border-left-width", "0px");
-  expect(await row.evaluate((node) => Number.parseFloat(getComputedStyle(node).paddingLeft))).toBeGreaterThanOrEqual(12);
+  expect(
+    await row.evaluate((node) => Number.parseFloat(getComputedStyle(node).paddingLeft)),
+  ).toBeGreaterThanOrEqual(12);
   await expect(status).toHaveText("✓ 選択済み");
+  await expect(status).toHaveCSS("font-size", "11px");
   expect(await status.evaluate((node) => node.tagName)).toBe("SPAN");
   await expect(status).toHaveCSS("border-radius", "999px");
+});
+
+test("P84 add dialogs expose a consistent top-right close action", async ({ page }) => {
+  const fixture = createPublicFixture();
+  fixture.config.projects[0].nextStep = undefined;
+  await prepare(page, fixture);
+
+  const projectOpener = page.getByRole("button", { name: "プロジェクトを追加", exact: true });
+  await projectOpener.click();
+  const projectDialog = page.getByRole("dialog", { name: "プロジェクトを追加" });
+  await projectDialog.getByRole("button", { name: "プロジェクトを追加を閉じる" }).click();
+  await expect(projectDialog).toHaveCount(0);
+  await expect(projectOpener).toBeFocused();
+
+  const wishlistOpener = page.getByRole("button", { name: "やりたいことを追加", exact: true });
+  await wishlistOpener.click();
+  const wishlistDialog = page.getByRole("dialog", { name: "やりたいことを追加" });
+  await wishlistDialog.getByRole("button", { name: "やりたいことを追加を閉じる" }).click();
+  await expect(wishlistDialog).toHaveCount(0);
+  await expect(wishlistOpener).toBeFocused();
+
+  const nextStepOpener = page.getByRole("button", { name: "次の一手を設定", exact: true });
+  await nextStepOpener.click();
+  const nextStepDialog = page.getByRole("dialog", { name: "次の一手を設定" });
+  await nextStepDialog.getByRole("button", { name: "次の一手を設定を閉じる" }).click();
+  await expect(nextStepDialog).toHaveCount(0);
+  await expect(nextStepOpener).toBeFocused();
 });
 
 test("P84 v3 Today add reuses the Project gold grammar in every interaction state", async ({

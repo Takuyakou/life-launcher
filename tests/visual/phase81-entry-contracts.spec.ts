@@ -225,6 +225,7 @@ test("Phase 8.1 resolves pending legacy execution settings only after a successf
   await prepare(page, fixture);
 
   let dialog = await openNextStepSetter(page, "legacy-inherit");
+  await dialog.getByRole("tab", { name: "＋ 新しく入力" }).click();
   await dialog.getByRole("button", { name: "引き継ぐ" }).click();
   await dialog.getByRole("button", { name: "キャンセル" }).click();
   const pendingAfterCancel = (await currentConfig(page)).projects.find(
@@ -236,6 +237,7 @@ test("Phase 8.1 resolves pending legacy execution settings only after a successf
   });
 
   dialog = await openNextStepSetter(page, "legacy-inherit");
+  await dialog.getByRole("tab", { name: "＋ 新しく入力" }).click();
   await dialog.getByRole("button", { name: "引き継ぐ" }).click();
   await expect(dialog.getByLabel("選択済みの開始環境")).toContainText("サンプルエディター");
   await expect(dialog.getByRole("spinbutton", { name: "通常タイマー分数" })).toHaveValue("41");
@@ -266,6 +268,7 @@ test("Phase 8.1 resolves pending legacy execution settings only after a successf
   });
 
   dialog = await openNextStepSetter(page, "legacy-discard");
+  await dialog.getByRole("tab", { name: "＋ 新しく入力" }).click();
   await dialog.getByRole("button", { name: "破棄して全体設定を使う" }).click();
   await dialog.getByRole("textbox", { name: "行動" }).fill("全体設定から始める");
   await dialog.getByRole("button", { name: "保存", exact: true }).click();

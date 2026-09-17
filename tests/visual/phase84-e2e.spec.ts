@@ -117,7 +117,9 @@ test("P84-04 empty Today selects NextStep then Wishlist while preserving sources
     await expect(button).toBeDisabled();
   }
   await expect(page.locator(".todayRow")).toHaveCount(3);
-  await expect(page.getByRole("button", { name: "今日やるものを選ぶ", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "今日やるものを選ぶ", exact: true })).toHaveCount(
+    0,
+  );
   saved = await currentConfig(page);
   expect(saved.today.items).toHaveLength(3);
   expect(new Set(saved.today.items.map((item) => item.sourceKey)).size).toBe(3);
@@ -180,7 +182,7 @@ test("P84-04 Do Now remains available with zero focus and reaches non-focus cand
 
   const action = page.locator(".doNowCopy > strong");
   await expect(action).toHaveText(fixture.config.projects[0].nextStep!.text);
-  await page.getByRole("button", { name: "他の一手", exact: true }).click();
+  await page.getByRole("button", { name: "別の候補", exact: true }).click();
   await expect(action).toHaveText(fixture.config.projects[1].nextStep!.text);
 });
 
@@ -199,6 +201,6 @@ test("P84-04 mixed focus ranks the focus Project first and Other Step reaches fo
   const action = page.locator(".doNowCopy > strong");
   await expect(action).toHaveText(fixture.config.projects[1].nextStep!.text);
   await expect(page.locator(".doNowReason")).toContainText("今週の重点");
-  await page.getByRole("button", { name: "他の一手", exact: true }).click();
+  await page.getByRole("button", { name: "別の候補", exact: true }).click();
   await expect(action).toHaveText(fixture.config.projects[0].nextStep!.text);
 });

@@ -68,6 +68,7 @@ test("Phase 8.1 separates Project metadata from the NextStep execution package",
   const row = page.locator(`[data-project-id="${saved.id}"]`);
   await row.getByRole("button", { name: "次の一手を設定" }).click();
   const nextStepDialog = page.getByRole("dialog", { name: "次の一手を設定" });
+  await nextStepDialog.getByRole("tab", { name: "＋ 新しく入力" }).click();
   await expect(nextStepDialog.getByRole("textbox", { name: "行動" })).toBeFocused();
   expect(await nextStepDialog.getByRole("heading", { level: 3 }).allTextContents()).toEqual([
     "プロジェクト",

@@ -3318,19 +3318,33 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .doNowAlternateButton {
-  border-color: var(--line-soft);
+  width: max-content;
+  min-height: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  padding: 0;
   background: transparent;
   color: var(--muted);
   font-size: 12px;
+  font-weight: 650;
 }
 
 .doNowAlternateButton:hover,
 .doNowAlternateButton:focus-visible {
-  border-color: var(--accent);
-  color: var(--accent-strong);
+  background: transparent;
+  color: var(--text);
+  transform: none;
+}
+
+.doNowAlternateButton .uiIcon {
+  width: 14px;
+  height: 14px;
 }
 
 .doNowContent {
+  min-height: 112px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -3377,8 +3391,7 @@ input[type="number"]::-webkit-inner-spin-button {
   flex: 0 0 auto;
   border-radius: 50%;
   background: var(--project-color, var(--good));
-  box-shadow: 0 0 0 3px
-    color-mix(in srgb, var(--project-color, var(--good)) 18%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--project-color, var(--good)) 18%, transparent);
 }
 
 .doNowProjectChip {
@@ -6179,7 +6192,7 @@ input[type="number"]::-webkit-inner-spin-button {
   line-height: 1.35;
 }
 
-.wishlistAddHeader > p:last-child {
+.wishlistAddHeader > div > p:last-child {
   color: var(--text-muted-readable);
   font-size: 13px;
   line-height: 1.5;
@@ -7321,6 +7334,11 @@ input[type="number"]::-webkit-inner-spin-button {
   gap: 6px;
 }
 
+.doNowAlternateButton {
+  font-size: var(--dashboard-font-meta);
+  font-weight: 600;
+}
+
 .doNowKicker h2 {
   font-size: var(--dashboard-font-meta);
   font-weight: 600;
@@ -8117,18 +8135,22 @@ input[type="number"]::-webkit-inner-spin-button {
   display: grid;
   justify-items: end;
   gap: 4px;
-  width: 202px;
+  width: 210px;
   max-width: 100%;
   margin-left: auto;
 }
 
+.todayRow--running .todayTimerCluster {
+  width: 202px;
+}
+
 .todayTimerCluster .todayTimerActions:not(.todayTimerActions--running) {
-  grid-template-columns: 78px 78px 34px;
+  grid-template-columns: 82px 82px 34px;
   gap: 6px;
 }
 
 .todayTimerCluster .todayStartButton {
-  width: 78px;
+  width: 82px;
   height: 36px;
   min-height: 36px;
 }
@@ -8202,7 +8224,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayRow .todayRemoveButton {
-  padding-inline: 4px;
+  padding-inline: 2px;
 }
 
 .todayRow .todayInstructionButton:hover:not(:disabled),
@@ -8508,11 +8530,18 @@ input[type="number"]::-webkit-inner-spin-button {
   margin: 0;
 }
 
-.todayPickerDialog .modalTitleRow p {
+.todayPickerDialog .modalTitleRow .todayPickerIntro {
   margin-top: 5px;
   color: var(--text-muted-readable);
-  font-size: var(--dashboard-font-meta);
+  font-size: 13px;
   line-height: 1.5;
+}
+
+.todayPickerDialog .modalTitleRow .eyebrow {
+  margin-bottom: 4px;
+  color: var(--accent-strong);
+  font-size: 11px;
+  line-height: 1.2;
 }
 
 .todayPickerGroups {
@@ -8664,7 +8693,7 @@ input[type="number"]::-webkit-inner-spin-button {
   border-radius: 999px;
   background: rgba(117, 196, 143, 0.055);
   color: var(--good);
-  font-size: var(--dashboard-font-meta);
+  font-size: var(--dashboard-font-meta, 11px);
   font-weight: 700;
   white-space: nowrap;
 }

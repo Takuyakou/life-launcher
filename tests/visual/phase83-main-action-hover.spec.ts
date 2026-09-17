@@ -116,7 +116,9 @@ async function expectNoOverlap(container: Locator, selector: string) {
     const visible = elements
       .filter((element) => {
         const style = getComputedStyle(element);
-        return style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity) > 0;
+        return (
+          style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity) > 0
+        );
       })
       .map((element) => {
         const rect = element.getBoundingClientRect();
@@ -173,9 +175,7 @@ test("P83-03 Records positive action wins its existing neutral rule", async ({ p
   });
 });
 
-test("P83-03 gold and neutral actions share the 120ms interaction primitive", async ({
-  page,
-}) => {
+test("P83-03 gold and neutral actions share the 120ms interaction primitive", async ({ page }) => {
   await prepare(page);
   const gold = page.locator(".nextStepHeaderAdd--project");
   const neutral = page.locator(".nextStepRowAction").first();
@@ -234,7 +234,9 @@ test("P83-03 edit and configure buttons use one neutral grammar", async ({ page 
   }
 });
 
-test.skip("P83-03 adoption matches NextStep configure while restore stays positive", async ({ page }) => {
+test.skip("P83-03 adoption matches NextStep configure while restore stays positive", async ({
+  page,
+}) => {
   await prepare(page);
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   await openDisclosure(page.locator(".inboxBand .disclosure"));
@@ -282,19 +284,27 @@ test("P83-03 gold create hover and active keep their dimensions", async ({ page 
   await page.keyboard.press("Escape");
 });
 
-test("P83-03 Do Now alternate is neutral without an accent important override", async ({
-  page,
-}) => {
+test("P83-03 Do Now alternate is an unframed copy action", async ({ page }) => {
   await prepare(page, createPublicFixture());
-  const alternate = page.getByRole("button", { name: "他の一手" });
-  expect(await readStyle(alternate)).toMatchObject({
-    backgroundColor: "rgb(33, 31, 26)",
-    borderColor: "rgb(74, 70, 57)",
-    color: "rgb(163, 156, 142)",
+  const alternate = page.getByRole("button", { name: "別の候補" });
+  await expect(page.locator(".doNowCopy").getByRole("button", { name: "別の候補" })).toBeVisible();
+  await expect(page.locator(".doNowActions").getByRole("button", { name: "別の候補" })).toHaveCount(
+    0,
+  );
+  const initial = await readStyle(alternate);
+  expect(initial).toMatchObject({
+    backgroundColor: "rgba(0, 0, 0, 0)",
+    color: "rgb(184, 176, 160)",
   });
-  const { hovered } = await expectActionHover(page, alternate);
-  expect(hovered.borderColor).toBe("rgb(184, 176, 160)");
-  expect(hovered.borderColor).not.toBe("rgb(231, 185, 77)");
+  await expect(alternate).toHaveCSS("border-top-width", "0px");
+  await alternate.hover();
+  await page.waitForTimeout(140);
+  const hovered = await readStyle(alternate);
+  expect(hovered.backgroundColor).toBe("rgba(0, 0, 0, 0)");
+  expect(hovered.color).toBe("rgb(244, 240, 232)");
+  expect(hovered.transform).toBe("none");
+  expect(hovered.width).toBe(initial.width);
+  expect(hovered.height).toBe(initial.height);
 });
 
 test("P83-03 Today instruction and remove actions keep neutral geometry", async ({ page }) => {
@@ -333,7 +343,9 @@ test("P83-03 reduced motion and disabled actions never move", async ({ page }) =
   expect(reduced.transitionProperty).not.toContain("transform");
 });
 
-test.skip("P83-03 excluded controls retain their weak hover geometry and colors", async ({ page }) => {
+test.skip("P83-03 excluded controls retain their weak hover geometry and colors", async ({
+  page,
+}) => {
   await prepare(page);
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
 
@@ -395,14 +407,14 @@ test("P83-03 timer controls and NextStep cards keep their established dimensions
       button: page.locator(".todayRow").first().locator(".todayStartButton--short"),
       color: "rgb(111, 207, 151)",
       height: 36,
-      width: 78,
+      width: 82,
     },
     {
       backgroundColor: "rgb(37, 45, 56)",
       button: page.locator(".todayRow").first().locator(".todayStartButton--normal"),
       color: "rgb(169, 208, 255)",
       height: 36,
-      width: 78,
+      width: 82,
     },
     {
       backgroundColor: "rgba(190, 181, 164, 0.08)",
@@ -435,6 +447,25 @@ test("P83-03 timer controls and NextStep cards keep their established dimensions
     expect(hovered.height).toBe(height);
   }
 
+  await page.setViewportSize({ width: 1000, height: 900 });
+  const todayCard = page.locator(".todayRow").first();
+  const [todayCardBox, timerClusterBox, smallShortButton, smallNormalButton] = await Promise.all([
+    todayCard.boundingBox(),
+    todayCard.locator(".todayTimerCluster").boundingBox(),
+    todayCard.locator(".todayStartButton--short").boundingBox(),
+    todayCard.locator(".todayStartButton--normal").boundingBox(),
+  ]);
+  expect(todayCardBox).not.toBeNull();
+  expect(timerClusterBox).not.toBeNull();
+  expect(smallShortButton).not.toBeNull();
+  expect(smallNormalButton).not.toBeNull();
+  expect(timerClusterBox!.x + timerClusterBox!.width).toBeLessThanOrEqual(
+    todayCardBox!.x + todayCardBox!.width,
+  );
+  expect(
+    smallNormalButton!.x - (smallShortButton!.x + smallShortButton!.width),
+  ).toBeGreaterThanOrEqual(5.5);
+
   const card = page.locator(".nextStepRow").first();
   const before = await readStyle(card);
   await card.locator(".nextStepRowAction").hover();
@@ -448,10 +479,7 @@ test("P83-03 Records actions use semantic classes without changing tabs or filte
   page,
 }) => {
   await prepare(page);
-  await page
-    .locator(".topPills .viewToggleButton")
-    .filter({ hasText: "記録" })
-    .click();
+  await page.locator(".topPills .viewToggleButton").filter({ hasText: "記録" }).click();
   await expect(page.locator(".recordsBackButton")).toHaveClass(/mainActionButton--neutral/);
   await expect(page.locator(".recordsTab").first()).not.toHaveClass(/mainActionButton/);
 
@@ -478,29 +506,28 @@ for (const width of [1920, 1440, 1000, 860, 620]) {
     await expect(page.locator(".nextStepHeaderAdd--project")).toBeVisible();
     await expect(page.locator(".nextStepRowAction").first()).toBeVisible();
     expect(
-      await page.locator(".mainScrollArea").evaluate(
-        (element) => element.scrollWidth <= element.clientWidth + 1,
-      ),
+      await page
+        .locator(".mainScrollArea")
+        .evaluate((element) => element.scrollWidth <= element.clientWidth + 1),
     ).toBe(true);
     await expectNoOverlap(
       page.locator(".todayRow").first(),
       ".todayCardFooter button:not(.todayRowMenu)",
     );
-    await expectNoOverlap(
-      page.locator(".todayPickerRow").first(),
-      ".todayBuilderActions > button",
-    );
-    const horizontalOverflow = await page.locator(
-      ".nextStepRow, .todayRow, .todayPickerRow",
-    ).evaluateAll((elements) =>
-      elements.some((element) => {
-        const rect = element.getBoundingClientRect();
-        const section = element.closest(
-          ".projectsBand, .focusBand, .todayBuilderBand",
-        )?.getBoundingClientRect();
-        return Boolean(section && (rect.left < section.left - 1 || rect.right > section.right + 1));
-      }),
-    );
+    await expectNoOverlap(page.locator(".todayPickerRow").first(), ".todayBuilderActions > button");
+    const horizontalOverflow = await page
+      .locator(".nextStepRow, .todayRow, .todayPickerRow")
+      .evaluateAll((elements) =>
+        elements.some((element) => {
+          const rect = element.getBoundingClientRect();
+          const section = element
+            .closest(".projectsBand, .focusBand, .todayBuilderBand")
+            ?.getBoundingClientRect();
+          return Boolean(
+            section && (rect.left < section.left - 1 || rect.right > section.right + 1),
+          );
+        }),
+      );
     expect(horizontalOverflow).toBe(false);
   });
 }
