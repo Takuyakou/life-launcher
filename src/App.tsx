@@ -8295,6 +8295,9 @@ function DashboardApp() {
     const nextStep: LauncherNextStep = {
       text,
       ...(existing ? { generationId: existing.generationId } : { generationId: createStableId() }),
+      ...(existing?.sourceWishlistId
+        ? { sourceWishlistId: existing.sourceWishlistId }
+        : {}),
       buttonIds: [...draft.buttonIds],
       ...(draft.trigger.trim() ? { trigger: draft.trigger.trim() } : {}),
       ...(defaultTimerMinutes ? { defaultTimerMinutes } : {}),
@@ -8975,6 +8978,14 @@ function DashboardApp() {
       }),
     }))
     .filter((group) => group.candidates.length > 0);
+  const wishlistItemIsCurrentNextStep = (item: AppConfig["inbox"][number]) => {
+    if (!item.id || !item.projectId) return false;
+    const nextStep = projectsById.get(item.projectId)?.nextStep;
+    if (!nextStep?.text.trim()) return false;
+    return nextStep.sourceWishlistId
+      ? nextStep.sourceWishlistId === item.id
+      : nextStep.text.trim() === item.text.trim();
+  };
   const renderTodayPickerSelectedItem = (item: TodayItem, index: number) => {
     const project = item.projectId ? projectsById.get(item.projectId) : undefined;
     return (
@@ -8999,14 +9010,15 @@ function DashboardApp() {
           {item.text}
         </strong>
         <button
+          aria-label="今日から外す"
           className="todayPickerRemoveButton todayRemoveButton mainActionButton mainActionButton--neutral"
           disabled={todayPickerSaving}
           onClick={() => removeTodayPickerDraftItem(index)}
           onPointerDown={(event) => event.stopPropagation()}
           type="button"
         >
-          <UiIcon name="back" size={16} />
-          今日の3件から外す
+          <span aria-hidden="true">↩</span>
+          今日から外す
         </button>
       </div>
     );
@@ -12081,12 +12093,21 @@ function DashboardApp() {
                                     const selected = Boolean(
                                       sourceKey &&
                                         config.today.items.some(
-                                          (todayItem) =>
-                                            todayItem.sourceKey &&
-                                          canonicalSourceKey(config, todayItem.sourceKey) ===
-                                            sourceKey,
+                                          (todayItem) => {
+                                            if (todayItem.sourceKey) {
+                                              return (
+                                                canonicalSourceKey(config, todayItem.sourceKey) ===
+                                                sourceKey
+                                              );
+                                            }
+                                            return (
+                                              todayItem.projectId === item.projectId &&
+                                              todayItem.text.trim() === item.text.trim()
+                                            );
+                                          },
                                         ),
                                     );
+                                    const nextStepSelected = wishlistItemIsCurrentNextStep(item);
                                     return (
                                       <div
                                         className={
@@ -12141,7 +12162,7 @@ function DashboardApp() {
                                         </span>
                                         <div className="wishlistRowActions">
                                           <span className="wishlistNextStepSlot">
-                                              {!sourceLocked && (
+                                              {!nextStepSelected && !sourceLocked ? (
                                             <button
                                               aria-label={`${item.text}の次の一手を設定`}
                                               className="wishlistNextStepAction nextStepRowAction nextStepRowAction--set mainActionButton mainActionButton--neutral"
@@ -12165,8 +12186,13 @@ function DashboardApp() {
                                             >
                                               ▷ 次の一手を設定
                                             </button>
-                                              )}
+                                              ) : null}
                                           </span>
+                                          {nextStepSelected && (
+                                            <span className="wishlistNextStepStatus">
+                                              ✓ 次の一手に設定済み
+                                            </span>
+                                          )}
                                           {selected && (
                                               <span className="wishlistTodayStatus">
                                                 ✓ 今日の3件
@@ -12726,6 +12752,9 @@ function DashboardApp() {
               <ContextMenuItem
                 disabled={sourceEditBlocked(
                   `wishlist:${config?.inbox[contextMenu.index]?.id ?? ""}`,
+                ) || Boolean(
+                  config?.inbox[contextMenu.index] &&
+                    wishlistItemIsCurrentNextStep(config.inbox[contextMenu.index]),
                 )}
                 onClick={() => promoteInboxToNextStep(contextMenu.index)}
                 title={
@@ -12734,7 +12763,10 @@ function DashboardApp() {
                 }
                 type="button"
               >
-                次の一手にする
+                {config?.inbox[contextMenu.index] &&
+                wishlistItemIsCurrentNextStep(config.inbox[contextMenu.index])
+                  ? "次の一手に設定済み"
+                  : "次の一手にする"}
               </ContextMenuItem>
               <ContextMenuItem
                 disabled={inboxNeighborIndex(contextMenu.index, -1) === undefined}

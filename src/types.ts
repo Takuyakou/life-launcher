@@ -109,6 +109,7 @@ const NextStepExecutionSchema = z.object({
 export const NextStepSchema = NextStepExecutionSchema.extend({
   text: z.string(),
   generationId: z.string().min(1).optional(),
+  sourceWishlistId: z.string().min(1).optional(),
   trigger: z.string().max(EXECUTION_TRIGGER_MAX_CHARS).optional(),
   updatedAt: z.string().datetime({ offset: true }).optional(),
   reviewedAt: z.string().datetime({ offset: true }).optional(),

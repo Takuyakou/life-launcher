@@ -307,12 +307,20 @@ test("Phase 8.1 Wishlist promotion starts from a reset execution package", async
 
   const config = await currentConfig(page);
   const promoted = config.projects.find((project) => project.id === "sample-learning")?.nextStep;
-  expect(promoted).toMatchObject({ text: "週末に試すアイデア", buttonIds: [] });
+  expect(promoted).toMatchObject({
+    text: "週末に試すアイデア",
+    buttonIds: [],
+    sourceWishlistId: "sample-weekend",
+  });
   expect(promoted?.trigger).toBeUndefined();
   expect(promoted?.instructionPath).toBeUndefined();
   expect(promoted?.defaultTimerMinutes).toBeUndefined();
   expect(promoted?.shortTimerMinutes).toBeUndefined();
-  expect(config.inbox.map((item) => item.id)).toEqual(["sample-later", expect.any(String)]);
+  expect(config.inbox.map((item) => item.id)).toEqual([
+    "sample-later",
+    "sample-weekend",
+    expect.any(String),
+  ]);
   expect(config.inbox.at(-1)).toMatchObject({
     text: "資料を1ページ読む",
     projectId: "sample-learning",

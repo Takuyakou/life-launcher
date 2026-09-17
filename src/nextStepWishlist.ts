@@ -92,13 +92,18 @@ export function prepareNextStepRemoval(
     throw new Error("現在の次の一手が変更されたため、内容を確認し直してください");
   }
 
+  const sourceAlreadyInWishlist = Boolean(
+    project.nextStep.sourceWishlistId &&
+      config.inbox.some((item) => item.id === project.nextStep?.sourceWishlistId),
+  );
+
   return {
     ...config,
     projects: config.projects.map((candidate) =>
       candidate.id === project.id ? { ...candidate, nextStep: undefined } : candidate,
     ),
     inbox:
-      input.choice === "return"
+      input.choice === "return" && !sourceAlreadyInWishlist
         ? [
             ...config.inbox,
             {
@@ -134,11 +139,16 @@ export function prepareNextStepReplacement(
     throw new Error("元のやりたいことが見つかりません");
   }
 
-  const retainedInbox = input.promotedWishlistId
-    ? config.inbox.filter((item) => item.id !== input.promotedWishlistId)
-    : config.inbox;
+  const previousWishlistSourceId = project.nextStep.sourceWishlistId;
+  const retainedInbox =
+    input.choice === "complete" && previousWishlistSourceId
+      ? config.inbox.filter((item) => item.id !== previousWishlistSourceId)
+      : config.inbox;
+  const previousSourceAlreadyInWishlist = Boolean(
+    previousWishlistSourceId && retainedInbox.some((item) => item.id === previousWishlistSourceId),
+  );
   const inbox =
-    input.choice === "return"
+    input.choice === "return" && !previousSourceAlreadyInWishlist
       ? [
           ...retainedInbox,
           {
@@ -165,7 +175,16 @@ export function prepareNextStepReplacement(
     ...config,
     projects: config.projects.map((candidate) =>
       candidate.id === project.id
-        ? { ...candidate, nextStep: input.nextStep, legacyNextStepSettings: undefined }
+        ? {
+            ...candidate,
+            nextStep: {
+              ...input.nextStep,
+              ...(input.promotedWishlistId
+                ? { sourceWishlistId: input.promotedWishlistId }
+                : {}),
+            },
+            legacyNextStepSettings: undefined,
+          }
         : candidate,
     ),
     inbox,
@@ -194,23 +213,31 @@ export function prepareWishlistPromotion(
     throw new Error("元のやりたいことが見つかりません");
   }
 
-  const retainedInbox = config.inbox.filter((item) => item.id !== input.wishlistId);
   return {
     ...config,
     projects: config.projects.map((candidate) =>
       candidate.id === project.id
-        ? { ...candidate, nextStep: input.nextStep, legacyNextStepSettings: undefined }
+        ? {
+            ...candidate,
+            nextStep: { ...input.nextStep, sourceWishlistId: input.wishlistId },
+            legacyNextStepSettings: undefined,
+          }
         : candidate,
     ),
-    inbox: project.nextStep?.text.trim()
+    inbox:
+      project.nextStep?.text.trim() &&
+      !(
+        project.nextStep.sourceWishlistId &&
+        config.inbox.some((item) => item.id === project.nextStep?.sourceWishlistId)
+      )
       ? [
-          ...retainedInbox,
+          ...config.inbox,
           {
             id: input.createId(),
             text: project.nextStep.text,
             projectId: project.id,
           },
         ]
-      : retainedInbox,
+      : config.inbox,
   };
 }
