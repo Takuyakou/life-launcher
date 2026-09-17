@@ -66,9 +66,7 @@ test("unfinished Today3 locks only the matching Wishlist identity", async ({ pag
     "rgb(255, 206, 91)",
   );
   await expect(lockedRow.locator(".wishlistNextStepAction")).toHaveCount(0);
-  await expect(lockedRow.locator(".wishlistTodayStatus")).toHaveText(
-    "✓ 今日の3件に設定済み",
-  );
+  await expect(lockedRow.locator(".wishlistTodayStatus")).toHaveText("✓ 今日の3件に設定済み");
   await expect(unlockedRow.locator(".sourceLockBadge--wishlist")).toHaveCount(0);
   const rowBox = await lockedRow.boundingBox();
   const menuBox = await lockedRow.locator(".sourceRowMenu").boundingBox();
@@ -87,7 +85,7 @@ test("unfinished Today3 locks only the matching Wishlist identity", async ({ pag
   await expect(lockedRow.locator(".wishlistNextStepAction")).toHaveCount(1);
 });
 
-test("Do Now, Today3, and NextStep share gold hover feedback and measure underlines", async ({
+test("Do Now uses its Project hover color while Today3 and NextStep keep gold feedback", async ({
   page,
 }) => {
   const fixture = createPublicFixture();
@@ -96,13 +94,21 @@ test("Do Now, Today3, and NextStep share gold hover feedback and measure underli
   const hoverBorder = async (selector: string) => {
     const target = page.locator(selector).first();
     await target.hover();
+    await page.waitForTimeout(140);
     return target.evaluate((node) => getComputedStyle(node).borderRightColor);
   };
-  const doNowBorder = await hoverBorder(".doNowContent");
+  const doNow = page.locator(".doNowContent");
+  await doNow.hover();
+  await page.waitForTimeout(140);
+  const doNowBorders = await doNow.evaluate((node) => {
+    const style = getComputedStyle(node);
+    return { left: style.borderLeftColor, right: style.borderRightColor };
+  });
   const todayBorder = await hoverBorder(".todayRow");
   const nextStepBorder = await hoverBorder(".nextStepCard");
-  expect(todayBorder).toBe(doNowBorder);
-  expect(nextStepBorder).toBe(doNowBorder);
+  expect(doNowBorders.right).toBe(doNowBorders.left);
+  expect(todayBorder).toBe(nextStepBorder);
+  expect(todayBorder).not.toBe(doNowBorders.right);
 
   for (const selector of [".doNowMeasureButton", ".todayMeasureButton"]) {
     const button = page.locator(selector).first();

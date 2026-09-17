@@ -3375,8 +3375,7 @@ input[type="number"]::-webkit-inner-spin-button {
     transform 120ms ease;
 }
 
-.doNowContent:hover,
-.doNowContent:focus-within {
+.doNowContent:hover {
   border-color: var(--accent);
   background: var(--control-neutral-hover-bg);
   transform: translateY(-1px);
@@ -3387,9 +3386,9 @@ input[type="number"]::-webkit-inner-spin-button {
   padding-left: 12px;
 }
 
-.doNowContent[data-project-color]:hover,
-.doNowContent[data-project-color]:focus-within {
-  border-left-color: var(--accent);
+.doNowContent[data-project-color]:hover {
+  border-color: var(--project-color);
+  background: color-mix(in srgb, var(--project-color) 7%, var(--dashboard-action-surface));
 }
 
 .doNowCopy {
@@ -8420,7 +8419,6 @@ input[type="number"]::-webkit-inner-spin-button {
     width: 14px;
     height: 14px;
   }
-
 }
 
 .todayNextBatch {
@@ -8998,6 +8996,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .todayPickerSourcePanel {
   min-height: 0;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   border-top: 1px solid var(--line);
   padding: 4px 4px 0 0;
 }
@@ -9169,7 +9168,7 @@ input[type="number"]::-webkit-inner-spin-button {
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
-  padding: 10px 22px 10px 14px;
+  padding: 10px calc(24px + var(--scrollbar-size)) 10px 14px;
   border-top: 1px solid var(--line);
 }
 
@@ -9209,9 +9208,13 @@ input[type="number"]::-webkit-inner-spin-button {
 
   .todayPickerDialog .modalTitleRow,
   .todayPickerDestination,
-  .todayPickerSource,
-  .todayPickerActions {
+  .todayPickerSource {
     padding-inline: 12px;
+  }
+
+  .todayPickerActions {
+    padding-right: calc(22px + var(--scrollbar-size));
+    padding-left: 12px;
   }
 
   .todayPickerSlots {

@@ -3,9 +3,9 @@ import type { AppConfig } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 
-async function prepare(page: Page, fixture: VisualQaFixture, width = 1280) {
+async function prepare(page: Page, fixture: VisualQaFixture, width = 1280, height = 900) {
   await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
-  await page.setViewportSize({ width, height: 900 });
+  await page.setViewportSize({ width, height });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
   await expect(page.locator(".focusBand")).toBeVisible();
@@ -314,7 +314,9 @@ test("P84 Picker removes selected cards directly and exposes a longer green prog
   await expect(dialog).toHaveCount(0);
 });
 
-test("P84 Picker removal is button-only and exposes no drag-and-drop affordance", async ({ page }) => {
+test("P84 Picker removal is button-only and exposes no drag-and-drop affordance", async ({
+  page,
+}) => {
   const fixture = createPublicFixture();
   fixture.config.today.items = fixture.config.today.items.slice(0, 1);
   await prepare(page, fixture);
@@ -403,9 +405,13 @@ test("P84 Picker aligns project, task, and action columns with readable long con
   expect(Math.max(...wishlistActionRights) - Math.min(...wishlistActionRights)).toBeLessThanOrEqual(
     1,
   );
-  const cancelBox = await dialog.getByRole("button", { name: "キャンセル", exact: true }).boundingBox();
+  const cancelBox = await dialog
+    .getByRole("button", { name: "キャンセル", exact: true })
+    .boundingBox();
   expect(cancelBox).not.toBeNull();
-  expect(Math.abs(cancelBox!.x + cancelBox!.width - wishlistActionRights[0])).toBeLessThanOrEqual(1);
+  expect(Math.abs(cancelBox!.x + cancelBox!.width - wishlistActionRights[0])).toBeLessThanOrEqual(
+    1,
+  );
   await expect(dialog.locator(".todayPickerRow--groupedWishlist").first()).toHaveCSS(
     "min-height",
     "60px",
@@ -461,6 +467,33 @@ test("P84 Picker remains contained and keeps actions visible at narrow width", a
   expect((await removeButton.boundingBox())!.height).toBeGreaterThanOrEqual(30);
   expect(await dialog.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
   await dialog.screenshot({ path: "dist/visual-qa/phase84/picker-narrow-520.png" });
+});
+
+test("P84 Picker aligns candidate and footer actions in the mini window", async ({ page }) => {
+  const fixture = createPublicFixture();
+  fixture.config.today.items = fixture.config.today.items.slice(0, 1);
+  for (let index = 0; index < 8; index += 1) {
+    fixture.config.inbox.push({
+      id: `mini-overflow-${index}`,
+      text: `ミニ画面の位置揃え候補 ${index + 1}`,
+      projectId: fixture.config.projects[index % fixture.config.projects.length].id,
+    });
+  }
+  await prepare(page, fixture, 740, 600);
+
+  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
+  const dialog = picker(page);
+  await dialog.getByRole("tab", { name: /やりたいこと/ }).click();
+  const panel = dialog.locator(".todayPickerSourcePanel");
+  expect(await panel.evaluate((node) => node.scrollHeight > node.clientHeight)).toBe(true);
+  const [addBox, cancelBox] = await Promise.all([
+    dialog.locator(".todayPickerAddButton").first().boundingBox(),
+    dialog.getByRole("button", { name: "キャンセル", exact: true }).boundingBox(),
+  ]);
+  expect(addBox && cancelBox).toBeTruthy();
+  const candidateRight = addBox!.x + addBox!.width;
+  expect(Math.abs(cancelBox!.x + cancelBox!.width - candidateRight)).toBeLessThanOrEqual(1);
+  await dialog.screenshot({ path: "dist/visual-qa/phase84/picker-actions-mini-740.png" });
 });
 
 test("P84 Picker separates selected items from NextStep and Wishlist candidates", async ({
@@ -630,9 +663,7 @@ test("P84 add dialogs expose a consistent top-right close action", async ({ page
   await nextStepDialog.getByRole("tab", { name: "＋ 新しく入力" }).click();
   await nextStepDialog.getByRole("button", { name: "次の一手を設定を閉じる" }).click();
   await expect(nextStepDialog).toHaveCount(0);
-  await expect(page.getByRole("dialog", { name: "入力内容を破棄して閉じますか？" })).toHaveCount(
-    0,
-  );
+  await expect(page.getByRole("dialog", { name: "入力内容を破棄して閉じますか？" })).toHaveCount(0);
   await expect(nextStepOpener).toBeFocused();
 });
 
