@@ -1,24 +1,24 @@
-READY FOR USER APPROVAL
+APPROVED FOR PUBLICATION
 
 # Life Launcher v1.3.0 Final Release Decision
 
 ## Decision
 
-The Windows x64 v1.3.0 release candidate is ready for explicit user approval to publish. No release-blocking dependency issue, regression failure, migration/data-loss risk, reset/restore mismatch, rollback failure, version mismatch, private-data leak, native startup failure, source-identity corruption, or unresolved blocker-class defect remains.
+The Windows x64 v1.3.0 release candidate has received explicit user approval to publish. No release-blocking dependency issue, regression failure, migration/data-loss risk, reset/restore mismatch, rollback failure, version mismatch, private-data leak, native startup failure, source-identity corruption, or unresolved blocker-class defect remains.
 
 No tag, GitHub Release, asset upload, or production deployment has been performed.
 
 ## Candidate identity
 
 - Release branch: `fix/v13-victory-guide-release`
-- Artifact source-code commit: `6f968cb`
-- Audit evidence head before this decision: `024abe1`
-- Branch relation: fast-forward from local `main`; 0 commits behind / 9 commits ahead before this report
+- Artifact source-code commit: `594dbfc`
+- Audit evidence head before the approved UI follow-up: `8bed9d5`
+- Branch relation: fast-forward from local `main`; 0 commits behind / 11 commits ahead before this report update
 - Version: `1.3.0`
 - Config/data schema: `3` (intentionally unchanged)
 - Release notes: `docs/release/v1.3.0/release-notes.md`
 
-The packaging scripts and application source used to build the artifacts match commit `6f968cb`. Later commits through `024abe1` add only audit/release documentation.
+The packaging scripts and application source used to build the artifacts match commit `594dbfc`. This commit adds the approved final empty-state typography, guidance copy, height-alignment regression coverage, and no unrelated behavior change.
 
 ## Final evidence
 
@@ -30,6 +30,7 @@ The packaging scripts and application source used to build the artifacts match c
 | Version / artifacts | FIXED-AND-PASS | `p8.5-03-artifact-report.md`; consistent v1.3.0 metadata, full post-version gate, Defender 0 new detections |
 | Native smoke / upgrade | PASS | `p8.5-04-native-smoke.md`; standalone, portable, installer, reset, restore, Timer, auxiliary windows, and single-instance checks passed |
 | Web Demo parity | DEFERRED / NON-BLOCKING | `p8.5-05-web-demo-parity.md`; current Web gates pass, v1.3 simultaneous deploy is not approved |
+| Post-audit empty-state UI patch | PASS | Targeted Playwright 2 passed; production build passed; Tauri/NSIS package build passed; isolated standalone startup and artifact hash verification passed |
 
 ## Release assets
 
@@ -37,9 +38,9 @@ Candidate directory: `release-candidate/v1.3.0`
 
 | Asset | SHA-256 |
 | --- | --- |
-| `Life-Launcher-v1.3.0-windows-x64-setup.exe` | `4B34410ECFC58413026D0D1927EF46A34EA4B32C7E5F42E6ADD85430211F4D58` |
-| `Life-Launcher-v1.3.0-windows-x64.exe` | `44DCD009D1A739F09EA966BB0725D64596204F5F6B2A7208A1EFA1ACE4A87998` |
-| `Life-Launcher-v1.3.0-windows-x64-portable.zip` | `85B0ACC333B4E7E81628BE64C038E96175DE8B31590DEC1769E009A1194504A1` |
+| `Life-Launcher-v1.3.0-windows-x64-setup.exe` | `3C46DB7552B2AC0BAB4E0073D3B7C55ED48E42FC3579F3081932849B03376920` |
+| `Life-Launcher-v1.3.0-windows-x64.exe` | `5A56761841D9643F339AADB0FB82786C6B5CB376F5AFF111E9B1A99D1A27C533` |
+| `Life-Launcher-v1.3.0-windows-x64-portable.zip` | `77BCF09959CCE7C04021DE9BBEC76297DF45C87118CD9805E6AF8015573BDC33` |
 
 
 ## Web Demo decision
@@ -64,7 +65,7 @@ Windows v1.3.0 may be released without updating the Web Demo. The Web Demo must 
 
 ## Approval boundary
 
-The next actions publish immutable public state. They require explicit user approval. Approval for the Windows release does not approve a Web Demo deployment.
+The user explicitly approved continuing the Windows release on 2026-09-18. This approval does not approve a Web Demo deployment.
 
 ## Exact Windows publish plan
 
@@ -84,7 +85,7 @@ Run only after approval:
 
 ## Final status
 
-**Windows v1.3.0: READY FOR USER APPROVAL**
+**Windows v1.3.0: APPROVED FOR PUBLICATION**
 
 **Web Demo v1.3.0 parity deployment: DEFERRED / NOT APPROVED**
 
