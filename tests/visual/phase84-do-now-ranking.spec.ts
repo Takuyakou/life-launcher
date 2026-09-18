@@ -167,18 +167,48 @@ test("P84 empty Do Now with no Projects uses the shared gold setup state", async
   const message = empty.getByText("プロジェクトを作り、次の一手を設定すると提案されます。", {
     exact: true,
   });
+  const description = empty.getByText(
+    "迷ったときに、今の状況から始めやすい「次にやること」を1つだけ提示します。",
+    { exact: true },
+  );
+  const todayEmpty = page.locator(".todayEmptyState");
+  const nextStepEmpty = page.locator(".sectionEmptyState");
   const action = empty.getByRole("button", { name: "プロジェクトを追加" });
   await expect(message).toBeVisible();
+  await expect(description).toBeVisible();
+  await expect(todayEmpty).toBeVisible();
+  await expect(nextStepEmpty).toBeVisible();
   await expect(action).toHaveClass(/mainActionButton--gold/);
   await expect(action.locator(".uiIcon")).toHaveCount(1);
-  const [emptyBox, messageBox, actionBox] = await Promise.all([
+  const [emptyBox, todayEmptyBox, nextStepEmptyBox, messageBox, descriptionBox, actionBox] =
+    await Promise.all([
     empty.boundingBox(),
+    todayEmpty.boundingBox(),
+    nextStepEmpty.boundingBox(),
     message.boundingBox(),
+    description.boundingBox(),
     action.boundingBox(),
   ]);
-  expect(emptyBox && messageBox && actionBox).toBeTruthy();
-  expect(emptyBox!.height).toBe(124);
-  expect(actionBox!.y).toBeGreaterThan(messageBox!.y + messageBox!.height);
+  expect(
+    emptyBox && todayEmptyBox && nextStepEmptyBox && messageBox && descriptionBox && actionBox,
+  ).toBeTruthy();
+  expect(emptyBox!.height).toBeCloseTo(todayEmptyBox!.height, 1);
+  expect(emptyBox!.height).toBeCloseTo(nextStepEmptyBox!.height, 1);
+  expect(descriptionBox!.y).toBeGreaterThan(messageBox!.y + messageBox!.height);
+  expect(actionBox!.y).toBeGreaterThan(descriptionBox!.y + descriptionBox!.height);
+
+  const [messageStyle, descriptionStyle] = await Promise.all([
+    message.evaluate((node) => {
+      const style = getComputedStyle(node);
+      return { fontSize: style.fontSize, fontWeight: style.fontWeight };
+    }),
+    description.evaluate((node) => {
+      const style = getComputedStyle(node);
+      return { color: style.color, fontSize: style.fontSize };
+    }),
+  ]);
+  expect(messageStyle).toEqual({ fontSize: "17px", fontWeight: "700" });
+  expect(descriptionStyle.fontSize).toBe("11px");
 
   await action.click();
   await expect(page.getByRole("dialog", { name: "プロジェクトを追加" })).toBeVisible();

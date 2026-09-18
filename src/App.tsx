@@ -10615,6 +10615,9 @@ function DashboardApp() {
                             ? "次の一手を設定すると、ここに提案されます。"
                             : "プロジェクトを作り、次の一手を設定すると提案されます。"}
                         </strong>
+                        <span>
+                          迷ったときに、今の状況から始めやすい「次にやること」を1つだけ提示します。
+                        </span>
                         <button
                           className="mainActionButton mainActionButton--gold"
                           onClick={() =>

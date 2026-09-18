@@ -3655,9 +3655,22 @@ input[type="number"]::-webkit-inner-spin-button {
   margin-inline-start: 14px;
 }
 
-.doNowEmptyContent > strong {
+.doNowEmptyContent > strong,
+.todayEmptyStateContent > strong,
+.sectionEmptyStateContent > strong {
   color: var(--text);
   font-size: var(--dashboard-font-action);
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.doNowEmptyContent > span,
+.todayEmptyStateContent > span,
+.sectionEmptyStateContent > span {
+  color: var(--text-muted-readable);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 450;
+  line-height: 1.4;
 }
 
 .doNowEmptyContent > button {
@@ -8603,15 +8616,6 @@ input[type="number"]::-webkit-inner-spin-button {
   margin-inline-start: 14px;
 }
 
-.todayEmptyStateContent > strong {
-  font-size: var(--dashboard-font-action);
-}
-
-.todayEmptyStateContent > span {
-  color: var(--text-muted-readable);
-  font-size: var(--dashboard-font-meta);
-}
-
 .todayEmptyStateContent > button {
   min-height: 36px;
   display: inline-flex;
@@ -8649,15 +8653,6 @@ input[type="number"]::-webkit-inner-spin-button {
   justify-items: start;
   gap: 5px;
   margin-inline-start: 14px;
-}
-
-.sectionEmptyStateContent > strong {
-  font-size: var(--dashboard-font-action);
-}
-
-.sectionEmptyStateContent > span {
-  color: var(--text-muted-readable);
-  font-size: var(--dashboard-font-meta);
 }
 
 .sectionEmptyStateContent > button {
