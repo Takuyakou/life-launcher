@@ -1,12 +1,14 @@
-APPROVED FOR PUBLICATION
+RELEASED
 
 # Life Launcher v1.3.0 Final Release Decision
 
 ## Decision
 
-The Windows x64 v1.3.0 release candidate has received explicit user approval to publish. No release-blocking dependency issue, regression failure, migration/data-loss risk, reset/restore mismatch, rollback failure, version mismatch, private-data leak, native startup failure, source-identity corruption, or unresolved blocker-class defect remains.
+The Windows x64 v1.3.0 release was published successfully. No release-blocking dependency issue, regression failure, migration/data-loss risk, reset/restore mismatch, rollback failure, version mismatch, private-data leak, native startup failure, source-identity corruption, or unresolved blocker-class defect remains.
 
-No tag, GitHub Release, asset upload, or production deployment has been performed.
+Public release: https://github.com/Takuyakou/life-launcher/releases/tag/v1.3.0
+
+The annotated `v1.3.0` tag and GitHub Release are public. The Web Demo was not deployed.
 
 ## Candidate identity
 
@@ -85,8 +87,19 @@ Run only after approval:
 
 ## Final status
 
-**Windows v1.3.0: APPROVED FOR PUBLICATION**
+**Windows v1.3.0: RELEASED**
 
 **Web Demo v1.3.0 parity deployment: DEFERRED / NOT APPROVED**
+
+## Publication verification
+
+- `main` and annotated tag `v1.3.0` were pushed atomically.
+- The GitHub Release is public, non-draft, and non-prerelease.
+- Exactly four assets were uploaded: installer, standalone EXE, portable ZIP, and `SHA256SUMS.txt`.
+- All four assets were downloaded again from GitHub.
+- The three distributable hashes matched the published checksum file.
+- Downloaded EXE and installer version metadata reported `1.3.0`.
+- Downloaded portable ZIP contents were correct.
+- Downloaded standalone EXE passed isolated startup and created config version 3.
 
 
