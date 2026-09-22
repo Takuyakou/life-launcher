@@ -4,16 +4,16 @@ import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 
 const SECTION_TITLES = [
-  "まず始める",
-  "毎日の基本",
+  "3分で使ってみる",
+  "最初に覚える5つ",
   "今日やるものを選ぶ",
-  "今日の3件",
+  "今日の使い方",
   "Timerと完了",
-  "開始環境と手順書",
-  "辞書 / Quick",
-  "記録と今週の見直し",
-  "設定とデータ",
-  "Life Launcherがしないこと",
+  "開始環境と手順書ビューアー",
+  "Quickと辞書",
+  "記録を見る",
+  "設定とデータを守る",
+  "困ったとき",
 ];
 
 async function openGuide(page: Page) {
@@ -27,7 +27,7 @@ async function openGuide(page: Page) {
   return dialog;
 }
 
-test("Guide has the current ten-section structure and a three-step start", async ({ page }) => {
+test("Guide has the beginner ten-section structure and a five-step start", async ({ page }) => {
   const dialog = await openGuide(page);
   const navigation = dialog.getByRole("navigation", { name: "使い方の目次" });
   const buttons = navigation.getByRole("button");
@@ -43,52 +43,47 @@ test("Guide has the current ten-section structure and a three-step start", async
     ).toBeVisible();
   }
 
-  await expect(sections.first().locator(".helpGuideSteps > li")).toHaveCount(3);
-  await expect(sections.first()).toContainText("今やる一手をそのまま始めます");
-  await expect(sections.first()).toContainText("今日やるものを選ぶ");
-  await expect(sections.first()).toContainText("実行記録を残します");
+  await expect(sections.first().locator(".helpGuideSteps > li")).toHaveCount(5);
+  await expect(sections.first()).toContainText("＋ プロジェクト");
+  await expect(sections.first()).toContainText("次の一手を設定");
+  await expect(sections.first()).toContainText("＋ 今日やるものを選ぶ");
+  await expect(sections.first()).toContainText("5分");
+  await expect(sections.first()).toContainText("実行記録へ残ります");
 });
 
-test("Guide uses current labels and explains the v1.3 state contracts", async ({ page }) => {
+test("Guide uses current labels and explains the first journey without internal contracts", async ({
+  page,
+}) => {
   const dialog = await openGuide(page);
   const text = await dialog.innerText();
 
   for (const label of [
     "プロジェクト",
-    "目標",
     "次の一手",
-    "始めるきっかけ",
+    "やりたいこと",
+    "今日の3件",
+    "今やる一手",
     "実行記録",
-    "他の一手",
-    "✓ 今日の3件に設定済み",
-    "✓ 次の一手に設定済み",
     "ふりかえり",
     "今週を決める",
     "すべての記録",
+    "手順書ビューアー",
   ]) {
     expect(text).toContain(label);
   }
 
-  expect(text).toContain("候補が2件以上");
-  expect(text).toContain("優先順や保存データは書き換えません");
-  expect(text).toContain("今週の重点は優先順位を上げますが、候補を限定しません");
-  expect(text).toContain("↓ ここにドロップして今日の3件から外す");
-  expect(text).toContain("候補の「＋ 今日へ」");
-  expect(text).toContain("Picker内の解除はボタン操作だけで、D&Dはありません");
-  expect(text).toContain("3件目の保存に成功すると「決定」と同じ扱いで自動的に閉じ");
-  expect(text).toContain("変更がある場合だけ破棄確認");
-  expect(text).toContain("アイコンキャッシュの日次ZIPバックアップ");
-  expect(text).toContain("各プロジェクト0〜1件の再開地点");
-  expect(text).toContain("次の一手とは独立した順");
-  expect(text).toContain("所属のない項目は「未分類」にまとまります");
-  expect(text).toContain("やりたいことへ戻す");
-  expect(text).toContain("「計測」は0:00から実行時間を数え");
-  expect(text).toContain("計測を含む現在の1本を終了してから");
-  expect(text).toContain("選択ページ、focus層、最後の項目、スクロール位置を復元");
-  expect(text).toContain("次の一手の右クリックには完了操作はありません");
-  expect(text).not.toContain(
-    "次の一手・やりたいこと自体を候補から終える場合は、それぞれの右クリック",
-  );
+  expect(text).toContain("Aメロの続きを8小節作る");
+  expect(text).toContain("今日の3件へ選んでも、元の次の一手・やりたいことは消えません");
+  expect(text).toContain("3件目を選ぶと、その内容で自動的に決定");
+  expect(text).toContain("終了時刻を決めず、0:00から取り組んだ時間を数えます");
+  expect(text).toContain("Mainの「辞書を開く」または既定のCtrl+K");
+  expect(text).toContain("アイコンサイズを自動・小・中・大");
+  expect(text).toContain("ZIPから復元");
+  expect(text).toContain("Mainを閉じてもtrayで動作を続けます");
+  expect(text).not.toContain("source identity");
+  expect(text).not.toContain("rollback");
+  expect(text).not.toContain("legacy");
+  expect(text).not.toContain("手順書ビューワー");
 
   for (const stale of [
     "初回セットアップ",
@@ -121,7 +116,7 @@ test("Overview and current spec stay concise and synchronized", () => {
 
   expect(specification).toContain("active pageは表示対象を決める状態");
   expect(specification).toContain("再表示時の検索語は復元せず空に戻す");
-  expect(specification).toContain("章は「まず始める」");
+  expect(specification).toContain("章は「3分で使ってみる」");
   expect(specification).toContain("迷ったときに戻る「再開地点」");
   expect(specification).toContain("＋ 今日やるものを選ぶ");
   expect(specification).toContain("候補を限定するfilterにはしない");
