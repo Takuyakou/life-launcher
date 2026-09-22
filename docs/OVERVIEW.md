@@ -1,6 +1,6 @@
 # Life Launcher Overview
 
-> 最終更新: 2026-09-17 / v1.3.0リリース準備
+> 最終更新: 2026-09-23 / v1.3.1リリース準備
 > 詳細は [UI/UX・機能仕様書](spec/current-spec.md) を参照してください。
 
 ## 何ができるアプリか
@@ -31,7 +31,7 @@ Life Launcherは、選んだ「次の一手」を実行へ移すlocal-firstのWi
 短時間・通常Timerに加え、0:00から時間を決めずに進める「計測」を同じ記録経路で開始し、実行中、一時停止、終了を管理します。動かせるTimerは常に1本で、1分未満の実行は記録しません。
 記録画面は「ふりかえり」「今週を決める」「すべての記録」に分かれ、保存時の実行内容を事実として表示します。
 
-### 手順書ビューワー
+### 手順書ビューアー
 
 登録したローカルフォルダーからMarkdown、Text、HTMLを閲覧します。HTMLは相対CSS・画像を保ち、ブラウザに近い配置で安全に表示します。
 MarkdownとTextは編集でき、次の一手やToday3の開始時に関連付けられます。
@@ -84,6 +84,7 @@ v1.3.0ではconfigをv3へ更新し、Project metadataとNextStep実行設定を
 
 | Version | 概要                                                                                                                                     |
 | ------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| 1.3.1   | 辞書設定、Drop Register、手順書ビューアーのfolder picker、初心者向けGuideを改善                                                         |
 | 1.3.0   | Project/NextStep/Wishlist、config v3移行、計測Timer、Settings、ソフトウェアリセット、Today Picker、Today3解除Drop Zone、Do Now順位を更新 |
 | 1.2.0   | 動的早期完了、編集同期、Undo Toast、cross-section D&D、完了フィードバックを追加                                                          |
 | 1.1.0   | Today3と候補選択、登録完了履歴、開始環境Picker、辞書操作を整理                                                                           |
@@ -92,7 +93,6 @@ v1.3.0ではconfigをv3へ更新し、Project metadataとNextStep実行設定を
 以降の変更は [CHANGELOG](../CHANGELOG.md) を更新し、この表は大きな節目だけを追記します。
 
 ## 関連文書
-
 - [詳細UI/UX・機能仕様](spec/current-spec.md) / [ソフトウェアリセット](phase8.3/software-reset.md)
 - [README (日本語)](../README.md) / [README (English)](../README.en.md)
 - [CHANGELOG](../CHANGELOG.md)

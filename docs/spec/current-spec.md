@@ -1,20 +1,20 @@
-# Life Launcher v1.3.0 UI/UX・機能仕様書
+# Life Launcher v1.3.1 UI/UX・機能仕様書
 
 ## 0. 文書情報
 
 | 項目             | 内容                                                                   |
 | ---------------- | ---------------------------------------------------------------------- |
-| 文書版           | 1.3.0                                                                  |
+| 文書版           | 1.3.1                                                                  |
 | 対象             | Windowsデスクトップ版 Life Launcher                                    |
-| 実装基準         | Public repository `Takuyakou/life-launcher` のv1.3.0 release candidate |
+| 実装基準         | Public repository `Takuyakou/life-launcher` のv1.3.1 release candidate |
 | 作業branch       | `fix/v13-victory-guide-release`                                        |
-| 監査基準コミット | v1.3.0リリース準備時のHEAD                                             |
+| 監査基準コミット | v1.3.1リリース準備時のHEAD                                             |
 | 確認日           | 2026-09-17                                                             |
 | UI実装           | Tauri 2 / React 18 / TypeScript / CSS                                  |
 
-本書は、Life Launcher v1.3.0のUI/UXと主要機能を、現在のコード、型、設定、capability、テストから整理した現行仕様書である。
+本書は、Life Launcher v1.3.1のUI/UXと主要機能を、現在のコード、型、設定、capability、テストから整理した現行仕様書である。
 
-製品バージョンは`1.3.0`、config schemaは`3`である。Phase 8〜8.4のProject / NextStep / Wishlist再構成、Settings、ソフトウェアリセット、Today Picker、Source Lock、UI改善を含む。機能の入口は [Overview](../OVERVIEW.md) を参照する。
+製品バージョンは`1.3.1`、config schemaは`3`である。Phase 8〜8.4のProject / NextStep / Wishlist再構成と、P8.7のDictionary / Drop Register / Instruction Viewer / Guide改善を含む。機能の入口は [Overview](../OVERVIEW.md) を参照する。
 
 ## 1. プロダクト概要
 

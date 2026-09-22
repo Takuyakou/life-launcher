@@ -57,25 +57,25 @@ The screenshots are generated from synthetic data. They do not contain real user
 
 ## Download
 
-Download Life Launcher from [GitHub Releases](https://github.com/Takuyakou/life-launcher/releases/latest). The current stable release is **v1.3.0**.
+Download Life Launcher from [GitHub Releases](https://github.com/Takuyakou/life-launcher/releases/latest). The current stable release is **v1.3.1**.
 
 ### Installer - Recommended
 
 Use this for the standard installation flow.
 
-`Life-Launcher-v1.3.0-windows-x64-setup.exe`
+`Life-Launcher-v1.3.1-windows-x64-setup.exe`
 
 ### Standalone EXE
 
 Run the app directly without installing it.
 
-`Life-Launcher-v1.3.0-windows-x64.exe`
+`Life-Launcher-v1.3.1-windows-x64.exe`
 
 ### Portable ZIP
 
 Extract the ZIP archive and run the app.
 
-`Life-Launcher-v1.3.0-windows-x64-portable.zip`
+`Life-Launcher-v1.3.1-windows-x64-portable.zip`
 
 The ZIP edition also stores user data in `%APPDATA%\life-launcher`. It does not carry your data alongside the executable on a USB drive.
 
@@ -89,7 +89,7 @@ Fully exit Life Launcher and back up the `%APPDATA%\life-launcher` folder to ano
 
 The first launch after updating from v1.2 to v1.3 migrates config schema `2` to `3`. The app creates a raw pre-migration backup and leaves the original config unchanged if migration, validation, or backup fails. Session records are not deleted.
 
-See the [v1.3.0 release notes](docs/releases/v1.3.0.md) and [changelog](CHANGELOG.md) for details. The [overview](docs/OVERVIEW.md) and [current specification](docs/spec/current-spec.md) cover the wider feature set. These detailed documents are currently in Japanese.
+See the [v1.3.1 release notes](docs/releases/v1.3.1.md) and [changelog](CHANGELOG.md) for details. The [overview](docs/OVERVIEW.md) and [current specification](docs/spec/current-spec.md) cover the wider feature set. These detailed documents are currently in Japanese.
 
 ## Runtime Requirements
 

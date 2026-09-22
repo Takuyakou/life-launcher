@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.3.1 - 2026-09-23
+
+### 改善
+
+- 辞書へ表示サイズの自動・小・中・大設定を追加し、titlebarの設定ボタンと右クリックから同じ画面を開けるようにした。
+- Mainの辞書入口へwindow iconを追加し、現在のshortcut表示と起動動作を維持した。
+- Drop Registerは内部action prefixを隠し、登録先groupと表示先を意図的に選べる構成へ整理した。
+- アプリ内Guideを、最初の3分と毎日の流れを中心にした初心者向け10章へ書き直した。
+- ユーザー向け表記を「手順書ビューアー」へ統一した。
+
+### 修正
+
+- 手順書folder pickerをWindows標準`IFileOpenDialog`へ置き換え、no-folder状態でcancelまたはselectした際に操作が停止する問題を修正した。
+- 手順書ビューアーの空状態、toolbar、Markdown/Text編集、HTML read-only表示を対象に応じて整理した。
+- Drop Registerの保存失敗時にdialogと入力内容を保持し、明示的に再試行またはcancelできるようにした。
+
+### アップデート時の注意
+
+- config schemaはv1.3.0と同じ`3`で、追加migrationはない。既存の設定、Today3、Session、辞書登録をそのまま使用する。
+- 更新前にアプリを完全終了し、必要に応じて`%APPDATA%\life-launcher`をバックアップすることを推奨。
+- 詳細は [v1.3.1 Release notes](docs/releases/v1.3.1.md) を参照。
+
 ## 1.3.0 - 2026-09-17
 
 ### 追加・改善
