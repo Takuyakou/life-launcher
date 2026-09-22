@@ -708,42 +708,6 @@ export function InstructionTree({
     setOperationDialog({ kind, parentPath, extension: "md" });
   };
 
-  const registerInstructionFolderAndCreate = async () => {
-    if (registeringRoot) return;
-    setRegisteringRoot(true);
-    setOperationStatus(null);
-    try {
-      const selected = await onChooseInstructionRoot();
-      if (!selected) return;
-      const loaded = await loadConfig();
-      const folders = loaded.config.settings.instructionFolders;
-      if (folders.some((folder) => pathKey(folder) === pathKey(selected.path))) {
-        await refreshTree();
-        openCreateDialog("create-file", selected.path);
-        return;
-      }
-      if (folders.length >= 5) {
-        setOperationStatus("手順書フォルダは最大5件までです。設定から登録を整理してください");
-        return;
-      }
-      await saveConfigAndNotifyDashboard({
-        ...loaded.config,
-        settings: {
-          ...loaded.config.settings,
-          instructionFolders: [...folders, selected.path],
-        },
-      });
-      await refreshTree();
-      setOperationDialog({ kind: "create-file", parentPath: selected.path, extension: "md" });
-    } catch (error) {
-      setOperationStatus(
-        `手順書フォルダを登録できません: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    } finally {
-      setRegisteringRoot(false);
-    }
-  };
-
   const registerInstructionFolder = async () => {
     if (registeringRoot) return;
     setRegisteringRoot(true);
@@ -1106,7 +1070,7 @@ export function InstructionTree({
           className="instructionTreeLoad"
           disabled={treeLoading || registeringRoot || roots.length >= 5}
           onClick={() => void registerInstructionFolder()}
-          title={roots.length >= 5 ? "手順書フォルダは最大5件です" : "既存フォルダを読み込む"}
+          title={roots.length >= 5 ? "手順書フォルダは最大5件です" : "フォルダを読み込む"}
           type="button"
         >
           <UiIcon name="folder" size={16} />
@@ -1187,22 +1151,14 @@ export function InstructionTree({
         ) : roots.length === 0 ? (
           <div className="instructionTreeMessage">
             <strong>手順書フォルダが未登録です</strong>
-            <span>保存先を選ぶと、そのまま最初の手順書を作成できます。</span>
-            <button
-              className="instructionTreeEmptyAction"
-              disabled={registeringRoot}
-              onClick={() => void registerInstructionFolderAndCreate()}
-              type="button"
-            >
-              {registeringRoot ? "選択中…" : "フォルダを選んで作成"}
-            </button>
+            <span>Markdown・Text・HTMLをまとめたフォルダを読み込めます。</span>
             <button
               className="instructionTreeEmptyAction"
               disabled={registeringRoot}
               onClick={() => void registerInstructionFolder()}
               type="button"
             >
-              {registeringRoot ? "選択中…" : "既存フォルダを読み込む"}
+              {registeringRoot ? "選択中…" : "フォルダを読み込む"}
             </button>
           </div>
         ) : (

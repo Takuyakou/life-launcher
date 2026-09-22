@@ -171,12 +171,15 @@ export async function installTauriMock(
       let failSaveConfig = false;
       let failReapplyDashboardSettings = false;
       let failRecordSession = false;
-      let instructionRootChoices: Array<{
+      type InstructionRootChoice = {
         name: string;
         path: string;
         available: boolean;
         readOnly: boolean;
-      }> = [];
+      } | null;
+      let instructionRootChoices: InstructionRootChoice[] = [];
+      let instructionRootDelayed = false;
+      const pendingInstructionRootChoices: Array<(choice: InstructionRootChoice) => void> = [];
       const invokeCalls: Array<{ command: string; args: Record<string, unknown> }> = [];
       const callbacks = new Map<number, (event: unknown) => void>();
       const eventListeners = new Map<string, Map<number, number>>();
@@ -212,6 +215,12 @@ export async function installTauriMock(
         },
         setInstructionRootChoices: (choices: typeof instructionRootChoices) => {
           instructionRootChoices = [...choices];
+        },
+        setInstructionRootDelayed: (delayed: boolean) => {
+          instructionRootDelayed = delayed;
+        },
+        resolveInstructionRootChoice: () => {
+          pendingInstructionRootChoices.shift()?.(instructionRootChoices.shift() ?? null);
         },
         currentConfig: () => currentConfig,
         cleanStartState: () => (cleanStartState ? clone(cleanStartState) : null),
@@ -625,6 +634,9 @@ export async function installTauriMock(
               case "prepare_software_reset":
                 return null;
               case "choose_instruction_root":
+                if (instructionRootDelayed) {
+                  return new Promise((resolve) => pendingInstructionRootChoices.push(resolve));
+                }
                 return instructionRootChoices.shift() ?? null;
               case "execute_actions": {
                 const actions = args.actions as Array<{ type: string }>;

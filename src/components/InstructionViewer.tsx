@@ -70,6 +70,10 @@ export function InstructionViewer() {
   const dirty = Boolean(editing && instruction && draft !== instruction.content);
   dirtyRef.current = dirty;
 
+  useEffect(() => {
+    if (!instruction) document.title = "Life Launcher 手順書ビューアー";
+  }, [instruction]);
+
   const loadDocument = useCallback(async (path: string, openForEdit = false) => {
     setLoading(true);
     setStatus(null);
@@ -84,7 +88,7 @@ export function InstructionViewer() {
       if (openForEdit && nextDocument.readOnly) {
         setStatus({ tone: "error", message: "この手順書は読み取り専用です" });
       }
-      document.title = `${nextDocument.name} - Life Launcher 手順書ビューワー`;
+      document.title = `${nextDocument.name} - Life Launcher 手順書ビューアー`;
     } catch (error) {
       setInstruction(null);
       setSelectedPath(path);
@@ -167,10 +171,6 @@ export function InstructionViewer() {
       setStatus({ tone: "error", message: String(error) });
     }
   }, [instructionWindow]);
-
-  const requestClose = useCallback(() => {
-    requestTransition(closeInstructionWindow);
-  }, [closeInstructionWindow, requestTransition]);
 
   const chooseInstructionRootForViewer = useCallback(async () => {
     return chooseInstructionRoot();
@@ -425,7 +425,7 @@ export function InstructionViewer() {
       setExternalDocument((current) =>
         current ? { ...current, name: nextName, path: nextPath } : null,
       );
-      document.title = `${nextName} - Life Launcher 手順書ビューワー`;
+      document.title = `${nextName} - Life Launcher 手順書ビューアー`;
       return;
     }
     void loadDocument(nextPath);
@@ -438,7 +438,7 @@ export function InstructionViewer() {
     setDraft("");
     setEditing(false);
     setExternalDocument(null);
-    document.title = "Life Launcher 手順書ビューワー";
+    document.title = "Life Launcher 手順書ビューアー";
     setStatus({ tone: "neutral", message: "選択していた手順書の参照を解除しました" });
   };
 
@@ -447,42 +447,45 @@ export function InstructionViewer() {
       <header className="instructionHeader">
         <div className="instructionHeaderTitle">
           <span className="instructionHeaderEyebrow">手順書</span>
-          <strong title={instruction?.name}>{instruction?.name ?? "手順書ビューワー"}</strong>
+          <strong title={instruction?.name}>{instruction?.name ?? "手順書ビューアー"}</strong>
         </div>
         <div className="instructionHeaderActions">
-          <button
-            aria-label="手順書を再読み込み"
-            className="instructionIconButton"
-            disabled={!selectedPath || loading}
-            onClick={() =>
-              selectedPath && requestTransition(() => loadDocument(selectedPath))
-            }
-            title="再読み込み"
-            type="button"
-          >
-            <UiIcon name="refresh" size={18} />
-          </button>
-          <button
-            aria-label="手順書を編集"
-            aria-pressed={editing}
-            className="instructionIconButton"
-            disabled={!instruction || instruction.readOnly || loading}
-            onClick={startEditing}
-            title={instruction?.readOnly ? "読み取り専用" : "編集"}
-            type="button"
-          >
-            <UiIcon name="edit" size={18} />
-          </button>
-          <button
-            aria-label={externalOpenLabel}
-            className="instructionIconButton"
-            disabled={!selectedPath}
-            onClick={() => void openInDefaultApplication()}
-            title={externalOpenLabel}
-            type="button"
-          >
-            <UiIcon name="external" size={18} />
-          </button>
+          {selectedPath ? (
+            <button
+              aria-label="手順書を再読み込み"
+              className="instructionIconButton"
+              disabled={loading}
+              onClick={() => requestTransition(() => loadDocument(selectedPath))}
+              title="再読み込み"
+              type="button"
+            >
+              <UiIcon name="refresh" size={18} />
+            </button>
+          ) : null}
+          {instruction && !instruction.readOnly ? (
+            <button
+              aria-label="手順書を編集"
+              aria-pressed={editing}
+              className="instructionIconButton"
+              disabled={loading}
+              onClick={startEditing}
+              title="編集"
+              type="button"
+            >
+              <UiIcon name="edit" size={18} />
+            </button>
+          ) : null}
+          {selectedPath ? (
+            <button
+              aria-label={externalOpenLabel}
+              className="instructionIconButton"
+              onClick={() => void openInDefaultApplication()}
+              title={externalOpenLabel}
+              type="button"
+            >
+              <UiIcon name="external" size={18} />
+            </button>
+          ) : null}
           <button
             aria-label={alwaysOnTop ? "常に手前を解除" : "常に手前に表示"}
             aria-pressed={alwaysOnTop}
@@ -492,15 +495,6 @@ export function InstructionViewer() {
             type="button"
           >
             <UiIcon name="pin" size={18} />
-          </button>
-          <button
-            aria-label="手順書ウィンドウを閉じる"
-            className="instructionIconButton instructionIconButton--close"
-            onClick={requestClose}
-            title="閉じる"
-            type="button"
-          >
-            <UiIcon name="close" size={18} />
           </button>
         </div>
       </header>

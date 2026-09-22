@@ -26,10 +26,10 @@ use std::os::windows::ffi::OsStrExt;
 use std::os::windows::fs::{MetadataExt, OpenOptionsExt};
 #[cfg(windows)]
 use std::os::windows::io::AsRawHandle;
-#[cfg(windows)]
+#[cfg(all(windows, test))]
 use std::os::windows::process::CommandExt;
 #[cfg(windows)]
-use windows::Win32::Foundation::HANDLE;
+use windows::Win32::Foundation::{ERROR_CANCELLED, HANDLE, HWND};
 #[cfg(windows)]
 use windows::Win32::Storage::FileSystem::{
     FileAttributeTagInfo, FileIdInfo, GetDriveTypeW, GetFileInformationByHandle,
@@ -39,16 +39,17 @@ use windows::Win32::Storage::FileSystem::{
 };
 #[cfg(windows)]
 use windows::Win32::System::Com::{
-    CoCreateInstance, CoInitializeEx, CoUninitialize, IBindCtx, CLSCTX_INPROC_SERVER,
-    COINIT_APARTMENTTHREADED,
+    CoCreateInstance, CoInitializeEx, CoTaskMemFree, CoUninitialize, IBindCtx,
+    CLSCTX_INPROC_SERVER, COINIT_APARTMENTTHREADED,
 };
 #[cfg(windows)]
 use windows::Win32::System::SystemServices::{IO_REPARSE_TAG_CLOUD, IO_REPARSE_TAG_CLOUD_MASK};
 #[cfg(windows)]
 use windows::Win32::UI::Shell::{
-    FileOperation, IFileOperation, IFileOperationProgressSink, IShellItem,
-    SHCreateItemFromParsingName, FOFX_RECYCLEONDELETE, FOF_NOCONFIRMATION, FOF_NOERRORUI,
-    FOF_NORECURSEREPARSE, FOF_SILENT,
+    FileOpenDialog, FileOperation, IFileOpenDialog, IFileOperation, IFileOperationProgressSink,
+    IShellItem, SHCreateItemFromParsingName, FOFX_RECYCLEONDELETE, FOF_NOCONFIRMATION,
+    FOF_NOERRORUI, FOF_NORECURSEREPARSE, FOF_SILENT, FOS_FORCEFILESYSTEM, FOS_NOCHANGEDIR,
+    FOS_PICKFOLDERS, SIGDN_FILESYSPATH,
 };
 #[cfg(windows)]
 use windows_core::PCWSTR;
@@ -58,7 +59,7 @@ const SEARCH_RESULT_LIMIT: usize = 500;
 const SEARCH_ENTRY_LIMIT: usize = 50_000;
 #[cfg(windows)]
 const FILE_ATTRIBUTE_REPARSE_POINT_VALUE: u32 = 0x0000_0400;
-#[cfg(windows)]
+#[cfg(all(windows, test))]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 static TEMP_FILE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
@@ -112,44 +113,56 @@ pub async fn choose_instruction_root(
 fn choose_instruction_root_blocking(_owner_hwnd: isize) -> Result<Option<InstructionRoot>, String> {
     #[cfg(windows)]
     {
-        let script = format!(
-            concat!(
-                "[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false); ",
-                "Add-Type -AssemblyName System.Windows.Forms; ",
-                "$null=Add-Type -TypeDefinition 'using System; using System.Windows.Forms; public sealed class LifeLauncherWindowOwner : IWin32Window {{ public LifeLauncherWindowOwner(IntPtr handle) {{ Handle = handle; }} public IntPtr Handle {{ get; }} }}'; ",
-                "$owner=[LifeLauncherWindowOwner]::new([IntPtr]::new({})); ",
-                "$dialog=New-Object System.Windows.Forms.FolderBrowserDialog; ",
-                "$dialog.Description='Life Launcher instruction folder'; ",
-                "$result=$dialog.ShowDialog($owner); ",
-                "if ($result -eq [System.Windows.Forms.DialogResult]::OK) {{ [Console]::Write($dialog.SelectedPath) }}"
-            ),
-            _owner_hwnd,
-        );
-        let mut command = std::process::Command::new("powershell.exe");
-        command
-            .args(["-NoProfile", "-STA", "-Command", &script])
-            .creation_flags(CREATE_NO_WINDOW);
-        let output = command
-            .output()
-            .map_err(|error| format!("failed to open instruction folder picker: {error}"))?;
-        if !output.status.success() {
-            return Err(format!(
-                "instruction folder picker failed: {}",
-                String::from_utf8_lossy(&output.stderr).trim()
-            ));
-        }
-        let selected = String::from_utf8(output.stdout).map_err(|error| {
-            format!("instruction folder picker returned invalid UTF-8: {error}")
-        })?;
-        let selected = selected.trim();
-        if selected.is_empty() {
-            return Ok(None);
-        }
-        validate_instruction_root(selected.to_string()).map(Some)
+        std::thread::spawn(move || choose_instruction_root_sta(_owner_hwnd))
+            .join()
+            .map_err(|_| "instruction folder picker thread panicked".to_string())?
     }
 
     #[cfg(not(windows))]
     Err("instruction folder picker is unsupported on this platform".to_string())
+}
+
+#[cfg(windows)]
+fn choose_instruction_root_sta(owner_hwnd: isize) -> Result<Option<InstructionRoot>, String> {
+    struct ComGuard;
+    impl Drop for ComGuard {
+        fn drop(&mut self) {
+            unsafe { CoUninitialize() };
+        }
+    }
+
+    unsafe {
+        CoInitializeEx(None, COINIT_APARTMENTTHREADED)
+            .ok()
+            .map_err(|error| format!("failed to initialize instruction folder picker: {error}"))?;
+        let _guard = ComGuard;
+        let dialog: IFileOpenDialog = CoCreateInstance(&FileOpenDialog, None, CLSCTX_INPROC_SERVER)
+            .map_err(|error| format!("failed to create instruction folder picker: {error}"))?;
+        let options = dialog.GetOptions().map_err(|error| {
+            format!("failed to read instruction folder picker options: {error}")
+        })?;
+        dialog
+            .SetOptions(options | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM | FOS_NOCHANGEDIR)
+            .map_err(|error| format!("failed to configure instruction folder picker: {error}"))?;
+        let owner = HWND(owner_hwnd as *mut std::ffi::c_void);
+        if let Err(error) = dialog.Show(Some(owner)) {
+            if error.code() == windows_core::HRESULT::from_win32(ERROR_CANCELLED.0) {
+                return Ok(None);
+            }
+            return Err(format!("instruction folder picker failed: {error}"));
+        }
+        let item = dialog
+            .GetResult()
+            .map_err(|error| format!("failed to read instruction folder selection: {error}"))?;
+        let selected = item
+            .GetDisplayName(SIGDN_FILESYSPATH)
+            .map_err(|error| format!("failed to read instruction folder path: {error}"))?;
+        let selected_text = selected.to_string();
+        CoTaskMemFree(Some(selected.0.cast()));
+        let selected_text = selected_text
+            .map_err(|error| format!("instruction folder picker returned invalid text: {error}"))?;
+        validate_instruction_root(selected_text).map(Some)
+    }
 }
 
 #[tauri::command]
