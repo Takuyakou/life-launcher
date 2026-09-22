@@ -92,8 +92,33 @@ test("Dictionary page follows its display target and footer uses Add then Cancel
   const actions = dialog.locator(".dropRegisterActions > button");
   await expect(actions.nth(0)).toHaveText("追加");
   await expect(actions.nth(0)).toHaveClass(/primaryButton/);
+  await expect(actions.nth(0)).toHaveCSS("color", "rgb(111, 207, 151)");
+  await actions.nth(0).hover();
+  await expect(actions.nth(0)).toHaveCSS("background-color", "rgb(48, 66, 53)");
   await expect(actions.nth(1)).toHaveText("キャンセル");
   await expect(actions.nth(1)).toHaveClass(/dangerButton/);
+});
+
+test("Recycle Bin registration uses a plain human-readable target and no preview toast", async ({
+  page,
+}) => {
+  await prepare(page);
+  await page.evaluate(() => {
+    const control = (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__?: VisualControl })
+      .__LIFE_LAUNCHER_VISUAL_QA__;
+    control?.emit("main-shell-drop-result", {
+      windowLabel: "main",
+      stage: "drop",
+      paths: [],
+      url: null,
+      label: null,
+      shellSpecial: "recycle_bin",
+    });
+  });
+  const dialog = page.getByRole("dialog", { name: "ボタン登録" });
+  await expect(dialog.getByText("ごみ箱", { exact: true })).toBeVisible();
+  await expect(dialog.getByText(/Windows特殊項目:/)).toHaveCount(0);
+  await expect(page.locator(".toast")).toHaveCount(0);
 });
 
 test("save failure retains the draft and Cancel closes explicitly", async ({ page }) => {

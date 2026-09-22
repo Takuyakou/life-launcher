@@ -744,6 +744,70 @@ body {
   object-fit: contain;
 }
 
+.dictionaryWindowShell[data-view-mode="list"] .dictionaryTileGrid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+}
+
+.dictionaryWindowShell[data-view-mode="list"] .dictionaryTile {
+  min-height: 38px;
+  grid-template-columns: 26px minmax(0, 1fr);
+  grid-template-rows: none;
+  place-items: initial;
+  align-items: center;
+  align-content: initial;
+  gap: 9px;
+  border-color: transparent;
+  padding: 4px 8px;
+  text-align: left;
+}
+
+.dictionaryWindowShell[data-view-mode="list"] .dictionaryTile > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dictionaryWindowShell[data-view-mode="list"] .dictionaryTileIcon {
+  width: 24px;
+  height: 24px;
+  font-size: 19px;
+}
+
+.dictionaryWindowShell[data-view-mode="list"][data-tile-size="small"] .dictionaryTile {
+  min-height: 32px;
+  grid-template-columns: 22px minmax(0, 1fr);
+}
+
+.dictionaryWindowShell[data-view-mode="list"][data-tile-size="small"] .dictionaryTileIcon {
+  width: 20px;
+  height: 20px;
+  font-size: 16px;
+}
+
+.dictionaryWindowShell[data-view-mode="list"][data-tile-size="medium"] .dictionaryTile {
+  min-height: 40px;
+  grid-template-columns: 28px minmax(0, 1fr);
+}
+
+.dictionaryWindowShell[data-view-mode="list"][data-tile-size="medium"] .dictionaryTileIcon {
+  width: 26px;
+  height: 26px;
+  font-size: 21px;
+}
+
+.dictionaryWindowShell[data-view-mode="list"][data-tile-size="large"] .dictionaryTile {
+  min-height: 46px;
+  grid-template-columns: 32px minmax(0, 1fr);
+}
+
+.dictionaryWindowShell[data-view-mode="list"][data-tile-size="large"] .dictionaryTileIcon {
+  width: 30px;
+  height: 30px;
+  font-size: 24px;
+}
+
 .dictionaryWindowState {
   min-height: 100%;
   display: grid;
@@ -799,7 +863,8 @@ body {
   display: grid;
   place-items: center;
   padding: 20px;
-  background: rgba(8, 8, 7, 0.72);
+  background: transparent;
+  pointer-events: none;
 }
 
 .dictionarySettingsDialog {
@@ -808,6 +873,7 @@ body {
   border-radius: var(--radius);
   background: var(--surface);
   box-shadow: var(--dialog-shadow);
+  pointer-events: auto;
 }
 
 .dictionarySettingsHeader {
@@ -854,6 +920,14 @@ body {
   gap: 6px;
 }
 
+.dictionaryViewFieldset {
+  padding-bottom: 4px;
+}
+
+.dictionaryViewOptions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .dictionarySizeOptions button {
   min-width: 0;
   min-height: 36px;
@@ -887,6 +961,29 @@ body {
 
 .dictionarySettingsActions button {
   min-width: 92px;
+}
+
+.dictionarySettingsActions .primaryButton,
+.dropRegisterActions .primaryButton {
+  border-color: color-mix(in srgb, var(--good) 48%, var(--line));
+  background: var(--control-positive-bg);
+  color: var(--good);
+}
+
+.dictionarySettingsActions .primaryButton:hover:not(:disabled),
+.dictionarySettingsActions .primaryButton:focus-visible,
+.dropRegisterActions .primaryButton:hover:not(:disabled),
+.dropRegisterActions .primaryButton:focus-visible {
+  border-color: var(--control-positive-hover-border);
+  background: var(--control-positive-hover-bg);
+  color: var(--good);
+}
+
+.dictionarySettingsActions .primaryButton:active:not(:disabled),
+.dropRegisterActions .primaryButton:active:not(:disabled) {
+  border-color: var(--control-positive-active-border);
+  background: var(--control-positive-active-bg);
+  box-shadow: var(--control-press-shadow);
 }
 
 .dictionaryResizeHandle {
@@ -1044,7 +1141,7 @@ body {
 
 .instructionWorkspace {
   display: grid;
-  grid-template-columns: 248px minmax(0, 1fr);
+  grid-template-columns: minmax(0, var(--instruction-sidebar-width, 248px)) 7px minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
 }
@@ -1056,7 +1153,43 @@ body {
   min-height: 0;
   padding: 14px 12px;
   background: #191815;
+  container-type: inline-size;
+}
+
+.instructionSidebarDivider {
+  position: relative;
+  z-index: 2;
+  width: 7px;
+  min-height: 0;
+  border: 0;
   border-right: 1px solid var(--line-soft);
+  border-left: 1px solid transparent;
+  background: #191815;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.instructionSidebarDivider::after {
+  content: "";
+  position: absolute;
+  inset: 0 2px;
+  background: transparent;
+}
+
+.instructionSidebarDivider:hover::after,
+.instructionSidebarDivider:focus-visible::after,
+.instructionShell--resizing .instructionSidebarDivider::after {
+  background: var(--accent);
+}
+
+.instructionSidebarDivider:focus-visible {
+  outline: 0;
+}
+
+.instructionShell--resizing,
+.instructionShell--resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
 }
 
 .instructionSidebarHeading {
@@ -1078,6 +1211,20 @@ body {
   grid-template-columns: minmax(0, 1fr) auto 34px;
   gap: 6px;
   padding-bottom: 10px;
+}
+
+@container (max-width: 220px) {
+  .instructionTreeTools {
+    grid-template-columns: minmax(0, 1fr) 34px;
+  }
+
+  .instructionSearchField {
+    grid-column: 1 / -1;
+  }
+
+  .instructionTreeLoad {
+    justify-content: center;
+  }
 }
 
 .instructionSearchField {
@@ -1880,10 +2027,6 @@ button.instructionTreeDisclosure:hover {
 }
 
 @media (max-width: 760px) {
-  .instructionWorkspace {
-    grid-template-columns: 210px minmax(0, 1fr);
-  }
-
   .instructionExternalBanner {
     grid-template-columns: minmax(0, 1fr) auto;
   }
@@ -2538,6 +2681,7 @@ h3 {
   border-radius: var(--radius);
   cursor: ns-resize;
   touch-action: none;
+  user-select: none;
   transition:
     color 120ms ease,
     background-color 120ms ease;
@@ -6065,7 +6209,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .helpGuideNote--normal {
-  border-left-color: var(--line-strong);
+  border-left-color: var(--warn);
 }
 
 .helpGuideCodeBlock {
@@ -10131,15 +10275,16 @@ input[type="number"]::-webkit-inner-spin-button {
   content: "";
 }
 
-.nextStepCard.nextStepRow.sourceListRow:hover,
-.nextStepCard.nextStepRow.sourceListRow:focus-within {
-  border-color: var(--accent);
+.nextStepCard.nextStepRow.sourceListRow:not(.nextStepRow--dragging):hover,
+.nextStepCard.nextStepRow.sourceListRow:not(.nextStepRow--dragging):focus-within {
+  border-color: var(--project-color);
+  border-bottom-color: var(--project-color);
   background: var(--control-neutral-hover-bg);
   transform: translateY(-1px);
 }
 
 .nextStepCard.nextStepRow.sourceListRow:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--project-color);
   outline-offset: 2px;
 }
 

@@ -1411,7 +1411,7 @@ function actionDescription(action: LauncherAction): string {
     case "open_url":
       return action.payload.url;
     case "open_shell_special":
-      return "Windows特殊項目: ごみ箱";
+      return "ごみ箱";
   }
 }
 
@@ -4043,6 +4043,8 @@ function DashboardApp() {
     value: number,
   ) => {
     if (event.button !== 0) return;
+    window.getSelection()?.removeAllRanges();
+    if (!(event.target instanceof HTMLInputElement)) event.preventDefault();
     numberInputDragRef.current = {
       pointerId: event.pointerId,
       field,
@@ -4759,7 +4761,6 @@ function DashboardApp() {
       }
       if (event.payload.shellSpecial === "recycle_bin") {
         openRecycleBinDropDialog();
-        showToast("ok", "ごみ箱を登録できます。確定するまで開きません");
       }
     })
       .then((dispose) => {

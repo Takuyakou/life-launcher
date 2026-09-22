@@ -43,6 +43,24 @@ async function style(locator: Locator) {
   });
 }
 
+test("Next Step card hover border follows its project color", async ({ page }) => {
+  const fixture = createPublicFixture();
+  await prepare(page, fixture);
+  const card = page.locator(".nextStepCard").first();
+  await card.hover();
+  await page.waitForTimeout(140);
+  const colors = await card.evaluate((node) => {
+    const computed = getComputedStyle(node);
+    const probe = document.createElement("span");
+    probe.style.color = computed.getPropertyValue("--project-color");
+    document.body.append(probe);
+    const projectColor = getComputedStyle(probe).color;
+    probe.remove();
+    return { borderColor: computed.borderColor, projectColor };
+  });
+  expect(colors.borderColor).toBe(colors.projectColor);
+});
+
 test("P84 Wishlist promote action is status-aware, stable, keyboard reachable, and reuses promotion", async ({
   page,
 }) => {

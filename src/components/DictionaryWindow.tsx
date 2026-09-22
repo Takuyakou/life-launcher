@@ -74,6 +74,7 @@ type DictionaryTileDragPreview = {
 type DictionaryFocusLayer = "page" | "item";
 
 type DictionaryTileSize = "auto" | "small" | "medium" | "large";
+type DictionaryViewMode = "tile" | "list";
 
 type DictionaryTitlebarMenu = {
   x: number;
@@ -93,6 +94,7 @@ let dictionaryReopenState: DictionaryReopenState | null = null;
 
 const DICTIONARY_FOCUS_LOCK_STORAGE_KEY = "life-launcher.dictionary-focus-lock";
 const DICTIONARY_TILE_SIZE_STORAGE_KEY = "life-launcher.dictionary-tile-size";
+const DICTIONARY_VIEW_MODE_STORAGE_KEY = "life-launcher.dictionary-view-mode";
 const DICTIONARY_TILE_GHOST_OFFSET_PX = 10;
 const DICTIONARY_PAGE_HOVER_SWITCH_DELAY_MS = 240;
 
@@ -110,6 +112,16 @@ function readDictionaryTileSize(): DictionaryTileSize {
     return value === "small" || value === "medium" || value === "large" ? value : "auto";
   } catch {
     return "auto";
+  }
+}
+
+function readDictionaryViewMode(): DictionaryViewMode {
+  try {
+    return window.localStorage.getItem(DICTIONARY_VIEW_MODE_STORAGE_KEY) === "list"
+      ? "list"
+      : "tile";
+  } catch {
+    return "tile";
   }
 }
 
@@ -221,6 +233,8 @@ export function DictionaryWindow() {
   const [focusLocked, setFocusLocked] = useState(readDictionaryFocusLock);
   const [tileSize, setTileSize] = useState<DictionaryTileSize>(readDictionaryTileSize);
   const [tileSizeDraft, setTileSizeDraft] = useState<DictionaryTileSize>(tileSize);
+  const [viewMode, setViewMode] = useState<DictionaryViewMode>(readDictionaryViewMode);
+  const [viewModeDraft, setViewModeDraft] = useState<DictionaryViewMode>(viewMode);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [titlebarMenu, setTitlebarMenu] = useState<DictionaryTitlebarMenu | null>(null);
   const settingsDialogRef = useRef<HTMLElement | null>(null);
@@ -306,11 +320,11 @@ export function DictionaryWindow() {
   }, []);
 
   const openDictionarySettings = useCallback(() => {
-    protectFocusForClick();
     setTitlebarMenu(null);
     setTileSizeDraft(tileSize);
+    setViewModeDraft(viewMode);
     setSettingsOpen(true);
-  }, [protectFocusForClick, tileSize]);
+  }, [tileSize, viewMode]);
 
   const closeDictionarySettings = useCallback(() => {
     setSettingsOpen(false);
@@ -318,16 +332,17 @@ export function DictionaryWindow() {
 
   const saveDictionarySettings = useCallback(() => {
     setTileSize(tileSizeDraft);
+    setViewMode(viewModeDraft);
     try {
       window.localStorage.setItem(DICTIONARY_TILE_SIZE_STORAGE_KEY, tileSizeDraft);
+      window.localStorage.setItem(DICTIONARY_VIEW_MODE_STORAGE_KEY, viewModeDraft);
     } catch {
       // Keep the preference for this window when storage is unavailable.
     }
     setSettingsOpen(false);
-  }, [tileSizeDraft]);
+  }, [tileSizeDraft, viewModeDraft]);
 
   useEffect(() => {
-    dictionaryBlockingRef.current = settingsOpen;
     if (!settingsOpen) return;
     const frame = window.requestAnimationFrame(() => {
       settingsDialogRef.current
@@ -336,7 +351,6 @@ export function DictionaryWindow() {
     });
     return () => {
       window.cancelAnimationFrame(frame);
-      dictionaryBlockingRef.current = false;
     };
   }, [settingsOpen]);
 
@@ -1513,6 +1527,7 @@ export function DictionaryWindow() {
           : "dictionaryWindowShell"
       }
       data-tile-size={tileSize}
+      data-view-mode={viewMode}
       onDragOver={parity.onDragOver}
       onDrop={parity.onDrop}
     >
@@ -1773,7 +1788,7 @@ export function DictionaryWindow() {
             searchResults.length > 0 ? (
               <div
                 aria-label="全ページの検索結果"
-                className="dictionarySearchResults"
+                className={`dictionarySearchResults dictionarySearchResults--${viewMode}`}
                 id="dictionary-search-results"
                 role="listbox"
               >
@@ -1788,11 +1803,13 @@ export function DictionaryWindow() {
                   return (
                     <button
                       aria-selected={selected}
-                      className={
-                        selected
-                          ? "dictionarySearchResult dictionarySearchResult--selected"
-                          : "dictionarySearchResult"
-                      }
+                      className={[
+                        "dictionarySearchResult",
+                        `dictionarySearchResult--${viewMode}`,
+                        selected ? "dictionarySearchResult--selected" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
                       disabled={launchingButtonId !== null}
                       id={"dictionary-search-result-" + index}
                       key={button.id}
@@ -1931,12 +1948,10 @@ export function DictionaryWindow() {
       {settingsOpen ? (
         <div
           className="dictionarySettingsBackdrop"
-          onPointerDown={protectFocusForClick}
           role="presentation"
         >
           <section
             aria-labelledby="dictionary-settings-title"
-            aria-modal="true"
             className="dictionarySettingsDialog"
             onPointerDown={(event) => event.stopPropagation()}
             ref={settingsDialogRef}
@@ -1957,6 +1972,32 @@ export function DictionaryWindow() {
                 <UiIcon name="close" size={16} />
               </button>
             </header>
+            <fieldset className="dictionarySizeFieldset dictionaryViewFieldset">
+              <legend>表示形式</legend>
+              <div
+                aria-label="表示形式"
+                className="dictionarySizeOptions dictionaryViewOptions"
+                role="radiogroup"
+              >
+                {(
+                  [
+                    ["tile", "タイル"],
+                    ["list", "リスト"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    aria-checked={viewModeDraft === value}
+                    className={viewModeDraft === value ? "isSelected" : undefined}
+                    key={value}
+                    onClick={() => setViewModeDraft(value)}
+                    role="radio"
+                    type="button"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
             <fieldset className="dictionarySizeFieldset">
               <legend>アイコンサイズ</legend>
               <p>項目の密度を選びます。自動ではウィンドウ幅に合わせます。</p>

@@ -69,6 +69,13 @@ fn window_capabilities_match_the_reviewed_least_privilege_contract() {
                 "core:default",
                 "core:window:allow-destroy",
                 "core:window:allow-set-always-on-top",
+                "core:window:allow-outer-position",
+                "core:window:allow-outer-size",
+                "core:window:allow-set-position",
+                "core:window:allow-set-size",
+                "core:window:allow-available-monitors",
+                "core:window:allow-primary-monitor",
+                "window-state:allow-save-window-state",
             ],
         },
         ExpectedCapability {

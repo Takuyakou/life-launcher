@@ -3,14 +3,11 @@ import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { INSTRUCTION_RELOAD_TREE_EVENT } from "../instructionWindow";
 import {
-  backupConfigBeforeInstructionChange,
   createInstructionFile,
   createInstructionFolder,
-  inspectInstructionFolder,
   listInstructionDirectory,
   listInstructionRoots,
   loadConfig,
-  moveInstructionToRecycleBin,
   openInstructionFolder,
   openInstructionInDefaultEditor,
   renameInstructionFile,
@@ -66,7 +63,6 @@ type OperationDialogState = {
 };
 
 type ConfirmState = {
-  kind: "recycle" | "unregister";
   target: VisibleTreeNode;
   message: string;
 };
@@ -853,37 +849,24 @@ export function InstructionTree({
     }
   };
 
-  const prepareRecycleConfirmation = async (target: VisibleTreeNode) => {
-    setContextMenu(null);
-    try {
-      const loaded = await loadConfig();
-      const referenced = rewriteProjectReferences(loaded.config, target.path, null).projectNames;
-      const referenceText = referenced.length
-        ? `\n紐付けを解除するプロジェクト: ${referenced.join("、")}`
-        : "";
-      if (target.kind === "folder") {
-        const summary = await inspectInstructionFolder(target.path);
-        setConfirmState({
-          kind: "recycle",
-          target,
-          message: `手順書${summary.instructionCount}件、サブフォルダ${summary.folderCount}件も移動します。${referenceText}`,
-        });
-      } else {
-        setConfirmState({ kind: "recycle", target, message: referenceText.trim() });
-      }
-    } catch (error) {
-      setOperationStatus(error instanceof Error ? error.message : String(error));
-    }
-  };
-
   const prepareUnregisterConfirmation = async (target: VisibleTreeNode) => {
     setContextMenu(null);
     try {
+      const root = matchingRoot(target.path, roots);
+      if (!root) throw new Error("登録元の手順書フォルダを確認できません");
+      const rootTarget: VisibleTreeNode = {
+        path: root.path,
+        name: root.name,
+        kind: "root",
+        level: 1,
+        parentPath: null,
+        available: root.available,
+        error: root.error,
+      };
       const loaded = await loadConfig();
-      const referenced = rewriteProjectReferences(loaded.config, target.path, null).projectNames;
+      const referenced = rewriteProjectReferences(loaded.config, root.path, null).projectNames;
       setConfirmState({
-        kind: "unregister",
-        target,
+        target: rootTarget,
         message: referenced.length
           ? `PC上のフォルダは削除しません。紐付けを解除するプロジェクト: ${referenced.join("、")}`
           : "PC上のフォルダは削除しません。",
@@ -896,27 +879,11 @@ export function InstructionTree({
   const runConfirmedOperation = async () => {
     if (!confirmState) return false;
     const { target } = confirmState;
-    if (confirmState.kind === "unregister") {
-      await updateInstructionReferences(target.path, null, true);
-      replaceExpandedPaths(target.path, null);
-      onPathRemoved(target.path);
-      await refreshTree();
-      setOperationStatus(`${target.name}の登録を解除しました`);
-      return true;
-    }
-
-    await backupConfigBeforeInstructionChange();
-    await moveInstructionToRecycleBin(target.path);
-    let referenceWarning: string | null = null;
-    try {
-      await updateInstructionReferences(target.path, null);
-    } catch (error) {
-      referenceWarning = `${target.name}はごみ箱へ移動しましたが、プロジェクト紐付けを保存できませんでした: ${error instanceof Error ? error.message : String(error)}`;
-    }
+    await updateInstructionReferences(target.path, null, true);
     replaceExpandedPaths(target.path, null);
     onPathRemoved(target.path);
     await refreshTree();
-    setOperationStatus(referenceWarning ?? `${target.name}をごみ箱へ移動しました`);
+    setOperationStatus(`${target.name}の登録を解除しました`);
     return true;
   };
 
@@ -1031,9 +998,7 @@ export function InstructionTree({
         } else {
           await refreshTree();
         }
-      } else if (action === "recycle" && target.kind !== "blank" && target.kind !== "root") {
-        await prepareRecycleConfirmation(target);
-      } else if (action === "unregister" && target.kind === "root") {
+      } else if (action === "unregister" && target.kind !== "blank") {
         await prepareUnregisterConfirmation(target);
       }
     } catch (error) {
@@ -1324,7 +1289,7 @@ export function InstructionTree({
                   : "既定のアプリで開く"}
               </button>
               <button onClick={() => void runContextAction("explorer", contextMenu.target)} role="menuitem" type="button">エクスプローラーで表示</button>
-              <button className="instructionContextMenuDanger" onClick={() => void runContextAction("recycle", contextMenu.target)} role="menuitem" type="button">ごみ箱へ移動</button>
+              <button className="instructionContextMenuDanger" onClick={() => void runContextAction("unregister", contextMenu.target)} role="menuitem" type="button">登録を解除</button>
             </>
           ) : contextMenu.target.kind === "root" ? (
             <>
@@ -1340,7 +1305,7 @@ export function InstructionTree({
               <button onClick={() => void runContextAction("create-folder", contextMenu.target)} role="menuitem" type="button">新しいフォルダ</button>
               <button onClick={() => void runContextAction("rename", contextMenu.target)} role="menuitem" type="button">名前を変更</button>
               <button onClick={() => void runContextAction("explorer", contextMenu.target)} role="menuitem" type="button">エクスプローラーで開く</button>
-              <button className="instructionContextMenuDanger" onClick={() => void runContextAction("recycle", contextMenu.target)} role="menuitem" type="button">ごみ箱へ移動</button>
+              <button className="instructionContextMenuDanger" onClick={() => void runContextAction("unregister", contextMenu.target)} role="menuitem" type="button">登録を解除</button>
             </>
           ) : (
             <>
@@ -1493,14 +1458,14 @@ export function InstructionTree({
       ) : null}
 
       <ConfirmDialog
-        confirmLabel={confirmState?.kind === "unregister" ? "登録を解除" : "ごみ箱へ移動"}
+        confirmLabel="登録を解除"
         message={confirmState?.message}
         onCancel={() => setConfirmState(null)}
         onConfirm={runConfirmedOperation}
         open={Boolean(confirmState)}
         subject={confirmState ? `「${confirmState.target.name}」` : undefined}
-        title={confirmState?.kind === "unregister" ? "手順書フォルダの登録を解除しますか？" : "ごみ箱へ移動しますか？"}
-        tone={confirmState?.kind === "unregister" ? "warning" : "danger"}
+        title="手順書フォルダの登録を解除しますか？"
+        tone="warning"
       />
     </div>
   );

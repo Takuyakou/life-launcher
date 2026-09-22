@@ -72,11 +72,12 @@ test("Guide uses current labels and explains the first journey without internal 
     expect(text).toContain(label);
   }
 
-  expect(text).toContain("Aメロの続きを8小節作る");
+  expect(text).toContain("本を10ページ読む");
   expect(text).toContain("今日の3件へ選んでも、元の次の一手・やりたいことは消えません");
   expect(text).toContain("3件目を選ぶと、その内容で自動的に決定");
   expect(text).toContain("終了時刻を決めず、0:00から取り組んだ時間を数えます");
-  expect(text).toContain("Mainの「辞書を開く」または既定のCtrl+K");
+  expect(text).toContain("Mainの「辞書を開く」か既定のCtrl+K");
+  expect(text).toContain("表示をタイル・リスト");
   expect(text).toContain("アイコンサイズを自動・小・中・大");
   expect(text).toContain("ZIPから復元");
   expect(text).toContain("Mainを閉じてもtrayで動作を続けます");
@@ -84,6 +85,9 @@ test("Guide uses current labels and explains the first journey without internal 
   expect(text).not.toContain("rollback");
   expect(text).not.toContain("legacy");
   expect(text).not.toContain("手順書ビューワー");
+  expect(text).not.toContain("作曲");
+  expect(text).not.toContain("ChatGPTへの自動送信");
+  expect(text).not.toContain("外部サービスへ自動送信");
 
   for (const stale of [
     "初回セットアップ",

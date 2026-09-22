@@ -19,6 +19,17 @@ const MIN_HEIGHT = 480;
 const SAFE_MARGIN = 16;
 const WINDOW_STATE_POSITION_AND_SIZE = 3;
 
+export type InstructionWindowSizePreset = "compact" | "standard" | "large";
+
+export const INSTRUCTION_WINDOW_SIZE_PRESETS: Record<
+  InstructionWindowSizePreset,
+  { width: number; height: number }
+> = {
+  compact: { width: 760, height: 540 },
+  standard: { width: 960, height: 680 },
+  large: { width: 1280, height: 840 },
+};
+
 export type InstructionOpenRequest = {
   path?: string;
 };
@@ -51,6 +62,83 @@ function monitorBounds(monitor: Monitor) {
     right: monitor.workArea.position.x + monitor.workArea.size.width,
     bottom: monitor.workArea.position.y + monitor.workArea.size.height,
   };
+}
+
+function nextSizePreset(width: number, height: number): InstructionWindowSizePreset {
+  const presets = Object.entries(INSTRUCTION_WINDOW_SIZE_PRESETS) as Array<
+    [InstructionWindowSizePreset, { width: number; height: number }]
+  >;
+  const tolerance = 24;
+  const currentIndex = presets.findIndex(
+    ([, size]) => Math.abs(size.width - width) <= tolerance && Math.abs(size.height - height) <= tolerance,
+  );
+  if (currentIndex >= 0) return presets[(currentIndex + 1) % presets.length][0];
+  return presets.find(([, size]) => size.width > width || size.height > height)?.[0] ?? "compact";
+}
+
+export function fitInstructionWindowBounds(
+  current: { x: number; y: number; width: number; height: number },
+  workArea: { x: number; y: number; width: number; height: number },
+  desired: { width: number; height: number },
+) {
+  const availableWidth = Math.max(1, workArea.width - SAFE_MARGIN * 2);
+  const availableHeight = Math.max(1, workArea.height - SAFE_MARGIN * 2);
+  const width = Math.min(desired.width, availableWidth);
+  const height = Math.min(desired.height, availableHeight);
+  const centerX = current.x + current.width / 2;
+  const centerY = current.y + current.height / 2;
+  const minX = workArea.x + SAFE_MARGIN;
+  const minY = workArea.y + SAFE_MARGIN;
+  const maxX = Math.max(minX, workArea.x + workArea.width - width - SAFE_MARGIN);
+  const maxY = Math.max(minY, workArea.y + workArea.height - height - SAFE_MARGIN);
+  return {
+    x: Math.round(Math.min(Math.max(centerX - width / 2, minX), maxX)),
+    y: Math.round(Math.min(Math.max(centerY - height / 2, minY), maxY)),
+    width: Math.round(width),
+    height: Math.round(height),
+  };
+}
+
+export async function cycleInstructionWindowSize(
+  instructionWindow = WebviewWindow.getCurrent(),
+): Promise<InstructionWindowSizePreset> {
+  const monitors = await availableMonitors();
+  const fallbackMonitor = (await primaryMonitor()) ?? monitors[0];
+  if (!fallbackMonitor) throw new Error("表示先のモニターを取得できません");
+
+  const [position, size] = await Promise.all([
+    instructionWindow.outerPosition(),
+    instructionWindow.outerSize(),
+  ]);
+  const centerX = position.x + size.width / 2;
+  const centerY = position.y + size.height / 2;
+  const monitor =
+    monitors.find((candidate) => {
+      const bounds = monitorBounds(candidate);
+      return centerX >= bounds.left && centerX < bounds.right && centerY >= bounds.top && centerY < bounds.bottom;
+    }) ?? fallbackMonitor;
+  const scaleFactor = monitor.scaleFactor || 1;
+  const logicalWidth = size.width / scaleFactor;
+  const logicalHeight = size.height / scaleFactor;
+  const preset = nextSizePreset(logicalWidth, logicalHeight);
+  const desired = INSTRUCTION_WINDOW_SIZE_PRESETS[preset];
+  const fitted = fitInstructionWindowBounds(
+    { x: position.x, y: position.y, width: size.width, height: size.height },
+    {
+      x: monitor.workArea.position.x,
+      y: monitor.workArea.position.y,
+      width: monitor.workArea.size.width,
+      height: monitor.workArea.size.height,
+    },
+    { width: desired.width * scaleFactor, height: desired.height * scaleFactor },
+  );
+
+  await instructionWindow.setSize(new PhysicalSize(fitted.width, fitted.height));
+  await instructionWindow.setPosition(new PhysicalPosition(fitted.x, fitted.y));
+  await invoke("plugin:window-state|save_window_state", {
+    flags: WINDOW_STATE_POSITION_AND_SIZE,
+  });
+  return preset;
 }
 
 async function placeInstructionWindowSafely(instructionWindow: WebviewWindow) {

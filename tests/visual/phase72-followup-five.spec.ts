@@ -84,6 +84,7 @@ test("follow-up: waiting clock shares vertical drag state and is disabled once a
   await expect(clock).toHaveText("25分");
   await expect(clock).toHaveAttribute("title", "上下にドラッグして分数を変更");
   await expect(clock).toHaveCSS("cursor", "ns-resize");
+  await expect(clock).toHaveCSS("user-select", "none");
 
   const beforeClick = await saveCount(page);
   await clock.click();
@@ -99,6 +100,7 @@ test("follow-up: waiting clock shares vertical drag state and is disabled once a
   await page.mouse.move(x, y - 16);
   await expect(clock).toHaveText("27分");
   await expect(input).toHaveValue("27");
+  expect(await page.evaluate(() => window.getSelection()?.toString() ?? "")).toBe("");
   expect(await saveCount(page)).toBe(beforeClick);
   await page.mouse.up();
   await expect.poll(() => saveCount(page)).toBe(beforeClick + 1);

@@ -1,13 +1,19 @@
 import { emit, listen } from "@tauri-apps/api/event";
 import { isTauri } from "@tauri-apps/api/core";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-import type { MouseEvent } from "react";
+import type {
+  CSSProperties,
+  KeyboardEvent as ReactKeyboardEvent,
+  MouseEvent,
+  PointerEvent as ReactPointerEvent,
+} from "react";
 import { UiIcon } from "./UiIcon";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   INSTRUCTION_ALWAYS_ON_TOP_KEY,
   INSTRUCTION_OPEN_EVENT,
   INSTRUCTION_READY_EVENT,
+  cycleInstructionWindowSize,
   type InstructionOpenRequest,
   readInstructionAlwaysOnTop,
   writeLastInstructionPath,
@@ -34,6 +40,12 @@ type PendingTransition = {
   run: () => void | Promise<void>;
 };
 
+const DEFAULT_SIDEBAR_WIDTH = 248;
+const MIN_SIDEBAR_WIDTH = 180;
+const MAX_SIDEBAR_WIDTH = 440;
+const MIN_CONTENT_WIDTH = 320;
+const DIVIDER_WIDTH = 7;
+
 function initialInstructionPath(): string | null {
   return new URLSearchParams(window.location.search).get("path");
 }
@@ -53,6 +65,9 @@ export function InstructionViewer() {
     [tauriRuntime],
   );
   const contentRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<HTMLTextAreaElement>(null);
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const splitDragRef = useRef<{ pointerId: number; startX: number; startWidth: number } | null>(null);
   const dirtyRef = useRef(false);
   const allowCloseRef = useRef(false);
   const externalCheckErrorRef = useRef<string | null>(null);
@@ -67,6 +82,8 @@ export function InstructionViewer() {
   const [pendingTransition, setPendingTransition] = useState<PendingTransition | null>(null);
   const [pendingTransitionError, setPendingTransitionError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
+  const [resizingSidebar, setResizingSidebar] = useState(false);
   const dirty = Boolean(editing && instruction && draft !== instruction.content);
   dirtyRef.current = dirty;
 
@@ -442,26 +459,87 @@ export function InstructionViewer() {
     setStatus({ tone: "neutral", message: "選択していた手順書の参照を解除しました" });
   };
 
+  const sidebarBounds = useCallback(() => {
+    const workspaceWidth = workspaceRef.current?.getBoundingClientRect().width ?? window.innerWidth;
+    const maxWidth = Math.max(
+      MIN_SIDEBAR_WIDTH,
+      Math.min(MAX_SIDEBAR_WIDTH, workspaceWidth * 0.45, workspaceWidth - MIN_CONTENT_WIDTH - DIVIDER_WIDTH),
+    );
+    return { min: MIN_SIDEBAR_WIDTH, max: maxWidth };
+  }, []);
+
+  const clampSidebarWidth = useCallback(
+    (width: number) => {
+      const bounds = sidebarBounds();
+      return Math.round(Math.min(Math.max(width, bounds.min), bounds.max));
+    },
+    [sidebarBounds],
+  );
+
+  const startSidebarResize = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    splitDragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startWidth: sidebarWidth,
+    };
+    setResizingSidebar(true);
+    event.preventDefault();
+  };
+
+  const moveSidebarResize = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = splitDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    setSidebarWidth(clampSidebarWidth(drag.startWidth + event.clientX - drag.startX));
+  };
+
+  const stopSidebarResize = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (splitDragRef.current?.pointerId !== event.pointerId) return;
+    splitDragRef.current = null;
+    setResizingSidebar(false);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  const resizeSidebarFromKeyboard = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const bounds = sidebarBounds();
+    if (event.key === "Home") setSidebarWidth(bounds.min);
+    else if (event.key === "End") setSidebarWidth(bounds.max);
+    else setSidebarWidth((current) => clampSidebarWidth(current + (event.key === "ArrowRight" ? 16 : -16)));
+  };
+
+  const cycleViewerSize = async () => {
+    const documentScroll = contentRef.current?.scrollTop ?? 0;
+    const editorScroll = editorRef.current?.scrollTop ?? 0;
+    setSidebarWidth(DEFAULT_SIDEBAR_WIDTH);
+    try {
+      if (instructionWindow) await cycleInstructionWindowSize(instructionWindow);
+    } catch (error) {
+      setStatus({ tone: "error", message: String(error) });
+    } finally {
+      window.requestAnimationFrame(() => {
+        if (contentRef.current) contentRef.current.scrollTop = documentScroll;
+        if (editorRef.current) editorRef.current.scrollTop = editorScroll;
+      });
+    }
+  };
+
+  const workspaceStyle = {
+    "--instruction-sidebar-width": `${clampSidebarWidth(sidebarWidth)}px`,
+  } as CSSProperties;
+
   return (
-    <main className="instructionShell">
+    <main className={`instructionShell${resizingSidebar ? " instructionShell--resizing" : ""}`}>
       <header className="instructionHeader">
         <div className="instructionHeaderTitle">
           <span className="instructionHeaderEyebrow">手順書</span>
           <strong title={instruction?.name}>{instruction?.name ?? "手順書ビューアー"}</strong>
         </div>
         <div className="instructionHeaderActions">
-          {selectedPath ? (
-            <button
-              aria-label="手順書を再読み込み"
-              className="instructionIconButton"
-              disabled={loading}
-              onClick={() => requestTransition(() => loadDocument(selectedPath))}
-              title="再読み込み"
-              type="button"
-            >
-              <UiIcon name="refresh" size={18} />
-            </button>
-          ) : null}
           {instruction && !instruction.readOnly ? (
             <button
               aria-label="手順書を編集"
@@ -496,10 +574,31 @@ export function InstructionViewer() {
           >
             <UiIcon name="pin" size={18} />
           </button>
+          <button
+            aria-label="ビューアーのサイズを切り替える"
+            className="instructionIconButton"
+            onClick={() => void cycleViewerSize()}
+            title="ビューアーのサイズを切り替える"
+            type="button"
+          >
+            <UiIcon name="maximize" size={18} />
+          </button>
+          {selectedPath ? (
+            <button
+              aria-label="手順書を再読み込み"
+              className="instructionIconButton"
+              disabled={loading}
+              onClick={() => requestTransition(() => loadDocument(selectedPath))}
+              title="再読み込み"
+              type="button"
+            >
+              <UiIcon name="refresh" size={18} />
+            </button>
+          ) : null}
         </div>
       </header>
 
-      <div className="instructionWorkspace">
+      <div className="instructionWorkspace" ref={workspaceRef} style={workspaceStyle}>
         <aside className="instructionSidebar" aria-label="手順書一覧">
           <div className="instructionSidebarHeading">手順書</div>
           <InstructionTree
@@ -511,6 +610,23 @@ export function InstructionViewer() {
             selectedPath={selectedPath}
           />
         </aside>
+
+        <div
+          aria-label="手順書一覧の幅を調整"
+          aria-orientation="vertical"
+          aria-valuemax={Math.round(sidebarBounds().max)}
+          aria-valuemin={MIN_SIDEBAR_WIDTH}
+          aria-valuenow={Math.round(clampSidebarWidth(sidebarWidth))}
+          className="instructionSidebarDivider"
+          onKeyDown={resizeSidebarFromKeyboard}
+          onPointerCancel={stopSidebarResize}
+          onPointerDown={startSidebarResize}
+          onPointerMove={moveSidebarResize}
+          onPointerUp={stopSidebarResize}
+          role="separator"
+          tabIndex={0}
+          title="ドラッグして一覧の幅を調整"
+        />
 
         <section aria-busy={loading} aria-label="手順書本文" className="instructionContentPane">
           {externalDocument ? (
@@ -560,6 +676,7 @@ export function InstructionViewer() {
                 aria-label={`${instruction.name}を編集`}
                 className="instructionEditorTextarea app-scrollbar"
                 onChange={(event) => setDraft(event.target.value)}
+                ref={editorRef}
                 spellCheck={false}
                 value={draft}
               />

@@ -341,7 +341,7 @@ export function HelpGuideDialog({ onClose, onCopyResult }: HelpGuideDialogProps)
         </div>
 
         <footer className="helpGuideFooter">
-          <span>このガイドはオフラインで読めます。ChatGPTへの自動送信はありません。</span>
+          <span>このガイドはオフラインで読めます。</span>
           <button className="secondaryButton" onClick={onClose} type="button">
             閉じる
           </button>

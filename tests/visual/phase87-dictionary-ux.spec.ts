@@ -85,3 +85,35 @@ test("Dictionary defaults to auto and Cancel keeps the saved preference", async 
   await page.getByRole("button", { name: "キャンセル" }).click();
   await expect(page.locator(".dictionaryWindowShell")).toHaveAttribute("data-tile-size", "auto");
 });
+
+test("Dictionary list mode is compact, independent from icon size, and persists", async ({
+  page,
+}) => {
+  await prepare(page, "dictionary", 720);
+  await page.getByRole("button", { name: "辞書の設定" }).click();
+  await page.getByRole("radio", { name: "リスト" }).click();
+  await page.getByRole("radio", { name: "大" }).click();
+  await page.getByRole("button", { name: "保存" }).click();
+
+  const shell = page.locator(".dictionaryWindowShell");
+  const first = page.locator(".dictionaryTile").first();
+  await expect(shell).toHaveAttribute("data-view-mode", "list");
+  await expect(shell).toHaveAttribute("data-tile-size", "large");
+  expect((await first.boundingBox())?.height).toBeLessThanOrEqual(48);
+
+  await page.reload();
+  await expect(shell).toHaveAttribute("data-view-mode", "list");
+  await expect(shell).toHaveAttribute("data-tile-size", "large");
+});
+
+test("Dictionary settings is modeless and Save uses the positive action color", async ({ page }) => {
+  await prepare(page, "dictionary");
+  await page.getByRole("button", { name: "辞書の設定" }).click();
+  const dialog = page.getByRole("dialog", { name: "辞書の設定" });
+  const save = dialog.getByRole("button", { name: "保存" });
+  await expect(dialog).not.toHaveAttribute("aria-modal");
+  await expect(page.locator(".dictionarySettingsBackdrop")).toHaveCSS("pointer-events", "none");
+  await expect(save).toHaveCSS("color", "rgb(111, 207, 151)");
+  await save.hover();
+  await expect(save).toHaveCSS("background-color", "rgb(48, 66, 53)");
+});

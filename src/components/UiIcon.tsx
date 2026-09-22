@@ -16,6 +16,7 @@ export type UiIconName =
   | "folder"
   | "help"
   | "lock"
+  | "maximize"
   | "miniMode"
   | "pause"
   | "pin"
@@ -100,6 +101,11 @@ export function UiIcon({ name, size = 18, className, ...props }: UiIconProps) {
       <>
         <rect {...common} height="10" rx="2" width="14" x="5" y="10" />
         <path {...common} d="M8 10V7a4 4 0 0 1 8 0v3" />
+      </>
+    ) : name === "maximize" ? (
+      <>
+        <path {...common} d="M8 3H3v5M3 3l6 6" />
+        <path {...common} d="M16 21h5v-5M21 21l-6-6" />
       </>
     ) : name === "miniMode" ? (
       <>

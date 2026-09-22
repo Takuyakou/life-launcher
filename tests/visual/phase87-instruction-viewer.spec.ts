@@ -84,6 +84,51 @@ test("viewer toolbar is contextual and uses the current terminology", async ({ p
   await expect(page.getByRole("button", { name: "手順書を編集" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "手順書ウィンドウを閉じる" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /常に手前/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "ビューアーのサイズを切り替える" })).toBeVisible();
+});
+
+test("viewer sidebar resizes within balanced limits and size cycle resets the split", async ({
+  page,
+}) => {
+  await prepareEmpty(page);
+  const sidebar = page.locator(".instructionSidebar");
+  const divider = page.getByRole("separator", { name: "手順書一覧の幅を調整" });
+  const initial = await sidebar.boundingBox();
+  const dividerBox = await divider.boundingBox();
+  expect(initial).not.toBeNull();
+  expect(dividerBox).not.toBeNull();
+
+  await page.mouse.move(dividerBox!.x + dividerBox!.width / 2, dividerBox!.y + 120);
+  await page.mouse.down();
+  await page.mouse.move(dividerBox!.x + 170, dividerBox!.y + 120);
+  await page.mouse.up();
+  expect((await sidebar.boundingBox())!.width).toBeGreaterThan(initial!.width + 100);
+
+  await divider.focus();
+  await page.keyboard.press("End");
+  const workspace = await page.locator(".instructionWorkspace").boundingBox();
+  const maximum = await sidebar.boundingBox();
+  expect(maximum!.width).toBeLessThanOrEqual(440);
+  expect(maximum!.width).toBeLessThanOrEqual(workspace!.width * 0.45 + 1);
+  expect(workspace!.width - maximum!.width - 7).toBeGreaterThanOrEqual(320);
+
+  await page.getByRole("button", { name: "ビューアーのサイズを切り替える" }).click();
+  await expect.poll(async () => (await sidebar.boundingBox())?.width).toBeCloseTo(248, 0);
+});
+
+test("file and folder menus only unregister their containing root", async ({ page }) => {
+  await installTauriMock(page, createPublicFixture(), "life-launcher-instruction");
+  await page.goto("/?view=instruction");
+  const root = page.locator('.instructionTreeRow[aria-level="1"]').first();
+  await root.getByRole("button", { name: /を展開する/ }).click();
+  const file = page.locator(".instructionTreeRow", { hasText: "guide.md" });
+  await expect(file).toBeVisible();
+  await file.click({ button: "right" });
+  const menu = page.getByRole("menu", { name: "手順書操作" });
+  await expect(menu.getByRole("menuitem", { name: "ごみ箱へ移動" })).toHaveCount(0);
+  await menu.getByRole("menuitem", { name: "登録を解除" }).click();
+  const confirm = page.getByRole("dialog", { name: "手順書フォルダの登録を解除しますか？" });
+  await expect(confirm).toContainText("PC上のフォルダは削除しません");
 });
 
 test("Markdown exposes Edit while HTML remains read-only without a disabled Edit control", async ({
