@@ -3,7 +3,7 @@ READY FOR USER APPROVAL
 # Life Launcher v1.3.1 Final Release Decision
 
 - Prepared: 2026-09-23
-- Artifact source commit: `fbd17de8cdb57f8770b53a51318b184f2ee7cc56`
+- Artifact source commit: `5591644c0107200cfbbfc81bf26f884c7881baa0`
 - Target: Windows x64
 - Config schema: `3`（v1.3.0から変更なし）
 - Publication: 未実施。tag、GitHub Release、production uploadはユーザー承認待ち。
@@ -18,9 +18,9 @@ P8.7-00からP8.7-06までの実装、統合回帰、version整合、Windows pac
 
 | Artifact | Size | SHA-256 |
 | --- | ---: | --- |
-| `Life-Launcher-v1.3.1-windows-x64-setup.exe` | 3,627,593 bytes | `E94335084A776531EC90DA95B066B44912CA4638727034073F852A08B33DB1C0` |
-| `Life-Launcher-v1.3.1-windows-x64.exe` | 15,900,672 bytes | `76743D24844E2ACFB3CCC86A10A2A5DE752F9D6A66E0C92ED01ECF8378EDD001` |
-| `Life-Launcher-v1.3.1-windows-x64-portable.zip` | 5,019,857 bytes | `C9D6C8AC76DBCAD40C7EAF47A685B670E219149B0F40AEF8FAC196772771046B` |
+| `Life-Launcher-v1.3.1-windows-x64-setup.exe` | 3,627,967 bytes | `2946A6A47BBABA5481480B658F66788C9B91B6197BB3570FEFC826DC95193260` |
+| `Life-Launcher-v1.3.1-windows-x64.exe` | 15,910,912 bytes | `63CE1041BD715200CCF6CCDA2C9D0F515D977F1FEF06158C5A6EFFA62EC0E944` |
+| `Life-Launcher-v1.3.1-windows-x64-portable.zip` | 5,021,035 bytes | `FD67C84EA8FA024C2D0E55271B89E795C80239319443CA7CB1B49097E57F127B` |
 
 `SHA256SUMS.txt`の3件は再計算値と一致した。`release-notes.md`は`docs/releases/v1.3.1.md`とbyte単位で一致する。
 
@@ -28,13 +28,13 @@ P8.7-00からP8.7-06までの実装、統合回帰、version整合、Windows pac
 
 | Check | Result |
 | --- | --- |
-| Post-version full Playwright | 375 passed / 48 skipped / 0 failed（423 total） |
-| P8.7 focused regression | 46 passed / 0 failed |
+| Final-source full Playwright | 381 passed / 48 skipped / 0 failed（429 total） |
+| Final polish focused regression | 28 passed / 2 environment skips / 0 failed |
+| Integrated P8.7 focused regression | 46 passed / 0 failed |
 | Instruction Viewer repeat | 20 passed / 0 failed（5 repeats） |
-| Final compatibility focus | 4 passed / 0 failed |
 | Rust | 129 unit + 2 capability passed |
 | `npm run lint` / `npm run build` | PASS |
-| `npm run public:check` | PASS、380 files / 0 blockers |
+| `npm run public:check` | PASS、381 files / 0 blockers |
 | `npm audit --audit-level=low` | PASS、0 vulnerabilities |
 | `cargo fmt --check` / `cargo check` / `cargo clippy -D warnings` | PASS |
 | `cargo audit` | PASS、0 vulnerabilities / 8 allowed upstream warnings |
@@ -47,23 +47,24 @@ P8.7-00からP8.7-06までの実装、統合回帰、version整合、Windows pac
 
 ## Upgrade Compatibility
 
-v1.3.0と同じschema 3の既存データ相当fixtureを、v1.3.1 release sourceの隔離native buildで起動した。辞書項目、辞書順、既存ショートカットを保持し、ExitCode 0で終了した。migrationは発生しない。
+config schemaはv1.3.0と同じ3で、今回の最終polishはschemaとmigrationを変更しない。統合baselineでは既存データ相当fixtureを隔離native buildで起動し、辞書項目、辞書順、既存ショートカットの保持とExitCode 0を確認した。final sourceでは全Playwright、129 Rust unit、2 capability contract、silent install/uninstallを再実行した。
 
-- Dictionary preferenceが未保存なら`auto`になることをpost-version testで確認。
+- Dictionary preferenceが未保存なら`auto`、表示形式が未保存なら`tile`になることを確認。
 - content saveがdashboard shortcutを再登録しないことを確認。
 - shortcut登録失敗時もrestoreが完了し再試行可能であることを確認。
-- Beginner Guideの10章構成、5-step start、open/closeを確認。
+- Beginner Guideの10章構成、5-step start、open/closeと用語更新を確認。
+- 手順書ビューアーのサイズ循環、splitter上限、登録解除、window capability最小権限を確認。
 
-常駐中のユーザー所有v1.3.0には触れず、single-instanceだけを分離するsmoke用identifier overrideを使用した。製品コード、frontend bundle、schemaはartifact sourceと同一である。
+統合native smokeでは常駐中のユーザー所有v1.3.0には触れず、single-instanceだけを分離するsmoke用identifier overrideを使用した。最終polish後はofficial RCのsilent install/uninstallを隔離先で確認し、製品起動による実ユーザーデータ操作は行っていない。
 
 ## Release Notes
 
-- Dictionary settings、tile size、direct shortcutの改善
+- Dictionary settings、tile/list、icon size、direct shortcutの改善
 - launch成功Toastの整理
 - Drop Register UIの整理
-- Instruction Viewerのno-folder freeze修正とUI整理
+- Instruction Viewerのno-folder freeze修正、3段階size、可変sidebar、安全な登録解除
 - 初めて使う人向けGuideへの刷新
-- 用語と表示のpolish
+- Timer操作、Project色hover、用語と表示のpolish
 
 ## Known Limitations
 
@@ -76,7 +77,7 @@ v1.3.0と同じschema 3の既存データ相当fixtureを、v1.3.1 release sourc
 ## Exact Publish Plan
 
 1. ユーザーからv1.3.1公開の明示承認を得る。
-2. artifact source commit `fbd17de8cdb57f8770b53a51318b184f2ee7cc56`を含む承認済みrelease commitへannotated tag `v1.3.1`を作成する。
+2. artifact source commit `5591644c0107200cfbbfc81bf26f884c7881baa0`を含む承認済みrelease commitへannotated tag `v1.3.1`を作成する。
 3. GitHub Release `v1.3.1`を`docs/releases/v1.3.1.md`から作成する。
 4. Installer、Standalone EXE、Portable ZIP、`SHA256SUMS.txt`をuploadする。
 5. 公開後にdownloadした3 artifactのSHA-256を照合する。
