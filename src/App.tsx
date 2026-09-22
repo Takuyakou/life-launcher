@@ -301,6 +301,9 @@ type OverlayPageDraft = {
 type DropDialogState = DropButtonDraft & {
   label: string;
   group: string;
+  groupMode: "existing" | "new";
+  existingGroup: string;
+  newGroup: string;
   showInSidebar: boolean;
   showInOverlay: boolean;
   overlayPageId: string | null;
@@ -1401,12 +1404,12 @@ function actionDescription(action: LauncherAction): string {
   switch (action.type) {
     case "open_app":
     case "run_script":
-      return `${action.type}: ${action.payload.path}`;
+      return action.payload.path;
     case "open_folder":
     case "open_file":
-      return `${action.type}: ${action.payload.path}`;
+      return action.payload.path;
     case "open_url":
-      return `${action.type}: ${action.payload.url}`;
+      return action.payload.url;
     case "open_shell_special":
       return "Windows特殊項目: ごみ箱";
   }
@@ -4678,6 +4681,9 @@ function DashboardApp() {
           ...draft,
           label: draft.label,
           group: draft.group?.trim() || state.groupNames[0] || DEFAULT_BUTTON_GROUP,
+          groupMode: state.groupNames.length > 0 ? "existing" : "new",
+          existingGroup: draft.group?.trim() || state.groupNames[0] || DEFAULT_BUTTON_GROUP,
+          newGroup: "",
           showInSidebar: true,
           showInOverlay: true,
           overlayPageId: currentDropOverlayPageId(),
@@ -4707,6 +4713,9 @@ function DashboardApp() {
     setDropDraft({
       label: "ごみ箱",
       group: state.groupNames[0] ?? DEFAULT_BUTTON_GROUP,
+      groupMode: state.groupNames.length > 0 ? "existing" : "new",
+      existingGroup: state.groupNames[0] ?? DEFAULT_BUTTON_GROUP,
+      newGroup: "",
       iconSource: null,
       action: {
         type: "open_shell_special",
@@ -6145,7 +6154,7 @@ function DashboardApp() {
     stopProjectAutoScroll();
   };
 
-  const confirmDropRegistration = () => {
+  const confirmDropRegistration = async () => {
     if (!config || !dropDraft) return;
     const label = dropDraft.label.trim();
     if (!label) {
@@ -6153,7 +6162,10 @@ function DashboardApp() {
       return;
     }
 
-    const group = dropDraft.group.trim();
+    const group =
+      dropDraft.groupMode === "existing"
+        ? dropDraft.existingGroup.trim()
+        : dropDraft.newGroup.trim();
     const button: LauncherButton = {
       id: uniqueButtonId(label, config.buttons),
       label,
@@ -6167,11 +6179,12 @@ function DashboardApp() {
       actions: [dropDraft.action],
     };
 
-    setDropDraft(null);
-    void persistConfig({
+    const saved = await persistConfig({
       ...config,
       buttons: [...config.buttons, button],
     });
+    if (!saved) return;
+    setDropDraft(null);
     void refreshButtonIcon(button, true);
     showToast("ok", `${label} を登録しました`);
   };
@@ -15590,34 +15603,58 @@ function DashboardApp() {
                 onChange={(event) => setDropDraft({ ...dropDraft, label: event.target.value })}
                 value={dropDraft.label}
               />
+              <small>ファイル名やフォルダ名から自動入力しています。必要なら変更できます。</small>
             </label>
 
             <div className="fieldStack">
               <span>グループ</span>
-              <div className="groupPicker">
-                <select
-                  onChange={(event) =>
+              <div aria-label="グループの指定方法" className="dropGroupMode">
+                <button
+                  aria-pressed={dropDraft.groupMode === "existing"}
+                  onClick={() =>
                     setDropDraft({
                       ...dropDraft,
-                      group: event.target.value === "__custom__" ? "" : event.target.value,
+                      groupMode: "existing",
+                      existingGroup:
+                        dropDraft.existingGroup || groupNames[0] || DEFAULT_BUTTON_GROUP,
                     })
                   }
-                  value={groupNames.includes(dropDraft.group) ? dropDraft.group : "__custom__"}
+                  type="button"
+                >
+                  既存から選ぶ
+                </button>
+                <button
+                  aria-pressed={dropDraft.groupMode === "new"}
+                  onClick={() => setDropDraft({ ...dropDraft, groupMode: "new" })}
+                  type="button"
+                >
+                  新規グループを作成
+                </button>
+              </div>
+              {dropDraft.groupMode === "existing" ? (
+                <select
+                  aria-label="既存のグループ"
+                  className="textInput"
+                  onChange={(event) =>
+                    setDropDraft({ ...dropDraft, existingGroup: event.target.value })
+                  }
+                  value={dropDraft.existingGroup}
                 >
                   {groupNames.map((groupName) => (
                     <option key={groupName} value={groupName}>
                       {groupName}
                     </option>
                   ))}
-                  <option value="__custom__">新規入力</option>
                 </select>
+              ) : (
                 <input
+                  aria-label="新しいグループ名"
                   className="textInput"
-                  onChange={(event) => setDropDraft({ ...dropDraft, group: event.target.value })}
-                  placeholder="新規グループ"
-                  value={dropDraft.group}
+                  onChange={(event) => setDropDraft({ ...dropDraft, newGroup: event.target.value })}
+                  placeholder="例: 資料"
+                  value={dropDraft.newGroup}
                 />
-              </div>
+              )}
             </div>
 
             <div className="fieldStack">
@@ -15631,7 +15668,10 @@ function DashboardApp() {
                     }
                     type="checkbox"
                   />
-                  <strong>左サイドバーに表示</strong>
+                  <span>
+                    <strong>左サイドバーに表示</strong>
+                    <small>Quickからすぐ開く項目に向いています</small>
+                  </span>
                 </label>
                 <label className="displayTargetItem">
                   <input
@@ -15641,7 +15681,10 @@ function DashboardApp() {
                     }
                     type="checkbox"
                   />
-                  <strong>Ctrl+K辞書に表示</strong>
+                  <span>
+                    <strong>Ctrl+K辞書に表示</strong>
+                    <small>検索して開く項目に向いています</small>
+                  </span>
                 </label>
               </div>
             </div>
@@ -15679,14 +15722,33 @@ function DashboardApp() {
               </label>
             )}
 
-            <p className="dropSource">{actionDescription(dropDraft.action)}</p>
+            <div className="fieldStack">
+              <span>登録先</span>
+              <p className="dropSource">
+                <UiIcon
+                  name={
+                    dropDraft.action.type === "open_url"
+                      ? "external"
+                      : dropDraft.action.type === "open_folder"
+                        ? "folder"
+                        : "fileText"
+                  }
+                  size={16}
+                />
+                <span>{actionDescription(dropDraft.action)}</span>
+              </p>
+            </div>
 
-            <div className="dialogActions">
-              <button className="secondaryButton" onClick={() => setDropDraft(null)} type="button">
-                キャンセル
-              </button>
-              <button className="primaryButton" onClick={confirmDropRegistration} type="button">
+            <div className="dialogActions dropRegisterActions">
+              <button
+                className="primaryButton"
+                onClick={() => void confirmDropRegistration()}
+                type="button"
+              >
                 追加
+              </button>
+              <button className="dangerButton" onClick={() => setDropDraft(null)} type="button">
+                キャンセル
               </button>
             </div>
           </section>

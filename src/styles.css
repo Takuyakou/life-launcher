@@ -7233,6 +7233,32 @@ input[type="number"]::-webkit-inner-spin-button {
   color: var(--text);
 }
 
+.dropGroupMode {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.dropGroupMode button {
+  min-width: 0;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 7px 9px;
+  background: var(--surface-soft);
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  font-weight: 780;
+}
+
+.dropGroupMode button:hover,
+.dropGroupMode button:focus-visible,
+.dropGroupMode button[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--dictionary-selected-bg);
+  color: var(--accent-strong);
+}
+
 .displayTargetList {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -7251,6 +7277,12 @@ input[type="number"]::-webkit-inner-spin-button {
   background: var(--surface-soft);
 }
 
+.displayTargetItem > span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
 .displayTargetItem input {
   width: 18px;
   height: 18px;
@@ -7262,6 +7294,51 @@ input[type="number"]::-webkit-inner-spin-button {
   font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.displayTargetItem small,
+.fieldStack > small {
+  color: var(--text-muted-readable);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.dropSource {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 9px 10px;
+  background: var(--surface-soft);
+  color: var(--text-muted-readable);
+  font-size: 12px;
+}
+
+.dropSource .uiIcon {
+  flex: 0 0 auto;
+  color: var(--accent-strong);
+}
+
+.dropSource span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropRegisterActions .primaryButton,
+.dropRegisterActions .dangerButton {
+  min-height: 40px;
+}
+
+@media (max-width: 560px) {
+  .dropGroupMode,
+  .displayTargetList {
+    grid-template-columns: 1fr;
+  }
 }
 
 .aliasesInput {
