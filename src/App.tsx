@@ -9569,7 +9569,10 @@ function DashboardApp() {
           onClick={() => void openDictionaryManually()}
           type="button"
         >
-          <span>辞書を開く</span>
+          <span className="launcherOpenButtonLabel">
+            <UiIcon name="window" size={16} />
+            <span>辞書を開く</span>
+          </span>
           <kbd>{config?.settings.launcherHotkey?.trim() || "Ctrl+K"}</kbd>
         </button>
 

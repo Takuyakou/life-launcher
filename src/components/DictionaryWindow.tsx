@@ -12,10 +12,7 @@ import {
   releaseDictionaryTilePointer,
   type DictionaryTilePointerState,
 } from "../dictionaryTilePointer";
-import {
-  moveIdToSlot,
-  nearestSlotIndex,
-} from "../dictionaryTileReorder";
+import { moveIdToSlot, nearestSlotIndex } from "../dictionaryTileReorder";
 import {
   announceDictionaryReady,
   hideDictionaryWindow,
@@ -76,6 +73,13 @@ type DictionaryTileDragPreview = {
 
 type DictionaryFocusLayer = "page" | "item";
 
+type DictionaryTileSize = "auto" | "small" | "medium" | "large";
+
+type DictionaryTitlebarMenu = {
+  x: number;
+  y: number;
+};
+
 type DictionaryReopenState = {
   activePageKey: string;
   focusedPageKey: string;
@@ -88,6 +92,7 @@ type DictionaryReopenState = {
 let dictionaryReopenState: DictionaryReopenState | null = null;
 
 const DICTIONARY_FOCUS_LOCK_STORAGE_KEY = "life-launcher.dictionary-focus-lock";
+const DICTIONARY_TILE_SIZE_STORAGE_KEY = "life-launcher.dictionary-tile-size";
 const DICTIONARY_TILE_GHOST_OFFSET_PX = 10;
 const DICTIONARY_PAGE_HOVER_SWITCH_DELAY_MS = 240;
 
@@ -96,6 +101,15 @@ function readDictionaryFocusLock(): boolean {
     return window.localStorage.getItem(DICTIONARY_FOCUS_LOCK_STORAGE_KEY) !== "false";
   } catch {
     return true;
+  }
+}
+
+function readDictionaryTileSize(): DictionaryTileSize {
+  try {
+    const value = window.localStorage.getItem(DICTIONARY_TILE_SIZE_STORAGE_KEY);
+    return value === "small" || value === "medium" || value === "large" ? value : "auto";
+  } catch {
+    return "auto";
   }
 }
 
@@ -205,6 +219,11 @@ export function DictionaryWindow() {
   const launchInFlightRef = useRef(false);
   const dictionaryVisibleRef = useRef(false);
   const [focusLocked, setFocusLocked] = useState(readDictionaryFocusLock);
+  const [tileSize, setTileSize] = useState<DictionaryTileSize>(readDictionaryTileSize);
+  const [tileSizeDraft, setTileSizeDraft] = useState<DictionaryTileSize>(tileSize);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [titlebarMenu, setTitlebarMenu] = useState<DictionaryTitlebarMenu | null>(null);
+  const settingsDialogRef = useRef<HTMLElement | null>(null);
   const focusLockedRef = useRef(focusLocked);
   const focusProtectionRef = useRef(false);
   const focusProtectionTimerRef = useRef<number | null>(null);
@@ -285,6 +304,51 @@ export function DictionaryWindow() {
       focusProtectionRef.current = false;
     }, 750);
   }, []);
+
+  const openDictionarySettings = useCallback(() => {
+    protectFocusForClick();
+    setTitlebarMenu(null);
+    setTileSizeDraft(tileSize);
+    setSettingsOpen(true);
+  }, [protectFocusForClick, tileSize]);
+
+  const closeDictionarySettings = useCallback(() => {
+    setSettingsOpen(false);
+  }, []);
+
+  const saveDictionarySettings = useCallback(() => {
+    setTileSize(tileSizeDraft);
+    try {
+      window.localStorage.setItem(DICTIONARY_TILE_SIZE_STORAGE_KEY, tileSizeDraft);
+    } catch {
+      // Keep the preference for this window when storage is unavailable.
+    }
+    setSettingsOpen(false);
+  }, [tileSizeDraft]);
+
+  useEffect(() => {
+    dictionaryBlockingRef.current = settingsOpen;
+    if (!settingsOpen) return;
+    const frame = window.requestAnimationFrame(() => {
+      settingsDialogRef.current
+        ?.querySelector<HTMLButtonElement>('[role="radio"][aria-checked="true"]')
+        ?.focus();
+    });
+    return () => {
+      window.cancelAnimationFrame(frame);
+      dictionaryBlockingRef.current = false;
+    };
+  }, [settingsOpen]);
+
+  useEffect(() => {
+    if (!titlebarMenu) return;
+    const dismiss = (event: globalThis.PointerEvent) => {
+      if ((event.target as HTMLElement | null)?.closest(".dictionaryTitlebarMenu")) return;
+      setTitlebarMenu(null);
+    };
+    window.addEventListener("pointerdown", dismiss);
+    return () => window.removeEventListener("pointerdown", dismiss);
+  }, [titlebarMenu]);
 
   const toggleFocusLock = useCallback(() => {
     setFocusLocked((current) => {
@@ -492,7 +556,7 @@ export function DictionaryWindow() {
   }, [dragPreview, effectiveSelectedPageKey, selectedButtons]);
   const tileDragActive = dragPreview !== null;
   const dragSourceButton = dragPreview
-    ? config?.buttons.find((button) => button.id === dragPreview.sourceId) ?? null
+    ? (config?.buttons.find((button) => button.id === dragPreview.sourceId) ?? null)
     : null;
   const searchResults = useMemo(
     () =>
@@ -606,9 +670,8 @@ export function DictionaryWindow() {
 
   const focusFirstTile = useCallback(() => {
     const firstTile = tileGridRef.current?.querySelector<HTMLButtonElement>(".dictionaryTile");
-    const buttonId = firstTile
-      ?.closest<HTMLElement>("[data-dictionary-button-id]")
-      ?.dataset.dictionaryButtonId;
+    const buttonId = firstTile?.closest<HTMLElement>("[data-dictionary-button-id]")?.dataset
+      .dictionaryButtonId;
     if (!firstTile || !buttonId) return false;
     rememberTileFocus(buttonId);
     firstTile.focus();
@@ -674,8 +737,7 @@ export function DictionaryWindow() {
       });
       candidates.sort(
         (left, right) =>
-          left.primaryDistance - right.primaryDistance ||
-          left.crossDistance - right.crossDistance,
+          left.primaryDistance - right.primaryDistance || left.crossDistance - right.crossDistance,
       );
       if (candidates[0]) {
         focusTile(candidates[0].button.id);
@@ -740,9 +802,8 @@ export function DictionaryWindow() {
 
   const pageTargetAtPointer = useCallback((clientX: number, clientY: number) => {
     return (
-      document
-        .elementFromPoint(clientX, clientY)
-        ?.closest<HTMLElement>("[data-overlay-page-key]")?.dataset.overlayPageKey ?? null
+      document.elementFromPoint(clientX, clientY)?.closest<HTMLElement>("[data-overlay-page-key]")
+        ?.dataset.overlayPageKey ?? null
     );
   }, []);
   const previewIdsAtPointer = useCallback(
@@ -754,11 +815,7 @@ export function DictionaryWindow() {
         ...slot,
         top: slot.top - scrollDelta,
       }));
-      return moveIdToSlot(
-        current.ids,
-        current.sourceId,
-        nearestSlotIndex(clientX, clientY, slots),
-      );
+      return moveIdToSlot(current.ids, current.sourceId, nearestSlotIndex(clientX, clientY, slots));
     },
     [],
   );
@@ -772,9 +829,7 @@ export function DictionaryWindow() {
       const pageTargetKey =
         hoveredPageKey ??
         (effectiveSelectedPageKey !== current.sourcePageKey ? effectiveSelectedPageKey : null);
-      const nextIds = pageTargetKey
-        ? current.ids
-        : previewIdsAtPointer(current, clientX, clientY);
+      const nextIds = pageTargetKey ? current.ids : previewIdsAtPointer(current, clientX, clientY);
       if (nextIds !== current.ids) {
         tileRectsBeforeRenderRef.current = new Map(
           current.ids.flatMap((id) => {
@@ -791,7 +846,13 @@ export function DictionaryWindow() {
         pageTargetKey,
       });
     },
-    [effectiveSelectedPageKey, pageTargetAtPointer, previewIdsAtPointer, schedulePageHoverSwitch, setDragPreviewCurrent],
+    [
+      effectiveSelectedPageKey,
+      pageTargetAtPointer,
+      previewIdsAtPointer,
+      schedulePageHoverSwitch,
+      setDragPreviewCurrent,
+    ],
   );
 
   useLayoutEffect(() => {
@@ -852,8 +913,7 @@ export function DictionaryWindow() {
       const current = dragPreviewRef.current;
       if (current) updateDragPreviewPosition(current.pointerX, current.pointerY);
     };
-    const observer =
-      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(recalculate);
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(recalculate);
     if (tileGridRef.current) observer?.observe(tileGridRef.current);
     if (dictionaryBodyRef.current) observer?.observe(dictionaryBodyRef.current);
     window.addEventListener("resize", recalculate);
@@ -1206,6 +1266,20 @@ export function DictionaryWindow() {
 
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (settingsOpen) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          closeDictionarySettings();
+        }
+        return;
+      }
+      if (titlebarMenu) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          setTitlebarMenu(null);
+        }
+        return;
+      }
       if (event.key === "Escape" && cancelTilePointer()) {
         event.preventDefault();
         return;
@@ -1290,6 +1364,9 @@ export function DictionaryWindow() {
     selectedButtonId,
     parity.blocking,
     cancelTilePointer,
+    closeDictionarySettings,
+    settingsOpen,
+    titlebarMenu,
   ]);
 
   const setPageDragState = useCallback((next: DictionaryPagePointerDrag | null) => {
@@ -1330,7 +1407,11 @@ export function DictionaryWindow() {
       const distance = Math.hypot(event.clientX - current.startX, event.clientY - current.startY);
       if (!current.dragging && distance < DICTIONARY_TILE_DRAG_THRESHOLD_PX) return;
       event.preventDefault();
-      const target = dictionaryPageDropTargetFromPoint(event.clientX, event.clientY, current.pageId);
+      const target = dictionaryPageDropTargetFromPoint(
+        event.clientX,
+        event.clientY,
+        current.pageId,
+      );
       setPageDragState({
         ...current,
         dragging: true,
@@ -1431,6 +1512,7 @@ export function DictionaryWindow() {
           ? "dictionaryWindowShell dictionaryWindowShell--dragging"
           : "dictionaryWindowShell"
       }
+      data-tile-size={tileSize}
       onDragOver={parity.onDragOver}
       onDrop={parity.onDrop}
     >
@@ -1445,6 +1527,15 @@ export function DictionaryWindow() {
       <header
         className="dictionaryWindowTitlebar"
         data-tauri-drag-region
+        onContextMenu={(event) => {
+          if ((event.target as HTMLElement).closest("button")) return;
+          event.preventDefault();
+          protectFocusForClick();
+          setTitlebarMenu({
+            x: Math.min(event.clientX, window.innerWidth - 180),
+            y: Math.min(event.clientY, window.innerHeight - 48),
+          });
+        }}
         onPointerDown={startDragging}
       >
         <div className="dictionaryWindowTitle">
@@ -1454,22 +1545,37 @@ export function DictionaryWindow() {
         </div>
         <div className="dictionaryWindowTitleActions">
           <button
-            aria-label={focusLocked ? "範囲外クリックで閉じる: オフ" : "範囲外クリックで閉じる: オン"}
+            aria-label="辞書の設定"
+            className="dictionaryWindowSettings"
+            onClick={openDictionarySettings}
+            title="辞書の設定"
+            type="button"
+          >
+            <UiIcon name="settings" size={16} />
+          </button>
+          <button
+            aria-label={
+              focusLocked ? "範囲外クリックで閉じる: オフ" : "範囲外クリックで閉じる: オン"
+            }
             aria-pressed={focusLocked}
             className="dictionaryWindowLock"
             onClick={toggleFocusLock}
-            title={focusLocked ? "ロック中: 範囲外をクリックしても閉じません" : "ロック解除中: 範囲外クリックで閉じます"}
+            title={
+              focusLocked
+                ? "ロック中: 範囲外をクリックしても閉じません"
+                : "ロック解除中: 範囲外クリックで閉じます"
+            }
             type="button"
           >
             <UiIcon name={focusLocked ? "lock" : "unlock"} size={16} />
           </button>
           <button
-          aria-label="辞書ウィンドウを閉じる"
-          className="dictionaryWindowClose"
-          onClick={() => void hideWindow()}
-          title="閉じる"
-          type="button"
-        >
+            aria-label="辞書ウィンドウを閉じる"
+            className="dictionaryWindowClose"
+            onClick={() => void hideWindow()}
+            title="閉じる"
+            type="button"
+          >
             <UiIcon name="close" size={16} />
           </button>
         </div>
@@ -1759,9 +1865,7 @@ export function DictionaryWindow() {
                       className={[
                         "dictionaryTile",
                         keyboardFocused ? "dictionaryTile--selected" : "",
-                        dragPreview?.sourceId === button.id
-                          ? "dictionaryTile--placeholder"
-                          : "",
+                        dragPreview?.sourceId === button.id ? "dictionaryTile--placeholder" : "",
                       ]
                         .filter(Boolean)
                         .join(" ")}
@@ -1812,6 +1916,83 @@ export function DictionaryWindow() {
           )}
         </div>
       </section>
+      {titlebarMenu ? (
+        <div
+          className="dictionaryTitlebarMenu"
+          role="menu"
+          style={{ left: titlebarMenu.x, top: titlebarMenu.y }}
+        >
+          <button onClick={openDictionarySettings} role="menuitem" type="button">
+            <UiIcon name="settings" size={16} />
+            <span>辞書の設定</span>
+          </button>
+        </div>
+      ) : null}
+      {settingsOpen ? (
+        <div
+          className="dictionarySettingsBackdrop"
+          onPointerDown={protectFocusForClick}
+          role="presentation"
+        >
+          <section
+            aria-labelledby="dictionary-settings-title"
+            aria-modal="true"
+            className="dictionarySettingsDialog"
+            onPointerDown={(event) => event.stopPropagation()}
+            ref={settingsDialogRef}
+            role="dialog"
+          >
+            <header className="dictionarySettingsHeader">
+              <div>
+                <p className="eyebrow">Dictionary</p>
+                <h2 id="dictionary-settings-title">辞書の設定</h2>
+              </div>
+              <button
+                aria-label="辞書の設定を閉じる"
+                className="dictionaryWindowClose"
+                onClick={closeDictionarySettings}
+                title="閉じる"
+                type="button"
+              >
+                <UiIcon name="close" size={16} />
+              </button>
+            </header>
+            <fieldset className="dictionarySizeFieldset">
+              <legend>アイコンサイズ</legend>
+              <p>項目の密度を選びます。自動ではウィンドウ幅に合わせます。</p>
+              <div aria-label="アイコンサイズ" className="dictionarySizeOptions" role="radiogroup">
+                {(
+                  [
+                    ["auto", "自動"],
+                    ["small", "小"],
+                    ["medium", "中"],
+                    ["large", "大"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    aria-checked={tileSizeDraft === value}
+                    className={tileSizeDraft === value ? "isSelected" : undefined}
+                    key={value}
+                    onClick={() => setTileSizeDraft(value)}
+                    role="radio"
+                    type="button"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+            <footer className="dictionarySettingsActions">
+              <button className="primaryButton" onClick={saveDictionarySettings} type="button">
+                保存
+              </button>
+              <button className="dangerButton" onClick={closeDictionarySettings} type="button">
+                キャンセル
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
       {dragPreview && dragSourceButton ? (
         <div
           aria-hidden="true"
@@ -1826,7 +2007,8 @@ export function DictionaryWindow() {
           {renderButtonIcon(dragSourceButton)}
           <span>{dragSourceButton.label}</span>
         </div>
-      ) : null}      <DictionaryFeatureParityUi c={parity} />
+      ) : null}{" "}
+      <DictionaryFeatureParityUi c={parity} />
     </main>
   );
 }
