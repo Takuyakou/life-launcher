@@ -2159,6 +2159,7 @@ pub(crate) fn config_schema_json() -> &'static str {
         "backupKeep": { "type": "integer", "minimum": 1, "default": 30 },
         "miniMode": { "type": "boolean", "default": true },
         "restartShortFirst": { "type": "boolean", "default": true },
+        "mainDisplaySize": { "type": "string", "enum": ["standard", "large", "xlarge"], "default": "standard" },
         "instructionFolders": {
           "type": "array",
           "maxItems": 5,
@@ -2786,6 +2787,14 @@ mod tests {
         assert_eq!(
             schema["$defs"]["settings"]["properties"]["restartShortFirst"]["default"],
             true
+        );
+        assert_eq!(
+            schema["$defs"]["settings"]["properties"]["mainDisplaySize"]["enum"],
+            serde_json::json!(["standard", "large", "xlarge"])
+        );
+        assert_eq!(
+            schema["$defs"]["settings"]["properties"]["mainDisplaySize"]["default"],
+            "standard"
         );
         assert!(schema["$defs"]["settings"]["required"]
             .as_array()

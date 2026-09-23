@@ -1335,7 +1335,6 @@ body {
   line-height: 1.6;
 }
 
-
 .instructionTreeMessage strong {
   color: var(--text);
   font-size: 13px;
@@ -3197,41 +3196,6 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .bannerButton:hover:not(:disabled) {
   border-color: #ffe7e4;
-}
-
-.weeklyReviewBanner {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 9px 12px;
-  background: var(--surface-soft);
-  color: var(--text);
-  font-size: 13px;
-}
-
-.weeklyReviewBanner > div {
-  display: flex;
-  gap: 6px;
-}
-
-.weeklyReviewBanner button {
-  min-height: 32px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 5px 10px;
-  background: transparent;
-  color: var(--muted);
-  font-weight: 800;
-}
-
-.weeklyReviewBanner .weeklyReviewBannerPrimary {
-  border-color: var(--accent);
-  color: var(--text);
 }
 
 .recordsView {
@@ -12843,4 +12807,210 @@ button.mainActionButton:is(
   .mainActionButton:active:not(:disabled):not([aria-disabled="true"]) {
     transform: none;
   }
+}
+
+/* P8.9: Main-only visual alignment and display presets. */
+.mainScrollContent .doNowHeading h2 {
+  margin-inline-start: 34px;
+}
+
+.mainScrollContent .todaySectionDisclosure h2,
+.mainScrollContent .projectsBand .disclosureLabel strong,
+.mainScrollContent .inboxBand .disclosureLabel strong,
+.mainScrollContent .todayActivityBand .disclosureLabel strong {
+  position: relative;
+  left: -4px;
+}
+
+.mainScrollContent .todayActivityIdentity .projectIdentityName,
+.mainScrollContent .todayActivityIdentity > span:last-child {
+  margin-inline-start: 10px;
+}
+
+.settingsDisplay {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  border-top: 1px solid var(--line-soft);
+  padding-top: 14px;
+}
+
+.settingsDisplay h4,
+.settingsDisplay p {
+  margin: 0;
+}
+
+.settingsDisplay p {
+  color: var(--text-muted-readable);
+  font-size: 12px;
+}
+
+.settingsDisplayFieldset {
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.settingsDisplayFieldset legend {
+  margin-bottom: 7px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.settingsDisplayChoices {
+  display: inline-grid;
+  grid-template-columns: repeat(3, minmax(72px, 1fr));
+  max-width: 320px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.settingsDisplayChoices label {
+  position: relative;
+  display: grid;
+  min-height: 34px;
+  place-items: center;
+  cursor: pointer;
+}
+
+.settingsDisplayChoices label + label {
+  border-left: 1px solid var(--line);
+}
+
+.settingsDisplayChoices input {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.settingsDisplayChoices span {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.settingsDisplayChoices input:checked + span {
+  background: var(--control-positive-bg);
+  color: var(--good);
+}
+
+.settingsDisplayChoices label:hover span {
+  background: var(--control-positive-hover-bg);
+  color: var(--text);
+}
+
+.settingsDisplayChoices input:focus-visible + span {
+  outline: 2px solid var(--good);
+  outline-offset: -2px;
+}
+
+.mainScrollContent[data-main-display-size="large"] {
+  width: min(100%, 1298px);
+  --dashboard-font-action: 19px;
+  --dashboard-font-section: 16px;
+  --dashboard-font-body: 14px;
+  --dashboard-font-project: 15px;
+  --dashboard-font-meta: 12px;
+  --main-control-height: 34px;
+  --main-row-height: 53px;
+  --main-band-spacing: 15px;
+  --main-card-padding: 17px;
+}
+
+.mainScrollContent[data-main-display-size="xlarge"] {
+  width: min(100%, 1400px);
+  --dashboard-font-action: 20px;
+  --dashboard-font-section: 17px;
+  --dashboard-font-body: 16px;
+  --dashboard-font-project: 17px;
+  --dashboard-font-meta: 13px;
+  --main-control-height: 38px;
+  --main-row-height: 57px;
+  --main-band-spacing: 18px;
+  --main-card-padding: 19px;
+}
+
+.mainScrollContent:is([data-main-display-size="large"], [data-main-display-size="xlarge"])
+  :is(.doNowBand, .focusBand, .projectsBand, .inboxBand, .todayActivityBand) {
+  padding-block: var(--main-band-spacing);
+}
+
+.mainScrollContent:is([data-main-display-size="large"], [data-main-display-size="xlarge"])
+  :is(.todaySectionBar, .disclosureHeader) {
+  min-height: var(--main-row-height);
+}
+
+.mainScrollContent:is([data-main-display-size="large"], [data-main-display-size="xlarge"])
+  :is(.doNowEmpty, .doNowContent) {
+  padding: var(--main-card-padding);
+}
+
+.mainScrollContent:is([data-main-display-size="large"], [data-main-display-size="xlarge"])
+  :is(.todayRow, .nextStepRow.sourceListRow, .inboxRow.sourceListRow, .todayActivityRow) {
+  min-height: var(--main-row-height);
+}
+
+.mainScrollContent:is([data-main-display-size="large"], [data-main-display-size="xlarge"])
+  .mainActionButton {
+  min-height: var(--main-control-height);
+  padding-inline: 12px;
+  font-size: var(--dashboard-font-meta);
+}
+
+.mainScrollContent:is([data-main-display-size="large"], [data-main-display-size="xlarge"])
+  :is(.victoryTextButton, .victoryInput, .todayTextButton, .todayEditInput) {
+  font-size: var(--dashboard-font-body);
+}
+
+.mainScrollContent:is([data-main-display-size="large"], [data-main-display-size="xlarge"])
+  :is(.todayActivityRow, .projectIdentity--compact) {
+  font-size: var(--dashboard-font-body);
+}
+
+.mainScrollContent:is([data-main-display-size="large"], [data-main-display-size="xlarge"])
+  .todayGrid {
+  gap: 12px;
+}
+
+@media (max-width: 700px) {
+  .mainScrollContent:is([data-main-display-size="large"], [data-main-display-size="xlarge"])
+    .todayGrid {
+    gap: 8px;
+  }
+}
+.mainScrollContent[data-main-display-size="large"]
+  :is(
+    .todaySectionBar,
+    .projectsBand .disclosureHeader,
+    .inboxBand .disclosureHeader,
+    .todayActivityBand .disclosureHeader
+  ) {
+  grid-template-columns: 132px 34px minmax(0, 1fr) max-content;
+}
+
+.mainScrollContent[data-main-display-size="large"] .todaySectionBar {
+  grid-template-columns: 132px 34px max-content minmax(0, 1fr);
+}
+
+.mainScrollContent[data-main-display-size="xlarge"]
+  :is(
+    .todaySectionBar,
+    .projectsBand .disclosureHeader,
+    .inboxBand .disclosureHeader,
+    .todayActivityBand .disclosureHeader
+  ) {
+  grid-template-columns: 144px 38px minmax(0, 1fr) max-content;
+}
+
+.mainScrollContent[data-main-display-size="xlarge"] .todaySectionBar {
+  grid-template-columns: 144px 38px max-content minmax(0, 1fr);
 }

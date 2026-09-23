@@ -373,6 +373,7 @@ type InstructionChoice = {
 };
 
 type SettingsCenterDraft = {
+  mainDisplaySize: "standard" | "large" | "xlarge";
   defaultTimerMinutes: string;
   shortTimerMinutes: string;
   dayStartHour: string;
@@ -2190,7 +2191,6 @@ function DashboardApp() {
   const [sessionSummary, setSessionSummary] = useState<SessionSummaryResponse | null>(null);
   const [weeklyReview, setWeeklyReview] = useState<WeeklyReviewResponse | null>(null);
   const [staleNextStepProjectIds, setStaleNextStepProjectIds] = useState<string[]>([]);
-  const [weeklyReviewBannerOpen, setWeeklyReviewBannerOpen] = useState(false);
   const [doNowResponse, setDoNowResponse] = useState<DoNowResponse | null>(null);
   const [doNowCandidateIndex, setDoNowCandidateIndex] = useState(0);
   const [sessionEntries, setSessionEntries] = useState<SessionEntriesResponse | null>(null);
@@ -2935,10 +2935,6 @@ function DashboardApp() {
 
   const applyWeeklyReview = useCallback((response: WeeklyReviewResponse) => {
     setWeeklyReview(response);
-    if (window.localStorage.getItem(WEEKLY_REVIEW_SEEN_STORAGE_KEY) !== response.weekKey) {
-      window.localStorage.setItem(WEEKLY_REVIEW_SEEN_STORAGE_KEY, response.weekKey);
-      setWeeklyReviewBannerOpen(true);
-    }
   }, []);
 
   const refreshWeeklyReview = useCallback(async () => {
@@ -3617,6 +3613,7 @@ function DashboardApp() {
     }
     setSettingsSection("basic");
     setSettingsDraft({
+      mainDisplaySize: config.settings.mainDisplaySize ?? "standard",
       defaultTimerMinutes: String(config.settings.defaultTimerMinutes),
       shortTimerMinutes: String(config.settings.shortTimerMinutes),
       dayStartHour: String(config.settings.dayStartHour),
@@ -3640,7 +3637,8 @@ function DashboardApp() {
   const settingsHaveUnsavedChanges = Boolean(
     config &&
     settingsDraft &&
-    (settingsDraft.defaultTimerMinutes !== String(config.settings.defaultTimerMinutes) ||
+    (settingsDraft.mainDisplaySize !== (config.settings.mainDisplaySize ?? "standard") ||
+      settingsDraft.defaultTimerMinutes !== String(config.settings.defaultTimerMinutes) ||
       settingsDraft.shortTimerMinutes !== String(config.settings.shortTimerMinutes) ||
       settingsDraft.dayStartHour !== String(config.settings.dayStartHour) ||
       settingsDraft.focusHotkey !== (config.settings.focusHotkey ?? "") ||
@@ -4485,6 +4483,7 @@ function DashboardApp() {
           }),
           settings: {
             ...config.settings,
+            mainDisplaySize: settingsDraft.mainDisplaySize,
             defaultTimerMinutes,
             shortTimerMinutes,
             dayStartHour: Number.isFinite(dayStartHour)
@@ -10296,7 +10295,12 @@ function DashboardApp() {
         </header>
 
         <div className="mainScrollArea app-scrollbar" id="main-content" ref={mainScrollAreaRef}>
-          <div className="mainScrollContent">
+          <div
+            className="mainScrollContent"
+            data-main-display-size={
+              activeView === "main" ? (config.settings.mainDisplaySize ?? "standard") : undefined
+            }
+          >
             {banner && (
               <section className="banner">
                 <span>{banner}</span>
@@ -10309,27 +10313,6 @@ function DashboardApp() {
                     バックアップから復元: フォルダを開く
                   </button>
                 )}
-              </section>
-            )}
-
-            {activeView === "main" && weeklyReviewBannerOpen && (
-              <section className="weeklyReviewBanner" aria-label="週次ふりかえりの案内">
-                <span>先週のふりかえりが見られます</span>
-                <div>
-                  <button
-                    className="weeklyReviewBannerPrimary mainActionButton mainActionButton--neutral"
-                    onClick={() => {
-                      setWeeklyReviewBannerOpen(false);
-                      setActiveView("records");
-                    }}
-                    type="button"
-                  >
-                    見る
-                  </button>
-                  <button onClick={() => setWeeklyReviewBannerOpen(false)} type="button">
-                    閉じる
-                  </button>
-                </div>
               </section>
             )}
 
@@ -13890,6 +13873,31 @@ function DashboardApp() {
                   <span>長く空いたプロジェクトでは短時間開始を優先表示する</span>
                 </label>
               </div>
+              <section className="settingsDisplay" aria-labelledby="settings-display-title">
+                <h4 id="settings-display-title">表示</h4>
+                <fieldset className="settingsDisplayFieldset">
+                  <legend>メイン表示サイズ</legend>
+                  <div className="settingsDisplayChoices">
+                    {(["standard", "large", "xlarge"] as const).map((size) => (
+                      <label key={size}>
+                        <input
+                          checked={settingsDraft.mainDisplaySize === size}
+                          name="main-display-size"
+                          onChange={() =>
+                            setSettingsDraft({ ...settingsDraft, mainDisplaySize: size })
+                          }
+                          type="radio"
+                          value={size}
+                        />
+                        <span>
+                          {size === "standard" ? "標準" : size === "large" ? "大" : "特大"}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+                <p>メイン画面の文字・カード・操作部の大きさを変更します。</p>
+              </section>
               <section
                 className="settingsWeeklyFocus"
                 aria-labelledby="settings-weekly-focus-title"

@@ -193,6 +193,7 @@ export const SettingsSchema = z.object({
   miniMode: z.boolean().default(true),
   miniWindowPosition: MiniWindowPositionSchema.nullable().default(null),
   restartShortFirst: z.boolean().optional(),
+  mainDisplaySize: z.enum(["standard", "large", "xlarge"]).optional(),
   instructionFolders: InstructionFolderListSchema.default([]),
   instructionFolderIdentities: z.array(InstructionFolderIdentitySchema).max(5).optional(),
   instructionHotkey: z.string().trim().min(1).nullable().optional(),

@@ -365,6 +365,8 @@ pub struct Settings {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub restart_short_first: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub main_display_size: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub instruction_folders: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub instruction_folder_identities: Option<Vec<InstructionFolderIdentity>>,
@@ -802,6 +804,7 @@ fn default_settings() -> Settings {
         mini_mode: true,
         mini_window_position: None,
         restart_short_first: Some(true),
+        main_display_size: None,
         instruction_folders: None,
         instruction_folder_identities: None,
         instruction_hotkey: None,
