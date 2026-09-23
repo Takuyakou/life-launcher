@@ -375,10 +375,9 @@ export function InstructionViewer() {
     if (!selectedPath) return;
     try {
       await openInstructionInDefaultEditor(selectedPath);
-      setStatus({
-        tone: "neutral",
-        message: isHtmlInstruction ? "ブラウザで開きました" : "既定のアプリで開きました",
-      });
+      if (!isHtmlInstruction) {
+        setStatus({ tone: "neutral", message: "既定のアプリで開きました" });
+      }
     } catch (error) {
       setStatus({
         tone: "error",

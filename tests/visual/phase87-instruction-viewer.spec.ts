@@ -1,5 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
+import {
+  fitInstructionWindowBounds,
+  INSTRUCTION_WINDOW_SIZE_PRESETS,
+  nextInstructionWindowSizePreset,
+} from "../../src/instructionWindow";
 import { installTauriMock } from "./tauriMock";
 
 type InstructionRootChoice = {
@@ -81,6 +86,22 @@ test("pending folder picker suppresses repeated dispatch and selected folder loa
   await expect(page.locator('.instructionTreeRow[aria-level="1"]')).toContainText("Instructions");
   await expect(page.getByRole("status")).toContainText("読み込みました");
   await expect(page.locator(".toast")).toHaveCount(0);
+});
+
+test("viewer size cycle includes a 1920 x 1080 extra-large preset", () => {
+  expect(INSTRUCTION_WINDOW_SIZE_PRESETS.extraLarge).toEqual({ width: 1920, height: 1080 });
+  expect(nextInstructionWindowSizePreset(760, 540)).toBe("standard");
+  expect(nextInstructionWindowSizePreset(960, 680)).toBe("large");
+  expect(nextInstructionWindowSizePreset(1280, 840)).toBe("extraLarge");
+  expect(nextInstructionWindowSizePreset(1920, 1080)).toBe("compact");
+
+  const fitted = fitInstructionWindowBounds(
+    { x: 0, y: 0, width: 1280, height: 840 },
+    { x: 0, y: 0, width: 1920, height: 1080 },
+    INSTRUCTION_WINDOW_SIZE_PRESETS.extraLarge,
+  );
+  expect(fitted).toMatchObject({ width: 1888, height: 1048 });
+  expect(nextInstructionWindowSizePreset(1888, 1048, 1888, 1048)).toBe("compact");
 });
 
 test("viewer toolbar is contextual and uses the current terminology", async ({ page }) => {

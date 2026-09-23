@@ -169,7 +169,7 @@ test("HTML preview keeps local assets but blocks active and remote content", asy
   await browserButton.hover();
   await expect(browserButton).toHaveAttribute("title", "ブラウザで開く");
   await browserButton.click();
-  await expect(page.getByText("ブラウザで開きました", { exact: true })).toBeVisible();
+  await expect(page.getByText("ブラウザで開きました", { exact: true })).toHaveCount(0);
   expect(await page.title()).toContain("Life Launcher 手順書ビューアー");
   expect(await frame.evaluate(() => document.doctype?.name)).toBe("html");
   expect(await frame.locator('meta[name="viewport"]').count()).toBe(1);

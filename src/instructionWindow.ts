@@ -19,7 +19,7 @@ const MIN_HEIGHT = 480;
 const SAFE_MARGIN = 16;
 const WINDOW_STATE_POSITION_AND_SIZE = 3;
 
-export type InstructionWindowSizePreset = "compact" | "standard" | "large";
+export type InstructionWindowSizePreset = "compact" | "standard" | "large" | "extraLarge";
 
 export const INSTRUCTION_WINDOW_SIZE_PRESETS: Record<
   InstructionWindowSizePreset,
@@ -28,6 +28,7 @@ export const INSTRUCTION_WINDOW_SIZE_PRESETS: Record<
   compact: { width: 760, height: 540 },
   standard: { width: 960, height: 680 },
   large: { width: 1280, height: 840 },
+  extraLarge: { width: 1920, height: 1080 },
 };
 
 export type InstructionOpenRequest = {
@@ -64,13 +65,24 @@ function monitorBounds(monitor: Monitor) {
   };
 }
 
-function nextSizePreset(width: number, height: number): InstructionWindowSizePreset {
-  const presets = Object.entries(INSTRUCTION_WINDOW_SIZE_PRESETS) as Array<
-    [InstructionWindowSizePreset, { width: number; height: number }]
-  >;
+export function nextInstructionWindowSizePreset(
+  width: number,
+  height: number,
+  maxWidth = Number.POSITIVE_INFINITY,
+  maxHeight = Number.POSITIVE_INFINITY,
+): InstructionWindowSizePreset {
+  const presets = (
+    Object.entries(INSTRUCTION_WINDOW_SIZE_PRESETS) as Array<
+      [InstructionWindowSizePreset, { width: number; height: number }]
+    >
+  ).map(([preset, size]) => [
+    preset,
+    { width: Math.min(size.width, maxWidth), height: Math.min(size.height, maxHeight) },
+  ] as const);
   const tolerance = 24;
   const currentIndex = presets.findIndex(
-    ([, size]) => Math.abs(size.width - width) <= tolerance && Math.abs(size.height - height) <= tolerance,
+    ([, size]) =>
+      Math.abs(size.width - width) <= tolerance && Math.abs(size.height - height) <= tolerance,
   );
   if (currentIndex >= 0) return presets[(currentIndex + 1) % presets.length][0];
   return presets.find(([, size]) => size.width > width || size.height > height)?.[0] ?? "compact";
@@ -120,7 +132,20 @@ export async function cycleInstructionWindowSize(
   const scaleFactor = monitor.scaleFactor || 1;
   const logicalWidth = size.width / scaleFactor;
   const logicalHeight = size.height / scaleFactor;
-  const preset = nextSizePreset(logicalWidth, logicalHeight);
+  const availableLogicalWidth = Math.max(
+    1,
+    (monitor.workArea.size.width - SAFE_MARGIN * 2) / scaleFactor,
+  );
+  const availableLogicalHeight = Math.max(
+    1,
+    (monitor.workArea.size.height - SAFE_MARGIN * 2) / scaleFactor,
+  );
+  const preset = nextInstructionWindowSizePreset(
+    logicalWidth,
+    logicalHeight,
+    availableLogicalWidth,
+    availableLogicalHeight,
+  );
   const desired = INSTRUCTION_WINDOW_SIZE_PRESETS[preset];
   const fitted = fitInstructionWindowBounds(
     { x: position.x, y: position.y, width: size.width, height: size.height },
