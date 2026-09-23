@@ -293,7 +293,7 @@ export const HELP_GUIDE_SECTIONS: HelpGuideSection[] = [
           },
           {
             term: "手順書フォルダを追加するには？",
-            description: "手順書ビューアーを開き、「フォルダを読み込む」を押します。",
+            description: "手順書ビューアーを開き、左上の「読み込み」を押します。",
           },
           {
             term: "バックアップから戻すには？",

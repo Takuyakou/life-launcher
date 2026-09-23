@@ -1335,28 +1335,6 @@ body {
   line-height: 1.6;
 }
 
-.instructionTreeEmptyAction {
-  justify-self: start;
-  margin-top: 8px;
-  padding: 7px 9px;
-  color: var(--text);
-  background: var(--surface-soft);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.instructionTreeEmptyAction:hover:not(:disabled),
-.instructionTreeEmptyAction:focus-visible {
-  color: var(--accent-strong);
-  border-color: var(--accent);
-}
-
-.instructionTreeEmptyAction:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
 
 .instructionTreeMessage strong {
   color: var(--text);

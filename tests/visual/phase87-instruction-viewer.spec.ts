@@ -32,17 +32,17 @@ async function prepareEmpty(page: Page) {
   await expect(page.getByText("手順書フォルダが未登録です")).toBeVisible();
 }
 
-test("empty viewer has one folder CTA and cancel returns from pending state", async ({ page }) => {
+test("empty viewer uses the toolbar load action and cancel returns from pending state", async ({ page }) => {
   await prepareEmpty(page);
   const empty = page.locator(".instructionTreeMessage");
-  await expect(empty.getByRole("button", { name: "フォルダを読み込む" })).toHaveCount(1);
+  await expect(empty.getByRole("button")).toHaveCount(0);
   await page.evaluate(() => {
     (
       window as Window & { __LIFE_LAUNCHER_VISUAL_QA__?: VisualControl }
     ).__LIFE_LAUNCHER_VISUAL_QA__?.setInstructionRootChoices([null]);
   });
-  await empty.getByRole("button", { name: "フォルダを読み込む" }).click();
-  await expect(empty.getByRole("button", { name: "フォルダを読み込む" })).toBeEnabled();
+  await page.locator(".instructionTreeLoad").click();
+  await expect(page.locator(".instructionTreeLoad")).toBeEnabled();
   await expect(page.locator(".toast")).toHaveCount(0);
 });
 
@@ -63,10 +63,9 @@ test("pending folder picker suppresses repeated dispatch and selected folder loa
     ]);
     qa?.setInstructionRootDelayed(true);
   });
-  const emptyAction = page.locator(".instructionTreeMessage").getByRole("button");
-  await emptyAction.click();
-  await expect(emptyAction).toBeDisabled();
-  await expect(page.locator(".instructionTreeLoad")).toBeDisabled();
+  const loadAction = page.locator(".instructionTreeLoad");
+  await loadAction.click();
+  await expect(loadAction).toBeDisabled();
   expect(
     await page.evaluate(
       () =>

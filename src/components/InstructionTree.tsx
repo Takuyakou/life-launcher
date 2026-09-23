@@ -1146,14 +1146,6 @@ export function InstructionTree({
           <div className="instructionTreeMessage">
             <strong>手順書フォルダが未登録です</strong>
             <span>Markdown・Text・HTMLをまとめたフォルダを読み込めます。</span>
-            <button
-              className="instructionTreeEmptyAction"
-              disabled={registeringRoot}
-              onClick={() => void registerInstructionFolder()}
-              type="button"
-            >
-              {registeringRoot ? "選択中…" : "フォルダを読み込む"}
-            </button>
           </div>
         ) : (
           <div aria-label="手順書フォルダ" role="tree">
