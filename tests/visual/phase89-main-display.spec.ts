@@ -157,3 +157,32 @@ for (const size of ["large", "xlarge"] as const) {
     await expect(source).toBeVisible();
   });
 }
+
+for (const [size, height, labelSize] of [
+  ["large", "35px", "12px"],
+  ["xlarge", "40px", "14px"],
+] as const) {
+  test(
+    "P89 " + size + " Main toolbar matches the content width and menu density",
+    async ({ page }) => {
+      await prepare(page, 1920, size);
+      const toolbar = page.locator(".mainPanel > .topBar");
+      const button = toolbar.locator(".viewToggleButton").first();
+      await expect(button).toHaveCSS("height", height);
+      await expect(button.locator(".viewToggleButtonLabel")).toHaveCSS("font-size", labelSize);
+      const topBox = await toolbar.boundingBox();
+      const contentBox = await page.locator(".mainScrollContent").boundingBox();
+      expect(topBox).not.toBeNull();
+      expect(contentBox).not.toBeNull();
+      expect(Math.abs(topBox!.x - contentBox!.x)).toBeLessThan(1);
+      expect(Math.abs(topBox!.width - contentBox!.width)).toBeLessThan(1);
+
+      await page.getByRole("button", { name: "記録ビューを開く" }).click();
+      await expect(toolbar.locator(".viewToggleButton").first()).toHaveCSS("height", "32px");
+      await expect(toolbar.locator(".viewToggleButtonLabel").first()).toHaveCSS(
+        "font-size",
+        "11px",
+      );
+    },
+  );
+}

@@ -10186,7 +10186,12 @@ function DashboardApp() {
         </div>
       )}
 
-      <section className="mainPanel">
+      <section
+        className="mainPanel"
+        data-main-display-size={
+          activeView === "main" ? (config.settings.mainDisplaySize ?? "standard") : undefined
+        }
+      >
         <header className="topBar">
           <div className="topSummary">
             <h1 className={activeView === "records" ? "topTitle topTitle--records" : "topTitle"}>

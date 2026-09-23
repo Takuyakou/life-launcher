@@ -13014,3 +13014,49 @@ button.mainActionButton:is(
 .mainScrollContent[data-main-display-size="xlarge"] .todaySectionBar {
   grid-template-columns: 144px 38px max-content minmax(0, 1fr);
 }
+
+/* P8.9 review refinement: balance the Main toolbar with enlarged content. */
+.mainPanel[data-main-display-size="large"] > .topBar {
+  width: min(100%, 1298px);
+}
+
+.mainPanel[data-main-display-size="xlarge"] > .topBar {
+  width: min(100%, 1400px);
+}
+
+@media (min-width: 1051px) {
+  .mainPanel[data-main-display-size="large"] .topPills .viewToggleButton {
+    min-width: 35px;
+    height: 35px;
+    gap: 6px;
+    padding-inline: 9px;
+  }
+
+  .mainPanel[data-main-display-size="large"] .topPills .viewToggleButtonLabel {
+    font-size: 12px;
+  }
+
+  .mainPanel[data-main-display-size="xlarge"] .topPills .viewToggleButton {
+    min-width: 40px;
+    height: 40px;
+    gap: 7px;
+    padding-inline: 10px;
+  }
+
+  .mainPanel[data-main-display-size="xlarge"] .topPills .viewToggleButtonLabel {
+    font-size: 14px;
+  }
+
+  .mainPanel[data-main-display-size="xlarge"] .topPills .viewToggleButton svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .mainPanel[data-main-display-size="xlarge"] .topPills {
+    padding: 3px;
+  }
+
+  .mainPanel[data-main-display-size="xlarge"] .topPillGroup {
+    gap: 4px;
+  }
+}
