@@ -10,7 +10,7 @@
 
 ## Verification
 
-- Synthetic APPDATA and LOCALAPPDATA startup: pending for review-2 EXE. The first attempt exited immediately without creating an isolated profile because the earlier review EXE was already running and the app enforces single instance. The earlier EXE passed this smoke, but its result is not claimed for review-2.
+- Synthetic APPDATA and LOCALAPPDATA startup: review-2 EXE created its isolated `life-launcher` profile and exited normally with code 0 after 8.4 seconds via the existing release-smoke exit hook. The first attempt was blocked by the earlier review EXE single-instance lock; the successful retry ran after that instance was closed.
 - Main and Settings interaction: Playwright Tauri-mock tests cover the three presets, save/reload, Cancel, responsive bounds, large/xlarge D&D, Main top-menu sizing, and unchanged Records toolbar. A hands-on native Settings check remains part of user review.
 - Full Playwright rerun: 409 passed, 48 skipped. Targeted Main/Settings/D&D/toolbar tests after the user feedback: 22/22 passed.
 - Rust fmt/check/clippy and tests, npm lint/build/audit, Cargo audit, public safety, and diff check passed. Cargo audit has eight previously allowed warnings and no vulnerabilities.
