@@ -5887,6 +5887,7 @@ input[type="number"]::-webkit-inner-spin-button {
   inset: 0;
   z-index: 33;
   background: var(--overlay-scrim);
+  pointer-events: none;
 }
 .launcherOverlayBackdrop {
   position: fixed;

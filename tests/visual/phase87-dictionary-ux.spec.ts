@@ -37,6 +37,20 @@ test("Main dictionary entry uses the outline book icon without changing shortcut
   await expect(entry.locator("kbd")).toHaveText("Ctrl+K");
 });
 
+test("Main remains interactive while Dictionary is visible", async ({ page }) => {
+  await prepare(page, "main");
+  await page.evaluate(() => {
+    (
+      window as Window & {
+        __LIFE_LAUNCHER_VISUAL_QA__?: { emit: (event: string, payload: boolean) => void };
+      }
+    ).__LIFE_LAUNCHER_VISUAL_QA__?.emit("dictionary-visibility-changed", true);
+  });
+  await expect(page.locator(".dictionaryMainScrim")).toHaveCSS("pointer-events", "none");
+  await page.getByRole("button", { name: "使い方" }).click();
+  await expect(page.getByRole("dialog", { name: "使い方" })).toBeVisible();
+});
+
 test("Dictionary button edit keeps its footer visible and matches the Drop Register group UI", async ({
   page,
 }) => {
