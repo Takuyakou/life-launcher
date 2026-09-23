@@ -1,0 +1,65 @@
+{
+  "assets": [
+    {
+      "apiUrl": "https://api.github.com/repos/Takuyakou/life-launcher/releases/assets/514224496",
+      "contentType": "application/zip",
+      "createdAt": "2026-08-14T09:35:05Z",
+      "digest": "sha256:09761fa3919ca7c360c34ec42a86eacf97970198b507fe28940919ce4e4f75ee",
+      "downloadCount": 1,
+      "id": "RA_kwDOT39KU84epnFw",
+      "label": "",
+      "name": "Life-Launcher-v1.0.0-windows-x64-portable.zip",
+      "size": 4710312,
+      "state": "uploaded",
+      "updatedAt": "2026-08-14T09:35:07Z",
+      "url": "https://github.com/Takuyakou/life-launcher/releases/download/v1.0.0/Life-Launcher-v1.0.0-windows-x64-portable.zip"
+    },
+    {
+      "apiUrl": "https://api.github.com/repos/Takuyakou/life-launcher/releases/assets/514224498",
+      "contentType": "application/x-msdownload",
+      "createdAt": "2026-08-14T09:35:05Z",
+      "digest": "sha256:7f0750a0a6797857446187b5d51e96174c873c14cad8b4c49cb43dd0a637678f",
+      "downloadCount": 2,
+      "id": "RA_kwDOT39KU84epnFy",
+      "label": "",
+      "name": "Life-Launcher-v1.0.0-windows-x64-setup.exe",
+      "size": 3394931,
+      "state": "uploaded",
+      "updatedAt": "2026-08-14T09:35:06Z",
+      "url": "https://github.com/Takuyakou/life-launcher/releases/download/v1.0.0/Life-Launcher-v1.0.0-windows-x64-setup.exe"
+    },
+    {
+      "apiUrl": "https://api.github.com/repos/Takuyakou/life-launcher/releases/assets/514224497",
+      "contentType": "application/x-msdownload",
+      "createdAt": "2026-08-14T09:35:05Z",
+      "digest": "sha256:84a86b38975e03c6c5caf6fe1227340de3c8c09752226bb6165cbdc8a6321d29",
+      "downloadCount": 2,
+      "id": "RA_kwDOT39KU84epnFx",
+      "label": "",
+      "name": "Life-Launcher-v1.0.0-windows-x64.exe",
+      "size": 15019520,
+      "state": "uploaded",
+      "updatedAt": "2026-08-14T09:35:08Z",
+      "url": "https://github.com/Takuyakou/life-launcher/releases/download/v1.0.0/Life-Launcher-v1.0.0-windows-x64.exe"
+    },
+    {
+      "apiUrl": "https://api.github.com/repos/Takuyakou/life-launcher/releases/assets/514224495",
+      "contentType": "text/plain; charset=utf-8",
+      "createdAt": "2026-08-14T09:35:05Z",
+      "digest": "sha256:a5d4deb9f8c697c153f734378e77e0aa67778d3b5146ce23598f5518723326f8",
+      "downloadCount": 1,
+      "id": "RA_kwDOT39KU84epnFv",
+      "label": "",
+      "name": "SHA256SUMS.txt",
+      "size": 327,
+      "state": "uploaded",
+      "updatedAt": "2026-08-14T09:35:05Z",
+      "url": "https://github.com/Takuyakou/life-launcher/releases/download/v1.0.0/SHA256SUMS.txt"
+    }
+  ],
+  "body": "# Life Launcher v1.0.0\r\n\r\nLife Launcherの最初の公開リリースです。選んだ「次の一手」を行動に移すためのWindowsデスクトップランチャーとして、Quickサイドバー、検索可能な辞書、今日のフォーカス、タイマー、セッション記録、手順ビューアを提供します。\r\n\r\n## Download\r\n\r\n### Installer - Recommended\r\n\r\n通常はこちらを使用してください。\r\n\r\n`Life-Launcher-v1.0.0-windows-x64-setup.exe`\r\n\r\n### Standalone EXE\r\n\r\nインストールせず直接起動する版です。\r\n\r\n`Life-Launcher-v1.0.0-windows-x64.exe`\r\n\r\n### Portable ZIP\r\n\r\nZIPを展開して使用する版です。\r\n\r\n`Life-Launcher-v1.0.0-windows-x64-portable.zip`\r\n\r\n## 動作要件\r\n\r\n- Windows 10以降(x64)\r\n- Microsoft Edge WebView2 Runtime\r\n\r\n## 確認\r\n\r\n配布ファイルの整合性は`SHA256SUMS.txt`で確認できます。\r\n\r\nこのリリースにはアカウント、テレメトリ、クラウド同期、自動アップデータはありません。ユーザーデータは`%APPDATA%\\life-launcher`へ保存され、配布ZIPには含まれません。\r\n",
+  "name": "Life Launcher v1.0.0",
+  "publishedAt": "2026-08-14T09:35:09Z",
+  "tagName": "v1.0.0",
+  "url": "https://github.com/Takuyakou/life-launcher/releases/tag/v1.0.0"
+}

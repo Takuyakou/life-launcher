@@ -63,19 +63,19 @@ Life Launcherは、[GitHub Releases](https://github.com/Takuyakou/life-launcher/
 
 通常はこちらを利用してください。
 
-v1.3.1のインストーラー: `Life-Launcher-v1.3.1-windows-x64-setup.exe`
+v1.3.2のインストーラー: `Life-Launcher-v1.3.2-windows-x64-setup.exe`
 
 ### Standalone EXE
 
 インストールせず直接起動できます。
 
-v1.3.1の単体実行版: `Life-Launcher-v1.3.1-windows-x64.exe`
+v1.3.2の単体実行版: `Life-Launcher-v1.3.2-windows-x64.exe`
 
 ### Portable ZIP
 
 ZIPを展開して利用できます。
 
-v1.3.1のZIP版: `Life-Launcher-v1.3.1-windows-x64-portable.zip`
+v1.3.2のZIP版: `Life-Launcher-v1.3.2-windows-x64-portable.zip`
 
 ZIP版もユーザーデータは`%APPDATA%\life-launcher`へ保存します。USBなどへデータごと持ち運ぶ方式ではありません。
 
@@ -89,7 +89,7 @@ ZIP版もユーザーデータは`%APPDATA%\life-launcher`へ保存します。U
 
 v1.2からv1.3への初回更新ではconfig schemaを`2`から`3`へ移行します。変換前のraw backupを作成し、移行・検証・backupに失敗した場合は元のconfigを書き換えません。Sessionの実行記録は削除しません。
 
-詳しくは [v1.3.1 Release notes](docs/releases/v1.3.1.md) と [CHANGELOG](CHANGELOG.md) を参照してください。機能の全体像は [OVERVIEW](docs/OVERVIEW.md)、詳細は [現行仕様書](docs/spec/current-spec.md) にまとめています。
+詳しくは [v1.3.2 Release notes](docs/releases/v1.3.2.md) と [CHANGELOG](CHANGELOG.md) を参照してください。機能の全体像は [OVERVIEW](docs/OVERVIEW.md)、詳細は [現行仕様書](docs/spec/current-spec.md) にまとめています。
 
 ## 動作要件
 

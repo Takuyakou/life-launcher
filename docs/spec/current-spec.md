@@ -1,20 +1,26 @@
-# Life Launcher v1.3.1 UI/UX・機能仕様書
+# Life Launcher v1.3.2 UI/UX・機能仕様書
 
 ## 0. 文書情報
 
 | 項目             | 内容                                                                   |
 | ---------------- | ---------------------------------------------------------------------- |
-| 文書版           | 1.3.1                                                                  |
+| 文書版           | 1.3.2                                                                  |
 | 対象             | Windowsデスクトップ版 Life Launcher                                    |
-| 実装基準         | Public repository `Takuyakou/life-launcher` のv1.3.1 release candidate |
-| 作業branch       | `fix/v13-victory-guide-release`                                        |
-| 監査基準コミット | v1.3.1リリース準備時のHEAD                                             |
+| 実装基準         | Public repository `Takuyakou/life-launcher` のv1.3.2 release candidate |
+| 作業branch       | `p89/v1.3.2-review`                                        |
+| 監査基準コミット | v1.3.2リリース準備時のHEAD                                             |
 | 確認日           | 2026-09-17                                                             |
 | UI実装           | Tauri 2 / React 18 / TypeScript / CSS                                  |
 
-本書は、Life Launcher v1.3.1のUI/UXと主要機能を、現在のコード、型、設定、capability、テストから整理した現行仕様書である。
+本書は、Life Launcher v1.3.2のUI/UXと主要機能を、現在のコード、型、設定、capability、テストから整理した現行仕様書である。
 
-製品バージョンは`1.3.1`、config schemaは`3`である。Phase 8〜8.4のProject / NextStep / Wishlist再構成と、P8.7のDictionary / Drop Register / Instruction Viewer / Guide改善を含む。機能の入口は [Overview](../OVERVIEW.md) を参照する。
+製品バージョンは`1.3.2`、config schemaは`3`である。Phase 8〜8.4のProject / NextStep / Wishlist再構成と、P8.7のDictionary / Drop Register / Instruction Viewer / Guide改善、P8.9のメイン表示サイズと配置調整を含む。機能の入口は [Overview](../OVERVIEW.md) を参照する。
+
+## v1.3.2でのメイン画面表示
+
+- 設定の基本・表示でメイン表示サイズを標準・大・特大から選ぶ。既存設定に値がない場合は標準として扱う。config schemaは3のまま。
+- 拡大対象はメイン画面の本文、カード、操作部、広い画面の上部メニューである。記録画面、サイドバー、辞書、手順書ビューアー、ミニ画面は従来寸法を保つ。
+- 今やる一手と各セクションの見出し軸、今日の実行項目の本文位置を整えた。メイン画面の週次ふりかえり案内は表示しないが、記録画面の週次機能は維持する。
 
 ## 1. プロダクト概要
 
@@ -131,7 +137,7 @@ Main Window
 ### 4.3 文字と形状
 
 - 基本フォントは `Segoe UI`, `Yu Gothic UI`, `Meiryo`, `system-ui`, `sans-serif`。
-- ページタイトル約22px、勝利条件・今やる一手約17px、見出し・本文約14px、補足約11px。
+- 標準表示ではページタイトル約22px、勝利条件・今やる一手約17px、見出し・本文約14px、補足約11px。大・特大ではメイン画面と上部メニューを段階的に拡大する。
 - 文字間隔は0を基準とし、負のletter-spacingは使わない。
 - 基本角丸は `8px`。
 - セクション全体を装飾カード化せず、カードは個別項目と操作面に限定する。
@@ -609,6 +615,7 @@ URLはWindowsの既定ブラウザで開き、登録ごとのブラウザ指定�
 | 常に手前        | OFF    | チェック                     |
 | Windows自動起動 | OFF    | チェック                     |
 | ミニモード      | ON     | チェック                     |
+| メイン表示サイズ | 標準   | 標準・大・特大                 |
 | 今週の重点      | 未設定 | 最大3件                      |
 
 | ショートカット | 既定値           |

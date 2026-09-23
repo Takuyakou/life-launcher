@@ -1,0 +1,65 @@
+{
+  "assets": [
+    {
+      "apiUrl": "https://api.github.com/repos/Takuyakou/life-launcher/releases/assets/551951037",
+      "contentType": "application/zip",
+      "createdAt": "2026-09-09T04:11:33Z",
+      "digest": "sha256:d5f4a731aaf5e224b83aeff39e4e925a1ae99d5375e0a4b4118d3ef071a05205",
+      "downloadCount": 1,
+      "id": "RA_kwDOT39KU84g5hq9",
+      "label": "",
+      "name": "Life-Launcher-v1.1.0-windows-x64-portable.zip",
+      "size": 4738741,
+      "state": "uploaded",
+      "updatedAt": "2026-09-09T04:11:35Z",
+      "url": "https://github.com/Takuyakou/life-launcher/releases/download/v1.1.0/Life-Launcher-v1.1.0-windows-x64-portable.zip"
+    },
+    {
+      "apiUrl": "https://api.github.com/repos/Takuyakou/life-launcher/releases/assets/551951039",
+      "contentType": "application/x-msdownload",
+      "createdAt": "2026-09-09T04:11:33Z",
+      "digest": "sha256:cac7f946f00e26b55a8fbd2e5e6dd3479d2ceb65b4114fe5babe800af3aeb042",
+      "downloadCount": 3,
+      "id": "RA_kwDOT39KU84g5hq_",
+      "label": "",
+      "name": "Life-Launcher-v1.1.0-windows-x64-setup.exe",
+      "size": 3418485,
+      "state": "uploaded",
+      "updatedAt": "2026-09-09T04:11:34Z",
+      "url": "https://github.com/Takuyakou/life-launcher/releases/download/v1.1.0/Life-Launcher-v1.1.0-windows-x64-setup.exe"
+    },
+    {
+      "apiUrl": "https://api.github.com/repos/Takuyakou/life-launcher/releases/assets/551951041",
+      "contentType": "application/x-msdownload",
+      "createdAt": "2026-09-09T04:11:33Z",
+      "digest": "sha256:cd8e635e704ff8fd17d24555c9a4bab7f61604842275a53b6df34d4695317e30",
+      "downloadCount": 2,
+      "id": "RA_kwDOT39KU84g5hrB",
+      "label": "",
+      "name": "Life-Launcher-v1.1.0-windows-x64.exe",
+      "size": 15131648,
+      "state": "uploaded",
+      "updatedAt": "2026-09-09T04:11:36Z",
+      "url": "https://github.com/Takuyakou/life-launcher/releases/download/v1.1.0/Life-Launcher-v1.1.0-windows-x64.exe"
+    },
+    {
+      "apiUrl": "https://api.github.com/repos/Takuyakou/life-launcher/releases/assets/551951038",
+      "contentType": "text/plain; charset=utf-8",
+      "createdAt": "2026-09-09T04:11:33Z",
+      "digest": "sha256:bcb03778612d992e827efec859d0358a5ad29200560b1ce187a39a72a58a046b",
+      "downloadCount": 1,
+      "id": "RA_kwDOT39KU84g5hq-",
+      "label": "",
+      "name": "SHA256SUMS.txt",
+      "size": 327,
+      "state": "uploaded",
+      "updatedAt": "2026-09-09T04:11:33Z",
+      "url": "https://github.com/Takuyakou/life-launcher/releases/download/v1.1.0/SHA256SUMS.txt"
+    }
+  ],
+  "body": "# Life Launcher v1.1.0\r\n\r\n「登録しておくこと」「今日やること」「実行した記録」を整理し、今日の一手を選び直しやすくした更新です。\r\n\r\n## 主な変更\r\n\r\n### 今日の3件を、実行と選び直しのためのカードに\r\n\r\n- プロジェクト色付きのカードで、短時間・通常タイマーをすぐ開始できます。画面幅に応じて3列・2列・1列に並びます。\r\n- 完了は予定時間まで実行し、終了を確定した項目だけに付きます。途中終了は完了扱いになりません。\r\n- 3件すべてが完了すると「次の3件を選ぶ」が表示されます。次の項目を自動で補充せず、自分で次の枠へ進めます。\r\n- カード左下と右クリックに「今日の3件から外す」を追加しました。確認ダイアログなしで今日への採用だけを解除し、元の次の一手・やりたいこと・候補・実行記録は残します。\r\n- 対象Today3のタイマーが実行中・一時停止中・満了確認中の間は、その項目を外せません。完了済みの項目は外せます。\r\n- 未設定の「+ きっかけ」はタイマー上の専用領域へのホバー、またはキーボードフォーカスで表示します。設定済みのきっかけは同じ位置に常時表示します。\r\n- D&D中は掴んだカードと黄色の挿入位置を表示し、保存に失敗した場合は元の順序へ戻します。\r\n\r\n### 登録元を残して、今日やることを選ぶ\r\n\r\n- 「今日を組み立てる」は次の一手とやりたいことから候補を集め、5件ずつ表示します。「今日へ」で今日の3件へ採用しても、元の登録は残ります。\r\n- 次の一手の右クリックからも「今日へ」を選べます。\r\n- Builderの「今日の候補から外す」は、その日だけ候補を除外する別の操作です。同じ候補の今日の項目も外れますが、元の登録は残り、日付切替で候補の除外が解除されます。\r\n- 採用時の本文・手順書・開始環境の参照・タイマー分数をToday3へ保持します。後からプロジェクトのタイマー時間を変更しても、採用済みの分数は変わりません。\r\n- やりたいことは小型ダイアログから追加できます。同じ文面の項目も別々のIDで管理します。\r\n\r\n### 登録の完了と実行記録を区別\r\n\r\n- 次の一手・やりたいことの「完了にする」と「削除」を区別し、記録画面に「完了した項目」を追加しました。\r\n- 次の一手を完了してもプロジェクト自体は残ります。やりたいことを完了すると一覧から外れ、完了時点の内容が履歴に残ります。\r\n- Today3のタイマー満了は、元の登録そのものを完了・削除する操作ではありません。実行記録と登録の完了履歴は別に扱います。\r\n\r\n### 辞書と開始環境を使いやすく\r\n\r\n- 辞書を開いた直後の矢印キー移動、検索中のキー操作、D&Dの表示を改善しました。\r\n- 複数モニターでは、Life Launcher本体がある画面に辞書を表示します。\r\n- Quickと辞書の間で登録を移しても、起動アクションは保持します。\r\n- プロジェクト・やりたいことの開始環境を、サイドバー・辞書から検索して選べます。新規選択は最大2件で、保存済みの3件以上の登録を勝手に切り捨てません。\r\n- 開閉バーのクリック範囲、確認ダイアログのボタン順、記録画面とアプリ内ガイドを整えました。\r\n\r\n## v1.0から更新する方へ\r\n\r\n**更新前にLife Launcherを完全終了し、`%APPDATA%\\life-launcher`フォルダーを別の場所へコピーしてバックアップしてください。**\r\n\r\n- v1.0の今日の3件には、新しい識別用のsource keyがありません。移行時にこれを補完する項目は、既存の「完了」が「未完了」に戻ります。これは今回の移行仕様です。\r\n- この変更でSessionの実行記録を削除することはありません。以前の完了表示を確認したい場合に備え、更新前のバックアップを残してください。\r\n- この移行だけでは、設定を書き換える前の自動バックアップは保証されません。\r\n- やりたいことのIDやToday3のタイマー分数など、旧データにない項目は読み込み時に補完します。\r\n- 自動アップデーターはありません。このリリースの配布物を使用して更新してください。\r\n\r\n## 配布ファイル\r\n\r\n| 形式 | ファイル名 | 用途 |\r\n| --- | --- | --- |\r\n| Installer | `Life-Launcher-v1.1.0-windows-x64-setup.exe` | 通常のインストール用 |\r\n| Standalone EXE | `Life-Launcher-v1.1.0-windows-x64.exe` | インストールせず直接起動 |\r\n| Portable ZIP | `Life-Launcher-v1.1.0-windows-x64-portable.zip` | 展開して起動 |\r\n| SHA256 | `SHA256SUMS.txt` | 配布ファイルの整合性確認 |\r\n\r\nZIP版もユーザーデータの保存先は`%APPDATA%\\life-launcher`です。USB等へデータごと持ち運ぶ方式ではありません。\r\n\r\n## 動作要件・注意事項\r\n\r\n- Windows 10以降（x64）とMicrosoft Edge WebView2 Runtimeが必要です。\r\n- 配布バイナリはコード署名されていません。Windows SmartScreenの警告が表示されることがあります。\r\n- アカウント、テレメトリ、クラウド同期、自動アップデーターはありません。\r\n- 開発依存の`js-yaml`を`4.3.2`へ更新しました。これは開発ツールの依存更新で、アプリへの機能追加ではありません。\r\n\r\nWeb Demoは別リポジトリ・別公開工程です。この本体更新はWeb Demoへの同時反映を意味しません。\r\n",
+  "name": "Life Launcher v1.1.0",
+  "publishedAt": "2026-09-09T04:11:37Z",
+  "tagName": "v1.1.0",
+  "url": "https://github.com/Takuyakou/life-launcher/releases/tag/v1.1.0"
+}
