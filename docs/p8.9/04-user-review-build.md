@@ -2,17 +2,17 @@
 
 ## Review artifact
 
-- Implementation source commit: `27d86978931da0cba04f63f6ebd07853502985d4` on `p89/v1.3.2-review`.
-- File: `review-build/p8.9-v1.3.2/Life-Launcher-P8.9-v1.3.2-review.exe`
-- Size: 15,929,856 bytes
-- SHA-256: `3FC61E96289E4B0C9B635412094970881B368F284BEA0B8D418C520E85924244`
+- Implementation source commit: `9d67914496b13e99f3f78d9de23c66c11d41ba19` on `p89/v1.3.2-review`.
+- File: `review-build/p8.9-v1.3.2/Life-Launcher-P8.9-v1.3.2-review-2.exe`
+- Size: 15,930,368 bytes
+- SHA-256: `D6D492D8EDC211D71BB29A465F08CB1511801889739B138751CCB4ABA567CE0A`
 - Standalone Tauri release-profile build, no installer or portable ZIP. This is not the official v1.3.2 release. Internal ProductVersion/FileVersion remain 1.3.1 until P8.9-06.
 
 ## Verification
 
-- Synthetic APPDATA and LOCALAPPDATA startup: process started, created only the isolated `life-launcher` data folder, and exited normally with code 0 through the existing release-smoke exit hook after eight seconds.
-- Main and Settings interaction: Playwright Tauri-mock tests cover the three presets, save/reload, Cancel, scoped Records/toolbar behavior, responsive bounds, and large/xlarge D&D. A hands-on native Settings check remains part of user review.
-- Full Playwright rerun: 409 passed, 48 skipped. Targeted scaled D&D tests added afterward: 20/20 passed.
+- Synthetic APPDATA and LOCALAPPDATA startup: pending for review-2 EXE. The first attempt exited immediately without creating an isolated profile because the earlier review EXE was already running and the app enforces single instance. The earlier EXE passed this smoke, but its result is not claimed for review-2.
+- Main and Settings interaction: Playwright Tauri-mock tests cover the three presets, save/reload, Cancel, responsive bounds, large/xlarge D&D, Main top-menu sizing, and unchanged Records toolbar. A hands-on native Settings check remains part of user review.
+- Full Playwright rerun: 409 passed, 48 skipped. Targeted Main/Settings/D&D/toolbar tests after the user feedback: 22/22 passed.
 - Rust fmt/check/clippy and tests, npm lint/build/audit, Cargo audit, public safety, and diff check passed. Cargo audit has eight previously allowed warnings and no vulnerabilities.
 - Visual comparison: 1920px standard/large/xlarge screenshots inspected; the xlarge Today3 heading remains one line.
 
@@ -21,7 +21,7 @@
 1. Check the Main heading axes: 今やる一手, 今日の3件, 次の一手, やりたいこと, 今日の実行. Counts, descriptions, and right actions should remain naturally aligned.
 2. Open 今日の実行 and check item text against the timestamp and duration.
 3. Confirm `先週のふりかえりが見られます` does not appear, while Records/weekly review still works.
-4. In 設定 → 基本 → 表示, switch 標準 → 大 → 特大, save and reopen. Sidebar, top toolbar, Records, Mini, Dictionary and Instruction Viewer should not grow.
+4. In 設定 → 基本 → 表示, switch 標準 → 大 → 特大, save and reopen. The Main top menu should grow at wide widths; Sidebar, Records, Mini, Dictionary and Instruction Viewer should not grow.
 5. At a wide window, compare the reading comfort of 大 and 特大. Also check Today3 dragging and a narrow window.
 
 ## Gate
