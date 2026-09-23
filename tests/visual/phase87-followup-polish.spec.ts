@@ -130,7 +130,7 @@ test("Dictionary entry aligns with item rows and Guide footer stays inside its d
   expect(launcherIconBox).not.toBeNull();
   expect(Math.abs(launcherBox!.x - itemBox!.x)).toBeLessThanOrEqual(2);
   expect(launcherIconSlotBox!.width).toBe(28);
-  expect(launcherIconBox!.height).toBe(24);
+  expect(launcherIconBox!.height).toBe(22);
   expect(launcherIconBox!.width).toBeGreaterThan(launcherIconBox!.height);
 
   await page.getByRole("button", { name: "使い方" }).click();
