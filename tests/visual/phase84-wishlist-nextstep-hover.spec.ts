@@ -193,7 +193,7 @@ test("P84 Wishlist promote action is status-aware, stable, keyboard reachable, a
   });
 });
 
-test("P84 Today activity reserves the standard trailing action space", async ({ page }) => {
+test("Today activity keeps its automatic badge inside the compact trailing lane", async ({ page }) => {
   const fixture = createPublicFixture();
   await prepare(page, fixture);
 
@@ -203,7 +203,7 @@ test("P84 Today activity reserves the standard trailing action space", async ({ 
   expect(headerBox).not.toBeNull();
   expect(badgeBox).not.toBeNull();
   const trailingSpace = headerBox!.x + headerBox!.width - (badgeBox!.x + badgeBox!.width);
-  expect(trailingSpace).toBeGreaterThanOrEqual(36);
-  expect(trailingSpace).toBeLessThanOrEqual(58);
+  expect(trailingSpace).toBeGreaterThanOrEqual(8);
+  expect(trailingSpace).toBeLessThanOrEqual(24);
   await header.screenshot({ path: "dist/visual-qa/phase84/today-activity-trailing-space.png" });
 });
