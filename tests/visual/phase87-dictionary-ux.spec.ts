@@ -28,13 +28,46 @@ async function prepare(page: Page, view: "main" | "dictionary", width = 1000) {
   await page.evaluate(async () => document.fonts.ready);
 }
 
-test("Main dictionary entry uses a window icon without changing shortcut text", async ({
+test("Main dictionary entry uses the outline book icon without changing shortcut text", async ({
   page,
 }) => {
   await prepare(page, "main");
   const entry = page.getByRole("button", { name: /辞書を開く/ });
   await expect(entry.locator(".uiIcon")).toHaveCount(1);
   await expect(entry.locator("kbd")).toHaveText("Ctrl+K");
+});
+
+test("Dictionary button edit keeps its footer visible and matches the Drop Register group UI", async ({
+  page,
+}) => {
+  await prepare(page, "dictionary", 420);
+  await page.setViewportSize({ width: 420, height: 300 });
+  const tile = page.locator(".dictionaryTile").first();
+  await tile.focus();
+  await tile.press("Shift+F10");
+  await page.getByRole("menuitem", { name: "編集" }).click();
+
+  const dialog = page.getByRole("dialog", { name: "ボタン編集" });
+  const footer = dialog.locator(".buttonEditDialogFooter");
+  await expect(dialog).not.toHaveAttribute("aria-modal");
+  await expect(dialog.getByRole("button", { name: "既存から選ぶ" })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "新規グループを作成" })).toBeVisible();
+  await expect(dialog.getByLabel("既存のグループ")).toHaveValue("資料");
+  await expect(dialog.getByText("アイコン", { exact: true })).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: "アクションを上へ" })).toHaveCount(0);
+  await expect(dialog.getByText("検索・説明（任意）")).toBeVisible();
+  await expect(footer).toBeVisible();
+  const footerBox = await footer.boundingBox();
+  expect(footerBox).not.toBeNull();
+  expect(footerBox!.y + footerBox!.height).toBeLessThanOrEqual(300);
+
+  const buttons = footer.getByRole("button");
+  await expect(buttons).toHaveText(["保存", "キャンセル"]);
+  await expect(buttons.first()).toHaveCSS("color", "rgb(111, 207, 151)");
+  await expect(buttons.last()).toHaveCSS("color", "rgb(255, 180, 173)");
+  await buttons.first().click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByText("設定を再読み込みしました", { exact: true })).toHaveCount(0);
 });
 
 test("Dictionary settings opens from the icon and titlebar context menu", async ({ page }) => {
@@ -106,7 +139,9 @@ test("Dictionary list mode is compact, independent from icon size, and persists"
   await expect(shell).toHaveAttribute("data-tile-size", "large");
 });
 
-test("Dictionary settings is modeless and Save uses the positive action color", async ({ page }) => {
+test("Dictionary settings is modeless and Save uses the positive action color", async ({
+  page,
+}) => {
   await prepare(page, "dictionary");
   await page.getByRole("button", { name: "辞書の設定" }).click();
   const dialog = page.getByRole("dialog", { name: "辞書の設定" });

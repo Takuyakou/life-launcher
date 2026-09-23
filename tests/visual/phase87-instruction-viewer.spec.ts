@@ -32,15 +32,18 @@ test("empty viewer has one folder CTA and cancel returns from pending state", as
   const empty = page.locator(".instructionTreeMessage");
   await expect(empty.getByRole("button", { name: "フォルダを読み込む" })).toHaveCount(1);
   await page.evaluate(() => {
-    (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__?: VisualControl })
-      .__LIFE_LAUNCHER_VISUAL_QA__?.setInstructionRootChoices([null]);
+    (
+      window as Window & { __LIFE_LAUNCHER_VISUAL_QA__?: VisualControl }
+    ).__LIFE_LAUNCHER_VISUAL_QA__?.setInstructionRootChoices([null]);
   });
   await empty.getByRole("button", { name: "フォルダを読み込む" }).click();
   await expect(empty.getByRole("button", { name: "フォルダを読み込む" })).toBeEnabled();
   await expect(page.locator(".toast")).toHaveCount(0);
 });
 
-test("pending folder picker suppresses repeated dispatch and selected folder loads", async ({ page }) => {
+test("pending folder picker suppresses repeated dispatch and selected folder loads", async ({
+  page,
+}) => {
   await prepareEmpty(page);
   await page.evaluate(() => {
     const qa = (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__?: VisualControl })
@@ -60,9 +63,11 @@ test("pending folder picker suppresses repeated dispatch and selected folder loa
   await expect(emptyAction).toBeDisabled();
   await expect(page.locator(".instructionTreeLoad")).toBeDisabled();
   expect(
-    await page.evaluate(() =>
-      (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__?: VisualControl })
-        .__LIFE_LAUNCHER_VISUAL_QA__?.invokeCalls.filter(
+    await page.evaluate(
+      () =>
+        (
+          window as Window & { __LIFE_LAUNCHER_VISUAL_QA__?: VisualControl }
+        ).__LIFE_LAUNCHER_VISUAL_QA__?.invokeCalls.filter(
           (call) => call.command === "choose_instruction_root",
         ).length,
     ),
@@ -131,20 +136,34 @@ test("file and folder menus only unregister their containing root", async ({ pag
   await expect(confirm).toContainText("PC上のフォルダは削除しません");
 });
 
+test("rename instruction uses the positive Change action before the muted red Cancel", async ({
+  page,
+}) => {
+  await installTauriMock(page, createPublicFixture(), "life-launcher-instruction");
+  await page.goto("/?view=instruction");
+  const root = page.locator('.instructionTreeRow[aria-level="1"]').first();
+  await root.getByRole("button", { name: /を展開する/ }).click();
+  await page.locator(".instructionTreeRow", { hasText: "guide.md" }).click({ button: "right" });
+  await page.getByRole("menuitem", { name: "名前を変更" }).click();
+  const dialog = page.getByRole("dialog", { name: "手順書操作" });
+  const buttons = dialog.locator(".formDialogActions").getByRole("button");
+  await expect(buttons).toHaveText(["変更", "キャンセル"]);
+  await expect(buttons.first()).toHaveCSS("color", "rgb(111, 207, 151)");
+  await expect(buttons.last()).toHaveCSS("color", "rgb(255, 180, 173)");
+});
+
 test("Markdown exposes Edit while HTML remains read-only without a disabled Edit control", async ({
   page,
 }) => {
   const fixture = createPublicFixture();
   await installTauriMock(page, fixture, "life-launcher-instruction");
   await page.goto(
-    "/?view=instruction&path=" +
-      encodeURIComponent("C:\\PublicDemo\\Instructions\\guide.md"),
+    "/?view=instruction&path=" + encodeURIComponent("C:\\PublicDemo\\Instructions\\guide.md"),
   );
   await expect(page.getByRole("button", { name: "手順書を編集" })).toBeVisible();
 
   await page.goto(
-    "/?view=instruction&path=" +
-      encodeURIComponent("C:\\PublicDemo\\Instructions\\reference.html"),
+    "/?view=instruction&path=" + encodeURIComponent("C:\\PublicDemo\\Instructions\\reference.html"),
   );
   await expect(page.locator(".instructionHtmlFrame")).toBeVisible();
   await expect(page.getByRole("button", { name: "手順書を編集" })).toHaveCount(0);

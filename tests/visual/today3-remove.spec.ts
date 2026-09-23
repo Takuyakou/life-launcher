@@ -126,6 +126,9 @@ test("active and paused item cannot be removed even through its React handler; a
   await expect(page.getByRole("menuitem", { name: "今日の3件から外す" })).toBeDisabled();
   await page.locator(".todayCompletionSummary").click();
   await expect(page.getByRole("menu")).toHaveCount(0);
+  const todayDisclosure = page.getByRole("button", { name: "今日の3件" });
+  await expect(todayDisclosure).toHaveAttribute("aria-expanded", "false");
+  await todayDisclosure.click();
   await card.getByRole("button", { name: "このセッションを一時停止", exact: true }).click();
   await expect(remove).toBeDisabled();
   await page.locator(".todayRemoveButton").nth(1).click();

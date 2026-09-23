@@ -17,7 +17,9 @@ import {
   searchInstructionFiles,
   updateInstructionReferences,
 } from "../tauri";
-import type { AppConfig, InstructionEntry, InstructionRoot } from "../types";
+import type { AppConfig, InstructionEntry, InstructionRoot, ProjectColorId } from "../types";
+import { resolveProjectColorId } from "../projectIdentity";
+import { SOURCE_LOCK_REASON, sourceLockedByUnfinishedToday } from "../sourceEdit";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ContextMenu } from "./ContextMenu";
 import { UiIcon, type UiIconName } from "./UiIcon";
@@ -74,6 +76,8 @@ type ProjectLinkDialogState = {
   projects: Array<{
     id: string;
     name: string;
+    nextStepText: string;
+    colorId: ProjectColorId;
     instructionPath?: string;
   }>;
 };
@@ -203,7 +207,8 @@ function rewriteProjectReferences(
     if (
       (!nextStepPath || !isWithinPath(nextStepPath, oldPath)) &&
       (!legacyPath || !isWithinPath(legacyPath, oldPath))
-    ) return project;
+    )
+      return project;
     projectNames.push(project.name);
     const rewrite = <T extends { instructionPath?: string; instructionOpenOnStart?: boolean }>(
       value: T | undefined,
@@ -211,7 +216,8 @@ function rewriteProjectReferences(
       if (!value?.instructionPath || !isWithinPath(value.instructionPath, oldPath)) return value;
       const updated = { ...value };
       if (newPath) {
-        updated.instructionPath = replacePathPrefix(value.instructionPath, oldPath, newPath) ?? newPath;
+        updated.instructionPath =
+          replacePathPrefix(value.instructionPath, oldPath, newPath) ?? newPath;
       } else {
         delete updated.instructionPath;
         delete updated.instructionOpenOnStart;
@@ -265,6 +271,7 @@ export function InstructionTree({
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
   const [projectLinkDialog, setProjectLinkDialog] = useState<ProjectLinkDialogState | null>(null);
   const [projectLinkSubmitting, setProjectLinkSubmitting] = useState(false);
+  const [projectLinkError, setProjectLinkError] = useState<string | null>(null);
   const [operationStatus, setOperationStatus] = useState<string | null>(null);
   const rowRefs = useRef(new Map<string, HTMLElement>());
   const contextMenuOpenerRef = useRef<HTMLElement | null>(null);
@@ -353,7 +360,6 @@ export function InstructionTree({
     expandedRef.current = expanded;
     writeExpandedFolders(expanded);
   }, [expanded]);
-
 
   useEffect(() => {
     if (!operationDialog) return;
@@ -499,12 +505,16 @@ export function InstructionTree({
   const moveInstructionNode = (sourcePath: string, targetPath: string) => {
     const source = visibleNodes.find((node) => pathKey(node.path) === pathKey(sourcePath));
     const target = visibleNodes.find((node) => pathKey(node.path) === pathKey(targetPath));
-    if (!source || !target || pathKey(source.parentPath ?? "") !== pathKey(target.parentPath ?? "")) {
+    if (
+      !source ||
+      !target ||
+      pathKey(source.parentPath ?? "") !== pathKey(target.parentPath ?? "")
+    ) {
       return;
     }
     const parentKey = source.parentPath ? pathKey(source.parentPath) : ROOT_ORDER_KEY;
     const siblings: Array<{ path: string }> = source.parentPath
-      ? childrenByPath[pathKey(source.parentPath)] ?? []
+      ? (childrenByPath[pathKey(source.parentPath)] ?? [])
       : roots;
     const ordered = orderEntries(siblings, instructionOrder[parentKey] ?? []);
     const sourceIndex = ordered.findIndex((entry) => pathKey(entry.path) === pathKey(source.path));
@@ -607,8 +617,8 @@ export function InstructionTree({
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
       const direction = event.key === "ArrowDown" ? 1 : -1;
-      setSearchIndex((current) =>
-        (current + direction + searchResults.length) % searchResults.length,
+      setSearchIndex(
+        (current) => (current + direction + searchResults.length) % searchResults.length,
       );
       return;
     }
@@ -623,10 +633,7 @@ export function InstructionTree({
     rowRefs.current.get(pathKey(path))?.focus();
   };
 
-  const handleTreeKeyDown = async (
-    event: KeyboardEvent<HTMLElement>,
-    node: VisibleTreeNode,
-  ) => {
+  const handleTreeKeyDown = async (event: KeyboardEvent<HTMLElement>, node: VisibleTreeNode) => {
     if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
       event.preventDefault();
       const bounds = event.currentTarget.getBoundingClientRect();
@@ -821,7 +828,10 @@ export function InstructionTree({
         } catch (saveError) {
           try {
             if (operationDialog.kind === "rename-file") {
-              await renameInstructionFile(change.newPath, fileStem(operationDialog.initialName ?? ""));
+              await renameInstructionFile(
+                change.newPath,
+                fileStem(operationDialog.initialName ?? ""),
+              );
             } else {
               await renameInstructionFolder(change.newPath, operationDialog.initialName ?? "");
             }
@@ -891,25 +901,25 @@ export function InstructionTree({
     const loaded = await loadConfig();
     const projects = loaded.config.projects
       .filter((project) => project.nextStep?.text.trim())
+      .filter((project) => !sourceLockedByUnfinishedToday(loaded.config, `project:${project.id}`))
       .map((project) => ({
         id: project.id,
         name: project.name,
+        nextStepText: project.nextStep?.text.trim() ?? "",
+        colorId: resolveProjectColorId(project.id, project.colorId),
         instructionPath: project.nextStep?.instructionPath,
       }));
-    if (projects.length === 0) {
-      setOperationStatus("紐付ける次の一手がありません。メイン画面で先に追加してください");
-      return;
-    }
     const linkedProject = projects.find(
       (project) =>
         project.instructionPath && pathKey(project.instructionPath) === pathKey(target.path),
     );
     setProjectLinkSubmitting(false);
     projectLinkSubmittingRef.current = false;
+    setProjectLinkError(null);
     setProjectLinkDialog({
       path: target.path,
       name: target.name,
-      projectId: linkedProject?.id ?? projects[0].id,
+      projectId: linkedProject?.id ?? projects[0]?.id ?? "",
       projects,
     });
   };
@@ -918,6 +928,7 @@ export function InstructionTree({
     if (!projectLinkDialog || projectLinkSubmitting) return;
     setProjectLinkSubmitting(true);
     projectLinkSubmittingRef.current = true;
+    setProjectLinkError(null);
     try {
       const loaded = await loadConfig();
       const project = loaded.config.projects.find(
@@ -925,6 +936,9 @@ export function InstructionTree({
           candidate.id === projectLinkDialog.projectId && candidate.nextStep?.text.trim(),
       );
       if (!project) throw new Error("選択した次の一手が見つかりません。再度選択してください");
+      if (sourceLockedByUnfinishedToday(loaded.config, `project:${project.id}`)) {
+        throw new Error(SOURCE_LOCK_REASON);
+      }
       await saveConfigAndNotifyDashboard({
         ...loaded.config,
         projects: loaded.config.projects.map((candidate) =>
@@ -941,11 +955,9 @@ export function InstructionTree({
         ),
       });
       setProjectLinkDialog(null);
-      setOperationStatus(
-        `${projectLinkDialog.name}を「${project.name}」の次の一手に紐づけました`,
-      );
+      setOperationStatus(`${projectLinkDialog.name}を「${project.name}」の次の一手に紐づけました`);
     } catch (error) {
-      setOperationStatus(
+      setProjectLinkError(
         `手順書を紐づけられません: ${error instanceof Error ? error.message : String(error)}`,
       );
     } finally {
@@ -958,12 +970,22 @@ export function InstructionTree({
     setContextMenu(null);
     try {
       if (action === "create-file") {
-        openCreateDialog("create-file", target.kind === "root" || target.kind === "folder" ? target.path : undefined);
+        openCreateDialog(
+          "create-file",
+          target.kind === "root" || target.kind === "folder" ? target.path : undefined,
+        );
       } else if (action === "create-folder") {
-        openCreateDialog("create-folder", target.kind === "root" || target.kind === "folder" ? target.path : undefined);
+        openCreateDialog(
+          "create-folder",
+          target.kind === "root" || target.kind === "folder" ? target.path : undefined,
+        );
       } else if (action === "open" && target.kind === "file") {
         onSelectFile(target.path);
-      } else if (action === "edit" && target.kind === "file" && isEditableInstruction(target.name)) {
+      } else if (
+        action === "edit" &&
+        target.kind === "file" &&
+        isEditableInstruction(target.name)
+      ) {
         onEditFile(target.path);
       } else if (action === "link-project" && target.kind === "file") {
         await openProjectLinkDialog(target);
@@ -1007,6 +1029,9 @@ export function InstructionTree({
   };
 
   const hasQuery = query.trim().length > 0;
+  const selectedProjectLinkTarget =
+    projectLinkDialog?.projects.find((project) => project.id === projectLinkDialog.projectId) ??
+    null;
 
   return (
     <div className="instructionTreePanel">
@@ -1096,7 +1121,9 @@ export function InstructionTree({
                         }
                       >
                         <UiIcon
-                          name={entry.kind === "folder" ? "folder" : instructionFileIcon(entry.name)}
+                          name={
+                            entry.kind === "folder" ? "folder" : instructionFileIcon(entry.name)
+                          }
                           size={16}
                         />
                       </span>
@@ -1108,7 +1135,9 @@ export function InstructionTree({
               : null}
           </div>
         ) : treeLoading ? (
-          <div className="instructionTreeMessage" role="status">一覧を読み込んでいます</div>
+          <div className="instructionTreeMessage" role="status">
+            一覧を読み込んでいます
+          </div>
         ) : treeError && roots.length === 0 ? (
           <div className="instructionTreeMessage instructionTreeMessage--error" role="alert">
             {treeError}
@@ -1205,7 +1234,9 @@ export function InstructionTree({
                 >
                   {expandable ? (
                     <button
-                      aria-label={isExpanded ? `${node.name}を折りたたむ` : `${node.name}を展開する`}
+                      aria-label={
+                        isExpanded ? `${node.name}を折りたたむ` : `${node.name}を展開する`
+                      }
                       className="instructionTreeDisclosure"
                       onClick={(event) => {
                         event.stopPropagation();
@@ -1214,7 +1245,11 @@ export function InstructionTree({
                       tabIndex={-1}
                       type="button"
                     >
-                      {isLoading ? <span aria-hidden="true">·</span> : <UiIcon name={isExpanded ? "chevronDown" : "chevronRight"} size={16} />}
+                      {isLoading ? (
+                        <span aria-hidden="true">·</span>
+                      ) : (
+                        <UiIcon name={isExpanded ? "chevronDown" : "chevronRight"} size={16} />
+                      )}
                     </button>
                   ) : (
                     <span className="instructionTreeDisclosure" aria-hidden="true" />
@@ -1253,7 +1288,9 @@ export function InstructionTree({
               );
             })}
             {treeError ? (
-              <div className="instructionTreeInlineError" role="status">{treeError}</div>
+              <div className="instructionTreeInlineError" role="status">
+                {treeError}
+              </div>
             ) : null}
           </div>
         )}
@@ -1262,7 +1299,14 @@ export function InstructionTree({
       {operationStatus ? (
         <div className="instructionTreeStatus" role="status">
           <span>{operationStatus}</span>
-          <button aria-label="通知を閉じる" title="閉じる" onClick={() => setOperationStatus(null)} type="button"><UiIcon name="close" size={16} /></button>
+          <button
+            aria-label="通知を閉じる"
+            title="閉じる"
+            onClick={() => setOperationStatus(null)}
+            type="button"
+          >
+            <UiIcon name="close" size={16} />
+          </button>
         </div>
       ) : null}
 
@@ -1277,41 +1321,162 @@ export function InstructionTree({
         >
           {contextMenu.target.kind === "file" ? (
             <>
-              <button onClick={() => void runContextAction("open", contextMenu.target)} role="menuitem" type="button">開く</button>
+              <button
+                onClick={() => void runContextAction("open", contextMenu.target)}
+                role="menuitem"
+                type="button"
+              >
+                開く
+              </button>
               {isEditableInstruction(contextMenu.target.name) ? (
-                <button onClick={() => void runContextAction("edit", contextMenu.target)} role="menuitem" type="button">編集</button>
+                <button
+                  onClick={() => void runContextAction("edit", contextMenu.target)}
+                  role="menuitem"
+                  type="button"
+                >
+                  編集
+                </button>
               ) : null}
-              <button onClick={() => void runContextAction("link-project", contextMenu.target)} role="menuitem" type="button">次の一手に紐づける</button>
-              <button onClick={() => void runContextAction("rename", contextMenu.target)} role="menuitem" type="button">名前を変更</button>
-              <button onClick={() => void runContextAction("external", contextMenu.target)} role="menuitem" type="button">
+              <button
+                onClick={() => void runContextAction("link-project", contextMenu.target)}
+                role="menuitem"
+                type="button"
+              >
+                次の一手に紐づける
+              </button>
+              <button
+                onClick={() => void runContextAction("rename", contextMenu.target)}
+                role="menuitem"
+                type="button"
+              >
+                名前を変更
+              </button>
+              <button
+                onClick={() => void runContextAction("external", contextMenu.target)}
+                role="menuitem"
+                type="button"
+              >
                 {contextMenu.target.name.toLocaleLowerCase().endsWith(".html")
                   ? "ブラウザで開く"
                   : "既定のアプリで開く"}
               </button>
-              <button onClick={() => void runContextAction("explorer", contextMenu.target)} role="menuitem" type="button">エクスプローラーで表示</button>
-              <button className="instructionContextMenuDanger" onClick={() => void runContextAction("unregister", contextMenu.target)} role="menuitem" type="button">登録を解除</button>
+              <button
+                onClick={() => void runContextAction("explorer", contextMenu.target)}
+                role="menuitem"
+                type="button"
+              >
+                エクスプローラーで表示
+              </button>
+              <button
+                className="instructionContextMenuDanger"
+                onClick={() => void runContextAction("unregister", contextMenu.target)}
+                role="menuitem"
+                type="button"
+              >
+                登録を解除
+              </button>
             </>
           ) : contextMenu.target.kind === "root" ? (
             <>
-              <button onClick={() => void runContextAction("create-file", contextMenu.target)} role="menuitem" type="button">新しい手順書</button>
-              <button onClick={() => void runContextAction("create-folder", contextMenu.target)} role="menuitem" type="button">新しいフォルダ</button>
-              <button onClick={() => void runContextAction("explorer", contextMenu.target)} role="menuitem" type="button">エクスプローラーで開く</button>
-              <button onClick={() => void runContextAction("reload", contextMenu.target)} role="menuitem" type="button">再読み込み</button>
-              <button className="instructionContextMenuDanger" onClick={() => void runContextAction("unregister", contextMenu.target)} role="menuitem" type="button">登録を解除</button>
+              <button
+                onClick={() => void runContextAction("create-file", contextMenu.target)}
+                role="menuitem"
+                type="button"
+              >
+                新しい手順書
+              </button>
+              <button
+                onClick={() => void runContextAction("create-folder", contextMenu.target)}
+                role="menuitem"
+                type="button"
+              >
+                新しいフォルダ
+              </button>
+              <button
+                onClick={() => void runContextAction("explorer", contextMenu.target)}
+                role="menuitem"
+                type="button"
+              >
+                エクスプローラーで開く
+              </button>
+              <button
+                onClick={() => void runContextAction("reload", contextMenu.target)}
+                role="menuitem"
+                type="button"
+              >
+                再読み込み
+              </button>
+              <button
+                className="instructionContextMenuDanger"
+                onClick={() => void runContextAction("unregister", contextMenu.target)}
+                role="menuitem"
+                type="button"
+              >
+                登録を解除
+              </button>
             </>
           ) : contextMenu.target.kind === "folder" ? (
             <>
-              <button onClick={() => void runContextAction("create-file", contextMenu.target)} role="menuitem" type="button">新しい手順書</button>
-              <button onClick={() => void runContextAction("create-folder", contextMenu.target)} role="menuitem" type="button">新しいフォルダ</button>
-              <button onClick={() => void runContextAction("rename", contextMenu.target)} role="menuitem" type="button">名前を変更</button>
-              <button onClick={() => void runContextAction("explorer", contextMenu.target)} role="menuitem" type="button">エクスプローラーで開く</button>
-              <button className="instructionContextMenuDanger" onClick={() => void runContextAction("unregister", contextMenu.target)} role="menuitem" type="button">登録を解除</button>
+              <button
+                onClick={() => void runContextAction("create-file", contextMenu.target)}
+                role="menuitem"
+                type="button"
+              >
+                新しい手順書
+              </button>
+              <button
+                onClick={() => void runContextAction("create-folder", contextMenu.target)}
+                role="menuitem"
+                type="button"
+              >
+                新しいフォルダ
+              </button>
+              <button
+                onClick={() => void runContextAction("rename", contextMenu.target)}
+                role="menuitem"
+                type="button"
+              >
+                名前を変更
+              </button>
+              <button
+                onClick={() => void runContextAction("explorer", contextMenu.target)}
+                role="menuitem"
+                type="button"
+              >
+                エクスプローラーで開く
+              </button>
+              <button
+                className="instructionContextMenuDanger"
+                onClick={() => void runContextAction("unregister", contextMenu.target)}
+                role="menuitem"
+                type="button"
+              >
+                登録を解除
+              </button>
             </>
           ) : (
             <>
-              <button onClick={() => void runContextAction("create-file", contextMenu.target)} role="menuitem" type="button">新しい手順書</button>
-              <button onClick={() => void runContextAction("create-folder", contextMenu.target)} role="menuitem" type="button">新しいフォルダ</button>
-              <button onClick={() => void runContextAction("reload", contextMenu.target)} role="menuitem" type="button">再読み込み</button>
+              <button
+                onClick={() => void runContextAction("create-file", contextMenu.target)}
+                role="menuitem"
+                type="button"
+              >
+                新しい手順書
+              </button>
+              <button
+                onClick={() => void runContextAction("create-folder", contextMenu.target)}
+                role="menuitem"
+                type="button"
+              >
+                新しいフォルダ
+              </button>
+              <button
+                onClick={() => void runContextAction("reload", contextMenu.target)}
+                role="menuitem"
+                type="button"
+              >
+                再読み込み
+              </button>
             </>
           )}
         </ContextMenu>
@@ -1319,7 +1484,14 @@ export function InstructionTree({
 
       {operationDialog ? (
         <div className="modalBackdrop instructionOperationBackdrop" role="presentation">
-          <section aria-label="手順書操作" aria-modal="true" className="dropDialog instructionOperationDialog" ref={operationDialogRef} role="dialog" tabIndex={-1}>
+          <section
+            aria-label="手順書操作"
+            aria-modal="true"
+            className="dropDialog instructionOperationDialog"
+            ref={operationDialogRef}
+            role="dialog"
+            tabIndex={-1}
+          >
             <div className="confirmDialogHeader">
               <h2>
                 {operationDialog.kind === "create-file"
@@ -1328,7 +1500,16 @@ export function InstructionTree({
                     ? "新しいフォルダ"
                     : "名前を変更"}
               </h2>
-              <button aria-label="操作を閉じる" title="閉じる" className="confirmDialogClose" disabled={operationSubmitting} onClick={() => setOperationDialog(null)} type="button"><UiIcon name="close" size={16} /></button>
+              <button
+                aria-label="操作を閉じる"
+                title="閉じる"
+                className="confirmDialogClose"
+                disabled={operationSubmitting}
+                onClick={() => setOperationDialog(null)}
+                type="button"
+              >
+                <UiIcon name="close" size={16} />
+              </button>
             </div>
             <form
               className="instructionOperationForm"
@@ -1337,13 +1518,23 @@ export function InstructionTree({
                 void submitOperationDialog();
               }}
             >
-              {(operationDialog.kind === "create-file" || operationDialog.kind === "create-folder") && !operationDialog.parentPath ? (
+              {(operationDialog.kind === "create-file" ||
+                operationDialog.kind === "create-folder") &&
+              !operationDialog.parentPath ? (
                 <label className="fieldStack">
                   <span>作成先</span>
-                  <select disabled={operationSubmitting} onChange={(event) => setOperationParent(event.target.value)} value={operationParent}>
-                    {roots.filter((root) => root.available).map((root) => (
-                      <option key={root.path} value={root.path}>{root.name}</option>
-                    ))}
+                  <select
+                    disabled={operationSubmitting}
+                    onChange={(event) => setOperationParent(event.target.value)}
+                    value={operationParent}
+                  >
+                    {roots
+                      .filter((root) => root.available)
+                      .map((root) => (
+                        <option key={root.path} value={root.path}>
+                          {root.name}
+                        </option>
+                      ))}
                   </select>
                 </label>
               ) : null}
@@ -1360,19 +1551,44 @@ export function InstructionTree({
               {operationDialog.kind === "create-file" ? (
                 <label className="fieldStack">
                   <span>形式</span>
-                  <select disabled={operationSubmitting} onChange={(event) => setOperationExtension(event.target.value as "md" | "txt")} value={operationExtension}>
+                  <select
+                    disabled={operationSubmitting}
+                    onChange={(event) => setOperationExtension(event.target.value as "md" | "txt")}
+                    value={operationExtension}
+                  >
                     <option value="md">Markdown (.md)</option>
                     <option value="txt">Text (.txt)</option>
                   </select>
                 </label>
               ) : operationDialog.kind === "rename-file" ? (
-                <div className="instructionOperationExtension">拡張子: .{operationDialog.extension}</div>
+                <div className="instructionOperationExtension">
+                  拡張子: .{operationDialog.extension}
+                </div>
               ) : null}
-              {operationError ? <p className="fieldError" role="alert">{operationError}</p> : null}
-              <div className="dialogActions">
-                <button className="secondaryButton settingsButton--neutral" disabled={operationSubmitting} onClick={() => setOperationDialog(null)} type="button">キャンセル</button>
-                <button className="primaryButton" disabled={operationSubmitting || !operationName.trim()} type="submit">
-                  {operationSubmitting ? "処理中…" : operationDialog.kind.startsWith("create") ? "作成" : "変更"}
+              {operationError ? (
+                <p className="fieldError" role="alert">
+                  {operationError}
+                </p>
+              ) : null}
+              <div className="dialogActions formDialogActions">
+                <button
+                  className="primaryButton"
+                  disabled={operationSubmitting || !operationName.trim()}
+                  type="submit"
+                >
+                  {operationSubmitting
+                    ? "処理中…"
+                    : operationDialog.kind.startsWith("create")
+                      ? "作成"
+                      : "変更"}
+                </button>
+                <button
+                  className="secondaryButton dialogCancelButton"
+                  disabled={operationSubmitting}
+                  onClick={() => setOperationDialog(null)}
+                  type="button"
+                >
+                  キャンセル
                 </button>
               </div>
             </form>
@@ -1385,71 +1601,139 @@ export function InstructionTree({
           <section
             aria-label="次の一手に手順書を紐づける"
             aria-modal="true"
-            className="dropDialog instructionOperationDialog"
+            className="dropDialog instructionProjectLinkDialog"
             ref={projectLinkDialogRef}
             role="dialog"
             tabIndex={-1}
           >
-            <div className="confirmDialogHeader">
-              <h2>次の一手に紐づける</h2>
+            <div className="instructionProjectLinkHeader">
+              <div>
+                <p className="eyebrow">Instruction</p>
+                <h2>次の一手に紐づける</h2>
+              </div>
               <button
-                aria-label="紐付けを閉じる" title="閉じる"
+                aria-label="紐付けを閉じる"
+                title="閉じる"
                 className="confirmDialogClose"
                 disabled={projectLinkSubmitting}
-                onClick={() => setProjectLinkDialog(null)}
+                onClick={() => {
+                  setProjectLinkError(null);
+                  setProjectLinkDialog(null);
+                }}
                 type="button"
               >
                 <UiIcon name="close" size={16} />
               </button>
             </div>
             <form
-              className="instructionOperationForm"
+              className="instructionProjectLinkForm"
               onSubmit={(event) => {
                 event.preventDefault();
                 void submitProjectLink();
               }}
             >
-              <div className="fieldStack">
-                <span>手順書</span>
-                <strong>{projectLinkDialog.name}</strong>
+              <div className="instructionProjectLinkBody">
+                <section className="instructionProjectLinkSource">
+                  <span className="instructionProjectLinkLabel">手順書</span>
+                  <div className="instructionProjectLinkSourceCard">
+                    <span
+                      aria-hidden="true"
+                      className={`instructionTreeFileIcon instructionTreeFileIcon--${instructionFileTone(projectLinkDialog.name)}`}
+                    >
+                      <UiIcon name={instructionFileIcon(projectLinkDialog.name)} size={18} />
+                    </span>
+                    <span className="instructionProjectLinkSourceCopy">
+                      <strong title={projectLinkDialog.name}>{projectLinkDialog.name}</strong>
+                      <small>この手順書を紐づけます</small>
+                    </span>
+                  </div>
+                </section>
+
+                <span aria-hidden="true" className="instructionProjectLinkArrow">
+                  ↓
+                </span>
+
+                <section className="instructionProjectLinkTarget">
+                  <label className="fieldStack">
+                    <span>紐づけ先</span>
+                    {projectLinkDialog.projects.length > 0 ? (
+                      <select
+                        disabled={projectLinkSubmitting}
+                        onChange={(event) => {
+                          setProjectLinkError(null);
+                          setProjectLinkDialog({
+                            ...projectLinkDialog,
+                            projectId: event.target.value,
+                          });
+                        }}
+                        ref={projectLinkSelectRef}
+                        value={projectLinkDialog.projectId}
+                      >
+                        {projectLinkDialog.projects.map((project) => (
+                          <option key={project.id} value={project.id}>
+                            {project.name} — {project.nextStepText}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="instructionProjectLinkEmpty">
+                        <strong>紐づけられる「次の一手」がありません。</strong>
+                        <small>先にプロジェクトの「次の一手」を設定してください。</small>
+                      </span>
+                    )}
+                  </label>
+
+                  {selectedProjectLinkTarget ? (
+                    <div
+                      aria-label={`${selectedProjectLinkTarget.name}の次の一手`}
+                      className="instructionProjectLinkPreview"
+                      data-project-color={selectedProjectLinkTarget.colorId}
+                    >
+                      <span className="instructionProjectLinkProject">
+                        <i aria-hidden="true" />
+                        {selectedProjectLinkTarget.name}
+                      </span>
+                      <strong>{selectedProjectLinkTarget.nextStepText}</strong>
+                    </div>
+                  ) : null}
+                  <p className="instructionProjectLinkHelper">
+                    プロジェクト名と「次の一手」の内容を確認して選べます。
+                  </p>
+                </section>
+
+                {selectedProjectLinkTarget?.instructionPath ? (
+                  <p className="instructionProjectLinkNotice">
+                    現在の手順書設定は、この手順書へ置き換わります。
+                  </p>
+                ) : null}
+                <p className="instructionProjectLinkInfo">
+                  紐づけると、この次の一手を開始するときに手順書を開けるようになります。
+                  既存の「開始時に手順書を開く」設定がある場合は、その設定に従います。
+                </p>
+                {projectLinkError ? (
+                  <p className="fieldError" role="alert">
+                    {projectLinkError}
+                  </p>
+                ) : null}
               </div>
-              <label className="fieldStack">
-                <span>次の一手</span>
-                <select
-                  disabled={projectLinkSubmitting}
-                  onChange={(event) =>
-                    setProjectLinkDialog({
-                      ...projectLinkDialog,
-                      projectId: event.target.value,
-                    })
-                  }
-                  ref={projectLinkSelectRef}
-                  value={projectLinkDialog.projectId}
-                >
-                  {projectLinkDialog.projects.map((project) => (
-                    <option key={project.id} value={project.id}>
-                      {project.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {projectLinkDialog.projects.find(
-                (project) => project.id === projectLinkDialog.projectId,
-              )?.instructionPath ? (
-                <p className="quietText">現在の手順書設定は、この手順書へ置き換わります。</p>
-              ) : null}
-              <p className="quietText">プロジェクト開始時に手順書を開く設定も有効になります。</p>
-              <div className="dialogActions">
+              <div className="dialogActions formDialogActions instructionProjectLinkFooter">
                 <button
-                  className="secondaryButton settingsButton--neutral"
+                  className="primaryButton"
+                  disabled={projectLinkSubmitting || !projectLinkDialog.projectId}
+                  type="submit"
+                >
+                  {projectLinkSubmitting ? "保存中…" : "紐づける"}
+                </button>
+                <button
+                  className="secondaryButton dialogCancelButton"
                   disabled={projectLinkSubmitting}
-                  onClick={() => setProjectLinkDialog(null)}
+                  onClick={() => {
+                    setProjectLinkError(null);
+                    setProjectLinkDialog(null);
+                  }}
                   type="button"
                 >
                   キャンセル
-                </button>
-                <button className="primaryButton" disabled={projectLinkSubmitting} type="submit">
-                  {projectLinkSubmitting ? "保存中…" : "紐づける"}
                 </button>
               </div>
             </form>

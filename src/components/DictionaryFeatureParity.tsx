@@ -27,6 +27,7 @@ import type {
   OverlayPage,
 } from "../types";
 import type { ConfirmDialogRequest } from "./ConfirmDialog";
+import type { GroupMode } from "./GroupModeField";
 
 type ShellDropEvent = {
   windowLabel: string;
@@ -48,8 +49,9 @@ type ActionDraft = LauncherAction & { draftId: string };
 type ButtonDraft = {
   id: string;
   label: string;
-  icon: string;
-  group: string;
+  groupMode: GroupMode;
+  existingGroup: string;
+  newGroup: string;
   showInSidebar: boolean;
   showInOverlay: boolean;
   overlayPageId: string | null;
@@ -640,11 +642,13 @@ export function useDictionaryFeatureParity({
   };
   const editButton = (button: LauncherButton) => {
     setMenu(null);
+    const group = groupOf(button);
     const draft = {
       id: button.id,
       label: button.label,
-      icon: button.icon ?? "",
-      group: groupOf(button),
+      groupMode: "existing" as const,
+      existingGroup: group,
+      newGroup: "",
       showInSidebar: button.showInSidebar !== false,
       showInOverlay: button.showInOverlay !== false,
       overlayPageId: pages.some((page) => page.id === button.overlayPageId)
@@ -666,13 +670,17 @@ export function useDictionaryFeatureParity({
       return setError("実行アクションと内容を入力してください");
     const original = config.buttons.find((button) => button.id === buttonDraft.id);
     const changed = JSON.stringify(original?.actions ?? []) !== JSON.stringify(actions);
-    const group = buttonDraft.group.trim();
+    const group =
+      buttonDraft.groupMode === "existing"
+        ? buttonDraft.existingGroup.trim()
+        : buttonDraft.newGroup.trim();
+    if (buttonDraft.groupMode === "new" && groups.includes(group))
+      return setError(`${group} はすでにあります`);
     const buttons = config.buttons.map((button) =>
       button.id === buttonDraft.id
         ? {
             ...button,
             label,
-            icon: buttonDraft.icon.trim() || undefined,
             group: group && group !== DEFAULT_BUTTON_GROUP ? group : undefined,
             showInSidebar: buttonDraft.showInSidebar,
             showInOverlay: buttonDraft.showInOverlay,
@@ -693,10 +701,22 @@ export function useDictionaryFeatureParity({
         : config.projects.map((project) => ({
             ...project,
             ...(project.nextStep
-              ? { nextStep: { ...project.nextStep, buttonIds: project.nextStep.buttonIds.filter((item) => item !== buttonDraft.id) } }
+              ? {
+                  nextStep: {
+                    ...project.nextStep,
+                    buttonIds: project.nextStep.buttonIds.filter((item) => item !== buttonDraft.id),
+                  },
+                }
               : {}),
             ...(project.legacyNextStepSettings
-              ? { legacyNextStepSettings: { ...project.legacyNextStepSettings, buttonIds: project.legacyNextStepSettings.buttonIds.filter((item) => item !== buttonDraft.id) } }
+              ? {
+                  legacyNextStepSettings: {
+                    ...project.legacyNextStepSettings,
+                    buttonIds: project.legacyNextStepSettings.buttonIds.filter(
+                      (item) => item !== buttonDraft.id,
+                    ),
+                  },
+                }
               : {}),
           }));
     if (
@@ -748,10 +768,22 @@ export function useDictionaryFeatureParity({
             projects: latest.projects.map((project) => ({
               ...project,
               ...(project.nextStep
-                ? { nextStep: { ...project.nextStep, buttonIds: project.nextStep.buttonIds.filter((item) => item !== button.id) } }
+                ? {
+                    nextStep: {
+                      ...project.nextStep,
+                      buttonIds: project.nextStep.buttonIds.filter((item) => item !== button.id),
+                    },
+                  }
                 : {}),
               ...(project.legacyNextStepSettings
-                ? { legacyNextStepSettings: { ...project.legacyNextStepSettings, buttonIds: project.legacyNextStepSettings.buttonIds.filter((item) => item !== button.id) } }
+                ? {
+                    legacyNextStepSettings: {
+                      ...project.legacyNextStepSettings,
+                      buttonIds: project.legacyNextStepSettings.buttonIds.filter(
+                        (item) => item !== button.id,
+                      ),
+                    },
+                  }
                 : {}),
             })),
           },
@@ -828,7 +860,7 @@ export function useDictionaryFeatureParity({
   });
   return {
     addButtonToSidebar,
-    blocking: Boolean(dropDraft || pageDraft || buttonDraft || confirmation),
+    blocking: Boolean(dropDraft || pageDraft || confirmation),
     buttonDraft,
     buttonMenu,
     canMoveButton,

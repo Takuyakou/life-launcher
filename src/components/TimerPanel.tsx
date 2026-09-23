@@ -56,9 +56,8 @@ export function TimerPanel({
 
   return (
     <section
-      className={
-        variant === "sidebar" ? "timerDock timerPanel" : "timerPanel timerPanel--mini"
-      }
+      className={variant === "sidebar" ? "timerDock timerPanel" : "timerPanel timerPanel--mini"}
+      onPointerDownCapture={() => window.getSelection()?.removeAllRanges()}
     >
       <div className="timerMeta">
         <span>{variant === "sidebar" ? "Timer" : "タイマー"}</span>
@@ -103,7 +102,7 @@ export function TimerPanel({
           </button>
         </div>
       ) : (
-        waitingContent ?? <span className="miniQuietText">開始ボタンから計測できます</span>
+        (waitingContent ?? <span className="miniQuietText">開始ボタンから計測できます</span>)
       )}
     </section>
   );

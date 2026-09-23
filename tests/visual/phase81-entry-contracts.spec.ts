@@ -347,6 +347,7 @@ test("Phase 8.1 instruction linking persists, excludes empty Projects, and rejec
     name: "次の一手なし",
     colorId: "slate",
   });
+  fixture.config.today.items = [];
   await prepare(page, fixture, "/?view=instruction", "life-launcher-instruction");
   const root = page.locator('.instructionTreeRow[aria-level="1"]').first();
   await root.getByRole("button", { name: "Instructionsを展開する" }).click();
@@ -354,10 +355,29 @@ test("Phase 8.1 instruction linking persists, excludes empty Projects, and rejec
   await notes.click({ button: "right" });
   await page.getByRole("menuitem", { name: "次の一手に紐づける" }).click();
   let dialog = page.getByRole("dialog", { name: "次の一手に手順書を紐づける" });
-  const select = dialog.getByRole("combobox", { name: "次の一手" });
-  await expect(select.locator("option")).toHaveText(["サンプル学習", "ストレッチ"]);
+  const select = dialog.getByRole("combobox", { name: "紐づけ先" });
+  await expect(dialog.locator(".instructionProjectLinkSourceCard")).toContainText("notes.txt");
+  await expect(select.locator("option")).toHaveText([
+    "サンプル学習 — 資料を1ページ読む",
+    "ストレッチ — 5分だけ体を動かす",
+  ]);
   await expect(select.locator('option[value="metadata-only"]')).toHaveCount(0);
+  await expect(dialog.locator(".instructionProjectLinkPreview")).toHaveAttribute(
+    "data-project-color",
+    "blue",
+  );
+  const beforeSelection = await saveConfigCount(page);
+  await select.selectOption("sample-stretch");
+  await expect(dialog.locator(".instructionProjectLinkPreview")).toHaveAttribute(
+    "data-project-color",
+    "green",
+  );
+  expect(await saveConfigCount(page)).toBe(beforeSelection);
   await select.selectOption("sample-learning");
+  await expect(dialog.locator(".instructionProjectLinkFooter").getByRole("button")).toHaveText([
+    "紐づける",
+    "キャンセル",
+  ]);
   await dialog.getByRole("button", { name: "紐づける" }).click();
   expect(
     (await currentConfig(page)).projects.find((project) => project.id === "sample-learning")
@@ -376,8 +396,8 @@ test("Phase 8.1 instruction linking persists, excludes empty Projects, and rejec
   await notes.click({ button: "right" });
   await page.getByRole("menuitem", { name: "次の一手に紐づける" }).click();
   dialog = page.getByRole("dialog", { name: "次の一手に手順書を紐づける" });
-  await expect(dialog.getByRole("combobox", { name: "次の一手" })).toHaveValue("sample-learning");
-  await dialog.getByRole("combobox", { name: "次の一手" }).selectOption("sample-stretch");
+  await expect(dialog.getByRole("combobox", { name: "紐づけ先" })).toHaveValue("sample-learning");
+  await dialog.getByRole("combobox", { name: "紐づけ先" }).selectOption("sample-stretch");
   const beforeStaleSave = await saveConfigCount(page);
   await page.evaluate(() => {
     const control = (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: VisualQaControl })
@@ -392,8 +412,36 @@ test("Phase 8.1 instruction linking persists, excludes empty Projects, and rejec
   });
   await dialog.getByRole("button", { name: "紐づける" }).click();
   await expect(dialog).toBeVisible();
-  await expect(page.getByRole("status")).toContainText("選択した次の一手が見つかりません");
+  await expect(dialog.getByRole("alert")).toContainText("選択した次の一手が見つかりません");
   expect(await saveConfigCount(page)).toBe(beforeStaleSave);
+});
+
+test("Phase 8.1 instruction linking explains when Source Lock leaves no candidates", async ({
+  page,
+}) => {
+  const fixture = createPublicFixture();
+  fixture.config.today.items.push({
+    text: "5分だけ体を動かす",
+    done: false,
+    sourceKey: "project:sample-stretch",
+    projectId: "sample-stretch",
+  });
+  await prepare(page, fixture, "/?view=instruction", "life-launcher-instruction");
+  const root = page.locator('.instructionTreeRow[aria-level="1"]').first();
+  await root.getByRole("button", { name: "Instructionsを展開する" }).click();
+  const notes = page
+    .locator('.instructionTreeRow[aria-level="2"]')
+    .filter({ hasText: "notes.txt" });
+  await notes.click({ button: "right" });
+  await page.getByRole("menuitem", { name: "次の一手に紐づける" }).click();
+
+  const dialog = page.getByRole("dialog", { name: "次の一手に手順書を紐づける" });
+  await expect(dialog.getByText("紐づけられる「次の一手」がありません。")).toBeVisible();
+  await expect(
+    dialog.getByText("先にプロジェクトの「次の一手」を設定してください。"),
+  ).toBeVisible();
+  await expect(dialog.getByRole("combobox", { name: "紐づけ先" })).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: "紐づける" })).toBeDisabled();
 });
 
 test("Phase 8.1 reload and restore both clear a recovered saveBlocked state", async ({ page }) => {

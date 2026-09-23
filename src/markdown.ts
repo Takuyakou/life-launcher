@@ -22,7 +22,7 @@ const COMMON_FORBIDDEN_TAGS = [
 ];
 const MARKDOWN_FORBIDDEN_TAGS = [...COMMON_FORBIDDEN_TAGS, "meta", "link", "style", "img"];
 const HTML_FORBIDDEN_TAGS = [
-  ...COMMON_FORBIDDEN_TAGS.filter((tag) => tag !== "svg"),
+  ...COMMON_FORBIDDEN_TAGS.filter((tag) => tag !== "svg" && tag !== "input"),
   "animate",
   "animateMotion",
   "animateTransform",
@@ -139,6 +139,14 @@ function sanitizeHtmlDocument(source: string, assetBaseUrl: string): string {
     const src = image.getAttribute("src") ?? "";
     if (!isSafeDocumentAsset(src)) image.removeAttribute("src");
     image.removeAttribute("srcset");
+  });
+  document.querySelectorAll("input").forEach((input) => {
+    input.disabled = true;
+    input.tabIndex = -1;
+    input.removeAttribute("autofocus");
+    input.removeAttribute("form");
+    input.removeAttribute("formaction");
+    input.removeAttribute("name");
   });
   document.querySelectorAll<SVGElement>("svg, svg *").forEach((element) => {
     [

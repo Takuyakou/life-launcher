@@ -174,7 +174,9 @@ test("HTML preview keeps local assets but blocks active and remote content", asy
   expect(await frame.evaluate(() => document.doctype?.name)).toBe("html");
   expect(await frame.locator('meta[name="viewport"]').count()).toBe(1);
   expect(await frame.locator('meta[http-equiv="refresh"]').count()).toBe(0);
-  expect(await frame.locator("script, form, input, button, iframe, object, embed").count()).toBe(0);
+  expect(await frame.locator("script, form, button, iframe, object, embed").count()).toBe(0);
+  await expect(frame.locator("input")).toBeDisabled();
+  await expect(frame.locator("input")).toHaveAttribute("tabindex", "-1");
   await expect(frame.locator("#inline-diagram")).toBeVisible();
   expect(await frame.locator("#inline-diagram marker, #inline-diagram line").count()).toBe(2);
   expect(await frame.locator("foreignObject, animate").count()).toBe(0);
@@ -200,4 +202,30 @@ test("HTML preview scrolls fragment contents links inside the document", async (
   await frame.locator("#toc-link").click();
   await expect.poll(() => frame.evaluate(() => window.scrollY)).toBeGreaterThan(500);
   await expect(frame.locator("#toc-target")).toBeInViewport();
+});
+
+test("HTML preview preserves disabled form controls that own layout grid columns", async ({
+  page,
+}) => {
+  const fixture = createPublicFixture();
+  const path = "C:\\PublicDemo\\Instructions\\checklist-layout.html";
+  fixture.instructionDocuments = {
+    [path]: `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+      .check-item{display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px;width:500px;padding:12px}
+      .check-item input{width:19px;height:19px}.check-item span{min-width:0}
+    </style></head><body><label class="check-item"><input type="checkbox"><span>長い文章が一文字ずつ折り返されず、本文列に表示されます。</span></label></body></html>`,
+  };
+  await page.setViewportSize({ width: 900, height: 640 });
+  await installTauriMock(page, fixture, "life-launcher-instruction");
+  await page.goto("/?view=instruction&path=" + encodeURIComponent(path));
+  const iframe = page.locator(".instructionHtmlFrame");
+  await expect(iframe).toBeVisible();
+  const handle = await iframe.elementHandle();
+  const frame = await handle?.contentFrame();
+  if (!frame) throw new Error("instruction HTML frame was not created");
+
+  await expect(frame.locator("input")).toBeDisabled();
+  const textBox = await frame.locator(".check-item span").boundingBox();
+  expect(textBox).not.toBeNull();
+  expect(textBox!.width).toBeGreaterThan(400);
 });

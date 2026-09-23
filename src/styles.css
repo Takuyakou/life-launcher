@@ -1619,6 +1619,187 @@ button.instructionTreeDisclosure:hover {
   box-shadow: 0 0 0 1px rgba(231, 185, 77, 0.22);
 }
 
+.instructionProjectLinkDialog {
+  width: min(580px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+.instructionProjectLinkHeader {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--line-soft);
+  padding: 16px 18px 14px;
+}
+
+.instructionProjectLinkHeader h2,
+.instructionProjectLinkHeader p {
+  margin: 0;
+}
+
+.instructionProjectLinkForm {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.instructionProjectLinkBody {
+  min-height: 0;
+  display: grid;
+  gap: 14px;
+  overflow-y: auto;
+  padding: 16px 18px 18px;
+}
+
+.instructionProjectLinkSource,
+.instructionProjectLinkTarget {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.instructionProjectLinkLabel {
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.instructionProjectLinkSourceCard {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px 11px;
+  background: var(--surface-soft);
+}
+
+.instructionProjectLinkSourceCopy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.instructionProjectLinkSourceCopy strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.instructionProjectLinkSourceCopy small,
+.instructionProjectLinkHelper {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.instructionProjectLinkArrow {
+  color: var(--muted);
+  text-align: center;
+  line-height: 1;
+}
+
+.instructionProjectLinkTarget select {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  overflow: hidden;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  background: var(--surface);
+  color: var(--text);
+  text-overflow: ellipsis;
+}
+
+.instructionProjectLinkPreview {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  border-left: 3px solid var(--project-color);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: 9px 10px;
+  background: var(--surface-soft);
+}
+
+.instructionProjectLinkProject {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  color: var(--text-muted-readable);
+  font-size: 11px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.instructionProjectLinkProject i {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--project-color);
+}
+
+.instructionProjectLinkPreview > strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.instructionProjectLinkHelper,
+.instructionProjectLinkInfo,
+.instructionProjectLinkNotice {
+  margin: 0;
+}
+
+.instructionProjectLinkInfo,
+.instructionProjectLinkNotice,
+.instructionProjectLinkEmpty {
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 9px 10px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.instructionProjectLinkEmpty {
+  display: grid;
+  gap: 4px;
+}
+
+.instructionProjectLinkEmpty strong {
+  color: var(--text);
+}
+
+.instructionProjectLinkFooter {
+  margin: 0;
+  border-top: 1px solid var(--line);
+  padding: 12px 18px;
+  background: var(--dialog-surface);
+}
+
+@media (max-width: 480px) {
+  .instructionProjectLinkDialog {
+    width: calc(100vw - 12px);
+    max-height: calc(100vh - 12px);
+  }
+}
+
 .instructionOperationExtension {
   color: var(--muted);
   font-size: 12px;
@@ -2322,7 +2503,7 @@ h3 {
   gap: 8px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 7px 9px;
+  padding: 7px 9px 7px 5px;
   background: var(--surface);
   color: var(--text);
   font-size: 13px;
@@ -2338,14 +2519,22 @@ h3 {
 }
 
 .launcherOpenButtonLabel {
-  display: flex;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
   align-items: center;
-  gap: 7px;
+  gap: 6px;
 }
 
-.launcherOpenButtonLabel .uiIcon {
-  flex: 0 0 auto;
+.launcherOpenButtonIcon {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+}
+
+.launcherOpenButtonIcon .uiIcon {
   color: var(--muted);
+  transform: translateY(1px);
 }
 
 .launcherOpenButton kbd {
@@ -2532,6 +2721,12 @@ h3 {
   border-radius: var(--radius);
   padding: 12px 10px;
   background: var(--surface-strong);
+}
+
+.timerPanel,
+.timerPanel * {
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .timerPanel--mini {
@@ -5587,13 +5782,20 @@ input[type="number"]::-webkit-inner-spin-button {
   color: var(--error);
 }
 
-.toast--error .toastAccent {
-  background: var(--error);
-}
-.toast--error .toastIconBadge {
+.toast--danger {
   color: var(--error);
 }
-.toast--error .toastCopy strong {
+
+.toast--error .toastAccent,
+.toast--danger .toastAccent {
+  background: var(--error);
+}
+.toast--error .toastIconBadge,
+.toast--danger .toastIconBadge {
+  color: var(--error);
+}
+.toast--error .toastCopy strong,
+.toast--danger .toastCopy strong {
   color: var(--text);
 }
 
@@ -6306,6 +6508,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .helpGuideFooter {
+  min-height: 54px;
   padding-top: 12px;
   border-top: 1px solid var(--line);
 }
@@ -7166,6 +7369,139 @@ input[type="number"]::-webkit-inner-spin-button {
   border-top: 1px solid var(--line);
   padding: 12px 18px 18px;
   background: var(--dialog-surface);
+}
+
+.buttonEditDialog {
+  width: min(720px, calc(100vw - 24px));
+  height: min(760px, calc(100vh - 24px));
+  max-height: calc(100vh - 24px);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+.dictionaryParityDialog.editDialog.buttonEditDialog {
+  width: min(720px, calc(100vw - 24px));
+  height: min(760px, calc(100vh - 24px));
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 24px);
+}
+
+.buttonEditDialogHeader {
+  border-bottom: 1px solid var(--line-soft);
+  padding: 16px 18px 14px;
+}
+
+.buttonEditDialogHeader h2,
+.buttonEditDialogHeader p,
+.buttonEditSection h3 {
+  margin: 0;
+}
+
+.buttonEditDialogBody {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px 18px;
+}
+
+.buttonEditSection {
+  display: grid;
+  gap: 12px;
+}
+
+.buttonEditSection + .buttonEditSection,
+.buttonEditOptional + .buttonEditSection {
+  border-top: 1px solid var(--line-soft);
+  padding-top: 16px;
+}
+
+.buttonEditSection h3 {
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.buttonEditOptional {
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+}
+
+.buttonEditOptional summary {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  color: var(--text-muted-readable);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.buttonEditOptionalBody {
+  display: grid;
+  gap: 12px;
+  border-top: 1px solid var(--line-soft);
+  padding: 12px;
+}
+
+.buttonEditDialogFooter {
+  margin: 0;
+  border-top: 1px solid var(--line);
+  padding: 12px 18px;
+  background: var(--dialog-surface);
+}
+
+.buttonEditActionRow {
+  grid-template-columns: 112px minmax(0, 1fr) auto;
+}
+
+.buttonEditActionButtons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.buttonEditAddAction {
+  width: max-content;
+  min-height: 38px;
+  border-color: var(--good);
+  background: var(--control-positive-bg);
+  color: var(--good);
+}
+
+.buttonEditAddAction:hover:not(:disabled),
+.buttonEditAddAction:focus-visible {
+  border-color: var(--control-positive-hover-border);
+  background: var(--control-positive-hover-bg);
+}
+
+@media (max-width: 560px) {
+  .buttonEditDialog {
+    width: calc(100vw - 12px);
+    height: calc(100vh - 12px);
+    max-height: calc(100vh - 12px);
+  }
+
+  .dictionaryParityDialog.editDialog.buttonEditDialog {
+    width: calc(100vw - 12px);
+    height: calc(100vh - 12px);
+    max-width: calc(100vw - 12px);
+    max-height: calc(100vh - 12px);
+  }
+
+  .buttonEditActionRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .buttonEditActionRow > select {
+    grid-column: 1 / -1;
+  }
 }
 
 .formSectionHeading {
@@ -8452,6 +8788,39 @@ input[type="number"]::-webkit-inner-spin-button {
   color: var(--text);
   font-size: var(--dashboard-font-section);
   font-weight: 650;
+  line-height: 1.35;
+}
+
+.todaySectionDisclosure {
+  min-width: 0;
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.todaySectionDisclosure:hover h2,
+.todaySectionDisclosure:focus-visible h2 {
+  color: var(--accent-strong);
+}
+
+.projectsBand .disclosureLabel strong,
+.inboxBand .disclosureLabel strong,
+.todayActivityBand .disclosureLabel strong,
+.projectsBand .disclosureCount,
+.inboxBand .disclosureCount,
+.todayActivityBand .disclosureCount,
+.projectsBand .disclosureDescription,
+.inboxBand .disclosureDescription,
+.todayActivityBand .disclosureDescription {
+  min-height: 18px;
+  display: inline-flex;
+  align-items: center;
   line-height: 1.35;
 }
 

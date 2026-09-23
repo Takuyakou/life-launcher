@@ -135,6 +135,7 @@ import {
   wishlistGroupKey,
 } from "./nextStepWishlist";
 import { TimerPanel } from "./components/TimerPanel";
+import { GroupModeField, type GroupMode } from "./components/GroupModeField";
 import {
   buildTodayCandidates,
   legacyWishlistSourceKey,
@@ -175,7 +176,7 @@ import {
   toggleDictionaryWindow,
 } from "./dictionaryWindow";
 
-type ToastTone = "neutral" | "ok" | "warn" | "error";
+type ToastTone = "neutral" | "ok" | "warn" | "error" | "danger";
 type NotesSaveStatus = "saved" | "saving" | "error";
 
 const SOFTWARE_RESET_TIMER_MESSAGE = "実行中のタイマーを終了してからリセットしてください。";
@@ -301,7 +302,7 @@ type OverlayPageDraft = {
 type DropDialogState = DropButtonDraft & {
   label: string;
   group: string;
-  groupMode: "existing" | "new";
+  groupMode: GroupMode;
   existingGroup: string;
   newGroup: string;
   showInSidebar: boolean;
@@ -316,8 +317,9 @@ type ActionDraft = LauncherAction & {
 type ButtonEditDraft = {
   id: string;
   label: string;
-  icon: string;
-  group: string;
+  groupMode: GroupMode;
+  existingGroup: string;
+  newGroup: string;
   showInSidebar: boolean;
   showInOverlay: boolean;
   overlayPageId: string | null;
@@ -1501,9 +1503,7 @@ function validateShortcutSettings(draft: SettingsCenterDraft): string | null {
   if (duplicates) return `ショートカットが重複しています: ${duplicates}`;
   const invalid = values.find((value) => !SHORTCUT_PATTERN.test(value));
   if (invalid) return `ショートカットの形式を確認してください: ${invalid}`;
-  const reserved = values.find((value) =>
-    WINDOWS_RESERVED_SHORTCUTS.includes(value.toLowerCase()),
-  );
+  const reserved = values.find((value) => WINDOWS_RESERVED_SHORTCUTS.includes(value.toLowerCase()));
   return reserved ? `OS予約キーは登録できません。別のキーを入力してください: ${reserved}` : null;
 }
 
@@ -1667,11 +1667,11 @@ function todayAdoptionDropTargetFromPoint(
   }
   const nearest = rows.reduce(
     (best, row) => {
-    const rect = row.getBoundingClientRect();
-    const dx = Math.max(rect.left - x, 0, x - rect.right);
-    const dy = Math.max(rect.top - y, 0, y - rect.bottom);
-    const distance = Math.hypot(dx, dy);
-    return !best || distance < best.distance ? { row, distance } : best;
+      const rect = row.getBoundingClientRect();
+      const dx = Math.max(rect.left - x, 0, x - rect.right);
+      const dy = Math.max(rect.top - y, 0, y - rect.bottom);
+      const distance = Math.hypot(dx, dy);
+      return !best || distance < best.distance ? { row, distance } : best;
     },
     null as { row: HTMLElement; distance: number } | null,
   );
@@ -1831,8 +1831,8 @@ function wishlistGroupDropTargetFromPoint(
 } | null {
   const group = Array.from(document.querySelectorAll<HTMLElement>("[data-wishlist-group]")).find(
     (candidate) => {
-    const rect = candidate.getBoundingClientRect();
-    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+      const rect = candidate.getBoundingClientRect();
+      return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
     },
   );
   const key = group?.dataset.wishlistGroup;
@@ -2155,6 +2155,7 @@ function DashboardApp() {
   const [inboxEditInstructionOpenOnStart, setInboxEditInstructionOpenOnStart] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
   const [projectsOpen, setProjectsOpen] = useState(true);
+  const [todayOpen, setTodayOpen] = useState(true);
   const [projectsListExpanded, setProjectsListExpanded] = useState(false);
   const [wishlistGroupViews, setWishlistGroupViews] = useState<Record<string, WishlistGroupView>>(
     {},
@@ -2462,20 +2463,21 @@ function DashboardApp() {
       const initialDraft = nextStepEditInitialDraftRef.current;
       const hasNewInput = Boolean(
         nextStepEditDraft.text.trim() ||
-          nextStepEditDraft.trigger.trim() ||
-          nextStepEditDraft.buttonIds.length ||
-          nextStepEditDraft.defaultTimerMinutes.trim() ||
-          nextStepEditDraft.shortTimerMinutes.trim() ||
-          nextStepEditDraft.startNoteTemplate.trim() ||
-          nextStepEditDraft.instructionPath.trim() ||
-          nextStepEditDraft.projectId !== initialDraft?.projectId ||
-          nextStepEditDraft.legacyChoice !== initialDraft?.legacyChoice ||
-          nextStepEditDraft.replacementChoice !== initialDraft?.replacementChoice,
+        nextStepEditDraft.trigger.trim() ||
+        nextStepEditDraft.buttonIds.length ||
+        nextStepEditDraft.defaultTimerMinutes.trim() ||
+        nextStepEditDraft.shortTimerMinutes.trim() ||
+        nextStepEditDraft.startNoteTemplate.trim() ||
+        nextStepEditDraft.instructionPath.trim() ||
+        nextStepEditDraft.projectId !== initialDraft?.projectId ||
+        nextStepEditDraft.legacyChoice !== initialDraft?.legacyChoice ||
+        nextStepEditDraft.replacementChoice !== initialDraft?.replacementChoice,
       );
       const dirty =
         !afterSuccessfulSave &&
         (nextStepEditDraft.mode === "edit"
-          ? Boolean(initialDraft) && JSON.stringify(nextStepEditDraft) !== JSON.stringify(initialDraft)
+          ? Boolean(initialDraft) &&
+            JSON.stringify(nextStepEditDraft) !== JSON.stringify(initialDraft)
           : hasNewInput);
       if (dirty) {
         requestDiscardConfirmation(() => {
@@ -2786,43 +2788,43 @@ function DashboardApp() {
   }, [pauseToast]);
 
   const showToast = useCallback((tone: ToastTone, message: string, options: ToastOptions = {}) => {
-      toastIdRef.current += 1;
-      const id = toastIdRef.current;
-      const durationMs =
-        options.durationMs ??
-        (options.onAction ? TOAST_UNDO_TIMEOUT_MS : tone === "error" ? 8000 : TOAST_TIMEOUT_MS);
-      setToasts((current) => {
-        if (
-          !options.onAction &&
-          current.some(
-            (toast) =>
+    toastIdRef.current += 1;
+    const id = toastIdRef.current;
+    const durationMs =
+      options.durationMs ??
+      (options.onAction ? TOAST_UNDO_TIMEOUT_MS : tone === "error" ? 8000 : TOAST_TIMEOUT_MS);
+    setToasts((current) => {
+      if (
+        !options.onAction &&
+        current.some(
+          (toast) =>
             !toast.leaving && !toast.onAction && toast.tone === tone && toast.message === message,
-          )
-        ) {
-          return current;
-        }
-        const visibleCount = current.filter((toast) => !toast.queued && !toast.leaving).length;
-        const next: Toast = {
-          id,
-          tone,
-          message,
-          detail: options.detail,
-          actionLabel: options.actionLabel,
-          onAction: options.onAction,
-          actionPending: false,
-          durationMs,
-          queued: visibleCount >= 3,
-          paused: false,
-          leaving: false,
-        };
-        const combined = [...current, next];
-        if (combined.length <= 24) return combined;
-        const removableIndex = combined.findIndex((toast) => toast.queued && !toast.onAction);
-        return removableIndex >= 0
-          ? combined.filter((_, index) => index !== removableIndex)
-          : combined;
-      });
-      return id;
+        )
+      ) {
+        return current;
+      }
+      const visibleCount = current.filter((toast) => !toast.queued && !toast.leaving).length;
+      const next: Toast = {
+        id,
+        tone,
+        message,
+        detail: options.detail,
+        actionLabel: options.actionLabel,
+        onAction: options.onAction,
+        actionPending: false,
+        durationMs,
+        queued: visibleCount >= 3,
+        paused: false,
+        leaving: false,
+      };
+      const combined = [...current, next];
+      if (combined.length <= 24) return combined;
+      const removableIndex = combined.findIndex((toast) => toast.queued && !toast.onAction);
+      return removableIndex >= 0
+        ? combined.filter((_, index) => index !== removableIndex)
+        : combined;
+    });
+    return id;
   }, []);
 
   const runToastAction = async (id: number) => {
@@ -2983,17 +2985,17 @@ function DashboardApp() {
   }, [applyWeeklyReview, sessionDateScope, sessionProjectFilter, sessionSearch, showToast]);
 
   const refreshNextStepSuggestions = useCallback(async (projectId: string | null | undefined) => {
-      if (!projectId) {
-        setProjectNextStepSuggestions([]);
-        return;
-      }
+    if (!projectId) {
+      setProjectNextStepSuggestions([]);
+      return;
+    }
 
-      try {
-        const suggestions = await loadNextStepSuggestions(projectId);
-        setProjectNextStepSuggestions(suggestions);
-      } catch {
-        setProjectNextStepSuggestions([]);
-      }
+    try {
+      const suggestions = await loadNextStepSuggestions(projectId);
+      setProjectNextStepSuggestions(suggestions);
+    } catch {
+      setProjectNextStepSuggestions([]);
+    }
   }, []);
 
   const refreshConfig = useCallback(
@@ -3051,7 +3053,7 @@ function DashboardApp() {
       if (active) void refreshConfig();
     })();
     const unlisten = listenForConfigChanges(() => {
-      window.setTimeout(() => void refreshConfig(true), 250);
+      window.setTimeout(() => void refreshConfig(), 250);
     });
     const notesSaveTimers = notesSaveTimersRef.current;
     const toastTimers = toastTimersRef.current;
@@ -3506,7 +3508,6 @@ function DashboardApp() {
         defaultTimerMinutes: minutes,
       },
     });
-    showToast("ok", `通常タイマーを${minutes}分にしました`);
   };
 
   const openRuntimeDataFolder = useCallback(async () => {
@@ -3677,8 +3678,8 @@ function DashboardApp() {
       JSON.stringify(buttonEditDraft) !== JSON.stringify(buttonEditInitialDraft);
     if (hasChanges) {
       requestDiscardConfirmation(() => {
-          setButtonEditDraft(null);
-          setButtonEditInitialDraft(null);
+        setButtonEditDraft(null);
+        setButtonEditInitialDraft(null);
       });
       return;
     }
@@ -3693,25 +3694,28 @@ function DashboardApp() {
     window.requestAnimationFrame(() => opener?.focus());
   }, []);
 
-  const closeInboxAddDialog = useCallback((afterSuccessfulSave = false) => {
-    if (inboxAddSavingRef.current) return;
-    const dirty = Boolean(
-      inboxDraft.trim() || inboxAddProjectId !== inboxAddInitialProjectIdRef.current,
-    );
-    if (!afterSuccessfulSave && dirty) {
-      requestDiscardConfirmation(() => closeInboxAddDialog(true));
-      return;
-    }
-    const opener = inboxAddOpenerRef.current;
-    inboxAddOpenerRef.current = null;
-    setInboxAddOpen(false);
-    setInboxDraft("");
-    setInboxAddProjectId("");
-    inboxAddInitialProjectIdRef.current = "";
-    setInboxAddError(null);
-    setInboxAddSaving(false);
-    window.requestAnimationFrame(() => opener?.focus());
-  }, [inboxAddProjectId, inboxDraft, requestDiscardConfirmation]);
+  const closeInboxAddDialog = useCallback(
+    (afterSuccessfulSave = false) => {
+      if (inboxAddSavingRef.current) return;
+      const dirty = Boolean(
+        inboxDraft.trim() || inboxAddProjectId !== inboxAddInitialProjectIdRef.current,
+      );
+      if (!afterSuccessfulSave && dirty) {
+        requestDiscardConfirmation(() => closeInboxAddDialog(true));
+        return;
+      }
+      const opener = inboxAddOpenerRef.current;
+      inboxAddOpenerRef.current = null;
+      setInboxAddOpen(false);
+      setInboxDraft("");
+      setInboxAddProjectId("");
+      inboxAddInitialProjectIdRef.current = "";
+      setInboxAddError(null);
+      setInboxAddSaving(false);
+      window.requestAnimationFrame(() => opener?.focus());
+    },
+    [inboxAddProjectId, inboxDraft, requestDiscardConfirmation],
+  );
 
   const closeInboxEditDialog = useCallback(
     (afterSuccessfulSave = false) => {
@@ -4467,35 +4471,40 @@ function DashboardApp() {
 
       const previousConfig = config;
       const weeklyFocusIds = new Set(settingsDraft.weeklyFocusProjectIds);
-      const saved = await persistConfig({
-        ...config,
-        projects: config.projects.map((project) => {
-          if (weeklyFocusIds.has(project.id)) {
-            return { ...project, weeklyFocus: true };
-          }
-          if (project.weeklyFocus === undefined) return project;
-          const nextProject = { ...project };
-          delete nextProject.weeklyFocus;
-          return nextProject;
-        }),
-        settings: {
-          ...config.settings,
-          defaultTimerMinutes,
-          shortTimerMinutes,
-          dayStartHour: Number.isFinite(dayStartHour) ? dayStartHour : config.settings.dayStartHour,
-          focusHotkey: settingsDraft.focusHotkey.trim() || null,
-          launcherHotkey: settingsDraft.launcherHotkey.trim() || null,
-          miniHotkey: settingsDraft.miniHotkey.trim() || null,
-          instructionHotkey: settingsDraft.instructionHotkey.trim() || null,
-          instructionFolders: settingsDraft.instructionFolders,
-          alwaysOnTop: settingsDraft.alwaysOnTop,
-          autoStart: settingsDraft.autoStart,
-          miniMode: settingsDraft.miniMode,
-          restartShortFirst: settingsDraft.restartShortFirst,
-          backupFolder: settingsDraft.backupFolder.trim() || null,
-          backupKeep,
+      const saved = await persistConfig(
+        {
+          ...config,
+          projects: config.projects.map((project) => {
+            if (weeklyFocusIds.has(project.id)) {
+              return { ...project, weeklyFocus: true };
+            }
+            if (project.weeklyFocus === undefined) return project;
+            const nextProject = { ...project };
+            delete nextProject.weeklyFocus;
+            return nextProject;
+          }),
+          settings: {
+            ...config.settings,
+            defaultTimerMinutes,
+            shortTimerMinutes,
+            dayStartHour: Number.isFinite(dayStartHour)
+              ? dayStartHour
+              : config.settings.dayStartHour,
+            focusHotkey: settingsDraft.focusHotkey.trim() || null,
+            launcherHotkey: settingsDraft.launcherHotkey.trim() || null,
+            miniHotkey: settingsDraft.miniHotkey.trim() || null,
+            instructionHotkey: settingsDraft.instructionHotkey.trim() || null,
+            instructionFolders: settingsDraft.instructionFolders,
+            alwaysOnTop: settingsDraft.alwaysOnTop,
+            autoStart: settingsDraft.autoStart,
+            miniMode: settingsDraft.miniMode,
+            restartShortFirst: settingsDraft.restartShortFirst,
+            backupFolder: settingsDraft.backupFolder.trim() || null,
+            backupKeep,
+          },
         },
-      }, true);
+        true,
+      );
       if (!saved) {
         try {
           const restored = await saveConfig(previousConfig);
@@ -5401,8 +5410,8 @@ function DashboardApp() {
     const removeDrop =
       Boolean(
         item &&
-          drag?.hasMoved &&
-          activeTimerRef.current?.sourceId !== todayTimerSourceId(item, drag.index),
+        drag?.hasMoved &&
+        activeTimerRef.current?.sourceId !== todayTimerSourceId(item, drag.index),
       ) &&
       (pointWithinTodayRemoveDropZone(event.clientX, event.clientY) ||
         draggedCardTopWithinTodayRemoveDropZone(
@@ -5612,16 +5621,16 @@ function DashboardApp() {
         : new Set<string>();
       const todayGuidanceActive = Boolean(
         candidate &&
-          current &&
-          current.today.date === drag.dayKey &&
-          current.today.items.length < TODAY_ITEM_LIMIT &&
-          !current.today.items.some((item, index) =>
-            matchingSourceKeys.has(todaySourceKey(item, index)),
-          ) &&
-          !isTimerActiveForSource(
-            [candidate.sourceKey, ...(candidate.sourceAliases ?? [])],
-            candidate.projectId,
-          ),
+        current &&
+        current.today.date === drag.dayKey &&
+        current.today.items.length < TODAY_ITEM_LIMIT &&
+        !current.today.items.some((item, index) =>
+          matchingSourceKeys.has(todaySourceKey(item, index)),
+        ) &&
+        !isTimerActiveForSource(
+          [candidate.sourceKey, ...(candidate.sourceAliases ?? [])],
+          candidate.projectId,
+        ),
       );
       const todayTarget = todayGuidanceActive
         ? todayAdoptionDropTargetFromPoint(event.clientX, event.clientY)
@@ -5636,8 +5645,8 @@ function DashboardApp() {
       );
       const target =
         overBuilder || overWishlist || overToday
-        ? null
-        : projectDropTargetFromPoint(event.clientX, event.clientY);
+          ? null
+          : projectDropTargetFromPoint(event.clientX, event.clientY);
       const placement = target ? resolveProjectDropPlacement(drag.id, target) : undefined;
       setProjectPointerDrag({
         id: drag.id,
@@ -5690,16 +5699,16 @@ function DashboardApp() {
     const todayTarget = todayAdoptionDropTargetFromPoint(event.clientX, event.clientY);
     const canAdoptToday = Boolean(
       candidate &&
-        current &&
-        current.today.date === drag.dayKey &&
-        current.today.items.length < TODAY_ITEM_LIMIT &&
-        !current.today.items.some((item, index) =>
-          matchingSourceKeys.has(todaySourceKey(item, index)),
-        ) &&
-        !isTimerActiveForSource(
-          [candidate.sourceKey, ...(candidate.sourceAliases ?? [])],
-          candidate.projectId,
-        ),
+      current &&
+      current.today.date === drag.dayKey &&
+      current.today.items.length < TODAY_ITEM_LIMIT &&
+      !current.today.items.some((item, index) =>
+        matchingSourceKeys.has(todaySourceKey(item, index)),
+      ) &&
+      !isTimerActiveForSource(
+        [candidate.sourceKey, ...(candidate.sourceAliases ?? [])],
+        candidate.projectId,
+      ),
     );
     if (candidate && todayTarget && canAdoptToday) {
       void addCandidateToToday(candidate, todayTarget.insertionIndex);
@@ -5783,16 +5792,16 @@ function DashboardApp() {
       : new Set<string>();
     const todayGuidanceActive = Boolean(
       candidate &&
-        current &&
-        current.today.date === drag.dayKey &&
-        current.today.items.length < TODAY_ITEM_LIMIT &&
-        !current.today.items.some((item, index) =>
-          matchingSourceKeys.has(todaySourceKey(item, index)),
-        ) &&
-        !isTimerActiveForSource(
-          [candidate.sourceKey, ...(candidate.sourceAliases ?? [])],
-          candidate.projectId,
-        ),
+      current &&
+      current.today.date === drag.dayKey &&
+      current.today.items.length < TODAY_ITEM_LIMIT &&
+      !current.today.items.some((item, index) =>
+        matchingSourceKeys.has(todaySourceKey(item, index)),
+      ) &&
+      !isTimerActiveForSource(
+        [candidate.sourceKey, ...(candidate.sourceAliases ?? [])],
+        candidate.projectId,
+      ),
     );
     const todayTarget = todayGuidanceActive
       ? todayAdoptionDropTargetFromPoint(event.clientX, event.clientY)
@@ -5873,16 +5882,16 @@ function DashboardApp() {
     const todayTarget = todayAdoptionDropTargetFromPoint(event.clientX, event.clientY);
     const canAdoptToday = Boolean(
       candidate &&
-        current &&
-        current.today.date === drag.dayKey &&
-        current.today.items.length < TODAY_ITEM_LIMIT &&
-        !current.today.items.some((item, index) =>
-          matchingSourceKeys.has(todaySourceKey(item, index)),
-        ) &&
-        !isTimerActiveForSource(
-          [candidate.sourceKey, ...(candidate.sourceAliases ?? [])],
-          candidate.projectId,
-        ),
+      current &&
+      current.today.date === drag.dayKey &&
+      current.today.items.length < TODAY_ITEM_LIMIT &&
+      !current.today.items.some((item, index) =>
+        matchingSourceKeys.has(todaySourceKey(item, index)),
+      ) &&
+      !isTimerActiveForSource(
+        [candidate.sourceKey, ...(candidate.sourceAliases ?? [])],
+        candidate.projectId,
+      ),
     );
     if (candidate && todayTarget && canAdoptToday) {
       void addCandidateToToday(candidate, todayTarget.insertionIndex);
@@ -6054,11 +6063,11 @@ function DashboardApp() {
       : new Set<string>();
     const canAdopt = Boolean(
       candidate &&
-        current &&
-        current.today.date === drag.dayKey &&
-        current.today.items.length < TODAY_ITEM_LIMIT &&
-        !current.today.items.some((item, index) => matchingKeys.has(todaySourceKey(item, index))) &&
-        !isTodayBuilderCandidateActive(candidate),
+      current &&
+      current.today.date === drag.dayKey &&
+      current.today.items.length < TODAY_ITEM_LIMIT &&
+      !current.today.items.some((item, index) => matchingKeys.has(todaySourceKey(item, index))) &&
+      !isTodayBuilderCandidateActive(candidate),
     );
     const todayTarget = canAdopt
       ? todayAdoptionDropTargetFromPoint(event.clientX, event.clientY)
@@ -6239,7 +6248,7 @@ function DashboardApp() {
           return next;
         });
         setContextMenu(null);
-        showToast("ok", `${button.label} を削除しました`);
+        showToast("danger", `${button.label} を削除しました`);
         return true;
       },
     });
@@ -6321,7 +6330,7 @@ function DashboardApp() {
           return next;
         });
         setContextMenu(null);
-        showToast("ok", `${cleanGroupName} を削除しました`);
+        showToast("danger", `${cleanGroupName} を削除しました`);
         return true;
       },
     });
@@ -6552,11 +6561,13 @@ function DashboardApp() {
 
   const openButtonEditDialog = (button: LauncherButton) => {
     setContextMenu(null);
+    const group = buttonGroupName(button);
     const draft: ButtonEditDraft = {
       id: button.id,
       label: button.label,
-      icon: button.icon ?? "",
-      group: buttonGroupName(button),
+      groupMode: "existing",
+      existingGroup: group,
+      newGroup: "",
       showInSidebar: showButtonInSidebar(button),
       showInOverlay: showButtonInOverlay(button),
       overlayPageId: overlayPages.some((page) => page.id === button.overlayPageId)
@@ -6570,7 +6581,7 @@ function DashboardApp() {
     setButtonEditInitialDraft(draft);
   };
 
-  const saveButtonEdit = () => {
+  const saveButtonEdit = async () => {
     if (!config || !buttonEditDraft) return;
     const label = buttonEditDraft.label.trim();
     if (!label) {
@@ -6587,7 +6598,14 @@ function DashboardApp() {
     const originalButton = config.buttons.find((button) => button.id === buttonEditDraft.id);
     const actionsChanged =
       JSON.stringify(originalButton?.actions ?? []) !== JSON.stringify(actions);
-    const group = buttonEditDraft.group.trim();
+    const group =
+      buttonEditDraft.groupMode === "existing"
+        ? buttonEditDraft.existingGroup.trim()
+        : buttonEditDraft.newGroup.trim();
+    if (buttonEditDraft.groupMode === "new" && groupNames.includes(group)) {
+      showToast("warn", `${group} はすでにあります`);
+      return;
+    }
     const aliases = aliasesInputToList(buttonEditDraft.aliasesInput);
     const description = normalizeOptionalText(buttonEditDraft.description);
     const nextButtons = config.buttons.map((button) =>
@@ -6595,7 +6613,6 @@ function DashboardApp() {
         ? {
             ...button,
             label,
-            icon: buttonEditDraft.icon.trim() || undefined,
             group: group && group !== DEFAULT_BUTTON_GROUP ? group : undefined,
             showInSidebar: buttonEditDraft.showInSidebar,
             showInOverlay: buttonEditDraft.showInOverlay,
@@ -6637,14 +6654,15 @@ function DashboardApp() {
               : {}),
           }));
 
-    setButtonEditDraft(null);
-    setButtonEditInitialDraft(null);
-    void persistConfig({
+    const saved = await persistConfig({
       ...config,
       groups: nextGroups,
       buttons: nextButtons,
       projects: nextProjects,
     });
+    if (!saved) return;
+    setButtonEditDraft(null);
+    setButtonEditInitialDraft(null);
     const updatedButton = nextButtons.find((button) => button.id === buttonEditDraft.id);
     if (updatedButton && actionsChanged) {
       void refreshButtonIcon(updatedButton, true);
@@ -7138,8 +7156,8 @@ function DashboardApp() {
           : null;
         const projectSourceKey =
           completedTimer.projectId && completedTimer.sourceId === completedTimer.projectId
-          ? `project:${completedTimer.projectId}`
-          : null;
+            ? `project:${completedTimer.projectId}`
+            : null;
         const targetSourceKey = directSourceKey ?? projectSourceKey;
         const completedEntry = current.today.items
           .map((item, index) => ({ item, sourceKey: todaySourceKey(item, index) }))
@@ -7328,9 +7346,7 @@ function DashboardApp() {
         });
       } else if (saved) {
         seenCompletionFeedbackRef.current.delete(`victory:${current.today.date}`);
-        setCompletionFeedback((feedback) =>
-          feedback?.kind === "victory" ? null : feedback,
-        );
+        setCompletionFeedback((feedback) => (feedback?.kind === "victory" ? null : feedback));
       }
     });
   };
@@ -7399,8 +7415,8 @@ function DashboardApp() {
     }
     // Keep legacy timer identities stable when an earlier card is removed.
     const stableItems = current.today.items.map((item, itemIndex) =>
-        item.sourceKey?.trim() ? item : { ...item, sourceKey: todaySourceKey(item, itemIndex) },
-      );
+      item.sourceKey?.trim() ? item : { ...item, sourceKey: todaySourceKey(item, itemIndex) },
+    );
     const removedItem = stableItems[index];
     const operationId = createStableId();
     const previousSourceKey = index > 0 ? (stableItems[index - 1]?.sourceKey ?? null) : null;
@@ -7517,8 +7533,8 @@ function DashboardApp() {
     const current = configRef.current;
     if (sourceEditBusyRef.current !== null) return "保存処理が完了してから変更してください";
     if (
-        current &&
-        activeTimerRef.current &&
+      current &&
+      activeTimerRef.current &&
       timerSourceKey(current, activeTimerRef.current.sourceId) === key
     ) {
       return SOURCE_EDIT_TIMER_REASON;
@@ -7818,21 +7834,21 @@ function DashboardApp() {
     delete selectionMutationTokens[candidate.sourceKey];
     const items = [...current.today.items];
     items.splice(Math.min(Math.max(0, insertionIndex ?? items.length), items.length), 0, {
-        text: candidate.text,
-        done: false,
-        sourceKey: candidate.sourceKey,
+      text: candidate.text,
+      done: false,
+      sourceKey: candidate.sourceKey,
       ...(candidate.sourceGenerationId ? { sourceGenerationId: candidate.sourceGenerationId } : {}),
-        ...(candidate.trigger ? { trigger: candidate.trigger } : {}),
-        ...(candidate.projectId ? { projectId: candidate.projectId } : {}),
-        ...(candidate.buttonIds?.length ? { buttonIds: [...candidate.buttonIds] } : {}),
-        ...(candidate.instructionPath
-          ? {
-              instructionPath: candidate.instructionPath,
-              instructionOpenOnStart: candidate.instructionOpenOnStart !== false,
-            }
-          : {}),
-        defaultTimerMinutes: candidate.defaultTimerMinutes,
-        shortTimerMinutes: candidate.shortTimerMinutes,
+      ...(candidate.trigger ? { trigger: candidate.trigger } : {}),
+      ...(candidate.projectId ? { projectId: candidate.projectId } : {}),
+      ...(candidate.buttonIds?.length ? { buttonIds: [...candidate.buttonIds] } : {}),
+      ...(candidate.instructionPath
+        ? {
+            instructionPath: candidate.instructionPath,
+            instructionOpenOnStart: candidate.instructionOpenOnStart !== false,
+          }
+        : {}),
+      defaultTimerMinutes: candidate.defaultTimerMinutes,
+      shortTimerMinutes: candidate.shortTimerMinutes,
     });
     const savePromise = persistConfig({
       ...current,
@@ -8214,9 +8230,9 @@ function DashboardApp() {
           "ok",
           project.nextStep?.text.trim() ? "次の一手を変更しました" : "次の一手に設定しました",
           {
-          detail: project.nextStep?.text.trim()
-            ? "元の次の一手はやりたいことへ戻しました"
-            : undefined,
+            detail: project.nextStep?.text.trim()
+              ? "元の次の一手はやりたいことへ戻しました"
+              : undefined,
           },
         );
       }
@@ -8388,9 +8404,7 @@ function DashboardApp() {
     const nextStep: LauncherNextStep = {
       text,
       ...(existing ? { generationId: existing.generationId } : { generationId: createStableId() }),
-      ...(existing?.sourceWishlistId
-        ? { sourceWishlistId: existing.sourceWishlistId }
-        : {}),
+      ...(existing?.sourceWishlistId ? { sourceWishlistId: existing.sourceWishlistId } : {}),
       buttonIds: [...draft.buttonIds],
       ...(draft.trigger.trim() ? { trigger: draft.trigger.trim() } : {}),
       ...(defaultTimerMinutes ? { defaultTimerMinutes } : {}),
@@ -8953,11 +8967,11 @@ function DashboardApp() {
     const cancelPointerDrag = (event?: globalThis.KeyboardEvent) => {
       if (event && event.key !== "Escape") return;
       const hadDrag = Boolean(
-          todayPointerDragRef.current ||
-          projectPointerDragRef.current ||
-          inboxPointerDragRef.current ||
-          wishlistGroupPointerDragRef.current ||
-          todayBuilderPointerDragRef.current,
+        todayPointerDragRef.current ||
+        projectPointerDragRef.current ||
+        inboxPointerDragRef.current ||
+        wishlistGroupPointerDragRef.current ||
+        todayBuilderPointerDragRef.current,
       );
       if (!hadDrag) return;
       event?.preventDefault();
@@ -9141,9 +9155,7 @@ function DashboardApp() {
         </div>
         <button
           className="todayPickerAddButton mainActionButton mainActionButton--gold"
-          disabled={
-            todayPickerSaving || todayPickerDraftItems.length >= TODAY_ITEM_LIMIT
-          }
+          disabled={todayPickerSaving || todayPickerDraftItems.length >= TODAY_ITEM_LIMIT}
           onClick={() => void chooseTodayCandidate(candidate)}
           title={
             todayPickerDraftItems.length >= TODAY_ITEM_LIMIT
@@ -9368,7 +9380,7 @@ function DashboardApp() {
     ? doNowRestartPreferred
       ? "14日以上空いているため、短時間から再開できます"
       : doNowCandidateIndex > 0
-        ? "固定ルール順の別候補です"
+        ? "今の状況から選んだ別の候補です"
         : doNowSelection.candidate.reason === "noToday"
           ? doNowSelection.project.weeklyFocus === true
             ? "今週の重点で、今日はまだ取り組んでいません"
@@ -9584,7 +9596,9 @@ function DashboardApp() {
           type="button"
         >
           <span className="launcherOpenButtonLabel">
-            <UiIcon name="window" size={16} />
+            <span aria-hidden="true" className="launcherOpenButtonIcon">
+              <UiIcon name="book" size={16} />
+            </span>
             <span>辞書を開く</span>
           </span>
           <kbd>{config?.settings.launcherHotkey?.trim() || "Ctrl+K"}</kbd>
@@ -10283,551 +10297,208 @@ function DashboardApp() {
 
         <div className="mainScrollArea app-scrollbar" id="main-content" ref={mainScrollAreaRef}>
           <div className="mainScrollContent">
-          {banner && (
-            <section className="banner">
-              <span>{banner}</span>
-              {backupPath && (
-                <button
-                  className="bannerButton mainActionButton mainActionButton--neutral"
-                  onClick={openBackupFolder}
-                  type="button"
-                >
-                  バックアップから復元: フォルダを開く
-                </button>
-              )}
-            </section>
-          )}
-
-          {activeView === "main" && weeklyReviewBannerOpen && (
-            <section className="weeklyReviewBanner" aria-label="週次ふりかえりの案内">
-              <span>先週のふりかえりが見られます</span>
-              <div>
-                <button
-                  className="weeklyReviewBannerPrimary mainActionButton mainActionButton--neutral"
-                  onClick={() => {
-                    setWeeklyReviewBannerOpen(false);
-                    setActiveView("records");
-                  }}
-                  type="button"
-                >
-                  見る
-                </button>
-                <button onClick={() => setWeeklyReviewBannerOpen(false)} type="button">
-                  閉じる
-                </button>
-              </div>
-            </section>
-          )}
-
-          {activeView === "records" ? (
-            <RecordsView
-              allSessions={recordsAllSessions}
-              config={config}
-              filteredSessions={sessionEntries}
-              notesHistory={notesHistory}
-              onAddSession={openManualSessionDialog}
-              onBack={() => setActiveView("main")}
-              onDateScopeChange={setSessionDateScope}
-              onEditProject={openProjectEditDialog}
-              onHistoryNoteBlur={flushHistoryNotesSave}
-              onHistoryNoteChange={updateHistoryNoteText}
-              onMarkReviewed={(projectId) => void markNextStepReviewed(projectId)}
-              onOpenSessionMenu={(session, x, y, opener) =>
-                openContextMenu({ kind: "session", session }, x, y, opener)
-              }
-              onProjectFilterChange={setSessionProjectFilter}
-              onSearchChange={setSessionSearch}
-              onTryShort={(project) => void tryStaleNextStepForShortTime(project)}
-              onWeeklyFocusChange={setWeeklyReviewProjectFocus}
-              sessionDateScope={sessionDateScope}
-              sessionProjectFilter={sessionProjectFilter}
-              sessionSearch={sessionSearch}
-              sessionSummary={sessionSummary}
-              staleNextStepProjects={staleNextStepProjects}
-              weekSessions={recordsWeekSessions}
-              weeklyReview={weeklyReview}
-              weeklyReviewProjects={weeklyReviewProjects}
-            />
-          ) : (
-            <>
-              <section
-                className={[
-                  "victoryBar",
-                  victoryDone ? "victoryBar--done" : "",
-                  completionFeedback?.kind === "victory" ? "victoryBar--reward" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                aria-label="今日の勝利条件"
-              >
-                {completionFeedback?.kind === "victory" && (
-                  <span aria-hidden="true" className="victoryRewardSweep" />
-                )}
-                <span className="victoryIcon" aria-hidden="true">
-                  🏆
-                </span>
-                <input
-                  aria-label="勝利条件を達成"
-                  checked={victoryDone}
-                  className="check victoryCheck"
-                  disabled={!victoryText}
-                  onChange={toggleVictoryDone}
-                  type="checkbox"
-                />
-                <div className="victoryContent">
-                  <span className="victoryLabel">今日の勝利条件</span>
-                  {victoryEditing || !victoryText ? (
-                    <>
-                      <input
-                        aria-label="今日の勝利条件"
-                          className={
-                            victoryDone ? "victoryInput victoryInput--done" : "victoryInput"
-                          }
-                        maxLength={90}
-                        onBlur={() => setVictoryEditing(false)}
-                        onChange={(event) => void updateVictoryText(event.target.value)}
-                        onKeyDown={handleVictoryKeyDown}
-                        placeholder="今日はこれができれば勝ち"
-                        ref={victoryInputRef}
-                        value={config.today.victory.text}
-                      />
-                      {!victoryText && victorySuggestions.length > 0 && (
-                        <div className="victorySuggestions" aria-label="勝利条件の候補">
-                          {victorySuggestions.map((suggestion) => (
-                            <button
-                              className="suggestionChip"
-                              key={suggestion}
-                              onMouseDown={(event) => event.preventDefault()}
-                              onClick={() => applyVictorySuggestion(suggestion)}
-                              type="button"
-                            >
-                              {suggestion}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <button
-                      className={
-                        victoryDone
-                          ? "victoryTextButton victoryTextButton--done"
-                          : "victoryTextButton"
-                      }
-                      onClick={() => setVictoryEditing(true)}
-                      type="button"
-                    >
-                      {config.today.victory.text}
-                    </button>
-                  )}
-                </div>
-                {victoryDone ? (
-                  <span
-                    className={
-                      completionFeedback?.kind === "victory"
-                        ? "victoryBadge victoryBadge--reward"
-                        : "victoryBadge"
-                    }
-                    role={completionFeedback?.kind === "victory" ? "status" : undefined}
+            {banner && (
+              <section className="banner">
+                <span>{banner}</span>
+                {backupPath && (
+                  <button
+                    className="bannerButton mainActionButton mainActionButton--neutral"
+                    onClick={openBackupFolder}
+                    type="button"
                   >
-                    ✓ 今日の勝利、達成
-                  </span>
-                ) : null}
-              </section>
-
-              <section
-                className="doNowBand"
-                aria-labelledby="do-now-title"
-                data-skip-target="main"
-                tabIndex={-1}
-              >
-                {doNowSelection ? (
-                  <div
-                    className={
-                      completionFeedback?.kind === "doNow"
-                        ? "doNowContent doNowContent--reward"
-                        : "doNowContent"
-                    }
-                    data-project-color={resolveProjectColorId(
-                      doNowSelection.project.id,
-                      doNowSelection.project.colorId,
-                    )}
-                    onContextMenu={(event) => {
-                      if (doNowCandidates.length <= 1) return;
-                      event.preventDefault();
-                      event.stopPropagation();
-                      openContextMenu(
-                        { kind: "doNow" },
-                        event.clientX,
-                        event.clientY,
-                        event.currentTarget,
-                      );
-                    }}
-                    onKeyDown={(event) => {
-                      if (doNowCandidates.length > 1) {
-                        openContextMenuFromKeyboard(event, { kind: "doNow" });
-                      }
-                    }}
-                    tabIndex={doNowCandidates.length > 1 ? 0 : undefined}
-                  >
-                    <div className="doNowCopy">
-                      <div className="doNowKicker">
-                        <h2 id="do-now-title">
-                          <span aria-hidden="true" className="doNowStatusDot" />
-                          今やる一手
-                        </h2>
-                        <span className="doNowProjectChip">
-                          <ProjectIdentity
-                            colorId={doNowSelection.project.colorId}
-                            compact
-                            name={doNowSelection.project.name}
-                            projectId={doNowSelection.project.id}
-                          />
-                        </span>
-                        {isDoNowRunning && activeTimer && (
-                          <span
-                            className={
-                              activeTimer.paused
-                                ? "runningBadge runningBadge--paused"
-                                : "runningBadge runningBadge--running"
-                            }
-                          >
-                            {activeTimer.paused
-                              ? "一時停止"
-                              : activeTimer.mode === "measure"
-                                ? "計測中"
-                                : "実行中"}
-                          </span>
-                        )}
-                      </div>
-                      <strong title={doNowSelection.project.nextStep?.text}>
-                        {doNowSelection.project.nextStep?.text}
-                      </strong>
-                      <div className="doNowMeta">
-                        <span className="doNowMetaItem doNowMetaTimer">
-                          <UiIcon name="clock" size={16} /> 通常 {doNowDefaultTimerMinutes}分
-                        </span>
-                        {doNowSelection.project.nextStep?.trigger?.trim() && (
-                          <span
-                            className="doNowMetaItem doNowTrigger"
-                            title={doNowSelection.project.nextStep.trigger.trim()}
-                          >
-                            <UiIcon name="external" size={16} />
-                            {doNowSelection.project.nextStep.trigger.trim()}
-                          </span>
-                        )}
-                        <span className="doNowReason">{doNowReason}</span>
-                      </div>
-                      {doNowCandidates.length > 1 && (
-                        <button
-                          className="doNowAlternateButton"
-                          onClick={showNextDoNowCandidate}
-                          type="button"
-                        >
-                          <UiIcon name="refresh" size={16} />
-                            他の一手
-                        </button>
-                      )}
-                    </div>
-                    <div className="doNowFooter">
-                      <div className="doNowActions">
-                        {isDoNowRunning && activeTimer ? (
-                          <>
-                            {activeTimer.mode === "measure" && (
-                              <span className="measureElapsedClock">{timerClock}</span>
-                            )}
-                            <button
-                              aria-label={
-                                activeTimer.paused
-                                  ? "このセッションを再開"
-                                  : "このセッションを一時停止"
-                              }
-                              className="runningPauseButton"
-                              onClick={togglePause}
-                              type="button"
-                            >
-                              <UiIcon name={activeTimer.paused ? "play" : "pause"} size={16} />
-                              {activeTimer.paused ? "再開" : "一時停止"}
-                            </button>
-                            <button
-                              className="runningStopButton"
-                              onClick={() => void finishTimer(activeTimer)}
-                              type="button"
-                            >
-                              <UiIcon name="stop" size={16} /> 終了
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              aria-label={`短時間タイマー${doNowShortTimerMinutes}分で始める`}
-                              className="doNowStartPrimary"
-                              onClick={() => startDoNowProject(doNowSelection.project, "short")}
-                              type="button"
-                            >
-                              <span className="timerStartDuration">
-                                {doNowShortTimerMinutes}分で始める
-                              </span>
-                              <span aria-hidden="true" className="timerStartHoverGlyph">
-                                <UiIcon name="play" size={16} />
-                              </span>
-                            </button>
-                            <button
-                              aria-label={`通常タイマー${doNowDefaultTimerMinutes}分で開始`}
-                              className="doNowStartSecondary"
-                              onClick={() => startDoNowProject(doNowSelection.project, "normal")}
-                              type="button"
-                            >
-                              <span className="timerStartDuration">
-                                通常 {doNowDefaultTimerMinutes}分
-                              </span>
-                              <span aria-hidden="true" className="timerStartHoverGlyph">
-                                <UiIcon name="play" size={16} />
-                              </span>
-                            </button>
-                            <button
-                              aria-label="時間を決めずに計測"
-                              className="doNowMeasureButton"
-                              onClick={() => startDoNowProject(doNowSelection.project, "measure")}
-                              title="時間を決めずに計測"
-                              type="button"
-                            >
-                              <UiIcon name="clock" size={16} />
-                              <span>計測</span>
-                            </button>
-                          </>
-                        )}
-                        {doNowInstructionPath && (
-                          <button
-                            aria-label={`${doNowSelection.project.name}の手順書を開く`}
-                            className="doNowInstructionButton mainActionButton mainActionButton--neutral"
-                            onClick={() => {
-                              void openInstructionWindow({
-                                path: doNowInstructionPath,
-                                focus: true,
-                              }).catch((error) => {
-                                showToast(
-                                  "error",
-                                  `手順書を開けません: ${error instanceof Error ? error.message : String(error)}`,
-                                );
-                              });
-                            }}
-                            type="button"
-                          >
-                            <UiIcon name="book" size={16} /> 手順書
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="doNowHeading">
-                      <h2 id="do-now-title">今やる一手</h2>
-                    </div>
-                    <div className="doNowEmpty">
-                      <div className="doNowEmptyContent">
-                        <strong>
-                          {nextStepSetupProject
-                            ? "次の一手を設定すると、ここに提案されます。"
-                            : "プロジェクトを作り、次の一手を設定すると提案されます。"}
-                        </strong>
-                        <span>
-                          迷ったときに、今の状況から始めやすい「次にやること」を1つだけ提示します。
-                        </span>
-                        <button
-                          className="mainActionButton mainActionButton--gold"
-                          onClick={() =>
-                            nextStepSetupProject
-                              ? openNextStepEditor(nextStepSetupProject)
-                              : openProjectAddDialog()
-                          }
-                          type="button"
-                        >
-                          <UiIcon name="add" size={16} />
-                          {nextStepSetupProject ? "次の一手を設定" : "プロジェクトを追加"}
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                )}
-                {completionFeedback?.kind === "doNow" && (
-                  <div className="doNowCompletionEcho" role="status">
-                    <span className="doNowCompletionCheck" aria-hidden="true">
-                      ✓
-                    </span>
-                    <span>
-                      <strong>{completionFeedback.label}</strong>
-                      <small>一手進みました</small>
-                    </span>
-                  </div>
+                    バックアップから復元: フォルダを開く
+                  </button>
                 )}
               </section>
+            )}
 
-              <section className="focusBand">
-                  <div className="todaySectionBar">
-                  <h2>今日の3件</h2>
-                    <span className="todaySectionCount">{config.today.items.length}件</span>
-                      <span
-                        className={
-                          todayAllCompleted
-                            ? "todayCompletionSummary todayCompletionSummary--complete"
-                            : "todayCompletionSummary"
-                        }
-                      >
-                        {todayCompletedCount} / {config.today.items.length} 完了
-                      </span>
-                    <span className="todaySectionDescription">
-                      今日やると決めたもの。タイマーから開始します。
-                    </span>
+            {activeView === "main" && weeklyReviewBannerOpen && (
+              <section className="weeklyReviewBanner" aria-label="週次ふりかえりの案内">
+                <span>先週のふりかえりが見られます</span>
+                <div>
+                  <button
+                    className="weeklyReviewBannerPrimary mainActionButton mainActionButton--neutral"
+                    onClick={() => {
+                      setWeeklyReviewBannerOpen(false);
+                      setActiveView("records");
+                    }}
+                    type="button"
+                  >
+                    見る
+                  </button>
+                  <button onClick={() => setWeeklyReviewBannerOpen(false)} type="button">
+                    閉じる
+                  </button>
                 </div>
-                <div className="todayGridRegion">
-                <div
+              </section>
+            )}
+
+            {activeView === "records" ? (
+              <RecordsView
+                allSessions={recordsAllSessions}
+                config={config}
+                filteredSessions={sessionEntries}
+                notesHistory={notesHistory}
+                onAddSession={openManualSessionDialog}
+                onBack={() => setActiveView("main")}
+                onDateScopeChange={setSessionDateScope}
+                onEditProject={openProjectEditDialog}
+                onHistoryNoteBlur={flushHistoryNotesSave}
+                onHistoryNoteChange={updateHistoryNoteText}
+                onMarkReviewed={(projectId) => void markNextStepReviewed(projectId)}
+                onOpenSessionMenu={(session, x, y, opener) =>
+                  openContextMenu({ kind: "session", session }, x, y, opener)
+                }
+                onProjectFilterChange={setSessionProjectFilter}
+                onSearchChange={setSessionSearch}
+                onTryShort={(project) => void tryStaleNextStepForShortTime(project)}
+                onWeeklyFocusChange={setWeeklyReviewProjectFocus}
+                sessionDateScope={sessionDateScope}
+                sessionProjectFilter={sessionProjectFilter}
+                sessionSearch={sessionSearch}
+                sessionSummary={sessionSummary}
+                staleNextStepProjects={staleNextStepProjects}
+                weekSessions={recordsWeekSessions}
+                weeklyReview={weeklyReview}
+                weeklyReviewProjects={weeklyReviewProjects}
+              />
+            ) : (
+              <>
+                <section
                   className={[
-                    "todayGrid",
-                    config.today.items.length === 0 ? "todayGrid--empty" : "",
-                    completionFeedback?.kind === "todayAll" ? "todayGrid--allCompleteReward" : "",
-                    todayBuilderPointerDrag?.todayGuidanceActive ||
-                    projectPointerDrag?.todayGuidanceActive ||
-                    inboxPointerDrag?.todayGuidanceActive
-                      ? "todayGrid--dropGuidance"
-                      : "",
-                    todayBuilderPointerDrag?.todayTargetIndicator ||
-                    projectPointerDrag?.todayTargetIndicator ||
-                    inboxPointerDrag?.todayTargetIndicator
-                      ? "todayGrid--dropTarget"
-                      : "",
+                    "victoryBar",
+                    victoryDone ? "victoryBar--done" : "",
+                    completionFeedback?.kind === "victory" ? "victoryBar--reward" : "",
                   ]
                     .filter(Boolean)
                     .join(" ")}
+                  aria-label="今日の勝利条件"
                 >
-                  {(todayBuilderPointerDrag?.todayGuidanceActive ||
-                    projectPointerDrag?.todayGuidanceActive ||
-                    inboxPointerDrag?.todayGuidanceActive) && (
-                    <div aria-hidden="true" className="todayDropGuidanceOverlay">
-                      ↓ ここにドロップして「今日の3件」に追加
-                    </div>
+                  {completionFeedback?.kind === "victory" && (
+                    <span aria-hidden="true" className="victoryRewardSweep" />
                   )}
-                  {config.today.items.length === 0 && (
-                    <div className="todayEmptyState">
-                      <div className="todayEmptyStateContent">
-                        <strong>今日やるものを選びましょう</strong>
-                        <span>次の一手・やりたいことから選べます</span>
-                        <button
-                          className="mainActionButton mainActionButton--gold"
-                          onClick={(event) => openTodayPicker(event.currentTarget)}
-                          type="button"
-                        >
-                          <UiIcon name="add" size={16} />
-                          今日やるものを選ぶ
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  {config.today.items.map((item, index) => {
-                    const timerSourceId = todayTimerSourceId(item, index);
-                    const isRunningTodayItem = activeTimer?.sourceId === timerSourceId;
-                    const project = item.projectId ? projectsById.get(item.projectId) : undefined;
-                    const todayInstructionPath =
-                      item.instructionPath?.trim() || project?.nextStep?.instructionPath?.trim();
-                    const shortMinutes =
-                      item.shortTimerMinutes ??
-                      project?.nextStep?.shortTimerMinutes ??
-                      config.settings.shortTimerMinutes;
-                    const defaultMinutes =
-                      item.defaultTimerMinutes ??
-                      project?.nextStep?.defaultTimerMinutes ??
-                      config.settings.defaultTimerMinutes;
-                    return (
-                      <article
-                        className={[
-                          "todayRow",
-                          todayPointerDrag?.index === index ? "todayRow--dragging" : "",
-                          isRunningTodayItem ? "todayRow--running" : "",
-                          item.done ? "todayRow--complete" : "",
-                          completionFeedback?.kind === "today" &&
-                          completionFeedback.sourceKey === todaySourceKey(item, index)
-                            ? "todayRow--justCompleted"
-                            : "",
-                        ]
-                          .filter(Boolean)
-                          .join(" ")}
-                        data-today-index={index}
-                        data-project-color={
-                          project ? resolveProjectColorId(project.id, project.colorId) : undefined
+                  <span className="victoryIcon" aria-hidden="true">
+                    🏆
+                  </span>
+                  <input
+                    aria-label="勝利条件を達成"
+                    checked={victoryDone}
+                    className="check victoryCheck"
+                    disabled={!victoryText}
+                    onChange={toggleVictoryDone}
+                    type="checkbox"
+                  />
+                  <div className="victoryContent">
+                    <span className="victoryLabel">今日の勝利条件</span>
+                    {victoryEditing || !victoryText ? (
+                      <>
+                        <input
+                          aria-label="今日の勝利条件"
+                          className={
+                            victoryDone ? "victoryInput victoryInput--done" : "victoryInput"
+                          }
+                          maxLength={90}
+                          onBlur={() => setVictoryEditing(false)}
+                          onChange={(event) => void updateVictoryText(event.target.value)}
+                          onKeyDown={handleVictoryKeyDown}
+                          placeholder="今日はこれができれば勝ち"
+                          ref={victoryInputRef}
+                          value={config.today.victory.text}
+                        />
+                        {!victoryText && victorySuggestions.length > 0 && (
+                          <div className="victorySuggestions" aria-label="勝利条件の候補">
+                            {victorySuggestions.map((suggestion) => (
+                              <button
+                                className="suggestionChip"
+                                key={suggestion}
+                                onMouseDown={(event) => event.preventDefault()}
+                                onClick={() => applyVictorySuggestion(suggestion)}
+                                type="button"
+                              >
+                                {suggestion}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <button
+                        className={
+                          victoryDone
+                            ? "victoryTextButton victoryTextButton--done"
+                            : "victoryTextButton"
                         }
-                        key={todaySourceKey(item, index)}
-                        onContextMenu={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          openContextMenu(
-                            { kind: "today", index, itemText: item.text },
-                            event.clientX,
-                            event.clientY,
-                            event.currentTarget,
-                          );
-                        }}
-                        onKeyDown={(event) =>
-                          openContextMenuFromKeyboard(event, {
-                            kind: "today",
-                            index,
-                            itemText: item.text,
-                          })
-                        }
-                        onPointerCancel={cancelTodayPointerDrag}
-                        onPointerDown={(event) => startTodayPointerDrag(event, index)}
-                        onPointerMove={updateTodayPointerDrag}
-                        onPointerUp={finishTodayPointerDrag}
-                        tabIndex={0}
+                        onClick={() => setVictoryEditing(true)}
+                        type="button"
                       >
-                        <button
-                          aria-label={`${item.text || "未入力"}の操作`}
-                          aria-haspopup="menu"
-                          className="sourceRowMenu todayRowMenu"
-                          onClick={(event) => {
-                            const rect = event.currentTarget.getBoundingClientRect();
-                            openContextMenu(
-                              { kind: "today", index, itemText: item.text },
-                              rect.left,
-                              rect.bottom,
-                              event.currentTarget,
-                            );
-                          }}
-                          onPointerDown={(event) => event.stopPropagation()}
-                          title="操作メニュー"
-                          type="button"
-                        >
-                          <span aria-hidden="true">…</span>
-                        </button>
-                        <span
-                          aria-label={item.done ? "今日の分は完了" : "未完了"}
-                          className={
-                            item.done
-                              ? "todayCompletionStatus todayCompletionStatus--complete"
-                              : "todayCompletionStatus"
-                          }
-                          role="status"
-                        >
-                          {item.done ? "✓" : "○"}
-                        </span>
-                        <div
-                          className={
-                            project
-                              ? "todayItemCopy"
-                              : "todayItemCopy todayItemCopy--withoutIdentity"
-                          }
-                        >
-                          {item.projectId && projectsById.has(item.projectId) && (
-                            <span className="todayProjectIdentity">
-                              <ProjectIdentity
-                                colorId={projectsById.get(item.projectId)?.colorId}
-                                compact
-                                name={projectsById.get(item.projectId)?.name ?? ""}
-                                projectId={item.projectId}
-                              />
-                            </span>
-                          )}
-                          {isRunningTodayItem && (
+                        {config.today.victory.text}
+                      </button>
+                    )}
+                  </div>
+                  {victoryDone ? (
+                    <span
+                      className={
+                        completionFeedback?.kind === "victory"
+                          ? "victoryBadge victoryBadge--reward"
+                          : "victoryBadge"
+                      }
+                      role={completionFeedback?.kind === "victory" ? "status" : undefined}
+                    >
+                      ✓ 今日の勝利、達成
+                    </span>
+                  ) : null}
+                </section>
+
+                <section
+                  className="doNowBand"
+                  aria-labelledby="do-now-title"
+                  data-skip-target="main"
+                  tabIndex={-1}
+                >
+                  {doNowSelection ? (
+                    <div
+                      className={
+                        completionFeedback?.kind === "doNow"
+                          ? "doNowContent doNowContent--reward"
+                          : "doNowContent"
+                      }
+                      data-project-color={resolveProjectColorId(
+                        doNowSelection.project.id,
+                        doNowSelection.project.colorId,
+                      )}
+                      onContextMenu={(event) => {
+                        if (doNowCandidates.length <= 1) return;
+                        event.preventDefault();
+                        event.stopPropagation();
+                        openContextMenu(
+                          { kind: "doNow" },
+                          event.clientX,
+                          event.clientY,
+                          event.currentTarget,
+                        );
+                      }}
+                      onKeyDown={(event) => {
+                        if (doNowCandidates.length > 1) {
+                          openContextMenuFromKeyboard(event, { kind: "doNow" });
+                        }
+                      }}
+                      tabIndex={doNowCandidates.length > 1 ? 0 : undefined}
+                    >
+                      <div className="doNowCopy">
+                        <div className="doNowKicker">
+                          <h2 id="do-now-title">
+                            <span aria-hidden="true" className="doNowStatusDot" />
+                            今やる一手
+                          </h2>
+                          <span className="doNowProjectChip">
+                            <ProjectIdentity
+                              colorId={doNowSelection.project.colorId}
+                              compact
+                              name={doNowSelection.project.name}
+                              projectId={doNowSelection.project.id}
+                            />
+                          </span>
+                          {isDoNowRunning && activeTimer && (
                             <span
                               className={
                                 activeTimer.paused
@@ -10842,531 +10513,291 @@ function DashboardApp() {
                                   : "実行中"}
                             </span>
                           )}
-                          <span
-                            className={
-                              item.done
-                                ? "todayTextButton todayTextButton--done"
-                                : "todayTextButton"
-                            }
-                            title={item.text || "未入力"}
-                          >
-                            {item.text || "未入力"}
+                        </div>
+                        <strong title={doNowSelection.project.nextStep?.text}>
+                          {doNowSelection.project.nextStep?.text}
+                        </strong>
+                        <div className="doNowMeta">
+                          <span className="doNowMetaItem doNowMetaTimer">
+                            <UiIcon name="clock" size={16} /> 通常 {doNowDefaultTimerMinutes}分
                           </span>
-                        </div>
-                        <div className="todayCardFooter">
-                          <div className="todayCardSecondaryActions">
-                            {todayInstructionPath && (
-                              <button
-                                aria-label={`${item.text || "未入力"}の手順書を開く`}
-                                className="doNowInstructionButton todayInstructionButton mainActionButton mainActionButton--neutral"
-                                onClick={() => {
-                                  void openInstructionWindow({
-                                    path: todayInstructionPath,
-                                    focus: true,
-                                  }).catch((error) => {
-                                    showToast(
-                                      "error",
-                                      `手順書を開けません: ${error instanceof Error ? error.message : String(error)}`,
-                                    );
-                                  });
-                                }}
-                                onPointerDown={(event) => event.stopPropagation()}
-                                title="手順書を開く"
-                                type="button"
-                              >
-                                <UiIcon name="book" size={16} /> 手順書
-                              </button>
-                            )}
-                            <button
-                              className="todayRemoveButton mainActionButton mainActionButton--neutral"
-                              disabled={isRunningTodayItem}
-                              onClick={() => void removeTodayItem(todaySourceKey(item, index))}
-                              onPointerDown={(event) => event.stopPropagation()}
-                              title={
-                                isRunningTodayItem
-                                  ? "タイマーを停止してから外してください"
-                                  : undefined
-                              }
-                              type="button"
+                          {doNowSelection.project.nextStep?.trigger?.trim() && (
+                            <span
+                              className="doNowMetaItem doNowTrigger"
+                              title={doNowSelection.project.nextStep.trigger.trim()}
                             >
-                              <UiIcon name="back" size={16} />
-                              今日の3件から外す
-                            </button>
-                          </div>
-                          <div className="todayTimerCluster">
-                            <div className="todayTriggerZone">
-                              {todayTriggerEditingIndex === index ? (
-                                <input
-                                  aria-label="いつ・何の後にやる？"
-                                  autoFocus
-                                  className="todayTriggerInput"
-                                  maxLength={EXECUTION_TRIGGER_MAX_CHARS}
-                                  onBlur={cancelTodayTriggerEdit}
-                                  onChange={(event) => setTodayTriggerDraft(event.target.value)}
-                                  onKeyDown={(event) => handleTodayTriggerKeyDown(event, index)}
-                                  onPointerDown={(event) => event.stopPropagation()}
-                                  placeholder="例: 21時 / 夕食後"
-                                  value={todayTriggerDraft}
-                                />
-                              ) : (
-                                <button
-                                  className={
-                                    item.trigger
-                                      ? "todayTriggerButton"
-                                      : "todayTriggerButton todayTriggerButton--empty"
-                                  }
-                                  onClick={() => beginTodayTriggerEdit(index)}
-                                  onPointerDown={(event) => event.stopPropagation()}
-                                  type="button"
-                                >
-                                  {item.trigger ? `${item.trigger} ▸` : "+ きっかけ"}
-                                </button>
-                              )}
-                            </div>
-                            {item.done ? (
-                              <span className="todayCompletedLabel">今日の分は完了</span>
-                            ) : isRunningTodayItem ? (
-                              <div
-                                className={
-                                  activeTimer.mode === "measure"
-                                    ? "todayTimerActions todayTimerActions--running todayTimerActions--measure"
-                                    : "todayTimerActions todayTimerActions--running"
-                                }
-                              >
-                                {activeTimer.mode === "measure" && (
-                                  <span className="measureElapsedClock">{timerClock}</span>
-                                )}
-                                <button
-                                  aria-label={
-                                    activeTimer.paused
-                                      ? "このセッションを再開"
-                                      : "このセッションを一時停止"
-                                  }
-                                  className="runningPauseButton"
-                                  onClick={togglePause}
-                                  title={
-                                    activeTimer.paused
-                                      ? "このセッションを再開"
-                                      : "このセッションを一時停止"
-                                  }
-                                  type="button"
-                                >
-                                    <UiIcon
-                                      name={activeTimer.paused ? "play" : "pause"}
-                                      size={16}
-                                    />
-                                  {activeTimer.paused
-                                    ? "再開"
-                                    : activeTimer.mode === "measure"
-                                      ? "停止"
-                                      : "一時停止"}
-                                </button>
-                                <button
-                                  className="runningStopButton"
-                                  onClick={() => void finishTimer(activeTimer)}
-                                  title="このセッションを終了"
-                                  type="button"
-                                >
-                                  <UiIcon name="stop" size={16} /> 終了
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="todayTimerActions">
-                                <button
-                                  aria-label={`短時間タイマー${shortMinutes}分で開始`}
-                                  className="todayStartButton todayStartButton--short"
-                                  disabled={!item.text.trim()}
-                                  onClick={() =>
-                                    void startTimer(
-                                      timerSourceId,
-                                      item.projectId && projectsById.has(item.projectId)
-                                        ? (projectsById.get(item.projectId)?.name ?? item.text)
-                                        : item.text,
-                                      item.projectId && projectsById.has(item.projectId)
-                                        ? item.projectId
-                                        : null,
-                                      (item.buttonIds ?? []).flatMap(
-                                        (buttonId) => buttonsById.get(buttonId)?.actions ?? [],
-                                      ),
-                                      shortMinutes,
-                                      item.text,
-                                      item.instructionPath,
-                                      item.instructionOpenOnStart,
-                                    )
-                                  }
-                                  title={`短時間タイマー: ${shortMinutes}分`}
-                                  type="button"
-                                >
-                                  <span aria-hidden="true" className="nextStepStartGlyph">
-                                    <UiIcon name="play" size={16} />
-                                  </span>
-                                  <span aria-hidden="true" className="nextStepStartDuration">
-                                    {shortMinutes}分
-                                  </span>
-                                </button>
-                                <button
-                                  aria-label={`通常タイマー${defaultMinutes}分で開始`}
-                                  className="todayStartButton todayStartButton--normal"
-                                  disabled={!item.text.trim()}
-                                  onClick={() =>
-                                    void startTimer(
-                                      timerSourceId,
-                                      item.projectId && projectsById.has(item.projectId)
-                                        ? (projectsById.get(item.projectId)?.name ?? item.text)
-                                        : item.text,
-                                      item.projectId && projectsById.has(item.projectId)
-                                        ? item.projectId
-                                        : null,
-                                      (item.buttonIds ?? []).flatMap(
-                                        (buttonId) => buttonsById.get(buttonId)?.actions ?? [],
-                                      ),
-                                      defaultMinutes,
-                                      item.text,
-                                      item.instructionPath,
-                                      item.instructionOpenOnStart,
-                                    )
-                                  }
-                                  title={`通常タイマー: ${defaultMinutes}分`}
-                                  type="button"
-                                >
-                                  <span aria-hidden="true" className="nextStepStartGlyph">
-                                    <UiIcon name="play" size={16} />
-                                  </span>
-                                  <span aria-hidden="true" className="nextStepStartDuration">
-                                    {defaultMinutes}分
-                                  </span>
-                                </button>
-                                <button
-                                  aria-label="時間を決めずに計測"
-                                  className="todayMeasureButton"
-                                  disabled={!item.text.trim()}
-                                  onClick={() =>
-                                    void startTimer(
-                                      timerSourceId,
-                                      item.projectId && projectsById.has(item.projectId)
-                                        ? (projectsById.get(item.projectId)?.name ?? item.text)
-                                        : item.text,
-                                      item.projectId && projectsById.has(item.projectId)
-                                        ? item.projectId
-                                        : null,
-                                      (item.buttonIds ?? []).flatMap(
-                                        (buttonId) => buttonsById.get(buttonId)?.actions ?? [],
-                                      ),
-                                      undefined,
-                                      item.text,
-                                      item.instructionPath,
-                                      item.instructionOpenOnStart,
-                                      "measure",
-                                    )
-                                  }
-                                  title="時間を決めずに計測"
-                                  type="button"
-                                >
-                                  <UiIcon name="clock" size={16} />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </article>
-                    );
-                  })}
-                  {config.today.items.length > 0 &&
-                    config.today.items.length < TODAY_ITEM_LIMIT &&
-                    !todayPointerDrag && (
-                      <button
-                        className="todayPickerEntry"
-                        onClick={(event) => openTodayPicker(event.currentTarget)}
-                        type="button"
-                      >
-                        <span className="todayPickerEntryVisual">
-                          <UiIcon name="add" size={16} />
-                          今日やるものを選ぶ
-                        </span>
-                      </button>
-                    )}
-                  {todayPointerDrag?.targetIndicator && (
-                    <div
-                      aria-hidden="true"
-                      className="todayDropIndicator"
-                      style={todayPointerDrag.targetIndicator}
-                    />
-                  )}
-                  {todayPointerDrag &&
-                    (() => {
-                      const draggedItem = config.today.items[todayPointerDrag.index];
-                      if (!draggedItem) return null;
-                      const draggedProject = draggedItem.projectId
-                        ? projectsById.get(draggedItem.projectId)
-                        : undefined;
-                      return (
-                        <div
-                          aria-hidden="true"
-                          className="todayDragGhost"
-                          data-project-color={
-                            draggedProject
-                              ? resolveProjectColorId(draggedProject.id, draggedProject.colorId)
-                              : undefined
-                          }
-                          style={{
-                            height: todayPointerDrag.height,
-                            left: todayPointerDrag.pointerX - todayPointerDrag.offsetX,
-                            top: todayPointerDrag.pointerY - todayPointerDrag.offsetY,
-                            width: todayPointerDrag.width,
-                          }}
-                        >
-                          {draggedProject && (
-                            <span className="todayProjectIdentity">
-                              <ProjectIdentity
-                                colorId={draggedProject.colorId}
-                                compact
-                                name={draggedProject.name}
-                                projectId={draggedProject.id}
-                              />
+                              <UiIcon name="external" size={16} />
+                              {doNowSelection.project.nextStep.trigger.trim()}
                             </span>
                           )}
-                          <strong>{draggedItem.text || "未入力"}</strong>
+                          <span className="doNowReason">{doNowReason}</span>
                         </div>
-                      );
-                    })()}
-                </div>
-
-                {todayPointerDrag && (
-                  <div
-                    aria-disabled={!todayPointerDrag.removeEligible}
-                    className={[
-                      "todayRemoveDropZone",
-                      todayPointerDrag.removeTargetActive ? "todayRemoveDropZone--active" : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                  >
-                    <span>↓ ここにドロップして今日の3件から外す</span>
-                  </div>
-                )}
-                </div>
-
-                {completionFeedback?.kind === "todayAll" && (
-                  <div className="todayAllCompletionReward" role="status">
-                    <span aria-hidden="true">✓</span>
-                    今日の3件、完了！
-                  </div>
-                )}
-
-                {allTodayItemsCompleted && (
-                  <div className="todayNextBatch">
-                    <button
-                      className="secondaryButton mainActionButton mainActionButton--neutral"
-                      onClick={() => void startNextTodayBatch()}
-                      type="button"
-                    >
-                      <UiIcon name="add" size={16} />
-                      次の3件を選ぶ
-                    </button>
-                    <span>まだやりたいときだけ、次の枠を作れます。</span>
-                  </div>
-                )}
-              </section>
-
-              {legacyTodayBuilderVisible() && (
-              <section
-                className={[
-                  "todayBuilderBand",
-                  builderRestoreGuidanceActive ? "todayBuilderBand--restoreTarget" : "",
-                  builderRestoreTargetActive ? "todayBuilderBand--restoreHover" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                data-today-builder-drop-target
-              >
-                <div
-                  className="disclosureHeader todayBuilderHeader"
-                  onContextMenu={(event) => {
-                    event.preventDefault();
-                    openContextMenu(
-                      { kind: "todayBuilderBar" },
-                      event.clientX,
-                      event.clientY,
-                      event.currentTarget,
-                    );
-                  }}
-                  onKeyDown={(event) =>
-                    openContextMenuFromKeyboard(event, { kind: "todayBuilderBar" })
-                  }
-                  onClick={(event) => toggleDisclosureFromBar(event, toggleTodayBuilder)}
-                  tabIndex={0}
-                >
-                  <button
-                    aria-expanded={todayBuilderOpen}
-                    className="disclosure todayBuilderDisclosure"
-                    onClick={toggleTodayBuilder}
-                    type="button"
-                  >
-                        <UiIcon
-                          name={todayBuilderOpen ? "chevronDown" : "chevronRight"}
-                          size={16}
-                        />
-                    <span className="disclosureLabel">
-                      <strong>今日を組み立てる</strong>
-                    </span>
-                  </button>
-                  <span className="disclosureCount">{todayBuilderCandidates.length}件</span>
-                  <span className="disclosureDescription">
-                    次の一手・やりたいことから、今日やるものを選ぶ
-                  </span>
-                </div>
-
-                {builderRestoreGuidanceActive && (
-                  <div
-                    className={
-                      builderRestoreTargetActive
-                        ? "todayBuilderRestoreDropZone todayBuilderRestoreDropZone--active"
-                        : "todayBuilderRestoreDropZone"
-                    }
-                  >
-                    <span aria-hidden="true">↓</span>
-                    <span>
-                      {todayPointerDrag?.removeEligible
-                        ? "ここにドロップして今日の3件から外す"
-                        : "ここにドロップして今日を組み立てるに入れる"}
-                    </span>
-                  </div>
-                )}
-                {todayBuilderOpen && (
-                  <div className="todayBuilderBody">
-                    {todayBuilderCandidates.length === 0 ? (
-                      <div className="sectionEmptyActions sectionEmptyActions--sources">
-                          <span>
-                            候補はまだありません。次の一手か、やりたいことを登録できます。
-                          </span>
-                        <div>
+                        {doNowCandidates.length > 1 && (
                           <button
-                            className="mainActionButton mainActionButton--neutral"
-                            onClick={() => focusCandidateSource("project")}
+                            className="doNowAlternateButton"
+                            onClick={showNextDoNowCandidate}
                             type="button"
                           >
-                            次の一手へ
+                            <UiIcon name="refresh" size={16} />
+                            他の一手
                           </button>
+                        )}
+                      </div>
+                      <div className="doNowFooter">
+                        <div className="doNowActions">
+                          {isDoNowRunning && activeTimer ? (
+                            <>
+                              {activeTimer.mode === "measure" && (
+                                <span className="measureElapsedClock">{timerClock}</span>
+                              )}
+                              <button
+                                aria-label={
+                                  activeTimer.paused
+                                    ? "このセッションを再開"
+                                    : "このセッションを一時停止"
+                                }
+                                className="runningPauseButton"
+                                onClick={togglePause}
+                                type="button"
+                              >
+                                <UiIcon name={activeTimer.paused ? "play" : "pause"} size={16} />
+                                {activeTimer.paused ? "再開" : "一時停止"}
+                              </button>
+                              <button
+                                className="runningStopButton"
+                                onClick={() => void finishTimer(activeTimer)}
+                                type="button"
+                              >
+                                <UiIcon name="stop" size={16} /> 終了
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                aria-label={`短時間タイマー${doNowShortTimerMinutes}分で始める`}
+                                className="doNowStartPrimary"
+                                onClick={() => startDoNowProject(doNowSelection.project, "short")}
+                                type="button"
+                              >
+                                <span className="timerStartDuration">
+                                  {doNowShortTimerMinutes}分で始める
+                                </span>
+                                <span aria-hidden="true" className="timerStartHoverGlyph">
+                                  <UiIcon name="play" size={16} />
+                                </span>
+                              </button>
+                              <button
+                                aria-label={`通常タイマー${doNowDefaultTimerMinutes}分で開始`}
+                                className="doNowStartSecondary"
+                                onClick={() => startDoNowProject(doNowSelection.project, "normal")}
+                                type="button"
+                              >
+                                <span className="timerStartDuration">
+                                  通常 {doNowDefaultTimerMinutes}分
+                                </span>
+                                <span aria-hidden="true" className="timerStartHoverGlyph">
+                                  <UiIcon name="play" size={16} />
+                                </span>
+                              </button>
+                              <button
+                                aria-label="時間を決めずに計測"
+                                className="doNowMeasureButton"
+                                onClick={() => startDoNowProject(doNowSelection.project, "measure")}
+                                title="時間を決めずに計測"
+                                type="button"
+                              >
+                                <UiIcon name="clock" size={16} />
+                                <span>計測</span>
+                              </button>
+                            </>
+                          )}
+                          {doNowInstructionPath && (
+                            <button
+                              aria-label={`${doNowSelection.project.name}の手順書を開く`}
+                              className="doNowInstructionButton mainActionButton mainActionButton--neutral"
+                              onClick={() => {
+                                void openInstructionWindow({
+                                  path: doNowInstructionPath,
+                                  focus: true,
+                                }).catch((error) => {
+                                  showToast(
+                                    "error",
+                                    `手順書を開けません: ${error instanceof Error ? error.message : String(error)}`,
+                                  );
+                                });
+                              }}
+                              type="button"
+                            >
+                              <UiIcon name="book" size={16} /> 手順書
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="doNowHeading">
+                        <h2 id="do-now-title">今やる一手</h2>
+                      </div>
+                      <div className="doNowEmpty">
+                        <div className="doNowEmptyContent">
+                          <strong>
+                            {nextStepSetupProject
+                              ? "次の一手を設定すると、ここに提案されます。"
+                              : "プロジェクトを作り、次の一手を設定すると提案されます。"}
+                          </strong>
+                          <span>
+                            迷ったときに、今の状況から始めやすい「次にやること」を1つだけ提示します。
+                          </span>
                           <button
-                            className="mainActionButton mainActionButton--neutral"
-                            onClick={() => focusCandidateSource("wishlist")}
+                            className="mainActionButton mainActionButton--gold"
+                            onClick={() =>
+                              nextStepSetupProject
+                                ? openNextStepEditor(nextStepSetupProject)
+                                : openProjectAddDialog()
+                            }
                             type="button"
                           >
-                            やりたいことへ
+                            <UiIcon name="add" size={16} />
+                            {nextStepSetupProject ? "次の一手を設定" : "プロジェクトを追加"}
                           </button>
                         </div>
                       </div>
-                    ) : (
-                      visibleTodayBuilderCandidates.map((candidate, pageIndex) => {
-                        const index =
-                          (visibleTodayBuilderPage - 1) * TODAY_BUILDER_PAGE_SIZE + pageIndex;
-                        const wishlistGroupKey =
-                          candidate.source === "やりたいこと"
-                            ? todayBuilderWishlistGroupKey(candidate)
-                            : null;
-                        const previousVisibleCandidate =
-                          visibleTodayBuilderCandidates[pageIndex - 1];
-                        const showWishlistGroupHeading = Boolean(
-                          wishlistGroupKey &&
-                          (pageIndex === 0 ||
-                            previousVisibleCandidate?.source !== "やりたいこと" ||
-                            todayBuilderWishlistGroupKey(previousVisibleCandidate) !==
-                              wishlistGroupKey),
-                        );
-                        const wishlistGroupCollapsed = Boolean(
-                          wishlistGroupKey && todayBuilderWishlistCollapsed[wishlistGroupKey],
-                        );
-                        const wishlistGroupProject =
-                          candidate.projectId && projectsById.has(candidate.projectId)
-                            ? projectsById.get(candidate.projectId)
-                            : undefined;
-                        const matchingSourceKeys = new Set([
-                          candidate.sourceKey,
-                          ...(candidate.sourceAliases ?? []),
-                        ]);
-                        const selectedIndex = config.today.items.findIndex((item, todayIndex) =>
-                          matchingSourceKeys.has(todaySourceKey(item, todayIndex)),
-                        );
-                        const isSelected = selectedIndex >= 0;
-                        const selectedTimerRunning =
-                          isSelected &&
-                          activeTimer?.sourceId ===
-                                todayTimerSourceId(
-                                  config.today.items[selectedIndex],
-                                  selectedIndex,
-                                );
-                        const isFull = config.today.items.length >= TODAY_ITEM_LIMIT;
-                        return (
-                          <div
-                            className="todayBuilderCandidate"
-                            data-today-builder-wishlist-group={wishlistGroupKey ?? undefined}
-                            key={candidate.key}
-                          >
-                            {(index === 0 ||
-                                  todayBuilderCandidates[index - 1]?.source !==
-                                    candidate.source) && (
-                              <div className="todayBuilderGroupHeading">
-                                <strong>{candidate.source}</strong>
-                                <span>
-                                  {
-                                    todayBuilderCandidates.filter(
-                                      (item) => item.source === candidate.source,
-                                    ).length
-                                  }
-                                  件
-                                </span>
+                    </>
+                  )}
+                  {completionFeedback?.kind === "doNow" && (
+                    <div className="doNowCompletionEcho" role="status">
+                      <span className="doNowCompletionCheck" aria-hidden="true">
+                        ✓
+                      </span>
+                      <span>
+                        <strong>{completionFeedback.label}</strong>
+                        <small>一手進みました</small>
+                      </span>
+                    </div>
+                  )}
+                </section>
+
+                <section className="focusBand">
+                  <div
+                    className="todaySectionBar"
+                    onClick={(event) =>
+                      toggleDisclosureFromBar(event, () => setTodayOpen((open) => !open))
+                    }
+                  >
+                    <button
+                      aria-expanded={todayOpen}
+                      className="todaySectionDisclosure"
+                      onClick={() => setTodayOpen((open) => !open)}
+                      type="button"
+                    >
+                      <UiIcon name={todayOpen ? "chevronDown" : "chevronRight"} size={16} />
+                      <h2>今日の3件</h2>
+                    </button>
+                    <span className="todaySectionCount">{config.today.items.length}件</span>
+                    <span
+                      className={
+                        todayAllCompleted
+                          ? "todayCompletionSummary todayCompletionSummary--complete"
+                          : "todayCompletionSummary"
+                      }
+                    >
+                      {todayCompletedCount} / {config.today.items.length} 完了
+                    </span>
+                    <span className="todaySectionDescription">
+                      今日やると決めたもの。タイマーから開始します。
+                    </span>
+                  </div>
+                  {todayOpen && (
+                    <>
+                      <div className="todayGridRegion">
+                        <div
+                          className={[
+                            "todayGrid",
+                            config.today.items.length === 0 ? "todayGrid--empty" : "",
+                            completionFeedback?.kind === "todayAll"
+                              ? "todayGrid--allCompleteReward"
+                              : "",
+                            todayBuilderPointerDrag?.todayGuidanceActive ||
+                            projectPointerDrag?.todayGuidanceActive ||
+                            inboxPointerDrag?.todayGuidanceActive
+                              ? "todayGrid--dropGuidance"
+                              : "",
+                            todayBuilderPointerDrag?.todayTargetIndicator ||
+                            projectPointerDrag?.todayTargetIndicator ||
+                            inboxPointerDrag?.todayTargetIndicator
+                              ? "todayGrid--dropTarget"
+                              : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                        >
+                          {(todayBuilderPointerDrag?.todayGuidanceActive ||
+                            projectPointerDrag?.todayGuidanceActive ||
+                            inboxPointerDrag?.todayGuidanceActive) && (
+                            <div aria-hidden="true" className="todayDropGuidanceOverlay">
+                              ↓ ここにドロップして「今日の3件」に追加
+                            </div>
+                          )}
+                          {config.today.items.length === 0 && (
+                            <div className="todayEmptyState">
+                              <div className="todayEmptyStateContent">
+                                <strong>今日やるものを選びましょう</strong>
+                                <span>次の一手・やりたいことから選べます</span>
+                                <button
+                                  className="mainActionButton mainActionButton--gold"
+                                  onClick={(event) => openTodayPicker(event.currentTarget)}
+                                  type="button"
+                                >
+                                  <UiIcon name="add" size={16} />
+                                  今日やるものを選ぶ
+                                </button>
                               </div>
-                            )}
-                            {showWishlistGroupHeading && wishlistGroupKey && (
-                              <button
-                                aria-expanded={!wishlistGroupCollapsed}
-                                className="todayBuilderProjectGroupHeader"
-                                data-today-builder-project-group={wishlistGroupKey}
-                                onClick={() =>
-                                  setTodayBuilderWishlistCollapsed((current) => ({
-                                    ...current,
-                                    [wishlistGroupKey]: !current[wishlistGroupKey],
-                                  }))
-                                }
-                                type="button"
-                              >
-                                <UiIcon
-                                  name={wishlistGroupCollapsed ? "chevronRight" : "chevronDown"}
-                                  size={16}
-                                />
-                                {wishlistGroupProject ? (
-                                  <ProjectIdentity
-                                    colorId={wishlistGroupProject.colorId}
-                                    compact
-                                    name={wishlistGroupProject.name}
-                                    projectId={wishlistGroupProject.id}
-                                  />
-                                ) : (
-                                  <strong>未分類</strong>
-                                )}
-                                <span>
-                                  {todayBuilderWishlistGroupCounts.get(wishlistGroupKey) ?? 0}件
-                                </span>
-                              </button>
-                            )}
-                            {!wishlistGroupCollapsed && (
-                              <div
+                            </div>
+                          )}
+                          {config.today.items.map((item, index) => {
+                            const timerSourceId = todayTimerSourceId(item, index);
+                            const isRunningTodayItem = activeTimer?.sourceId === timerSourceId;
+                            const project = item.projectId
+                              ? projectsById.get(item.projectId)
+                              : undefined;
+                            const todayInstructionPath =
+                              item.instructionPath?.trim() ||
+                              project?.nextStep?.instructionPath?.trim();
+                            const shortMinutes =
+                              item.shortTimerMinutes ??
+                              project?.nextStep?.shortTimerMinutes ??
+                              config.settings.shortTimerMinutes;
+                            const defaultMinutes =
+                              item.defaultTimerMinutes ??
+                              project?.nextStep?.defaultTimerMinutes ??
+                              config.settings.defaultTimerMinutes;
+                            return (
+                              <article
                                 className={[
-                                  "todayBuilderRow sourceListRow",
-                                  wishlistGroupKey ? "todayBuilderRow--groupedWishlist" : "",
-                                  isSelected ? "todayBuilderRow--selected" : "",
-                                  todayBuilderPointerDrag?.index === index
-                                    ? "todayBuilderRow--dragging"
+                                  "todayRow",
+                                  todayPointerDrag?.index === index ? "todayRow--dragging" : "",
+                                  isRunningTodayItem ? "todayRow--running" : "",
+                                  item.done ? "todayRow--complete" : "",
+                                  completionFeedback?.kind === "today" &&
+                                  completionFeedback.sourceKey === todaySourceKey(item, index)
+                                    ? "todayRow--justCompleted"
                                     : "",
                                 ]
                                   .filter(Boolean)
                                   .join(" ")}
-                                data-today-builder-index={index}
+                                data-today-index={index}
+                                data-project-color={
+                                  project
+                                    ? resolveProjectColorId(project.id, project.colorId)
+                                    : undefined
+                                }
+                                key={todaySourceKey(item, index)}
                                 onContextMenu={(event) => {
                                   event.preventDefault();
                                   event.stopPropagation();
                                   openContextMenu(
-                                    { kind: "todayBuilder", index },
+                                    { kind: "today", index, itemText: item.text },
                                     event.clientX,
                                     event.clientY,
                                     event.currentTarget,
@@ -11374,236 +10805,850 @@ function DashboardApp() {
                                 }}
                                 onKeyDown={(event) =>
                                   openContextMenuFromKeyboard(event, {
-                                    kind: "todayBuilder",
+                                    kind: "today",
                                     index,
+                                    itemText: item.text,
                                   })
                                 }
-                                onPointerCancel={cancelTodayBuilderPointerDrag}
-                                onPointerDown={(event) =>
-                                  startTodayBuilderPointerDrag(event, index)
-                                }
-                                onPointerMove={updateTodayBuilderPointerDrag}
-                                onPointerUp={finishTodayBuilderPointerDrag}
+                                onPointerCancel={cancelTodayPointerDrag}
+                                onPointerDown={(event) => startTodayPointerDrag(event, index)}
+                                onPointerMove={updateTodayPointerDrag}
+                                onPointerUp={finishTodayPointerDrag}
                                 tabIndex={0}
                               >
+                                <button
+                                  aria-label={`${item.text || "未入力"}の操作`}
+                                  aria-haspopup="menu"
+                                  className="sourceRowMenu todayRowMenu"
+                                  onClick={(event) => {
+                                    const rect = event.currentTarget.getBoundingClientRect();
+                                    openContextMenu(
+                                      { kind: "today", index, itemText: item.text },
+                                      rect.left,
+                                      rect.bottom,
+                                      event.currentTarget,
+                                    );
+                                  }}
+                                  onPointerDown={(event) => event.stopPropagation()}
+                                  title="操作メニュー"
+                                  type="button"
+                                >
+                                  <span aria-hidden="true">…</span>
+                                </button>
+                                <span
+                                  aria-label={item.done ? "今日の分は完了" : "未完了"}
+                                  className={
+                                    item.done
+                                      ? "todayCompletionStatus todayCompletionStatus--complete"
+                                      : "todayCompletionStatus"
+                                  }
+                                  role="status"
+                                >
+                                  {item.done ? "✓" : "○"}
+                                </span>
                                 <div
                                   className={
-                                    wishlistGroupKey
-                                      ? "sourceListCopy sourceListCopy--groupedWishlist"
-                                      : "sourceListCopy"
+                                    project
+                                      ? "todayItemCopy"
+                                      : "todayItemCopy todayItemCopy--withoutIdentity"
                                   }
                                 >
-                                  {!wishlistGroupKey && (
-                                    <span className="inboxProjectIdentity">
-                                      {candidate.projectId &&
-                                      projectsById.has(candidate.projectId) ? (
-                                        <ProjectIdentity
-                                              colorId={
-                                                projectsById.get(candidate.projectId)?.colorId
-                                              }
-                                          compact
-                                              name={
-                                                projectsById.get(candidate.projectId)?.name ?? ""
-                                              }
-                                          projectId={candidate.projectId}
-                                        />
-                                      ) : (
-                                          <span className="sourceProjectNone">
-                                            プロジェクトなし
-                                          </span>
-                                      )}
+                                  {item.projectId && projectsById.has(item.projectId) && (
+                                    <span className="todayProjectIdentity">
+                                      <ProjectIdentity
+                                        colorId={projectsById.get(item.projectId)?.colorId}
+                                        compact
+                                        name={projectsById.get(item.projectId)?.name ?? ""}
+                                        projectId={item.projectId}
+                                      />
                                     </span>
                                   )}
-                                  <strong title={candidate.text}>{candidate.text}</strong>
+                                  {isRunningTodayItem && (
+                                    <span
+                                      className={
+                                        activeTimer.paused
+                                          ? "runningBadge runningBadge--paused"
+                                          : "runningBadge runningBadge--running"
+                                      }
+                                    >
+                                      {activeTimer.paused
+                                        ? "一時停止"
+                                        : activeTimer.mode === "measure"
+                                          ? "計測中"
+                                          : "実行中"}
+                                    </span>
+                                  )}
+                                  <span
+                                    className={
+                                      item.done
+                                        ? "todayTextButton todayTextButton--done"
+                                        : "todayTextButton"
+                                    }
+                                    title={item.text || "未入力"}
+                                  >
+                                    {item.text || "未入力"}
+                                  </span>
                                 </div>
-                                <div className="todayBuilderActions">
-                                  {isSelected ? (
+                                <div className="todayCardFooter">
+                                  <div className="todayCardSecondaryActions">
+                                    {todayInstructionPath && (
+                                      <button
+                                        aria-label={`${item.text || "未入力"}の手順書を開く`}
+                                        className="doNowInstructionButton todayInstructionButton mainActionButton mainActionButton--neutral"
+                                        onClick={() => {
+                                          void openInstructionWindow({
+                                            path: todayInstructionPath,
+                                            focus: true,
+                                          }).catch((error) => {
+                                            showToast(
+                                              "error",
+                                              `手順書を開けません: ${error instanceof Error ? error.message : String(error)}`,
+                                            );
+                                          });
+                                        }}
+                                        onPointerDown={(event) => event.stopPropagation()}
+                                        title="手順書を開く"
+                                        type="button"
+                                      >
+                                        <UiIcon name="book" size={16} /> 手順書
+                                      </button>
+                                    )}
                                     <button
-                                      className="todayBuilderSelectedStatus"
-                                      disabled={selectedTimerRunning}
-                                      onClick={(event) => {
-                                        event.stopPropagation();
-                                        void removeTodayItem(
-                                            todaySourceKey(
-                                              config.today.items[selectedIndex],
-                                              selectedIndex,
-                                            ),
-                                        );
-                                      }}
+                                      className="todayRemoveButton mainActionButton mainActionButton--neutral"
+                                      disabled={isRunningTodayItem}
+                                      onClick={() =>
+                                        void removeTodayItem(todaySourceKey(item, index))
+                                      }
                                       onPointerDown={(event) => event.stopPropagation()}
                                       title={
-                                        selectedTimerRunning
+                                        isRunningTodayItem
                                           ? "タイマーを停止してから外してください"
-                                          : "今日の3件から外す"
+                                          : undefined
                                       }
                                       type="button"
                                     >
-                                      ✓ 選択済み
+                                      <UiIcon name="back" size={16} />
+                                      今日の3件から外す
                                     </button>
-                                  ) : (
-                                    <button
-                                      className="moveTodayButton todayBuilderAddButton mainActionButton mainActionButton--neutral"
-                                      disabled={isFull}
-                                      onClick={() => void addCandidateToToday(candidate)}
-                                      title={isFull ? "いま選べるのは3件までです" : "今日へ"}
-                                      type="button"
-                                    >
-                                      今日へ
-                                    </button>
+                                  </div>
+                                  <div className="todayTimerCluster">
+                                    <div className="todayTriggerZone">
+                                      {todayTriggerEditingIndex === index ? (
+                                        <input
+                                          aria-label="いつ・何の後にやる？"
+                                          autoFocus
+                                          className="todayTriggerInput"
+                                          maxLength={EXECUTION_TRIGGER_MAX_CHARS}
+                                          onBlur={cancelTodayTriggerEdit}
+                                          onChange={(event) =>
+                                            setTodayTriggerDraft(event.target.value)
+                                          }
+                                          onKeyDown={(event) =>
+                                            handleTodayTriggerKeyDown(event, index)
+                                          }
+                                          onPointerDown={(event) => event.stopPropagation()}
+                                          placeholder="例: 21時 / 夕食後"
+                                          value={todayTriggerDraft}
+                                        />
+                                      ) : (
+                                        <button
+                                          className={
+                                            item.trigger
+                                              ? "todayTriggerButton"
+                                              : "todayTriggerButton todayTriggerButton--empty"
+                                          }
+                                          onClick={() => beginTodayTriggerEdit(index)}
+                                          onPointerDown={(event) => event.stopPropagation()}
+                                          type="button"
+                                        >
+                                          {item.trigger ? `${item.trigger} ▸` : "+ きっかけ"}
+                                        </button>
+                                      )}
+                                    </div>
+                                    {item.done ? (
+                                      <span className="todayCompletedLabel">今日の分は完了</span>
+                                    ) : isRunningTodayItem ? (
+                                      <div
+                                        className={
+                                          activeTimer.mode === "measure"
+                                            ? "todayTimerActions todayTimerActions--running todayTimerActions--measure"
+                                            : "todayTimerActions todayTimerActions--running"
+                                        }
+                                      >
+                                        {activeTimer.mode === "measure" && (
+                                          <span className="measureElapsedClock">{timerClock}</span>
+                                        )}
+                                        <button
+                                          aria-label={
+                                            activeTimer.paused
+                                              ? "このセッションを再開"
+                                              : "このセッションを一時停止"
+                                          }
+                                          className="runningPauseButton"
+                                          onClick={togglePause}
+                                          title={
+                                            activeTimer.paused
+                                              ? "このセッションを再開"
+                                              : "このセッションを一時停止"
+                                          }
+                                          type="button"
+                                        >
+                                          <UiIcon
+                                            name={activeTimer.paused ? "play" : "pause"}
+                                            size={16}
+                                          />
+                                          {activeTimer.paused
+                                            ? "再開"
+                                            : activeTimer.mode === "measure"
+                                              ? "停止"
+                                              : "一時停止"}
+                                        </button>
+                                        <button
+                                          className="runningStopButton"
+                                          onClick={() => void finishTimer(activeTimer)}
+                                          title="このセッションを終了"
+                                          type="button"
+                                        >
+                                          <UiIcon name="stop" size={16} /> 終了
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <div className="todayTimerActions">
+                                        <button
+                                          aria-label={`短時間タイマー${shortMinutes}分で開始`}
+                                          className="todayStartButton todayStartButton--short"
+                                          disabled={!item.text.trim()}
+                                          onClick={() =>
+                                            void startTimer(
+                                              timerSourceId,
+                                              item.projectId && projectsById.has(item.projectId)
+                                                ? (projectsById.get(item.projectId)?.name ??
+                                                    item.text)
+                                                : item.text,
+                                              item.projectId && projectsById.has(item.projectId)
+                                                ? item.projectId
+                                                : null,
+                                              (item.buttonIds ?? []).flatMap(
+                                                (buttonId) =>
+                                                  buttonsById.get(buttonId)?.actions ?? [],
+                                              ),
+                                              shortMinutes,
+                                              item.text,
+                                              item.instructionPath,
+                                              item.instructionOpenOnStart,
+                                            )
+                                          }
+                                          title={`短時間タイマー: ${shortMinutes}分`}
+                                          type="button"
+                                        >
+                                          <span aria-hidden="true" className="nextStepStartGlyph">
+                                            <UiIcon name="play" size={16} />
+                                          </span>
+                                          <span
+                                            aria-hidden="true"
+                                            className="nextStepStartDuration"
+                                          >
+                                            {shortMinutes}分
+                                          </span>
+                                        </button>
+                                        <button
+                                          aria-label={`通常タイマー${defaultMinutes}分で開始`}
+                                          className="todayStartButton todayStartButton--normal"
+                                          disabled={!item.text.trim()}
+                                          onClick={() =>
+                                            void startTimer(
+                                              timerSourceId,
+                                              item.projectId && projectsById.has(item.projectId)
+                                                ? (projectsById.get(item.projectId)?.name ??
+                                                    item.text)
+                                                : item.text,
+                                              item.projectId && projectsById.has(item.projectId)
+                                                ? item.projectId
+                                                : null,
+                                              (item.buttonIds ?? []).flatMap(
+                                                (buttonId) =>
+                                                  buttonsById.get(buttonId)?.actions ?? [],
+                                              ),
+                                              defaultMinutes,
+                                              item.text,
+                                              item.instructionPath,
+                                              item.instructionOpenOnStart,
+                                            )
+                                          }
+                                          title={`通常タイマー: ${defaultMinutes}分`}
+                                          type="button"
+                                        >
+                                          <span aria-hidden="true" className="nextStepStartGlyph">
+                                            <UiIcon name="play" size={16} />
+                                          </span>
+                                          <span
+                                            aria-hidden="true"
+                                            className="nextStepStartDuration"
+                                          >
+                                            {defaultMinutes}分
+                                          </span>
+                                        </button>
+                                        <button
+                                          aria-label="時間を決めずに計測"
+                                          className="todayMeasureButton"
+                                          disabled={!item.text.trim()}
+                                          onClick={() =>
+                                            void startTimer(
+                                              timerSourceId,
+                                              item.projectId && projectsById.has(item.projectId)
+                                                ? (projectsById.get(item.projectId)?.name ??
+                                                    item.text)
+                                                : item.text,
+                                              item.projectId && projectsById.has(item.projectId)
+                                                ? item.projectId
+                                                : null,
+                                              (item.buttonIds ?? []).flatMap(
+                                                (buttonId) =>
+                                                  buttonsById.get(buttonId)?.actions ?? [],
+                                              ),
+                                              undefined,
+                                              item.text,
+                                              item.instructionPath,
+                                              item.instructionOpenOnStart,
+                                              "measure",
+                                            )
+                                          }
+                                          title="時間を決めずに計測"
+                                          type="button"
+                                        >
+                                          <UiIcon name="clock" size={16} />
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </article>
+                            );
+                          })}
+                          {config.today.items.length > 0 &&
+                            config.today.items.length < TODAY_ITEM_LIMIT &&
+                            !todayPointerDrag && (
+                              <button
+                                className="todayPickerEntry"
+                                onClick={(event) => openTodayPicker(event.currentTarget)}
+                                type="button"
+                              >
+                                <span className="todayPickerEntryVisual">
+                                  <UiIcon name="add" size={16} />
+                                  今日やるものを選ぶ
+                                </span>
+                              </button>
+                            )}
+                          {todayPointerDrag?.targetIndicator && (
+                            <div
+                              aria-hidden="true"
+                              className="todayDropIndicator"
+                              style={todayPointerDrag.targetIndicator}
+                            />
+                          )}
+                          {todayPointerDrag &&
+                            (() => {
+                              const draggedItem = config.today.items[todayPointerDrag.index];
+                              if (!draggedItem) return null;
+                              const draggedProject = draggedItem.projectId
+                                ? projectsById.get(draggedItem.projectId)
+                                : undefined;
+                              return (
+                                <div
+                                  aria-hidden="true"
+                                  className="todayDragGhost"
+                                  data-project-color={
+                                    draggedProject
+                                      ? resolveProjectColorId(
+                                          draggedProject.id,
+                                          draggedProject.colorId,
+                                        )
+                                      : undefined
+                                  }
+                                  style={{
+                                    height: todayPointerDrag.height,
+                                    left: todayPointerDrag.pointerX - todayPointerDrag.offsetX,
+                                    top: todayPointerDrag.pointerY - todayPointerDrag.offsetY,
+                                    width: todayPointerDrag.width,
+                                  }}
+                                >
+                                  {draggedProject && (
+                                    <span className="todayProjectIdentity">
+                                      <ProjectIdentity
+                                        colorId={draggedProject.colorId}
+                                        compact
+                                        name={draggedProject.name}
+                                        projectId={draggedProject.id}
+                                      />
+                                    </span>
                                   )}
+                                  <strong>{draggedItem.text || "未入力"}</strong>
+                                </div>
+                              );
+                            })()}
+                        </div>
+
+                        {todayPointerDrag && (
+                          <div
+                            aria-disabled={!todayPointerDrag.removeEligible}
+                            className={[
+                              "todayRemoveDropZone",
+                              todayPointerDrag.removeTargetActive
+                                ? "todayRemoveDropZone--active"
+                                : "",
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                          >
+                            <span>↓ ここにドロップして今日の3件から外す</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {completionFeedback?.kind === "todayAll" && (
+                        <div className="todayAllCompletionReward" role="status">
+                          <span aria-hidden="true">✓</span>
+                          今日の3件、完了！
+                        </div>
+                      )}
+
+                      {allTodayItemsCompleted && (
+                        <div className="todayNextBatch">
+                          <button
+                            className="secondaryButton mainActionButton mainActionButton--neutral"
+                            onClick={() => void startNextTodayBatch()}
+                            type="button"
+                          >
+                            <UiIcon name="add" size={16} />
+                            次の3件を選ぶ
+                          </button>
+                          <span>まだやりたいときだけ、次の枠を作れます。</span>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </section>
+
+                {legacyTodayBuilderVisible() && (
+                  <section
+                    className={[
+                      "todayBuilderBand",
+                      builderRestoreGuidanceActive ? "todayBuilderBand--restoreTarget" : "",
+                      builderRestoreTargetActive ? "todayBuilderBand--restoreHover" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    data-today-builder-drop-target
+                  >
+                    <div
+                      className="disclosureHeader todayBuilderHeader"
+                      onContextMenu={(event) => {
+                        event.preventDefault();
+                        openContextMenu(
+                          { kind: "todayBuilderBar" },
+                          event.clientX,
+                          event.clientY,
+                          event.currentTarget,
+                        );
+                      }}
+                      onKeyDown={(event) =>
+                        openContextMenuFromKeyboard(event, { kind: "todayBuilderBar" })
+                      }
+                      onClick={(event) => toggleDisclosureFromBar(event, toggleTodayBuilder)}
+                      tabIndex={0}
+                    >
+                      <button
+                        aria-expanded={todayBuilderOpen}
+                        className="disclosure todayBuilderDisclosure"
+                        onClick={toggleTodayBuilder}
+                        type="button"
+                      >
+                        <UiIcon
+                          name={todayBuilderOpen ? "chevronDown" : "chevronRight"}
+                          size={16}
+                        />
+                        <span className="disclosureLabel">
+                          <strong>今日を組み立てる</strong>
+                        </span>
+                      </button>
+                      <span className="disclosureCount">{todayBuilderCandidates.length}件</span>
+                      <span className="disclosureDescription">
+                        次の一手・やりたいことから、今日やるものを選ぶ
+                      </span>
+                    </div>
+
+                    {builderRestoreGuidanceActive && (
+                      <div
+                        className={
+                          builderRestoreTargetActive
+                            ? "todayBuilderRestoreDropZone todayBuilderRestoreDropZone--active"
+                            : "todayBuilderRestoreDropZone"
+                        }
+                      >
+                        <span aria-hidden="true">↓</span>
+                        <span>
+                          {todayPointerDrag?.removeEligible
+                            ? "ここにドロップして今日の3件から外す"
+                            : "ここにドロップして今日を組み立てるに入れる"}
+                        </span>
+                      </div>
+                    )}
+                    {todayBuilderOpen && (
+                      <div className="todayBuilderBody">
+                        {todayBuilderCandidates.length === 0 ? (
+                          <div className="sectionEmptyActions sectionEmptyActions--sources">
+                            <span>
+                              候補はまだありません。次の一手か、やりたいことを登録できます。
+                            </span>
+                            <div>
+                              <button
+                                className="mainActionButton mainActionButton--neutral"
+                                onClick={() => focusCandidateSource("project")}
+                                type="button"
+                              >
+                                次の一手へ
+                              </button>
+                              <button
+                                className="mainActionButton mainActionButton--neutral"
+                                onClick={() => focusCandidateSource("wishlist")}
+                                type="button"
+                              >
+                                やりたいことへ
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          visibleTodayBuilderCandidates.map((candidate, pageIndex) => {
+                            const index =
+                              (visibleTodayBuilderPage - 1) * TODAY_BUILDER_PAGE_SIZE + pageIndex;
+                            const wishlistGroupKey =
+                              candidate.source === "やりたいこと"
+                                ? todayBuilderWishlistGroupKey(candidate)
+                                : null;
+                            const previousVisibleCandidate =
+                              visibleTodayBuilderCandidates[pageIndex - 1];
+                            const showWishlistGroupHeading = Boolean(
+                              wishlistGroupKey &&
+                              (pageIndex === 0 ||
+                                previousVisibleCandidate?.source !== "やりたいこと" ||
+                                todayBuilderWishlistGroupKey(previousVisibleCandidate) !==
+                                  wishlistGroupKey),
+                            );
+                            const wishlistGroupCollapsed = Boolean(
+                              wishlistGroupKey && todayBuilderWishlistCollapsed[wishlistGroupKey],
+                            );
+                            const wishlistGroupProject =
+                              candidate.projectId && projectsById.has(candidate.projectId)
+                                ? projectsById.get(candidate.projectId)
+                                : undefined;
+                            const matchingSourceKeys = new Set([
+                              candidate.sourceKey,
+                              ...(candidate.sourceAliases ?? []),
+                            ]);
+                            const selectedIndex = config.today.items.findIndex((item, todayIndex) =>
+                              matchingSourceKeys.has(todaySourceKey(item, todayIndex)),
+                            );
+                            const isSelected = selectedIndex >= 0;
+                            const selectedTimerRunning =
+                              isSelected &&
+                              activeTimer?.sourceId ===
+                                todayTimerSourceId(
+                                  config.today.items[selectedIndex],
+                                  selectedIndex,
+                                );
+                            const isFull = config.today.items.length >= TODAY_ITEM_LIMIT;
+                            return (
+                              <div
+                                className="todayBuilderCandidate"
+                                data-today-builder-wishlist-group={wishlistGroupKey ?? undefined}
+                                key={candidate.key}
+                              >
+                                {(index === 0 ||
+                                  todayBuilderCandidates[index - 1]?.source !==
+                                    candidate.source) && (
+                                  <div className="todayBuilderGroupHeading">
+                                    <strong>{candidate.source}</strong>
+                                    <span>
+                                      {
+                                        todayBuilderCandidates.filter(
+                                          (item) => item.source === candidate.source,
+                                        ).length
+                                      }
+                                      件
+                                    </span>
+                                  </div>
+                                )}
+                                {showWishlistGroupHeading && wishlistGroupKey && (
                                   <button
-                                    aria-label={`${candidate.text}の操作`}
-                                    aria-haspopup="menu"
-                                    className="sourceRowMenu"
-                                    onClick={(event) => {
-                                      const rect = event.currentTarget.getBoundingClientRect();
+                                    aria-expanded={!wishlistGroupCollapsed}
+                                    className="todayBuilderProjectGroupHeader"
+                                    data-today-builder-project-group={wishlistGroupKey}
+                                    onClick={() =>
+                                      setTodayBuilderWishlistCollapsed((current) => ({
+                                        ...current,
+                                        [wishlistGroupKey]: !current[wishlistGroupKey],
+                                      }))
+                                    }
+                                    type="button"
+                                  >
+                                    <UiIcon
+                                      name={wishlistGroupCollapsed ? "chevronRight" : "chevronDown"}
+                                      size={16}
+                                    />
+                                    {wishlistGroupProject ? (
+                                      <ProjectIdentity
+                                        colorId={wishlistGroupProject.colorId}
+                                        compact
+                                        name={wishlistGroupProject.name}
+                                        projectId={wishlistGroupProject.id}
+                                      />
+                                    ) : (
+                                      <strong>未分類</strong>
+                                    )}
+                                    <span>
+                                      {todayBuilderWishlistGroupCounts.get(wishlistGroupKey) ?? 0}件
+                                    </span>
+                                  </button>
+                                )}
+                                {!wishlistGroupCollapsed && (
+                                  <div
+                                    className={[
+                                      "todayBuilderRow sourceListRow",
+                                      wishlistGroupKey ? "todayBuilderRow--groupedWishlist" : "",
+                                      isSelected ? "todayBuilderRow--selected" : "",
+                                      todayBuilderPointerDrag?.index === index
+                                        ? "todayBuilderRow--dragging"
+                                        : "",
+                                    ]
+                                      .filter(Boolean)
+                                      .join(" ")}
+                                    data-today-builder-index={index}
+                                    onContextMenu={(event) => {
+                                      event.preventDefault();
+                                      event.stopPropagation();
                                       openContextMenu(
                                         { kind: "todayBuilder", index },
-                                        rect.left,
-                                        rect.bottom,
+                                        event.clientX,
+                                        event.clientY,
                                         event.currentTarget,
                                       );
                                     }}
-                                    onPointerDown={(event) => event.stopPropagation()}
-                                    title="操作メニュー"
-                                    type="button"
+                                    onKeyDown={(event) =>
+                                      openContextMenuFromKeyboard(event, {
+                                        kind: "todayBuilder",
+                                        index,
+                                      })
+                                    }
+                                    onPointerCancel={cancelTodayBuilderPointerDrag}
+                                    onPointerDown={(event) =>
+                                      startTodayBuilderPointerDrag(event, index)
+                                    }
+                                    onPointerMove={updateTodayBuilderPointerDrag}
+                                    onPointerUp={finishTodayBuilderPointerDrag}
+                                    tabIndex={0}
                                   >
-                                    <span aria-hidden="true">…</span>
-                                  </button>
-                                </div>
+                                    <div
+                                      className={
+                                        wishlistGroupKey
+                                          ? "sourceListCopy sourceListCopy--groupedWishlist"
+                                          : "sourceListCopy"
+                                      }
+                                    >
+                                      {!wishlistGroupKey && (
+                                        <span className="inboxProjectIdentity">
+                                          {candidate.projectId &&
+                                          projectsById.has(candidate.projectId) ? (
+                                            <ProjectIdentity
+                                              colorId={
+                                                projectsById.get(candidate.projectId)?.colorId
+                                              }
+                                              compact
+                                              name={
+                                                projectsById.get(candidate.projectId)?.name ?? ""
+                                              }
+                                              projectId={candidate.projectId}
+                                            />
+                                          ) : (
+                                            <span className="sourceProjectNone">
+                                              プロジェクトなし
+                                            </span>
+                                          )}
+                                        </span>
+                                      )}
+                                      <strong title={candidate.text}>{candidate.text}</strong>
+                                    </div>
+                                    <div className="todayBuilderActions">
+                                      {isSelected ? (
+                                        <button
+                                          className="todayBuilderSelectedStatus"
+                                          disabled={selectedTimerRunning}
+                                          onClick={(event) => {
+                                            event.stopPropagation();
+                                            void removeTodayItem(
+                                              todaySourceKey(
+                                                config.today.items[selectedIndex],
+                                                selectedIndex,
+                                              ),
+                                            );
+                                          }}
+                                          onPointerDown={(event) => event.stopPropagation()}
+                                          title={
+                                            selectedTimerRunning
+                                              ? "タイマーを停止してから外してください"
+                                              : "今日の3件から外す"
+                                          }
+                                          type="button"
+                                        >
+                                          ✓ 選択済み
+                                        </button>
+                                      ) : (
+                                        <button
+                                          className="moveTodayButton todayBuilderAddButton mainActionButton mainActionButton--neutral"
+                                          disabled={isFull}
+                                          onClick={() => void addCandidateToToday(candidate)}
+                                          title={isFull ? "いま選べるのは3件までです" : "今日へ"}
+                                          type="button"
+                                        >
+                                          今日へ
+                                        </button>
+                                      )}
+                                      <button
+                                        aria-label={`${candidate.text}の操作`}
+                                        aria-haspopup="menu"
+                                        className="sourceRowMenu"
+                                        onClick={(event) => {
+                                          const rect = event.currentTarget.getBoundingClientRect();
+                                          openContextMenu(
+                                            { kind: "todayBuilder", index },
+                                            rect.left,
+                                            rect.bottom,
+                                            event.currentTarget,
+                                          );
+                                        }}
+                                        onPointerDown={(event) => event.stopPropagation()}
+                                        title="操作メニュー"
+                                        type="button"
+                                      >
+                                        <span aria-hidden="true">…</span>
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
-                            )}
-                          </div>
-                        );
-                      })
-                    )}
-                    {todayBuilderPageCount > 1 && (
-                        <nav
-                          aria-label="今日を組み立てるのページ"
-                          className="todayBuilderPagination"
-                        >
-                        <button
-                          aria-label="前のページ"
-                          className="mainActionButton mainActionButton--neutral"
-                          disabled={visibleTodayBuilderPage <= 1}
-                          onClick={() => setTodayBuilderPage(visibleTodayBuilderPage - 1)}
-                          type="button"
-                        >
-                          <UiIcon name="chevronLeft" size={16} />
-                          前へ
-                        </button>
-                        <span>
-                          {visibleTodayBuilderPage} / {todayBuilderPageCount}
-                        </span>
-                        <button
-                          aria-label="次のページ"
-                          className="mainActionButton mainActionButton--neutral"
-                          disabled={visibleTodayBuilderPage >= todayBuilderPageCount}
-                          onClick={() => setTodayBuilderPage(visibleTodayBuilderPage + 1)}
-                          type="button"
-                        >
-                          次へ
-                          <UiIcon name="chevronRight" size={16} />
-                        </button>
-                      </nav>
-                    )}
-                    {todayBuilderPointerDrag?.targetIndicator && (
-                      <div
-                        aria-hidden="true"
-                        className="todayBuilderDropIndicator"
-                        style={todayBuilderPointerDrag.targetIndicator}
-                      />
-                    )}
-                    {todayBuilderPointerDrag?.todayTargetIndicator && (
-                      <div
-                        aria-hidden="true"
-                        className="todayDropIndicator"
-                        style={todayBuilderPointerDrag.todayTargetIndicator}
-                      />
-                    )}
-                    {todayBuilderPointerDrag &&
-                      (() => {
-                        const candidate = todayBuilderCandidates.find(
-                          (item) =>
-                            item.sourceKey === todayBuilderPointerDrag.sourceKey ||
-                            item.sourceAliases?.includes(todayBuilderPointerDrag.sourceKey),
-                        );
-                        const project = candidate?.projectId
-                          ? projectsById.get(candidate.projectId)
-                          : undefined;
-                        return (
+                            );
+                          })
+                        )}
+                        {todayBuilderPageCount > 1 && (
+                          <nav
+                            aria-label="今日を組み立てるのページ"
+                            className="todayBuilderPagination"
+                          >
+                            <button
+                              aria-label="前のページ"
+                              className="mainActionButton mainActionButton--neutral"
+                              disabled={visibleTodayBuilderPage <= 1}
+                              onClick={() => setTodayBuilderPage(visibleTodayBuilderPage - 1)}
+                              type="button"
+                            >
+                              <UiIcon name="chevronLeft" size={16} />
+                              前へ
+                            </button>
+                            <span>
+                              {visibleTodayBuilderPage} / {todayBuilderPageCount}
+                            </span>
+                            <button
+                              aria-label="次のページ"
+                              className="mainActionButton mainActionButton--neutral"
+                              disabled={visibleTodayBuilderPage >= todayBuilderPageCount}
+                              onClick={() => setTodayBuilderPage(visibleTodayBuilderPage + 1)}
+                              type="button"
+                            >
+                              次へ
+                              <UiIcon name="chevronRight" size={16} />
+                            </button>
+                          </nav>
+                        )}
+                        {todayBuilderPointerDrag?.targetIndicator && (
                           <div
                             aria-hidden="true"
-                            className={
-                              todayBuilderPointerDrag.todayTargetIndex === undefined
-                                ? "todayBuilderDragGhost"
-                                : "todayBuilderDragGhost todayBuilderDragGhost--today"
-                            }
-                            data-project-color={
-                              project
-                                ? resolveProjectColorId(project.id, project.colorId)
-                                : undefined
-                            }
-                            style={{
-                              left:
-                                  todayBuilderPointerDrag.pointerX -
-                                  todayBuilderPointerDrag.offsetX,
-                              top:
-                                  todayBuilderPointerDrag.pointerY -
-                                  todayBuilderPointerDrag.offsetY,
-                              width: Math.min(300, todayBuilderPointerDrag.width),
-                            }}
-                          >
-                            {project ? (
-                              <ProjectIdentity
-                                colorId={project.colorId}
-                                compact
-                                name={project.name}
-                                projectId={project.id}
-                              />
-                            ) : (
-                              <span className="sourceProjectNone">プロジェクトなし</span>
-                            )}
-                            <strong>{candidate?.text}</strong>
-                          </div>
-                        );
-                      })()}
-                  </div>
+                            className="todayBuilderDropIndicator"
+                            style={todayBuilderPointerDrag.targetIndicator}
+                          />
+                        )}
+                        {todayBuilderPointerDrag?.todayTargetIndicator && (
+                          <div
+                            aria-hidden="true"
+                            className="todayDropIndicator"
+                            style={todayBuilderPointerDrag.todayTargetIndicator}
+                          />
+                        )}
+                        {todayBuilderPointerDrag &&
+                          (() => {
+                            const candidate = todayBuilderCandidates.find(
+                              (item) =>
+                                item.sourceKey === todayBuilderPointerDrag.sourceKey ||
+                                item.sourceAliases?.includes(todayBuilderPointerDrag.sourceKey),
+                            );
+                            const project = candidate?.projectId
+                              ? projectsById.get(candidate.projectId)
+                              : undefined;
+                            return (
+                              <div
+                                aria-hidden="true"
+                                className={
+                                  todayBuilderPointerDrag.todayTargetIndex === undefined
+                                    ? "todayBuilderDragGhost"
+                                    : "todayBuilderDragGhost todayBuilderDragGhost--today"
+                                }
+                                data-project-color={
+                                  project
+                                    ? resolveProjectColorId(project.id, project.colorId)
+                                    : undefined
+                                }
+                                style={{
+                                  left:
+                                    todayBuilderPointerDrag.pointerX -
+                                    todayBuilderPointerDrag.offsetX,
+                                  top:
+                                    todayBuilderPointerDrag.pointerY -
+                                    todayBuilderPointerDrag.offsetY,
+                                  width: Math.min(300, todayBuilderPointerDrag.width),
+                                }}
+                              >
+                                {project ? (
+                                  <ProjectIdentity
+                                    colorId={project.colorId}
+                                    compact
+                                    name={project.name}
+                                    projectId={project.id}
+                                  />
+                                ) : (
+                                  <span className="sourceProjectNone">プロジェクトなし</span>
+                                )}
+                                <strong>{candidate?.text}</strong>
+                              </div>
+                            );
+                          })()}
+                      </div>
+                    )}
+                  </section>
                 )}
-              </section>
-              )}
 
-              <section
-                className={[
-                  "projectsBand",
-                  inboxPointerDrag?.nextStepEligible ? "sourceReturnBand--target" : "",
-                  inboxPointerDrag?.nextStepTargetProjectId ? "sourceReturnBand--active" : "",
-                  todayBuilderPointerDrag?.sourceTarget === "project"
-                    ? "sourceReturnBand--target"
-                    : "",
-                  todayBuilderPointerDrag?.sourceTarget === "project" &&
-                  todayBuilderPointerDrag.sourceTargetActive
-                    ? "sourceReturnBand--active"
-                    : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                onContextMenu={(event) => {
-                  event.preventDefault();
-                  openContextMenu(
-                    { kind: "projects" },
-                    event.clientX,
-                    event.clientY,
-                    event.currentTarget,
-                  );
-                }}
-                tabIndex={-1}
-              >
-                <div
-                  className="disclosureHeader"
-                  onClick={(event) =>
-                    toggleDisclosureFromBar(event, () => setProjectsOpen((open) => !open))
-                  }
+                <section
+                  className={[
+                    "projectsBand",
+                    inboxPointerDrag?.nextStepEligible ? "sourceReturnBand--target" : "",
+                    inboxPointerDrag?.nextStepTargetProjectId ? "sourceReturnBand--active" : "",
+                    todayBuilderPointerDrag?.sourceTarget === "project"
+                      ? "sourceReturnBand--target"
+                      : "",
+                    todayBuilderPointerDrag?.sourceTarget === "project" &&
+                    todayBuilderPointerDrag.sourceTargetActive
+                      ? "sourceReturnBand--active"
+                      : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
                   onContextMenu={(event) => {
                     event.preventDefault();
                     openContextMenu(
@@ -11615,107 +11660,123 @@ function DashboardApp() {
                   }}
                   tabIndex={-1}
                 >
-                  <button
-                    aria-expanded={projectsOpen}
-                    className="disclosure"
-                    onClick={() => setProjectsOpen((open) => !open)}
-                    type="button"
+                  <div
+                    className="disclosureHeader"
+                    onClick={(event) =>
+                      toggleDisclosureFromBar(event, () => setProjectsOpen((open) => !open))
+                    }
+                    onContextMenu={(event) => {
+                      event.preventDefault();
+                      openContextMenu(
+                        { kind: "projects" },
+                        event.clientX,
+                        event.clientY,
+                        event.currentTarget,
+                      );
+                    }}
+                    tabIndex={-1}
                   >
-                    <UiIcon name={projectsOpen ? "chevronDown" : "chevronRight"} size={16} />
-                    <span className="disclosureLabel">
-                      <strong>次の一手</strong>
+                    <button
+                      aria-expanded={projectsOpen}
+                      className="disclosure"
+                      onClick={() => setProjectsOpen((open) => !open)}
+                      type="button"
+                    >
+                      <UiIcon name={projectsOpen ? "chevronDown" : "chevronRight"} size={16} />
+                      <span className="disclosureLabel">
+                        <strong>次の一手</strong>
+                      </span>
+                    </button>
+                    <span className="disclosureCount">{config.projects.length}件</span>
+                    <span className="disclosureDescription">
+                      迷ったときに戻る再開地点。プロジェクトごとに1つだけ設定。
                     </span>
-                  </button>
-                  <span className="disclosureCount">{config.projects.length}件</span>
-                  <span className="disclosureDescription">
-                    迷ったときに戻る再開地点。プロジェクトごとに1つだけ設定。
-                  </span>
-                  <div className="disclosureHeaderActions">
-                    <button
-                      aria-label="プロジェクトを追加"
-                      className="sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd nextStepHeaderAdd--project mainActionButton mainActionButton--gold"
-                      onPointerDown={(event) => event.stopPropagation()}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        openProjectAddDialog();
-                      }}
-                      title="プロジェクトを追加"
-                      type="button"
+                    <div className="disclosureHeaderActions">
+                      <button
+                        aria-label="プロジェクトを追加"
+                        className="sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd nextStepHeaderAdd--project mainActionButton mainActionButton--gold"
+                        onPointerDown={(event) => event.stopPropagation()}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          openProjectAddDialog();
+                        }}
+                        title="プロジェクトを追加"
+                        type="button"
+                      >
+                        ＋ プロジェクト
+                      </button>
+                      <button
+                        aria-label="次の一手の操作"
+                        aria-haspopup="menu"
+                        className="sectionMenuButton"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          const rect = event.currentTarget.getBoundingClientRect();
+                          openContextMenu(
+                            { kind: "projects" },
+                            rect.left,
+                            rect.bottom,
+                            event.currentTarget,
+                          );
+                        }}
+                        onPointerDown={(event) => event.stopPropagation()}
+                        title="次の一手の操作"
+                        type="button"
+                      >
+                        <span aria-hidden="true">…</span>
+                      </button>
+                    </div>
+                  </div>
+                  {todayBuilderPointerDrag?.sourceTarget === "project" && (
+                    <div
+                      className={
+                        todayBuilderPointerDrag.sourceTargetActive
+                          ? "sourceReturnDropZone sourceReturnDropZone--active"
+                          : "sourceReturnDropZone"
+                      }
                     >
-                      ＋ プロジェクト
-                    </button>
-                    <button
-                      aria-label="次の一手の操作"
-                      aria-haspopup="menu"
-                      className="sectionMenuButton"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        const rect = event.currentTarget.getBoundingClientRect();
-                        openContextMenu(
-                          { kind: "projects" },
-                          rect.left,
-                          rect.bottom,
-                          event.currentTarget,
-                        );
-                      }}
-                      onPointerDown={(event) => event.stopPropagation()}
-                      title="次の一手の操作"
-                      type="button"
+                      <span aria-hidden="true">↓</span>
+                      <span>ここにドロップして今日の候補から外す</span>
+                    </div>
+                  )}
+                  {inboxPointerDrag?.nextStepEligible && (
+                    <div
+                      className={
+                        inboxPointerDrag.nextStepTargetProjectId
+                          ? "sourceReturnDropZone sourceReturnDropZone--active"
+                          : "sourceReturnDropZone"
+                      }
                     >
-                      <span aria-hidden="true">…</span>
-                    </button>
-                  </div>
-                </div>
-                {todayBuilderPointerDrag?.sourceTarget === "project" && (
-                  <div
-                    className={
-                      todayBuilderPointerDrag.sourceTargetActive
-                        ? "sourceReturnDropZone sourceReturnDropZone--active"
-                        : "sourceReturnDropZone"
-                    }
-                  >
-                    <span aria-hidden="true">↓</span>
-                    <span>ここにドロップして今日の候補から外す</span>
-                  </div>
-                )}
-                {inboxPointerDrag?.nextStepEligible && (
-                  <div
-                    className={
-                      inboxPointerDrag.nextStepTargetProjectId
-                        ? "sourceReturnDropZone sourceReturnDropZone--active"
-                        : "sourceReturnDropZone"
-                    }
-                  >
-                    <span aria-hidden="true">↓</span>
-                    <span>ここにドロップして次の一手を設定する</span>
-                  </div>
-                )}
-                {projectsOpen && (
-                  <div
-                    className={
-                      config.projects.length === 0
-                        ? "nextStepBody nextStepBody--empty"
-                        : "nextStepBody"
-                    }
-                  >
-                    {config.projects.length === 0 && (
-                      <div className="sectionEmptyState">
-                        <div className="sectionEmptyStateContent">
-                          <strong>プロジェクトを設定しましょう</strong>
-                          <span>取り組みたいことをまとめると、次の一手を決められます</span>
-                          <button
-                            className="mainActionButton mainActionButton--gold"
-                            onClick={openProjectAddDialog}
-                            type="button"
-                          >
-                            <UiIcon name="add" size={16} />
-                            プロジェクトを設定
-                          </button>
+                      <span aria-hidden="true">↓</span>
+                      <span>ここにドロップして次の一手を設定する</span>
+                    </div>
+                  )}
+                  {projectsOpen && (
+                    <div
+                      className={
+                        config.projects.length === 0
+                          ? "nextStepBody nextStepBody--empty"
+                          : "nextStepBody"
+                      }
+                    >
+                      {config.projects.length === 0 && (
+                        <div className="sectionEmptyState">
+                          <div className="sectionEmptyStateContent">
+                            <strong>プロジェクトを設定しましょう</strong>
+                            <span>取り組みたいことをまとめると、次の一手を決められます</span>
+                            <button
+                              className="mainActionButton mainActionButton--gold"
+                              onClick={openProjectAddDialog}
+                              type="button"
+                            >
+                              <UiIcon name="add" size={16} />
+                              プロジェクトを設定
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                    <div className="projectGrid">
-                      {visibleProjects.map((project) => {
+                      )}
+                      <div className="projectGrid">
+                        {visibleProjects.map((project) => {
                           const projectSourceKey = `project:${project.id}`;
                           const sourceLocked = Boolean(
                             project.nextStep &&
@@ -11727,55 +11788,28 @@ function DashboardApp() {
                           const alreadySelected = Boolean(
                             todayCandidate && todayCandidateSelected(todayCandidate),
                           );
-                        return (
-                          <article
-                            className={[
-                              "nextStepRow sourceListRow",
-                              "nextStepCard",
+                          return (
+                            <article
+                              className={[
+                                "nextStepRow sourceListRow",
+                                "nextStepCard",
                                 projectPointerDrag?.id === project.id
                                   ? "nextStepRow--dragging"
                                   : "",
-                              inboxPointerDrag?.nextStepTargetProjectId === project.id
-                                ? "nextStepCard--dropTarget"
-                                : "",
-                            ]
-                              .filter(Boolean)
-                              .join(" ")}
+                                inboxPointerDrag?.nextStepTargetProjectId === project.id
+                                  ? "nextStepCard--dropTarget"
+                                  : "",
+                              ]
+                                .filter(Boolean)
+                                .join(" ")}
                               data-project-color={resolveProjectColorId(
                                 project.id,
                                 project.colorId,
                               )}
-                            data-project-id={project.id}
-                            key={project.id}
-                            onContextMenu={(event) => {
-                              event.preventDefault();
-                              openContextMenu(
-                                { kind: "nextStep", project },
-                                event.clientX,
-                                event.clientY,
-                                event.currentTarget,
-                              );
-                            }}
-                            onFocus={() => {
-                              const index = config.projects.findIndex(
-                                (item) => item.id === project.id,
-                              );
-                              projectListAnchorRef.current = { id: project.id, index };
-                            }}
-                            onKeyDown={(event) =>
-                              openContextMenuFromKeyboard(event, { kind: "nextStep", project })
-                            }
-                            onPointerCancel={cancelProjectPointerDrag}
-                            onPointerDown={(event) => startProjectPointerDrag(event, project.id)}
-                            onPointerMove={updateProjectPointerDrag}
-                            onPointerUp={finishProjectPointerDrag}
-                            tabIndex={0}
-                          >
-                            <div
-                              className="nextStepProjectRegion"
+                              data-project-id={project.id}
+                              key={project.id}
                               onContextMenu={(event) => {
                                 event.preventDefault();
-                                event.stopPropagation();
                                 openContextMenu(
                                   { kind: "nextStep", project },
                                   event.clientX,
@@ -11783,18 +11817,45 @@ function DashboardApp() {
                                   event.currentTarget,
                                 );
                               }}
+                              onFocus={() => {
+                                const index = config.projects.findIndex(
+                                  (item) => item.id === project.id,
+                                );
+                                projectListAnchorRef.current = { id: project.id, index };
+                              }}
                               onKeyDown={(event) =>
                                 openContextMenuFromKeyboard(event, { kind: "nextStep", project })
                               }
+                              onPointerCancel={cancelProjectPointerDrag}
+                              onPointerDown={(event) => startProjectPointerDrag(event, project.id)}
+                              onPointerMove={updateProjectPointerDrag}
+                              onPointerUp={finishProjectPointerDrag}
                               tabIndex={0}
                             >
-                              <h3>
-                                <ProjectIdentity
-                                  compact
-                                  colorId={project.colorId}
-                                  name={project.name}
-                                  projectId={project.id}
-                                />
+                              <div
+                                className="nextStepProjectRegion"
+                                onContextMenu={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  openContextMenu(
+                                    { kind: "nextStep", project },
+                                    event.clientX,
+                                    event.clientY,
+                                    event.currentTarget,
+                                  );
+                                }}
+                                onKeyDown={(event) =>
+                                  openContextMenuFromKeyboard(event, { kind: "nextStep", project })
+                                }
+                                tabIndex={0}
+                              >
+                                <h3>
+                                  <ProjectIdentity
+                                    compact
+                                    colorId={project.colorId}
+                                    name={project.name}
+                                    projectId={project.id}
+                                  />
                                   {sourceLocked && (
                                     <span
                                       aria-label="今日の3件で使用中のためロック中"
@@ -11808,69 +11869,69 @@ function DashboardApp() {
                                   {alreadySelected && (
                                     <span className="nextStepTodayStatus">✓ 今日の3件</span>
                                   )}
-                              </h3>
-                            </div>
-                            <div
-                              className="nextStepActionRegion"
-                              onContextMenu={(event) => {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                openContextMenu(
-                                  { kind: "nextStep", project },
-                                  event.clientX,
-                                  event.clientY,
-                                  event.currentTarget,
-                                );
-                              }}
-                              onKeyDown={(event) =>
-                                openContextMenuFromKeyboard(event, { kind: "nextStep", project })
-                              }
-                              tabIndex={0}
-                            >
-                              <p
-                                className={
+                                </h3>
+                              </div>
+                              <div
+                                className="nextStepActionRegion"
+                                onContextMenu={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  openContextMenu(
+                                    { kind: "nextStep", project },
+                                    event.clientX,
+                                    event.clientY,
+                                    event.currentTarget,
+                                  );
+                                }}
+                                onKeyDown={(event) =>
+                                  openContextMenuFromKeyboard(event, { kind: "nextStep", project })
+                                }
+                                tabIndex={0}
+                              >
+                                <p
+                                  className={
                                     project.nextStep?.text.trim()
                                       ? ""
                                       : "projectNextStepPlaceholder"
                                   }
                                   title={
                                     project.nextStep?.text.trim() || "まだ次の一手がありません"
-                                }
-                              >
-                                {project.nextStep?.trigger?.trim() && (
-                                  <span className="projectNextStepTrigger">
-                                    {project.nextStep.trigger.trim()} ▸{" "}
-                                  </span>
-                                )}
-                                {project.nextStep?.text.trim() || "まだ次の一手がありません"}
-                              </p>
+                                  }
+                                >
+                                  {project.nextStep?.trigger?.trim() && (
+                                    <span className="projectNextStepTrigger">
+                                      {project.nextStep.trigger.trim()} ▸{" "}
+                                    </span>
+                                  )}
+                                  {project.nextStep?.text.trim() || "まだ次の一手がありません"}
+                                </p>
                                 {project.nextStep?.text.trim() ? (
                                   !sourceLocked && (
                                     <div className="nextStepCardActions">
-                              <button
+                                      <button
                                         className="nextStepTodayAdd mainActionButton mainActionButton--gold"
                                         disabled={
                                           !todayCandidate ||
                                           alreadySelected ||
                                           config.today.items.length >= TODAY_ITEM_LIMIT
-                                }
-                                onClick={(event) => {
-                                  event.stopPropagation();
+                                        }
+                                        onClick={(event) => {
+                                          event.stopPropagation();
                                           if (todayCandidate)
                                             void addCandidateToToday(todayCandidate);
-                                }}
-                                onPointerDown={(event) => event.stopPropagation()}
-                                title={
+                                        }}
+                                        onPointerDown={(event) => event.stopPropagation()}
+                                        title={
                                           alreadySelected
                                             ? "今日の3件にあります"
                                             : config.today.items.length >= TODAY_ITEM_LIMIT
                                               ? "今日の3件は3件埋まっています"
                                               : "今日の3件に追加"
-                                }
-                                type="button"
-                              >
+                                        }
+                                        type="button"
+                                      >
                                         ＋ 今日へ
-                              </button>
+                                      </button>
                                       <button
                                         className="nextStepRowAction nextStepRowAction--change mainActionButton mainActionButton--neutral"
                                         disabled={sourceEditBlocked(projectSourceKey)}
@@ -11901,368 +11962,366 @@ function DashboardApp() {
                                     次の一手を設定
                                   </button>
                                 )}
+                                <button
+                                  aria-label={`${project.name}の次の一手の操作`}
+                                  aria-haspopup="menu"
+                                  className="sourceRowMenu nextStepRegionMenu"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    const rect = event.currentTarget.getBoundingClientRect();
+                                    openContextMenu(
+                                      { kind: "nextStep", project },
+                                      rect.left,
+                                      rect.bottom,
+                                      event.currentTarget,
+                                    );
+                                  }}
+                                  onPointerDown={(event) => event.stopPropagation()}
+                                  title="次の一手の操作"
+                                  type="button"
+                                >
+                                  <span aria-hidden="true">…</span>
+                                </button>
+                              </div>
+                            </article>
+                          );
+                        })}
+                      </div>
+                      {config.projects.length > PROJECT_CARD_COMPACT_LIMIT && (
+                        <div className="sourceListControls nextStepCardControls">
+                          <button
+                            className="mainActionButton mainActionButton--neutral"
+                            onClick={() => {
+                              projectListAnchorRef.current = null;
+                              setProjectsListExpanded((expanded) => !expanded);
+                            }}
+                            type="button"
+                          >
+                            {projectsListExpanded
+                              ? "− 折りたたむ"
+                              : `＋ 残り${config.projects.length - PROJECT_CARD_COMPACT_LIMIT}件を表示`}
+                          </button>
+                        </div>
+                      )}
+                      {projectPointerDrag?.targetIndicator && (
+                        <div
+                          aria-hidden="true"
+                          className="projectDropIndicator"
+                          style={projectPointerDrag.targetIndicator}
+                        />
+                      )}
+                      {projectPointerDrag?.todayTargetIndicator && (
+                        <div
+                          aria-hidden="true"
+                          className="todayDropIndicator"
+                          style={projectPointerDrag.todayTargetIndicator}
+                        />
+                      )}
+                      {projectPointerDrag && (
+                        <div
+                          aria-hidden="true"
+                          className={
+                            projectPointerDrag.todayTargetIndex !== undefined
+                              ? "projectDragGhost projectDragGhost--today"
+                              : projectPointerDrag.restoreTarget
+                                ? "projectDragGhost projectDragGhost--restore"
+                                : "projectDragGhost"
+                          }
+                          style={{
+                            left: projectPointerDrag.pointerX - projectPointerDrag.offsetX,
+                            top: projectPointerDrag.pointerY - projectPointerDrag.offsetY,
+                            width: Math.min(300, projectPointerDrag.width),
+                          }}
+                        >
+                          {(() => {
+                            const project = config.projects.find(
+                              (item) => item.id === projectPointerDrag.id,
+                            );
+                            return project ? (
+                              <>
+                                <ProjectIdentity
+                                  colorId={project.colorId}
+                                  compact
+                                  name={project.name}
+                                  projectId={project.id}
+                                />
+                                <strong>{project.nextStep?.text || "次の一手を書く"}</strong>
+                              </>
+                            ) : null;
+                          })()}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </section>
+
+                <section
+                  className={[
+                    "inboxBand",
+                    projectPointerDrag?.wishlistEligible ||
+                    todayBuilderPointerDrag?.sourceTarget === "wishlist"
+                      ? "sourceReturnBand--target"
+                      : "",
+                    projectPointerDrag?.wishlistTarget ||
+                    (todayBuilderPointerDrag?.sourceTarget === "wishlist" &&
+                      todayBuilderPointerDrag.sourceTargetActive)
+                      ? "sourceReturnBand--active"
+                      : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  <div
+                    className="disclosureHeader"
+                    data-inbox-header
+                    onContextMenu={(event) => {
+                      event.preventDefault();
+                      openContextMenu(
+                        { kind: "inboxes" },
+                        event.clientX,
+                        event.clientY,
+                        event.currentTarget,
+                      );
+                    }}
+                    onKeyDown={(event) => openContextMenuFromKeyboard(event, { kind: "inboxes" })}
+                    tabIndex={-1}
+                    onClick={(event) =>
+                      toggleDisclosureFromBar(event, () => setInboxOpen((open) => !open))
+                    }
+                  >
+                    <button
+                      aria-expanded={inboxOpen}
+                      className="disclosure"
+                      onClick={() => setInboxOpen((open) => !open)}
+                      type="button"
+                    >
+                      <UiIcon name={inboxOpen ? "chevronDown" : "chevronRight"} size={16} />
+                      <span className="disclosureLabel">
+                        <strong>やりたいこと</strong>
+                      </span>
+                    </button>
+                    <span className="disclosureCount">{config.inbox.length}件</span>
+                    <span className="disclosureDescription">
+                      他にやりたいこと。今日やるものは「今日の3件」から選べます。
+                    </span>
+                    <div className="disclosureHeaderActions">
+                      <button
+                        aria-label="やりたいことを追加"
+                        className="sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd nextStepHeaderAdd--wishlist mainActionButton mainActionButton--gold"
+                        disabled={inboxAddOpen}
+                        onPointerDown={(event) => event.stopPropagation()}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          openInboxAddDialog(event.currentTarget);
+                        }}
+                        title="やりたいことを追加"
+                        type="button"
+                      >
+                        ＋ やりたいこと
+                      </button>
+                      <button
+                        aria-label="やりたいことの操作"
+                        aria-haspopup="menu"
+                        className="sectionMenuButton"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          const rect = event.currentTarget.getBoundingClientRect();
+                          openContextMenu(
+                            { kind: "inboxes" },
+                            rect.left,
+                            rect.bottom,
+                            event.currentTarget,
+                          );
+                        }}
+                        onPointerDown={(event) => event.stopPropagation()}
+                        title="やりたいことの操作"
+                        type="button"
+                      >
+                        <span aria-hidden="true">…</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {(projectPointerDrag?.wishlistEligible ||
+                    todayBuilderPointerDrag?.sourceTarget === "wishlist") && (
+                    <div
+                      className={
+                        projectPointerDrag?.wishlistTarget ||
+                        todayBuilderPointerDrag?.sourceTargetActive
+                          ? "sourceReturnDropZone sourceReturnDropZone--active"
+                          : "sourceReturnDropZone"
+                      }
+                    >
+                      <span aria-hidden="true">↓</span>
+                      <span>
+                        {projectPointerDrag?.wishlistEligible
+                          ? "ここにドロップしてやりたいことへ戻す"
+                          : "ここにドロップして今日の候補から外す"}
+                      </span>
+                    </div>
+                  )}
+
+                  {inboxOpen && (
+                    <div className="inboxBody">
+                      {config.inbox.length === 0 && (
+                        <div className="sectionEmptyState">
+                          <div className="sectionEmptyStateContent">
+                            <strong>やりたいことを設定しましょう</strong>
+                            <span>あとでやりたいことを登録して、今日やる候補にできます</span>
+                            <button
+                              className="mainActionButton mainActionButton--gold"
+                              disabled={inboxAddOpen}
+                              onClick={(event) => openInboxAddDialog(event.currentTarget)}
+                              type="button"
+                            >
+                              <UiIcon name="add" size={16} />
+                              やりたいことを追加する
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      <div className="inboxGroups">
+                        {wishlistGroups.map((group) => {
+                          const view = wishlistGroupViews[group.key] ?? {};
+                          const range = sourceListRange(
+                            group.items.length,
+                            Boolean(view.expanded),
+                            view.page ?? 1,
+                          );
+                          const collapsed = Boolean(view.collapsed);
+                          const visibleItems = group.items.slice(range.start, range.end);
+                          const groupProject = group.projectId
+                            ? projectsById.get(group.projectId)
+                            : undefined;
+                          return (
+                            <section
+                              className={
+                                wishlistGroupPointerDrag?.key === group.key
+                                  ? "wishlistGroup wishlistGroup--dragging"
+                                  : "wishlistGroup"
+                              }
+                              data-wishlist-group={group.key}
+                              key={group.key}
+                              onPointerCancel={cancelWishlistGroupPointerDrag}
+                              onPointerDown={(event) =>
+                                startWishlistGroupPointerDrag(event, group.key, group.name)
+                              }
+                              onPointerMove={updateWishlistGroupPointerDrag}
+                              onPointerUp={finishWishlistGroupPointerDrag}
+                            >
                               <button
-                                aria-label={`${project.name}の次の一手の操作`}
-                                aria-haspopup="menu"
-                                className="sourceRowMenu nextStepRegionMenu"
+                                aria-expanded={!collapsed}
+                                className="wishlistGroupHeader"
                                 onClick={(event) => {
+                                  if (event.detail === 0) toggleWishlistGroup(group.key);
+                                }}
+                                onContextMenu={(event) => {
+                                  if (!groupProject) return;
+                                  event.preventDefault();
                                   event.stopPropagation();
-                                  const rect = event.currentTarget.getBoundingClientRect();
                                   openContextMenu(
-                                    { kind: "nextStep", project },
-                                    rect.left,
-                                    rect.bottom,
+                                    { kind: "project", project: groupProject },
+                                    event.clientX,
+                                    event.clientY,
                                     event.currentTarget,
                                   );
                                 }}
-                                onPointerDown={(event) => event.stopPropagation()}
-                                title="次の一手の操作"
+                                onKeyDown={(event) => {
+                                  if (groupProject) {
+                                    openContextMenuFromKeyboard(event, {
+                                      kind: "project",
+                                      project: groupProject,
+                                    });
+                                  }
+                                }}
+                                title={
+                                  groupProject
+                                    ? `${group.name}（ドラッグでグループを並べ替え、右クリックで編集）`
+                                    : "ドラッグでグループを並べ替え"
+                                }
                                 type="button"
                               >
-                                <span aria-hidden="true">…</span>
-                              </button>
-                            </div>
-                          </article>
-                        );
-                      })}
-                    </div>
-                    {config.projects.length > PROJECT_CARD_COMPACT_LIMIT && (
-                      <div className="sourceListControls nextStepCardControls">
-                        <button
-                          className="mainActionButton mainActionButton--neutral"
-                          onClick={() => {
-                            projectListAnchorRef.current = null;
-                            setProjectsListExpanded((expanded) => !expanded);
-                          }}
-                          type="button"
-                        >
-                          {projectsListExpanded
-                            ? "− 折りたたむ"
-                            : `＋ 残り${config.projects.length - PROJECT_CARD_COMPACT_LIMIT}件を表示`}
-                        </button>
-                      </div>
-                    )}
-                    {projectPointerDrag?.targetIndicator && (
-                      <div
-                        aria-hidden="true"
-                        className="projectDropIndicator"
-                        style={projectPointerDrag.targetIndicator}
-                      />
-                    )}
-                    {projectPointerDrag?.todayTargetIndicator && (
-                      <div
-                        aria-hidden="true"
-                        className="todayDropIndicator"
-                        style={projectPointerDrag.todayTargetIndicator}
-                      />
-                    )}
-                    {projectPointerDrag && (
-                      <div
-                        aria-hidden="true"
-                        className={
-                          projectPointerDrag.todayTargetIndex !== undefined
-                            ? "projectDragGhost projectDragGhost--today"
-                            : projectPointerDrag.restoreTarget
-                              ? "projectDragGhost projectDragGhost--restore"
-                              : "projectDragGhost"
-                        }
-                        style={{
-                          left: projectPointerDrag.pointerX - projectPointerDrag.offsetX,
-                          top: projectPointerDrag.pointerY - projectPointerDrag.offsetY,
-                          width: Math.min(300, projectPointerDrag.width),
-                        }}
-                      >
-                        {(() => {
-                          const project = config.projects.find(
-                            (item) => item.id === projectPointerDrag.id,
-                          );
-                          return project ? (
-                            <>
-                              <ProjectIdentity
-                                colorId={project.colorId}
-                                compact
-                                name={project.name}
-                                projectId={project.id}
-                              />
-                              <strong>{project.nextStep?.text || "次の一手を書く"}</strong>
-                            </>
-                          ) : null;
-                        })()}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </section>
-
-              <section
-                className={[
-                  "inboxBand",
-                  projectPointerDrag?.wishlistEligible ||
-                  todayBuilderPointerDrag?.sourceTarget === "wishlist"
-                    ? "sourceReturnBand--target"
-                    : "",
-                  projectPointerDrag?.wishlistTarget ||
-                  (todayBuilderPointerDrag?.sourceTarget === "wishlist" &&
-                    todayBuilderPointerDrag.sourceTargetActive)
-                    ? "sourceReturnBand--active"
-                    : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-              >
-                <div
-                  className="disclosureHeader"
-                  data-inbox-header
-                  onContextMenu={(event) => {
-                    event.preventDefault();
-                    openContextMenu(
-                      { kind: "inboxes" },
-                      event.clientX,
-                      event.clientY,
-                      event.currentTarget,
-                    );
-                  }}
-                  onKeyDown={(event) => openContextMenuFromKeyboard(event, { kind: "inboxes" })}
-                  tabIndex={-1}
-                  onClick={(event) =>
-                    toggleDisclosureFromBar(event, () => setInboxOpen((open) => !open))
-                  }
-                >
-                  <button
-                    aria-expanded={inboxOpen}
-                    className="disclosure"
-                    onClick={() => setInboxOpen((open) => !open)}
-                    type="button"
-                  >
-                    <UiIcon name={inboxOpen ? "chevronDown" : "chevronRight"} size={16} />
-                    <span className="disclosureLabel">
-                      <strong>やりたいこと</strong>
-                    </span>
-                  </button>
-                  <span className="disclosureCount">{config.inbox.length}件</span>
-                  <span className="disclosureDescription">
-                    他にやりたいこと。今日やるものは「今日の3件」から選べます。
-                  </span>
-                  <div className="disclosureHeaderActions">
-                    <button
-                      aria-label="やりたいことを追加"
-                      className="sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd nextStepHeaderAdd--wishlist mainActionButton mainActionButton--gold"
-                      disabled={inboxAddOpen}
-                      onPointerDown={(event) => event.stopPropagation()}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        openInboxAddDialog(event.currentTarget);
-                      }}
-                      title="やりたいことを追加"
-                      type="button"
-                    >
-                      ＋ やりたいこと
-                    </button>
-                    <button
-                      aria-label="やりたいことの操作"
-                      aria-haspopup="menu"
-                      className="sectionMenuButton"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        const rect = event.currentTarget.getBoundingClientRect();
-                        openContextMenu(
-                          { kind: "inboxes" },
-                          rect.left,
-                          rect.bottom,
-                          event.currentTarget,
-                        );
-                      }}
-                      onPointerDown={(event) => event.stopPropagation()}
-                      title="やりたいことの操作"
-                      type="button"
-                    >
-                      <span aria-hidden="true">…</span>
-                    </button>
-                  </div>
-                </div>
-
-                {(projectPointerDrag?.wishlistEligible ||
-                  todayBuilderPointerDrag?.sourceTarget === "wishlist") && (
-                  <div
-                    className={
-                      projectPointerDrag?.wishlistTarget ||
-                      todayBuilderPointerDrag?.sourceTargetActive
-                        ? "sourceReturnDropZone sourceReturnDropZone--active"
-                        : "sourceReturnDropZone"
-                    }
-                  >
-                    <span aria-hidden="true">↓</span>
-                    <span>
-                      {projectPointerDrag?.wishlistEligible
-                        ? "ここにドロップしてやりたいことへ戻す"
-                        : "ここにドロップして今日の候補から外す"}
-                    </span>
-                  </div>
-                )}
-
-                {inboxOpen && (
-                  <div className="inboxBody">
-                    {config.inbox.length === 0 && (
-                      <div className="sectionEmptyState">
-                        <div className="sectionEmptyStateContent">
-                          <strong>やりたいことを設定しましょう</strong>
-                          <span>あとでやりたいことを登録して、今日やる候補にできます</span>
-                          <button
-                            className="mainActionButton mainActionButton--gold"
-                            disabled={inboxAddOpen}
-                            onClick={(event) => openInboxAddDialog(event.currentTarget)}
-                            type="button"
-                          >
-                            <UiIcon name="add" size={16} />
-                            やりたいことを追加する
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                    <div className="inboxGroups">
-                      {wishlistGroups.map((group) => {
-                        const view = wishlistGroupViews[group.key] ?? {};
-                        const range = sourceListRange(
-                          group.items.length,
-                          Boolean(view.expanded),
-                          view.page ?? 1,
-                        );
-                        const collapsed = Boolean(view.collapsed);
-                        const visibleItems = group.items.slice(range.start, range.end);
-                        const groupProject = group.projectId
-                          ? projectsById.get(group.projectId)
-                          : undefined;
-                        return (
-                          <section
-                            className={
-                              wishlistGroupPointerDrag?.key === group.key
-                                ? "wishlistGroup wishlistGroup--dragging"
-                                : "wishlistGroup"
-                            }
-                            data-wishlist-group={group.key}
-                            key={group.key}
-                            onPointerCancel={cancelWishlistGroupPointerDrag}
-                            onPointerDown={(event) =>
-                              startWishlistGroupPointerDrag(event, group.key, group.name)
-                            }
-                            onPointerMove={updateWishlistGroupPointerDrag}
-                            onPointerUp={finishWishlistGroupPointerDrag}
-                          >
-                            <button
-                              aria-expanded={!collapsed}
-                              className="wishlistGroupHeader"
-                              onClick={(event) => {
-                                if (event.detail === 0) toggleWishlistGroup(group.key);
-                              }}
-                              onContextMenu={(event) => {
-                                if (!groupProject) return;
-                                event.preventDefault();
-                                event.stopPropagation();
-                                openContextMenu(
-                                  { kind: "project", project: groupProject },
-                                  event.clientX,
-                                  event.clientY,
-                                  event.currentTarget,
-                                );
-                              }}
-                              onKeyDown={(event) => {
-                                if (groupProject) {
-                                  openContextMenuFromKeyboard(event, {
-                                    kind: "project",
-                                    project: groupProject,
-                                  });
-                                }
-                              }}
-                              title={
-                                groupProject
-                                  ? `${group.name}（ドラッグでグループを並べ替え、右クリックで編集）`
-                                  : "ドラッグでグループを並べ替え"
-                              }
-                              type="button"
-                            >
                                 <UiIcon
                                   name={collapsed ? "chevronRight" : "chevronDown"}
                                   size={16}
                                 />
-                              {groupProject ? (
-                                <ProjectIdentity
-                                  colorId={groupProject.colorId}
-                                  compact
-                                  name={group.name}
-                                  projectId={groupProject.id}
-                                />
-                              ) : (
-                                <strong>未分類</strong>
-                              )}
-                              <span>{group.items.length}件</span>
-                            </button>
-                            {!collapsed && (
-                              <>
-                                <div className="inboxList">
-                                  {visibleItems.map(({ item, index }) => {
-                                    const sourceKey = item.id ? `wishlist:${item.id}` : null;
+                                {groupProject ? (
+                                  <ProjectIdentity
+                                    colorId={groupProject.colorId}
+                                    compact
+                                    name={group.name}
+                                    projectId={groupProject.id}
+                                  />
+                                ) : (
+                                  <strong>未分類</strong>
+                                )}
+                                <span>{group.items.length}件</span>
+                              </button>
+                              {!collapsed && (
+                                <>
+                                  <div className="inboxList">
+                                    {visibleItems.map(({ item, index }) => {
+                                      const sourceKey = item.id ? `wishlist:${item.id}` : null;
                                       const sourceLocked = Boolean(
                                         sourceKey &&
                                         sourceLockedByUnfinishedToday(config, sourceKey),
                                       );
-                                    const selected = Boolean(
-                                      sourceKey &&
-                                        config.today.items.some(
-                                          (todayItem) => {
-                                            if (todayItem.sourceKey) {
-                                              return (
-                                                canonicalSourceKey(config, todayItem.sourceKey) ===
-                                                sourceKey
-                                              );
-                                            }
+                                      const selected = Boolean(
+                                        sourceKey &&
+                                        config.today.items.some((todayItem) => {
+                                          if (todayItem.sourceKey) {
                                             return (
-                                              todayItem.projectId === item.projectId &&
-                                              todayItem.text.trim() === item.text.trim()
+                                              canonicalSourceKey(config, todayItem.sourceKey) ===
+                                              sourceKey
                                             );
-                                          },
-                                        ),
-                                    );
-                                    const nextStepSelected = wishlistItemIsCurrentNextStep(item);
-                                    return (
-                                      <div
-                                        className={
-                                          inboxPointerDrag?.index === index
-                                            ? "inboxRow sourceListRow inboxRow--dragging"
-                                            : "inboxRow sourceListRow"
-                                        }
-                                        data-inbox-index={index}
-                                        data-inbox-id={item.id}
-                                        key={item.id ?? `${item.text}-${index}`}
-                                        onFocus={() => {
-                                          if (item.id)
-                                            inboxListAnchorRef.current = { id: item.id, index };
-                                        }}
-                                        onContextMenu={(event) => {
-                                          event.preventDefault();
-                                          event.stopPropagation();
-                                          openContextMenu(
-                                            { kind: "inbox", index, itemText: item.text },
-                                            event.clientX,
-                                            event.clientY,
-                                            event.currentTarget,
+                                          }
+                                          return (
+                                            todayItem.projectId === item.projectId &&
+                                            todayItem.text.trim() === item.text.trim()
                                           );
-                                        }}
-                                        onKeyDown={(event) =>
-                                          openContextMenuFromKeyboard(event, {
-                                            kind: "inbox",
-                                            index,
-                                            itemText: item.text,
-                                          })
-                                        }
-                                        onPointerCancel={cancelInboxPointerDrag}
-                                        onPointerDown={(event) =>
-                                          startInboxPointerDrag(event, index)
-                                        }
-                                        onPointerMove={updateInboxPointerDrag}
-                                        onPointerUp={finishInboxPointerDrag}
-                                        tabIndex={0}
-                                      >
-                                        <span className="inboxItemText" title={item.text}>
+                                        }),
+                                      );
+                                      const nextStepSelected = wishlistItemIsCurrentNextStep(item);
+                                      return (
+                                        <div
+                                          className={
+                                            inboxPointerDrag?.index === index
+                                              ? "inboxRow sourceListRow inboxRow--dragging"
+                                              : "inboxRow sourceListRow"
+                                          }
+                                          data-inbox-index={index}
+                                          data-inbox-id={item.id}
+                                          key={item.id ?? `${item.text}-${index}`}
+                                          onFocus={() => {
+                                            if (item.id)
+                                              inboxListAnchorRef.current = { id: item.id, index };
+                                          }}
+                                          onContextMenu={(event) => {
+                                            event.preventDefault();
+                                            event.stopPropagation();
+                                            openContextMenu(
+                                              { kind: "inbox", index, itemText: item.text },
+                                              event.clientX,
+                                              event.clientY,
+                                              event.currentTarget,
+                                            );
+                                          }}
+                                          onKeyDown={(event) =>
+                                            openContextMenuFromKeyboard(event, {
+                                              kind: "inbox",
+                                              index,
+                                              itemText: item.text,
+                                            })
+                                          }
+                                          onPointerCancel={cancelInboxPointerDrag}
+                                          onPointerDown={(event) =>
+                                            startInboxPointerDrag(event, index)
+                                          }
+                                          onPointerMove={updateInboxPointerDrag}
+                                          onPointerUp={finishInboxPointerDrag}
+                                          tabIndex={0}
+                                        >
+                                          <span className="inboxItemText" title={item.text}>
                                             {sourceLocked && (
                                               <span
                                                 aria-label="今日の3件で使用中のためロック中"
@@ -12273,282 +12332,282 @@ function DashboardApp() {
                                                 <UiIcon name="lock" size={16} />
                                               </span>
                                             )}
-                                          {item.text}
-                                        </span>
-                                        <div className="wishlistRowActions">
-                                          <span className="wishlistNextStepSlot">
+                                            {item.text}
+                                          </span>
+                                          <div className="wishlistRowActions">
+                                            <span className="wishlistNextStepSlot">
                                               {!nextStepSelected && !sourceLocked ? (
-                                            <button
-                                              aria-label={`${item.text}の次の一手を設定`}
-                                              className="wishlistNextStepAction nextStepRowAction nextStepRowAction--set mainActionButton mainActionButton--neutral"
-                                              disabled={
+                                                <button
+                                                  aria-label={`${item.text}の次の一手を設定`}
+                                                  className="wishlistNextStepAction nextStepRowAction nextStepRowAction--set mainActionButton mainActionButton--neutral"
+                                                  disabled={
                                                     !item.id ||
                                                     sourceEditBlocked(`wishlist:${item.id}`)
-                                              }
-                                              onClick={(event) => {
-                                                event.stopPropagation();
-                                                promoteInboxToNextStep(index);
-                                              }}
-                                              onPointerDown={(event) => event.stopPropagation()}
-                                              title={
+                                                  }
+                                                  onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    promoteInboxToNextStep(index);
+                                                  }}
+                                                  onPointerDown={(event) => event.stopPropagation()}
+                                                  title={
                                                     item.id
                                                       ? (sourceEditBlockReason(
                                                           `wishlist:${item.id}`,
                                                         ) ?? "次の一手を設定")
-                                                  : "次の一手を設定"
-                                              }
-                                              type="button"
-                                            >
-                                              ▷ 次の一手を設定
-                                            </button>
+                                                      : "次の一手を設定"
+                                                  }
+                                                  type="button"
+                                                >
+                                                  ▷ 次の一手を設定
+                                                </button>
                                               ) : null}
-                                          </span>
-                                          {nextStepSelected && (
-                                            <span className="wishlistNextStepStatus">
-                                              ✓ 次の一手に設定済み
                                             </span>
-                                          )}
-                                          {selected && (
+                                            {nextStepSelected && (
+                                              <span className="wishlistNextStepStatus">
+                                                ✓ 次の一手に設定済み
+                                              </span>
+                                            )}
+                                            {selected && (
                                               <span className="wishlistTodayStatus">
                                                 ✓ 今日の3件に設定済み
                                               </span>
-                                          )}
-                                          <button
-                                            aria-label={`${item.text}の操作`}
-                                            aria-haspopup="menu"
-                                            className="sourceRowMenu"
-                                            onClick={(event) => {
-                                              const rect =
-                                                event.currentTarget.getBoundingClientRect();
-                                              openContextMenu(
-                                                { kind: "inbox", index, itemText: item.text },
-                                                rect.left,
-                                                rect.bottom,
-                                                event.currentTarget,
-                                              );
-                                            }}
-                                            title="操作メニュー"
-                                            type="button"
-                                          >
-                                            <span aria-hidden="true">…</span>
-                                          </button>
+                                            )}
+                                            <button
+                                              aria-label={`${item.text}の操作`}
+                                              aria-haspopup="menu"
+                                              className="sourceRowMenu"
+                                              onClick={(event) => {
+                                                const rect =
+                                                  event.currentTarget.getBoundingClientRect();
+                                                openContextMenu(
+                                                  { kind: "inbox", index, itemText: item.text },
+                                                  rect.left,
+                                                  rect.bottom,
+                                                  event.currentTarget,
+                                                );
+                                              }}
+                                              title="操作メニュー"
+                                              type="button"
+                                            >
+                                              <span aria-hidden="true">…</span>
+                                            </button>
+                                          </div>
                                         </div>
+                                      );
+                                    })}
+                                  </div>
+                                  {group.items.length > SOURCE_LIST_COMPACT_LIMIT &&
+                                    group.items.length < SOURCE_LIST_PAGINATION_THRESHOLD && (
+                                      <div className="sourceListControls">
+                                        <button
+                                          className="mainActionButton mainActionButton--neutral"
+                                          onClick={() =>
+                                            setWishlistGroupViews((current) => ({
+                                              ...current,
+                                              [group.key]: {
+                                                ...current[group.key],
+                                                expanded: !view.expanded,
+                                              },
+                                            }))
+                                          }
+                                          type="button"
+                                        >
+                                          {view.expanded
+                                            ? "5件だけ表示"
+                                            : `残り${group.items.length - SOURCE_LIST_COMPACT_LIMIT}件をもっと見る`}
+                                        </button>
                                       </div>
-                                    );
-                                  })}
-                                </div>
-                                {group.items.length > SOURCE_LIST_COMPACT_LIMIT &&
-                                  group.items.length < SOURCE_LIST_PAGINATION_THRESHOLD && (
-                                    <div className="sourceListControls">
+                                    )}
+                                  {group.items.length >= SOURCE_LIST_PAGINATION_THRESHOLD && (
+                                    <nav
+                                      aria-label={`${group.name}のやりたいことページ`}
+                                      className="sourceListPagination"
+                                    >
                                       <button
                                         className="mainActionButton mainActionButton--neutral"
+                                        disabled={range.page <= 1}
                                         onClick={() =>
                                           setWishlistGroupViews((current) => ({
                                             ...current,
                                             [group.key]: {
                                               ...current[group.key],
-                                              expanded: !view.expanded,
+                                              page: Math.max(1, range.page - 1),
                                             },
                                           }))
                                         }
                                         type="button"
                                       >
-                                        {view.expanded
-                                          ? "5件だけ表示"
-                                          : `残り${group.items.length - SOURCE_LIST_COMPACT_LIMIT}件をもっと見る`}
+                                        <UiIcon name="chevronLeft" size={16} /> 前へ
                                       </button>
-                                    </div>
+                                      <span>
+                                        {range.page} / {range.pageCount}
+                                      </span>
+                                      <button
+                                        className="mainActionButton mainActionButton--neutral"
+                                        disabled={range.page >= range.pageCount}
+                                        onClick={() =>
+                                          setWishlistGroupViews((current) => ({
+                                            ...current,
+                                            [group.key]: {
+                                              ...current[group.key],
+                                              page: Math.min(range.pageCount, range.page + 1),
+                                            },
+                                          }))
+                                        }
+                                        type="button"
+                                      >
+                                        次へ <UiIcon name="chevronRight" size={16} />
+                                      </button>
+                                    </nav>
                                   )}
-                                {group.items.length >= SOURCE_LIST_PAGINATION_THRESHOLD && (
-                                  <nav
-                                    aria-label={`${group.name}のやりたいことページ`}
-                                    className="sourceListPagination"
-                                  >
-                                    <button
-                                      className="mainActionButton mainActionButton--neutral"
-                                      disabled={range.page <= 1}
-                                      onClick={() =>
-                                        setWishlistGroupViews((current) => ({
-                                          ...current,
-                                          [group.key]: {
-                                            ...current[group.key],
-                                            page: Math.max(1, range.page - 1),
-                                          },
-                                        }))
-                                      }
-                                      type="button"
-                                    >
-                                      <UiIcon name="chevronLeft" size={16} /> 前へ
-                                    </button>
-                                    <span>
-                                      {range.page} / {range.pageCount}
-                                    </span>
-                                    <button
-                                      className="mainActionButton mainActionButton--neutral"
-                                      disabled={range.page >= range.pageCount}
-                                      onClick={() =>
-                                        setWishlistGroupViews((current) => ({
-                                          ...current,
-                                          [group.key]: {
-                                            ...current[group.key],
-                                            page: Math.min(range.pageCount, range.page + 1),
-                                          },
-                                        }))
-                                      }
-                                      type="button"
-                                    >
-                                      次へ <UiIcon name="chevronRight" size={16} />
-                                    </button>
-                                  </nav>
-                                )}
-                              </>
-                            )}
-                          </section>
-                        );
-                      })}
-                    </div>
-                    {inboxPointerDrag?.targetIndicator && (
-                      <div
-                        aria-hidden="true"
-                        className="inboxDropIndicator"
-                        style={inboxPointerDrag.targetIndicator}
-                      />
-                    )}
-                    {inboxPointerDrag?.todayTargetIndicator && (
-                      <div
-                        aria-hidden="true"
-                        className="todayDropIndicator"
-                        style={inboxPointerDrag.todayTargetIndicator}
-                      />
-                    )}
-                    {wishlistGroupPointerDrag?.targetIndicator && (
-                      <div
-                        aria-hidden="true"
-                        className="wishlistGroupDropIndicator"
-                        style={wishlistGroupPointerDrag.targetIndicator}
-                      />
-                    )}
-                    {wishlistGroupPointerDrag && (
-                      <div
-                        aria-hidden="true"
-                        className="wishlistGroupDragGhost"
-                        style={{
-                          left:
-                            wishlistGroupPointerDrag.pointerX - wishlistGroupPointerDrag.offsetX,
+                                </>
+                              )}
+                            </section>
+                          );
+                        })}
+                      </div>
+                      {inboxPointerDrag?.targetIndicator && (
+                        <div
+                          aria-hidden="true"
+                          className="inboxDropIndicator"
+                          style={inboxPointerDrag.targetIndicator}
+                        />
+                      )}
+                      {inboxPointerDrag?.todayTargetIndicator && (
+                        <div
+                          aria-hidden="true"
+                          className="todayDropIndicator"
+                          style={inboxPointerDrag.todayTargetIndicator}
+                        />
+                      )}
+                      {wishlistGroupPointerDrag?.targetIndicator && (
+                        <div
+                          aria-hidden="true"
+                          className="wishlistGroupDropIndicator"
+                          style={wishlistGroupPointerDrag.targetIndicator}
+                        />
+                      )}
+                      {wishlistGroupPointerDrag && (
+                        <div
+                          aria-hidden="true"
+                          className="wishlistGroupDragGhost"
+                          style={{
+                            left:
+                              wishlistGroupPointerDrag.pointerX - wishlistGroupPointerDrag.offsetX,
                             top:
                               wishlistGroupPointerDrag.pointerY - wishlistGroupPointerDrag.offsetY,
-                          width: Math.min(320, wishlistGroupPointerDrag.width),
-                        }}
-                      >
-                        {wishlistGroupPointerDrag.name}
-                      </div>
-                    )}
-                    {inboxPointerDrag &&
-                      (() => {
-                        const item = config.inbox.find(
-                          (entry) =>
-                            entry.id === inboxPointerDrag.sourceKey.slice("wishlist:".length),
-                        );
-                        const project = item?.projectId
-                          ? projectsById.get(item.projectId)
-                          : undefined;
-                        return item ? (
-                          <div
-                            aria-hidden="true"
-                            className={
-                              inboxPointerDrag.restoreTarget
-                                ? "inboxDragGhost inboxDragGhost--restore"
-                                : "inboxDragGhost"
-                            }
-                            style={{
-                              left: inboxPointerDrag.pointerX - inboxPointerDrag.offsetX,
-                              top: inboxPointerDrag.pointerY - inboxPointerDrag.offsetY,
-                              width: Math.min(300, inboxPointerDrag.width),
-                            }}
-                          >
-                            <span className="inboxProjectIdentity">
-                              {project ? (
-                                <ProjectIdentity
-                                  colorId={project.colorId}
-                                  compact
-                                  name={project.name}
-                                  projectId={project.id}
-                                />
-                              ) : (
-                                <span className="sourceProjectNone">プロジェクトなし</span>
-                              )}
-                            </span>
-                            <strong>{item.text}</strong>
-                          </div>
-                        ) : null;
-                      })()}
-                  </div>
-                )}
-              </section>
-
-              <section className="todayActivityBand">
-                <div
-                  className="disclosureHeader"
-                  onClick={(event) =>
-                    toggleDisclosureFromBar(event, () => setTodayActivityOpen((open) => !open))
-                  }
-                >
-                  <button
-                    aria-expanded={todayActivityOpen}
-                    className="disclosure"
-                    onClick={() => setTodayActivityOpen((open) => !open)}
-                    type="button"
-                  >
-                    <UiIcon name={todayActivityOpen ? "chevronDown" : "chevronRight"} size={16} />
-                    <span className="disclosureLabel">
-                      <strong>今日の実行</strong>
-                    </span>
-                  </button>
-                  <span className="disclosureCount">{todayActivityCount}件</span>
-                  <span className="disclosureDescription">タイマーで実行した内容</span>
-                  <span className="todayActivityAutoBadge">自動</span>
-                </div>
-
-                {todayActivityOpen && (
-                  <div className="todayActivityBody">
-                    {todayActivityCount > 0 ? (
-                      <div className="todayActivityList">
-                        {todayActivityEntries.map((session) => {
-                          const project = session.projectId
-                            ? config.projects.find((item) => item.id === session.projectId)
+                            width: Math.min(320, wishlistGroupPointerDrag.width),
+                          }}
+                        >
+                          {wishlistGroupPointerDrag.name}
+                        </div>
+                      )}
+                      {inboxPointerDrag &&
+                        (() => {
+                          const item = config.inbox.find(
+                            (entry) =>
+                              entry.id === inboxPointerDrag.sourceKey.slice("wishlist:".length),
+                          );
+                          const project = item?.projectId
+                            ? projectsById.get(item.projectId)
                             : undefined;
-                          return (
-                            <div className="todayActivityRow" key={session.rowKey}>
-                              <div className="todayActivityIdentity">
+                          return item ? (
+                            <div
+                              aria-hidden="true"
+                              className={
+                                inboxPointerDrag.restoreTarget
+                                  ? "inboxDragGhost inboxDragGhost--restore"
+                                  : "inboxDragGhost"
+                              }
+                              style={{
+                                left: inboxPointerDrag.pointerX - inboxPointerDrag.offsetX,
+                                top: inboxPointerDrag.pointerY - inboxPointerDrag.offsetY,
+                                width: Math.min(300, inboxPointerDrag.width),
+                              }}
+                            >
+                              <span className="inboxProjectIdentity">
                                 {project ? (
                                   <ProjectIdentity
                                     colorId={project.colorId}
                                     compact
-                                    name={session.label || project.name}
+                                    name={project.name}
                                     projectId={project.id}
                                   />
                                 ) : (
-                                  <>
-                                    <span aria-hidden="true" className="todayActivityDot" />
-                                    <span>{session.label || "記録"}</span>
-                                  </>
+                                  <span className="sourceProjectNone">プロジェクトなし</span>
                                 )}
-                              </div>
-                              <span className="todayActivityStartedAt">{session.startedAt}</span>
-                              <strong>{session.minutes}分</strong>
+                              </span>
+                              <strong>{item.text}</strong>
                             </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className="quietText">今日はまだ実行記録がありません。</p>
-                    )}
+                          ) : null;
+                        })()}
+                    </div>
+                  )}
+                </section>
+
+                <section className="todayActivityBand">
+                  <div
+                    className="disclosureHeader"
+                    onClick={(event) =>
+                      toggleDisclosureFromBar(event, () => setTodayActivityOpen((open) => !open))
+                    }
+                  >
+                    <button
+                      aria-expanded={todayActivityOpen}
+                      className="disclosure"
+                      onClick={() => setTodayActivityOpen((open) => !open)}
+                      type="button"
+                    >
+                      <UiIcon name={todayActivityOpen ? "chevronDown" : "chevronRight"} size={16} />
+                      <span className="disclosureLabel">
+                        <strong>今日の実行</strong>
+                      </span>
+                    </button>
+                    <span className="disclosureCount">{todayActivityCount}件</span>
+                    <span className="disclosureDescription">タイマーで実行した内容</span>
+                    <span className="todayActivityAutoBadge">自動</span>
                   </div>
-                )}
-              </section>
-            </>
-          )}
-        </div>
+
+                  {todayActivityOpen && (
+                    <div className="todayActivityBody">
+                      {todayActivityCount > 0 ? (
+                        <div className="todayActivityList">
+                          {todayActivityEntries.map((session) => {
+                            const project = session.projectId
+                              ? config.projects.find((item) => item.id === session.projectId)
+                              : undefined;
+                            return (
+                              <div className="todayActivityRow" key={session.rowKey}>
+                                <div className="todayActivityIdentity">
+                                  {project ? (
+                                    <ProjectIdentity
+                                      colorId={project.colorId}
+                                      compact
+                                      name={session.label || project.name}
+                                      projectId={project.id}
+                                    />
+                                  ) : (
+                                    <>
+                                      <span aria-hidden="true" className="todayActivityDot" />
+                                      <span>{session.label || "記録"}</span>
+                                    </>
+                                  )}
+                                </div>
+                                <span className="todayActivityStartedAt">{session.startedAt}</span>
+                                <strong>{session.minutes}分</strong>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="quietText">今日はまだ実行記録がありません。</p>
+                      )}
+                    </div>
+                  )}
+                </section>
+              </>
+            )}
+          </div>
         </div>
       </section>
 
@@ -12569,54 +12628,60 @@ function DashboardApp() {
           {toasts
             .filter((toast) => !toast.queued)
             .map((toast) => (
-            <div
-              className={`toast toast--${toast.tone}${toast.leaving ? " toast--leaving" : ""}${toast.paused ? " toast--paused" : ""}`}
-              data-toast-id={toast.id}
-              key={toast.id}
-              onBlurCapture={(event: ReactFocusEvent<HTMLDivElement>) => {
-                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-                  pauseToast(toast.id, "focus", false);
-                }
-              }}
-              onFocusCapture={() => pauseToast(toast.id, "focus", true)}
-              onPointerEnter={() => pauseToast(toast.id, "pointer", true)}
-              onPointerLeave={() => pauseToast(toast.id, "pointer", false)}
-              role="status"
-              style={{ "--toast-duration": `${toast.durationMs}ms` } as CSSProperties}
-            >
-              <span aria-hidden="true" className="toastAccent" />
-              <span aria-hidden="true" className="toastIconBadge">
-                <UiIcon
-                  name={toast.tone === "ok" ? "play" : toast.tone === "error" ? "close" : "clock"}
-                  size={16}
-                />
-              </span>
-              <div className="toastCopy">
-                <strong>{toast.message}</strong>
-                {toast.detail && <span>{toast.detail}</span>}
-              </div>
-              {toast.onAction && (
+              <div
+                className={`toast toast--${toast.tone}${toast.leaving ? " toast--leaving" : ""}${toast.paused ? " toast--paused" : ""}`}
+                data-toast-id={toast.id}
+                key={toast.id}
+                onBlurCapture={(event: ReactFocusEvent<HTMLDivElement>) => {
+                  if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                    pauseToast(toast.id, "focus", false);
+                  }
+                }}
+                onFocusCapture={() => pauseToast(toast.id, "focus", true)}
+                onPointerEnter={() => pauseToast(toast.id, "pointer", true)}
+                onPointerLeave={() => pauseToast(toast.id, "pointer", false)}
+                role="status"
+                style={{ "--toast-duration": `${toast.durationMs}ms` } as CSSProperties}
+              >
+                <span aria-hidden="true" className="toastAccent" />
+                <span aria-hidden="true" className="toastIconBadge">
+                  <UiIcon
+                    name={
+                      toast.tone === "ok"
+                        ? "play"
+                        : toast.tone === "error" || toast.tone === "danger"
+                          ? "close"
+                          : "clock"
+                    }
+                    size={16}
+                  />
+                </span>
+                <div className="toastCopy">
+                  <strong>{toast.message}</strong>
+                  {toast.detail && <span>{toast.detail}</span>}
+                </div>
+                {toast.onAction && (
+                  <button
+                    className="toastAction"
+                    disabled={toast.actionPending}
+                    onClick={() => void runToastAction(toast.id)}
+                    type="button"
+                  >
+                    <UiIcon name="back" size={16} />
+                    {toast.actionPending ? "処理中…" : (toast.actionLabel ?? "元に戻す")}
+                  </button>
+                )}
                 <button
-                  className="toastAction"
-                  disabled={toast.actionPending}
-                  onClick={() => void runToastAction(toast.id)}
+                  aria-label="通知を閉じる"
+                  className="toastClose"
+                  onClick={() => dismissToast(toast.id)}
                   type="button"
-              >
-                <UiIcon name="back" size={16} />
-                {toast.actionPending ? "処理中…" : (toast.actionLabel ?? "元に戻す")}
-              </button>
-              )}
-              <button
-                aria-label="通知を閉じる"
-                className="toastClose"
-                onClick={() => dismissToast(toast.id)}
-                type="button"
-              >
-                <UiIcon name="close" size={16} />
-              </button>
-              <span aria-hidden="true" className="toastLifetime" />
-            </div>
-          ))}
+                >
+                  <UiIcon name="close" size={16} />
+                </button>
+                <span aria-hidden="true" className="toastLifetime" />
+              </div>
+            ))}
         </div>
       )}
 
@@ -12865,12 +12930,13 @@ function DashboardApp() {
           ) : contextMenu.kind === "inbox" ? (
             <>
               <ContextMenuItem
-                disabled={sourceEditBlocked(
-                  `wishlist:${config?.inbox[contextMenu.index]?.id ?? ""}`,
-                ) || Boolean(
-                  config?.inbox[contextMenu.index] &&
+                disabled={
+                  sourceEditBlocked(`wishlist:${config?.inbox[contextMenu.index]?.id ?? ""}`) ||
+                  Boolean(
+                    config?.inbox[contextMenu.index] &&
                     wishlistItemIsCurrentNextStep(config.inbox[contextMenu.index]),
-                )}
+                  )
+                }
                 onClick={() => promoteInboxToNextStep(contextMenu.index)}
                 title={
                   sourceEditBlockReason(`wishlist:${config?.inbox[contextMenu.index]?.id ?? ""}`) ??
@@ -14413,299 +14479,286 @@ function DashboardApp() {
           <section
             aria-label="ボタン編集"
             aria-modal="true"
-            className="dropDialog editDialog modalLongForm app-scrollbar"
+            className="dropDialog editDialog buttonEditDialog"
             role="dialog"
             tabIndex={-1}
           >
-            <div>
+            <div className="buttonEditDialogHeader">
               <p className="eyebrow">Button</p>
               <h2>ボタンを編集</h2>
             </div>
 
-            <h3 className="formSectionHeading">基本</h3>
-            <div className="editGrid">
-              <label className="fieldStack">
-                <span>ラベル</span>
-                <input
-                  className="textInput"
-                  maxLength={48}
-                  onChange={(event) =>
-                    setButtonEditDraft({ ...buttonEditDraft, label: event.target.value })
+            <div className="buttonEditDialogBody app-scrollbar">
+              <section className="buttonEditSection">
+                <h3>基本</h3>
+                <label className="fieldStack">
+                  <span>ラベル</span>
+                  <input
+                    className="textInput"
+                    maxLength={48}
+                    onChange={(event) =>
+                      setButtonEditDraft({ ...buttonEditDraft, label: event.target.value })
+                    }
+                    value={buttonEditDraft.label}
+                  />
+                </label>
+                <GroupModeField
+                  existingGroup={buttonEditDraft.existingGroup}
+                  groupMode={buttonEditDraft.groupMode}
+                  groups={groupNames}
+                  newGroup={buttonEditDraft.newGroup}
+                  onExistingGroupChange={(existingGroup) =>
+                    setButtonEditDraft({ ...buttonEditDraft, existingGroup })
                   }
-                  value={buttonEditDraft.label}
-                />
-              </label>
-              <label className="fieldStack">
-                <span>アイコン</span>
-                <input
-                  className="textInput"
-                  maxLength={4}
-                  onChange={(event) =>
-                    setButtonEditDraft({ ...buttonEditDraft, icon: event.target.value })
-                  }
-                  value={buttonEditDraft.icon}
-                />
-              </label>
-            </div>
-
-            <div className="fieldStack">
-              <span>グループ</span>
-              <div className="groupPicker">
-                <select
-                  onChange={(event) =>
+                  onGroupModeChange={(groupMode) =>
                     setButtonEditDraft({
                       ...buttonEditDraft,
-                      group: event.target.value === "__custom__" ? "" : event.target.value,
+                      groupMode,
+                      existingGroup:
+                        buttonEditDraft.existingGroup || groupNames[0] || DEFAULT_BUTTON_GROUP,
                     })
                   }
-                  value={
-                    groupNames.includes(buttonEditDraft.group)
-                      ? buttonEditDraft.group
-                      : "__custom__"
+                  onNewGroupChange={(newGroup) =>
+                    setButtonEditDraft({ ...buttonEditDraft, newGroup })
                   }
-                >
-                  {groupNames.map((groupName) => (
-                    <option key={groupName} value={groupName}>
-                      {groupName}
-                    </option>
-                  ))}
-                  <option value="__custom__">新規入力</option>
-                </select>
-                <input
-                  className="textInput"
-                  onChange={(event) =>
-                    setButtonEditDraft({ ...buttonEditDraft, group: event.target.value })
-                  }
-                  placeholder="新規グループ"
-                  value={buttonEditDraft.group}
                 />
-              </div>
-            </div>
+              </section>
 
-            <h3 className="formSectionHeading">表示先</h3>
-            <div className="fieldStack">
-              <span>表示先</span>
-              <div className="displayTargetList">
-                <label className="displayTargetItem">
-                  <input
-                    checked={buttonEditDraft.showInSidebar}
-                    onChange={(event) =>
-                      setButtonEditDraft({
-                        ...buttonEditDraft,
-                        showInSidebar: event.target.checked,
-                      })
-                    }
-                    type="checkbox"
-                  />
-                  <strong>左サイドバーに表示</strong>
-                </label>
-                <label className="displayTargetItem">
-                  <input
-                    checked={buttonEditDraft.showInOverlay}
-                    onChange={(event) =>
-                      setButtonEditDraft({
-                        ...buttonEditDraft,
-                        showInOverlay: event.target.checked,
-                      })
-                    }
-                    type="checkbox"
-                  />
-                  <strong>Ctrl+K辞書に表示</strong>
-                </label>
-              </div>
-            </div>
-
-            {!buttonEditDraft.showInSidebar && !buttonEditDraft.showInOverlay && (
-              <p className="visibilityWarning">
-                サイドバーにも辞書にも表示されません。設定ファイル上には残ります。
-              </p>
-            )}
-
-            {buttonEditDraft.showInOverlay && (
-              <div className="fieldStack">
-                <span>辞書ページ</span>
-                <div className="overlayPagePicker">
-                  <select
-                    className="textInput"
-                    onChange={(event) =>
-                      setButtonEditDraft({
-                        ...buttonEditDraft,
-                        overlayPageId: event.target.value || null,
-                      })
-                    }
-                    value={
-                      overlayPages.some((page) => page.id === buttonEditDraft.overlayPageId)
-                        ? (buttonEditDraft.overlayPageId ?? "")
-                        : ""
-                    }
-                  >
-                    <option value="">未分類</option>
-                    {overlayPages.map((page) => (
-                      <option key={page.id} value={page.id}>
-                        {page.name}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    className="secondaryButton"
-                    onClick={() => openOverlayPageDialog(undefined, true)}
-                    type="button"
-                  >
-                    + 新しいページ
-                  </button>
+              <section className="buttonEditSection">
+                <h3>表示先</h3>
+                <div className="fieldStack">
+                  <span>表示先</span>
+                  <div className="displayTargetList">
+                    <label className="displayTargetItem">
+                      <input
+                        checked={buttonEditDraft.showInSidebar}
+                        onChange={(event) =>
+                          setButtonEditDraft({
+                            ...buttonEditDraft,
+                            showInSidebar: event.target.checked,
+                          })
+                        }
+                        type="checkbox"
+                      />
+                      <strong>左サイドバーに表示</strong>
+                    </label>
+                    <label className="displayTargetItem">
+                      <input
+                        checked={buttonEditDraft.showInOverlay}
+                        onChange={(event) =>
+                          setButtonEditDraft({
+                            ...buttonEditDraft,
+                            showInOverlay: event.target.checked,
+                          })
+                        }
+                        type="checkbox"
+                      />
+                      <strong>Ctrl+K辞書に表示</strong>
+                    </label>
+                  </div>
                 </div>
-                <small className="quietText quietText--small">
-                  サイドバーのグループと辞書ページは別々に設定できます。
-                </small>
-              </div>
-            )}
 
-            <h3 className="formSectionHeading">検索</h3>
-            <label className="fieldStack">
-              <span>検索キーワード</span>
-              <textarea
-                className="textInput aliasesInput"
-                onChange={(event) =>
-                  setButtonEditDraft({ ...buttonEditDraft, aliasesInput: event.target.value })
-                }
-                placeholder="editor, docs, よく使う"
-                value={buttonEditDraft.aliasesInput}
-              />
-            </label>
+                {!buttonEditDraft.showInSidebar && !buttonEditDraft.showInOverlay && (
+                  <p className="visibilityWarning">
+                    サイドバーにも辞書にも表示されません。設定ファイル上には残ります。
+                  </p>
+                )}
 
-            <label className="fieldStack">
-              <span>説明</span>
-              <textarea
-                className="textInput aliasesInput"
-                onChange={(event) =>
-                  setButtonEditDraft({ ...buttonEditDraft, description: event.target.value })
-                }
-                placeholder="よく使うアプリやフォルダを開く。"
-                value={buttonEditDraft.description}
-              />
-            </label>
-
-            <h3 className="formSectionHeading">実行アクション</h3>
-            <div className="fieldStack">
-              <span>アクション</span>
-              <div className="actionEditor">
-                {buttonEditDraft.actions.map((action, index) => (
-                  <div
-                    className={
-                      actionDragId === action.draftId
-                        ? "actionRow actionRow--dragging"
-                        : "actionRow"
-                    }
-                    draggable
-                    key={action.draftId}
-                    onDragStart={(event) => {
-                      setActionDragId(action.draftId);
-                      event.dataTransfer.setData(ACTION_DRAG_TYPE, action.draftId);
-                      event.dataTransfer.effectAllowed = "move";
-                    }}
-                    onDragEnd={() => setActionDragId(null)}
-                    onDragOver={(event) => {
-                      const draggedId =
-                        event.dataTransfer.getData(ACTION_DRAG_TYPE) || actionDragId;
-                      if (!draggedId || draggedId === action.draftId) return;
-                      event.preventDefault();
-                    }}
-                    onDrop={(event) => {
-                      const draggedId =
-                        event.dataTransfer.getData(ACTION_DRAG_TYPE) || actionDragId;
-                      if (!draggedId || draggedId === action.draftId) return;
-                      event.preventDefault();
-                      moveButtonActionTo(draggedId, action.draftId);
-                      setActionDragId(null);
-                    }}
-                  >
+                {buttonEditDraft.showInOverlay && (
+                  <div className="fieldStack">
+                    <span>辞書ページ</span>
                     <select
-                      onChange={(event) =>
-                        updateButtonAction(
-                          action.draftId,
-                          makeAction(
-                            event.target.value as LauncherAction["type"],
-                            actionValue(action),
-                          ),
-                        )
-                      }
-                      value={action.type}
-                    >
-                      <option value="open_app">アプリ</option>
-                      <option value="open_folder">フォルダ</option>
-                      <option value="open_file">ファイル</option>
-                      <option value="open_url">URL</option>
-                      <option value="run_script">スクリプト</option>
-                      <option value="open_shell_special">Windows特殊項目</option>
-                    </select>
-                    <input
                       className="textInput"
-                      disabled={action.type === "open_shell_special"}
                       onChange={(event) =>
-                        updateButtonAction(
-                          action.draftId,
-                          setActionValue(action, event.target.value),
-                        )
+                        setButtonEditDraft({
+                          ...buttonEditDraft,
+                          overlayPageId: event.target.value || null,
+                        })
                       }
-                      value={actionValue(action)}
+                      value={
+                        overlayPages.some((page) => page.id === buttonEditDraft.overlayPageId)
+                          ? (buttonEditDraft.overlayPageId ?? "")
+                          : ""
+                      }
+                    >
+                      <option value="">未分類</option>
+                      {overlayPages.map((page) => (
+                        <option key={page.id} value={page.id}>
+                          {page.name}
+                        </option>
+                      ))}
+                    </select>
+                    <small className="quietText quietText--small">
+                      サイドバーのグループと辞書ページは別々に設定できます。
+                    </small>
+                  </div>
+                )}
+              </section>
+
+              <details className="buttonEditOptional">
+                <summary>検索・説明（任意）</summary>
+                <div className="buttonEditOptionalBody">
+                  <label className="fieldStack">
+                    <span>検索キーワード</span>
+                    <textarea
+                      className="textInput aliasesInput"
+                      onChange={(event) =>
+                        setButtonEditDraft({ ...buttonEditDraft, aliasesInput: event.target.value })
+                      }
+                      placeholder="editor, docs, よく使う"
+                      value={buttonEditDraft.aliasesInput}
                     />
+                  </label>
+                  <label className="fieldStack">
+                    <span>説明</span>
+                    <textarea
+                      className="textInput aliasesInput"
+                      onChange={(event) =>
+                        setButtonEditDraft({ ...buttonEditDraft, description: event.target.value })
+                      }
+                      placeholder="よく使うアプリやフォルダを開く。"
+                      value={buttonEditDraft.description}
+                    />
+                  </label>
+                </div>
+              </details>
+
+              <section className="buttonEditSection">
+                <h3>実行アクション</h3>
+                <div className="fieldStack">
+                  <span>アクション</span>
+                  <div className="actionEditor">
+                    {buttonEditDraft.actions.map((action, index) => (
+                      <div
+                        className={
+                          actionDragId === action.draftId
+                            ? "actionRow buttonEditActionRow actionRow--dragging"
+                            : "actionRow buttonEditActionRow"
+                        }
+                        draggable={buttonEditDraft.actions.length > 1}
+                        key={action.draftId}
+                        onDragStart={(event) => {
+                          setActionDragId(action.draftId);
+                          event.dataTransfer.setData(ACTION_DRAG_TYPE, action.draftId);
+                          event.dataTransfer.effectAllowed = "move";
+                        }}
+                        onDragEnd={() => setActionDragId(null)}
+                        onDragOver={(event) => {
+                          const draggedId =
+                            event.dataTransfer.getData(ACTION_DRAG_TYPE) || actionDragId;
+                          if (!draggedId || draggedId === action.draftId) return;
+                          event.preventDefault();
+                        }}
+                        onDrop={(event) => {
+                          const draggedId =
+                            event.dataTransfer.getData(ACTION_DRAG_TYPE) || actionDragId;
+                          if (!draggedId || draggedId === action.draftId) return;
+                          event.preventDefault();
+                          moveButtonActionTo(draggedId, action.draftId);
+                          setActionDragId(null);
+                        }}
+                      >
+                        <select
+                          onChange={(event) =>
+                            updateButtonAction(
+                              action.draftId,
+                              makeAction(
+                                event.target.value as LauncherAction["type"],
+                                actionValue(action),
+                              ),
+                            )
+                          }
+                          value={action.type}
+                        >
+                          <option value="open_app">アプリ</option>
+                          <option value="open_folder">フォルダ</option>
+                          <option value="open_file">ファイル</option>
+                          <option value="open_url">URL</option>
+                          <option value="run_script">スクリプト</option>
+                          <option value="open_shell_special">Windows特殊項目</option>
+                        </select>
+                        <input
+                          className="textInput"
+                          disabled={action.type === "open_shell_special"}
+                          onChange={(event) =>
+                            updateButtonAction(
+                              action.draftId,
+                              setActionValue(action, event.target.value),
+                            )
+                          }
+                          value={actionValue(action)}
+                        />
+                        <div className="buttonEditActionButtons">
+                          {buttonEditDraft.actions.length > 1 ? (
+                            <>
+                              <button
+                                aria-label="アクションを上へ"
+                                className="iconButton"
+                                disabled={index === 0}
+                                onClick={() => moveButtonAction(action.draftId, -1)}
+                                title="上へ"
+                                type="button"
+                              >
+                                ↑
+                              </button>
+                              <button
+                                aria-label="アクションを下へ"
+                                className="iconButton"
+                                disabled={index === buttonEditDraft.actions.length - 1}
+                                onClick={() => moveButtonAction(action.draftId, 1)}
+                                title="下へ"
+                                type="button"
+                              >
+                                ↓
+                              </button>
+                            </>
+                          ) : null}
+                          <button
+                            aria-label="アクションを削除"
+                            className="iconButton"
+                            onClick={() =>
+                              setButtonEditDraft({
+                                ...buttonEditDraft,
+                                actions: buttonEditDraft.actions.filter(
+                                  (item) => item.draftId !== action.draftId,
+                                ),
+                              })
+                            }
+                            title="削除"
+                            type="button"
+                          >
+                            <UiIcon name="close" size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                     <button
-                      className="iconButton"
-                      disabled={index === 0}
-                      onClick={() => moveButtonAction(action.draftId, -1)}
-                      title="上へ"
-                      type="button"
-                    >
-                      ↑
-                    </button>
-                    <button
-                      className="iconButton"
-                      disabled={index === buttonEditDraft.actions.length - 1}
-                      onClick={() => moveButtonAction(action.draftId, 1)}
-                      title="下へ"
-                      type="button"
-                    >
-                      ↓
-                    </button>
-                    <button
-                      aria-label="アクションを削除"
-                      className="iconButton"
+                      className="primaryButton buttonEditAddAction"
                       onClick={() =>
                         setButtonEditDraft({
                           ...buttonEditDraft,
-                          actions: buttonEditDraft.actions.filter(
-                            (item) => item.draftId !== action.draftId,
-                          ),
+                          actions: [...buttonEditDraft.actions, makeAction("open_app")],
                         })
                       }
-                      title="削除"
                       type="button"
                     >
-                      <UiIcon name="close" size={16} />
+                      ＋ アクションを追加
                     </button>
                   </div>
-                ))}
-                <button
-                  className="secondaryButton"
-                  onClick={() =>
-                    setButtonEditDraft({
-                      ...buttonEditDraft,
-                      actions: [...buttonEditDraft.actions, makeAction("open_app")],
-                    })
-                  }
-                  type="button"
-                >
-                  アクション追加
-                </button>
-              </div>
+                </div>
+              </section>
             </div>
 
-            <div className="dialogActions">
-              <button className="secondaryButton" onClick={requestCloseButtonEdit} type="button">
-                キャンセル
-              </button>
-              <button className="primaryButton" onClick={saveButtonEdit} type="button">
+            <div className="dialogActions formDialogActions buttonEditDialogFooter">
+              <button className="primaryButton" onClick={() => void saveButtonEdit()} type="button">
                 保存
+              </button>
+              <button
+                className="secondaryButton dialogCancelButton"
+                onClick={requestCloseButtonEdit}
+                type="button"
+              >
+                キャンセル
               </button>
             </div>
           </section>
@@ -15607,56 +15660,23 @@ function DashboardApp() {
               <small>ファイル名やフォルダ名から自動入力しています。必要なら変更できます。</small>
             </label>
 
-            <div className="fieldStack">
-              <span>グループ</span>
-              <div aria-label="グループの指定方法" className="dropGroupMode">
-                <button
-                  aria-pressed={dropDraft.groupMode === "existing"}
-                  onClick={() =>
-                    setDropDraft({
-                      ...dropDraft,
-                      groupMode: "existing",
-                      existingGroup:
-                        dropDraft.existingGroup || groupNames[0] || DEFAULT_BUTTON_GROUP,
-                    })
-                  }
-                  type="button"
-                >
-                  既存から選ぶ
-                </button>
-                <button
-                  aria-pressed={dropDraft.groupMode === "new"}
-                  onClick={() => setDropDraft({ ...dropDraft, groupMode: "new" })}
-                  type="button"
-                >
-                  新規グループを作成
-                </button>
-              </div>
-              {dropDraft.groupMode === "existing" ? (
-                <select
-                  aria-label="既存のグループ"
-                  className="textInput"
-                  onChange={(event) =>
-                    setDropDraft({ ...dropDraft, existingGroup: event.target.value })
-                  }
-                  value={dropDraft.existingGroup}
-                >
-                  {groupNames.map((groupName) => (
-                    <option key={groupName} value={groupName}>
-                      {groupName}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  aria-label="新しいグループ名"
-                  className="textInput"
-                  onChange={(event) => setDropDraft({ ...dropDraft, newGroup: event.target.value })}
-                  placeholder="例: 資料"
-                  value={dropDraft.newGroup}
-                />
-              )}
-            </div>
+            <GroupModeField
+              existingGroup={dropDraft.existingGroup}
+              groupMode={dropDraft.groupMode}
+              groups={groupNames}
+              newGroup={dropDraft.newGroup}
+              onExistingGroupChange={(existingGroup) =>
+                setDropDraft({ ...dropDraft, existingGroup })
+              }
+              onGroupModeChange={(groupMode) =>
+                setDropDraft({
+                  ...dropDraft,
+                  groupMode,
+                  existingGroup: dropDraft.existingGroup || groupNames[0] || DEFAULT_BUTTON_GROUP,
+                })
+              }
+              onNewGroupChange={(newGroup) => setDropDraft({ ...dropDraft, newGroup })}
+            />
 
             <div className="fieldStack">
               <span>表示先</span>

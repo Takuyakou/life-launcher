@@ -10,6 +10,7 @@ import {
   type DictionaryFeatureParityController,
 } from "./DictionaryFeatureParity";
 import { UiIcon } from "./UiIcon";
+import { GroupModeField } from "./GroupModeField";
 
 const DIALOG_FOCUSABLE =
   "button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex='-1'])";
@@ -385,8 +386,7 @@ export function DictionaryFeatureParityUi({ c }: { c: DictionaryFeatureParityCon
         <div className="modalBackdrop" role="presentation">
           <section
             aria-label="ボタン編集"
-            aria-modal="true"
-            className="dropDialog editDialog modalLongForm dictionaryParityDialog app-scrollbar"
+            className="dropDialog editDialog dictionaryParityDialog buttonEditDialog"
             role="dialog"
             tabIndex={-1}
           >
@@ -394,221 +394,242 @@ export function DictionaryFeatureParityUi({ c }: { c: DictionaryFeatureParityCon
               onRequestClose={requestCloseButtonEdit}
               suspended={Boolean(confirmation)}
             />
-            <div>
+            <div className="buttonEditDialogHeader">
               <p className="eyebrow">Button</p>
               <h2>ボタンを編集</h2>
             </div>
-            <div className="editGrid">
-              <label className="fieldStack">
-                <span>ラベル</span>
-                <input
-                  autoFocus
-                  className="textInput"
-                  maxLength={48}
-                  onChange={(event) =>
-                    setButtonDraft({ ...buttonDraft, label: event.target.value })
-                  }
-                  value={buttonDraft.label}
-                />
-              </label>
-              <label className="fieldStack">
-                <span>アイコン</span>
-                <input
-                  className="textInput"
-                  maxLength={4}
-                  onChange={(event) => setButtonDraft({ ...buttonDraft, icon: event.target.value })}
-                  value={buttonDraft.icon}
-                />
-              </label>
-            </div>
-            <label className="fieldStack">
-              <span>グループ</span>
-              <input
-                className="textInput"
-                list="dictionary-edit-groups"
-                onChange={(event) => setButtonDraft({ ...buttonDraft, group: event.target.value })}
-                value={buttonDraft.group}
-              />
-            </label>
-            <datalist id="dictionary-edit-groups">
-              {groups.map((group) => (
-                <option key={group} value={group} />
-              ))}
-            </datalist>
-            <div className="displayTargetList">
-              <label className="displayTargetItem">
-                <input
-                  checked={buttonDraft.showInSidebar}
-                  onChange={(event) =>
-                    setButtonDraft({ ...buttonDraft, showInSidebar: event.target.checked })
-                  }
-                  type="checkbox"
-                />
-                <strong>左サイドバーに表示</strong>
-              </label>
-              <label className="displayTargetItem">
-                <input
-                  checked={buttonDraft.showInOverlay}
-                  onChange={(event) =>
-                    setButtonDraft({ ...buttonDraft, showInOverlay: event.target.checked })
-                  }
-                  type="checkbox"
-                />
-                <strong>辞書に表示</strong>
-              </label>
-            </div>
-            {buttonDraft.showInOverlay ? (
-              <div className="overlayPagePicker">
-                <select
-                  className="textInput"
-                  onChange={(event) =>
-                    setButtonDraft({ ...buttonDraft, overlayPageId: event.target.value || null })
-                  }
-                  value={buttonDraft.overlayPageId ?? ""}
-                >
-                  <option value="">未分類</option>
-                  {pages.map((page) => (
-                    <option key={page.id} value={page.id}>
-                      {page.name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  className="secondaryButton"
-                  onClick={() => setPageDraft({ mode: "add", name: "", assignToButton: true })}
-                  type="button"
-                >
-                  + 新しいページ
-                </button>
-              </div>
-            ) : null}
-            <label className="fieldStack">
-              <span>検索キーワード</span>
-              <textarea
-                className="textInput aliasesInput"
-                onChange={(event) =>
-                  setButtonDraft({ ...buttonDraft, aliasesInput: event.target.value })
-                }
-                value={buttonDraft.aliasesInput}
-              />
-            </label>
-            <label className="fieldStack">
-              <span>説明</span>
-              <textarea
-                className="textInput aliasesInput"
-                onChange={(event) =>
-                  setButtonDraft({ ...buttonDraft, description: event.target.value })
-                }
-                value={buttonDraft.description}
-              />
-            </label>
-            <div className="actionEditor">
-              {buttonDraft.actions.map((action, index) => (
-                <div className="actionRow" key={action.draftId}>
-                  <select
-                    onChange={(event) => {
-                      const next = makeAction(
-                        event.target.value as LauncherAction["type"],
-                        valueOf(action),
-                      );
-                      setButtonDraft({
-                        ...buttonDraft,
-                        actions: buttonDraft.actions.map((item) =>
-                          item.draftId === action.draftId ? next : item,
-                        ),
-                      });
-                    }}
-                    value={action.type}
-                  >
-                    <option value="open_app">アプリ</option>
-                    <option value="open_folder">フォルダ</option>
-                    <option value="open_file">ファイル</option>
-                    <option value="open_url">URL</option>
-                    <option value="run_script">スクリプト</option>
-                    <option value="open_shell_special">Windows特殊項目</option>
-                  </select>
+            <div className="buttonEditDialogBody app-scrollbar">
+              <section className="buttonEditSection">
+                <h3>基本</h3>
+                <label className="fieldStack">
+                  <span>ラベル</span>
                   <input
+                    autoFocus
                     className="textInput"
-                    disabled={action.type === "open_shell_special"}
+                    maxLength={48}
                     onChange={(event) =>
-                      setButtonDraft({
-                        ...buttonDraft,
-                        actions: buttonDraft.actions.map((item) =>
-                          item.draftId === action.draftId
-                            ? setValue(action, event.target.value)
-                            : item,
-                        ),
-                      })
+                      setButtonDraft({ ...buttonDraft, label: event.target.value })
                     }
-                    value={valueOf(action)}
+                    value={buttonDraft.label}
                   />
+                </label>
+                <GroupModeField
+                  existingGroup={buttonDraft.existingGroup}
+                  groupMode={buttonDraft.groupMode}
+                  groups={groups}
+                  newGroup={buttonDraft.newGroup}
+                  onExistingGroupChange={(existingGroup) =>
+                    setButtonDraft({ ...buttonDraft, existingGroup })
+                  }
+                  onGroupModeChange={(groupMode) =>
+                    setButtonDraft({
+                      ...buttonDraft,
+                      groupMode,
+                      existingGroup: buttonDraft.existingGroup || groups[0] || "未分類",
+                    })
+                  }
+                  onNewGroupChange={(newGroup) => setButtonDraft({ ...buttonDraft, newGroup })}
+                />
+              </section>
+              <section className="buttonEditSection">
+                <h3>表示先</h3>
+                <div className="displayTargetList">
+                  <label className="displayTargetItem">
+                    <input
+                      checked={buttonDraft.showInSidebar}
+                      onChange={(event) =>
+                        setButtonDraft({ ...buttonDraft, showInSidebar: event.target.checked })
+                      }
+                      type="checkbox"
+                    />
+                    <strong>左サイドバーに表示</strong>
+                  </label>
+                  <label className="displayTargetItem">
+                    <input
+                      checked={buttonDraft.showInOverlay}
+                      onChange={(event) =>
+                        setButtonDraft({ ...buttonDraft, showInOverlay: event.target.checked })
+                      }
+                      type="checkbox"
+                    />
+                    <strong>辞書に表示</strong>
+                  </label>
+                </div>
+                {buttonDraft.showInOverlay ? (
+                  <div className="fieldStack">
+                    <span>辞書ページ</span>
+                    <select
+                      className="textInput"
+                      onChange={(event) =>
+                        setButtonDraft({
+                          ...buttonDraft,
+                          overlayPageId: event.target.value || null,
+                        })
+                      }
+                      value={buttonDraft.overlayPageId ?? ""}
+                    >
+                      <option value="">未分類</option>
+                      {pages.map((page) => (
+                        <option key={page.id} value={page.id}>
+                          {page.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
+              </section>
+              <details className="buttonEditOptional">
+                <summary>検索・説明（任意）</summary>
+                <div className="buttonEditOptionalBody">
+                  <label className="fieldStack">
+                    <span>検索キーワード</span>
+                    <textarea
+                      className="textInput aliasesInput"
+                      onChange={(event) =>
+                        setButtonDraft({ ...buttonDraft, aliasesInput: event.target.value })
+                      }
+                      value={buttonDraft.aliasesInput}
+                    />
+                  </label>
+                  <label className="fieldStack">
+                    <span>説明</span>
+                    <textarea
+                      className="textInput aliasesInput"
+                      onChange={(event) =>
+                        setButtonDraft({ ...buttonDraft, description: event.target.value })
+                      }
+                      value={buttonDraft.description}
+                    />
+                  </label>
+                </div>
+              </details>
+              <section className="buttonEditSection">
+                <h3>実行アクション</h3>
+                <div className="actionEditor">
+                  {buttonDraft.actions.map((action, index) => (
+                    <div className="actionRow buttonEditActionRow" key={action.draftId}>
+                      <select
+                        onChange={(event) => {
+                          const next = makeAction(
+                            event.target.value as LauncherAction["type"],
+                            valueOf(action),
+                          );
+                          setButtonDraft({
+                            ...buttonDraft,
+                            actions: buttonDraft.actions.map((item) =>
+                              item.draftId === action.draftId ? next : item,
+                            ),
+                          });
+                        }}
+                        value={action.type}
+                      >
+                        <option value="open_app">アプリ</option>
+                        <option value="open_folder">フォルダ</option>
+                        <option value="open_file">ファイル</option>
+                        <option value="open_url">URL</option>
+                        <option value="run_script">スクリプト</option>
+                        <option value="open_shell_special">Windows特殊項目</option>
+                      </select>
+                      <input
+                        className="textInput"
+                        disabled={action.type === "open_shell_special"}
+                        onChange={(event) =>
+                          setButtonDraft({
+                            ...buttonDraft,
+                            actions: buttonDraft.actions.map((item) =>
+                              item.draftId === action.draftId
+                                ? setValue(action, event.target.value)
+                                : item,
+                            ),
+                          })
+                        }
+                        value={valueOf(action)}
+                      />
+                      <div className="buttonEditActionButtons">
+                        {buttonDraft.actions.length > 1 ? (
+                          <>
+                            <button
+                              aria-label="アクションを上へ"
+                              className="iconButton"
+                              disabled={index === 0}
+                              onClick={() => {
+                                const actions = [...buttonDraft.actions];
+                                [actions[index - 1], actions[index]] = [
+                                  actions[index],
+                                  actions[index - 1],
+                                ];
+                                setButtonDraft({ ...buttonDraft, actions });
+                              }}
+                              type="button"
+                            >
+                              ↑
+                            </button>
+                            <button
+                              aria-label="アクションを下へ"
+                              className="iconButton"
+                              disabled={index === buttonDraft.actions.length - 1}
+                              onClick={() => {
+                                const actions = [...buttonDraft.actions];
+                                [actions[index + 1], actions[index]] = [
+                                  actions[index],
+                                  actions[index + 1],
+                                ];
+                                setButtonDraft({ ...buttonDraft, actions });
+                              }}
+                              type="button"
+                            >
+                              ↓
+                            </button>
+                          </>
+                        ) : null}
+                        <button
+                          aria-label="アクションを削除"
+                          className="iconButton"
+                          onClick={() =>
+                            setButtonDraft({
+                              ...buttonDraft,
+                              actions: buttonDraft.actions.filter(
+                                (item) => item.draftId !== action.draftId,
+                              ),
+                            })
+                          }
+                          type="button"
+                        >
+                          <UiIcon name="close" size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                   <button
-                    aria-label="アクションを上へ"
-                    className="iconButton"
-                    disabled={index === 0}
-                    onClick={() => {
-                      const actions = [...buttonDraft.actions];
-                      [actions[index - 1], actions[index]] = [actions[index], actions[index - 1]];
-                      setButtonDraft({ ...buttonDraft, actions });
-                    }}
-                    type="button"
-                  >
-                    ↑
-                  </button>
-                  <button
-                    aria-label="アクションを下へ"
-                    className="iconButton"
-                    disabled={index === buttonDraft.actions.length - 1}
-                    onClick={() => {
-                      const actions = [...buttonDraft.actions];
-                      [actions[index + 1], actions[index]] = [actions[index], actions[index + 1]];
-                      setButtonDraft({ ...buttonDraft, actions });
-                    }}
-                    type="button"
-                  >
-                    ↓
-                  </button>
-                  <button
-                    aria-label="アクションを削除"
-                    className="iconButton"
+                    className="primaryButton buttonEditAddAction"
                     onClick={() =>
                       setButtonDraft({
                         ...buttonDraft,
-                        actions: buttonDraft.actions.filter(
-                          (item) => item.draftId !== action.draftId,
-                        ),
+                        actions: [...buttonDraft.actions, makeAction("open_app")],
                       })
                     }
                     type="button"
                   >
-                    <UiIcon name="close" size={16} />
+                    ＋ アクションを追加
                   </button>
                 </div>
-              ))}
-              <button
-                className="secondaryButton"
-                onClick={() =>
-                  setButtonDraft({
-                    ...buttonDraft,
-                    actions: [...buttonDraft.actions, makeAction("open_app")],
-                  })
-                }
-                type="button"
-              >
-                アクション追加
-              </button>
+              </section>
+              {error ? (
+                <p className="fieldError" role="alert">
+                  {error}
+                </p>
+              ) : null}
             </div>
-            {error ? (
-              <p className="fieldError" role="alert">
-                {error}
-              </p>
-            ) : null}
-            <div className="dialogActions">
-              <button className="secondaryButton" onClick={requestCloseButtonEdit} type="button">
-                キャンセル
-              </button>
+            <div className="dialogActions formDialogActions buttonEditDialogFooter">
               <button className="primaryButton" onClick={() => void saveButton()} type="button">
                 保存
+              </button>
+              <button
+                className="secondaryButton dialogCancelButton"
+                onClick={requestCloseButtonEdit}
+                type="button"
+              >
+                キャンセル
               </button>
             </div>
           </section>
