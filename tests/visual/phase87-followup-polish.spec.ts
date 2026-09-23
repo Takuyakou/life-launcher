@@ -90,8 +90,24 @@ test("Today header collapses and dashboard metadata keeps one vertical rhythm", 
 
   const todayTitle = page.locator(".todaySectionDisclosure h2");
   const titleColor = await todayTitle.evaluate((element) => getComputedStyle(element).color);
-  await page.locator(".todaySectionDisclosure").hover();
+  const todayHeader = page.locator(".todaySectionBar");
+  const nextStepHeader = page.locator(".projectsBand .disclosureHeader");
+  await page.mouse.move(0, 0);
+  const normalNextStepSurface = await nextStepHeader.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return [style.backgroundColor, style.borderColor];
+  });
+  await expect(todayHeader).toHaveCSS("background-color", normalNextStepSurface[0]);
+  await expect(todayHeader).toHaveCSS("border-color", normalNextStepSurface[1]);
+  await nextStepHeader.hover();
+  const hoveredNextStepSurface = await nextStepHeader.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return [style.backgroundColor, style.borderColor];
+  });
+  await todayHeader.hover();
   await expect(todayTitle).toHaveCSS("color", titleColor);
+  await expect(todayHeader).toHaveCSS("background-color", hoveredNextStepSurface[0]);
+  await expect(todayHeader).toHaveCSS("border-color", hoveredNextStepSurface[1]);
 });
 
 test("Dictionary entry aligns with item rows and Guide footer stays inside its dialog", async ({
@@ -102,24 +118,20 @@ test("Dictionary entry aligns with item rows and Guide footer stays inside its d
   const itemLabel = page.locator(".quickButton span:last-child").first();
   const launcherIconSlot = page.locator(".launcherOpenButtonIcon");
   const launcherIcon = launcherIconSlot.locator(".uiIcon");
-  const itemIcon = page.locator(".quickButton .quickIcon").first();
-  const [launcherBox, itemBox, launcherIconSlotBox, launcherIconBox, itemIconBox] =
-    await Promise.all([
-      launcherLabel.boundingBox(),
-      itemLabel.boundingBox(),
-      launcherIconSlot.boundingBox(),
-      launcherIcon.boundingBox(),
-      itemIcon.boundingBox(),
-    ]);
+  const [launcherBox, itemBox, launcherIconSlotBox, launcherIconBox] = await Promise.all([
+    launcherLabel.boundingBox(),
+    itemLabel.boundingBox(),
+    launcherIconSlot.boundingBox(),
+    launcherIcon.boundingBox(),
+  ]);
   expect(launcherBox).not.toBeNull();
   expect(itemBox).not.toBeNull();
   expect(launcherIconSlotBox).not.toBeNull();
   expect(launcherIconBox).not.toBeNull();
-  expect(itemIconBox).not.toBeNull();
   expect(Math.abs(launcherBox!.x - itemBox!.x)).toBeLessThanOrEqual(2);
   expect(launcherIconSlotBox!.width).toBe(28);
-  expect(launcherIconBox!.width).toBe(24);
-  expect(itemIconBox!.width).toBeGreaterThanOrEqual(24);
+  expect(launcherIconBox!.height).toBe(24);
+  expect(launcherIconBox!.width).toBeGreaterThan(launcherIconBox!.height);
 
   await page.getByRole("button", { name: "使い方" }).click();
   const footer = page.locator(".helpGuideFooter");
@@ -133,7 +145,7 @@ test("Dictionary entry aligns with item rows and Guide footer stays inside its d
   expect(dialogBox).not.toBeNull();
   expect(footerBox).not.toBeNull();
   expect(closeBox).not.toBeNull();
-  expect(closeBox!.y - footerBox!.y).toBeGreaterThanOrEqual(12);
+  expect(closeBox!.y - footerBox!.y).toBeGreaterThanOrEqual(8);
   expect(closeBox!.y + closeBox!.height).toBeLessThanOrEqual(footerBox!.y + footerBox!.height + 1);
   expect(footerBox!.y + footerBox!.height).toBeLessThanOrEqual(
     dialogBox!.y + dialogBox!.height + 1,

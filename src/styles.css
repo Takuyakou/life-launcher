@@ -2534,6 +2534,8 @@ h3 {
 
 .launcherOpenButtonIcon .uiIcon {
   color: var(--muted);
+  transform: scaleX(1.1);
+  transform-origin: center;
 }
 
 .launcherOpenButton kbd {
@@ -6196,6 +6198,7 @@ input[type="number"]::-webkit-inner-spin-button {
   grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 12px;
   overflow: hidden;
+  padding-bottom: 10px;
 }
 
 .helpGuideHeader,
@@ -6507,8 +6510,8 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .helpGuideFooter {
-  min-height: 54px;
-  padding-top: 12px;
+  min-height: 42px;
+  padding-top: 8px;
   border-top: 1px solid var(--line);
 }
 
@@ -8779,7 +8782,14 @@ input[type="number"]::-webkit-inner-spin-button {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 8px 12px 8px 0;
-  background: var(--surface-soft);
+  background: transparent;
+  cursor: pointer;
+}
+
+.todaySectionBar:hover,
+.todaySectionBar:has(.todaySectionDisclosure:focus-visible) {
+  border-color: var(--muted);
+  background: var(--control-neutral-hover-bg);
 }
 
 .todaySectionBar h2 {
