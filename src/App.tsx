@@ -9597,7 +9597,7 @@ function DashboardApp() {
         >
           <span className="launcherOpenButtonLabel">
             <span aria-hidden="true" className="launcherOpenButtonIcon">
-              <UiIcon name="book" size={16} />
+              <UiIcon name="book" size={24} />
             </span>
             <span>辞書を開く</span>
           </span>
@@ -14483,9 +14483,20 @@ function DashboardApp() {
             role="dialog"
             tabIndex={-1}
           >
-            <div className="buttonEditDialogHeader">
-              <p className="eyebrow">Button</p>
-              <h2>ボタンを編集</h2>
+            <div className="buttonEditDialogHeader modalTitleRow">
+              <div>
+                <p className="eyebrow">Button</p>
+                <h2>ボタンを編集</h2>
+              </div>
+              <button
+                aria-label="ボタン編集を閉じる"
+                className="iconButton"
+                onClick={requestCloseButtonEdit}
+                title="閉じる"
+                type="button"
+              >
+                <UiIcon name="close" size={16} />
+              </button>
             </div>
 
             <div className="buttonEditDialogBody app-scrollbar">

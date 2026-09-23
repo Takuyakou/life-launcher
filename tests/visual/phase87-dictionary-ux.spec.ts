@@ -56,6 +56,7 @@ test("Dictionary button edit keeps its footer visible and matches the Drop Regis
   await expect(dialog.getByText("アイコン", { exact: true })).toHaveCount(0);
   await expect(dialog.getByRole("button", { name: "アクションを上へ" })).toHaveCount(0);
   await expect(dialog.getByText("検索・説明（任意）")).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "ボタン編集を閉じる" })).toBeVisible();
   await expect(footer).toBeVisible();
   const footerBox = await footer.boundingBox();
   expect(footerBox).not.toBeNull();

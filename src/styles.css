@@ -2496,14 +2496,14 @@ h3 {
 }
 
 .launcherOpenButton {
-  min-height: 38px;
+  min-height: 42px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 7px 9px 7px 5px;
+  padding: 6px 8px;
   background: var(--surface);
   color: var(--text);
   font-size: 13px;
@@ -2520,21 +2520,20 @@ h3 {
 
 .launcherOpenButtonLabel {
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr);
+  grid-template-columns: 28px minmax(0, 1fr);
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .launcherOpenButtonIcon {
-  width: 20px;
-  height: 20px;
+  width: 28px;
+  height: 28px;
   display: grid;
   place-items: center;
 }
 
 .launcherOpenButtonIcon .uiIcon {
   color: var(--muted);
-  transform: translateY(1px);
 }
 
 .launcherOpenButton kbd {
@@ -6194,7 +6193,7 @@ input[type="number"]::-webkit-inner-spin-button {
   width: min(1040px, 100%);
   height: min(88vh, 800px);
   max-height: calc(100vh - 36px);
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 12px;
   overflow: hidden;
 }
@@ -8773,13 +8772,13 @@ input[type="number"]::-webkit-inner-spin-button {
 .todaySectionBar {
   min-height: 48px;
   display: grid;
-  grid-template-columns: max-content max-content max-content minmax(0, 1fr);
+  grid-template-columns: 120px 30px max-content minmax(0, 1fr);
   align-items: center;
   gap: 8px;
   margin-bottom: 10px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 8px 12px;
+  padding: 8px 12px 8px 0;
   background: var(--surface-soft);
 }
 
@@ -8792,13 +8791,15 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todaySectionDisclosure {
+  width: 100%;
   min-width: 0;
   min-height: 30px;
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
   align-items: center;
   gap: 8px;
   border: 0;
-  padding: 0;
+  padding: 2px 6px;
   background: transparent;
   color: inherit;
   text-align: left;
@@ -8806,7 +8807,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .todaySectionDisclosure:hover h2,
 .todaySectionDisclosure:focus-visible h2 {
-  color: var(--accent-strong);
+  color: var(--text);
 }
 
 .projectsBand .disclosureLabel strong,
@@ -8831,6 +8832,8 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todaySectionCount {
+  min-width: 22px;
+  justify-self: end;
   color: var(--text);
   font-weight: 650;
   white-space: nowrap;
@@ -10149,8 +10152,18 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .projectsBand .disclosureHeader,
 .inboxBand .disclosureHeader {
-  grid-template-columns: max-content max-content minmax(0, 1fr) max-content;
+  grid-template-columns: 120px 30px minmax(0, 1fr) max-content;
   min-height: 48px;
+}
+
+.projectsBand .disclosureHeader .disclosure,
+.inboxBand .disclosureHeader .disclosure,
+.todayActivityBand .disclosureHeader .disclosure {
+  width: 100%;
+}
+
+.todayActivityBand .disclosureHeader {
+  grid-template-columns: 120px 30px minmax(0, 1fr) max-content;
 }
 
 .disclosureHeaderActions {

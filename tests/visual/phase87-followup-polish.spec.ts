@@ -21,10 +21,13 @@ test("Main button edit shares the group control and positive/cancel footer gramm
   await expect(dialog.getByRole("button", { name: "新規グループを作成" })).toBeVisible();
   await expect(dialog.getByText("アイコン", { exact: true })).toHaveCount(0);
   await expect(dialog.getByRole("button", { name: "アクションを上へ" })).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: "ボタン編集を閉じる" })).toBeVisible();
   const footerButtons = dialog.locator(".buttonEditDialogFooter").getByRole("button");
   await expect(footerButtons).toHaveText(["保存", "キャンセル"]);
   await expect(footerButtons.first()).toHaveCSS("color", "rgb(111, 207, 151)");
   await expect(footerButtons.last()).toHaveCSS("color", "rgb(255, 180, 173)");
+  await dialog.getByRole("button", { name: "ボタン編集を閉じる" }).click();
+  await expect(dialog).toHaveCount(0);
 });
 
 test("Timer cannot select text and changing its minutes stays quiet", async ({ page }) => {
@@ -70,28 +73,70 @@ test("Today header collapses and dashboard metadata keeps one vertical rhythm", 
   offsets
     .flat()
     .forEach((offset) => expect(Math.abs(offset - offsets[0][0])).toBeLessThanOrEqual(2));
+
+  const horizontalColumns = await page
+    .locator(".todaySectionBar, .projectsBand, .inboxBand, .todayActivityBand")
+    .evaluateAll((bands) =>
+      bands.map((band) => {
+        const title = band.querySelector(".todaySectionDisclosure h2, .disclosureLabel strong")!;
+        const count = band.querySelector(".todaySectionCount, .disclosureCount")!;
+        return [title.getBoundingClientRect().x, count.getBoundingClientRect().x];
+      }),
+    );
+  horizontalColumns.forEach(([titleX, countX]) => {
+    expect(Math.abs(titleX - horizontalColumns[0][0])).toBeLessThanOrEqual(2);
+    expect(Math.abs(countX - horizontalColumns[0][1])).toBeLessThanOrEqual(2);
+  });
+
+  const todayTitle = page.locator(".todaySectionDisclosure h2");
+  const titleColor = await todayTitle.evaluate((element) => getComputedStyle(element).color);
+  await page.locator(".todaySectionDisclosure").hover();
+  await expect(todayTitle).toHaveCSS("color", titleColor);
 });
 
-test("Dictionary label aligns with group labels and Guide footer clears its divider", async ({
+test("Dictionary entry aligns with item rows and Guide footer stays inside its dialog", async ({
   page,
 }) => {
-  await prepare(page, { width: 1024, height: 420 });
+  await prepare(page, { width: 1064, height: 703 });
   const launcherLabel = page.locator(".launcherOpenButtonLabel > span:last-child");
-  const groupLabel = page.locator(".quickGroupHeader strong").first();
-  const [launcherBox, groupBox] = await Promise.all([
-    launcherLabel.boundingBox(),
-    groupLabel.boundingBox(),
-  ]);
+  const itemLabel = page.locator(".quickButton span:last-child").first();
+  const launcherIconSlot = page.locator(".launcherOpenButtonIcon");
+  const launcherIcon = launcherIconSlot.locator(".uiIcon");
+  const itemIcon = page.locator(".quickButton .quickIcon").first();
+  const [launcherBox, itemBox, launcherIconSlotBox, launcherIconBox, itemIconBox] =
+    await Promise.all([
+      launcherLabel.boundingBox(),
+      itemLabel.boundingBox(),
+      launcherIconSlot.boundingBox(),
+      launcherIcon.boundingBox(),
+      itemIcon.boundingBox(),
+    ]);
   expect(launcherBox).not.toBeNull();
-  expect(groupBox).not.toBeNull();
-  expect(Math.abs(launcherBox!.x - groupBox!.x)).toBeLessThanOrEqual(2);
+  expect(itemBox).not.toBeNull();
+  expect(launcherIconSlotBox).not.toBeNull();
+  expect(launcherIconBox).not.toBeNull();
+  expect(itemIconBox).not.toBeNull();
+  expect(Math.abs(launcherBox!.x - itemBox!.x)).toBeLessThanOrEqual(2);
+  expect(launcherIconSlotBox!.width).toBe(28);
+  expect(launcherIconBox!.width).toBe(24);
+  expect(itemIconBox!.width).toBeGreaterThanOrEqual(24);
 
   await page.getByRole("button", { name: "使い方" }).click();
   const footer = page.locator(".helpGuideFooter");
+  const dialog = page.getByRole("dialog", { name: "使い方" });
   const close = footer.getByRole("button", { name: "閉じる", exact: true });
-  const [footerBox, closeBox] = await Promise.all([footer.boundingBox(), close.boundingBox()]);
+  const [dialogBox, footerBox, closeBox] = await Promise.all([
+    dialog.boundingBox(),
+    footer.boundingBox(),
+    close.boundingBox(),
+  ]);
+  expect(dialogBox).not.toBeNull();
   expect(footerBox).not.toBeNull();
   expect(closeBox).not.toBeNull();
   expect(closeBox!.y - footerBox!.y).toBeGreaterThanOrEqual(12);
   expect(closeBox!.y + closeBox!.height).toBeLessThanOrEqual(footerBox!.y + footerBox!.height + 1);
+  expect(footerBox!.y + footerBox!.height).toBeLessThanOrEqual(
+    dialogBox!.y + dialogBox!.height + 1,
+  );
+  expect(closeBox!.y + closeBox!.height).toBeLessThanOrEqual(dialogBox!.y + dialogBox!.height + 1);
 });

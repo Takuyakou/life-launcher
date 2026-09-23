@@ -31,7 +31,7 @@ export type UiIconName =
 
 type UiIconProps = Omit<SVGProps<SVGSVGElement>, "children"> & {
   name: UiIconName;
-  size?: 16 | 18 | 20;
+  size?: 16 | 18 | 20 | 24;
 };
 
 export function UiIcon({ name, size = 18, className, ...props }: UiIconProps) {
