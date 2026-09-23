@@ -24,17 +24,17 @@ Note: it is not a complete port of the Windows product.
 
 ## Highlights
 
-- **Do Now**
-  Presents one next step from this week's focus using fixed, explainable rules.
+- **One thing to do now**
+  Suggests one next step based on this week's focus and your recent activity. Suggestions remain available even without a selected focus.
 
 - **Daily Victory / Today's Three**
   Define one condition for a successful day and limit today's work to at most three items. Start from project-colored cards; an item is completed after its planned timer expires and you confirm the session. Once all three are complete, choose the next three yourself.
 
-- **Choose today's work / Wishlist**
-  Open the Picker from an empty Today's Three slot, then use “+ Add to Today” for Next Steps and Wishlist items. The third item confirms automatically, while Cancel restores the opening selection. Adoption preserves the source and snapshots its text, instruction, launch environment, and timer durations. A drag-only removal Drop Zone or the item menu removes only the Today adoption.
+- **Choose today's work / Other ideas**
+  Open the selection dialog from an empty Today's Three slot, then use “+ Add to Today” for next steps and other ideas. The third item confirms automatically, while Cancel restores the opening selection. The app keeps the chosen text, instructions, launch environment, and timer duration while leaving the original item available. Drag an item to the removal area or use its menu to remove it from today.
 
 - **Remove from Today's Three**
-  Use the card's lower-left button or context menu to remove only its adoption into today, without a confirmation dialog. The original source, candidate, and session records remain. Removal is blocked while that item's timer is running, paused, or awaiting expiry confirmation.
+  Use the card's lower-left button or context menu to remove only its adoption into today, without a confirmation dialog. The original item, other choices, and session records remain. Removal is blocked while that item's timer is running, paused, or awaiting expiry confirmation.
 
 - **Quick Launcher / Dictionary**
   Register apps, folders, files, and URLs, then open them from the sidebar or `Ctrl+K` search. Navigate the dictionary with arrow keys; on multiple monitors, it opens on the same screen as the main app.
@@ -42,40 +42,40 @@ Note: it is not a complete port of the Windows product.
 - **Timer / Session Records**
   Start a short or normal timer, or use Measure to count up from 0:00, and store sessions of at least one minute locally. Stopping early does not automatically complete today's item. Session completion is also separate from completing or deleting the source entry itself.
 
-- **Instruction Viewer**
+- **View instructions**
   Read Markdown, text, and sanitized HTML files from registered folders in a separate window.
 
 ## Screenshots
 
-### Dictionary / Instruction Viewer
+### Dictionary / Instructions
 
-| Dictionary                                                | Instruction Viewer                                             |
+| Dictionary                                                | Instructions                                                   |
 | --------------------------------------------------------- | -------------------------------------------------------------- |
-| ![Searchable dictionary](docs/screenshots/dictionary.png) | ![Instruction Viewer](docs/screenshots/instruction-viewer.png) |
+| ![Searchable dictionary](docs/screenshots/dictionary.png) | ![Instructions window](docs/screenshots/instruction-viewer.png) |
 
 The screenshots are generated from synthetic data. They do not contain real user configuration, activity, paths, or notes.
 
 ## Download
 
-Download Life Launcher from [GitHub Releases](https://github.com/Takuyakou/life-launcher/releases/latest). The current stable release is **v1.3.1**.
+Download Life Launcher from [GitHub Releases](https://github.com/Takuyakou/life-launcher/releases/latest). Check that page for the latest published version and filenames.
 
 ### Installer - Recommended
 
 Use this for the standard installation flow.
 
-`Life-Launcher-v1.3.1-windows-x64-setup.exe`
+v1.3.1 installer: `Life-Launcher-v1.3.1-windows-x64-setup.exe`
 
 ### Standalone EXE
 
 Run the app directly without installing it.
 
-`Life-Launcher-v1.3.1-windows-x64.exe`
+v1.3.1 standalone: `Life-Launcher-v1.3.1-windows-x64.exe`
 
 ### Portable ZIP
 
 Extract the ZIP archive and run the app.
 
-`Life-Launcher-v1.3.1-windows-x64-portable.zip`
+v1.3.1 ZIP: `Life-Launcher-v1.3.1-windows-x64-portable.zip`
 
 The ZIP edition also stores user data in `%APPDATA%\life-launcher`. It does not carry your data alongside the executable on a USB drive.
 
