@@ -1,26 +1,33 @@
-# Life Launcher v1.3.2 UI/UX・機能仕様書
+# Life Launcher v1.3.3候補 UI/UX・機能仕様書
 
 ## 0. 文書情報
 
 | 項目             | 内容                                                                   |
 | ---------------- | ---------------------------------------------------------------------- |
-| 文書版           | 1.3.2                                                                  |
+| 文書版           | 1.3.3候補                                                              |
 | 対象             | Windowsデスクトップ版 Life Launcher                                    |
-| 実装基準         | Public repository `Takuyakou/life-launcher` のv1.3.2 release candidate |
-| 作業branch       | `p89/v1.3.2-review`                                        |
-| 監査基準コミット | v1.3.2リリース準備時のHEAD                                             |
-| 確認日           | 2026-09-17                                                             |
+| 実装基準         | Public repository `Takuyakou/life-launcher` のP8.10実装候補            |
+| 作業branch       | P8.10統合後の`main`                                                    |
+| 監査基準コミット | P8.10-04検証時の`main`                                                 |
+| 確認日           | 2026-09-25                                                             |
 | UI実装           | Tauri 2 / React 18 / TypeScript / CSS                                  |
 
-本書は、Life Launcher v1.3.2のUI/UXと主要機能を、現在のコード、型、設定、capability、テストから整理した現行仕様書である。
+本書は、Life Launcher v1.3.3候補のUI/UXと主要機能を、現在のコード、型、設定、capability、テストから整理した現行仕様書である。正式リリースは確認用EXEのユーザー承認後に行う。
 
-製品バージョンは`1.3.2`、config schemaは`3`である。Phase 8〜8.4のProject / NextStep / Wishlist再構成と、P8.7のDictionary / Drop Register / Instruction Viewer / Guide改善、P8.9のメイン表示サイズと配置調整を含む。機能の入口は [Overview](../OVERVIEW.md) を参照する。
+正式公開版はユーザー承認まで`1.3.2`、確認用ビルドは`1.3.3`候補、config schemaは`3`である。Phase 8〜8.4のProject / NextStep / Wishlist再構成と、P8.7のDictionary / Drop Register / Instruction Viewer / Guide改善、P8.9のメイン表示サイズと配置調整、P8.10の拡大Timer等を含む。機能の入口は [Overview](../OVERVIEW.md) を参照する。
 
 ## v1.3.2でのメイン画面表示
 
 - 設定の基本・表示でメイン表示サイズを標準・大・特大から選ぶ。既存設定に値がない場合は標準として扱う。config schemaは3のまま。
 - 拡大対象はメイン画面の本文、カード、操作部、広い画面の上部メニューである。記録画面、サイドバー、辞書、手順書ビューアー、ミニ画面は従来寸法を保つ。
 - 今やる一手と各セクションの見出し軸、今日の実行項目の本文位置を整えた。メイン画面の週次ふりかえり案内は表示しないが、記録画面の週次機能は維持する。
+
+## P8.10での変更
+
+- 満了ダイアログ「終わる」から不要な停止アイコンを外した。今やる一手だけの完了は結果を保持し、「次の一手を見る」を押した時点で次候補を選ぶ。今日の3件にも対応する完了は今日の3件の表示を優先する。
+- Quick横のMainショートカットと「辞書を開く」のバッジは、設定値と登録状態を反映する。Mainショートカットは非表示・最小化・背面なら表示して前面へ、表示中かつ前面ならトレイへ隠す。
+- 今日の実行の分数は見出し右端の「自動」と同じ軸へ揃える。サイドバーの通常Timerを`-`/`+`で変えても、操作元から意図せず次の一手へフォーカスを移さない。
+- Main内の拡大Timerは実行中・一時停止中に手動で開ける。次の一手ごとの自動表示は初期値OFFで、今日の3件には採用時点の設定を保存する。Windowsの画面消灯要求は拡大表示中だけ保持し、システムスリープは抑止しない。
 
 ## 1. プロダクト概要
 
@@ -149,7 +156,8 @@ Main Window
 ### 5.1 ブランドと辞書
 
 - 左上にカラーアイコン、`Life Launcher`、`Quick`を表示する。
-- 上部に「辞書を開く」と `Ctrl+K` を表示する。
+- 上部に検索アイコン付きの「辞書を開く」と、設定中の辞書ショートカットを表示する。未設定ならバッジは表示せず、登録失敗中は警告状態を示す。
+- `Life Launcher / Quick`横には設定中のMainショートカットを表示する。長いキー表記は省略し、ツールチップには全文を示す。
 - クリックまたは設定済みショートカットで辞書を開く。
 
 ### 5.2 Quickグループとボタン
@@ -177,6 +185,7 @@ Main Window
 - 設定範囲は1〜240分。
 - 実行中は対象名、残り時間、進捗、一時停止、終了を表示する。
 - 一時停止中は再開と終了を表示する。
+- 実行中・一時停止中は拡大ボタンを表示する。待機中は表示しない。
 
 ## 6. 上部ヘッダー
 
@@ -225,6 +234,7 @@ Main Window
 - 実行中は一時停止と終了、一時停止中は再開と終了へ切り替える。
 - 開始候補が2件以上ある場合だけ、Timerの左と右クリックメニューに「他の一手」を表示する。どちらも同じ切替handlerを使う。
 - 「他の一手」は現在表示する候補だけを切り替え、候補の優先順、今週の重点、Today3、永続データを変更しない。
+- 今やる一手だけを完了した場合は完了したProject・本文・安全に取得できた実行分数を保持し、「次の一手を見る」まで別候補に切り替えない。別Timer開始、日付切替、reloadでは保持を解除する。今日の3件にも対応する場合は今日の3件の完了表示を優先する。
 
 ## 9. 今日やるものを選ぶ
 
@@ -273,7 +283,8 @@ Main Window
 - 短時間は緑、通常は青、計測は中立色にする。
 - 実行中は一時停止と終了、一時停止中は再開と終了へ切り替える。
 - プロジェクト、ランチャー、手順書が紐づく場合は開始時に同じ実行環境を利用する。
-- 採用時に項目名、きっかけ、開始環境、手順書、短時間・通常タイマー分数をToday項目へ保存する。手順書snapshotがあるカードは左下に手順書ボタンを表示し、同じviewer起動経路を使う。元の登録を明示編集保存した場合は現在のToday3も再snapshotする。常時live bindingではない。
+- 採用時に項目名、きっかけ、開始環境、手順書、短時間・通常タイマー分数、拡大Timer自動表示設定をToday項目へ保存する。手順書snapshotがあるカードは左下に手順書ボタンを表示し、同じviewer起動経路を使う。元の登録を明示編集保存した場合は現在のToday3も再snapshotする。常時live bindingではない。
+- 個別のTimer分数overrideがないToday項目は現在の全体設定の通常・短時間分数へ追従する。個別overrideは維持し、登録元が消えた場合はToday項目に保存済みの分数を使う。
 - 完了は予定時間到達後の確定、または動的な早期終了確認で「今日の分は完了」を選んだ場合に付与する。
 - 1分未満、早期基準未満、または「未完了のまま終了」では今日の項目を完了扱いにしない。
 - 3件すべてが完了した場合だけ「次の3件を選ぶ」を表示する。手動操作で現在の枠を空にし、Builderを展開してフォーカスする。
@@ -283,7 +294,7 @@ Main Window
 - 保存済みの未完了から完了への遷移だけを起点に、約1秒の一時フィードバックを表示する。既存doneの読込、reload、画面復帰、編集、並べ替え、採用、除外、Undo、source自体の完了、保存失敗では発火しない。
 - 今日の勝利条件は金色のsweep、check、少量のparticleを表示する。達成表示は演出中と演出後で同じ「✓ 今日の勝利、達成」nodeと文言を維持し、解除後に再達成したfalse-to-true遷移でも演出を再生する。
 - Today3個別完了は対象カードだけを緑のcheckと短いpopで示す。3件目で正確に3/3へ遷移した場合は個別演出より「今日の3件、完了！」の金色節目表示を優先し、既存の「次の3件を選ぶ」は演出中も操作できる。
-- 今やる一手だけに対応する完了は、終了したitem snapshotへ「一手進みました」を軽く表示する。同じSessionがToday3にも対応する場合はToday3側だけを表示し、3/3では節目表示だけを出す。
+- 今やる一手だけに対応する完了は、終了したitem snapshotへ「✓ 一手進みました」を保持する。「次の一手を見る」を押すまで開始操作と「他の一手」を表示しない。同じSessionがToday3にも対応する場合はToday3側だけを表示し、3/3では節目表示だけを出す。
 - Timer Sessionと日付を含むevent identityで同一完了の重複表示を抑止する。一時表示はfocusを移さずpointer eventを受けず、非表示windowを前面化しない。
 - `prefers-reduced-motion`では移動、拡縮、sweep、particleを止め、check、色、ラベルだけを静的に表示する。一時表示のtimerはunmount時に解放する。
 
@@ -305,7 +316,7 @@ Main Window
 ## 11. プロジェクトと次の一手
 
 - Projectは継続テーマの入れ物で、`id`、名称、目標、今週の重点、色だけを所有する。
-- NextStepは各Projectが0〜1件所有する、迷ったときに戻る「再開地点」で、本文、始めるきっかけ、開始環境、手順書、Timer、鮮度時刻、optionalな`generationId`を所有する。NextStepだけが実行を許された作業ではなく、Wishlistから別の項目をToday3へ採用しても現在のNextStepは残す。
+- NextStepは各Projectが0〜1件所有する、迷ったときに戻る「再開地点」で、本文、始めるきっかけ、開始環境、手順書、Timer、開始時の拡大Timer自動表示（初期値OFF）、鮮度時刻、optionalな`generationId`を所有する。NextStepだけが実行を許された作業ではなく、Wishlistから別の項目をToday3へ採用しても現在のNextStepは残す。
 - 見出しの黄色い`＋ プロジェクト`からProjectを追加する。Projectの追加・編集画面にはNextStepの実行設定を混在させない。
 - Projectのcontext menu最下部とProject編集画面のDanger ZoneからProjectを削除できる。未完了Today3でProject由来のNextStepまたはWishlistが使用中、または同Project由来sourceのTimerが実行中・一時停止中の場合は確認前とmutation直前の共通guardで拒否する。
 - 削除確認にはProject名、現在のNextStep件数、所属Wishlist件数と「過去の実行記録は残ります」を表示する。「関連項目も削除」はProject・current NextStep・所属Wishlistだけを削除し、「残っている項目を完了扱いにして削除」は既存source completion形式へ未完了source snapshotを追加してから同じ削除を行う。Session、Today Activity、完了済みToday3、既存completion、他Project、未分類Wishlistは保持する。
@@ -321,7 +332,7 @@ Main Window
 - 未完了Today3が参照するcanonical sourceはSource Lock状態にする。NextStepは同一Projectかつ同一generation、Wishlistは同一stable IDだけを対象とし、本文一致ではロックしない。Today3が完了するか採用解除されると即座に解除する。
 - Source Lock中のNextStepはProject名、鍵、緑の「✓ 今日の3件に設定済み」を同じ行へ順に表示し、カード右下には重複した使用中文字を置かない。登録元からの編集、完了、削除、昇格、置換、未設定化、領域間D&DをUIとhandlerの両方で拒否する。未設定NextStepや別generation、別IDのWishlistはロックしない。
 - Source Lock中でもToday3カードの「編集」から開いた元editorだけは保存できる。この経路は元sourceと一致する現在のToday3 snapshotを1回のconfig保存で同時更新し、Timer実行中・一時停止中・確認中の既存guardは迂回しない。
-- 明示保存時だけ、generationが一致するToday3へtext/trigger/projectId/buttonIds/instructionPath/instructionOpenOnStart/defaultTimerMinutes/shortTimerMinutesを再snapshotする。解除した任意値は残さない。[詳細matrix](../phase7.1/00-field-sync-matrix.md)。
+- 明示保存時だけ、generationが一致するToday3へtext/trigger/projectId/buttonIds/instructionPath/instructionOpenOnStart/defaultTimerMinutes/shortTimerMinutes/expandTimerOnStartを再snapshotする。解除した任意値は残さない。[詳細matrix](../phase7.1/00-field-sync-matrix.md)。
 - 現在のToday3のsourceKey、done、配列順、個数、date、勝利条件は保持する。完了済みの現在カードもdoneを維持して更新し、Session/今日の実行/sourceCompletionsは書き換えない。部分補充なし。
 - Project編集はそのProject sourceだけ更新し、同じprojectIdを持つ別Wishlistは自動更新しない。Wishlist自身の編集保存時に関連Projectの現在の分数を解決する。
 - 同sourceのrunning/paused/満了確認/早期終了確認中はUI・直接handler双方で拒否する。別source Timerは編集を妨げない。保存中は同source開始も拒否し、実行中の分数・開始環境を変更しない。
@@ -379,7 +390,7 @@ Main Window
 - 初期状態は折りたたむ。
 - 見出し補足は「タイマーで実行した内容」。
 - 緑の「自動」表示と件数を重ならないように表示する。
-- 行には開始時刻、プロジェクト色、名称、実行名、分数を表示する。
+- 行には開始時刻、プロジェクト色、名称、実行名、分数を表示する。分数の右端は見出しの「自動」と共通の余白・軸へ揃え、桁数が変わっても右寄せを維持する。
 
 ### Main本文のスクロール
 
@@ -421,6 +432,14 @@ Main Window
 - source、Today3、Builderの編集成功通知は保存元と実際の同期先に応じて「今日の3件にも反映しました」または「元の『次の一手』『やりたいこと』にも反映しました」と示す。
 - 満了時はメインを復元し、OS通知と完了ダイアログを表示する。
 
+### 14.1 拡大タイマー
+
+- Mainの内部でSidebarと本文を覆う。独立ウィンドウやOS全画面モードにはしない。表示中も既存のアクティブTimerを共有し、別のカウントは作らない。
+- 実行中・一時停止中のSidebarから手動で開ける。次の一手の「開始時にタイマーを大きく表示」は初期値OFFで、明示的な今やる一手・今日の3件の開始時だけ適用する。やりたいこと由来、復元時、Sidebar単独Timerでは自動表示しない。
+- 一時停止・再開・終了ができる。Escまたは閉じる操作は表示だけを閉じてTimerを継続し、背景クリックでは閉じない。背景は操作不可とし、キーボードフォーカスを拡大表示内に保つ。
+- 満了時は「時間になりました」を表示したまま既存の延長・終了ダイアログを前面へ出す。拡大表示中はMiniを開かず、閉じた後はMini設定に従う。
+- Windowsのdisplay idleだけを抑止し、system sleepは抑止しない。拡大表示を閉じる、Timer終了、アプリ終了時に解除し、異常終了後は期限切れで解除する。APIが失敗してもTimerは継続する。
+
 ### 動的な早期完了
 
 - 対象は未完了Today3に一意に対応するTimerの手動終了。短時間・通常は`elapsedSeconds >= thresholdSeconds`かつ`elapsedSeconds < activeTimer.targetMinutes * 60`、計測は`elapsedSeconds >= thresholdSeconds`で確認する。
@@ -434,7 +453,7 @@ Main Window
 - Session保存失敗では停止時点を固定した確認画面を維持し再試行できる。Today保存失敗ではToday3をrollbackし、保存済みSessionを保持する。二重回答・古いTimer handler・確認中の再開/切替はguardする。
 - しきい値到達だけの自動完了、80%判定、2/3の部分補充、自動補充はしない。3件完了時の手動「次の3件を選ぶ」を維持する。
 
-### 14.1 ミニウィンドウ
+### 14.2 ミニウィンドウ
 
 - 固定サイズ `288 x 136`、フレームレス、常に手前、タスクバー非表示。
 - 自動表示時にフォーカスを奪わない。
@@ -630,6 +649,7 @@ URLはWindowsの既定ブラウザで開き、登録ごとのブラウザ指定�
 - 重複や使用中キーを検証し、警告する。
 - 登録失敗で設定全体の読み込みを失敗させない。
 - 保存完了まで本登録しない。
+- ショートカット以外の設定保存では登録をやり直さず、Rust側も同じキーへの再登録を避ける。実際にキーを変更した場合だけ更新する。
 - 未保存で閉じる場合は確認ダイアログを出す。
 - 「編集を続ける」と「破棄して閉じる」は同じ文字サイズと高さにする。
 

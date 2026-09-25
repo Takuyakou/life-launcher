@@ -174,6 +174,18 @@ export const HELP_GUIDE_SECTIONS: HelpGuideSection[] = [
         type: "paragraph",
         text: "同時に動かせるTimerは1本です。一時停止・再開ができ、終了すると1分以上の実行内容と時間を記録します。完了にするか迷うときは「未完了のまま終了」で記録だけを残せます。",
       },
+      {
+        type: "paragraph",
+        text: "Timerを動かしている間は、左側の拡大ボタンで画面内に大きく表示できます。読書や運動など、PCから離れる作業に便利です。Escや閉じるボタンは表示だけを閉じ、Timerは続きます。",
+      },
+      {
+        type: "paragraph",
+        text: "次の一手には「開始時にタイマーを大きく表示」も設定できます。初期状態ではオフです。今日の3件へ選ぶと、その時点の設定を引き継ぎます。",
+      },
+      {
+        type: "paragraph",
+        text: "今やる一手だけを完了したときは「一手進みました」が残ります。「次の一手を見る」を押すと次の候補へ進みます。",
+      },
     ],
   },
   {
@@ -211,11 +223,15 @@ export const HELP_GUIDE_SECTIONS: HelpGuideSection[] = [
       },
       {
         type: "paragraph",
-        text: "EXE、フォルダ、ファイル、ショートカット、URLをMainへドロップし、Quickと辞書の両方または片方へ登録できます。辞書はMainの「辞書を開く」か既定のCtrl+Kで開き、検索してEnterで起動できます。",
+        text: "EXE、フォルダ、ファイル、ショートカット、URLをMainへドロップし、Quickと辞書の両方または片方へ登録できます。辞書はMainの「辞書を開く」か設定したショートカット（初期値はCtrl+K）で開き、検索してEnterで起動できます。",
       },
       {
         type: "paragraph",
         text: "辞書の設定では表示をタイル・リストから、アイコンサイズを自動・小・中・大から選べます。ショートカットは設定の「ショートカット」から変更できます。",
+      },
+      {
+        type: "paragraph",
+        text: "Quickの横にはMainのショートカットが表示されます。Mainを隠しているときは呼び出し、表示中は手前へ移せます。すでに手前にあるときはトレイへ隠します。",
       },
     ],
   },
@@ -277,7 +293,7 @@ export const HELP_GUIDE_SECTIONS: HelpGuideSection[] = [
         items: [
           {
             term: "辞書をすぐ開くには？",
-            description: "Ctrl+Kを押します。反応しない場合は設定のショートカットを確認してください。",
+            description: "「辞書を開く」の横に表示されたショートカットを押します。初期値はCtrl+Kです。反応しない場合は設定のショートカットを確認してください。",
           },
           {
             term: "今日の3件から外すには？",
