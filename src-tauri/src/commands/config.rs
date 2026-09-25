@@ -4249,6 +4249,7 @@ mod tests {
             instruction_open_on_start: None,
             default_timer_minutes: Some(25),
             short_timer_minutes: Some(5),
+            expand_timer_on_start: None,
         };
         config.today.items = vec![
             TodayItem {

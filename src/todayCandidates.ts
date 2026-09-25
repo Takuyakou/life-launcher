@@ -11,6 +11,7 @@ export type TodayCandidate = {
   trigger?: string;
   projectId?: string;
   buttonIds?: string[];
+  expandTimerOnStart?: boolean;
   instructionPath?: string;
   instructionOpenOnStart?: boolean;
   defaultTimerMinutes: number;
@@ -41,6 +42,7 @@ export function projectTodayCandidate(
     projectId: project.id,
     ...(nextStep?.trigger?.trim() ? { trigger: nextStep.trigger.trim() } : {}),
     ...(nextStep?.buttonIds.length ? { buttonIds: [...nextStep.buttonIds] } : {}),
+    ...(nextStep?.expandTimerOnStart ? { expandTimerOnStart: true } : {}),
     ...(nextStep?.instructionPath
       ? {
           instructionPath: nextStep.instructionPath,

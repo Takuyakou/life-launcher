@@ -99,6 +99,7 @@ const InstructionFolderIdentitySchema = z.object({
 
 const NextStepExecutionSchema = z.object({
   buttonIds: z.array(z.string()).default([]),
+  expandTimerOnStart: z.boolean().optional(),
   defaultTimerMinutes: z.number().int().min(1).max(240).optional(),
   shortTimerMinutes: z.number().int().min(1).max(240).optional(),
   startNoteTemplate: z.string().optional(),
@@ -142,6 +143,7 @@ export const TodayItemSchema = z.object({
   trigger: z.string().max(EXECUTION_TRIGGER_MAX_CHARS).optional(),
   projectId: z.string().optional(),
   buttonIds: z.array(z.string().min(1)).optional(),
+  expandTimerOnStart: z.boolean().optional(),
   instructionPath: InstructionPathSchema.optional(),
   instructionOpenOnStart: z.boolean().optional(),
   defaultTimerMinutes: z.number().int().min(1).max(240).optional(),

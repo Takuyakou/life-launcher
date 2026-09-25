@@ -91,6 +91,7 @@ export function resnapshotSource(previous: AppConfig, next: AppConfig, key: stri
     ...(project?.nextStep?.trigger?.trim() ? { trigger: project.nextStep.trigger.trim() } : {}),
     ...(project || inbox?.projectId ? { projectId: project?.id ?? inbox!.projectId } : {}),
     ...(source.buttonIds?.length ? { buttonIds: [...source.buttonIds] } : {}),
+    ...(project?.nextStep?.expandTimerOnStart ? { expandTimerOnStart: true } : {}),
     ...(source.instructionPath
       ? {
           instructionPath: source.instructionPath,

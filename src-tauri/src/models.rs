@@ -119,6 +119,8 @@ pub struct NextStepV3 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub short_timer_minutes: Option<u32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expand_timer_on_start: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub start_note_template: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub instruction_path: Option<String>,
@@ -136,6 +138,8 @@ pub struct NextStepExecutionSettingsV3 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub short_timer_minutes: Option<u32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expand_timer_on_start: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub start_note_template: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub instruction_path: Option<String>,
@@ -148,6 +152,7 @@ impl NextStepExecutionSettingsV3 {
         self.button_ids.is_empty()
             && self.default_timer_minutes.is_none()
             && self.short_timer_minutes.is_none()
+            && self.expand_timer_on_start.is_none()
             && self.start_note_template.is_none()
             && self.instruction_path.is_none()
             && self.instruction_open_on_start.is_none()
@@ -203,6 +208,7 @@ impl From<LegacyProjectV2> for ProjectV3 {
             button_ids,
             default_timer_minutes,
             short_timer_minutes,
+            expand_timer_on_start: None,
             start_note_template,
             instruction_path,
             instruction_open_on_start,
@@ -217,6 +223,7 @@ impl From<LegacyProjectV2> for ProjectV3 {
             button_ids: execution.button_ids.clone(),
             default_timer_minutes: execution.default_timer_minutes,
             short_timer_minutes: execution.short_timer_minutes,
+            expand_timer_on_start: execution.expand_timer_on_start,
             start_note_template: execution.start_note_template.clone(),
             instruction_path: execution.instruction_path.clone(),
             instruction_open_on_start: execution.instruction_open_on_start,
@@ -292,6 +299,8 @@ pub struct TodayItem {
     pub default_timer_minutes: Option<u32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub short_timer_minutes: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expand_timer_on_start: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -898,6 +907,7 @@ pub fn sample_config() -> AppConfig {
                     button_ids: vec!["music-web".to_string()],
                     default_timer_minutes: None,
                     short_timer_minutes: None,
+                    expand_timer_on_start: None,
                     start_note_template: None,
                     instruction_path: None,
                     instruction_open_on_start: None,
@@ -919,6 +929,7 @@ pub fn sample_config() -> AppConfig {
                     button_ids: vec!["documents".to_string()],
                     default_timer_minutes: None,
                     short_timer_minutes: None,
+                    expand_timer_on_start: None,
                     start_note_template: None,
                     instruction_path: None,
                     instruction_open_on_start: None,
@@ -944,6 +955,7 @@ pub fn sample_config() -> AppConfig {
                     instruction_open_on_start: None,
                     default_timer_minutes: None,
                     short_timer_minutes: None,
+                    expand_timer_on_start: None,
                 },
                 TodayItem {
                     text: "起動ボタンを1つ試す".to_string(),
@@ -957,6 +969,7 @@ pub fn sample_config() -> AppConfig {
                     instruction_open_on_start: None,
                     default_timer_minutes: None,
                     short_timer_minutes: None,
+                    expand_timer_on_start: None,
                 },
             ],
         },
@@ -1015,6 +1028,46 @@ mod tests {
             config.settings.focus_hotkey.as_deref(),
             Some("Ctrl+Alt+Space")
         );
+    }
+
+    #[test]
+    fn expanded_timer_preference_round_trips_without_a_schema_bump() {
+        let mut config = sample_config();
+        config.projects[0]
+            .next_step
+            .as_mut()
+            .expect("next step")
+            .expand_timer_on_start = Some(true);
+        config.today.items[0].expand_timer_on_start = Some(true);
+
+        let json = serde_json::to_value(&config).expect("serialize config");
+        assert_eq!(json["projects"][0]["nextStep"]["expandTimerOnStart"], true);
+        assert_eq!(json["today"]["items"][0]["expandTimerOnStart"], true);
+        let restored: AppConfig = serde_json::from_value(json).expect("deserialize config");
+        assert_eq!(restored.version, config.version);
+        assert_eq!(
+            restored.projects[0]
+                .next_step
+                .as_ref()
+                .unwrap()
+                .expand_timer_on_start,
+            Some(true)
+        );
+        assert_eq!(restored.today.items[0].expand_timer_on_start, Some(true));
+
+        let legacy: AppConfig = serde_json::from_value(
+            serde_json::to_value(sample_config()).expect("serialize legacy config"),
+        )
+        .expect("deserialize legacy config");
+        assert_eq!(
+            legacy.projects[0]
+                .next_step
+                .as_ref()
+                .unwrap()
+                .expand_timer_on_start,
+            None
+        );
+        assert_eq!(legacy.today.items[0].expand_timer_on_start, None);
     }
 
     #[test]
