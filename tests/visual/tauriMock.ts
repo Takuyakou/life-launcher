@@ -180,6 +180,7 @@ export async function installTauriMock(
         readOnly: boolean;
       } | null;
       let instructionRootChoices: InstructionRootChoice[] = [];
+      let launcherPickerResult: string | null = null;
       let instructionRootDelayed = false;
       const pendingInstructionRootChoices: Array<(choice: InstructionRootChoice) => void> = [];
       const invokeCalls: Array<{ command: string; args: Record<string, unknown> }> = [];
@@ -221,6 +222,9 @@ export async function installTauriMock(
         mainWindowState: () => ({ ...mainWindowState }),
         setInstructionRootChoices: (choices: typeof instructionRootChoices) => {
           instructionRootChoices = [...choices];
+        },
+        setLauncherPickerResult: (result: string | null) => {
+          launcherPickerResult = result;
         },
         setInstructionRootDelayed: (delayed: boolean) => {
           instructionRootDelayed = delayed;
@@ -404,6 +408,8 @@ export async function installTauriMock(
                   source: input.value,
                 };
               }
+              case "choose_launcher_target":
+                return launcherPickerResult;
               case "load_today_session_total":
                 return {
                   date: currentConfig.today.date,

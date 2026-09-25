@@ -349,9 +349,8 @@ test("Quick button and group drag save only on drop and survive reload", async (
     .allTextContents();
   expect(renderedButtonLabels[0]).toContain("グリッド項目 2");
 
-  const headers = page.locator(".quickGroupHeader");
-  const firstGroup = await headers.nth(0).boundingBox();
-  const secondGroup = await page.locator(".quickGroup").nth(1).boundingBox();
+  const firstGroup = await page.locator(".quickGroupHeader", { hasText: "資料" }).boundingBox();
+  const secondGroup = await page.locator(".quickGroup", { hasText: "リンク" }).boundingBox();
   expect(firstGroup).not.toBeNull();
   expect(secondGroup).not.toBeNull();
   const beforeGroupDrag = await saveCount();
@@ -380,5 +379,5 @@ test("Quick button and group drag save only on drop and survive reload", async (
     })
     .toBe(true);
   await page.reload();
-  await expect(page.locator(".quickGroupHeader").first()).toContainText("リンク");
+  await expect(page.locator(".quickGroupHeader", { hasText: "リンク" })).toBeVisible();
 });

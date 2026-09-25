@@ -1509,7 +1509,7 @@ export function DictionaryWindow() {
   const renderButtonIcon = (button: LauncherButton, className = "dictionaryTileIcon") => {
     const source = buttonIconSources[button.id];
     if (source) {
-      return <img alt="" className={className + " buttonIconImage"} src={source} />;
+      return <img alt="" className={className + " buttonIconImage"} draggable={false} src={source} />;
     }
     return (
       <span aria-hidden="true" className={className}>

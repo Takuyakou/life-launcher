@@ -36,6 +36,7 @@ import {
 } from "./constants";
 import {
   acknowledgeSoftwareResetRecovery,
+  chooseLauncherTarget,
   chooseInstructionRoot,
   createSoftwareResetBackup,
   deleteSessionEntry,
@@ -2246,11 +2247,16 @@ function DashboardApp() {
   const [completionPrompt, setCompletionPrompt] = useState<TimerCompletionPrompt | null>(null);
   const [completionFeedback, setCompletionFeedback] = useState<CompletionFeedback | null>(null);
   const [doNowCompletionHold, setDoNowCompletionHold] = useState<DoNowCompletionHold | null>(null);
+  const [doNowExcludedProjectId, setDoNowExcludedProjectId] = useState<string | null>(null);
   const [completionFollowup, setCompletionFollowup] = useState<CompletionFollowup | null>(null);
   const [now, setNow] = useState(Date.now());
   const [collapsedGroups, setCollapsedGroups] =
     useState<Record<string, boolean>>(readCollapsedGroups);
   const [dropDraft, setDropDraft] = useState<DropDialogState | null>(null);
+  const [builderKind, setBuilderKind] = useState<"file" | "folder" | "url" | null>(null);
+  const [builderSource, setBuilderSource] = useState("");
+  const [builderLabelTouched, setBuilderLabelTouched] = useState(false);
+  const [builderBusy, setBuilderBusy] = useState(false);
   const [groupDraft, setGroupDraft] = useState<string | null>(null);
   const [groupRenameDraft, setGroupRenameDraft] = useState<{
     from: string;
@@ -2669,12 +2675,12 @@ function DashboardApp() {
   const visibleSidebarButtonGroups = useMemo(
     () =>
       buttonGroups
+        .filter((group) => group.buttons.length > 0 || config?.groups.includes(group.name))
         .map((group) => ({
           name: group.name,
           buttons: group.buttons.filter(showButtonInSidebar),
-        }))
-        .filter((group) => group.buttons.length > 0),
-    [buttonGroups],
+        })),
+    [buttonGroups, config?.groups],
   );
   const projectSelectableButtons = useMemo(
     () =>
@@ -2983,6 +2989,10 @@ function DashboardApp() {
       setDoNowCompletionHold(null);
     }
   }, [config?.today.date, doNowCompletionHold]);
+
+  useEffect(() => {
+    setDoNowExcludedProjectId(null);
+  }, [config?.today.date]);
 
   const refreshSessions = useCallback(async () => {
     try {
@@ -4810,6 +4820,7 @@ function DashboardApp() {
         const draft = await resolveDropItem(
           input.kind === "url" ? { ...input, suggestedLabel } : input,
         );
+        setBuilderKind(null);
         setDropDraft({
           ...draft,
           label: draft.label,
@@ -5069,6 +5080,18 @@ function DashboardApp() {
       event.dataTransfer.getData("text/uri-list") || event.dataTransfer.getData("text/plain");
     const url = firstDroppedUrl(text);
     if (!url) return;
+    try {
+      const dropped = new URL(url);
+      if (
+        dropped.origin === window.location.origin ||
+        dropped.hostname === "tauri.localhost" ||
+        dropped.hostname === "asset.localhost"
+      ) {
+        return;
+      }
+    } catch {
+      return;
+    }
 
     void openDropDialog({ kind: "url", value: url });
   };
@@ -6288,7 +6311,48 @@ function DashboardApp() {
 
   const confirmDropRegistration = async () => {
     if (!config || !dropDraft) return;
-    const label = dropDraft.label.trim();
+    if (builderBusy) return;
+    let resolved = dropDraft;
+    if (builderKind) {
+      const source = builderSource.trim();
+      if (!source) {
+        showToast("warn", "登録先を入力してください");
+        return;
+      }
+      try {
+        setBuilderBusy(true);
+        const target = await resolveDropItem(
+          builderKind === "url" ? { kind: "url", value: source } : { kind: "path", value: source },
+        );
+        if (
+          (builderKind === "folder" && target.action.type !== "open_folder") ||
+          (builderKind === "file" &&
+            target.action.type === "open_folder" &&
+            !source.toLowerCase().endsWith(".lnk"))
+        ) {
+          showToast(
+            "warn",
+            builderKind === "file" ? "ファイルを選んでください" : "フォルダを選んでください",
+          );
+          return;
+        }
+        resolved = {
+          ...dropDraft,
+          action: target.action,
+          iconSource: target.iconSource,
+          source: target.source,
+        };
+      } catch (error) {
+        showToast(
+          "error",
+          `登録先を確認できません: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        return;
+      } finally {
+        setBuilderBusy(false);
+      }
+    }
+    const label = resolved.label.trim();
     if (!label) {
       showToast("warn", "ラベルを入力してください");
       return;
@@ -6301,22 +6365,27 @@ function DashboardApp() {
     const button: LauncherButton = {
       id: uniqueButtonId(label, config.buttons),
       label,
-      icon: iconForAction(dropDraft.action),
-      iconSource: dropDraft.iconSource ?? undefined,
+      icon: iconForAction(resolved.action),
+      iconSource: resolved.iconSource ?? undefined,
       group: group && group !== DEFAULT_BUTTON_GROUP ? group : undefined,
       showInSidebar: dropDraft.showInSidebar,
       showInOverlay: dropDraft.showInOverlay,
       overlayPageId: dropDraft.overlayPageId ?? undefined,
       aliases: [],
-      actions: [dropDraft.action],
+      actions: [resolved.action],
     };
 
     const saved = await persistConfig({
       ...config,
+      groups:
+        group && !config.groups.includes(group) && group !== DEFAULT_BUTTON_GROUP
+          ? [...config.groups, group]
+          : config.groups,
       buttons: [...config.buttons, button],
     });
     if (!saved) return;
     setDropDraft(null);
+    setBuilderKind(null);
     void refreshButtonIcon(button, true);
     showToast("ok", `${label} を登録しました`);
   };
@@ -6380,6 +6449,53 @@ function DashboardApp() {
     if (!config) return;
     setContextMenu(null);
     setGroupDraft("");
+  };
+
+  const openButtonBuilder = (groupName?: string) => {
+    if (!config) return;
+    const group = groupName || groupNames[0] || DEFAULT_BUTTON_GROUP;
+    setContextMenu(null);
+    setBuilderKind("file");
+    setBuilderSource("");
+    setBuilderLabelTouched(false);
+    setDropDraft({
+      label: "",
+      group,
+      groupMode: "existing",
+      existingGroup: group,
+      newGroup: "",
+      iconSource: null,
+      action: { type: "open_file", payload: { path: "" } },
+      source: "",
+      showInSidebar: true,
+      showInOverlay: true,
+      overlayPageId: currentDropOverlayPageId(),
+    });
+  };
+
+  const updateBuilderSource = (source: string) => {
+    setBuilderSource(source);
+    if (!dropDraft || !builderKind) return;
+    const basename = source.trim().replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? "";
+    let suggestion = basename.replace(/\.[^.]+$/, "");
+    if (builderKind === "url") {
+      try {
+        suggestion = new URL(source).hostname;
+      } catch {
+        suggestion = "";
+      }
+    }
+    if (!builderLabelTouched) setDropDraft({ ...dropDraft, label: suggestion });
+  };
+
+  const pickBuilderSource = async () => {
+    if (!builderKind || builderKind === "url") return;
+    try {
+      const source = await chooseLauncherTarget(builderKind);
+      if (source) updateBuilderSource(source);
+    } catch (error) {
+      showToast("error", `選択できません: ${error instanceof Error ? error.message : String(error)}`);
+    }
   };
 
   const confirmGroupAddition = () => {
@@ -6998,6 +7114,10 @@ function DashboardApp() {
     stoppedAt: number,
   ) => {
     const key = `timer:${current.today.date}:${timer.instanceId}`;
+    if (completedSourceKey && timer.doNowSnapshot) {
+      setDoNowExcludedProjectId(timer.doNowSnapshot.projectId);
+      setDoNowCandidateIndex(0);
+    }
     if (completedSourceKey && nextItems.length === 3 && nextItems.every((item) => item.done)) {
       showCompletionFeedback({ key, kind: "todayAll", label: timer.note || timer.label });
       return;
@@ -9531,10 +9651,16 @@ function DashboardApp() {
     : undefined;
   const nextStepSetupProject =
     config.projects.find((project) => !project.nextStep?.text.trim()) ?? config.projects[0];
-  const doNowCandidates = (doNowResponse?.candidates ?? []).flatMap((candidate) => {
-    const project = config.projects.find((item) => item.id === candidate.projectId);
-    return project ? [{ candidate, project }] : [];
-  });
+  const doNowCandidates = (doNowResponse?.candidates ?? [])
+    .filter((candidate) => candidate.projectId !== doNowExcludedProjectId)
+    .flatMap((candidate) => {
+      const project = config.projects.find((item) => item.id === candidate.projectId);
+      return project ? [{ candidate, project }] : [];
+    });
+  const doNowOnlyExcluded =
+    doNowExcludedProjectId !== null &&
+    (doNowResponse?.candidates.length ?? 0) > 0 &&
+    doNowCandidates.length === 0;
   const doNowSelection = doNowCandidates[doNowCandidateIndex] ?? doNowCandidates[0];
   const doNowRestartPreferred = Boolean(
     doNowSelection?.candidate.restartEligible && (config.settings.restartShortFirst ?? true),
@@ -9566,6 +9692,7 @@ function DashboardApp() {
     project: LauncherProject,
     timerKind: "short" | "normal" | "measure",
   ) => {
+    setDoNowExcludedProjectId(null);
     const actions = (project.nextStep?.buttonIds ?? []).flatMap(
       (buttonId) => buttonsById.get(buttonId)?.actions ?? [],
     );
@@ -9593,6 +9720,8 @@ function DashboardApp() {
   };
   const acknowledgeDoNowCompletion = async () => {
     if (!(await refreshDoNow())) return;
+    setDoNowExcludedProjectId(doNowCompletionHold?.projectId ?? null);
+    setDoNowCandidateIndex(0);
     setDoNowCompletionHold(null);
     window.requestAnimationFrame(() => {
       document
@@ -9603,7 +9732,9 @@ function DashboardApp() {
   const renderButtonIcon = (button: LauncherButton, className: string) => {
     const source = buttonIconSources[button.id];
     if (source) {
-      return <img alt="" className={`${className} buttonIconImage`} src={source} />;
+      return (
+        <img alt="" className={`${className} buttonIconImage`} draggable={false} src={source} />
+      );
     }
 
     return (
@@ -9757,7 +9888,13 @@ function DashboardApp() {
         tabIndex={-1}
       >
         <div className="brandBlock">
-          <img alt="" aria-hidden="true" className="brandIcon" src="/life-launcher-icon.svg" />
+          <img
+            alt=""
+            aria-hidden="true"
+            className="brandIcon"
+            draggable={false}
+            src="/life-launcher-icon.svg"
+          />
           <div className="brandCopy">
             <p className="eyebrow">Life Launcher</p>
             <strong>Quick</strong>
@@ -10847,24 +10984,37 @@ function DashboardApp() {
                       <div className="doNowEmpty">
                         <div className="doNowEmptyContent">
                           <strong>
-                            {nextStepSetupProject
+                            {doNowOnlyExcluded
+                              ? "今は他に提案できる一手がありません。"
+                              : nextStepSetupProject
                               ? "次の一手を設定すると、ここに提案されます。"
                               : "プロジェクトを作り、次の一手を設定すると提案されます。"}
                           </strong>
                           <span>
-                            迷ったときに、今の状況から始めやすい「次にやること」を1つだけ提示します。
+                            {doNowOnlyExcluded
+                              ? "取り組んだ一手は、もう一度候補を見ると表示できます。"
+                              : "迷ったときに、今の状況から始めやすい「次にやること」を1つだけ提示します。"}
                           </span>
                           <button
-                            className="mainActionButton mainActionButton--gold"
-                            onClick={() =>
-                              nextStepSetupProject
-                                ? openNextStepEditor(nextStepSetupProject)
-                                : openProjectAddDialog()
-                            }
+                            className={doNowOnlyExcluded
+                              ? "mainActionButton mainActionButton--neutral"
+                              : "mainActionButton mainActionButton--gold"}
+                            onClick={() => {
+                              if (doNowOnlyExcluded) {
+                                setDoNowExcludedProjectId(null);
+                                setDoNowCandidateIndex(0);
+                              } else if (nextStepSetupProject) {
+                                openNextStepEditor(nextStepSetupProject);
+                              } else {
+                                openProjectAddDialog();
+                              }
+                            }}
                             type="button"
                           >
-                            <UiIcon name="add" size={16} />
-                            {nextStepSetupProject ? "次の一手を設定" : "プロジェクトを追加"}
+                            <UiIcon name={doNowOnlyExcluded ? "refresh" : "add"} size={16} />
+                            {doNowOnlyExcluded
+                              ? "候補をもう一度見る"
+                              : nextStepSetupProject ? "次の一手を設定" : "プロジェクトを追加"}
                           </button>
                         </div>
                       </div>
@@ -13344,6 +13494,12 @@ function DashboardApp() {
             </>
           ) : (
             <>
+              <ContextMenuItem
+                onClick={() => openButtonBuilder(contextMenu.groupName)}
+                type="button"
+              >
+                ボタンを追加
+              </ContextMenuItem>
               <ContextMenuItem onClick={openGroupDialog} type="button">
                 グループ追加
               </ContextMenuItem>
@@ -15949,25 +16105,83 @@ function DashboardApp() {
       {dropDraft && (
         <div className="modalBackdrop" role="presentation">
           <section
-            aria-label="ボタン登録"
+            aria-label={builderKind ? "Button Builder" : "ボタン登録"}
             aria-modal="true"
             className="dropDialog modalLongForm"
             role="dialog"
             tabIndex={-1}
           >
             <div>
-              <p className="eyebrow">Drop Register</p>
+              <p className="eyebrow">{builderKind ? "Button Builder" : "Drop Register"}</p>
               <h2>ボタンを追加</h2>
             </div>
+
+            {builderKind && (
+              <div className="builderSourceFields">
+                <span>追加元</span>
+                <div className="builderSourceModes" role="group" aria-label="追加元">
+                  {(["file", "folder", "url"] as const).map((kind) => (
+                    <button
+                      aria-pressed={builderKind === kind}
+                      className={
+                        builderKind === kind
+                          ? "builderSourceMode builderSourceMode--active"
+                          : "builderSourceMode"
+                      }
+                      key={kind}
+                      onClick={() => {
+                        setBuilderKind(kind);
+                        setBuilderSource("");
+                        setBuilderLabelTouched(false);
+                        setDropDraft({ ...dropDraft, label: "" });
+                      }}
+                      type="button"
+                    >
+                      <UiIcon
+                        name={kind === "file" ? "fileText" : kind === "folder" ? "folder" : "external"}
+                        size={16}
+                      />
+                      {kind === "file" ? "ファイル" : kind === "folder" ? "フォルダ" : "URL"}
+                    </button>
+                  ))}
+                </div>
+                <div className="fieldStack">
+                  <label htmlFor="builder-source-input">
+                    {builderKind === "file" ? "ファイル" : builderKind === "folder" ? "フォルダ" : "URL"}
+                  </label>
+                  <div className="builderSourceInputRow">
+                    <input
+                      className="textInput"
+                      id="builder-source-input"
+                      onChange={(event) => updateBuilderSource(event.target.value)}
+                      placeholder={builderKind === "url" ? "https://example.com/" : "パスを入力"}
+                      value={builderSource}
+                    />
+                    {builderKind !== "url" && (
+                      <button
+                        className="secondaryButton"
+                        onClick={() => void pickBuilderSource()}
+                        type="button"
+                      >
+                        参照...
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <label className="fieldStack">
               <span>ラベル</span>
               <input
                 className="textInput"
-                onChange={(event) => setDropDraft({ ...dropDraft, label: event.target.value })}
+                onChange={(event) => {
+                  if (builderKind) setBuilderLabelTouched(true);
+                  setDropDraft({ ...dropDraft, label: event.target.value });
+                }}
                 value={dropDraft.label}
               />
-              <small>ファイル名やフォルダ名から自動入力しています。必要なら変更できます。</small>
+              <small>ファイル名・フォルダ名・URLから自動入力します。必要なら変更できます。</small>
             </label>
 
             <GroupModeField
@@ -16058,27 +16272,50 @@ function DashboardApp() {
               <p className="dropSource">
                 <UiIcon
                   name={
-                    dropDraft.action.type === "open_url"
+                    (builderKind ? builderKind === "url" : dropDraft.action.type === "open_url")
                       ? "external"
-                      : dropDraft.action.type === "open_folder"
+                      : (builderKind ? builderKind === "folder" : dropDraft.action.type === "open_folder")
                         ? "folder"
                         : "fileText"
                   }
                   size={16}
                 />
-                <span>{actionDescription(dropDraft.action)}</span>
+                <span>
+                  {builderKind ? builderSource || "未選択" : actionDescription(dropDraft.action)}
+                </span>
               </p>
             </div>
+
+            {builderKind && (
+              <div className="builderPreview" aria-label="サイドバーのプレビュー">
+                <small>Sidebar Preview</small>
+                <div className="builderPreviewItem">
+                  <UiIcon
+                    name={builderKind === "file" ? "fileText" : builderKind === "folder" ? "folder" : "external"}
+                    size={20}
+                  />
+                  <span>{dropDraft.label || "名称未設定"}</span>
+                </div>
+              </div>
+            )}
 
             <div className="dialogActions dropRegisterActions">
               <button
                 className="primaryButton"
+                disabled={builderBusy}
                 onClick={() => void confirmDropRegistration()}
                 type="button"
               >
                 追加
               </button>
-              <button className="dangerButton" onClick={() => setDropDraft(null)} type="button">
+              <button
+                className="dangerButton"
+                onClick={() => {
+                  setDropDraft(null);
+                  setBuilderKind(null);
+                }}
+                type="button"
+              >
                 キャンセル
               </button>
             </div>

@@ -10,7 +10,7 @@ use commands::config::{
     open_config_backups, open_data_folder, restore_backup, save_config, select_backup_folder,
     select_backup_zip, undo_today_selection, update_instruction_references,
 };
-use commands::drop::resolve_drop_item;
+use commands::drop::{choose_launcher_target, resolve_drop_item};
 use commands::explorer::reveal_launcher_item;
 use commands::icons::{delete_button_icon_cache, ensure_button_icon_cache};
 use commands::instructions::{
@@ -177,6 +177,7 @@ pub fn run() {
             acknowledge_software_reset_recovery,
             execute_actions,
             resolve_drop_item,
+            choose_launcher_target,
             reveal_launcher_item,
             ensure_button_icon_cache,
             delete_button_icon_cache,

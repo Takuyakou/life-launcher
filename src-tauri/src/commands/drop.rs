@@ -7,6 +7,89 @@ use std::{cmp::Reverse, fs};
 
 use serde::Deserialize;
 use tauri::AppHandle;
+#[cfg(windows)]
+use windows::Win32::Foundation::{ERROR_CANCELLED, HWND};
+#[cfg(windows)]
+use windows::Win32::System::Com::{
+    CoCreateInstance, CoInitializeEx, CoTaskMemFree, CoUninitialize, CLSCTX_INPROC_SERVER,
+    COINIT_APARTMENTTHREADED,
+};
+#[cfg(windows)]
+use windows::Win32::UI::Shell::{
+    FileOpenDialog, IFileOpenDialog, FOS_FORCEFILESYSTEM, FOS_NOCHANGEDIR, FOS_PICKFOLDERS,
+    SIGDN_FILESYSPATH,
+};
+
+#[tauri::command]
+pub async fn choose_launcher_target(
+    window: tauri::WebviewWindow,
+    kind: String,
+) -> Result<Option<String>, String> {
+    if kind != "file" && kind != "folder" {
+        return Err("unsupported launcher target kind".to_string());
+    }
+    #[cfg(windows)]
+    {
+        let owner = window
+            .hwnd()
+            .map_err(|error| format!("failed to identify launcher window: {error}"))?
+            .0 as isize;
+        tauri::async_runtime::spawn_blocking(move || {
+            std::thread::spawn(move || choose_launcher_target_sta(owner, kind == "folder"))
+                .join()
+                .map_err(|_| "launcher picker thread panicked".to_string())?
+        })
+        .await
+        .map_err(|error| format!("launcher picker task failed: {error}"))?
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = window;
+        Err("launcher picker is unsupported on this platform".to_string())
+    }
+}
+
+#[cfg(windows)]
+fn choose_launcher_target_sta(owner_hwnd: isize, folder: bool) -> Result<Option<String>, String> {
+    struct ComGuard;
+    impl Drop for ComGuard {
+        fn drop(&mut self) {
+            unsafe { CoUninitialize() };
+        }
+    }
+
+    unsafe {
+        CoInitializeEx(None, COINIT_APARTMENTTHREADED)
+            .ok()
+            .map_err(|error| format!("failed to initialize launcher picker: {error}"))?;
+        let _guard = ComGuard;
+        let dialog: IFileOpenDialog = CoCreateInstance(&FileOpenDialog, None, CLSCTX_INPROC_SERVER)
+            .map_err(|error| format!("failed to create launcher picker: {error}"))?;
+        let mut options = dialog.GetOptions().map_err(|error| error.to_string())?
+            | FOS_FORCEFILESYSTEM
+            | FOS_NOCHANGEDIR;
+        if folder {
+            options |= FOS_PICKFOLDERS;
+        }
+        dialog
+            .SetOptions(options)
+            .map_err(|error| error.to_string())?;
+        let owner = HWND(owner_hwnd as *mut std::ffi::c_void);
+        if let Err(error) = dialog.Show(Some(owner)) {
+            if error.code() == windows_core::HRESULT::from_win32(ERROR_CANCELLED.0) {
+                return Ok(None);
+            }
+            return Err(format!("launcher picker failed: {error}"));
+        }
+        let item = dialog.GetResult().map_err(|error| error.to_string())?;
+        let selected = item
+            .GetDisplayName(SIGDN_FILESYSPATH)
+            .map_err(|error| error.to_string())?;
+        let result = selected.to_string().map_err(|error| error.to_string());
+        CoTaskMemFree(Some(selected.0.cast()));
+        result.map(Some)
+    }
+}
 
 use crate::models::{Action, DropButtonDraft, DropResolveInput};
 
