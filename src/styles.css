@@ -4202,6 +4202,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .projectsBand,
 .inboxBand,
 .todayActivityBand {
+  --today-activity-end-inset: 10px;
   padding: 14px 0;
   border-top: 1px solid var(--line-soft);
 }
@@ -4233,6 +4234,7 @@ input[type="number"]::-webkit-inner-spin-button {
   gap: 12px;
   min-height: 42px;
   border-bottom: 1px solid var(--line-soft);
+  padding-inline-end: var(--today-activity-end-inset);
 }
 
 .todayActivityIdentity {
@@ -10144,6 +10146,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .todayActivityBand .disclosureHeader {
   grid-template-columns: 120px 30px minmax(0, 1fr) max-content;
+  padding-inline-end: var(--today-activity-end-inset);
 }
 
 .disclosureHeaderActions {
