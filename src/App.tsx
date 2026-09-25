@@ -3,7 +3,12 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { emit, listen } from "@tauri-apps/api/event";
 import { PhysicalPosition } from "@tauri-apps/api/dpi";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { availableMonitors, primaryMonitor, type Monitor } from "@tauri-apps/api/window";
+import {
+  availableMonitors,
+  getCurrentWindow,
+  primaryMonitor,
+  type Monitor,
+} from "@tauri-apps/api/window";
 import {
   disable as disableAutostart,
   enable as enableAutostart,
@@ -4457,6 +4462,13 @@ function DashboardApp() {
     );
     const keep = Number.parseInt(settingsDraft.backupKeep, 10);
     const backupKeep = Number.isFinite(keep) && keep > 0 ? keep : 30;
+    const hotkeysChanged =
+      (settingsDraft.focusHotkey.trim() || null) !== (config.settings.focusHotkey ?? null) ||
+      (settingsDraft.launcherHotkey.trim() || null) !== (config.settings.launcherHotkey ?? null) ||
+      (settingsDraft.miniHotkey.trim() || null) !== (config.settings.miniHotkey ?? null) ||
+      (settingsDraft.instructionHotkey.trim() || null) !==
+        (config.settings.instructionHotkey ?? null);
+    const alwaysOnTopChanged = settingsDraft.alwaysOnTop !== config.settings.alwaysOnTop;
 
     try {
       if (settingsDraft.autoStart !== config.settings.autoStart) {
@@ -4502,7 +4514,7 @@ function DashboardApp() {
             backupKeep,
           },
         },
-        true,
+        hotkeysChanged,
       );
       if (!saved) {
         try {
@@ -4521,10 +4533,20 @@ function DashboardApp() {
         }
         return;
       }
+      let windowWarning: string | null = null;
+      if (alwaysOnTopChanged && !hotkeysChanged) {
+        try {
+          await getCurrentWindow().setAlwaysOnTop(settingsDraft.alwaysOnTop);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          windowWarning = `保存しましたが、最前面表示を反映できません: ${message}`;
+          setBanner(windowWarning);
+        }
+      }
       setDefaultTimerDraft(String(defaultTimerMinutes));
       await emit(INSTRUCTION_RELOAD_TREE_EVENT);
       setSettingsDraft(null);
-      showToast("ok", "設定を保存しました");
+      showToast(windowWarning ? "warn" : "ok", windowWarning ?? "設定を保存しました");
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       showToast("error", `設定を保存できません: ${message}`);
