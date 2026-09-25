@@ -2458,7 +2458,18 @@ h3 {
 .brandCopy {
   min-width: 0;
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
   gap: 4px;
+}
+
+.brandCopy .eyebrow {
+  grid-column: 1 / -1;
+}
+
+.brandCopy .shortcutBadge {
+  max-width: 94px;
+  font-size: 10px;
 }
 
 .brandCopy strong {
@@ -2517,7 +2528,7 @@ h3 {
   transform-origin: center;
 }
 
-.launcherOpenButton kbd {
+.shortcutBadge {
   border: 1px solid var(--line-soft);
   border-radius: 6px;
   padding: 2px 5px;

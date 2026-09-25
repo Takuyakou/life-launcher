@@ -171,6 +171,7 @@ export async function installTauriMock(
       let failSaveConfig = false;
       let failReapplyDashboardSettings = false;
       let failRecordSession = false;
+      let mainWindowState = { visible: true, minimized: false, focused: true };
       type InstructionRootChoice = {
         name: string;
         path: string;
@@ -213,6 +214,10 @@ export async function installTauriMock(
         setRecordSessionFailure: (shouldFail: boolean) => {
           failRecordSession = shouldFail;
         },
+        setMainWindowState: (state: typeof mainWindowState) => {
+          mainWindowState = { ...state };
+        },
+        mainWindowState: () => ({ ...mainWindowState }),
         setInstructionRootChoices: (choices: typeof instructionRootChoices) => {
           instructionRootChoices = [...choices];
         },
@@ -691,6 +696,16 @@ export async function installTauriMock(
               case "plugin:window|set_skip_taskbar":
               case "plugin:window|set_focusable":
               case "plugin:window|set_always_on_top":
+                return null;
+              case "plugin:window|is_visible":
+                return mainWindowState.visible;
+              case "plugin:window|is_minimized":
+                return mainWindowState.minimized;
+              case "plugin:window|is_focused":
+                return mainWindowState.focused;
+              case "plugin:window|close":
+                mainWindowState = { visible: false, minimized: false, focused: false };
+                return null;
               case "plugin:window|show":
               case "plugin:window|set_focus":
               case "plugin:webview|set_focus":
@@ -701,7 +716,10 @@ export async function installTauriMock(
                 return null;
               case "suspend_dashboard_shortcuts":
               case "resume_dashboard_shortcuts":
+                return null;
               case "focus_dashboard_window":
+                mainWindowState = { visible: true, minimized: false, focused: true };
+                return null;
               case "enable_main_shell_drop":
               case "start_shell_drop_poc":
               case "stop_shell_drop_poc":
