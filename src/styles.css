@@ -2800,6 +2800,37 @@ h3 {
   gap: 3px;
 }
 
+.timerMetaTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 18px;
+}
+
+.timerExpandButton {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.timerExpandButton:hover,
+.timerExpandButton:focus-visible {
+  border-color: var(--line);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.timerExpandButton:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .timerMeta span,
 .timerHint {
   color: var(--muted);
@@ -2863,6 +2894,151 @@ h3 {
 
 .timerPanel--mini .timerMeta > .projectIdentity {
   font-size: 12px;
+}
+
+.expandedTimerBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: var(--surface-soft);
+}
+
+.appShell:has(.expandedTimerBackdrop) > .modalBackdrop {
+  z-index: 95;
+}
+
+.expandedTimer {
+  container-type: inline-size;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: clamp(12px, 3vh, 32px) clamp(16px, 4vw, 64px);
+  color: var(--text);
+}
+
+.expandedTimerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.expandedTimerEyebrow {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.expandedTimerClose {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.expandedTimerClose:hover,
+.expandedTimerClose:focus-visible {
+  border-color: var(--accent);
+  background: var(--surface-strong);
+}
+
+.expandedTimerClose:focus-visible,
+.expandedTimerActions button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.expandedTimerBody {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+  gap: clamp(6px, 2vh, 20px);
+  text-align: center;
+}
+
+.expandedTimerIdentity,
+.expandedTimerTask {
+  max-width: min(100%, 900px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.expandedTimerTask {
+  margin: 0;
+  font-size: clamp(16px, 2.2cqi, 28px);
+  font-weight: 700;
+}
+
+.expandedTimerState {
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.expandedTimerClock {
+  max-width: 100%;
+  color: var(--accent-strong);
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: clamp(54px, 17cqi, 230px);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.expandedTimerClock--paused {
+  color: var(--muted);
+}
+
+.expandedTimerProgress {
+  width: min(80%, 800px);
+  height: 4px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--line);
+}
+
+.expandedTimerProgress > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.expandedTimerActions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.expandedTimerActions button {
+  min-width: 132px;
+  min-height: 48px;
+  font-size: 16px;
+}
+
+.expandedTimerHint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+@media (max-height: 430px) {
+  .expandedTimerBody { gap: 4px; }
+  .expandedTimerClock { font-size: clamp(42px, 12cqi, 100px); }
+  .expandedTimerActions button { min-height: 36px; }
 }
 
 .timerClock {
