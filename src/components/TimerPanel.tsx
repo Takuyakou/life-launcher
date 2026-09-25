@@ -61,6 +61,14 @@ export function TimerPanel({
   return (
     <section
       className={variant === "sidebar" ? "timerDock timerPanel" : "timerPanel timerPanel--mini"}
+      onContextMenu={
+        variant === "sidebar"
+          ? (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+            }
+          : undefined
+      }
       onPointerDownCapture={() => window.getSelection()?.removeAllRanges()}
     >
       <div className="timerMeta">

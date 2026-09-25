@@ -13832,10 +13832,7 @@ function DashboardApp() {
               />
             </label>
 
-            <div className="dialogActions">
-              <button className="secondaryButton" onClick={() => setGroupDraft(null)} type="button">
-                キャンセル
-              </button>
+            <div className="dialogActions formDialogActions">
               <button
                 className="primaryButton"
                 disabled={!groupDraft.trim()}
@@ -13843,6 +13840,13 @@ function DashboardApp() {
                 type="button"
               >
                 追加
+              </button>
+              <button
+                className="secondaryButton dialogCancelButton"
+                onClick={() => setGroupDraft(null)}
+                type="button"
+              >
+                キャンセル
               </button>
             </div>
           </section>
@@ -13884,14 +13888,7 @@ function DashboardApp() {
               />
             </label>
 
-            <div className="dialogActions">
-              <button
-                className="secondaryButton"
-                onClick={() => setGroupRenameDraft(null)}
-                type="button"
-              >
-                キャンセル
-              </button>
+            <div className="dialogActions formDialogActions">
               <button
                 className="primaryButton"
                 disabled={!groupRenameDraft.to.trim()}
@@ -13899,6 +13896,13 @@ function DashboardApp() {
                 type="button"
               >
                 保存
+              </button>
+              <button
+                className="secondaryButton dialogCancelButton"
+                onClick={() => setGroupRenameDraft(null)}
+                type="button"
+              >
+                キャンセル
               </button>
             </div>
           </section>

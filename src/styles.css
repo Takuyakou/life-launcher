@@ -2529,11 +2529,11 @@ h3 {
 }
 
 .shortcutBadge {
-  border: 1px solid var(--line-soft);
+  border: 1px solid rgba(231, 185, 77, 0.48);
   border-radius: 6px;
   padding: 2px 5px;
-  background: rgba(184, 176, 160, 0.08);
-  color: var(--muted);
+  background: rgba(231, 185, 77, 0.12);
+  color: var(--accent);
   font-family: inherit;
   font-size: 11px;
 }

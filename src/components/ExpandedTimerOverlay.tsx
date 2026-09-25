@@ -31,13 +31,24 @@ export function ExpandedTimerOverlay({
     closeRef.current?.focus({ preventScroll: true });
   }, []);
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.key === "Escape") {
+  useEffect(() => {
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (
+        event.key !== "Escape" ||
+        complete ||
+        document.querySelector(".modalBackdrop, .launcherOverlayBackdrop")
+      ) {
+        return;
+      }
       event.preventDefault();
       event.stopPropagation();
       onClose();
-      return;
-    }
+    };
+    window.addEventListener("keydown", closeOnEscape, true);
+    return () => window.removeEventListener("keydown", closeOnEscape, true);
+  }, [complete, onClose]);
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key !== "Tab") return;
     const buttons = Array.from(dialogRef.current?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)") ?? []);
     if (!buttons.length) return;

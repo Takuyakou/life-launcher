@@ -2,10 +2,14 @@ import { expect, test, type Page } from "@playwright/test";
 import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 
-async function prepare(page: Page, viewport = { width: 1180, height: 760 }) {
+async function prepare(
+  page: Page,
+  viewport = { width: 1180, height: 760 },
+  fixture = createPublicFixture(),
+) {
   await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
   await page.setViewportSize(viewport);
-  await installTauriMock(page, createPublicFixture(), "main");
+  await installTauriMock(page, fixture, "main");
   await page.goto("/");
   await page.evaluate(async () => document.fonts.ready);
 }
@@ -152,6 +156,42 @@ test("Dictionary entry aligns with item rows and Guide footer stays inside its d
     dialogBox!.y + dialogBox!.height + 1,
   );
   expect(closeBox!.y + closeBox!.height).toBeLessThanOrEqual(dialogBox!.y + dialogBox!.height + 1);
+});
+
+test("Timer right click does not offer group actions, while sidebar still does", async ({ page }) => {
+  await prepare(page);
+  await page.locator(".timerDock").click({ button: "right", position: { x: 6, y: 6 } });
+  await expect(page.getByRole("menuitem", { name: "グループ追加" })).toHaveCount(0);
+  await page.locator(".brandBlock").click({ button: "right" });
+  await expect(page.getByRole("menuitem", { name: "グループ追加" })).toBeVisible();
+});
+
+test("Main and Dictionary shortcut badges use the app accent", async ({ page }) => {
+  const fixture = createPublicFixture();
+  fixture.config.settings.focusHotkey = "Ctrl+Alt+Space";
+  await prepare(page, { width: 1180, height: 760 }, fixture);
+  for (const badge of [
+    page.locator(".brandCopy .shortcutBadge"),
+    page.locator(".launcherOpenButton .shortcutBadge"),
+  ]) {
+    await expect(badge).toHaveCSS("color", "rgb(231, 185, 77)");
+    await expect(badge).toHaveCSS("border-top-color", "rgba(231, 185, 77, 0.48)");
+  }
+});
+
+test("Group add uses positive Add on the left and danger Cancel on the right", async ({ page }) => {
+  await prepare(page);
+  await page.locator(".brandBlock").click({ button: "right" });
+  await page.getByRole("menuitem", { name: "グループ追加" }).click();
+  const dialog = page.getByRole("dialog", { name: "グループ追加" });
+  const actions = dialog.locator(".formDialogActions").getByRole("button");
+  await expect(actions).toHaveText(["追加", "キャンセル"]);
+  await expect(actions.first()).toBeDisabled();
+  await dialog.getByRole("textbox", { name: "グループ名" }).fill("確認用グループ");
+  await expect(actions.first()).toHaveCSS("color", "rgb(111, 207, 151)");
+  await expect(actions.last()).toHaveCSS("color", "rgb(255, 180, 173)");
+  await actions.last().click();
+  await expect(dialog).toHaveCount(0);
 });
 
 test("Dictionary shortcut badge follows config and actual registration", async ({ page }) => {
