@@ -3,6 +3,7 @@ use std::sync::mpsc;
 use std::time::Instant;
 
 use notify::{Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 #[cfg(desktop)]
 use tauri_plugin_autostart::ManagerExt as AutostartManagerExt;
@@ -14,6 +15,51 @@ use crate::state::{AppState, RegisteredShortcutAction};
 #[tauri::command]
 pub fn reapply_dashboard_settings(app: AppHandle) -> Result<(), String> {
     apply_dashboard_settings(&app)
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShortcutRegistrationStatus {
+    main: bool,
+    launcher: bool,
+    mini: bool,
+    instruction: bool,
+}
+
+#[tauri::command]
+pub fn shortcut_registration_status(app: AppHandle) -> Result<ShortcutRegistrationStatus, String> {
+    let settings = load_config_internal(&app)?.config.settings;
+    let state = app.state::<AppState>();
+    let registered = state
+        .registered_shortcuts
+        .lock()
+        .map_err(|_| "failed to lock shortcut state".to_string())?;
+    let is_active = |action, configured: Option<&str>| {
+        configured
+            .and_then(|hotkey| Shortcut::from_str(hotkey.trim()).ok())
+            .is_some_and(|shortcut| {
+                registered.contains(&(shortcut, action))
+                    && app.global_shortcut().is_registered(shortcut)
+            })
+    };
+    Ok(ShortcutRegistrationStatus {
+        main: is_active(
+            RegisteredShortcutAction::Main,
+            settings.focus_hotkey.as_deref(),
+        ),
+        launcher: is_active(
+            RegisteredShortcutAction::Launcher,
+            settings.launcher_hotkey.as_deref(),
+        ),
+        mini: is_active(
+            RegisteredShortcutAction::Mini,
+            settings.mini_hotkey.as_deref(),
+        ),
+        instruction: is_active(
+            RegisteredShortcutAction::Instruction,
+            settings.instruction_hotkey.as_deref(),
+        ),
+    })
 }
 
 #[tauri::command]

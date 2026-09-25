@@ -82,6 +82,17 @@ export async function reapplyDashboardSettings(): Promise<void> {
   await invoke("reapply_dashboard_settings");
 }
 
+export type ShortcutRegistrationStatus = {
+  main: boolean;
+  launcher: boolean;
+  mini: boolean;
+  instruction: boolean;
+};
+
+export async function loadShortcutRegistrationStatus(): Promise<ShortcutRegistrationStatus> {
+  return invoke<ShortcutRegistrationStatus>("shortcut_registration_status");
+}
+
 export async function suspendDashboardShortcuts(): Promise<void> {
   await invoke("suspend_dashboard_shortcuts");
 }

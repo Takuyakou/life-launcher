@@ -39,8 +39,8 @@ use commands::shell_drop_poc::{
 };
 use startup::{
     apply_dashboard_settings_at_startup, focus_dashboard_window, focus_main_window,
-    reapply_dashboard_settings, resume_dashboard_shortcuts, shortcut_action, start_config_watcher,
-    suspend_dashboard_shortcuts,
+    reapply_dashboard_settings, resume_dashboard_shortcuts, shortcut_action,
+    shortcut_registration_status, start_config_watcher, suspend_dashboard_shortcuts,
 };
 use state::{AppState, RegisteredShortcutAction};
 #[cfg(desktop)]
@@ -208,6 +208,7 @@ pub fn run() {
             record_session,
             record_manual_session,
             reapply_dashboard_settings,
+            shortcut_registration_status,
             suspend_dashboard_shortcuts,
             resume_dashboard_shortcuts,
             focus_dashboard_window,

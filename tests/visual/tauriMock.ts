@@ -283,6 +283,13 @@ export async function installTauriMock(
                   saveBlocked: false,
                   morningVictorySuggestion: null,
                 };
+              case "shortcut_registration_status":
+                return {
+                  main: Boolean(currentConfig.settings.focusHotkey) && !failReapplyDashboardSettings,
+                  launcher: Boolean(currentConfig.settings.launcherHotkey) && !failReapplyDashboardSettings,
+                  mini: Boolean(currentConfig.settings.miniHotkey) && !failReapplyDashboardSettings,
+                  instruction: Boolean(currentConfig.settings.instructionHotkey) && !failReapplyDashboardSettings,
+                };
               case "save_config":
                 if (failSaveConfig) throw new Error("Public demo mock: config save failed");
                 currentConfig = args.config as typeof currentConfig;
