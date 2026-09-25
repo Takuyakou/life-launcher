@@ -1,6 +1,6 @@
 [package]
 name = "life-launcher"
-version = "1.3.2"
+version = "1.3.3"
 description = "Life Launcher desktop dashboard"
 authors = ["Takuyakou"]
 edition = "2021"
