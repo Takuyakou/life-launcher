@@ -198,6 +198,14 @@ fn register_shortcuts(
         parsed.push((shortcut, action));
     }
 
+    if parsed == *registered
+        && parsed
+            .iter()
+            .all(|(shortcut, _)| app.global_shortcut().is_registered(*shortcut))
+    {
+        return Ok(());
+    }
+
     let previous = registered.clone();
     app.global_shortcut()
         .unregister_all()

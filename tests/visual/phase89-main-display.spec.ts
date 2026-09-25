@@ -5,6 +5,12 @@ import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 
 const SCREENSHOT_DIR = resolve("dist/visual-qa/phase89-main-display");
+type VisualQaWindow = Window & {
+  __LIFE_LAUNCHER_VISUAL_QA__: {
+    invokeCalls: Array<{ command: string; args: Record<string, unknown> }>;
+    setReapplyDashboardSettingsFailure: (shouldFail: boolean) => void;
+  };
+};
 
 async function prepare(page: Page, width = 1440, size?: "standard" | "large" | "xlarge") {
   const fixture = createPublicFixture();
@@ -39,6 +45,81 @@ test("P89 legacy config defaults to standard and saves all three presets", async
     await page.reload();
     await expect(content).toHaveAttribute("data-main-display-size", size);
   }
+});
+
+test("changing only Main size does not retry a conflicting shortcut", async ({ page }) => {
+  await prepare(page);
+  await page.evaluate(() => {
+    (window as VisualQaWindow).__LIFE_LAUNCHER_VISUAL_QA__.setReapplyDashboardSettingsFailure(true);
+  });
+  const reapplyCount = async () =>
+    page.evaluate(
+      () =>
+        (window as VisualQaWindow).__LIFE_LAUNCHER_VISUAL_QA__.invokeCalls.filter(
+          ({ command }) => command === "reapply_dashboard_settings",
+        ).length,
+    );
+  const before = await reapplyCount();
+  const settings = await openSettings(page);
+  await settings.getByRole("radio", { name: "大", exact: true }).check();
+  await settings.getByRole("button", { name: "保存", exact: true }).click();
+
+  await expect(settings).toHaveCount(0);
+  await expect(page.locator(".mainScrollContent")).toHaveAttribute(
+    "data-main-display-size",
+    "large",
+  );
+  await expect(page.getByText(/ショートカットを登録できません/)).toHaveCount(0);
+  expect(await reapplyCount()).toBe(before);
+  await page.reload();
+  await expect(page.locator(".mainScrollContent")).toHaveAttribute(
+    "data-main-display-size",
+    "large",
+  );
+});
+
+test("always-on-top changes apply without retrying unchanged shortcuts", async ({ page }) => {
+  await prepare(page);
+  await page.evaluate(() => {
+    (window as VisualQaWindow).__LIFE_LAUNCHER_VISUAL_QA__.setReapplyDashboardSettingsFailure(true);
+  });
+  const before = await page.evaluate(
+    () => (window as VisualQaWindow).__LIFE_LAUNCHER_VISUAL_QA__.invokeCalls.length,
+  );
+  const settings = await openSettings(page);
+  await settings.getByRole("checkbox", { name: "常に手前" }).check();
+  await settings.getByRole("button", { name: "保存", exact: true }).click();
+
+  await expect(settings).toHaveCount(0);
+  const commands = await page.evaluate(() =>
+    (window as VisualQaWindow).__LIFE_LAUNCHER_VISUAL_QA__.invokeCalls.slice(),
+  );
+  expect(
+    commands.slice(before).some(({ command }) => command === "plugin:window|set_always_on_top"),
+  ).toBe(true);
+  expect(
+    commands.slice(before).some(({ command }) => command === "reapply_dashboard_settings"),
+  ).toBe(false);
+  await expect(page.getByText(/ショートカットを登録できません/)).toHaveCount(0);
+});
+
+test("changing a shortcut still reapplies shortcut settings", async ({ page }) => {
+  await prepare(page);
+  const reapplyCount = async () =>
+    page.evaluate(
+      () =>
+        (window as VisualQaWindow).__LIFE_LAUNCHER_VISUAL_QA__.invokeCalls.filter(
+          ({ command }) => command === "reapply_dashboard_settings",
+        ).length,
+    );
+  const before = await reapplyCount();
+  const settings = await openSettings(page);
+  await settings.getByRole("tab", { name: "ショートカット" }).click();
+  await settings.getByRole("button", { name: "辞書のショートカットを解除" }).click();
+  await settings.getByRole("button", { name: "保存", exact: true }).click();
+
+  await expect(settings).toHaveCount(0);
+  expect(await reapplyCount()).toBe(before + 1);
 });
 
 test("P89 Cancel keeps current Main size; Records and toolbar remain unchanged", async ({
