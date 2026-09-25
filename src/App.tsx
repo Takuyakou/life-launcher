@@ -10774,14 +10774,26 @@ function DashboardApp() {
                             const todayInstructionPath =
                               item.instructionPath?.trim() ||
                               project?.nextStep?.instructionPath?.trim();
+                            const hasLinkedSource =
+                              (item.sourceKey?.startsWith("project:") &&
+                                Boolean(project?.nextStep)) ||
+                              (item.sourceKey?.startsWith("wishlist:") &&
+                                config.inbox.some(
+                                  (source, sourceIndex) =>
+                                    wishlistSourceKey(source, sourceIndex) === item.sourceKey,
+                                ));
                             const shortMinutes =
-                              item.shortTimerMinutes ??
-                              project?.nextStep?.shortTimerMinutes ??
-                              config.settings.shortTimerMinutes;
+                              hasLinkedSource && project?.nextStep?.shortTimerMinutes == null
+                                ? config.settings.shortTimerMinutes
+                                : (item.shortTimerMinutes ??
+                                  project?.nextStep?.shortTimerMinutes ??
+                                  config.settings.shortTimerMinutes);
                             const defaultMinutes =
-                              item.defaultTimerMinutes ??
-                              project?.nextStep?.defaultTimerMinutes ??
-                              config.settings.defaultTimerMinutes;
+                              hasLinkedSource && project?.nextStep?.defaultTimerMinutes == null
+                                ? config.settings.defaultTimerMinutes
+                                : (item.defaultTimerMinutes ??
+                                  project?.nextStep?.defaultTimerMinutes ??
+                                  config.settings.defaultTimerMinutes);
                             return (
                               <article
                                 className={[
