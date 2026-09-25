@@ -76,7 +76,10 @@ test("Guide uses current labels and explains the first journey without internal 
   expect(text).toContain("今日の3件へ選んでも、元の次の一手・やりたいことは消えません");
   expect(text).toContain("3件目を選ぶと、その内容で自動的に決定");
   expect(text).toContain("終了時刻を決めず、0:00から取り組んだ時間を数えます");
-  expect(text).toContain("Mainの「辞書を開く」か既定のCtrl+K");
+  expect(text).toContain("Mainの「辞書を開く」か設定したショートカット（初期値はCtrl+K）");
+  expect(text).toContain("Escや閉じるボタンは表示だけを閉じ、Timerは続きます");
+  expect(text).toContain("初期状態ではオフです");
+  expect(text).toContain("「次の一手を見る」を押すと次の候補へ進みます");
   expect(text).toContain("表示をタイル・リスト");
   expect(text).toContain("アイコンサイズを自動・小・中・大");
   expect(text).toContain("ZIPから復元");
