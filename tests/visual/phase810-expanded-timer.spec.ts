@@ -226,3 +226,24 @@ for (const viewport of [{ width: 430, height: 380 }, { width: 1200, height: 800 
     await page.screenshot({ path: `dist/visual-qa/expanded-timer-${viewport.width}.png` });
   });
 }
+
+test("P8.10 TX-04 display request follows expanded timer and releases on close", async ({ page }) => {
+  await prepare(page);
+  const calls = () => page.evaluate(() =>
+    (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: { invokeCalls: Array<{ command: string; args: { leaseId?: string; active?: boolean } }> } })
+      .__LIFE_LAUNCHER_VISUAL_QA__.invokeCalls.filter((call) => call.command === "set_display_awake"),
+  );
+  await page.locator(".doNowStartPrimary").click();
+  expect(await calls()).toEqual([]);
+  await page.getByRole("button", { name: "タイマーを大きく表示" }).click();
+  await expect.poll(async () => (await calls()).filter((call) => call.args.active).length).toBe(1);
+  const acquired = (await calls())[0].args.leaseId;
+  await page.getByRole("dialog", { name: "拡大タイマー" }).getByRole("button", { name: "拡大表示を閉じる" }).click();
+  await expect.poll(async () => (await calls()).filter((call) => !call.args.active).length).toBe(1);
+  expect((await calls())[1].args.leaseId).toBe(acquired);
+  await page.getByRole("button", { name: "タイマーを大きく表示" }).click();
+  await expect.poll(async () => (await calls()).filter((call) => call.args.active).length).toBe(2);
+  await page.getByRole("dialog", { name: "拡大タイマー" }).getByRole("button", { name: "終了" }).click();
+  await expect.poll(async () => (await calls()).filter((call) => !call.args.active).length).toBe(2);
+  expect((await calls())[2].args.leaseId).not.toBe(acquired);
+});
