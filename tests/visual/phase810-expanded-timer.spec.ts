@@ -247,3 +247,26 @@ test("P8.10 TX-04 display request follows expanded timer and releases on close",
   await expect.poll(async () => (await calls()).filter((call) => !call.args.active).length).toBe(2);
   expect((await calls())[2].args.leaseId).not.toBe(acquired);
 });
+
+for (const state of [
+  { visible: false, minimized: false, focused: false },
+  { visible: true, minimized: true, focused: false },
+]) {
+test(`P8.10 TX-04 ${state.visible ? "minimizing" : "hiding"} Main releases display request`, async ({ page }) => {
+  await prepare(page);
+  await page.locator(".doNowStartPrimary").click();
+  await page.getByRole("button", { name: "タイマーを大きく表示" }).click();
+  await expect(page.getByRole("dialog", { name: "拡大タイマー" })).toBeVisible();
+  await page.evaluate((nextState) => {
+    (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: { setMainWindowState: (state: { visible: boolean; minimized: boolean; focused: boolean }) => void } })
+      .__LIFE_LAUNCHER_VISUAL_QA__.setMainWindowState(nextState);
+  }, state);
+  await page.clock.runFor(1_100);
+  await expect(page.getByRole("dialog", { name: "拡大タイマー" })).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() =>
+    (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: { invokeCalls: Array<{ command: string; args: { active?: boolean } }> } })
+      .__LIFE_LAUNCHER_VISUAL_QA__.invokeCalls.filter((call) => call.command === "set_display_awake" && call.args.active === false).length,
+  )).toBe(1);
+  await expect(page.locator(".timerDock .timerStateBadge")).toHaveText("実行中");
+});
+}
