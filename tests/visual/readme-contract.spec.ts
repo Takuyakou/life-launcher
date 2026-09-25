@@ -3,7 +3,14 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const version = JSON.parse(readFileSync("package.json", "utf8")).version as string;
+const changelog = readFileSync("CHANGELOG.md", "utf8");
+const publishedVersion = changelog.match(/^## (\d+\.\d+\.\d+) - /m)?.[1];
 const readmes = ["README.md", "README.en.md"];
+
+test("published documentation does not describe a newer version than the app", () => {
+  expect(publishedVersion).toBeDefined();
+  expect(version.localeCompare(publishedVersion!, undefined, { numeric: true })).toBeGreaterThanOrEqual(0);
+});
 
 for (const file of readmes) {
   test(`${file} describes current downloads and links to existing local documents`, () => {
@@ -11,7 +18,7 @@ for (const file of readmes) {
     expect(text).toContain("https://github.com/Takuyakou/life-launcher/releases/latest");
     expect(text).not.toContain("releases/tag/v1.0.0");
     for (const suffix of ["-setup.exe", ".exe", "-portable.zip"]) {
-      expect(text).toContain(`Life-Launcher-v${version}-windows-x64${suffix}`);
+      expect(text).toContain(`Life-Launcher-v${publishedVersion}-windows-x64${suffix}`);
     }
     expect(text).toContain("SHA256SUMS.txt");
     const paths = [
@@ -32,23 +39,22 @@ test("Japanese and English READMEs share the same downloads and images", () => {
   expect(extract(readmes[0])).toEqual(extract(readmes[1]));
 });
 
-test("release metadata and notes share the package version", () => {
+test("app metadata agrees and published notes match the changelog", () => {
   const cargoManifest = readFileSync("src-tauri/Cargo.toml", "utf8");
   const cargoLock = readFileSync("src-tauri/Cargo.lock", "utf8");
   const tauriConfig = JSON.parse(readFileSync("src-tauri/tauri.conf.json", "utf8"));
-  const changelog = readFileSync("CHANGELOG.md", "utf8");
-  const releaseNotesPath = `docs/releases/v${version}.md`;
+  const releaseNotesPath = `docs/releases/v${publishedVersion}.md`;
 
   expect(cargoManifest).toMatch(new RegExp(`^version = "${version}"$`, "m"));
   expect(cargoLock).toMatch(
     new RegExp(`name = "life-launcher"\\r?\\nversion = "${version}"`),
   );
   expect(tauriConfig.version).toBe(version);
-  expect(changelog).toContain(`## ${version} -`);
+  expect(changelog).toContain(`## ${publishedVersion} -`);
   expect(existsSync(releaseNotesPath)).toBe(true);
 
   const releaseNotes = readFileSync(releaseNotesPath, "utf8");
   for (const suffix of ["-setup.exe", ".exe", "-portable.zip"]) {
-    expect(releaseNotes).toContain(`Life-Launcher-v${version}-windows-x64${suffix}`);
+    expect(releaseNotes).toContain(`Life-Launcher-v${publishedVersion}-windows-x64${suffix}`);
   }
 });
