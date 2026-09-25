@@ -1,4 +1,5 @@
 mod commands;
+mod display_awake;
 mod models;
 mod startup;
 mod state;
@@ -37,6 +38,7 @@ use commands::sessions::{
 use commands::shell_drop_poc::{
     start_shell_drop_poc, stop_shell_drop_poc, stop_shell_drop_poc_internal,
 };
+use display_awake::{set_display_awake, DisplayAwakeState};
 use startup::{
     apply_dashboard_settings_at_startup, focus_dashboard_window, focus_main_window,
     reapply_dashboard_settings, resume_dashboard_shortcuts, shortcut_action,
@@ -47,7 +49,7 @@ use state::{AppState, RegisteredShortcutAction};
 use tauri::menu::{Menu, MenuItem};
 #[cfg(desktop)]
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{Emitter, RunEvent, WindowEvent};
+use tauri::{Emitter, Manager, RunEvent, WindowEvent};
 use tauri_plugin_global_shortcut::ShortcutState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -67,6 +69,7 @@ pub fn run() {
 
     builder
         .manage(AppState::default())
+        .manage(DisplayAwakeState::default())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             recover_interrupted_software_reset(app.handle())?;
@@ -214,12 +217,14 @@ pub fn run() {
             focus_dashboard_window,
             enable_main_shell_drop,
             start_shell_drop_poc,
-            stop_shell_drop_poc
+            stop_shell_drop_poc,
+            set_display_awake
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app, event| {
             if matches!(event, RunEvent::ExitRequested { .. }) {
+                app.state::<DisplayAwakeState>().shutdown();
                 remove_main_shell_drop_target(app);
                 let _ = stop_shell_drop_poc_internal(app);
             }

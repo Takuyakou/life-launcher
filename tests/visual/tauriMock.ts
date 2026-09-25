@@ -281,6 +281,8 @@ export async function installTauriMock(
           invoke: async (command: string, args: Record<string, unknown> = {}) => {
             invokeCalls.push({ command, args });
             switch (command) {
+              case "set_display_awake":
+                return null;
               case "load_config":
                 return {
                   config: currentConfig,

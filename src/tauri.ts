@@ -1,5 +1,9 @@
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { emitTo, listen } from "@tauri-apps/api/event";
+
+export function setDisplayAwake(leaseId: string, active: boolean): Promise<void> {
+  return invoke("set_display_awake", { leaseId, active });
+}
 import {
   ActionResult,
   AppConfig,

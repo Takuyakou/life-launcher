@@ -69,6 +69,7 @@ import {
   restoreBackup,
   saveConfig,
   saveNotesForDate,
+  setDisplayAwake,
   selectBackupFolder,
   selectBackupZip,
   softwareReset,
@@ -2636,6 +2637,35 @@ function DashboardApp() {
   useEffect(() => {
     if (!activeTimer) setExpandedTimerOpen(false);
   }, [activeTimer]);
+  const timerRunning = activeTimer !== null;
+  useEffect(() => {
+    if (!expandedTimerOpen || !timerRunning) return;
+    const leaseId = `expanded-timer-${Date.now()}-${Math.random()}`;
+    let closed = false;
+    const release = () => { void setDisplayAwake(leaseId, false).catch(() => undefined); };
+    void setDisplayAwake(leaseId, true)
+      .then(() => { if (closed) release(); })
+      .catch(() => undefined);
+    const renewal = window.setInterval(() => {
+      if (!closed) void setDisplayAwake(leaseId, true).catch(() => undefined);
+    }, 20_000);
+    const visibilityCheck = window.setInterval(() => {
+      const mainWindow = getCurrentWindow();
+      void Promise.all([mainWindow.isVisible(), mainWindow.isMinimized()])
+        .then(([visible, minimized]) => {
+          if (!closed && (!visible || minimized)) setExpandedTimerOpen(false);
+        })
+        .catch(() => undefined);
+    }, 1_000);
+    window.addEventListener("pagehide", release);
+    return () => {
+      closed = true;
+      window.clearInterval(renewal);
+      window.clearInterval(visibilityCheck);
+      window.removeEventListener("pagehide", release);
+      release();
+    };
+  }, [expandedTimerOpen, timerRunning]);
   const visibleSidebarButtonGroups = useMemo(
     () =>
       buttonGroups
