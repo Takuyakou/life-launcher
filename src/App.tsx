@@ -46,6 +46,7 @@ import {
   focusDashboardWindow,
   listenForConfigChanges,
   loadConfig,
+  loadShortcutRegistrationStatus,
   loadDoNowCandidates,
   loadNotesHistory,
   loadNextStepFreshness,
@@ -76,6 +77,7 @@ import {
   updateSessionEntry,
   updateInstructionReferences,
   undoTodaySelection,
+  type ShortcutRegistrationStatus,
 } from "./tauri";
 import {
   ActionResult,
@@ -155,6 +157,7 @@ import {
   type TimerMode,
 } from "./timerRuntime";
 import { UiIcon } from "./components/UiIcon";
+import { ShortcutBadge } from "./components/ShortcutBadge";
 import {
   getButtonsForOverlayPage,
   getOverlayPageCounts,
@@ -2099,6 +2102,7 @@ export default function App() {
 
 function DashboardApp() {
   const [config, setConfig] = useState<AppConfig | null>(null);
+  const [shortcutRegistration, setShortcutRegistration] = useState<ShortcutRegistrationStatus | null>(null);
   const configRef = useRef<AppConfig | null>(null);
   configRef.current = config;
   const [backupPath, setBackupPath] = useState("");
@@ -3004,7 +3008,14 @@ function DashboardApp() {
       if (resetInProgressRef.current) return;
       try {
         const response = await loadConfig();
+        const registration = await loadShortcutRegistrationStatus().catch(() => ({
+          main: false,
+          launcher: false,
+          mini: false,
+          instruction: false,
+        }));
         configSaveBlockedRef.current = response.saveBlocked;
+        setShortcutRegistration(registration);
         setConfig(response.config);
         setMorningVictorySuggestion(response.morningVictorySuggestion ?? null);
         setBackupPath(response.backupPath);
@@ -3184,6 +3195,13 @@ function DashboardApp() {
           showToast("warn", warning);
         }
         return false;
+      } finally {
+        setShortcutRegistration(await loadShortcutRegistrationStatus().catch(() => ({
+          main: false,
+          launcher: false,
+          mini: false,
+          instruction: false,
+        })));
       }
     },
     [showToast],
@@ -4521,6 +4539,7 @@ function DashboardApp() {
           const restored = await saveConfig(previousConfig);
           setConfig(restored.config);
           await reapplyDashboardSettings();
+          setShortcutRegistration(await loadShortcutRegistrationStatus().catch(() => null));
           setBanner(null);
           showToast("warn", "設定を反映できなかったため、以前の設定を維持しました");
         } catch (rollbackError) {
@@ -9622,7 +9641,13 @@ function DashboardApp() {
             </span>
             <span>辞書を開く</span>
           </span>
-          <kbd>{config?.settings.launcherHotkey?.trim() || "Ctrl+K"}</kbd>
+          {shortcutRegistration && (
+            <ShortcutBadge
+              label="辞書"
+              shortcut={config?.settings.launcherHotkey}
+              registered={shortcutRegistration.launcher}
+            />
+          )}
         </button>
 
         <div className="quickList app-scrollbar" aria-label="クイック起動">

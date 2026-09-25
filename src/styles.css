@@ -2527,6 +2527,20 @@ h3 {
   font-size: 11px;
 }
 
+.shortcutBadge {
+  display: block;
+  max-width: 100px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.shortcutBadge--unavailable {
+  color: var(--warn);
+  opacity: 0.72;
+}
+
 .quickList {
   min-height: 0;
   display: flex;

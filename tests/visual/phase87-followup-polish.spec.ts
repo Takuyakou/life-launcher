@@ -153,3 +153,57 @@ test("Dictionary entry aligns with item rows and Guide footer stays inside its d
   );
   expect(closeBox!.y + closeBox!.height).toBeLessThanOrEqual(dialogBox!.y + dialogBox!.height + 1);
 });
+
+test("Dictionary shortcut badge follows config and actual registration", async ({ page }) => {
+  await prepare(page);
+  const badge = page.locator(".launcherOpenButton .shortcutBadge");
+  await expect(badge).toHaveText("Ctrl+K");
+
+  await page.evaluate(() => {
+    const control = (window as Window & {
+      __LIFE_LAUNCHER_VISUAL_QA__: {
+        currentConfig: () => ReturnType<typeof createPublicFixture>["config"];
+        updateConfig: (config: ReturnType<typeof createPublicFixture>["config"]) => void;
+        setReapplyDashboardSettingsFailure: (failed: boolean) => void;
+        emit: (event: string) => void;
+      };
+    }).__LIFE_LAUNCHER_VISUAL_QA__;
+    const config = control.currentConfig();
+    control.updateConfig({
+      ...config,
+      settings: { ...config.settings, launcherHotkey: null },
+    });
+  });
+  await expect(badge).toHaveCount(0);
+
+  await page.evaluate(() => {
+    const control = (window as Window & {
+      __LIFE_LAUNCHER_VISUAL_QA__: {
+        currentConfig: () => ReturnType<typeof createPublicFixture>["config"];
+        updateConfig: (config: ReturnType<typeof createPublicFixture>["config"]) => void;
+        setReapplyDashboardSettingsFailure: (failed: boolean) => void;
+        emit: (event: string) => void;
+      };
+    }).__LIFE_LAUNCHER_VISUAL_QA__;
+    const config = control.currentConfig();
+    control.updateConfig({
+      ...config,
+      settings: { ...config.settings, launcherHotkey: "Ctrl+Alt+Shift+K" },
+    });
+  });
+  await expect(badge).toHaveText("Ctrl+Alt+Shift+K");
+  await expect(badge).toHaveAttribute("title", "辞書: Ctrl+Alt+Shift+K");
+
+  await page.evaluate(() => {
+    const control = (window as Window & {
+      __LIFE_LAUNCHER_VISUAL_QA__: {
+        setReapplyDashboardSettingsFailure: (failed: boolean) => void;
+        emit: (event: string) => void;
+      };
+    }).__LIFE_LAUNCHER_VISUAL_QA__;
+    control.setReapplyDashboardSettingsFailure(true);
+    control.emit("config-changed");
+  });
+  await expect(badge).toHaveClass(/shortcutBadge--unavailable/);
+  await expect(badge).toHaveAttribute("title", /登録できていません/);
+});
