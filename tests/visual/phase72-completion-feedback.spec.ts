@@ -7,6 +7,7 @@ type Control = {
   currentConfig: () => AppConfig;
   setSaveConfigFailure: (failed: boolean) => void;
   updateConfig: (config: AppConfig) => void;
+  setDoNowCandidates: (candidates: VisualQaFixture["doNowCandidates"]) => void;
 };
 
 async function prepare(page: Page, fixture: VisualQaFixture, reducedMotion = false) {
@@ -190,7 +191,7 @@ test("P72-05 removing and undoing a completed Today item never replays completio
   await expect(page.locator(".todayRow")).toHaveCount(3);
   await expect(
     page.locator(
-      ".todayRow--justCompleted, .todayAllCompletionReward, .doNowCompletionEcho, .completionParticle",
+      ".todayRow--justCompleted, .todayAllCompletionReward, .doNowContent--hold, .completionParticle",
     ),
   ).toHaveCount(0);
 });
@@ -201,7 +202,7 @@ test("P72-05 individual planned completion shows one green feedback then keeps s
   await prepare(page, plannedFixture(0));
   const row = await finishPlannedToday(page);
   await expect(row).toHaveClass(/todayRow--justCompleted/);
-  await expect(page.locator(".todayAllCompletionReward, .doNowCompletionEcho")).toHaveCount(0);
+  await expect(page.locator(".todayAllCompletionReward, .doNowContent--hold")).toHaveCount(0);
   await expect(page.locator(".completionParticle")).toHaveCount(0);
   await page.clock.fastForward(1_200);
   await expect(row).not.toHaveClass(/todayRow--justCompleted/);
@@ -218,7 +219,7 @@ test("P72-05 the third completion prioritizes one 3-of-3 milestone and keeps nex
   await expect(milestone).toBeVisible();
   await expect(milestone).toContainText("今日の3件、完了！");
   await expect(page.locator(".completionParticle")).toHaveCount(6);
-  await expect(page.locator(".doNowCompletionEcho")).toHaveCount(0);
+  await expect(page.locator(".doNowContent--hold")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "次の3件を選ぶ" })).toBeEnabled();
 });
 
@@ -260,7 +261,7 @@ test("P72-05 completion save failure records no feedback", async ({ page }) => {
   expect((await currentConfig(page)).today.items[2].done).toBe(false);
 });
 
-test("P72-05 Do Now-only completion uses a separate snapshot echo", async ({ page }) => {
+test("P8.10 Do Now-only completion holds its snapshot until acknowledged", async ({ page }) => {
   const fixture = createPublicFixture();
   fixture.config.projects[0].nextStep!.shortTimerMinutes = 1;
   fixture.config.today.items = [{ text: "別の項目", done: false, sourceKey: "manual:other" }];
@@ -268,12 +269,92 @@ test("P72-05 Do Now-only completion uses a separate snapshot echo", async ({ pag
   await page.locator(".doNowStartPrimary").click();
   await page.clock.runFor(60_500);
   await page.getByRole("button", { name: "終わる" }).click();
-  const echo = page.locator(".doNowCompletionEcho");
-  await expect(page.locator(".doNowContent")).toHaveClass(/doNowContent--reward/);
-  await expect(echo).toContainText("一手進みました");
-  await expect(echo).toContainText(fixture.config.projects[0].nextStep!.text);
+  const hold = page.locator(".doNowContent--hold");
+  await expect(hold).toContainText("✓ 一手進みました");
+  await expect(hold).toContainText(fixture.config.projects[0].name);
+  await expect(hold).toContainText(fixture.config.projects[0].nextStep!.text);
+  await expect(hold).toContainText("実行 1分");
+  await expect(hold.locator(".doNowStartPrimary, .doNowAlternateButton")).toHaveCount(0);
+  await page.clock.fastForward(3_000);
+  await expect(hold).toBeVisible();
+  await hold.getByRole("button", { name: "次の一手を見る" }).click();
+  await expect(hold).toHaveCount(0);
+  await expect(page.locator(".doNowStartPrimary")).toBeVisible();
   await expect(page.locator(".todayRow--justCompleted, .todayAllCompletionReward"))
     .toHaveCount(0);
+});
+
+async function finishDoNowOnly(page: Page, fixture: VisualQaFixture) {
+  fixture.config.projects[0].nextStep!.shortTimerMinutes = 1;
+  fixture.config.today.items = [{ text: "別の項目", done: false, sourceKey: "manual:other" }];
+  await prepare(page, fixture);
+  await page.locator(".doNowStartPrimary").click();
+  await page.clock.runFor(60_500);
+  await page.getByRole("button", { name: "終わる" }).click();
+  await expect(page.locator(".doNowContent--hold")).toBeVisible();
+}
+
+test("P8.10 Do Now acknowledgement reevaluates to an empty state", async ({ page }) => {
+  const fixture = createPublicFixture();
+  await finishDoNowOnly(page, fixture);
+  await page.evaluate(() => {
+    (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: Control })
+      .__LIFE_LAUNCHER_VISUAL_QA__.setDoNowCandidates([]);
+  });
+  await page.getByRole("button", { name: "次の一手を見る" }).click();
+  await expect(page.locator(".doNowContent--hold")).toHaveCount(0);
+  await expect(page.locator(".doNowEmptyContent")).toBeVisible();
+});
+
+test("P8.10 Do Now completion survives source removal until acknowledgement", async ({ page }) => {
+  const fixture = createPublicFixture();
+  await finishDoNowOnly(page, fixture);
+  const original = fixture.config.projects[0];
+  await page.evaluate(() => {
+    const qa = (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: Control })
+      .__LIFE_LAUNCHER_VISUAL_QA__;
+    qa.updateConfig({ ...qa.currentConfig(), projects: [] });
+    qa.setDoNowCandidates([]);
+  });
+  await expect(page.locator(".doNowContent--hold")).toContainText(original.nextStep!.text);
+  await page.getByRole("button", { name: "次の一手を見る" }).click();
+  await expect(page.locator(".doNowEmptyContent")).toBeVisible();
+});
+
+test("P8.10 Do Now hold is transient across reload and date rollover", async ({ page }) => {
+  const fixture = createPublicFixture();
+  await finishDoNowOnly(page, fixture);
+  await page.reload();
+  await expect(page.locator(".doNowContent--hold")).toHaveCount(0);
+  await page.locator(".doNowStartPrimary").click();
+  await page.clock.runFor(60_500);
+  await page.getByRole("button", { name: "終わる" }).click();
+  await expect(page.locator(".doNowContent--hold")).toBeVisible();
+  await page.evaluate(() => {
+    const qa = (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: Control })
+      .__LIFE_LAUNCHER_VISUAL_QA__;
+    qa.updateConfig({
+      ...qa.currentConfig(),
+      today: { ...qa.currentConfig().today, date: "2026-09-26" },
+    });
+  });
+  await expect(page.locator(".doNowContent--hold")).toHaveCount(0);
+});
+
+test("P8.10 Do Now hold clears on another timer start", async ({ page }) => {
+  const fixture = createPublicFixture();
+  await finishDoNowOnly(page, fixture);
+  await page.locator(".todayStartButton").first().click();
+  await expect(page.locator(".doNowContent--hold")).toHaveCount(0);
+});
+
+test("P8.10 Do Now acknowledgement works by keyboard", async ({ page }) => {
+  await finishDoNowOnly(page, createPublicFixture());
+  const acknowledge = page.getByRole("button", { name: "次の一手を見る" });
+  await acknowledge.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".doNowContent--hold")).toHaveCount(0);
+  await expect(page.locator(".doNowStartPrimary")).toBeFocused();
 });
 
 test("P72-05 a Do Now session linked to Today emits only the Today feedback", async ({ page }) => {
@@ -292,7 +373,7 @@ test("P72-05 a Do Now session linked to Today emits only the Today feedback", as
   await page.clock.runFor(60_500);
   await page.getByRole("button", { name: "終わる" }).click();
   await expect(page.locator(".todayRow--justCompleted")).toHaveCount(1);
-  await expect(page.locator(".doNowCompletionEcho, .todayAllCompletionReward"))
+  await expect(page.locator(".doNowContent--hold, .todayAllCompletionReward"))
     .toHaveCount(0);
 });
 

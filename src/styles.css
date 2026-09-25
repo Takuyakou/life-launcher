@@ -11955,10 +11955,31 @@ input[type="number"]::-webkit-inner-spin-button {
   animation: completion-gold-pulse 850ms ease-out;
 }
 
-.doNowContent--reward {
+.doNowContent--hold,
+.doNowContent--hold:hover {
   border-color: rgba(111, 207, 151, 0.58);
+  border-left: 3px solid var(--good);
+  padding-left: 12px;
   background: rgba(111, 207, 151, 0.07);
-  animation: completion-card-pop 460ms cubic-bezier(0.2, 1.35, 0.35, 1);
+  transform: none;
+}
+
+.doNowCopy > .doNowHoldTitle {
+  color: var(--good);
+}
+
+.doNowHoldTask {
+  min-width: 0;
+  margin-inline-start: 3px;
+  overflow-wrap: anywhere;
+  font-size: var(--dashboard-font-body);
+}
+
+.doNowHoldMinutes {
+  margin-inline-start: 3px;
+  color: var(--muted);
+  font-size: var(--dashboard-font-meta);
+  font-variant-numeric: tabular-nums;
 }
 
 .victoryRewardSweep {
@@ -12017,51 +12038,6 @@ input[type="number"]::-webkit-inner-spin-button {
   font-weight: 800;
   pointer-events: none;
   animation: completion-label-in 480ms cubic-bezier(0.2, 1.2, 0.3, 1);
-}
-
-.doNowCompletionEcho {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 8px 10px;
-  border: 1px solid rgba(111, 207, 151, 0.34);
-  border-radius: var(--radius);
-  background: rgba(111, 207, 151, 0.06);
-  color: var(--good);
-  pointer-events: none;
-  animation: completion-label-in 300ms ease-out;
-}
-
-.doNowCompletionCheck {
-  width: 24px;
-  height: 24px;
-  display: grid;
-  flex: 0 0 24px;
-  place-items: center;
-  border: 1px solid rgba(111, 207, 151, 0.42);
-  border-radius: 50%;
-  background: rgba(111, 207, 151, 0.08);
-  font-weight: 800;
-}
-
-.doNowCompletionEcho > span:last-child {
-  min-width: 0;
-  display: grid;
-  gap: 2px;
-}
-
-.doNowCompletionEcho strong {
-  overflow: hidden;
-  color: var(--text);
-  font-size: var(--dashboard-font-body);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.doNowCompletionEcho small {
-  font-size: var(--dashboard-font-meta);
-  font-weight: 700;
 }
 
 .completionParticleLayer {
@@ -12202,7 +12178,6 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .doNowContent--reward,
   .victoryBar--reward,
   .victoryRewardSweep,
   .victoryBadge--reward,
@@ -12210,7 +12185,6 @@ input[type="number"]::-webkit-inner-spin-button {
   .todayRow--justCompleted .todayCompletionStatus--complete,
   .todayGrid--allCompleteReward,
   .todayAllCompletionReward,
-  .doNowCompletionEcho,
   .completionParticle {
     animation: none !important;
     transform: none !important;

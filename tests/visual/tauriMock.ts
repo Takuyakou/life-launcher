@@ -24,6 +24,7 @@ export async function installTauriMock(
         value: "external-file-untouched",
       };
       const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+      let doNowCandidates = fixture.doNowCandidates;
       let currentConfig = (() => {
         try {
           const stored = window.sessionStorage.getItem(configStorageKey);
@@ -237,6 +238,9 @@ export async function installTauriMock(
           persistCurrentConfig();
           dispatchEvent("config-changed");
         },
+        setDoNowCandidates: (candidates: typeof fixture.doNowCandidates) => {
+          doNowCandidates = candidates;
+        },
         emit: (event: string, payload: unknown = null) => {
           dispatchEvent(event, payload);
         },
@@ -449,7 +453,7 @@ export async function installTauriMock(
                           reason: "manualOrder",
                           restartEligible: false,
                         }))
-                    : fixture.doNowCandidates,
+                    : doNowCandidates,
                 };
               case "load_next_step_freshness":
                 return { staleProjectIds: fixture.staleProjectIds ?? [] };

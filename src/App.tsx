@@ -275,6 +275,7 @@ type ActiveTimer = {
   projectId: string | null;
   label: string;
   note: string;
+  doNowSnapshot?: DoNowCompletionSnapshot;
   startedAtMs: number;
   startedAt: string;
   mode: TimerMode;
@@ -282,6 +283,18 @@ type ActiveTimer = {
   paused: boolean;
   pausedStartedAtMs: number | null;
   pausedTotalMs: number;
+};
+
+type DoNowCompletionSnapshot = {
+  projectId: string;
+  projectName: string;
+  colorId?: ProjectColorId | null;
+  taskText: string;
+};
+
+type DoNowCompletionHold = DoNowCompletionSnapshot & {
+  date: string;
+  minutes: number;
 };
 
 type ButtonGroup = {
@@ -473,7 +486,7 @@ type TimerCompletionPrompt = {
 
 type CompletionFeedback = {
   key: string;
-  kind: "victory" | "today" | "todayAll" | "doNow";
+  kind: "victory" | "today" | "todayAll";
   label: string;
   sourceKey?: string;
 };
@@ -2227,6 +2240,7 @@ function DashboardApp() {
   const [earlyStopSaving, setEarlyStopSaving] = useState(false);
   const [completionPrompt, setCompletionPrompt] = useState<TimerCompletionPrompt | null>(null);
   const [completionFeedback, setCompletionFeedback] = useState<CompletionFeedback | null>(null);
+  const [doNowCompletionHold, setDoNowCompletionHold] = useState<DoNowCompletionHold | null>(null);
   const [completionFollowup, setCompletionFollowup] = useState<CompletionFollowup | null>(null);
   const [now, setNow] = useState(Date.now());
   const [collapsedGroups, setCollapsedGroups] =
@@ -2911,11 +2925,19 @@ function DashboardApp() {
       setDoNowCandidateIndex((current) =>
         response.candidates.length > 0 ? Math.min(current, response.candidates.length - 1) : 0,
       );
+      return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       showToast("error", `今やる一手を読めません: ${message}`);
+      return false;
     }
   }, [showToast]);
+
+  useEffect(() => {
+    if (doNowCompletionHold && config?.today.date !== doNowCompletionHold.date) {
+      setDoNowCompletionHold(null);
+    }
+  }, [config?.today.date, doNowCompletionHold]);
 
   const refreshSessions = useCallback(async () => {
     try {
@@ -6927,7 +6949,7 @@ function DashboardApp() {
     current: AppConfig,
     nextItems: AppConfig["today"]["items"],
     completedSourceKey: string | null,
-    wasDoNow: boolean,
+    stoppedAt: number,
   ) => {
     const key = `timer:${current.today.date}:${timer.instanceId}`;
     if (completedSourceKey && nextItems.length === 3 && nextItems.every((item) => item.done)) {
@@ -6943,8 +6965,12 @@ function DashboardApp() {
       });
       return;
     }
-    if (wasDoNow) {
-      showCompletionFeedback({ key, kind: "doNow", label: timer.note || timer.label });
+    if (timer.doNowSnapshot) {
+      setDoNowCompletionHold({
+        ...timer.doNowSnapshot,
+        date: current.today.date,
+        minutes: sessionMinutes(timer, stoppedAt),
+      });
     }
   };
 
@@ -6958,7 +6984,6 @@ function DashboardApp() {
       return false;
     finishingTimerRef.current = pending.timer.instanceId;
     setEarlyStopSaving(true);
-    const wasDoNow = doNowSelection?.project.id === pending.timer.projectId;
     try {
       if (!pending.recorded) {
         if (!(await recordTimerSession(pending.timer, pending.stoppedAt, "manual"))) return false;
@@ -6985,7 +7010,7 @@ function DashboardApp() {
               current,
               prepared.config.today.items,
               completedSourceKey,
-              wasDoNow,
+              pending.stoppedAt,
             );
             queueCompletionFollowup(
               `timer:${current.today.date}:${pending.timer.instanceId}:${completedSourceKey}`,
@@ -7050,6 +7075,7 @@ function DashboardApp() {
       instructionPathOverride?: string,
       instructionOpenOnStartOverride?: boolean,
       mode: TimerMode = "countdown",
+      doNowProject?: LauncherProject,
     ) => {
       const cleanLabel = label.trim();
       if (
@@ -7070,6 +7096,7 @@ function DashboardApp() {
       }
 
       if (requestId !== timerStartRequestRef.current) return;
+      setDoNowCompletionHold(null);
       setCompletionPrompt(null);
       const start = new Date();
       const timerConfig = configRef.current ?? config;
@@ -7098,6 +7125,14 @@ function DashboardApp() {
         projectId,
         label: cleanLabel,
         note,
+        ...(doNowProject && {
+          doNowSnapshot: {
+            projectId: doNowProject.id,
+            projectName: doNowProject.name,
+            colorId: doNowProject.colorId,
+            taskText: doNowProject.nextStep?.text.trim() || note,
+          },
+        }),
         mode,
         startedAtMs: start.getTime(),
         startedAt: formatStartedAt(start),
@@ -7199,7 +7234,7 @@ function DashboardApp() {
 
     plannedCommitRef.current = true;
     const completedTimer = activeTimer;
-    const wasDoNow = doNowSelection?.project.id === completedTimer.projectId;
+    const stoppedAt = Date.now();
     void finishTimer(completedTimer, "complete")
       .then(async (finished) => {
         if (!finished) return false;
@@ -7237,7 +7272,7 @@ function DashboardApp() {
           current,
           prepared.config.today.items,
           completedEntry?.sourceKey ?? null,
-          wasDoNow,
+          stoppedAt,
         );
         if (completedEntry) {
           queueCompletionFollowup(
@@ -9486,11 +9521,21 @@ function DashboardApp() {
       undefined,
       undefined,
       timerKind === "measure" ? "measure" : "countdown",
+      project,
     );
   };
   const showNextDoNowCandidate = () => {
     if (doNowCandidates.length <= 1) return;
     setDoNowCandidateIndex((index) => (index + 1) % doNowCandidates.length);
+  };
+  const acknowledgeDoNowCompletion = async () => {
+    if (!(await refreshDoNow())) return;
+    setDoNowCompletionHold(null);
+    window.requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLElement>(".doNowStartPrimary, .doNowEmptyContent button")
+        ?.focus({ preventScroll: true });
+    });
   };
   const renderButtonIcon = (button: LauncherButton, className: string) => {
     const source = buttonIconSources[button.id];
@@ -10523,13 +10568,39 @@ function DashboardApp() {
                   data-skip-target="main"
                   tabIndex={-1}
                 >
-                  {doNowSelection ? (
+                  {doNowCompletionHold ? (
+                    <div className="doNowContent doNowContent--hold">
+                      <div className="doNowCopy">
+                        <div className="doNowKicker">
+                          <h2 id="do-now-title">今やる一手</h2>
+                          <span className="doNowProjectChip">
+                            <ProjectIdentity
+                              colorId={doNowCompletionHold.colorId}
+                              compact
+                              name={doNowCompletionHold.projectName}
+                              projectId={doNowCompletionHold.projectId}
+                            />
+                          </span>
+                        </div>
+                        <strong className="doNowHoldTitle" role="status">✓ 一手進みました</strong>
+                        <span className="doNowHoldTask">{doNowCompletionHold.taskText}</span>
+                        {doNowCompletionHold.minutes > 0 && (
+                          <span className="doNowHoldMinutes">実行 {doNowCompletionHold.minutes}分</span>
+                        )}
+                      </div>
+                      <div className="doNowFooter">
+                        <button
+                          className="mainActionButton mainActionButton--positive"
+                          onClick={() => void acknowledgeDoNowCompletion()}
+                          type="button"
+                        >
+                          次の一手を見る
+                        </button>
+                      </div>
+                    </div>
+                  ) : doNowSelection ? (
                     <div
-                      className={
-                        completionFeedback?.kind === "doNow"
-                          ? "doNowContent doNowContent--reward"
-                          : "doNowContent"
-                      }
+                      className="doNowContent"
                       data-project-color={resolveProjectColorId(
                         doNowSelection.project.id,
                         doNowSelection.project.colorId,
@@ -10732,17 +10803,6 @@ function DashboardApp() {
                         </div>
                       </div>
                     </>
-                  )}
-                  {completionFeedback?.kind === "doNow" && (
-                    <div className="doNowCompletionEcho" role="status">
-                      <span className="doNowCompletionCheck" aria-hidden="true">
-                        ✓
-                      </span>
-                      <span>
-                        <strong>{completionFeedback.label}</strong>
-                        <small>一手進みました</small>
-                      </span>
-                    </div>
                   )}
                 </section>
 
