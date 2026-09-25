@@ -248,6 +248,18 @@ test("P8.10 TX-04 display request follows expanded timer and releases on close",
   expect((await calls())[2].args.leaseId).not.toBe(acquired);
 });
 
+test("P8.10 TX-01 Escape closes after focus leaves the expanded timer controls", async ({ page }) => {
+  await prepare(page);
+  await page.locator(".doNowStartPrimary").click();
+  await page.getByRole("button", { name: "タイマーを大きく表示" }).click();
+  const overlay = page.getByRole("dialog", { name: "拡大タイマー" });
+  await overlay.locator(".expandedTimerClock").click();
+  await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
+  await page.keyboard.press("Escape");
+  await expect(overlay).toHaveCount(0);
+  await expect(page.locator(".timerDock .timerStateBadge")).toHaveText("実行中");
+});
+
 for (const state of [
   { visible: false, minimized: false, focused: false },
   { visible: true, minimized: true, focused: false },
