@@ -121,11 +121,13 @@ test("Do Now, Today3, and NextStep use their Project hover color", async ({
   const remove = page.locator(".todayRemoveButton").first();
   const change = page.locator('.nextStepCard[data-project-id="sample-stretch"] .nextStepRowAction');
   await remove.hover();
+  await page.waitForTimeout(180);
   const removeStyle = await remove.evaluate((node) => {
     const style = getComputedStyle(node);
     return [style.backgroundColor, style.borderColor, style.color];
   });
   await change.hover();
+  await page.waitForTimeout(180);
   const changeStyle = await change.evaluate((node) => {
     const style = getComputedStyle(node);
     return [style.backgroundColor, style.borderColor, style.color];

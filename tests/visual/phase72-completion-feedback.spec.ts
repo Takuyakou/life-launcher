@@ -70,7 +70,10 @@ async function finishPlannedToday(page: Page, rowIndex = 2) {
   await row.getByRole("button", { name: "短時間タイマー1分で開始" }).click();
   await page.clock.runFor(60_500);
   await expect(page.getByRole("dialog", { name: "タイマー満了" })).toBeVisible();
-  await page.getByRole("button", { name: "終わる" }).click();
+  const finish = page.getByRole("button", { name: "終わる" });
+  await expect(finish).toHaveClass(/secondaryButton--finish/);
+  await expect(finish.locator("svg")).toHaveCount(0);
+  await finish.click();
   return row;
 }
 

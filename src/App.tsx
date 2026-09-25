@@ -15687,7 +15687,7 @@ function DashboardApp() {
                 onClick={finishCompletedTimer}
                 type="button"
               >
-                <UiIcon name="stop" size={16} /> 終わる
+                終わる
               </button>
             </div>
           </section>
