@@ -2548,8 +2548,7 @@ h3 {
 }
 
 .shortcutBadge--unavailable {
-  color: var(--warn);
-  opacity: 0.72;
+  border-style: dashed;
 }
 
 .quickList {

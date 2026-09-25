@@ -246,4 +246,6 @@ test("Dictionary shortcut badge follows config and actual registration", async (
   });
   await expect(badge).toHaveClass(/shortcutBadge--unavailable/);
   await expect(badge).toHaveAttribute("title", /登録できていません/);
+  await expect(badge).toHaveCSS("color", "rgb(231, 185, 77)");
+  await expect(badge).toHaveCSS("border-top-style", "dashed");
 });
