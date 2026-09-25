@@ -3343,6 +3343,20 @@ function DashboardApp() {
     await hideMiniWindow();
   }, [hideMiniWindow]);
 
+  const toggleMainFromShortcut = useCallback(async () => {
+    const mainWindow = getCurrentWindow();
+    const [visible, minimized, focused] = await Promise.all([
+      mainWindow.isVisible(),
+      mainWindow.isMinimized(),
+      mainWindow.isFocused(),
+    ]);
+    if (visible && !minimized && focused) {
+      await mainWindow.close();
+      return;
+    }
+    await returnToMain();
+  }, [returnToMain]);
+
   const toggleMiniMode = useCallback(async () => {
     if (miniTransitioningRef.current) return;
     miniTransitioningRef.current = true;
@@ -3401,8 +3415,8 @@ function DashboardApp() {
 
     const setup = async () => {
       const unlistenMain = await listen("main-shortcut-toggle", () => {
-        void returnToMain().catch((error) =>
-          console.error("[mini-mode] メイン復帰に失敗しました", error),
+        void toggleMainFromShortcut().catch((error) =>
+          console.error("[main-shortcut] メイン表示の切り替えに失敗しました", error),
         );
       });
       const unlistenLauncher = await listen("launcher-shortcut-toggle", () => {
@@ -3430,7 +3444,7 @@ function DashboardApp() {
       mounted = false;
       cleanup.forEach((dispose) => dispose());
     };
-  }, [openInstructionsManually, returnToMain, toggleDictionaryFromShortcut, toggleMiniMode]);
+  }, [openInstructionsManually, toggleDictionaryFromShortcut, toggleMainFromShortcut, toggleMiniMode]);
 
   const resetMiniWindowPosition = useCallback(async () => {
     if (!config) return false;
@@ -9627,6 +9641,13 @@ function DashboardApp() {
           <div className="brandCopy">
             <p className="eyebrow">Life Launcher</p>
             <strong>Quick</strong>
+            {shortcutRegistration && (
+              <ShortcutBadge
+                label="Life Launcherを表示/隠す"
+                shortcut={config?.settings.focusHotkey}
+                registered={shortcutRegistration.main}
+              />
+            )}
           </div>
         </div>
 
