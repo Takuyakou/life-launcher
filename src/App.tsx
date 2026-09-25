@@ -8963,6 +8963,11 @@ function DashboardApp() {
     const projects = config?.projects ?? [];
     const anchor = projectListAnchorRef.current;
     if (!anchor || projects.length === 0) return;
+    const mayRestoreFocus = () => {
+      const active = document.activeElement;
+      return document.hasFocus() && (active === document.body || active?.matches(".nextStepCard"));
+    };
+    if (!mayRestoreFocus()) return;
     let index = projects.findIndex((project) => project.id === anchor.id);
     if (index < 0) index = Math.min(anchor.index, projects.length - 1);
     const project = projects[index];
@@ -8973,6 +8978,7 @@ function DashboardApp() {
     }
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
+        if (!mayRestoreFocus()) return;
         document
           .querySelector<HTMLElement>(`.nextStepCard[data-project-id="${CSS.escape(project.id)}"]`)
           ?.focus();
@@ -8984,6 +8990,11 @@ function DashboardApp() {
     const items = config?.inbox ?? [];
     const anchor = inboxListAnchorRef.current;
     if (!anchor || items.length === 0) return;
+    const mayRestoreFocus = () => {
+      const active = document.activeElement;
+      return document.hasFocus() && (active === document.body || active?.matches(".inboxRow"));
+    };
+    if (!mayRestoreFocus()) return;
     let index = items.findIndex((item) => item.id === anchor.id);
     if (index < 0) index = Math.min(anchor.index, items.length - 1);
     const item = items[index];
@@ -9010,6 +9021,7 @@ function DashboardApp() {
     }
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
+        if (!mayRestoreFocus()) return;
         document
           .querySelector<HTMLElement>(`[data-inbox-id="${CSS.escape(item.id ?? "")}"]`)
           ?.focus();
@@ -11891,6 +11903,12 @@ function DashboardApp() {
                                 );
                                 projectListAnchorRef.current = { id: project.id, index };
                               }}
+                              onBlur={(event) => {
+                                if (!(event.relatedTarget instanceof Node) ||
+                                    !event.currentTarget.contains(event.relatedTarget)) {
+                                  projectListAnchorRef.current = null;
+                                }
+                              }}
                               onKeyDown={(event) =>
                                 openContextMenuFromKeyboard(event, { kind: "nextStep", project })
                               }
@@ -12363,6 +12381,12 @@ function DashboardApp() {
                                           onFocus={() => {
                                             if (item.id)
                                               inboxListAnchorRef.current = { id: item.id, index };
+                                          }}
+                                          onBlur={(event) => {
+                                            if (!(event.relatedTarget instanceof Node) ||
+                                                !event.currentTarget.contains(event.relatedTarget)) {
+                                              inboxListAnchorRef.current = null;
+                                            }
                                           }}
                                           onContextMenu={(event) => {
                                             event.preventDefault();
