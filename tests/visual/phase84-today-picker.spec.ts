@@ -679,10 +679,12 @@ test("P84 v3 Today add reuses the Project gold grammar in every interaction stat
   const style = async (locator: ReturnType<Page["locator"]>) =>
     locator.evaluate((node) => {
       const computed = getComputedStyle(node);
+      const normalizeOpaque = (value: string) =>
+        value.replace(/^rgba\((\d+),\s*(\d+),\s*(\d+),\s*1\)$/, "rgb($1, $2, $3)");
       return {
         backgroundColor: computed.backgroundColor,
-        borderColor: computed.borderColor,
-        color: computed.color,
+        borderColor: normalizeOpaque(computed.borderColor),
+        color: normalizeOpaque(computed.color),
       };
     });
 
@@ -703,6 +705,5 @@ test("P84 v3 Today add reuses the Project gold grammar in every interaction stat
   const todayAdd = picker(page).getByRole("button", { name: "今日へ" }).first();
   await expect(todayAdd).toHaveClass(/mainActionButton--gold/);
   await todayAdd.hover();
-  await page.waitForTimeout(140);
-  expect(await style(todayAdd)).toEqual(goldHoverStyle);
+  await expect.poll(() => style(todayAdd)).toEqual(goldHoverStyle);
 });
