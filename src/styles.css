@@ -2986,6 +2986,17 @@ h3 {
   font-size: 15px;
 }
 
+.expandedTimerState--complete {
+  color: var(--accent-strong);
+  font-size: clamp(22px, 3cqi, 42px);
+  font-weight: 800;
+}
+
+.expandedTimer--complete .expandedTimerBody {
+  justify-content: flex-start;
+  padding-top: clamp(12px, 7vh, 72px);
+}
+
 .expandedTimerClock {
   max-width: 100%;
   color: var(--accent-strong);
