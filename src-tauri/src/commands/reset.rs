@@ -1277,6 +1277,7 @@ mod tests {
                 button_ids: Vec::new(),
                 default_timer_minutes: None,
                 short_timer_minutes: None,
+                expand_timer_on_start: None,
                 start_note_template: None,
                 instruction_path: None,
                 instruction_open_on_start: None,
@@ -1303,6 +1304,7 @@ mod tests {
             instruction_open_on_start: None,
             default_timer_minutes: None,
             short_timer_minutes: None,
+            expand_timer_on_start: None,
         });
         write_json_synced(
             &fixture.paths.data_dir.join("config.json"),

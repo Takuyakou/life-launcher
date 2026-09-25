@@ -383,6 +383,7 @@ type NextStepEditDraft = {
   startNoteTemplate: string;
   instructionPath: string;
   instructionOpenOnStart: boolean;
+  expandTimerOnStart: boolean;
   legacyChoice: LegacyNextStepChoice;
   replacementChoice: NextStepReplacementChoice | null;
   replacedNextStep?: LauncherNextStep;
@@ -2493,6 +2494,7 @@ function DashboardApp() {
         nextStepEditDraft.buttonIds.length ||
         nextStepEditDraft.defaultTimerMinutes.trim() ||
         nextStepEditDraft.shortTimerMinutes.trim() ||
+        nextStepEditDraft.expandTimerOnStart ||
         nextStepEditDraft.startNoteTemplate.trim() ||
         nextStepEditDraft.instructionPath.trim() ||
         nextStepEditDraft.projectId !== initialDraft?.projectId ||
@@ -7090,6 +7092,7 @@ function DashboardApp() {
       instructionOpenOnStartOverride?: boolean,
       mode: TimerMode = "countdown",
       doNowProject?: LauncherProject,
+      expandOnStart = false,
     ) => {
       const cleanLabel = label.trim();
       if (
@@ -7157,6 +7160,7 @@ function DashboardApp() {
       };
       activeTimerRef.current = nextTimer;
       setActiveTimer(nextTimer);
+      setExpandedTimerOpen(expandOnStart);
 
       showToast("ok", "タイマーを開始しました");
 
@@ -7177,8 +7181,16 @@ function DashboardApp() {
           );
         });
       }
+      if (expandOnStart) {
+        const mainWindow = getCurrentWindow();
+        const [visible, minimized] = await Promise.all([
+          mainWindow.isVisible().catch(() => true),
+          mainWindow.isMinimized().catch(() => false),
+        ]);
+        if (!visible || minimized) void returnToMain().catch(() => undefined);
+      }
     },
-    [config, finishTimer, runActions, showToast],
+    [config, finishTimer, returnToMain, runActions, showToast],
   );
 
   const markNextStepReviewed = async (projectId: string) => {
@@ -7944,6 +7956,7 @@ function DashboardApp() {
       ...(candidate.trigger ? { trigger: candidate.trigger } : {}),
       ...(candidate.projectId ? { projectId: candidate.projectId } : {}),
       ...(candidate.buttonIds?.length ? { buttonIds: [...candidate.buttonIds] } : {}),
+      ...(candidate.expandTimerOnStart ? { expandTimerOnStart: true } : {}),
       ...(candidate.instructionPath
         ? {
             instructionPath: candidate.instructionPath,
@@ -7983,6 +7996,7 @@ function DashboardApp() {
     ...(candidate.trigger ? { trigger: candidate.trigger } : {}),
     ...(candidate.projectId ? { projectId: candidate.projectId } : {}),
     ...(candidate.buttonIds?.length ? { buttonIds: [...candidate.buttonIds] } : {}),
+    ...(candidate.expandTimerOnStart ? { expandTimerOnStart: true } : {}),
     ...(candidate.instructionPath
       ? {
           instructionPath: candidate.instructionPath,
@@ -8155,6 +8169,7 @@ function DashboardApp() {
     | "startNoteTemplate"
     | "instructionPath"
     | "instructionOpenOnStart"
+    | "expandTimerOnStart"
   > => ({
     buttonIds: (execution?.buttonIds ?? []).filter((buttonId) =>
       projectSelectableButtons.some((button) => button.id === buttonId),
@@ -8168,6 +8183,7 @@ function DashboardApp() {
     instructionOpenOnStart: Boolean(
       execution?.instructionPath && execution.instructionOpenOnStart !== false,
     ),
+    expandTimerOnStart: execution?.expandTimerOnStart === true,
   });
 
   const openNextStepEditor = (
@@ -8297,6 +8313,7 @@ function DashboardApp() {
       ...(legacyExecution?.shortTimerMinutes
         ? { shortTimerMinutes: legacyExecution.shortTimerMinutes }
         : {}),
+      ...(legacyExecution?.expandTimerOnStart ? { expandTimerOnStart: true } : {}),
       ...(legacyExecution?.startNoteTemplate
         ? { startNoteTemplate: legacyExecution.startNoteTemplate }
         : {}),
@@ -8512,6 +8529,7 @@ function DashboardApp() {
       ...(draft.trigger.trim() ? { trigger: draft.trigger.trim() } : {}),
       ...(defaultTimerMinutes ? { defaultTimerMinutes } : {}),
       ...(shortTimerMinutes ? { shortTimerMinutes } : {}),
+      ...(draft.expandTimerOnStart ? { expandTimerOnStart: true } : {}),
       ...(draft.startNoteTemplate.trim()
         ? { startNoteTemplate: draft.startNoteTemplate.trim() }
         : {}),
@@ -9536,6 +9554,7 @@ function DashboardApp() {
       undefined,
       timerKind === "measure" ? "measure" : "countdown",
       project,
+      project.nextStep?.expandTimerOnStart === true,
     );
   };
   const showNextDoNowCandidate = () => {
@@ -11192,6 +11211,10 @@ function DashboardApp() {
                                               item.text,
                                               item.instructionPath,
                                               item.instructionOpenOnStart,
+                                              "countdown",
+                                              undefined,
+                                              item.sourceKey?.startsWith("project:") &&
+                                                item.expandTimerOnStart === true,
                                             )
                                           }
                                           title={`短時間タイマー: ${shortMinutes}分`}
@@ -11229,6 +11252,10 @@ function DashboardApp() {
                                               item.text,
                                               item.instructionPath,
                                               item.instructionOpenOnStart,
+                                              "countdown",
+                                              undefined,
+                                              item.sourceKey?.startsWith("project:") &&
+                                                item.expandTimerOnStart === true,
                                             )
                                           }
                                           title={`通常タイマー: ${defaultMinutes}分`}
@@ -11267,6 +11294,9 @@ function DashboardApp() {
                                               item.instructionPath,
                                               item.instructionOpenOnStart,
                                               "measure",
+                                              undefined,
+                                              item.sourceKey?.startsWith("project:") &&
+                                                item.expandTimerOnStart === true,
                                             )
                                           }
                                           title="時間を決めずに計測"
@@ -15625,6 +15655,20 @@ function DashboardApp() {
                     </div>
                   ))}
                 </div>
+
+                <label className="projectWeeklyFocusToggle projectInstructionStartToggle">
+                  <input
+                    checked={nextStepEditDraft.expandTimerOnStart}
+                    onChange={(event) =>
+                      setNextStepEditDraft({
+                        ...nextStepEditDraft,
+                        expandTimerOnStart: event.target.checked,
+                      })
+                    }
+                    type="checkbox"
+                  />
+                  <span>開始時にタイマーを大きく表示</span>
+                </label>
 
                 <label className="fieldStack">
                   <span>開始noteテンプレート（任意）</span>

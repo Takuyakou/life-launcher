@@ -1,11 +1,15 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
+import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 import { mkdir } from "node:fs/promises";
 
 async function prepare(page: Page) {
+  await prepareFixture(page, createPublicFixture());
+}
+
+async function prepareFixture(page: Page, fixture: VisualQaFixture) {
   await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
-  await installTauriMock(page, createPublicFixture(), "main");
+  await installTauriMock(page, fixture, "main");
   await page.goto("/");
   await expect(page.locator(".doNowStartPrimary")).toBeVisible();
 }
@@ -111,6 +115,96 @@ test("P8.10 TX-02 early stop uses the existing Today confirmation", async ({ pag
   await expect(page.getByRole("dialog", { name: "今日の分は完了にしますか？" })).toBeVisible();
   await page.getByRole("button", { name: "未完了のまま終了" }).click();
   await expect(page.getByRole("dialog", { name: "拡大タイマー" })).toHaveCount(0);
+});
+
+test("P8.10 TX-03 NextStep auto-expand is off by default and can be saved", async ({ page }) => {
+  const fixture = createPublicFixture();
+  fixture.config.today.items = [];
+  await prepareFixture(page, fixture);
+  await page.locator('[data-project-id="sample-learning"]').first().click({ button: "right" });
+  await page.getByRole("menuitem", { name: "次の一手を編集", exact: true }).click();
+  const editor = page.getByRole("dialog", { name: "次の一手を編集", exact: true });
+  const preference = editor.getByRole("checkbox", { name: "開始時にタイマーを大きく表示" });
+  await expect(preference).not.toBeChecked();
+  await preference.check();
+  await editor.getByRole("button", { name: "保存", exact: true }).click();
+  await expect(editor).toHaveCount(0);
+  const saved = await page.evaluate(() =>
+    (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: { currentConfig: () => VisualQaFixture["config"] } })
+      .__LIFE_LAUNCHER_VISUAL_QA__.currentConfig(),
+  );
+  expect(saved.projects[0].nextStep?.expandTimerOnStart).toBe(true);
+  await page.locator(".doNowStartPrimary").click();
+  await expect(page.getByRole("dialog", { name: "拡大タイマー" })).toBeVisible();
+});
+
+test("P8.10 TX-03 NextStep without preference does not auto-expand", async ({ page }) => {
+  const fixture = createPublicFixture();
+  fixture.config.today.items = [];
+  await prepareFixture(page, fixture);
+  await page.locator(".doNowStartPrimary").click();
+  await expect(page.getByRole("dialog", { name: "拡大タイマー" })).toHaveCount(0);
+});
+
+test("P8.10 TX-03 Today picker snapshots the NextStep preference", async ({ page }) => {
+  const fixture = createPublicFixture();
+  fixture.config.today.items = [];
+  fixture.config.projects[0].nextStep!.expandTimerOnStart = true;
+  await prepareFixture(page, fixture);
+  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
+  const picker = page.getByRole("dialog", { name: "今日やるものを選ぶ" });
+  await picker.locator(".todayPickerRow", { hasText: "資料を1ページ読む" })
+    .getByRole("button", { name: "今日へ" }).click();
+  await picker.getByRole("button", { name: "決定" }).click();
+  const saved = await page.evaluate(() =>
+    (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: { currentConfig: () => VisualQaFixture["config"] } })
+      .__LIFE_LAUNCHER_VISUAL_QA__.currentConfig(),
+  );
+  expect(saved.today.items[0].expandTimerOnStart).toBe(true);
+  await page.locator(".todayRow").first().getByRole("button", { name: /短時間タイマー/ }).click();
+  await expect(page.getByRole("dialog", { name: "拡大タイマー" })).toBeVisible();
+});
+
+for (const [snapshot, source] of [[true, false], [false, true]] as const) {
+  test(`P8.10 TX-03 Today3 uses saved ${snapshot} rather than source ${source}`, async ({ page }) => {
+    const fixture = createPublicFixture();
+    fixture.config.projects[0].nextStep!.expandTimerOnStart = source;
+    fixture.config.today.items[0].expandTimerOnStart = snapshot;
+    await prepareFixture(page, fixture);
+    await page.locator(".todayRow").first().getByRole("button", { name: /短時間タイマー/ }).click();
+    await expect(page.getByRole("dialog", { name: "拡大タイマー" })).toHaveCount(snapshot ? 1 : 0);
+  });
+}
+
+test("P8.10 TX-03 Wishlist Today item never auto-expands", async ({ page }) => {
+  const fixture = createPublicFixture();
+  fixture.config.today.items[0] = {
+    text: "週末に試すアイデア",
+    done: false,
+    sourceKey: "wishlist:sample-weekend",
+    projectId: "sample-learning",
+    expandTimerOnStart: true,
+  };
+  await prepareFixture(page, fixture);
+  await page.locator(".todayRow").first().getByRole("button", { name: /短時間タイマー/ }).click();
+  await expect(page.getByRole("dialog", { name: "拡大タイマー" })).toHaveCount(0);
+});
+
+test("P8.10 TX-03 explicit auto-expand restores a hidden Main", async ({ page }) => {
+  const fixture = createPublicFixture();
+  fixture.config.projects[0].nextStep!.expandTimerOnStart = true;
+  fixture.config.today.items = [];
+  await prepareFixture(page, fixture);
+  await page.evaluate(() => {
+    (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: { setMainWindowState: (state: { visible: boolean; minimized: boolean; focused: boolean }) => void } })
+      .__LIFE_LAUNCHER_VISUAL_QA__.setMainWindowState({ visible: false, minimized: false, focused: false });
+  });
+  await page.locator(".doNowStartPrimary").click();
+  await expect(page.getByRole("dialog", { name: "拡大タイマー" })).toBeVisible();
+  await expect.poll(() => page.evaluate(() =>
+    (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: { mainWindowState: () => { visible: boolean } } })
+      .__LIFE_LAUNCHER_VISUAL_QA__.mainWindowState().visible,
+  )).toBe(true);
 });
 
 for (const viewport of [{ width: 430, height: 380 }, { width: 1200, height: 800 }, { width: 1920, height: 1080 }]) {
