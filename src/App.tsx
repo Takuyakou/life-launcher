@@ -142,6 +142,7 @@ import {
   wishlistGroupKey,
 } from "./nextStepWishlist";
 import { TimerPanel } from "./components/TimerPanel";
+import { ExpandedTimerOverlay } from "./components/ExpandedTimerOverlay";
 import { GroupModeField, type GroupMode } from "./components/GroupModeField";
 import {
   buildTodayCandidates,
@@ -2226,6 +2227,8 @@ function DashboardApp() {
   const [notesHistory, setNotesHistory] = useState<NotesHistoryResponse | null>(null);
   const [projectNextStepSuggestions, setProjectNextStepSuggestions] = useState<string[]>([]);
   const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(null);
+  const [expandedTimerOpen, setExpandedTimerOpen] = useState(false);
+  const expandTimerButtonRef = useRef<HTMLButtonElement | null>(null);
   const timerStartRequestRef = useRef(0);
   const activeTimerRef = useRef<ActiveTimer | null>(null);
   const finishingTimerRef = useRef<number | null>(null);
@@ -2621,6 +2624,16 @@ function DashboardApp() {
   }, [buttonGroups]);
 
   const currentTimerMetrics = activeTimer ? timerMetrics(activeTimer, now) : null;
+  useEffect(() => {
+    if (!expandedTimerOpen) return;
+    const background = document.querySelectorAll<HTMLElement>(".sidebar, .mainPanel");
+    background.forEach((element) => { element.inert = true; });
+    return () => background.forEach((element) => { element.inert = false; });
+  }, [expandedTimerOpen]);
+
+  useEffect(() => {
+    if (!activeTimer) setExpandedTimerOpen(false);
+  }, [activeTimer]);
   const visibleSidebarButtonGroups = useMemo(
     () =>
       buttonGroups
@@ -9898,6 +9911,7 @@ function DashboardApp() {
         ) : null}
         <TimerPanel
           active={Boolean(activeTimer)}
+          expandButtonRef={expandTimerButtonRef}
           clock={
             activeTimer
               ? timerClock
@@ -9921,6 +9935,7 @@ function DashboardApp() {
           onFinish={() => {
             if (activeTimer) void finishTimer(activeTimer);
           }}
+          onExpand={() => setExpandedTimerOpen(true)}
           onClockPointerCancel={!activeTimer ? cancelNumberInputDrag : undefined}
           onClockPointerDown={
             !activeTimer
@@ -15790,6 +15805,32 @@ function DashboardApp() {
             </div>
           </section>
         </div>
+      )}
+
+      {expandedTimerOpen && activeTimer && (
+        <ExpandedTimerOverlay
+          clock={timerClock}
+          identity={activeTimerProject ? (
+            <ProjectIdentity
+              colorId={activeTimerProject.colorId}
+              compact
+              name={activeTimerProject.name}
+              projectId={activeTimerProject.id}
+            />
+          ) : undefined}
+          label={activeTimer.label}
+          onClose={() => {
+            setExpandedTimerOpen(false);
+            window.requestAnimationFrame(() => expandTimerButtonRef.current?.focus({ preventScroll: true }));
+          }}
+          onFinish={() => {
+            setExpandedTimerOpen(false);
+            void finishTimer(activeTimer);
+          }}
+          onPause={togglePause}
+          paused={activeTimer.paused}
+          progressPercent={timerProgressPercent}
+        />
       )}
 
       {completionPrompt && (

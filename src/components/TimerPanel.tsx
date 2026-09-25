@@ -1,4 +1,4 @@
-import type { PointerEventHandler, ReactNode } from "react";
+import type { PointerEventHandler, ReactNode, Ref } from "react";
 import { UiIcon } from "./UiIcon";
 
 export type TimerPanelVariant = "sidebar" | "mini";
@@ -15,6 +15,8 @@ type TimerPanelProps = {
   paused: boolean;
   onPause: () => void;
   onFinish: () => void;
+  onExpand?: () => void;
+  expandButtonRef?: Ref<HTMLButtonElement>;
   waitingContent?: ReactNode;
   identity?: ReactNode;
   clockAdjustable?: boolean;
@@ -36,6 +38,8 @@ export function TimerPanel({
   paused,
   onPause,
   onFinish,
+  onExpand,
+  expandButtonRef,
   waitingContent,
   identity,
   clockAdjustable = false,
@@ -60,7 +64,25 @@ export function TimerPanel({
       onPointerDownCapture={() => window.getSelection()?.removeAllRanges()}
     >
       <div className="timerMeta">
-        <span>{variant === "sidebar" ? "Timer" : "タイマー"}</span>
+        {variant === "sidebar" ? (
+          <div className="timerMetaTop">
+            <span>Timer</span>
+            {active && onExpand && (
+              <button
+                aria-label="タイマーを大きく表示"
+                className="timerExpandButton"
+                onClick={onExpand}
+                ref={expandButtonRef}
+                title="タイマーを大きく表示"
+                type="button"
+              >
+                <UiIcon name="maximize" size={16} />
+              </button>
+            )}
+          </div>
+        ) : (
+          <span>タイマー</span>
+        )}
         {identity ?? <strong>{label}</strong>}
       </div>
       <div className="timerStateRow">
