@@ -24,6 +24,7 @@ export type UiIconName =
   | "power"
   | "records"
   | "refresh"
+  | "search"
   | "settings"
   | "stop"
   | "unlock"
@@ -136,6 +137,11 @@ export function UiIcon({ name, size = 18, className, ...props }: UiIconProps) {
         <path {...common} d="M20 12a8 8 0 0 0-14.4-4.8L4 9" />
         <path {...common} d="M4 4v5h5M4 12a8 8 0 0 0 14.4 4.8L20 15" />
         <path {...common} d="M20 20v-5h-5" />
+      </>
+    ) : name === "search" ? (
+      <>
+        <circle {...common} cx="10.8" cy="10.8" r="6.8" />
+        <path {...common} d="m16 16 4.2 4.2" />
       </>
     ) : name === "stop" ? (
       <rect {...common} height="12" rx="1.5" width="12" x="6" y="6" />

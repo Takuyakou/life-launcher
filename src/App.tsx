@@ -9618,7 +9618,7 @@ function DashboardApp() {
         >
           <span className="launcherOpenButtonLabel">
             <span aria-hidden="true" className="launcherOpenButtonIcon">
-              <UiIcon name="book" size={24} />
+              <UiIcon name="search" size={24} />
             </span>
             <span>辞書を開く</span>
           </span>
