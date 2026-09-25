@@ -176,6 +176,7 @@ test("Main and Dictionary shortcut badges use the app accent", async ({ page }) 
   ]) {
     await expect(badge).toHaveCSS("color", "rgb(231, 185, 77)");
     await expect(badge).toHaveCSS("border-top-color", "rgba(231, 185, 77, 0.48)");
+    await expect(badge).toHaveCSS("font-weight", "820");
   }
 });
 

@@ -2536,6 +2536,11 @@ h3 {
   color: var(--accent);
   font-family: inherit;
   font-size: 11px;
+  font-weight: 820;
+}
+
+.launcherOpenButton .shortcutBadge {
+  font-size: 10px;
 }
 
 .shortcutBadge {
@@ -12166,6 +12171,29 @@ input[type="number"]::-webkit-inner-spin-button {
   color: var(--muted);
   font-size: var(--dashboard-font-meta);
   font-variant-numeric: tabular-nums;
+}
+
+.mainActionButton.doNowHoldButton {
+  --main-action-bg: var(--surface);
+  --main-action-hover-bg: var(--surface-strong);
+  --main-action-active-bg: var(--surface);
+  --main-action-border: var(--line);
+  --main-action-hover-border: rgba(231, 185, 77, 0.48);
+  --main-action-active-border: rgba(231, 185, 77, 0.48);
+  --main-action-color: var(--muted);
+  --main-action-hover-color: var(--accent-strong);
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: var(--radius);
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
 .victoryRewardSweep {

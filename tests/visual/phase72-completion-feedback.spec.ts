@@ -351,6 +351,15 @@ test("P8.10 Do Now hold clears on another timer start", async ({ page }) => {
 test("P8.10 Do Now acknowledgement works by keyboard", async ({ page }) => {
   await finishDoNowOnly(page, createPublicFixture());
   const acknowledge = page.getByRole("button", { name: "次の一手を見る" });
+  await expect(acknowledge).toHaveClass(/mainActionButton--neutral/);
+  await expect(acknowledge).toHaveCSS("min-height", "38px");
+  await expect(acknowledge).toHaveCSS("font-weight", "850");
+  await expect(acknowledge).toHaveCSS("color", "rgb(184, 176, 160)");
+  await expect(acknowledge).toHaveCSS("background-color", "rgb(33, 31, 26)");
+  await acknowledge.hover();
+  await expect(acknowledge).toHaveCSS("border-top-color", "rgba(231, 185, 77, 0.48)");
+  await expect(acknowledge).toHaveCSS("color", "rgb(255, 206, 91)");
+  await expect(acknowledge).toHaveCSS("background-color", "rgb(43, 41, 34)");
   await acknowledge.focus();
   await page.keyboard.press("Enter");
   await expect(page.locator(".doNowContent--hold")).toHaveCount(0);

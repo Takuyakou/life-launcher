@@ -10655,11 +10655,12 @@ function DashboardApp() {
                       </div>
                       <div className="doNowFooter">
                         <button
-                          className="mainActionButton mainActionButton--positive"
+                          className="mainActionButton mainActionButton--neutral doNowHoldButton"
                           onClick={() => void acknowledgeDoNowCompletion()}
                           type="button"
                         >
                           次の一手を見る
+                          <UiIcon name="chevronRight" size={16} aria-hidden="true" />
                         </button>
                       </div>
                     </div>
