@@ -3316,6 +3316,7 @@ function DashboardApp() {
   );
 
   const openMiniMode = useCallback(async () => {
+    if (expandedTimerOpen) return;
     if (!config?.settings.miniMode) {
       showToast("warn", "設定でミニモードを有効にしてください");
       return;
@@ -3344,7 +3345,7 @@ function DashboardApp() {
       console.error(`[mini-mode] ${stage}で失敗しました`, error);
       showToast("warn", `ミニモードを開けません (${stage}): ${message}`);
     }
-  }, [config?.settings.miniMode, ensureMiniWindow, miniSnapshot, showToast]);
+  }, [config?.settings.miniMode, ensureMiniWindow, expandedTimerOpen, miniSnapshot, showToast]);
 
   const hideMiniWindow = useCallback(async () => {
     const existing = miniWindowRef.current ?? (await WebviewWindow.getByLabel(MINI_WINDOW_LABEL));
@@ -15810,6 +15811,7 @@ function DashboardApp() {
       {expandedTimerOpen && activeTimer && (
         <ExpandedTimerOverlay
           clock={timerClock}
+          complete={Boolean(completionPrompt)}
           identity={activeTimerProject ? (
             <ProjectIdentity
               colorId={activeTimerProject.colorId}

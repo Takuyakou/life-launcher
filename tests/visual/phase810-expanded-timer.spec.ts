@@ -63,6 +63,56 @@ test("P8.10 TX-01 measure mode has no progress bar and fits narrow window", asyn
   expect(clock!.x + clock!.width).toBeLessThanOrEqual(430);
 });
 
+test("P8.10 TX-02 expiry keeps overlay and existing continue/finish flow", async ({ page }) => {
+  const fixture = createPublicFixture();
+  fixture.config.projects[0].nextStep!.shortTimerMinutes = 1;
+  await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
+  await installTauriMock(page, fixture, "main");
+  await page.goto("/");
+  await page.locator(".doNowStartPrimary").click();
+  await page.getByRole("button", { name: "タイマーを大きく表示" }).click();
+  const overlay = page.getByRole("dialog", { name: "拡大タイマー" });
+  await page.clock.runFor(60_500);
+  await expect(overlay).toBeVisible();
+  await expect(overlay.getByText("時間になりました")).toBeVisible();
+  const prompt = page.getByRole("dialog", { name: "タイマー満了" });
+  await expect(prompt).toBeVisible();
+  await expect(page.locator(".modalBackdrop").filter({ has: prompt })).toHaveCSS("z-index", "95");
+  await mkdir("dist/visual-qa", { recursive: true });
+  await page.screenshot({ path: "dist/visual-qa/expanded-timer-complete.png" });
+  await prompt.getByRole("button", { name: /続ける/ }).click();
+  await expect(prompt).toHaveCount(0);
+  await expect(overlay).toBeVisible();
+  await expect(overlay.getByText("実行中")).toBeVisible();
+  await page.clock.runFor(15 * 60_000);
+  await expect(prompt).toBeVisible();
+  await prompt.getByRole("button", { name: "終わる" }).click();
+  await expect(overlay).toHaveCount(0);
+});
+
+test("P8.10 TX-02 early stop uses the existing Today confirmation", async ({ page }) => {
+  const fixture = createPublicFixture();
+  const project = fixture.config.projects[0];
+  fixture.config.today.items = [{
+    text: project.nextStep!.text,
+    done: false,
+    sourceKey: `project:${project.id}`,
+    projectId: project.id,
+    shortTimerMinutes: 3,
+    defaultTimerMinutes: 25,
+  }];
+  await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
+  await installTauriMock(page, fixture, "main");
+  await page.goto("/");
+  await page.locator(".todayRow").first().getByRole("button", { name: "通常タイマー25分で開始" }).click();
+  await page.clock.fastForward(180_000);
+  await page.getByRole("button", { name: "タイマーを大きく表示" }).click();
+  await page.getByRole("dialog", { name: "拡大タイマー" }).getByRole("button", { name: "終了" }).click();
+  await expect(page.getByRole("dialog", { name: "今日の分は完了にしますか？" })).toBeVisible();
+  await page.getByRole("button", { name: "未完了のまま終了" }).click();
+  await expect(page.getByRole("dialog", { name: "拡大タイマー" })).toHaveCount(0);
+});
+
 for (const viewport of [{ width: 430, height: 380 }, { width: 1200, height: 800 }, { width: 1920, height: 1080 }]) {
   test(`P8.10 TX-01 expanded timer fits ${viewport.width}x${viewport.height}`, async ({ page }) => {
     await page.setViewportSize(viewport);

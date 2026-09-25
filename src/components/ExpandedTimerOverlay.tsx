@@ -5,6 +5,7 @@ type ExpandedTimerOverlayProps = {
   clock: string;
   identity?: ReactNode;
   label: string;
+  complete: boolean;
   paused: boolean;
   progressPercent: number | null;
   onClose: () => void;
@@ -16,6 +17,7 @@ export function ExpandedTimerOverlay({
   clock,
   identity,
   label,
+  complete,
   paused,
   progressPercent,
   onClose,
@@ -55,7 +57,7 @@ export function ExpandedTimerOverlay({
       <section
         aria-label="拡大タイマー"
         aria-modal="true"
-        className="expandedTimer"
+        className={complete ? "expandedTimer expandedTimer--complete" : "expandedTimer"}
         onKeyDown={handleKeyDown}
         ref={dialogRef}
         role="dialog"
@@ -76,8 +78,10 @@ export function ExpandedTimerOverlay({
         <div className="expandedTimerBody">
           <div className="expandedTimerIdentity">{identity}</div>
           <p className="expandedTimerTask" title={label}>{label}</p>
-          <span className="expandedTimerState">{paused ? "一時停止中" : "実行中"}</span>
-          <strong className={paused ? "expandedTimerClock expandedTimerClock--paused" : "expandedTimerClock"}>
+          <span className={complete ? "expandedTimerState expandedTimerState--complete" : "expandedTimerState"}>
+            {complete ? "時間になりました" : paused ? "一時停止中" : "実行中"}
+          </span>
+          <strong className={paused || complete ? "expandedTimerClock expandedTimerClock--paused" : "expandedTimerClock"}>
             {clock}
           </strong>
           {progressPercent !== null && (
@@ -85,7 +89,7 @@ export function ExpandedTimerOverlay({
               <span style={{ width: `${progressPercent}%` }} />
             </div>
           )}
-          <div className="expandedTimerActions">
+          {!complete && <div className="expandedTimerActions">
             <button className="secondaryButton" onClick={onPause} type="button">
               <UiIcon name={paused ? "play" : "pause"} size={20} />
               {paused ? "再開" : "一時停止"}
@@ -93,7 +97,7 @@ export function ExpandedTimerOverlay({
             <button className="secondaryButton secondaryButton--finish" onClick={onFinish} type="button">
               <UiIcon name="stop" size={20} /> 終了
             </button>
-          </div>
+          </div>}
         </div>
         <p className="expandedTimerHint">Escで戻る（タイマーは継続します）</p>
       </section>
