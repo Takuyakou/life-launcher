@@ -782,10 +782,14 @@ pub fn default_button_visibility() -> bool {
 }
 
 pub fn date_key_at<Tz: chrono::TimeZone>(now: chrono::DateTime<Tz>, day_start_hour: u8) -> String {
-    let hour_offset = i64::from(day_start_hour.min(23));
-    (now - chrono::Duration::hours(hour_offset))
-        .date_naive()
-        .to_string()
+    use chrono::Timelike;
+
+    let date = now.date_naive();
+    if now.hour() < u32::from(day_start_hour.min(23)) {
+        date.pred_opt().unwrap_or(date).to_string()
+    } else {
+        date.to_string()
+    }
 }
 
 pub fn today_date(day_start_hour: u8) -> String {
@@ -1084,6 +1088,7 @@ mod tests {
 
         assert_eq!(date_key_at(before_start, 4), "2026-07-04");
         assert_eq!(date_key_at(at_start, 4), "2026-07-05");
+        assert_eq!(date_key_at(before_start, 0), "2026-07-05");
     }
 
     #[test]

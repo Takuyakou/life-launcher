@@ -161,9 +161,9 @@ test("Dictionary entry aligns with item rows and Guide footer stays inside its d
 test("Timer right click does not offer group actions, while sidebar still does", async ({ page }) => {
   await prepare(page);
   await page.locator(".timerDock").click({ button: "right", position: { x: 6, y: 6 } });
-  await expect(page.getByRole("menuitem", { name: "グループ追加" })).toHaveCount(0);
+  await expect(page.getByRole("menuitem", { name: "グループを追加" })).toHaveCount(0);
   await page.locator(".brandBlock").click({ button: "right" });
-  await expect(page.getByRole("menuitem", { name: "グループ追加" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "グループを追加" })).toBeVisible();
 });
 
 test("Main and Dictionary shortcut badges use the app accent", async ({ page }) => {
@@ -183,7 +183,7 @@ test("Main and Dictionary shortcut badges use the app accent", async ({ page }) 
 test("Group add uses positive Add on the left and danger Cancel on the right", async ({ page }) => {
   await prepare(page);
   await page.locator(".brandBlock").click({ button: "right" });
-  await page.getByRole("menuitem", { name: "グループ追加" }).click();
+  await page.getByRole("menuitem", { name: "グループを追加" }).click();
   const dialog = page.getByRole("dialog", { name: "グループ追加" });
   const actions = dialog.locator(".formDialogActions").getByRole("button");
   await expect(actions).toHaveText(["追加", "キャンセル"]);

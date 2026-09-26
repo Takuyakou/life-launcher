@@ -193,6 +193,10 @@ export async function resolveDropItem(input: DropResolveInput): Promise<DropButt
   return invoke<DropButtonDraft>("resolve_drop_item", { input });
 }
 
+export async function chooseLauncherTarget(kind: "file" | "folder"): Promise<string | null> {
+  return invoke<string | null>("choose_launcher_target", { kind });
+}
+
 export async function ensureButtonIconCache(button: LauncherButton): Promise<string | null> {
   const path = await invoke<string | null>("ensure_button_icon_cache", { button });
   return path ? convertFileSrc(path) : null;

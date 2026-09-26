@@ -1327,4 +1327,44 @@ mod tests {
             0
         );
     }
+
+    #[test]
+    fn crossing_midnight_session_uses_its_recorded_end_day_without_changing_old_rows() {
+        let crossing = SessionLogEntry {
+            id: Some("crossing".to_string()),
+            date: "2026-09-26".to_string(),
+            project_id: None,
+            label: "crossing".to_string(),
+            started_at: "23:58".to_string(),
+            minutes: 10,
+            note: String::new(),
+            manual: false,
+        };
+        let entries = vec![crossing];
+        assert!(filter_session_entries(
+            &entries,
+            Some(&SessionEntriesFilter {
+                date_scope: Some("today".to_string()),
+                query: None,
+                project_id: None,
+            }),
+            "2026-09-25"
+        )
+        .expect("previous day")
+        .is_empty());
+        assert_eq!(
+            filter_session_entries(
+                &entries,
+                Some(&SessionEntriesFilter {
+                    date_scope: Some("today".to_string()),
+                    query: None,
+                    project_id: None,
+                }),
+                "2026-09-26"
+            )
+            .expect("end day")
+            .len(),
+            1
+        );
+    }
 }

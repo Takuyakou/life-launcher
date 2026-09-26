@@ -12,7 +12,7 @@ export async function installTauriMock(
   fixture: VisualQaFixture,
   currentWindowLabel = "main",
   softwareResetRecovery: unknown = null,
-  options: { cleanStartReset?: boolean; cleanStartNow?: string } = {},
+  options: { cleanStartReset?: boolean; cleanStartNow?: string; rolloverOnLoadConfig?: boolean } = {},
 ): Promise<void> {
   await page.addInitScript(
     ({ fixture, paths, currentWindowLabel, softwareResetRecovery, options }) => {
@@ -180,6 +180,7 @@ export async function installTauriMock(
         readOnly: boolean;
       } | null;
       let instructionRootChoices: InstructionRootChoice[] = [];
+      let launcherPickerResult: string | null = null;
       let instructionRootDelayed = false;
       const pendingInstructionRootChoices: Array<(choice: InstructionRootChoice) => void> = [];
       const invokeCalls: Array<{ command: string; args: Record<string, unknown> }> = [];
@@ -221,6 +222,9 @@ export async function installTauriMock(
         mainWindowState: () => ({ ...mainWindowState }),
         setInstructionRootChoices: (choices: typeof instructionRootChoices) => {
           instructionRootChoices = [...choices];
+        },
+        setLauncherPickerResult: (result: string | null) => {
+          launcherPickerResult = result;
         },
         setInstructionRootDelayed: (delayed: boolean) => {
           instructionRootDelayed = delayed;
@@ -284,6 +288,29 @@ export async function installTauriMock(
               case "set_display_awake":
                 return null;
               case "load_config":
+                if (options.rolloverOnLoadConfig) {
+                  const date = new Date();
+                  if (date.getHours() < currentConfig.settings.dayStartHour) {
+                    date.setDate(date.getDate() - 1);
+                  }
+                  const dayKey = [date.getFullYear(), date.getMonth() + 1, date.getDate()]
+                    .map((part, index) => index === 0 ? String(part) : String(part).padStart(2, "0"))
+                    .join("-");
+                  if (currentConfig.today.date !== dayKey) {
+                    currentConfig = {
+                      ...currentConfig,
+                      today: {
+                        ...currentConfig.today,
+                        date: dayKey,
+                        items: [],
+                        victory: { text: "", done: false },
+                        candidateExcludedSourceKeys: [],
+                        selectionMutationTokens: {},
+                      },
+                    };
+                    persistCurrentConfig();
+                  }
+                }
                 return {
                   config: currentConfig,
                   path: paths.config,
@@ -404,10 +431,16 @@ export async function installTauriMock(
                   source: input.value,
                 };
               }
+              case "choose_launcher_target":
+                return launcherPickerResult;
               case "load_today_session_total":
                 return {
                   date: currentConfig.today.date,
-                  totalMinutes: cleanStartTotalMinutes(),
+                  totalMinutes: options.rolloverOnLoadConfig
+                    ? (cleanStartState?.sessions ?? fixture.sessionEntries.entries)
+                        .filter((entry) => entry.date === currentConfig.today.date)
+                        .reduce((sum, entry) => sum + entry.minutes, 0)
+                    : cleanStartTotalMinutes(),
                   path: paths.sessions,
                 };
               case "record_session": {

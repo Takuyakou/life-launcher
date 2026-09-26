@@ -280,8 +280,22 @@ test("P8.10 Do Now-only completion holds its snapshot until acknowledged", async
   await hold.getByRole("button", { name: "次の一手を見る" }).click();
   await expect(hold).toHaveCount(0);
   await expect(page.locator(".doNowStartPrimary")).toBeVisible();
+  await expect(page.locator(".doNowContent")).toContainText("ストレッチ");
+  await expect(page.locator(".doNowContent")).not.toContainText(fixture.config.projects[0].nextStep!.text);
   await expect(page.locator(".todayRow--justCompleted, .todayAllCompletionReward"))
     .toHaveCount(0);
+});
+
+test("Do Now does not repeat the just-completed sole candidate", async ({ page }) => {
+  const fixture = createPublicFixture();
+  fixture.doNowCandidates = fixture.doNowCandidates.slice(0, 1);
+  await finishDoNowOnly(page, fixture);
+  await page.getByRole("button", { name: "次の一手を見る" }).click();
+  await expect(page.locator(".doNowEmptyContent")).toBeVisible();
+  await expect(page.locator(".doNowEmptyContent")).toContainText("今は他に提案できる一手がありません。");
+  await expect(page.locator(".doNowStartPrimary")).toHaveCount(0);
+  await page.getByRole("button", { name: "候補をもう一度見る" }).click();
+  await expect(page.locator(".doNowStartPrimary")).toBeVisible();
 });
 
 async function finishDoNowOnly(page: Page, fixture: VisualQaFixture) {
@@ -384,6 +398,7 @@ test("P72-05 a Do Now session linked to Today emits only the Today feedback", as
   await expect(page.locator(".todayRow--justCompleted")).toHaveCount(1);
   await expect(page.locator(".doNowContent--hold, .todayAllCompletionReward"))
     .toHaveCount(0);
+  await expect(page.locator(".doNowContent")).toContainText("ストレッチ");
 });
 
 test("P72-05 reduced motion keeps labels and colors without animation", async ({ page }) => {

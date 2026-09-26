@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { UiIcon } from "./UiIcon";
 
-export type ConfirmDialogTone = "normal" | "warning" | "danger";
+export type ConfirmDialogTone = "normal" | "positive" | "warning" | "danger";
 
 export type ConfirmDialogRequest = {
   title: string;

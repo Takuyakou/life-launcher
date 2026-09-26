@@ -36,6 +36,7 @@ import {
 } from "./constants";
 import {
   acknowledgeSoftwareResetRecovery,
+  chooseLauncherTarget,
   chooseInstructionRoot,
   createSoftwareResetBackup,
   deleteSessionEntry,
@@ -160,6 +161,9 @@ import {
 } from "./timerRuntime";
 import { UiIcon } from "./components/UiIcon";
 import { ShortcutBadge } from "./components/ShortcutBadge";
+import { findShortcutConflicts } from "./shortcutConflicts";
+import { localDayKey } from "./localDay";
+import { navigateAppArrow } from "./keyboardNavigation";
 import {
   getButtonsForOverlayPage,
   getOverlayPageCounts,
@@ -1498,12 +1502,12 @@ function shortcutFromKeyboardEvent(event: globalThis.KeyboardEvent): string | nu
   return [...modifiers, key].join("+");
 }
 
-function shortcutValidationMessage(value: string, others: string[]): string {
+function shortcutValidationMessage(value: string, conflictingActions: string[]): string {
   const clean = value.trim();
   if (!clean) return "未設定";
   if (!SHORTCUT_PATTERN.test(clean)) return "Ctrl+Kのような形式で入力してください";
-  if (others.some((other) => other.trim().toLowerCase() === clean.toLowerCase())) {
-    return "競合しています";
+  if (conflictingActions.length > 0) {
+    return `${conflictingActions.map((label) => `「${label}」`).join("・")}と競合。どちらかを変更してください`;
   }
   if (WINDOWS_RESERVED_SHORTCUTS.includes(clean.toLowerCase())) {
     return "OS予約キーのため登録できません。別のキーを入力してください";
@@ -1512,20 +1516,15 @@ function shortcutValidationMessage(value: string, others: string[]): string {
 }
 
 function validateShortcutSettings(draft: SettingsCenterDraft): string | null {
-  const values = [
-    draft.focusHotkey,
-    draft.launcherHotkey,
-    draft.miniHotkey,
-    draft.instructionHotkey,
-  ]
+  const conflict = findShortcutConflicts(
+    SHORTCUT_DRAFT_FIELDS.map(({ field, label }) => ({ field, label, value: draft[field] })),
+  )[0];
+  if (conflict) {
+    return `${conflict.chord} は ${conflict.bindings.map(({ label }) => `「${label}」`).join("・")} に設定されています。いずれかを変更してください`;
+  }
+  const values = SHORTCUT_DRAFT_FIELDS.map(({ field }) => draft[field])
     .map((value) => value.trim())
     .filter(Boolean);
-  const duplicates = values.find((value, index) =>
-    values.some(
-      (other, otherIndex) => otherIndex !== index && other.toLowerCase() === value.toLowerCase(),
-    ),
-  );
-  if (duplicates) return `ショートカットが重複しています: ${duplicates}`;
   const invalid = values.find((value) => !SHORTCUT_PATTERN.test(value));
   if (invalid) return `ショートカットの形式を確認してください: ${invalid}`;
   const reserved = values.find((value) => WINDOWS_RESERVED_SHORTCUTS.includes(value.toLowerCase()));
@@ -2123,6 +2122,9 @@ function DashboardApp() {
   configRef.current = config;
   const [backupPath, setBackupPath] = useState("");
   const [todaySessionMinutes, setTodaySessionMinutes] = useState(0);
+  const [todaySessionDate, setTodaySessionDate] = useState("");
+  const [observedDayKey, setObservedDayKey] = useState("");
+  const lastDayRefreshRef = useRef("");
   const [morningVictorySuggestion, setMorningVictorySuggestion] = useState<string | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -2246,11 +2248,19 @@ function DashboardApp() {
   const [completionPrompt, setCompletionPrompt] = useState<TimerCompletionPrompt | null>(null);
   const [completionFeedback, setCompletionFeedback] = useState<CompletionFeedback | null>(null);
   const [doNowCompletionHold, setDoNowCompletionHold] = useState<DoNowCompletionHold | null>(null);
+  const [doNowExcludedProjectId, setDoNowExcludedProjectId] = useState<string | null>(null);
   const [completionFollowup, setCompletionFollowup] = useState<CompletionFollowup | null>(null);
   const [now, setNow] = useState(Date.now());
   const [collapsedGroups, setCollapsedGroups] =
     useState<Record<string, boolean>>(readCollapsedGroups);
   const [dropDraft, setDropDraft] = useState<DropDialogState | null>(null);
+  const [builderKind, setBuilderKind] = useState<"file" | "folder" | "url" | null>(null);
+  const [builderSource, setBuilderSource] = useState("");
+  const [builderLabelTouched, setBuilderLabelTouched] = useState(false);
+  const [builderModeDrafts, setBuilderModeDrafts] = useState<
+    Partial<Record<"file" | "folder" | "url", { source: string; label: string; labelTouched: boolean }>>
+  >({});
+  const [builderBusy, setBuilderBusy] = useState(false);
   const [groupDraft, setGroupDraft] = useState<string | null>(null);
   const [groupRenameDraft, setGroupRenameDraft] = useState<{
     from: string;
@@ -2262,6 +2272,12 @@ function DashboardApp() {
   const [shortcutRecordingField, setShortcutRecordingField] = useState<ShortcutDraftField | null>(
     null,
   );
+  useEffect(() => {
+    const onKeyDown = (event: globalThis.KeyboardEvent) =>
+      navigateAppArrow(event, shortcutCaptureActiveRef.current);
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
   const [helpGuideOpen, setHelpGuideOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSectionKey>("basic");
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogRequest | null>(null);
@@ -2556,8 +2572,11 @@ function DashboardApp() {
       if (event.key !== "ContextMenu" && !(event.shiftKey && event.key === "F10")) return;
       event.preventDefault();
       event.stopPropagation();
-      const rect = event.currentTarget.getBoundingClientRect();
-      openContextMenu(target, rect.left, rect.bottom + 4, event.currentTarget);
+      const opener = event.target instanceof HTMLElement
+        ? (event.target.closest<HTMLElement>('button, [tabindex="0"]') ?? event.currentTarget)
+        : event.currentTarget;
+      const rect = opener.getBoundingClientRect();
+      openContextMenu(target, rect.left, rect.bottom + 4, opener);
     },
     [openContextMenu],
   );
@@ -2669,12 +2688,12 @@ function DashboardApp() {
   const visibleSidebarButtonGroups = useMemo(
     () =>
       buttonGroups
+        .filter((group) => group.buttons.length > 0 || config?.groups.includes(group.name))
         .map((group) => ({
           name: group.name,
           buttons: group.buttons.filter(showButtonInSidebar),
-        }))
-        .filter((group) => group.buttons.length > 0),
-    [buttonGroups],
+        })),
+    [buttonGroups, config?.groups],
   );
   const projectSelectableButtons = useMemo(
     () =>
@@ -2984,10 +3003,15 @@ function DashboardApp() {
     }
   }, [config?.today.date, doNowCompletionHold]);
 
+  useEffect(() => {
+    setDoNowExcludedProjectId(null);
+  }, [config?.today.date]);
+
   const refreshSessions = useCallback(async () => {
     try {
       const [response, doNow] = await Promise.all([loadTodaySessionTotal(), loadDoNowCandidates()]);
       setTodaySessionMinutes(response.totalMinutes);
+      setTodaySessionDate(response.date);
       setDoNowResponse(doNow);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -3111,6 +3135,34 @@ function DashboardApp() {
     },
     [refreshSessions, refreshTodayActivity, showToast],
   );
+
+  const configuredDayStartHour = config?.settings.dayStartHour;
+  const storedTodayDate = config?.today.date;
+  useEffect(() => {
+    if (configuredDayStartHour === undefined || !storedTodayDate) return;
+    const checkDay = () => {
+      const dayKey = localDayKey(new Date(), configuredDayStartHour);
+      setObservedDayKey((current) => (current === dayKey ? current : dayKey));
+      if (configRef.current?.today.date === dayKey) {
+        lastDayRefreshRef.current = "";
+      } else if (lastDayRefreshRef.current !== dayKey) {
+        lastDayRefreshRef.current = dayKey;
+        void refreshConfig();
+      }
+    };
+    checkDay();
+    const timer = window.setInterval(checkDay, 1000);
+    window.addEventListener("focus", checkDay);
+    const onVisibilityChange = () => {
+      if (!document.hidden) checkDay();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", checkDay);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [configuredDayStartHour, storedTodayDate, refreshConfig]);
 
   useEffect(() => {
     let active = true;
@@ -4810,6 +4862,7 @@ function DashboardApp() {
         const draft = await resolveDropItem(
           input.kind === "url" ? { ...input, suggestedLabel } : input,
         );
+        setBuilderKind(null);
         setDropDraft({
           ...draft,
           label: draft.label,
@@ -5069,6 +5122,18 @@ function DashboardApp() {
       event.dataTransfer.getData("text/uri-list") || event.dataTransfer.getData("text/plain");
     const url = firstDroppedUrl(text);
     if (!url) return;
+    try {
+      const dropped = new URL(url);
+      if (
+        dropped.origin === window.location.origin ||
+        dropped.hostname === "tauri.localhost" ||
+        dropped.hostname === "asset.localhost"
+      ) {
+        return;
+      }
+    } catch {
+      return;
+    }
 
     void openDropDialog({ kind: "url", value: url });
   };
@@ -6288,7 +6353,48 @@ function DashboardApp() {
 
   const confirmDropRegistration = async () => {
     if (!config || !dropDraft) return;
-    const label = dropDraft.label.trim();
+    if (builderBusy) return;
+    let resolved = dropDraft;
+    if (builderKind) {
+      const source = builderSource.trim();
+      if (!source) {
+        showToast("warn", "登録先を入力してください");
+        return;
+      }
+      try {
+        setBuilderBusy(true);
+        const target = await resolveDropItem(
+          builderKind === "url" ? { kind: "url", value: source } : { kind: "path", value: source },
+        );
+        if (
+          (builderKind === "folder" && target.action.type !== "open_folder") ||
+          (builderKind === "file" &&
+            target.action.type === "open_folder" &&
+            !source.toLowerCase().endsWith(".lnk"))
+        ) {
+          showToast(
+            "warn",
+            builderKind === "file" ? "ファイルを選んでください" : "フォルダを選んでください",
+          );
+          return;
+        }
+        resolved = {
+          ...dropDraft,
+          action: target.action,
+          iconSource: target.iconSource,
+          source: target.source,
+        };
+      } catch (error) {
+        showToast(
+          "error",
+          `登録先を確認できません: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        return;
+      } finally {
+        setBuilderBusy(false);
+      }
+    }
+    const label = resolved.label.trim();
     if (!label) {
       showToast("warn", "ラベルを入力してください");
       return;
@@ -6301,22 +6407,28 @@ function DashboardApp() {
     const button: LauncherButton = {
       id: uniqueButtonId(label, config.buttons),
       label,
-      icon: iconForAction(dropDraft.action),
-      iconSource: dropDraft.iconSource ?? undefined,
+      icon: iconForAction(resolved.action),
+      iconSource: resolved.iconSource ?? undefined,
       group: group && group !== DEFAULT_BUTTON_GROUP ? group : undefined,
       showInSidebar: dropDraft.showInSidebar,
       showInOverlay: dropDraft.showInOverlay,
       overlayPageId: dropDraft.overlayPageId ?? undefined,
       aliases: [],
-      actions: [dropDraft.action],
+      actions: [resolved.action],
     };
 
     const saved = await persistConfig({
       ...config,
+      groups:
+        group && !config.groups.includes(group) && group !== DEFAULT_BUTTON_GROUP
+          ? [...config.groups, group]
+          : config.groups,
       buttons: [...config.buttons, button],
     });
     if (!saved) return;
     setDropDraft(null);
+    setBuilderKind(null);
+    setBuilderModeDrafts({});
     void refreshButtonIcon(button, true);
     showToast("ok", `${label} を登録しました`);
   };
@@ -6380,6 +6492,71 @@ function DashboardApp() {
     if (!config) return;
     setContextMenu(null);
     setGroupDraft("");
+  };
+
+  const openButtonBuilder = (groupName?: string) => {
+    if (!config) return;
+    const group = groupName || groupNames[0] || DEFAULT_BUTTON_GROUP;
+    setContextMenu(null);
+    setBuilderKind("file");
+    setBuilderSource("");
+    setBuilderLabelTouched(false);
+    setBuilderModeDrafts({});
+    setDropDraft({
+      label: "",
+      group,
+      groupMode: "existing",
+      existingGroup: group,
+      newGroup: "",
+      iconSource: null,
+      action: { type: "open_file", payload: { path: "" } },
+      source: "",
+      showInSidebar: true,
+      showInOverlay: true,
+      overlayPageId: currentDropOverlayPageId(),
+    });
+  };
+
+  const updateBuilderSource = (source: string) => {
+    setBuilderSource(source);
+    if (!dropDraft || !builderKind) return;
+    const basename = source.trim().replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? "";
+    let suggestion = basename.replace(/\.[^.]+$/, "");
+    if (builderKind === "url") {
+      try {
+        suggestion = new URL(source).hostname;
+      } catch {
+        suggestion = "";
+      }
+    }
+    if (!builderLabelTouched) setDropDraft({ ...dropDraft, label: suggestion });
+  };
+
+  const switchBuilderKind = (kind: "file" | "folder" | "url") => {
+    if (!builderKind || !dropDraft || builderKind === kind) return;
+    const restored = builderModeDrafts[kind];
+    setBuilderModeDrafts({
+      ...builderModeDrafts,
+      [builderKind]: {
+        source: builderSource,
+        label: dropDraft.label,
+        labelTouched: builderLabelTouched,
+      },
+    });
+    setBuilderKind(kind);
+    setBuilderSource(restored?.source ?? "");
+    setBuilderLabelTouched(restored?.labelTouched ?? false);
+    setDropDraft({ ...dropDraft, label: restored?.label ?? "" });
+  };
+
+  const pickBuilderSource = async () => {
+    if (!builderKind || builderKind === "url") return;
+    try {
+      const source = await chooseLauncherTarget(builderKind);
+      if (source) updateBuilderSource(source);
+    } catch (error) {
+      showToast("error", `選択できません: ${error instanceof Error ? error.message : String(error)}`);
+    }
   };
 
   const confirmGroupAddition = () => {
@@ -6912,6 +7089,7 @@ function DashboardApp() {
           note: timer.note,
         });
         setTodaySessionMinutes(response.totalMinutes);
+        setTodaySessionDate(response.date);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         showToast("error", `記録できません: ${message}`);
@@ -6998,6 +7176,10 @@ function DashboardApp() {
     stoppedAt: number,
   ) => {
     const key = `timer:${current.today.date}:${timer.instanceId}`;
+    if (completedSourceKey && timer.doNowSnapshot) {
+      setDoNowExcludedProjectId(timer.doNowSnapshot.projectId);
+      setDoNowCandidateIndex(0);
+    }
     if (completedSourceKey && nextItems.length === 3 && nextItems.every((item) => item.done)) {
       showCompletionFeedback({ key, kind: "todayAll", label: timer.note || timer.label });
       return;
@@ -8321,6 +8503,10 @@ function DashboardApp() {
       ? current?.projects.find((candidate) => candidate.id === item.projectId)
       : undefined;
     if (!current || !item || !project || sourceEditBusyRef.current) return false;
+    if (project.nextStep?.sourceWishlistId === wishlistId) {
+      showToast("warn", "すでに次の一手に設定されています");
+      return true;
+    }
     const projectId = project.id;
     const wishlistSource = `wishlist:${wishlistId}`;
     const projectSource = `project:${projectId}`;
@@ -8491,6 +8677,10 @@ function DashboardApp() {
         : undefined;
     if (promotingWishlist && !selectedWishlist) {
       showToast("warn", "やりたいことを選択してください");
+      return;
+    }
+    if (selectedWishlist && project.nextStep?.sourceWishlistId === selectedWishlist.id) {
+      showToast("warn", "すでに次の一手に設定されています");
       return;
     }
     const text = promotingWishlist ? (selectedWishlist?.text.trim() ?? "") : draft.text.trim();
@@ -9508,8 +9698,19 @@ function DashboardApp() {
   };
   const allTodayItemsCompleted =
     config.today.items.length === TODAY_ITEM_LIMIT && config.today.items.every((item) => item.done);
+  const displayedDayKey = observedDayKey || config.today.date;
+  const displayedTodayMinutes = todaySessionDate === displayedDayKey ? todaySessionMinutes : 0;
   const todayActivityCount =
-    todayActivityDate === config.today.date ? todayActivityEntries.length : 0;
+    todayActivityDate === displayedDayKey ? todayActivityEntries.length : 0;
+  const shortcutConflicts = settingsDraft
+    ? findShortcutConflicts(
+        SHORTCUT_DRAFT_FIELDS.map(({ field, label }) => ({
+          field,
+          label,
+          value: settingsDraft[field],
+        })),
+      )
+    : [];
   const timerStatus = completionPrompt
     ? "完了確認中"
     : activeTimer
@@ -9531,10 +9732,16 @@ function DashboardApp() {
     : undefined;
   const nextStepSetupProject =
     config.projects.find((project) => !project.nextStep?.text.trim()) ?? config.projects[0];
-  const doNowCandidates = (doNowResponse?.candidates ?? []).flatMap((candidate) => {
-    const project = config.projects.find((item) => item.id === candidate.projectId);
-    return project ? [{ candidate, project }] : [];
-  });
+  const doNowCandidates = (doNowResponse?.candidates ?? [])
+    .filter((candidate) => candidate.projectId !== doNowExcludedProjectId)
+    .flatMap((candidate) => {
+      const project = config.projects.find((item) => item.id === candidate.projectId);
+      return project ? [{ candidate, project }] : [];
+    });
+  const doNowOnlyExcluded =
+    doNowExcludedProjectId !== null &&
+    (doNowResponse?.candidates.length ?? 0) > 0 &&
+    doNowCandidates.length === 0;
   const doNowSelection = doNowCandidates[doNowCandidateIndex] ?? doNowCandidates[0];
   const doNowRestartPreferred = Boolean(
     doNowSelection?.candidate.restartEligible && (config.settings.restartShortFirst ?? true),
@@ -9566,6 +9773,7 @@ function DashboardApp() {
     project: LauncherProject,
     timerKind: "short" | "normal" | "measure",
   ) => {
+    setDoNowExcludedProjectId(null);
     const actions = (project.nextStep?.buttonIds ?? []).flatMap(
       (buttonId) => buttonsById.get(buttonId)?.actions ?? [],
     );
@@ -9593,6 +9801,8 @@ function DashboardApp() {
   };
   const acknowledgeDoNowCompletion = async () => {
     if (!(await refreshDoNow())) return;
+    setDoNowExcludedProjectId(doNowCompletionHold?.projectId ?? null);
+    setDoNowCandidateIndex(0);
     setDoNowCompletionHold(null);
     window.requestAnimationFrame(() => {
       document
@@ -9603,7 +9813,9 @@ function DashboardApp() {
   const renderButtonIcon = (button: LauncherButton, className: string) => {
     const source = buttonIconSources[button.id];
     if (source) {
-      return <img alt="" className={`${className} buttonIconImage`} src={source} />;
+      return (
+        <img alt="" className={`${className} buttonIconImage`} draggable={false} src={source} />
+      );
     }
 
     return (
@@ -9752,12 +9964,28 @@ function DashboardApp() {
         className="sidebar"
         onContextMenu={(event) => {
           event.preventDefault();
-          openContextMenu({ kind: "sidebar" }, event.clientX, event.clientY, event.currentTarget);
+          const opener = event.detail === 0 && event.target instanceof HTMLElement
+            ? (event.target.closest<HTMLElement>('button, [tabindex="0"]') ?? event.currentTarget)
+            : event.currentTarget;
+          const rect = opener.getBoundingClientRect();
+          openContextMenu(
+            { kind: "sidebar" },
+            event.detail === 0 ? rect.left : event.clientX,
+            event.detail === 0 ? rect.bottom + 4 : event.clientY,
+            opener,
+          );
         }}
+        onKeyDown={(event) => openContextMenuFromKeyboard(event, { kind: "sidebar" })}
         tabIndex={-1}
       >
         <div className="brandBlock">
-          <img alt="" aria-hidden="true" className="brandIcon" src="/life-launcher-icon.svg" />
+          <img
+            alt=""
+            aria-hidden="true"
+            className="brandIcon"
+            draggable={false}
+            src="/life-launcher-icon.svg"
+          />
           <div className="brandCopy">
             <p className="eyebrow">Life Launcher</p>
             <strong>Quick</strong>
@@ -10385,10 +10613,10 @@ function DashboardApp() {
         <header className="topBar">
           <div className="topSummary">
             <h1 className={activeView === "records" ? "topTitle topTitle--records" : "topTitle"}>
-              {activeView === "records" ? "記録" : `今日 ${todaySessionMinutes}分`}
+              {activeView === "records" ? "記録" : `今日 ${displayedTodayMinutes}分`}
             </h1>
             {activeView === "main" && (
-              <span className="topDateLabel">{formatDateKeyForHeader(config.today.date)}</span>
+              <span className="topDateLabel">{formatDateKeyForHeader(displayedDayKey)}</span>
             )}
           </div>
           <div className="topPills">
@@ -10847,24 +11075,37 @@ function DashboardApp() {
                       <div className="doNowEmpty">
                         <div className="doNowEmptyContent">
                           <strong>
-                            {nextStepSetupProject
+                            {doNowOnlyExcluded
+                              ? "今は他に提案できる一手がありません。"
+                              : nextStepSetupProject
                               ? "次の一手を設定すると、ここに提案されます。"
                               : "プロジェクトを作り、次の一手を設定すると提案されます。"}
                           </strong>
                           <span>
-                            迷ったときに、今の状況から始めやすい「次にやること」を1つだけ提示します。
+                            {doNowOnlyExcluded
+                              ? "取り組んだ一手は、もう一度候補を見ると表示できます。"
+                              : "迷ったときに、今の状況から始めやすい「次にやること」を1つだけ提示します。"}
                           </span>
                           <button
-                            className="mainActionButton mainActionButton--gold"
-                            onClick={() =>
-                              nextStepSetupProject
-                                ? openNextStepEditor(nextStepSetupProject)
-                                : openProjectAddDialog()
-                            }
+                            className={doNowOnlyExcluded
+                              ? "mainActionButton mainActionButton--neutral"
+                              : "mainActionButton mainActionButton--gold"}
+                            onClick={() => {
+                              if (doNowOnlyExcluded) {
+                                setDoNowExcludedProjectId(null);
+                                setDoNowCandidateIndex(0);
+                              } else if (nextStepSetupProject) {
+                                openNextStepEditor(nextStepSetupProject);
+                              } else {
+                                openProjectAddDialog();
+                              }
+                            }}
                             type="button"
                           >
-                            <UiIcon name="add" size={16} />
-                            {nextStepSetupProject ? "次の一手を設定" : "プロジェクトを追加"}
+                            <UiIcon name={doNowOnlyExcluded ? "refresh" : "add"} size={16} />
+                            {doNowOnlyExcluded
+                              ? "候補をもう一度見る"
+                              : nextStepSetupProject ? "次の一手を設定" : "プロジェクトを追加"}
                           </button>
                         </div>
                       </div>
@@ -13344,9 +13585,22 @@ function DashboardApp() {
             </>
           ) : (
             <>
+              {contextMenu.groupName && (
+                <ContextMenuItem
+                  onClick={() => openButtonBuilder(contextMenu.groupName)}
+                  type="button"
+                >
+                  ボタンを追加
+                </ContextMenuItem>
+              )}
               <ContextMenuItem onClick={openGroupDialog} type="button">
-                グループ追加
+                グループを追加
               </ContextMenuItem>
+              {!contextMenu.groupName && (
+                <ContextMenuItem onClick={() => openButtonBuilder()} type="button">
+                  ボタンを追加
+                </ContextMenuItem>
+              )}
               {contextMenu.groupName && (
                 <>
                   <ContextMenuItem
@@ -14211,15 +14465,31 @@ function DashboardApp() {
               }
             >
               <h3>ショートカット</h3>
+              {shortcutConflicts.map((conflict) => (
+                <p className="shortcutConflictWarning" key={conflict.chord} role="alert">
+                  {conflict.chord} は {conflict.bindings.map(({ label }) => `「${label}」`).join("・")}
+                  に設定されています。いずれかを変更してください。
+                </p>
+              ))}
               <div className="settingsGrid">
                 {SHORTCUT_DRAFT_FIELDS.map(({ field, label }) => {
                   const value = settingsDraft[field];
                   const recording = shortcutRecordingField === field;
-                  const others = SHORTCUT_DRAFT_FIELDS.filter(
-                    (candidate) => candidate.field !== field,
-                  ).map((candidate) => settingsDraft[candidate.field]);
+                  const conflict = shortcutConflicts.find((item) =>
+                    item.bindings.some((binding) => binding.field === field),
+                  );
+                  const others = conflict?.bindings
+                    .filter((binding) => binding.field !== field)
+                    .map((binding) => binding.label) ?? [];
                   return (
-                    <div className="fieldStack shortcutCaptureField" key={field}>
+                    <div
+                      className={
+                        conflict
+                          ? "fieldStack shortcutCaptureField shortcutCaptureField--conflict"
+                          : "fieldStack shortcutCaptureField"
+                      }
+                      key={field}
+                    >
                       <span>{label}</span>
                       <div
                         className={
@@ -14232,6 +14502,7 @@ function DashboardApp() {
                           <kbd>{recording ? "入力待ち…" : value || "未設定"}</kbd>
                         </div>
                         <button
+                          aria-invalid={Boolean(conflict)}
                           aria-pressed={recording}
                           className="secondaryButton shortcutCaptureButton"
                           onClick={() => void beginShortcutRecording(field)}
@@ -15949,25 +16220,78 @@ function DashboardApp() {
       {dropDraft && (
         <div className="modalBackdrop" role="presentation">
           <section
-            aria-label="ボタン登録"
+            aria-label={builderKind ? "Button Builder" : "ボタン登録"}
             aria-modal="true"
             className="dropDialog modalLongForm"
             role="dialog"
             tabIndex={-1}
           >
             <div>
-              <p className="eyebrow">Drop Register</p>
+              <p className="eyebrow">{builderKind ? "Button Builder" : "Drop Register"}</p>
               <h2>ボタンを追加</h2>
             </div>
+
+            {builderKind && (
+              <div className="builderSourceFields">
+                <span>追加元</span>
+                <div className="builderSourceModes" role="group" aria-label="追加元">
+                  {(["file", "folder", "url"] as const).map((kind) => (
+                    <button
+                      aria-pressed={builderKind === kind}
+                      className={
+                        builderKind === kind
+                          ? "builderSourceMode builderSourceMode--active"
+                          : "builderSourceMode"
+                      }
+                      key={kind}
+                      onClick={() => switchBuilderKind(kind)}
+                      type="button"
+                    >
+                      <UiIcon
+                        name={kind === "file" ? "fileText" : kind === "folder" ? "folder" : "external"}
+                        size={16}
+                      />
+                      {kind === "file" ? "ファイル" : kind === "folder" ? "フォルダ" : "URL"}
+                    </button>
+                  ))}
+                </div>
+                <div className="fieldStack">
+                  <label htmlFor="builder-source-input">
+                    {builderKind === "file" ? "ファイル" : builderKind === "folder" ? "フォルダ" : "URL"}
+                  </label>
+                  <div className="builderSourceInputRow">
+                    <input
+                      className="textInput"
+                      id="builder-source-input"
+                      onChange={(event) => updateBuilderSource(event.target.value)}
+                      placeholder={builderKind === "url" ? "https://example.com/" : "パスを入力"}
+                      value={builderSource}
+                    />
+                    {builderKind !== "url" && (
+                      <button
+                        className="secondaryButton"
+                        onClick={() => void pickBuilderSource()}
+                        type="button"
+                      >
+                        参照...
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <label className="fieldStack">
               <span>ラベル</span>
               <input
                 className="textInput"
-                onChange={(event) => setDropDraft({ ...dropDraft, label: event.target.value })}
+                onChange={(event) => {
+                  if (builderKind) setBuilderLabelTouched(true);
+                  setDropDraft({ ...dropDraft, label: event.target.value });
+                }}
                 value={dropDraft.label}
               />
-              <small>ファイル名やフォルダ名から自動入力しています。必要なら変更できます。</small>
+              <small>ファイル名・フォルダ名・URLから自動入力します。必要なら変更できます。</small>
             </label>
 
             <GroupModeField
@@ -16058,27 +16382,51 @@ function DashboardApp() {
               <p className="dropSource">
                 <UiIcon
                   name={
-                    dropDraft.action.type === "open_url"
+                    (builderKind ? builderKind === "url" : dropDraft.action.type === "open_url")
                       ? "external"
-                      : dropDraft.action.type === "open_folder"
+                      : (builderKind ? builderKind === "folder" : dropDraft.action.type === "open_folder")
                         ? "folder"
                         : "fileText"
                   }
                   size={16}
                 />
-                <span>{actionDescription(dropDraft.action)}</span>
+                <span>
+                  {builderKind ? builderSource || "未選択" : actionDescription(dropDraft.action)}
+                </span>
               </p>
             </div>
+
+            {builderKind && (
+              <div className="builderPreview" aria-label="サイドバーのプレビュー">
+                <small>Sidebar Preview</small>
+                <div className="builderPreviewItem">
+                  <UiIcon
+                    name={builderKind === "file" ? "fileText" : builderKind === "folder" ? "folder" : "external"}
+                    size={20}
+                  />
+                  <span>{dropDraft.label || "名称未設定"}</span>
+                </div>
+              </div>
+            )}
 
             <div className="dialogActions dropRegisterActions">
               <button
                 className="primaryButton"
+                disabled={builderBusy}
                 onClick={() => void confirmDropRegistration()}
                 type="button"
               >
                 追加
               </button>
-              <button className="dangerButton" onClick={() => setDropDraft(null)} type="button">
+              <button
+                className="dangerButton"
+                onClick={() => {
+                  setDropDraft(null);
+                  setBuilderKind(null);
+                  setBuilderModeDrafts({});
+                }}
+                type="button"
+              >
                 キャンセル
               </button>
             </div>
@@ -16195,6 +16543,7 @@ function DashboardApp() {
           message="ここまでの実行は記録されます。"
           confirmLabel="今日の分は完了"
           cancelLabel="未完了のまま終了"
+          tone="positive"
           initialFocus="cancel"
           isProcessing={earlyStopSaving}
           onConfirm={() => resolveEarlyStop(true)}

@@ -33,7 +33,10 @@ export function ContextMenu({
 
   const dismiss = useCallback(() => {
     onClose();
-    if (opener?.isConnected) opener.focus();
+    window.requestAnimationFrame(() => {
+      if (document.activeElement?.closest('[role="menu"]')) return;
+      if (opener?.isConnected) opener.focus({ preventScroll: true });
+    });
   }, [onClose, opener]);
 
   const clampToViewport = useCallback(() => {
@@ -59,6 +62,7 @@ export function ContextMenu({
     observer.observe(menu);
     window.addEventListener("resize", clampToViewport);
     clampToViewport();
+    menu.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
     return () => {
       observer.disconnect();
       window.removeEventListener("resize", clampToViewport);
@@ -66,9 +70,7 @@ export function ContextMenu({
   }, [clampToViewport]);
 
   useEffect(() => {
-    const focusFrame = window.requestAnimationFrame(() => {
-      menuRef.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
-    });
+    menuRef.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
     const closeOnPointerDown = (event: PointerEvent) => {
       if (!menuRef.current?.contains(event.target as Node)) dismiss();
     };
@@ -82,7 +84,6 @@ export function ContextMenu({
     document.addEventListener("keydown", closeOnKeyDown);
     window.addEventListener("blur", closeOnBlur);
     return () => {
-      window.cancelAnimationFrame(focusFrame);
       document.removeEventListener("pointerdown", closeOnPointerDown, true);
       document.removeEventListener("keydown", closeOnKeyDown);
       window.removeEventListener("blur", closeOnBlur);

@@ -2431,6 +2431,8 @@ h3 {
 }
 
 .sidebar {
+  -webkit-user-select: none;
+  user-select: none;
   position: sticky;
   top: 0;
   height: 100vh;
@@ -2901,6 +2903,8 @@ h3 {
 }
 
 .expandedTimerBackdrop {
+  -webkit-user-select: none;
+  user-select: none;
   position: fixed;
   inset: 0;
   z-index: 90;
@@ -3234,6 +3238,8 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .mainPanel {
+  -webkit-user-select: none;
+  user-select: none;
   min-width: 0;
   min-height: 0;
   height: 100vh;
@@ -3243,8 +3249,39 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .mainPanel > .topBar {
+  -webkit-user-select: none;
+  user-select: none;
   width: min(100%, 1180px);
   margin-inline: auto;
+}
+
+.sidebar input:not([type="number"]),
+.sidebar textarea,
+.sidebar [contenteditable="true"],
+.mainPanel input,
+.mainPanel textarea,
+.mainPanel [contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.sidebar input[type="number"] {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.doNowBand,
+.todaySectionBar,
+.disclosureHeader {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.doNowBand input,
+.todaySectionBar input,
+.disclosureHeader input {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 .mainScrollArea {
@@ -6333,6 +6370,8 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .modalBackdrop {
+  -webkit-user-select: none;
+  user-select: none;
   position: fixed;
   inset: 0;
   z-index: 35;
@@ -6352,6 +6391,76 @@ input[type="number"]::-webkit-inner-spin-button {
   padding: 18px;
   background: var(--dialog-surface);
   box-shadow: var(--dialog-shadow);
+}
+
+.modalBackdrop input,
+.modalBackdrop textarea,
+.modalBackdrop [contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.builderSourceFields {
+  display: grid;
+  gap: 10px;
+}
+
+.builderSourceModes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.builderSourceMode {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--dialog-surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.builderSourceMode:hover,
+.builderSourceMode:focus-visible,
+.builderSourceMode--active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.builderSourceInputRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.builderSourceInputRow .secondaryButton {
+  min-width: 100px;
+}
+
+.builderPreview {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.builderPreviewItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+}
+
+@media (max-width: 520px) {
+  .builderSourceModes,
+  .builderSourceInputRow {
+    grid-template-columns: 1fr;
+  }
 }
 
 .helpGuideDialog {
@@ -6847,6 +6956,23 @@ input[type="number"]::-webkit-inner-spin-button {
   box-shadow: var(--control-primary-active-shadow);
 }
 
+.confirmDialogButton--positive {
+  border-color: rgba(111, 207, 151, 0.45);
+  background: var(--control-positive-bg);
+  color: var(--good);
+}
+
+.confirmDialogButton--positive:hover:not(:disabled),
+.confirmDialogButton--positive:focus-visible {
+  border-color: var(--control-positive-hover-border);
+  background: var(--control-positive-hover-bg);
+}
+
+.confirmDialogButton--positive:active:not(:disabled) {
+  border-color: var(--control-positive-active-border);
+  background: var(--control-positive-active-bg);
+}
+
 .confirmDialogButton--warning:hover:not(:disabled) {
   background: var(--control-warning-hover-bg);
 }
@@ -7184,6 +7310,24 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .shortcutCaptureField {
   min-width: 0;
+}
+
+.shortcutConflictWarning {
+  margin: 0;
+  border-left: 3px solid var(--warn);
+  padding: 8px 11px;
+  background: var(--surface-soft);
+  color: #ffd1a6;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.shortcutCaptureField--conflict .shortcutCaptureValue {
+  border-color: var(--warn);
+}
+
+.shortcutCaptureField--conflict > small {
+  color: #ffd1a6;
 }
 
 .shortcutCaptureControl {
