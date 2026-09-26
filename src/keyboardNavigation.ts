@@ -79,10 +79,29 @@ export function navigateAppArrow(event: KeyboardEvent, captureActive: boolean): 
     return;
   }
   if (sidebar.contains(current)) {
+    const timerControls = sidebar.querySelector<HTMLElement>('.timerDock .timerControls');
+    const timerActions = timerControls ? available(timerControls) : [];
+    const sidebarItems = available(sidebar).filter((item) => !item.closest('.timerDock'));
+    if (timerActions.includes(current)) {
+      if (event.key === "ArrowUp") focus(sidebarItems[sidebarItems.length - 1], event);
+      else if (event.key === "ArrowLeft" || event.key === "ArrowRight" || event.key === "ArrowDown") {
+        const direction = event.key === "ArrowLeft" ? -1 : 1;
+        focus(timerActions[timerActions.indexOf(current) + direction], event);
+      }
+      return;
+    }
+    if (current.closest('.timerDock') && timerActions.length > 0) {
+      if (event.key === "ArrowUp") focus(sidebarItems[sidebarItems.length - 1], event);
+      else if (event.key === "ArrowDown" || event.key === "ArrowRight") focus(timerActions[0], event);
+      return;
+    }
     if (event.key === "ArrowRight") focus(available(main)[0], event);
     else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-      const moved = step(sidebar, current, event.key === "ArrowDown" ? 1 : -1, event);
-      if (!moved && event.key === "ArrowUp") focus(available(toolbar)[0], event);
+      const items = timerActions.length ? sidebarItems : available(sidebar);
+      const next = items[items.indexOf(current) + (event.key === "ArrowDown" ? 1 : -1)];
+      if (next) focus(next, event);
+      else if (event.key === "ArrowDown") focus(timerActions[0], event);
+      else focus(available(toolbar)[0], event);
     }
     return;
   }

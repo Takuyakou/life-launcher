@@ -282,6 +282,7 @@ type ActiveTimer = {
   label: string;
   note: string;
   doNowSnapshot?: DoNowCompletionSnapshot;
+  continuedAfterCompletion?: boolean;
   startedAtMs: number;
   startedAt: string;
   mode: TimerMode;
@@ -2235,6 +2236,7 @@ function DashboardApp() {
   const expandTimerButtonRef = useRef<HTMLButtonElement | null>(null);
   const timerStartRequestRef = useRef(0);
   const activeTimerRef = useRef<ActiveTimer | null>(null);
+  const finishActiveTimerRef = useRef<(timer: ActiveTimer) => void>(() => undefined);
   const finishingTimerRef = useRef<number | null>(null);
   const plannedCommitRef = useRef(false);
   const earlyStopRef = useRef<{
@@ -2248,6 +2250,7 @@ function DashboardApp() {
   const [completionPrompt, setCompletionPrompt] = useState<TimerCompletionPrompt | null>(null);
   const [completionFeedback, setCompletionFeedback] = useState<CompletionFeedback | null>(null);
   const [doNowCompletionHold, setDoNowCompletionHold] = useState<DoNowCompletionHold | null>(null);
+  const [doNowCompletionSaving, setDoNowCompletionSaving] = useState(false);
   const [doNowExcludedProjectId, setDoNowExcludedProjectId] = useState<string | null>(null);
   const [completionFollowup, setCompletionFollowup] = useState<CompletionFollowup | null>(null);
   const [now, setNow] = useState(Date.now());
@@ -2360,6 +2363,8 @@ function DashboardApp() {
   const lastSettingsApplyErrorRef = useRef<string | null>(null);
   const shortcutCaptureActiveRef = useRef(false);
   const victoryInputRef = useRef<HTMLInputElement | null>(null);
+  const victoryNavigationRef = useRef<HTMLButtonElement | null>(null);
+  const victorySaveRef = useRef<Promise<boolean> | null>(null);
   const launcherSearchRef = useRef<HTMLInputElement | null>(null);
   const launcherOverlayOpenerRef = useRef<HTMLElement | null>(null);
   const launcherOverlayTabsRef = useRef<HTMLDivElement | null>(null);
@@ -3225,10 +3230,8 @@ function DashboardApp() {
     if (morningFocusDateRef.current === config.today.date) return;
 
     morningFocusDateRef.current = config.today.date;
-    setVictoryEditing(true);
     window.requestAnimationFrame(() => {
-      victoryInputRef.current?.focus();
-      victoryInputRef.current?.select();
+      victoryNavigationRef.current?.focus({ preventScroll: true });
     });
   }, [activeView, config]);
 
@@ -7097,7 +7100,7 @@ function DashboardApp() {
       }
       // A refresh error after append must never cause a second Session append.
       try {
-        await refreshDoNow();
+        if (!timer.doNowSnapshot || reason !== "complete") await refreshDoNow();
         await refreshTodayActivity();
       } catch {
         showToast("warn", "記録は保存しましたが、表示を更新できませんでした");
@@ -7176,6 +7179,13 @@ function DashboardApp() {
     stoppedAt: number,
   ) => {
     const key = `timer:${current.today.date}:${timer.instanceId}`;
+    if (timer.doNowSnapshot && (timer.continuedAfterCompletion || !completedSourceKey)) {
+      setDoNowCompletionHold({
+        ...timer.doNowSnapshot,
+        date: current.today.date,
+        minutes: sessionMinutes(timer, stoppedAt),
+      });
+    }
     if (completedSourceKey && timer.doNowSnapshot) {
       setDoNowExcludedProjectId(timer.doNowSnapshot.projectId);
       setDoNowCandidateIndex(0);
@@ -7192,13 +7202,6 @@ function DashboardApp() {
         sourceKey: completedSourceKey,
       });
       return;
-    }
-    if (timer.doNowSnapshot) {
-      setDoNowCompletionHold({
-        ...timer.doNowSnapshot,
-        date: current.today.date,
-        minutes: sessionMinutes(timer, stoppedAt),
-      });
     }
   };
 
@@ -7454,6 +7457,7 @@ function DashboardApp() {
 
       const extended = {
         ...timer,
+        continuedAfterCompletion: true,
         targetMinutes: (timer.targetMinutes ?? completionPrompt.targetMinutes) + 15,
       };
       activeTimerRef.current = extended;
@@ -7464,15 +7468,27 @@ function DashboardApp() {
   const finishCompletedTimer = () => {
     if (plannedCommitRef.current || finishingTimerRef.current !== null || earlyStopRef.current)
       return;
-    if (!activeTimer || activeTimerRef.current?.instanceId !== activeTimer.instanceId) return;
-    if (!activeTimer || !completionPrompt || activeTimer.sourceId !== completionPrompt.sourceId) {
+    const completedTimer = activeTimerRef.current;
+    if (!completedTimer || activeTimer?.instanceId !== completedTimer.instanceId) return;
+    if (
+      !completedTimer.continuedAfterCompletion &&
+      (!completionPrompt || completedTimer.sourceId !== completionPrompt.sourceId)
+    ) {
       setCompletionPrompt(null);
       return;
     }
 
     plannedCommitRef.current = true;
-    const completedTimer = activeTimer;
     const stoppedAt = Date.now();
+    if (completedTimer.doNowSnapshot && completedTimer.continuedAfterCompletion && configRef.current) {
+      setDoNowCompletionHold({
+        ...completedTimer.doNowSnapshot,
+        date: configRef.current.today.date,
+        minutes: sessionMinutes(completedTimer, stoppedAt),
+      });
+      setDoNowCompletionSaving(true);
+    }
+    let completed = false;
     void finishTimer(completedTimer, "complete")
       .then(async (finished) => {
         if (!finished) return false;
@@ -7519,12 +7535,24 @@ function DashboardApp() {
             completedEntry.item.text,
           );
         }
+        completed = true;
         return true;
       })
       .finally(() => {
+        if (completedTimer.doNowSnapshot && completedTimer.continuedAfterCompletion) {
+          setDoNowCompletionSaving(false);
+          if (!completed) setDoNowCompletionHold(null);
+        }
         plannedCommitRef.current = false;
       });
   };
+
+  const finishActiveTimer = (timer: ActiveTimer) => {
+    if (activeTimerRef.current?.instanceId !== timer.instanceId) return;
+    if (timer.continuedAfterCompletion && timer.doNowSnapshot) finishCompletedTimer();
+    else void finishTimer(timer);
+  };
+  finishActiveTimerRef.current = finishActiveTimer;
 
   const togglePause = useCallback(() => {
     if (earlyStopRef.current || finishingTimerRef.current !== null || plannedCommitRef.current)
@@ -7565,7 +7593,7 @@ function DashboardApp() {
           return;
         }
         if (event.payload.action === "finish" && activeTimer) {
-          void finishTimer(activeTimer, "manual");
+          finishActiveTimerRef.current(activeTimer);
         }
       });
       const unlistenReturn = await listen(MINI_RETURN_EVENT, () => {
@@ -7589,7 +7617,7 @@ function DashboardApp() {
       disposed = true;
       cleanup.forEach((dispose) => dispose());
     };
-  }, [activeTimer, finishTimer, returnToMain, togglePause]);
+  }, [activeTimer, returnToMain, togglePause]);
 
   useEffect(() => {
     void emit(MINI_TIMER_SNAPSHOT_EVENT, miniSnapshot);
@@ -7636,11 +7664,23 @@ function DashboardApp() {
     return persistConfig({ ...config, today: { ...config.today, victory } });
   };
 
+  const enterVictoryEditing = () => {
+    victorySaveRef.current = null;
+    setVictoryEditing(true);
+    window.requestAnimationFrame(() => victoryInputRef.current?.focus({ preventScroll: true }));
+  };
+
+  const leaveVictoryEditing = () => {
+    setVictoryEditing(false);
+    window.requestAnimationFrame(() => victoryNavigationRef.current?.focus({ preventScroll: true }));
+  };
+
   const applyVictorySuggestion = (text: string) => {
     const scrollArea = mainScrollAreaRef.current;
     const scrollTop = scrollArea?.scrollTop ?? 0;
     setVictoryEditing(true);
-    void updateVictoryText(text).then(() => {
+    victorySaveRef.current = updateVictoryText(text);
+    void victorySaveRef.current.then(() => {
       window.requestAnimationFrame(() => {
         if (scrollArea?.isConnected) scrollArea.scrollTop = scrollTop;
         victoryInputRef.current?.focus({ preventScroll: true });
@@ -7679,9 +7719,16 @@ function DashboardApp() {
   };
 
   const handleVictoryKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter" || event.key === "Escape") {
-      event.currentTarget.blur();
+    if (event.key !== "Enter" && event.key !== "Escape") return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.key === "Escape") {
+      leaveVictoryEditing();
+      return;
     }
+    void (victorySaveRef.current ?? Promise.resolve(true)).then((saved) => {
+      if (saved) leaveVictoryEditing();
+    });
   };
 
   const sourceSnapshotForUndo = (current: AppConfig, sourceKey: string): unknown | null => {
@@ -9964,15 +10011,11 @@ function DashboardApp() {
         className="sidebar"
         onContextMenu={(event) => {
           event.preventDefault();
-          const opener = event.detail === 0 && event.target instanceof HTMLElement
-            ? (event.target.closest<HTMLElement>('button, [tabindex="0"]') ?? event.currentTarget)
-            : event.currentTarget;
-          const rect = opener.getBoundingClientRect();
           openContextMenu(
             { kind: "sidebar" },
-            event.detail === 0 ? rect.left : event.clientX,
-            event.detail === 0 ? rect.bottom + 4 : event.clientY,
-            opener,
+            event.clientX,
+            event.clientY,
+            event.currentTarget,
           );
         }}
         onKeyDown={(event) => openContextMenuFromKeyboard(event, { kind: "sidebar" })}
@@ -10046,6 +10089,16 @@ function DashboardApp() {
                     .join(" ")}
                   data-sidebar-group-section={group.name}
                   key={group.name}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    openContextMenu(
+                      { kind: "sidebar", groupName: group.name },
+                      event.clientX,
+                      event.clientY,
+                      event.currentTarget.querySelector<HTMLElement>(".quickGroupHeader"),
+                    );
+                  }}
                 >
                   <button
                     aria-expanded={!collapsed}
@@ -10211,7 +10264,7 @@ function DashboardApp() {
           }
           label={activeTimer ? activeTimer.label : "通常タイマー"}
           onFinish={() => {
-            if (activeTimer) void finishTimer(activeTimer);
+            if (activeTimer) finishActiveTimer(activeTimer);
           }}
           onExpand={() => setExpandedTimerOpen(true)}
           onClockPointerCancel={!activeTimer ? cancelNumberInputDrag : undefined}
@@ -10796,7 +10849,7 @@ function DashboardApp() {
                   />
                   <div className="victoryContent">
                     <span className="victoryLabel">今日の勝利条件</span>
-                    {victoryEditing || !victoryText ? (
+                    {victoryEditing ? (
                       <>
                         <input
                           aria-label="今日の勝利条件"
@@ -10805,40 +10858,46 @@ function DashboardApp() {
                           }
                           maxLength={90}
                           onBlur={() => setVictoryEditing(false)}
-                          onChange={(event) => void updateVictoryText(event.target.value)}
+                          onChange={(event) => {
+                            victorySaveRef.current = updateVictoryText(event.target.value);
+                          }}
                           onKeyDown={handleVictoryKeyDown}
                           placeholder="今日はこれができれば勝ち"
                           ref={victoryInputRef}
                           value={config.today.victory.text}
                         />
-                        {!victoryText && victorySuggestions.length > 0 && (
-                          <div className="victorySuggestions" aria-label="勝利条件の候補">
-                            {victorySuggestions.map((suggestion) => (
-                              <button
-                                className="suggestionChip"
-                                key={suggestion}
-                                onMouseDown={(event) => event.preventDefault()}
-                                onClick={() => applyVictorySuggestion(suggestion)}
-                                type="button"
-                              >
-                                {suggestion}
-                              </button>
-                            ))}
-                          </div>
-                        )}
                       </>
                     ) : (
                       <button
+                        aria-label="今日の勝利条件を編集"
                         className={
                           victoryDone
                             ? "victoryTextButton victoryTextButton--done"
-                            : "victoryTextButton"
+                            : victoryText
+                              ? "victoryTextButton"
+                              : "victoryTextButton victoryTextButton--empty"
                         }
-                        onClick={() => setVictoryEditing(true)}
+                        onClick={enterVictoryEditing}
+                        ref={victoryNavigationRef}
                         type="button"
                       >
-                        {config.today.victory.text}
+                        {config.today.victory.text || "今日はこれができれば勝ち"}
                       </button>
+                    )}
+                    {!victoryText && victorySuggestions.length > 0 && (
+                      <div className="victorySuggestions" aria-label="勝利条件の候補">
+                        {victorySuggestions.map((suggestion) => (
+                          <button
+                            className="suggestionChip"
+                            key={suggestion}
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => applyVictorySuggestion(suggestion)}
+                            type="button"
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
                     )}
                   </div>
                   {victoryDone ? (
@@ -10884,6 +10943,7 @@ function DashboardApp() {
                       <div className="doNowFooter">
                         <button
                           className="mainActionButton mainActionButton--neutral doNowHoldButton"
+                          disabled={doNowCompletionSaving}
                           onClick={() => void acknowledgeDoNowCompletion()}
                           type="button"
                         >
@@ -10998,7 +11058,7 @@ function DashboardApp() {
                               </button>
                               <button
                                 className="runningStopButton"
-                                onClick={() => void finishTimer(activeTimer)}
+                                onClick={() => finishActiveTimer(activeTimer)}
                                 type="button"
                               >
                                 <UiIcon name="stop" size={16} /> 終了
@@ -11452,7 +11512,7 @@ function DashboardApp() {
                                         </button>
                                         <button
                                           className="runningStopButton"
-                                          onClick={() => void finishTimer(activeTimer)}
+                                          onClick={() => finishActiveTimer(activeTimer)}
                                           title="このセッションを終了"
                                           type="button"
                                         >
@@ -13585,22 +13645,15 @@ function DashboardApp() {
             </>
           ) : (
             <>
-              {contextMenu.groupName && (
-                <ContextMenuItem
-                  onClick={() => openButtonBuilder(contextMenu.groupName)}
-                  type="button"
-                >
-                  ボタンを追加
-                </ContextMenuItem>
-              )}
               <ContextMenuItem onClick={openGroupDialog} type="button">
                 グループを追加
               </ContextMenuItem>
-              {!contextMenu.groupName && (
-                <ContextMenuItem onClick={() => openButtonBuilder()} type="button">
-                  ボタンを追加
-                </ContextMenuItem>
-              )}
+              <ContextMenuItem
+                onClick={() => openButtonBuilder(contextMenu.groupName)}
+                type="button"
+              >
+                ボタンを追加
+              </ContextMenuItem>
               {contextMenu.groupName && (
                 <>
                   <ContextMenuItem
@@ -16177,7 +16230,7 @@ function DashboardApp() {
           }}
           onFinish={() => {
             setExpandedTimerOpen(false);
-            void finishTimer(activeTimer);
+            finishActiveTimer(activeTimer);
           }}
           onPause={togglePause}
           paused={activeTimer.paused}
