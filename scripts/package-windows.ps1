@@ -36,6 +36,15 @@ $ReleaseRustFlags = [string[]]@(
   "--remap-path-prefix=$env:USERPROFILE=<USERPROFILE>",
   "--remap-path-prefix=$RepoRoot=<SOURCE_ROOT>"
 )
+if ($env:CARGO_HOME) {
+  $ReleaseRustFlags += "--remap-path-prefix=$env:CARGO_HOME=<CARGO_HOME>"
+}
+if ($env:RUSTUP_HOME) {
+  $ReleaseRustFlags += "--remap-path-prefix=$env:RUSTUP_HOME=<RUSTUP_HOME>"
+}
+if ($env:CARGO_TARGET_DIR) {
+  $ReleaseRustFlags += "--remap-path-prefix=$env:CARGO_TARGET_DIR=<CARGO_TARGET_DIR>"
+}
 $env:CARGO_ENCODED_RUSTFLAGS = $ReleaseRustFlags -join [char]0x1f
 
 $CargoBin = Join-Path $env:USERPROFILE ".cargo\bin"
