@@ -2903,6 +2903,8 @@ h3 {
 }
 
 .expandedTimerBackdrop {
+  -webkit-user-select: none;
+  user-select: none;
   position: fixed;
   inset: 0;
   z-index: 90;
@@ -6368,6 +6370,8 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .modalBackdrop {
+  -webkit-user-select: none;
+  user-select: none;
   position: fixed;
   inset: 0;
   z-index: 35;
@@ -6387,6 +6391,13 @@ input[type="number"]::-webkit-inner-spin-button {
   padding: 18px;
   background: var(--dialog-surface);
   box-shadow: var(--dialog-shadow);
+}
+
+.modalBackdrop input,
+.modalBackdrop textarea,
+.modalBackdrop [contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 .builderSourceFields {
@@ -6945,6 +6956,23 @@ input[type="number"]::-webkit-inner-spin-button {
   box-shadow: var(--control-primary-active-shadow);
 }
 
+.confirmDialogButton--positive {
+  border-color: rgba(111, 207, 151, 0.45);
+  background: var(--control-positive-bg);
+  color: var(--good);
+}
+
+.confirmDialogButton--positive:hover:not(:disabled),
+.confirmDialogButton--positive:focus-visible {
+  border-color: var(--control-positive-hover-border);
+  background: var(--control-positive-hover-bg);
+}
+
+.confirmDialogButton--positive:active:not(:disabled) {
+  border-color: var(--control-positive-active-border);
+  background: var(--control-positive-active-bg);
+}
+
 .confirmDialogButton--warning:hover:not(:disabled) {
   background: var(--control-warning-hover-bg);
 }
@@ -7282,6 +7310,24 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .shortcutCaptureField {
   min-width: 0;
+}
+
+.shortcutConflictWarning {
+  margin: 0;
+  border-left: 3px solid var(--warn);
+  padding: 8px 11px;
+  background: var(--surface-soft);
+  color: #ffd1a6;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.shortcutCaptureField--conflict .shortcutCaptureValue {
+  border-color: var(--warn);
+}
+
+.shortcutCaptureField--conflict > small {
+  color: #ffd1a6;
 }
 
 .shortcutCaptureControl {

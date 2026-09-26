@@ -212,6 +212,7 @@ export function prepareWishlistPromotion(
   if (!wishlistItem) {
     throw new Error("元のやりたいことが見つかりません");
   }
+  if (project.nextStep?.sourceWishlistId === input.wishlistId) return config;
 
   return {
     ...config,

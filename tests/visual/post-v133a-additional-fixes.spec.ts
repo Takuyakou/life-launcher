@@ -284,7 +284,7 @@ test("creating an empty group shows it immediately; deleting the last button kee
   fixture.config.buttons = [{ ...fixture.config.buttons[0], group: "最後の1件" }];
   await prepare(page, fixture);
   await page.locator(".brandBlock").click({ button: "right" });
-  await page.getByRole("menuitem", { name: "グループ追加" }).click();
+  await page.getByRole("menuitem", { name: "グループを追加" }).click();
   const groupDialog = page.getByRole("dialog", { name: "グループ追加" });
   await groupDialog.getByRole("textbox", { name: "グループ名" }).fill("新しい空グループ");
   await groupDialog.getByRole("button", { name: "追加", exact: true }).click();

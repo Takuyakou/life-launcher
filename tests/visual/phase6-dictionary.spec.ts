@@ -59,6 +59,13 @@ async function invokeCalls(page: Page) {
   });
 }
 
+async function tileContentY(tile: ReturnType<Page["locator"]>) {
+  return tile.evaluate((element) =>
+    element.getBoundingClientRect().top +
+    (element.closest(".dictionaryWindowBody")?.scrollTop ?? 0),
+  );
+}
+
 async function currentConfig(page: Page): Promise<AppConfig> {
   return page.evaluate(() => {
     const control = (
@@ -146,6 +153,7 @@ test("tile arrows follow visual rows and adapt after resize", async ({ page }) =
   await first.focus();
   const firstBox = await first.boundingBox();
   expect(firstBox).not.toBeNull();
+  const firstRowY = await tileContentY(first);
 
   await page.keyboard.press("ArrowRight");
   await expect(page.locator(".dictionaryTile").nth(1)).toBeFocused();
@@ -154,14 +162,15 @@ test("tile arrows follow visual rows and adapt after resize", async ({ page }) =
   await page.keyboard.press("ArrowRight");
   await page.keyboard.press("ArrowDown");
   await expect
-    .poll(async () => (await page.locator(".dictionaryTile:focus").boundingBox())?.y ?? 0)
-    .toBeGreaterThan(firstBox!.y);
+    .poll(() => tileContentY(page.locator(".dictionaryTile:focus")))
+    .toBeGreaterThan(firstRowY);
   const downBox = await page.locator(".dictionaryTile:focus").boundingBox();
   expect(downBox).not.toBeNull();
+  const downRowY = await tileContentY(page.locator(".dictionaryTile:focus"));
   await page.keyboard.press("ArrowUp");
   await expect
-    .poll(async () => (await page.locator(".dictionaryTile:focus").boundingBox())?.y ?? Infinity)
-    .toBeLessThan(downBox!.y);
+    .poll(() => tileContentY(page.locator(".dictionaryTile:focus")))
+    .toBeLessThan(downRowY);
 
   await first.focus();
   await page.keyboard.press("ArrowUp");
@@ -169,11 +178,11 @@ test("tile arrows follow visual rows and adapt after resize", async ({ page }) =
 
   await page.setViewportSize({ width: 640, height: 640 });
   await first.focus();
-  const narrowFirstBox = await first.boundingBox();
+  const narrowFirstRowY = await tileContentY(first);
   await page.keyboard.press("ArrowDown");
   await expect
-    .poll(async () => (await page.locator(".dictionaryTile:focus").boundingBox())?.y ?? 0)
-    .toBeGreaterThan(narrowFirstBox!.y);
+    .poll(() => tileContentY(page.locator(".dictionaryTile:focus")))
+    .toBeGreaterThan(narrowFirstRowY);
   const narrowDownBox = await page.locator(".dictionaryTile:focus").boundingBox();
   expect(narrowDownBox).not.toBeNull();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
@@ -183,7 +192,7 @@ test("tile arrows follow visual rows and adapt after resize", async ({ page }) =
   await page.setViewportSize({ width: 1200, height: 700 });
 });
 
-test("Enter launches a tile while search input keeps native arrow behavior", async ({ page }) => {
+test("Enter launches a tile and search ArrowDown advances its active result", async ({ page }) => {
   await prepare(page, "dictionary");
   await page.getByRole("tab", { name: /ツール/ }).click();
   const first = page.locator(".dictionaryTile").first();
@@ -200,7 +209,7 @@ test("Enter launches a tile while search input keeps native arrow behavior", asy
   await expect(search).toHaveAttribute("aria-activedescendant", "dictionary-search-result-0");
   await search.press("ArrowDown");
   await expect(search).toBeFocused();
-  await expect(search).toHaveAttribute("aria-activedescendant", "dictionary-search-result-0");
+  await expect(search).toHaveAttribute("aria-activedescendant", "dictionary-search-result-1");
 });
 
 test("Dictionary keyboard menu reveals local items but not URLs", async ({ page }) => {

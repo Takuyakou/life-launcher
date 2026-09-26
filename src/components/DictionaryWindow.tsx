@@ -1284,6 +1284,20 @@ export function DictionaryWindow() {
         if (event.key === "Escape") {
           event.preventDefault();
           closeDictionarySettings();
+        } else if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {
+          const target = event.target instanceof HTMLElement ? event.target : null;
+          if (!target || target.matches('input, textarea, select, [contenteditable="true"]')) return;
+          const group = target.closest('.dictionarySizeOptions, .dictionarySettingsActions');
+          const scope = (event.key === "ArrowLeft" || event.key === "ArrowRight") && group
+            ? group
+            : settingsDialogRef.current;
+          const buttons = Array.from(scope?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? []);
+          const next = buttons[buttons.indexOf(target as HTMLButtonElement) +
+            (event.key === "ArrowDown" || event.key === "ArrowRight" ? 1 : -1)];
+          if (next) {
+            event.preventDefault();
+            next.focus();
+          }
         }
         return;
       }
@@ -1320,6 +1334,32 @@ export function DictionaryWindow() {
               : event.key === "ArrowDown"
                 ? "down"
                 : null;
+
+      if (searchHasFocus && searchQuery.trim() && (arrowDirection === "down" || arrowDirection === "up")) {
+        const nextIndex = Math.max(0, Math.min(searchResults.length - 1,
+          selectedResultIndex + (arrowDirection === "down" ? 1 : -1)));
+        const next = searchResults[nextIndex];
+        if (next) {
+          event.preventDefault();
+          setSelectedButtonId(next.id);
+        }
+        return;
+      }
+
+      if (arrowDirection && target?.closest('.dictionaryWindowTitleActions')) {
+        const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>(
+          '.dictionaryWindowTitleActions button:not(:disabled)',
+        ));
+        const index = buttons.indexOf(target as HTMLButtonElement);
+        const next = arrowDirection === "down"
+          ? document.querySelector<HTMLButtonElement>('.dictionaryPageTabs [role="tab"]')
+          : buttons[index + (arrowDirection === "right" ? 1 : -1)];
+        if (next) {
+          event.preventDefault();
+          next.focus();
+        }
+        return;
+      }
 
       if (
         arrowDirection &&
@@ -1373,6 +1413,8 @@ export function DictionaryWindow() {
     moveTileFocus,
     runButton,
     searchQuery,
+    searchResults,
+    selectedResultIndex,
     selectPageByOffset,
     selectedButton,
     selectedButtonId,

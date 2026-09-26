@@ -161,6 +161,9 @@ import {
 } from "./timerRuntime";
 import { UiIcon } from "./components/UiIcon";
 import { ShortcutBadge } from "./components/ShortcutBadge";
+import { findShortcutConflicts } from "./shortcutConflicts";
+import { localDayKey } from "./localDay";
+import { navigateAppArrow } from "./keyboardNavigation";
 import {
   getButtonsForOverlayPage,
   getOverlayPageCounts,
@@ -1499,12 +1502,12 @@ function shortcutFromKeyboardEvent(event: globalThis.KeyboardEvent): string | nu
   return [...modifiers, key].join("+");
 }
 
-function shortcutValidationMessage(value: string, others: string[]): string {
+function shortcutValidationMessage(value: string, conflictingActions: string[]): string {
   const clean = value.trim();
   if (!clean) return "未設定";
   if (!SHORTCUT_PATTERN.test(clean)) return "Ctrl+Kのような形式で入力してください";
-  if (others.some((other) => other.trim().toLowerCase() === clean.toLowerCase())) {
-    return "競合しています";
+  if (conflictingActions.length > 0) {
+    return `${conflictingActions.map((label) => `「${label}」`).join("・")}と競合。どちらかを変更してください`;
   }
   if (WINDOWS_RESERVED_SHORTCUTS.includes(clean.toLowerCase())) {
     return "OS予約キーのため登録できません。別のキーを入力してください";
@@ -1513,20 +1516,15 @@ function shortcutValidationMessage(value: string, others: string[]): string {
 }
 
 function validateShortcutSettings(draft: SettingsCenterDraft): string | null {
-  const values = [
-    draft.focusHotkey,
-    draft.launcherHotkey,
-    draft.miniHotkey,
-    draft.instructionHotkey,
-  ]
+  const conflict = findShortcutConflicts(
+    SHORTCUT_DRAFT_FIELDS.map(({ field, label }) => ({ field, label, value: draft[field] })),
+  )[0];
+  if (conflict) {
+    return `${conflict.chord} は ${conflict.bindings.map(({ label }) => `「${label}」`).join("・")} に設定されています。いずれかを変更してください`;
+  }
+  const values = SHORTCUT_DRAFT_FIELDS.map(({ field }) => draft[field])
     .map((value) => value.trim())
     .filter(Boolean);
-  const duplicates = values.find((value, index) =>
-    values.some(
-      (other, otherIndex) => otherIndex !== index && other.toLowerCase() === value.toLowerCase(),
-    ),
-  );
-  if (duplicates) return `ショートカットが重複しています: ${duplicates}`;
   const invalid = values.find((value) => !SHORTCUT_PATTERN.test(value));
   if (invalid) return `ショートカットの形式を確認してください: ${invalid}`;
   const reserved = values.find((value) => WINDOWS_RESERVED_SHORTCUTS.includes(value.toLowerCase()));
@@ -2124,6 +2122,9 @@ function DashboardApp() {
   configRef.current = config;
   const [backupPath, setBackupPath] = useState("");
   const [todaySessionMinutes, setTodaySessionMinutes] = useState(0);
+  const [todaySessionDate, setTodaySessionDate] = useState("");
+  const [observedDayKey, setObservedDayKey] = useState("");
+  const lastDayRefreshRef = useRef("");
   const [morningVictorySuggestion, setMorningVictorySuggestion] = useState<string | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -2256,6 +2257,9 @@ function DashboardApp() {
   const [builderKind, setBuilderKind] = useState<"file" | "folder" | "url" | null>(null);
   const [builderSource, setBuilderSource] = useState("");
   const [builderLabelTouched, setBuilderLabelTouched] = useState(false);
+  const [builderModeDrafts, setBuilderModeDrafts] = useState<
+    Partial<Record<"file" | "folder" | "url", { source: string; label: string; labelTouched: boolean }>>
+  >({});
   const [builderBusy, setBuilderBusy] = useState(false);
   const [groupDraft, setGroupDraft] = useState<string | null>(null);
   const [groupRenameDraft, setGroupRenameDraft] = useState<{
@@ -2268,6 +2272,12 @@ function DashboardApp() {
   const [shortcutRecordingField, setShortcutRecordingField] = useState<ShortcutDraftField | null>(
     null,
   );
+  useEffect(() => {
+    const onKeyDown = (event: globalThis.KeyboardEvent) =>
+      navigateAppArrow(event, shortcutCaptureActiveRef.current);
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
   const [helpGuideOpen, setHelpGuideOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSectionKey>("basic");
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogRequest | null>(null);
@@ -2562,8 +2572,11 @@ function DashboardApp() {
       if (event.key !== "ContextMenu" && !(event.shiftKey && event.key === "F10")) return;
       event.preventDefault();
       event.stopPropagation();
-      const rect = event.currentTarget.getBoundingClientRect();
-      openContextMenu(target, rect.left, rect.bottom + 4, event.currentTarget);
+      const opener = event.target instanceof HTMLElement
+        ? (event.target.closest<HTMLElement>('button, [tabindex="0"]') ?? event.currentTarget)
+        : event.currentTarget;
+      const rect = opener.getBoundingClientRect();
+      openContextMenu(target, rect.left, rect.bottom + 4, opener);
     },
     [openContextMenu],
   );
@@ -2998,6 +3011,7 @@ function DashboardApp() {
     try {
       const [response, doNow] = await Promise.all([loadTodaySessionTotal(), loadDoNowCandidates()]);
       setTodaySessionMinutes(response.totalMinutes);
+      setTodaySessionDate(response.date);
       setDoNowResponse(doNow);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -3121,6 +3135,34 @@ function DashboardApp() {
     },
     [refreshSessions, refreshTodayActivity, showToast],
   );
+
+  const configuredDayStartHour = config?.settings.dayStartHour;
+  const storedTodayDate = config?.today.date;
+  useEffect(() => {
+    if (configuredDayStartHour === undefined || !storedTodayDate) return;
+    const checkDay = () => {
+      const dayKey = localDayKey(new Date(), configuredDayStartHour);
+      setObservedDayKey((current) => (current === dayKey ? current : dayKey));
+      if (configRef.current?.today.date === dayKey) {
+        lastDayRefreshRef.current = "";
+      } else if (lastDayRefreshRef.current !== dayKey) {
+        lastDayRefreshRef.current = dayKey;
+        void refreshConfig();
+      }
+    };
+    checkDay();
+    const timer = window.setInterval(checkDay, 1000);
+    window.addEventListener("focus", checkDay);
+    const onVisibilityChange = () => {
+      if (!document.hidden) checkDay();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", checkDay);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [configuredDayStartHour, storedTodayDate, refreshConfig]);
 
   useEffect(() => {
     let active = true;
@@ -6386,6 +6428,7 @@ function DashboardApp() {
     if (!saved) return;
     setDropDraft(null);
     setBuilderKind(null);
+    setBuilderModeDrafts({});
     void refreshButtonIcon(button, true);
     showToast("ok", `${label} を登録しました`);
   };
@@ -6458,6 +6501,7 @@ function DashboardApp() {
     setBuilderKind("file");
     setBuilderSource("");
     setBuilderLabelTouched(false);
+    setBuilderModeDrafts({});
     setDropDraft({
       label: "",
       group,
@@ -6486,6 +6530,23 @@ function DashboardApp() {
       }
     }
     if (!builderLabelTouched) setDropDraft({ ...dropDraft, label: suggestion });
+  };
+
+  const switchBuilderKind = (kind: "file" | "folder" | "url") => {
+    if (!builderKind || !dropDraft || builderKind === kind) return;
+    const restored = builderModeDrafts[kind];
+    setBuilderModeDrafts({
+      ...builderModeDrafts,
+      [builderKind]: {
+        source: builderSource,
+        label: dropDraft.label,
+        labelTouched: builderLabelTouched,
+      },
+    });
+    setBuilderKind(kind);
+    setBuilderSource(restored?.source ?? "");
+    setBuilderLabelTouched(restored?.labelTouched ?? false);
+    setDropDraft({ ...dropDraft, label: restored?.label ?? "" });
   };
 
   const pickBuilderSource = async () => {
@@ -7028,6 +7089,7 @@ function DashboardApp() {
           note: timer.note,
         });
         setTodaySessionMinutes(response.totalMinutes);
+        setTodaySessionDate(response.date);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         showToast("error", `記録できません: ${message}`);
@@ -8441,6 +8503,10 @@ function DashboardApp() {
       ? current?.projects.find((candidate) => candidate.id === item.projectId)
       : undefined;
     if (!current || !item || !project || sourceEditBusyRef.current) return false;
+    if (project.nextStep?.sourceWishlistId === wishlistId) {
+      showToast("warn", "すでに次の一手に設定されています");
+      return true;
+    }
     const projectId = project.id;
     const wishlistSource = `wishlist:${wishlistId}`;
     const projectSource = `project:${projectId}`;
@@ -8611,6 +8677,10 @@ function DashboardApp() {
         : undefined;
     if (promotingWishlist && !selectedWishlist) {
       showToast("warn", "やりたいことを選択してください");
+      return;
+    }
+    if (selectedWishlist && project.nextStep?.sourceWishlistId === selectedWishlist.id) {
+      showToast("warn", "すでに次の一手に設定されています");
       return;
     }
     const text = promotingWishlist ? (selectedWishlist?.text.trim() ?? "") : draft.text.trim();
@@ -9628,8 +9698,19 @@ function DashboardApp() {
   };
   const allTodayItemsCompleted =
     config.today.items.length === TODAY_ITEM_LIMIT && config.today.items.every((item) => item.done);
+  const displayedDayKey = observedDayKey || config.today.date;
+  const displayedTodayMinutes = todaySessionDate === displayedDayKey ? todaySessionMinutes : 0;
   const todayActivityCount =
-    todayActivityDate === config.today.date ? todayActivityEntries.length : 0;
+    todayActivityDate === displayedDayKey ? todayActivityEntries.length : 0;
+  const shortcutConflicts = settingsDraft
+    ? findShortcutConflicts(
+        SHORTCUT_DRAFT_FIELDS.map(({ field, label }) => ({
+          field,
+          label,
+          value: settingsDraft[field],
+        })),
+      )
+    : [];
   const timerStatus = completionPrompt
     ? "完了確認中"
     : activeTimer
@@ -9883,8 +9964,18 @@ function DashboardApp() {
         className="sidebar"
         onContextMenu={(event) => {
           event.preventDefault();
-          openContextMenu({ kind: "sidebar" }, event.clientX, event.clientY, event.currentTarget);
+          const opener = event.detail === 0 && event.target instanceof HTMLElement
+            ? (event.target.closest<HTMLElement>('button, [tabindex="0"]') ?? event.currentTarget)
+            : event.currentTarget;
+          const rect = opener.getBoundingClientRect();
+          openContextMenu(
+            { kind: "sidebar" },
+            event.detail === 0 ? rect.left : event.clientX,
+            event.detail === 0 ? rect.bottom + 4 : event.clientY,
+            opener,
+          );
         }}
+        onKeyDown={(event) => openContextMenuFromKeyboard(event, { kind: "sidebar" })}
         tabIndex={-1}
       >
         <div className="brandBlock">
@@ -10522,10 +10613,10 @@ function DashboardApp() {
         <header className="topBar">
           <div className="topSummary">
             <h1 className={activeView === "records" ? "topTitle topTitle--records" : "topTitle"}>
-              {activeView === "records" ? "記録" : `今日 ${todaySessionMinutes}分`}
+              {activeView === "records" ? "記録" : `今日 ${displayedTodayMinutes}分`}
             </h1>
             {activeView === "main" && (
-              <span className="topDateLabel">{formatDateKeyForHeader(config.today.date)}</span>
+              <span className="topDateLabel">{formatDateKeyForHeader(displayedDayKey)}</span>
             )}
           </div>
           <div className="topPills">
@@ -13494,15 +13585,22 @@ function DashboardApp() {
             </>
           ) : (
             <>
-              <ContextMenuItem
-                onClick={() => openButtonBuilder(contextMenu.groupName)}
-                type="button"
-              >
-                ボタンを追加
-              </ContextMenuItem>
+              {contextMenu.groupName && (
+                <ContextMenuItem
+                  onClick={() => openButtonBuilder(contextMenu.groupName)}
+                  type="button"
+                >
+                  ボタンを追加
+                </ContextMenuItem>
+              )}
               <ContextMenuItem onClick={openGroupDialog} type="button">
-                グループ追加
+                グループを追加
               </ContextMenuItem>
+              {!contextMenu.groupName && (
+                <ContextMenuItem onClick={() => openButtonBuilder()} type="button">
+                  ボタンを追加
+                </ContextMenuItem>
+              )}
               {contextMenu.groupName && (
                 <>
                   <ContextMenuItem
@@ -14367,15 +14465,31 @@ function DashboardApp() {
               }
             >
               <h3>ショートカット</h3>
+              {shortcutConflicts.map((conflict) => (
+                <p className="shortcutConflictWarning" key={conflict.chord} role="alert">
+                  {conflict.chord} は {conflict.bindings.map(({ label }) => `「${label}」`).join("・")}
+                  に設定されています。いずれかを変更してください。
+                </p>
+              ))}
               <div className="settingsGrid">
                 {SHORTCUT_DRAFT_FIELDS.map(({ field, label }) => {
                   const value = settingsDraft[field];
                   const recording = shortcutRecordingField === field;
-                  const others = SHORTCUT_DRAFT_FIELDS.filter(
-                    (candidate) => candidate.field !== field,
-                  ).map((candidate) => settingsDraft[candidate.field]);
+                  const conflict = shortcutConflicts.find((item) =>
+                    item.bindings.some((binding) => binding.field === field),
+                  );
+                  const others = conflict?.bindings
+                    .filter((binding) => binding.field !== field)
+                    .map((binding) => binding.label) ?? [];
                   return (
-                    <div className="fieldStack shortcutCaptureField" key={field}>
+                    <div
+                      className={
+                        conflict
+                          ? "fieldStack shortcutCaptureField shortcutCaptureField--conflict"
+                          : "fieldStack shortcutCaptureField"
+                      }
+                      key={field}
+                    >
                       <span>{label}</span>
                       <div
                         className={
@@ -14388,6 +14502,7 @@ function DashboardApp() {
                           <kbd>{recording ? "入力待ち…" : value || "未設定"}</kbd>
                         </div>
                         <button
+                          aria-invalid={Boolean(conflict)}
                           aria-pressed={recording}
                           className="secondaryButton shortcutCaptureButton"
                           onClick={() => void beginShortcutRecording(field)}
@@ -16129,12 +16244,7 @@ function DashboardApp() {
                           : "builderSourceMode"
                       }
                       key={kind}
-                      onClick={() => {
-                        setBuilderKind(kind);
-                        setBuilderSource("");
-                        setBuilderLabelTouched(false);
-                        setDropDraft({ ...dropDraft, label: "" });
-                      }}
+                      onClick={() => switchBuilderKind(kind)}
                       type="button"
                     >
                       <UiIcon
@@ -16313,6 +16423,7 @@ function DashboardApp() {
                 onClick={() => {
                   setDropDraft(null);
                   setBuilderKind(null);
+                  setBuilderModeDrafts({});
                 }}
                 type="button"
               >
@@ -16432,6 +16543,7 @@ function DashboardApp() {
           message="ここまでの実行は記録されます。"
           confirmLabel="今日の分は完了"
           cancelLabel="未完了のまま終了"
+          tone="positive"
           initialFocus="cancel"
           isProcessing={earlyStopSaving}
           onConfirm={() => resolveEarlyStop(true)}
