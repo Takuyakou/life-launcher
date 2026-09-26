@@ -33,6 +33,14 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all"
+    "targets": "all",
+    "windows": {
+      "nsis": {
+        "installerIcon": "installer/nsis-installer.ico",
+        "sidebarImage": "installer/nsis-sidebar.bmp",
+        "uninstallerIcon": "installer/nsis-installer.ico",
+        "languages": ["English", "Japanese"]
+      }
+    }
   }
 }
