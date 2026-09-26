@@ -37,7 +37,7 @@ Note: it is not a complete port of the Windows product.
   Use the card's lower-left button or context menu to remove only its adoption into today, without a confirmation dialog. The original item, other choices, and session records remain. Removal is blocked while that item's timer is running, paused, or awaiting expiry confirmation.
 
 - **Quick Launcher / Dictionary**
-  Register apps, folders, files, and URLs, then open them from the sidebar or `Ctrl+K` search. Navigate the dictionary with arrow keys; on multiple monitors, it opens on the same screen as the main app.
+  Register apps, folders, files, and URLs, then open them from the sidebar or `Ctrl+K` search. The button builder retains drafts when switching registration modes. Navigate the dictionary with arrow keys; on multiple monitors, it opens on the same screen as the main app.
 
 - **Timer / Session Records**
   Start a short or normal timer, or use Measure to count up from 0:00, and store sessions of at least one minute locally. Stopping early does not automatically complete today's item. Session completion is also separate from completing or deleting the source entry itself.
@@ -63,19 +63,19 @@ Download Life Launcher from [GitHub Releases](https://github.com/Takuyakou/life-
 
 Use this for the standard installation flow.
 
-v1.3.2 installer: `Life-Launcher-v1.3.2-windows-x64-setup.exe`
+v1.3.3 installer: `Life-Launcher-v1.3.3-windows-x64-setup.exe`
 
 ### Standalone EXE
 
 Run the app directly without installing it.
 
-v1.3.2 standalone: `Life-Launcher-v1.3.2-windows-x64.exe`
+v1.3.3 standalone: `Life-Launcher-v1.3.3-windows-x64.exe`
 
 ### Portable ZIP
 
 Extract the ZIP archive and run the app.
 
-v1.3.2 ZIP: `Life-Launcher-v1.3.2-windows-x64-portable.zip`
+v1.3.3 ZIP: `Life-Launcher-v1.3.3-windows-x64-portable.zip`
 
 The ZIP edition also stores user data in `%APPDATA%\life-launcher`. It does not carry your data alongside the executable on a USB drive.
 
@@ -89,7 +89,9 @@ Fully exit Life Launcher and back up the `%APPDATA%\life-launcher` folder to ano
 
 The first launch after updating from v1.2 to v1.3 migrates config schema `2` to `3`. The app creates a raw pre-migration backup and leaves the original config unchanged if migration, validation, or backup fails. Session records are not deleted.
 
-See the [v1.3.2 release notes](docs/releases/v1.3.2.md) and [changelog](CHANGELOG.md) for details. The [overview](docs/OVERVIEW.md) and [current specification](docs/spec/current-spec.md) cover the wider feature set. These detailed documents are currently in Japanese.
+Updating from v1.3.2 to v1.3.3 does not change the configuration schema; existing settings and session records remain available.
+
+See the [v1.3.3 release notes](docs/releases/v1.3.3.md) and [changelog](CHANGELOG.md) for details. The [overview](docs/OVERVIEW.md) and [current specification](docs/spec/current-spec.md) cover the wider feature set. These detailed documents are currently in Japanese.
 
 ## Runtime Requirements
 

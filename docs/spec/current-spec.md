@@ -1,20 +1,20 @@
-# Life Launcher v1.3.3候補 UI/UX・機能仕様書
+# Life Launcher v1.3.3 UI/UX・機能仕様書
 
 ## 0. 文書情報
 
 | 項目             | 内容                                                                   |
 | ---------------- | ---------------------------------------------------------------------- |
-| 文書版           | 1.3.3候補                                                              |
+| 文書版           | 1.3.3                                                                  |
 | 対象             | Windowsデスクトップ版 Life Launcher                                    |
-| 実装基準         | Public repository `Takuyakou/life-launcher` のP8.10実装候補            |
-| 作業branch       | P8.10統合後の`main`                                                    |
-| 監査基準コミット | P8.10-04検証時の`main`                                                 |
-| 確認日           | 2026-09-25                                                             |
+| 実装基準         | Public repository `Takuyakou/life-launcher` のv1.3.3実装             |
+| 作業branch       | PR #108統合後の`main`                                                  |
+| 監査基準コミット | `2242ab7`（PR #108マージ）                                              |
+| 確認日           | 2026-09-26                                                             |
 | UI実装           | Tauri 2 / React 18 / TypeScript / CSS                                  |
 
-本書は、Life Launcher v1.3.3候補のUI/UXと主要機能を、現在のコード、型、設定、capability、テストから整理した現行仕様書である。正式リリースは確認用EXEのユーザー承認後に行う。
+本書は、Life Launcher v1.3.3のUI/UXと主要機能を、現在のコード、型、設定、capability、テストから整理した現行仕様書である。
 
-正式公開版はユーザー承認まで`1.3.2`、確認用ビルドは`1.3.3`候補、config schemaは`3`である。Phase 8〜8.4のProject / NextStep / Wishlist再構成と、P8.7のDictionary / Drop Register / Instruction Viewer / Guide改善、P8.9のメイン表示サイズと配置調整、P8.10の拡大Timer等を含む。機能の入口は [Overview](../OVERVIEW.md) を参照する。
+アプリ版は`1.3.3`、config schemaは`3`である。Project / NextStep / Wishlist再構成、Dictionary / Drop Register / Instruction Viewer / Guide改善、メイン表示サイズ、拡大Timer、キーボード操作と完了表示の修正を含む。機能の入口は [Overview](../OVERVIEW.md) を参照する。
 
 ## v1.3.2でのメイン画面表示
 

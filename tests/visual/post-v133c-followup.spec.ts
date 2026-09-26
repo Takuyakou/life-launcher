@@ -117,6 +117,8 @@ test("Victory navigation enters editing and returns after Enter or Escape", asyn
   fixture.config.today.victory = { text: "", done: false };
   await prepare(page, fixture);
   const navigation = page.locator(".victoryTextButton");
+  await expect(navigation).toBeVisible();
+  await page.clock.runFor(32);
   await page.getByRole("button", { name: "設定を開く" }).focus();
   await page.keyboard.press("ArrowDown");
   await expect(navigation).toBeFocused();
