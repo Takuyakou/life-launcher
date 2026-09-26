@@ -1,6 +1,7 @@
 :root {
   color: #f4f0e8;
   background: #161512;
+  --app-background: #161512;
   font-family: "Segoe UI", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -3986,6 +3987,15 @@ input[type="number"]::-webkit-inner-spin-button {
   color: var(--accent-strong);
 }
 
+.victoryTextButton--empty {
+  color: var(--muted);
+}
+
+.victoryTextButton:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .victorySuggestions {
   display: flex;
   flex-wrap: wrap;
@@ -6019,7 +6029,11 @@ input[type="number"]::-webkit-inner-spin-button {
 .contextMenu {
   position: fixed;
   z-index: 40;
+  width: min(240px, calc(100vw - 16px));
   min-width: 116px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 5px;
@@ -12712,7 +12726,7 @@ input[type="number"]::-webkit-inner-spin-button {
   min-width: 0;
   border-bottom: 1px solid var(--line-soft);
   padding: 3px 0 8px;
-  background: var(--bg);
+  background: var(--app-background);
 }
 
 .recordsBackButton {
