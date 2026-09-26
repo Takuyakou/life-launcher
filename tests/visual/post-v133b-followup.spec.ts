@@ -201,6 +201,7 @@ test("Sidebar background menu orders group before button for pointer and Shift+F
   await page.keyboard.press("ArrowDown");
   await expect(page.getByRole("menuitem", { name: "ボタンを追加" })).toBeFocused();
   await page.keyboard.press("Escape");
+  await page.clock.runFor(32);
   await expect(page.getByRole("button", { name: /辞書を開く/ })).toBeFocused();
 });
 

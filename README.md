@@ -37,7 +37,7 @@ Web Demoでは合成データを使い、今日の候補選択・タイマー・
   カード左下または右クリックから、今日への採用だけを確認ダイアログなしで解除できます。元の登録・候補・実行記録は残ります。対象のタイマー実行中・一時停止中・満了確認中は解除できません。
 
 - **Quick Launcher / 辞書**
-  アプリ・フォルダ・ファイル・URLを登録し、サイドバーや`Ctrl+K`検索から呼び出せます。辞書は矢印キーで移動でき、複数モニターでは本体がある画面に開きます。
+  アプリ・フォルダ・ファイル・URLを登録し、サイドバーや`Ctrl+K`検索から呼び出せます。ボタン作成画面では登録元を切り替えても入力途中の内容を保持します。辞書は矢印キーで移動でき、複数モニターでは本体がある画面に開きます。
 
 - **タイマー / セッション記録**
   短時間・通常タイマー、または0:00から数える「計測」で開始し、1分以上の実行内容をローカルに記録します。途中終了では今日の項目を自動完了にせず、登録そのものの「完了にする」「削除」とも区別します。
@@ -63,19 +63,19 @@ Life Launcherは、[GitHub Releases](https://github.com/Takuyakou/life-launcher/
 
 通常はこちらを利用してください。
 
-v1.3.2のインストーラー: `Life-Launcher-v1.3.2-windows-x64-setup.exe`
+v1.3.3のインストーラー: `Life-Launcher-v1.3.3-windows-x64-setup.exe`
 
 ### Standalone EXE
 
 インストールせず直接起動できます。
 
-v1.3.2の単体実行版: `Life-Launcher-v1.3.2-windows-x64.exe`
+v1.3.3の単体実行版: `Life-Launcher-v1.3.3-windows-x64.exe`
 
 ### Portable ZIP
 
 ZIPを展開して利用できます。
 
-v1.3.2のZIP版: `Life-Launcher-v1.3.2-windows-x64-portable.zip`
+v1.3.3のZIP版: `Life-Launcher-v1.3.3-windows-x64-portable.zip`
 
 ZIP版もユーザーデータは`%APPDATA%\life-launcher`へ保存します。USBなどへデータごと持ち運ぶ方式ではありません。
 
@@ -89,7 +89,9 @@ ZIP版もユーザーデータは`%APPDATA%\life-launcher`へ保存します。U
 
 v1.2からv1.3への初回更新ではconfig schemaを`2`から`3`へ移行します。変換前のraw backupを作成し、移行・検証・backupに失敗した場合は元のconfigを書き換えません。Sessionの実行記録は削除しません。
 
-詳しくは [v1.3.2 Release notes](docs/releases/v1.3.2.md) と [CHANGELOG](CHANGELOG.md) を参照してください。機能の全体像は [OVERVIEW](docs/OVERVIEW.md)、詳細は [現行仕様書](docs/spec/current-spec.md) にまとめています。
+v1.3.2からv1.3.3への更新では設定データの形式は変わらず、既存の設定と記録を引き継げます。
+
+詳しくは [v1.3.3 Release notes](docs/releases/v1.3.3.md) と [CHANGELOG](CHANGELOG.md) を参照してください。機能の全体像は [OVERVIEW](docs/OVERVIEW.md)、詳細は [現行仕様書](docs/spec/current-spec.md) にまとめています。
 
 ## 動作要件
 
