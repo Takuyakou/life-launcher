@@ -19,10 +19,6 @@ export async function installTauriMock(
       const configStorageKey = "life-launcher-visual-qa-config";
       const cleanStartStorageKey = "life-launcher-visual-qa-clean-start";
       const resetBackupPath = "C:\\PublicDemo\\Backups\\lifelauncher-clean-start.zip";
-      const externalSentinel = {
-        path: "C:\\ExternalFixtures\\instruction-guide.html",
-        value: "external-file-untouched",
-      };
       const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
       let doNowCandidates = fixture.doNowCandidates;
       let currentConfig = (() => {
@@ -47,18 +43,12 @@ export async function installTauriMock(
           notes: string[];
           notesHistory: typeof fixture.notesHistory;
         };
-        externalSentinel: typeof externalSentinel;
-        resetCompleted: boolean;
-        restoreCount: number;
       };
       const initialCleanStartState = (): CleanStartState => ({
         sessions: clone(fixture.sessionEntries.entries),
         notes: clone(fixture.todayNotes),
         notesHistory: clone(fixture.notesHistory),
         backup: null,
-        externalSentinel: clone(externalSentinel),
-        resetCompleted: false,
-        restoreCount: 0,
       });
       const cleanStartState: CleanStartState | null = (() => {
         if (!options.cleanStartReset) return null;
@@ -233,7 +223,6 @@ export async function installTauriMock(
           pendingInstructionRootChoices.shift()?.(instructionRootChoices.shift() ?? null);
         },
         currentConfig: () => currentConfig,
-        cleanStartState: () => (cleanStartState ? clone(cleanStartState) : null),
         resolveExecuteActions: () => {
           for (const resolve of pendingExecuteActions.splice(0)) resolve();
         },
@@ -651,7 +640,6 @@ export async function installTauriMock(
                 cleanStartState.sessions = [];
                 cleanStartState.notes = [];
                 cleanStartState.notesHistory = [];
-                cleanStartState.resetCompleted = true;
                 persistCurrentConfig();
                 persistCleanStartState();
                 return { restartRequested: true };
@@ -662,7 +650,6 @@ export async function installTauriMock(
                 cleanStartState.sessions = clone(cleanStartState.backup.sessions);
                 cleanStartState.notes = clone(cleanStartState.backup.notes);
                 cleanStartState.notesHistory = clone(cleanStartState.backup.notesHistory);
-                cleanStartState.restoreCount += 1;
                 persistCurrentConfig();
                 persistCleanStartState();
                 return {

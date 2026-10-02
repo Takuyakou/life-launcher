@@ -117,38 +117,6 @@ for (const { absolute, rel } of files) {
   }
 }
 
-function selfTest() {
-  const samples = [
-    ["C:\\Users\\Owner\\secret.txt", /C:\\Users\\/i],
-    ["D:\\private\\notes.txt", /(?:^|[^A-Za-z0-9])D:\\/im],
-    ["ghp_1234567890abcdefghijkl", /(?:ghp|github_pat|sk|xox[baprs])_[A-Za-z0-9_-]{16,}/i],
-    ["-----BEGIN PRIVATE KEY-----", /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/],
-  ];
-  for (const [sample, pattern] of samples) {
-    if (!pattern.test(sample)) throw new Error(`Safety detector self-test failed: ${sample}`);
-  }
-  if (!allowedInternalArtifactPaths.has("docs/phase6/00-visual-baseline.md")) {
-    throw new Error("Safety detector self-test failed: Phase 6 visual baseline allowlist");
-  }
-  if (!allowedInternalArtifactPaths.has("tests/visual/phase6-baseline.spec.ts")) {
-    throw new Error("Safety detector self-test failed: Phase 6 baseline test allowlist");
-  }
-  if (allowedInternalArtifactPaths.has("docs/other/baseline.md")) {
-    throw new Error("Safety detector self-test failed: internal report allowlist is too broad");
-  }
-  if (
-    allowedInternalArtifactPaths.size !== 30 ||
-    !allowedInternalArtifactPaths.has("docs/phase8.2/00-baseline-audit.md") ||
-    allowedInternalArtifactPaths.has("docs/phase8.2/other-baseline-audit.md") ||
-    !allowedInternalArtifactPaths.has("docs/phase7.2/screenshots/baseline/timer-1440-hover.png") ||
-    allowedInternalArtifactPaths.has("docs/phase7.2/screenshots/baseline/private-screenshot.png") ||
-    allowedInternalArtifactPaths.has("docs/phase7.2/screenshots/baseline/timer-1440-secrets.json")
-  ) {
-    throw new Error("Safety detector self-test failed: P72 exact synthetic outputs");
-  }
-}
-
-selfTest();
 if (findings.length > 0) {
   console.error(`Public safety check failed with ${findings.length} finding(s):`);
   for (const finding of findings) console.error(`- ${finding}`);

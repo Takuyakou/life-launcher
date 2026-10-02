@@ -106,3 +106,34 @@ test("NextStep already selected in Today3 does not show yellow adoption guidance
   await page.mouse.up();
   expect(await saveCount(page)).toBe(before);
 });
+
+test("Date change rejects an already active NextStep adoption drag", async ({ page }) => {
+  const fixture = createPublicFixture();
+  fixture.config.today.items = [{ text: "日付変更後も残る項目", done: false, sourceKey: "manual:date-guard" }];
+  await prepare(page, fixture, 860);
+  const before = await saveCount(page);
+  await beginDrag(page, page.locator('.nextStepCard[data-project-id="sample-stretch"]'));
+  await expect(page.locator(".projectDragGhost")).toBeVisible();
+  await expect(page.locator(".todayGrid")).toHaveClass(/todayGrid--dropGuidance/);
+  const target = await page.locator(".todayRow").first().boundingBox();
+  expect(target).not.toBeNull();
+  await page.mouse.move(target!.x + target!.width * 0.75, target!.y + target!.height / 2, { steps: 6 });
+  await expect(page.locator(".todayGrid")).toHaveClass(/todayGrid--dropTarget/);
+  await expect(page.locator(".todayDropIndicator")).toBeVisible();
+  const next = structuredClone(await currentConfig(page));
+  next.today.date = "2026-08-14";
+  // A visible config change proves the watcher has reached React before pointerup.
+  next.projects[1].name = "日付変更を受信済み";
+  await page.evaluate((config) => {
+    (window as Window & {
+      __LIFE_LAUNCHER_VISUAL_QA__: { updateConfig: (config: AppConfig) => void };
+    }).__LIFE_LAUNCHER_VISUAL_QA__.updateConfig(config);
+  }, next);
+  await page.clock.runFor(300);
+  await expect(page.locator('.nextStepCard[data-project-id="sample-stretch"]')).toContainText(next.projects[1].name);
+  await page.mouse.up();
+  await expect(page.locator(".projectDragGhost")).toHaveCount(0);
+  expect(await saveCount(page)).toBe(before);
+  expect((await currentConfig(page)).today).toEqual(next.today);
+  await expect(page.locator(".todayRow")).toHaveCount(1);
+});

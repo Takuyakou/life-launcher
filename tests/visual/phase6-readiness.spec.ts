@@ -54,78 +54,6 @@ function withTodayState(activeCount: number, completedCount = 0): VisualQaFixtur
   return fixture;
 }
 
-function withBuilderCount(count: number): VisualQaFixture {
-  const fixture = createPublicFixture();
-  fixture.config.projects = [];
-  fixture.config.today = {
-    ...fixture.config.today,
-    victory: { text: "", done: false },
-    items: [],
-  };
-  fixture.config.inbox = Array.from({ length: count }, (_, index) => ({
-    id: `builder-${index + 1}`,
-    text: `候補 ${String(index + 1).padStart(2, "0")}`,
-  }));
-  fixture.sessionSummary = { ...fixture.sessionSummary, recentSessions: [] };
-  fixture.sessionEntries = { ...fixture.sessionEntries, entries: [] };
-  fixture.doNowCandidates = [];
-  return fixture;
-}
-
-test.skip("Main responsibilities keep timer starts in Do Now and Today3 only", async ({ page }) => {
-  await prepare(page, withTodayState(3));
-  await expect(
-    page.locator(".doNowBand .doNowStartPrimary, .doNowBand .doNowStartSecondary"),
-  ).toHaveCount(2);
-  await expect(page.locator(".focusBand .todayStartButton")).toHaveCount(6);
-  await expect(
-    page.locator(
-      ".todayBuilderBand .todayStartButton, .projectsBand .todayStartButton, .projectsBand .startButton, .projectsBand .shortStartButton, .inboxBand .todayStartButton, .todayActivityBand .todayStartButton",
-    ),
-  ).toHaveCount(0);
-  await expect(page.locator(".projectsBand .nextStepRow")).toHaveCount(2);
-  await expect(page.locator(".todayRow input[type=checkbox]")).toHaveCount(0);
-  await expect(page.locator(".todayRow [role=status]")).toHaveCount(3);
-  await expect(page.locator(".todayBuilderDisclosure")).toHaveAttribute("aria-expanded");
-  await expect(page.locator(".projectsBand .disclosure")).toHaveAttribute("aria-expanded");
-  await expect(page.locator(".inboxBand .disclosure")).toHaveAttribute("aria-expanded");
-  await expect(page.locator(".todayActivityBand .disclosure")).toHaveAttribute("aria-expanded");
-});
-
-for (const activeCount of [0, 3]) {
-  test.skip(`Today3 active count ${activeCount} renders with the intended selection path`, async ({
-    page,
-  }) => {
-    await prepare(page, withTodayState(activeCount));
-    await expect(page.locator(".todayRow")).toHaveCount(activeCount);
-    await expect(page.getByRole("button", { name: "今日の3件に追加" })).toHaveCount(0);
-    const candidateLink = page
-      .locator(".focusBand .todayEmptyState")
-      .getByRole("button", { name: "今日やるものを選ぶ" });
-    if (activeCount === 0) {
-      await expect(candidateLink).toBeVisible();
-      await candidateLink.click();
-      const pickerCloseButton = page.getByRole("button", {
-    name: "今日やるものを選ぶを閉じる",
-  });
-  await expect(pickerCloseButton).toBeFocused();
-  await pickerCloseButton.click();
-      await expect(page.locator(".todayBuilderDisclosure")).toHaveAttribute(
-        "aria-expanded",
-        "true",
-      );
-    } else {
-      await expect(candidateLink).toHaveCount(0);
-    }
-    const completionSummary = page.locator(".todayCompletionSummary");
-    if (activeCount === 0) await expect(completionSummary).toHaveCount(0);
-    else {
-      await expect(completionSummary).toHaveText(`0 / ${activeCount} 完了`);
-    }
-    await expect(page.getByRole("button", { name: /次の3件を選ぶ/ })).toHaveCount(0);
-  });
-}
-
 for (const completedCount of [2, 3]) {
   test(`Today3 completion count ${completedCount} of 3 has the correct batch state`, async ({
     page,
@@ -145,21 +73,6 @@ for (const completedCount of [2, 3]) {
     );
   });
 }
-
-test("Today3 manual stop below one minute is not recorded", async ({ page }) => {
-  const fixture = withTodayState(1);
-  fixture.config.settings.shortTimerMinutes = 2;
-  await prepare(page, fixture);
-  const card = page.locator(".todayRow").first();
-  await card.getByRole("button", { name: "短時間タイマー2分で開始" }).click();
-  await page.clock.runFor(30_000);
-  await card.getByRole("button", { name: "終了" }).click();
-  await expect(page.locator(".toast").last()).toContainText("1分未満なので記録しませんでした");
-  expect(
-    (await invokeCommands(page)).filter((command) => command === "record_session"),
-  ).toHaveLength(0);
-  await expect(card.getByRole("status", { name: "未完了" })).toBeVisible();
-});
 
 test("switching from a sub-minute timer warns without recording or resizing manual cards", async ({
   page,
@@ -232,102 +145,6 @@ test("manual next batch accepts one, two, and three new items but no fourth", as
   expect((await currentConfig(page)).today.items).toHaveLength(3);
 });
 
-for (const count of [5, 6]) {
-  test.skip(`Today Builder count ${count} paginates deterministically`, async ({ page }) => {
-    await prepare(page, withBuilderCount(count));
-    await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
-    await expect(page.locator("[data-today-builder-index]")).toHaveCount(Math.min(5, count));
-    await expect(page.locator(".todayBuilderPagination")).toHaveCount(count > 5 ? 1 : 0);
-    if (count > 5) {
-      await expect(page.locator(".todayBuilderPagination")).toContainText(
-        `1 / ${Math.ceil(count / 5)}`,
-      );
-    }
-  });
-}
-
-test.skip("Today Builder drag persists only on drop and rerenders the stable order", async ({
-  page,
-}) => {
-  await prepare(page, withBuilderCount(6));
-  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
-  const rows = page.locator(".todayPickerRow");
-  const source = await rows.nth(0).boundingBox();
-  const target = await rows.nth(2).boundingBox();
-  expect(source).not.toBeNull();
-  expect(target).not.toBeNull();
-
-  const storedOrder = () =>
-    page.evaluate(() => localStorage.getItem("life-launcher-today-builder-order"));
-  expect(await storedOrder()).toBeNull();
-  await page.mouse.move(source!.x + source!.width / 2, source!.y + source!.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(source!.x + source!.width / 2 + 12, source!.y + source!.height / 2, {
-    steps: 2,
-  });
-  await page.mouse.move(target!.x + target!.width / 2, target!.y + target!.height - 3, {
-    steps: 5,
-  });
-  await expect(page.locator(".todayBuilderDragGhost")).toBeVisible();
-  expect(await storedOrder()).toBeNull();
-  await page.mouse.up();
-
-  await expect.poll(storedOrder).not.toBeNull();
-  await expect(rows.nth(0)).toContainText("候補 02");
-  await expect(rows.nth(1)).toContainText("候補 03");
-  await expect(rows.nth(2)).toContainText("候補 01");
-
-  const orderAfterDrop = await storedOrder();
-  await page.reload();
-  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
-  expect(await storedOrder()).toBe(orderAfterDrop);
-  await expect(page.locator(".todayPickerRow").nth(0)).toContainText("候補 02");
-  await expect(page.locator(".todayPickerRow").nth(1)).toContainText("候補 03");
-  await expect(page.locator(".todayPickerRow").nth(2)).toContainText("候補 01");
-});
-
-test.skip("Today Builder clamps when a source item disappears", async ({ page }) => {
-  await prepare(page, withBuilderCount(11));
-  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
-  await page.getByRole("button", { name: "次のページ" }).click();
-  await page.getByRole("button", { name: "次のページ" }).click();
-  await expect(page.locator(".todayBuilderPagination")).toContainText("3 / 3");
-  await page.evaluate(() => {
-    const control = (
-      window as Window & {
-        __LIFE_LAUNCHER_VISUAL_QA__?: {
-          currentConfig: () => AppConfig;
-          updateConfig: (config: AppConfig) => void;
-        };
-      }
-    ).__LIFE_LAUNCHER_VISUAL_QA__;
-    if (!control) throw new Error("Visual QA control is unavailable");
-    const config = control.currentConfig();
-    control.updateConfig({ ...config, inbox: config.inbox.slice(0, 10) });
-  });
-  await expect(page.locator(".todayBuilderPagination")).toContainText("2 / 2");
-  await expect(page.locator(".todayBuilderHeader .disclosureCount")).toContainText("10件");
-  await page.reload();
-  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
-  await expect(page.locator(".todayBuilderHeader .disclosureCount")).toContainText("10件");
-});
-
-test.skip("Today Builder retains but ignores legacy dismiss data", async ({ page }) => {
-  await prepare(page, withBuilderCount(1));
-  const dismissed = ["inbox:none:候補 01"];
-  await page.evaluate((keys) => {
-    localStorage.setItem("life-launcher-today-builder-dismissed", JSON.stringify(keys));
-  }, dismissed);
-  await page.reload();
-  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
-  await expect(page.locator("[data-today-builder-index]")).toHaveCount(1);
-  await page.locator("[data-today-builder-index]").click({ button: "right" });
-  await expect(page.getByRole("menuitem", { name: "削除" })).toHaveCount(0);
-  expect(
-    await page.evaluate(() => localStorage.getItem("life-launcher-today-builder-dismissed")),
-  ).toBe(JSON.stringify(dismissed));
-});
-
 test("registration stays in source sections and persists after reload", async ({ page }) => {
   await prepare(page, withTodayState(0));
 
@@ -373,6 +190,11 @@ test("registration stays in source sections and persists after reload", async ({
   await wishlistInput.fill("再起動後も残るやりたいこと");
   await wishlistInput.press("Enter");
   await expect(wishlistDialog).toHaveCount(0);
+
+  await addedProjectRow.focus();
+  await page.keyboard.press("Shift+F10");
+  await expect(page.getByRole("menuitem", { name: "次の一手を編集", exact: true })).toBeEnabled();
+  await page.keyboard.press("Escape");
 
   await page.reload();
   expect(

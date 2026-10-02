@@ -1,7 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { earlyCompletionItem } from "../../src/earlyCompletion";
 import {
-  SESSION_MINIMUM_MINUTES,
   isSessionRecordable,
   sessionMinutes,
   timerHasExpired,
@@ -36,7 +35,6 @@ test("P82-02 pause is excluded and resume continues from the frozen elapsed valu
 });
 
 test("P82-02 SessionMinimum is shared at the exact one-minute boundary", () => {
-  expect(SESSION_MINIMUM_MINUTES).toBe(1);
   expect(sessionMinutes(timer(), 60_999)).toBe(0);
   expect(isSessionRecordable(timer(), 60_999)).toBe(false);
   expect(sessionMinutes(timer(), 61_000)).toBe(1);

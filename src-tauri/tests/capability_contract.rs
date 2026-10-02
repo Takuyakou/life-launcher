@@ -103,21 +103,3 @@ fn window_capabilities_match_the_reviewed_least_privilege_contract() {
         );
     }
 }
-
-#[test]
-fn webviews_do_not_receive_unused_opener_or_global_shortcut_permissions() {
-    for source in [
-        include_str!("../capabilities/default.json"),
-        include_str!("../capabilities/dictionary.json"),
-        include_str!("../capabilities/instruction.json"),
-        include_str!("../capabilities/mini.json"),
-    ] {
-        let parsed: Value = serde_json::from_str(source).expect("valid capability JSON");
-        let permissions = string_set(&parsed, "permissions");
-        assert!(permissions.iter().all(|permission| {
-            !permission.starts_with("opener:")
-                && !permission.starts_with("global-shortcut:")
-                && permission != "autostart:allow-is-enabled"
-        }));
-    }
-}

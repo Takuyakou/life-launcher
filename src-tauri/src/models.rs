@@ -1151,14 +1151,4 @@ mod tests {
         assert!(migrated.next_step.is_none());
         assert!(migrated.legacy_next_step_settings.is_none());
     }
-
-    #[test]
-    fn sample_config_uses_v3_nested_next_step() {
-        let config = sample_config();
-        assert_eq!(config.version, 3);
-        assert_eq!(
-            config.projects[0].next_step.as_ref().unwrap().text,
-            "資料を1ページ読む"
-        );
-    }
 }

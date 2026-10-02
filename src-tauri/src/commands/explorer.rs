@@ -226,17 +226,18 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn dispatch_returns_a_generic_error_without_exposing_the_path() {
-        let root = fixture_root("dispatch");
-        let _ = fs::remove_dir_all(&root);
-        fs::create_dir_all(&root).expect("create fixture root");
-        let target = validate_reveal_target(&button(Action::OpenFolder {
-            path: root.to_string_lossy().to_string(),
-        }))
-        .expect("valid folder target");
-        let error = dispatch_explorer(&target, |_| Err(std::io::Error::other("fixture failure")))
-            .expect_err("dispatch should fail");
+        let target = RevealTarget {
+            path: PathBuf::from(r"C:\Private\dispatch"),
+            kind: RevealKind::Folder,
+        };
+        let error = dispatch_explorer(&target, |_| {
+            Err(std::io::Error::other(format!(
+                "failed to open {}",
+                target.path.display()
+            )))
+        })
+        .expect_err("dispatch should fail");
         assert_eq!(error, "failed to open Explorer");
-        assert!(!error.contains(&root.to_string_lossy().to_string()));
-        fs::remove_dir_all(root).expect("remove fixture root");
+        assert!(!error.contains(&target.path.to_string_lossy().to_string()));
     }
 }

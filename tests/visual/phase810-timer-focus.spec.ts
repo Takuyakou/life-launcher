@@ -29,10 +29,16 @@ test("Timer stepper retains focus without highlighting Do Now", async ({ page })
   const nextStepCard = page.locator(".nextStepCard").first();
   await expect(nextStepCard).toBeVisible();
   await nextStepCard.focus();
-  const plus = page.locator(".timerDock .timerPresetButton").last();
+  const timer = page.locator(".timerDock");
+  await expect(timer).toHaveCSS("user-select", "none");
+  await expect(timer.getByRole("spinbutton", { name: "通常タイマーの分数" })).toHaveCSS(
+    "user-select", "none",
+  );
+  const plus = timer.locator(".timerPresetButton").last();
   await plus.click();
   await expect(page.locator(".timerDock .timerPresetInputWrap input")).toHaveValue("30");
   await expect(plus).toBeFocused();
+  await expect(page.getByText(/通常タイマーを\d+分にしました/)).toHaveCount(0);
   await expect(nextStepCard).not.toBeFocused();
   await expect(nextStepCard).not.toHaveCSS("border-color", "rgb(112, 167, 255)");
 

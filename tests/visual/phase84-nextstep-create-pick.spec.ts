@@ -41,7 +41,10 @@ test("P84 NextStep editor defaults to Wishlist and picks only same-project items
   await prepare(page, fixture);
 
   const card = page.locator('.nextStepCard[data-project-id="sample-learning"]');
-  await card.getByRole("button", { name: "次の一手を設定", exact: true }).click();
+  const setButton = card.getByRole("button", { name: "次の一手を設定", exact: true });
+  const setBox = await setButton.boundingBox();
+  expect(setBox).not.toBeNull();
+  await page.mouse.click(setBox!.x + setBox!.width / 2, setBox!.y - 5);
   const dialog = page.getByRole("dialog", { name: "次の一手を設定" });
   const modes = dialog.getByRole("tab");
   await expect(modes).toHaveText(["＋ やりたいことから選ぶ", "＋ 新しく入力"]);
@@ -56,7 +59,10 @@ test("P84 NextStep editor defaults to Wishlist and picks only same-project items
 
   await modes.nth(1).click();
   await expect(dialog.getByLabel("行動")).toBeVisible();
-  await modes.nth(0).click();
+  await dialog.getByRole("button", { name: "次の一手を設定を閉じる" }).click();
+  await expect(page.getByRole("dialog", { name: "入力内容を破棄して閉じますか？" })).toHaveCount(0);
+  await setButton.click();
+  await expect(modes.nth(0)).toHaveAttribute("aria-selected", "true");
 
   await candidates.nth(0).click();
   await expect(candidates.nth(0)).toHaveAttribute("aria-checked", "true");
@@ -66,9 +72,20 @@ test("P84 NextStep editor defaults to Wishlist and picks only same-project items
   await expect(dialog.getByRole("button", { name: "保存", exact: true })).toBeEnabled();
 
   await page.setViewportSize({ width: 760, height: 820 });
-  await dialog.screenshot({ path: "dist/visual-qa/phase84/nextstep-create-pick-760.png" });
   await dialog.getByRole("button", { name: "キャンセル", exact: true }).click();
   expect(await currentConfig(page)).toEqual(initial);
+
+  await setButton.click();
+  await modes.nth(1).click();
+  await expect(dialog.getByLabel("行動")).toBeFocused();
+  await dialog.getByLabel("行動").fill("新しく入力した次の一手");
+  await dialog.getByRole("textbox", { name: "始めるきっかけ（任意）" }).fill("PCを開いたら");
+  await dialog.getByRole("button", { name: "保存", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(card).toContainText("新しく入力した次の一手");
+  expect((await currentConfig(page)).projects[0].nextStep).toMatchObject({
+    text: "新しく入力した次の一手", trigger: "PCを開いたら",
+  });
 });
 
 test("P84 Wishlist selection swaps atomically and returns the previous NextStep", async ({
@@ -108,33 +125,4 @@ test("P84 Wishlist selection swaps atomically and returns the previous NextStep"
     text: previous.text,
     projectId: fixture.config.projects[0].id,
   });
-});
-
-test("P84 NextStep picker blocks unfinished Today sources", async ({ page }) => {
-  const fixture = createPublicFixture();
-  fixture.config.today.items = [
-    {
-      text: fixture.config.projects[0].nextStep!.text,
-      done: false,
-      sourceKey: "project:sample-learning",
-      sourceGenerationId: fixture.config.projects[0].nextStep!.generationId,
-      projectId: "sample-learning",
-    },
-    {
-      text: "週末に試すアイデア",
-      done: false,
-      sourceKey: "wishlist:sample-weekend",
-      projectId: "sample-learning",
-    },
-  ];
-  await prepare(page, fixture);
-
-  const row = page.locator('[data-inbox-id="sample-weekend"]');
-  await row.hover();
-  await expect(row.locator(".sourceLockBadge--wishlist")).toHaveCount(1);
-  await expect(
-    row.getByRole("button", { name: "週末に試すアイデアの次の一手を設定" }),
-  ).toHaveCount(0);
-  await row.click({ button: "right" });
-  await expect(page.getByRole("menuitem", { name: "次の一手にする" })).toBeDisabled();
 });

@@ -90,6 +90,8 @@ test("P83-02 backup choice cancel and final Escape perform no reset", async ({ p
   await installResetBackend(page);
 
   let choice = await openResetChoice(page);
+  await expect(choice.getByRole("button", { name: "バックアップして続行" })).toHaveClass(/mainActionButton--gold/);
+  await expect(choice.getByRole("button", { name: "バックアップせず続行" })).toHaveClass(/dangerButton/);
   await choice.getByRole("button", { name: "キャンセル", exact: true }).click();
   await expect(choice).toHaveCount(0);
   await expect(
@@ -113,19 +115,6 @@ test("P83-02 backup choice cancel and final Escape perform no reset", async ({ p
       .getByRole("button", { name: "ソフトウェアリセット..." }),
   ).toBeFocused();
   expect(await commandCalls(page, "software_reset")).toHaveLength(0);
-});
-
-test("P83-02 backup choice uses gold for backup and danger for no-backup", async ({ page }) => {
-  await prepare(page);
-  await installResetBackend(page);
-
-  const choice = await openResetChoice(page);
-  await expect(choice.getByRole("button", { name: "バックアップして続行" })).toHaveClass(
-    /mainActionButton--gold/,
-  );
-  await expect(choice.getByRole("button", { name: "バックアップせず続行" })).toHaveClass(
-    /dangerButton/,
-  );
 });
 
 test("P83-02 backup reset asks for and saves a folder when none is configured", async ({
@@ -264,23 +253,6 @@ test("P83-02 backup success reaches reset and preserves unrelated browser storag
   await expect(page.getByRole("dialog", { name: "Life Launcherを再起動しています" })).toBeFocused();
 });
 
-test("P83-02 no-backup reset success skips backup and requests restart", async ({ page }) => {
-  await prepare(page);
-  await installResetBackend(page);
-
-  const choice = await openResetChoice(page);
-  await choice.getByRole("button", { name: "バックアップせず続行" }).click();
-  await page
-    .getByRole("dialog", { name: "ソフトウェアリセットを実行しますか？" })
-    .getByRole("button", { name: "ソフトウェアリセット", exact: true })
-    .click();
-
-  expect(await commandCalls(page, "create_software_reset_backup")).toHaveLength(0);
-  expect(await commandCalls(page, "prepare_software_reset")).toHaveLength(1);
-  expect(await commandCalls(page, "software_reset")).toHaveLength(1);
-  await expect(page.getByRole("dialog", { name: "Life Launcherを再起動しています" })).toBeVisible();
-});
-
 test("P83-02 duplicate final dispatch invokes prepare and reset only once", async ({ page }) => {
   await prepare(page);
   await installResetBackend(page);
@@ -295,8 +267,19 @@ test("P83-02 duplicate final dispatch invokes prepare and reset only once", asyn
     button.click();
   });
 
+  expect(await commandCalls(page, "create_software_reset_backup")).toHaveLength(0);
   expect(await commandCalls(page, "prepare_software_reset")).toHaveLength(1);
   expect(await commandCalls(page, "software_reset")).toHaveLength(1);
+  const progress = page.getByRole("dialog", { name: "Life Launcherを再起動しています" });
+  await expect(progress).toBeVisible();
+  await expect(progress).toBeFocused();
+  const before = (await commandCalls(page, "load_config")).length;
+  await page.evaluate(() =>
+    (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: VisualQaControl })
+      .__LIFE_LAUNCHER_VISUAL_QA__.emit("config-changed"),
+  );
+  await page.clock.runFor(500);
+  expect((await commandCalls(page, "load_config")).length).toBe(before);
 });
 
 test("P83-02 backup failure aborts before final confirmation", async ({ page }) => {
@@ -405,22 +388,3 @@ for (const paused of [false, true]) {
     expect(await commandCalls(page, "record_session")).toHaveLength(0);
   });
 }
-
-test("P83-02 reset freeze ignores watcher reloads while restart is pending", async ({ page }) => {
-  await prepare(page);
-  await installResetBackend(page);
-  const choice = await openResetChoice(page);
-  await choice.getByRole("button", { name: "バックアップせず続行" }).click();
-  await page
-    .getByRole("dialog", { name: "ソフトウェアリセットを実行しますか？" })
-    .getByRole("button", { name: "ソフトウェアリセット", exact: true })
-    .click();
-  const before = (await commandCalls(page, "load_config")).length;
-  await page.evaluate(() =>
-    (
-      window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: VisualQaControl }
-    ).__LIFE_LAUNCHER_VISUAL_QA__.emit("config-changed"),
-  );
-  await page.clock.runFor(500);
-  expect((await commandCalls(page, "load_config")).length).toBe(before);
-});

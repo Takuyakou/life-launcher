@@ -1,10 +1,7 @@
-import { mkdir } from "node:fs/promises";
-import { resolve } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 
-const SCREENSHOT_DIR = resolve("dist/visual-qa/phase89-main-display");
 type VisualQaWindow = Window & {
   __LIFE_LAUNCHER_VISUAL_QA__: {
     invokeCalls: Array<{ command: string; args: Record<string, unknown> }>;
@@ -24,15 +21,34 @@ async function prepare(page: Page, width = 1440, size?: "standard" | "large" | "
   await page.evaluate(async () => document.fonts.ready);
 }
 
+async function expectMainFits(page: Page) {
+  const overflow = await page.evaluate(() => {
+    const area = document.querySelector(".mainScrollArea")!;
+    return {
+      document: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      area: area.scrollWidth > area.clientWidth + 1,
+    };
+  });
+  expect(overflow).toEqual({ document: false, area: false });
+  for (const button of await page.locator(".topBar .viewToggleButton").all()) {
+    const box = await button.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(page.viewportSize()!.width);
+  }
+}
+
 async function openSettings(page: Page) {
   await page.getByRole("button", { name: "設定を開く" }).click();
   return page.getByRole("dialog", { name: "設定" });
 }
 
 test("P89 legacy config defaults to standard and saves all three presets", async ({ page }) => {
-  await prepare(page);
+  await prepare(page, 1920);
   const content = page.locator(".mainScrollContent");
   await expect(content).toHaveAttribute("data-main-display-size", "standard");
+  await expectMainFits(page);
+  await expect(page.getByText("先週のふりかえりが見られます")).toHaveCount(0);
   for (const [size, label] of [
     ["large", "大"],
     ["xlarge", "特大"],
@@ -44,6 +60,11 @@ test("P89 legacy config defaults to standard and saves all three presets", async
     await expect(content).toHaveAttribute("data-main-display-size", size);
     await page.reload();
     await expect(content).toHaveAttribute("data-main-display-size", size);
+    for (const width of [1920, 620]) {
+      await page.setViewportSize({ width, height: 900 });
+      await expectMainFits(page);
+    }
+    await page.setViewportSize({ width: 1920, height: 900 });
   }
 });
 
@@ -122,75 +143,25 @@ test("changing a shortcut still reapplies shortcut settings", async ({ page }) =
   expect(await reapplyCount()).toBe(before + 1);
 });
 
-test("P89 Cancel keeps current Main size; Records and toolbar remain unchanged", async ({
-  page,
-}) => {
-  await prepare(page, 1440, "large");
-  const content = page.locator(".mainScrollContent");
-  const toolbar = page.locator(".topBar");
-  const toolbarFont = await toolbar.evaluate((element) => getComputedStyle(element).fontSize);
-  const settings = await openSettings(page);
-  await settings.getByRole("radio", { name: "特大", exact: true }).check();
-  await settings.getByRole("button", { name: "キャンセル", exact: true }).click();
-  const discard = page.getByRole("dialog", { name: "入力内容を破棄して閉じますか？" });
-  await discard.getByRole("button", { name: /破棄/ }).click();
-  await expect(content).toHaveAttribute("data-main-display-size", "large");
-  await page.getByRole("button", { name: "記録ビューを開く" }).click();
-  await expect(content).not.toHaveAttribute("data-main-display-size", /large|xlarge/);
-  expect(await toolbar.evaluate((element) => getComputedStyle(element).fontSize)).toBe(toolbarFont);
-});
-
-for (const size of ["standard", "large", "xlarge"] as const) {
-  for (const width of [1920, 1440, 1080, 860, 620] as const) {
-    test(`P89 ${size} Main stays within ${width}px viewport`, async ({ page }) => {
-      await prepare(page, width, size);
-      const overflow = await page.evaluate(() => {
-        const area = document.querySelector(".mainScrollArea");
-        return {
-          document: document.documentElement.scrollWidth > document.documentElement.clientWidth,
-          area: area ? area.scrollWidth > area.clientWidth + 1 : true,
-        };
-      });
-      expect(overflow).toEqual({ document: false, area: false });
-      if (width === 1920) {
-        await mkdir(SCREENSHOT_DIR, { recursive: true });
-        await page.screenshot({ path: resolve(SCREENSHOT_DIR, `main-${size}-1920.png`) });
-      }
-    });
+test("P89 xlarge Main remains contained and reachable across responsive boundaries", async ({ page }) => {
+  await prepare(page, 1920, "xlarge");
+  // Boundary pairs exercise layout changes; 1080 retains a labelled-toolbar sample.
+  for (const width of [1080, 1051, 1050, 901, 900, 821, 820, 761, 760, 701, 700, 621, 620]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expectMainFits(page);
+    const toolbar = page.locator(".topBar");
+    await toolbar.scrollIntoViewIfNeeded();
+    for (const button of await toolbar.locator(".viewToggleButton").all()) {
+      expect(await button.evaluate((element) => {
+        const box = element.getBoundingClientRect();
+        return element.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2));
+      })).toBe(true);
+    }
+    const rows = page.locator(".todayRow");
+    const first = (await rows.nth(0).boundingBox())!;
+    const second = (await rows.nth(1).boundingBox())!;
+    expect(second.x >= first.x + first.width || second.y >= first.y + first.height).toBe(true);
   }
-}
-
-test("P89 heading names move without shifting counts or descriptions", async ({ page }) => {
-  await prepare(page, 1440);
-  const sections = [
-    [".todaySectionDisclosure h2", ".todaySectionCount", ".todaySectionDescription"],
-    [
-      ".projectsBand .disclosureLabel strong",
-      ".projectsBand .disclosureCount",
-      ".projectsBand .disclosureDescription",
-    ],
-    [
-      ".inboxBand .disclosureLabel strong",
-      ".inboxBand .disclosureCount",
-      ".inboxBand .disclosureDescription",
-    ],
-    [
-      ".todayActivityBand .disclosureLabel strong",
-      ".todayActivityBand .disclosureCount",
-      ".todayActivityBand .disclosureDescription",
-    ],
-  ] as const;
-  for (const [name, count, description] of sections) {
-    await expect(page.locator(name)).toHaveCSS("left", "-4px");
-    await expect(page.locator(count)).toHaveCSS("position", "static");
-    await expect(page.locator(description)).toHaveCSS("position", "static");
-  }
-  await expect(page.getByText("先週のふりかえりが見られます")).toHaveCount(0);
-  await page.locator(".todayActivityBand .disclosure").click();
-  await expect(page.locator(".todayActivityIdentity .projectIdentityName").first()).toHaveCSS(
-    "margin-left",
-    "10px",
-  );
 });
 
 for (const size of ["large", "xlarge"] as const) {
@@ -239,18 +210,23 @@ for (const size of ["large", "xlarge"] as const) {
   });
 }
 
-for (const [size, height, labelSize] of [
-  ["large", "35px", "12px"],
-  ["xlarge", "40px", "14px"],
-] as const) {
+for (const size of ["large", "xlarge"] as const) {
   test(
     "P89 " + size + " Main toolbar matches the content width and menu density",
     async ({ page }) => {
       await prepare(page, 1920, size);
       const toolbar = page.locator(".mainPanel > .topBar");
+      const toolbarFont = await toolbar.evaluate((element) => getComputedStyle(element).fontSize);
+      const settings = await openSettings(page);
+      await settings.getByRole("radio", { name: size === "large" ? "特大" : "大", exact: true }).check();
+      await settings.getByRole("button", { name: "キャンセル", exact: true }).click();
+      await page.getByRole("dialog", { name: "入力内容を破棄して閉じますか？" })
+        .getByRole("button", { name: /破棄/ }).click();
+      await expect(page.locator(".mainScrollContent")).toHaveAttribute("data-main-display-size", size);
       const button = toolbar.locator(".viewToggleButton").first();
-      await expect(button).toHaveCSS("height", height);
-      await expect(button.locator(".viewToggleButtonLabel")).toHaveCSS("font-size", labelSize);
+      const mainButtonBox = (await button.boundingBox())!;
+      const mainLabelSize = await button.locator(".viewToggleButtonLabel")
+        .evaluate((element) => parseFloat(getComputedStyle(element).fontSize));
       const topBox = await toolbar.boundingBox();
       const contentBox = await page.locator(".mainScrollContent").boundingBox();
       expect(topBox).not.toBeNull();
@@ -259,11 +235,13 @@ for (const [size, height, labelSize] of [
       expect(Math.abs(topBox!.width - contentBox!.width)).toBeLessThan(1);
 
       await page.getByRole("button", { name: "記録ビューを開く" }).click();
-      await expect(toolbar.locator(".viewToggleButton").first()).toHaveCSS("height", "32px");
-      await expect(toolbar.locator(".viewToggleButtonLabel").first()).toHaveCSS(
-        "font-size",
-        "11px",
-      );
+      await expect(page.locator(".mainScrollContent")).not.toHaveAttribute("data-main-display-size", /large|xlarge/);
+      expect(await toolbar.evaluate((element) => getComputedStyle(element).fontSize)).toBe(toolbarFont);
+      const recordsButtonBox = (await button.boundingBox())!;
+      expect(recordsButtonBox.height).toBeLessThan(mainButtonBox.height);
+      const recordsLabelSize = await button.locator(".viewToggleButtonLabel")
+        .evaluate((element) => parseFloat(getComputedStyle(element).fontSize));
+      expect(recordsLabelSize).toBeLessThan(mainLabelSize);
     },
   );
 }

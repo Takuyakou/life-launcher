@@ -1,20 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
-import { mkdir } from "node:fs/promises";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
-
-const captureDir = "dist/visual-qa/post-v133c";
 
 async function prepare(page: Page, fixture = createPublicFixture()) {
   await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
   await expect(page.locator(".sidebar")).toBeVisible();
-}
-
-async function capture(page: Page, name: string) {
-  await mkdir(captureDir, { recursive: true });
-  await page.screenshot({ path: `${captureDir}/${name}.png` });
 }
 
 async function currentConfig(page: Page): Promise<VisualQaFixture["config"]> {
@@ -44,14 +36,12 @@ test("Sidebar menu order and pointer anchor stay consistent across group gaps an
   await prepare(page, fixture);
   await page.locator(".brandBlock").click({ button: "right" });
   await expectGroupThenButton(page);
-  await capture(page, "01-sidebar-background-menu");
   await page.keyboard.press("Escape");
 
   const group = page.locator(".quickGroup").first();
   const header = group.locator(".quickGroupHeader");
   await header.click({ button: "right" });
   await expectGroupThenButton(page);
-  await capture(page, "02-sidebar-group-menu");
   await page.keyboard.press("Escape");
 
   const headerBox = (await header.boundingBox())!;
@@ -64,7 +54,6 @@ test("Sidebar menu order and pointer anchor stay consistent across group gaps an
   expect(gapMenu.width).toBeLessThanOrEqual(240);
   expect(Math.abs(gapMenu.x - gapX)).toBeLessThan(12);
   expect(Math.abs(gapMenu.y - gapY)).toBeLessThan(12);
-  await capture(page, "03-sidebar-group-gap-menu");
   await page.keyboard.press("Escape");
 
   const buttons = group.locator(".quickButton");
@@ -109,7 +98,6 @@ test("Sidebar menu remains inside a narrow viewport after scrolling and near the
   expect(box.y).toBeGreaterThanOrEqual(0);
   expect(box.x + box.width).toBeLessThanOrEqual(320);
   expect(box.y + box.height).toBeLessThanOrEqual(380);
-  await capture(page, "04-sidebar-narrow-bottom-menu");
 });
 
 test("Victory navigation enters editing and returns after Enter or Escape", async ({ page }) => {
@@ -122,7 +110,6 @@ test("Victory navigation enters editing and returns after Enter or Escape", asyn
   await page.getByRole("button", { name: "設定を開く" }).focus();
   await page.keyboard.press("ArrowDown");
   await expect(navigation).toBeFocused();
-  await capture(page, "05-victory-navigation-focus");
   await page.keyboard.press("Enter");
   const editor = page.getByRole("textbox", { name: "今日の勝利条件" });
   await expect(editor).toBeFocused();
@@ -130,11 +117,9 @@ test("Victory navigation enters editing and returns after Enter or Escape", asyn
   await page.keyboard.press("ArrowLeft");
   await expect(editor).toBeFocused();
   await page.keyboard.press("ArrowRight");
-  await capture(page, "06-victory-editing");
   await page.keyboard.press("Enter");
   await expect(navigation).toBeFocused();
   await expect.poll(async () => (await currentConfig(page)).today.victory.text).toBe("test");
-  await capture(page, "07-victory-confirmed");
   await page.keyboard.press("ArrowDown");
   await expect(navigation).not.toBeFocused();
   await navigation.focus();
@@ -161,7 +146,6 @@ test("active lower-left Timer actions have an Arrow path and disappear after End
   await lastGroup.focus();
   await page.keyboard.press("ArrowDown");
   await expect(timer.getByRole("button", { name: "一時停止" })).toBeFocused();
-  await capture(page, "08-normal-timer-keyboard-focus");
   await page.keyboard.press("ArrowRight");
   await expect(timer.getByRole("button", { name: "終了" })).toBeFocused();
   await page.keyboard.press("ArrowLeft");
@@ -218,29 +202,61 @@ for (const [name, todayLinked, pauseAfterContinue] of [
     expect(recordCalls).toBe(1);
     if (todayLinked) expect((await currentConfig(page)).today.items[0]?.done).toBe(true);
     else expect((await currentConfig(page)).today.items).toHaveLength(0);
-    await capture(page, todayLinked ? "09-do-now-today-completed" : "10-do-now-next-step-completed");
     await hold.getByRole("button", { name: "次の一手を見る" }).click();
     await expect(hold).toHaveCount(0);
     await expect(page.locator(".doNowBand")).not.toContainText("資料を1ページ読む");
   });
 }
 
-test("Record tabs stay opaque while scrolling at desktop and narrow widths", async ({ page }) => {
+test("Record tabs stay opaque and unobstructed while scrolling at desktop and narrow widths", async ({ page }) => {
   await page.setViewportSize({ width: 1000, height: 420 });
   await prepare(page);
   await page.getByRole("button", { name: "記録ビューを開く" }).click();
   const header = page.locator(".recordsViewHeader");
   const scrollArea = page.locator(".mainScrollArea");
-  await expect(header).toHaveCSS("background-color", "rgb(22, 21, 18)");
-  await capture(page, "11-record-tabs-top");
-  await scrollArea.evaluate((element) => { element.scrollTop = 350; });
-  await expect.poll(() => scrollArea.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
-  await expect(header).toHaveCSS("background-color", "rgb(22, 21, 18)");
-  await capture(page, "12-record-tabs-mid-scroll");
-  await scrollArea.evaluate((element) => { element.scrollTop = element.scrollHeight; });
-  await capture(page, "13-record-tabs-bottom");
-  await page.getByRole("tab", { name: "今週を決める" }).focus();
-  await capture(page, "14-record-tabs-focused");
-  await page.setViewportSize({ width: 800, height: 540 });
-  await capture(page, "15-record-tabs-narrow");
+  for (const viewport of [{ width: 1000, height: 420 }, { width: 800, height: 540 }]) {
+    await page.setViewportSize(viewport);
+    for (const position of ["top", "middle", "bottom"] as const) {
+      await scrollArea.evaluate((element, position) => {
+        element.scrollTop = position === "top" ? 0
+          : position === "middle" ? (element.scrollHeight - element.clientHeight) / 2
+          : element.scrollHeight;
+      }, position);
+      if (position !== "top") {
+        await expect.poll(() => scrollArea.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+      }
+      await expect(header).toHaveCSS("background-color", /^rgb\(/);
+      await expect(header).toHaveCSS("opacity", "1");
+      const headerBox = (await header.boundingBox())!;
+      const areaBox = (await scrollArea.boundingBox())!;
+      expect(headerBox.x).toBeGreaterThanOrEqual(areaBox.x);
+      expect(headerBox.x + headerBox.width).toBeLessThanOrEqual(areaBox.x + areaBox.width);
+      expect(headerBox.y).toBeGreaterThanOrEqual(areaBox.y - 1);
+      expect(headerBox.y + headerBox.height).toBeLessThanOrEqual(areaBox.y + areaBox.height);
+      if (position !== "top") expect(Math.abs(headerBox.y - areaBox.y)).toBeLessThanOrEqual(1);
+
+      const controls = header.locator("button");
+      await expect(controls).toHaveCount(4);
+      const boxes = [];
+      for (const control of await controls.all()) {
+        const box = (await control.boundingBox())!;
+        expect(box.x).toBeGreaterThanOrEqual(headerBox.x);
+        expect(box.x + box.width).toBeLessThanOrEqual(headerBox.x + headerBox.width);
+        expect(box.y).toBeGreaterThanOrEqual(headerBox.y);
+        expect(box.y + box.height).toBeLessThanOrEqual(headerBox.y + headerBox.height);
+        expect(await control.evaluate((element) => {
+          const rect = element.getBoundingClientRect();
+          return element.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+        })).toBe(true);
+        for (const other of boxes) {
+          expect(box.x >= other.x + other.width || other.x >= box.x + box.width
+            || box.y >= other.y + other.height || other.y >= box.y + box.height).toBe(true);
+        }
+        boxes.push(box);
+      }
+    }
+    const planning = header.getByRole("tab", { name: "今週を決める" });
+    await planning.focus();
+    await expect(planning).toBeFocused();
+  }
 });

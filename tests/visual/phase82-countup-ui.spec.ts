@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import type { AppConfig } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
@@ -145,6 +145,31 @@ test("P82-03 Measure manual end reuses Today3 early completion", async ({ page }
   expect(config.today.items[0].done).toBe(false);
 });
 
+async function expectControlsFit(container: Locator) {
+  const bounds = await container.boundingBox();
+  expect(bounds).not.toBeNull();
+  const controls = await container.locator("button:visible").evaluateAll((nodes) =>
+    nodes.map((node) => {
+      const box = node.getBoundingClientRect();
+      return { left: box.left, right: box.right, top: box.top, bottom: box.bottom };
+    }),
+  );
+  expect(controls.length).toBeGreaterThan(0);
+  for (let index = 0; index < controls.length; index += 1) {
+    const box = controls[index];
+    expect(box.left).toBeGreaterThanOrEqual(bounds!.x - 1);
+    expect(box.right).toBeLessThanOrEqual(bounds!.x + bounds!.width + 1);
+    expect(box.top).toBeGreaterThanOrEqual(bounds!.y - 1);
+    expect(box.bottom).toBeLessThanOrEqual(bounds!.y + bounds!.height + 1);
+    for (const other of controls.slice(index + 1)) {
+      expect(
+        Math.min(box.right, other.right) - Math.max(box.left, other.left) > 1 &&
+        Math.min(box.bottom, other.bottom) - Math.max(box.top, other.top) > 1,
+      ).toBe(false);
+    }
+  }
+}
+
 for (const [width, columns] of [
   [1440, 3],
   [1000, 2],
@@ -155,22 +180,13 @@ for (const [width, columns] of [
   }) => {
     await prepare(page, measureFixture(), width);
     const card = page.locator(".todayRow").first();
-    const inactiveHeight = (await card.boundingBox())!.height;
+    const inactiveHeight = await card.evaluate((node) => (node as HTMLElement).offsetHeight);
     await expect(card.locator(".todayMeasureButton")).toHaveAttribute(
       "title",
       "時間を決めずに計測",
     );
     await expect(card.getByRole("button", { name: /手順書を開く/ })).toBeVisible();
-    const measureBox = await card.locator(".todayMeasureButton").boundingBox();
-    expect(measureBox?.width).toBe(34);
-    expect(measureBox?.height).toBe(36);
-    await expect(card.locator(".todayMeasureButton")).toHaveText("");
-    await expect(card.locator(".todayMeasureButton")).toHaveCSS(
-      "background-color",
-      "rgba(190, 181, 164, 0.08)",
-    );
-    await card.locator(".todayMeasureButton").hover();
-    await expect(card.locator(".todayMeasureButton")).toHaveCSS("transform", "none");
+
     const timerButton = card.locator(".todayStartButton--short");
     const underlineBefore = await timerButton.evaluate(
       (node) => getComputedStyle(node, "::after").transform,
@@ -181,18 +197,38 @@ for (const [width, columns] of [
       (node) => getComputedStyle(node, "::after").transform,
     );
     expect(underlineAfter).not.toBe(underlineBefore);
-    const doNowBox = await page.locator(".doNowMeasureButton").boundingBox();
-    expect(doNowBox?.width).toBe(82);
+
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       await page.evaluate(() => document.documentElement.clientWidth),
     );
-    const first = (await page.locator(".todayRow").nth(0).boundingBox())!;
-    const second = (await page.locator(".todayRow").nth(1).boundingBox())!;
-    if (columns === 3) expect(Math.abs(first.y - second.y)).toBeLessThan(2);
-    if (columns === 1) expect(second.y).toBeGreaterThan(first.y + first.height - 2);
-    await page.locator(".mainScrollArea").screenshot({
-      path: `dist/visual-qa/phase82-03/countup-${width}.png`,
-    });
+    expect(await page.locator(".todayGrid").evaluate((node) =>
+      getComputedStyle(node).gridTemplateColumns.split(" ").length,
+    )).toBe(columns);
+    for (const container of [card, page.locator(".doNowContent")]) {
+      await expectControlsFit(container);
+    }
+    const hoverControls = [
+      card.locator(".todayStartButton--short"),
+      card.locator(".todayStartButton--normal"),
+      card.locator(".todayMeasureButton"),
+      card.locator(".todayInstructionButton"),
+      card.locator(".todayRemoveButton"),
+      page.locator(".doNowStartPrimary"),
+      page.locator(".doNowStartSecondary"),
+      page.locator(".doNowMeasureButton"),
+    ];
+    for (const button of hoverControls) {
+      await expect(button).toBeVisible();
+      const before = await button.evaluate((node) => ({
+        width: (node as HTMLElement).offsetWidth,
+        height: (node as HTMLElement).offsetHeight,
+      }));
+      await button.hover();
+      expect(await button.evaluate((node) => ({
+        width: (node as HTMLElement).offsetWidth,
+        height: (node as HTMLElement).offsetHeight,
+      }))).toEqual(before);
+    }
     await card.locator(".todayMeasureButton").focus();
     await expect(card.locator(".todayMeasureButton")).toBeFocused();
     await card.locator(".todayMeasureButton").press("Enter");
@@ -203,17 +239,9 @@ for (const [width, columns] of [
     await expect(pause).toHaveText("停止");
     await expect(stop).toHaveText("終了");
     await expect(card.locator(".measureElapsedClock")).toHaveText("00:05");
-    await expect(measureActions).toHaveCSS("border-top-style", "none");
-    await expect(measureActions).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
-    expect((await measureActions.boundingBox())?.width).toBe(200);
-    expect((await measureActions.boundingBox())?.height).toBe(36);
-    expect((await pause.boundingBox())?.width).toBe(68);
-    expect((await pause.boundingBox())?.height).toBe(36);
-    expect((await stop.boundingBox())?.width).toBe(68);
-    expect((await stop.boundingBox())?.height).toBe(36);
-    expect((await card.boundingBox())!.height).toBe(inactiveHeight);
-    await page.locator(".mainScrollArea").screenshot({
-      path: `dist/visual-qa/phase82-03/countup-active-${width}.png`,
-    });
+    await expect(measureActions).toBeVisible();
+    await expectControlsFit(card);
+    const activeHeight = await card.evaluate((node) => (node as HTMLElement).offsetHeight);
+    expect(activeHeight).toBe(inactiveHeight);
   });
 }

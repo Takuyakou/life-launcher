@@ -62,48 +62,6 @@ async function dragTo(page: Page, source: Locator, target: Locator) {
   );
 }
 
-test("Today removal toast, picker alignment, progress, typography and measure underline match the UI grammar", async ({
-  page,
-}) => {
-  const fixture = createPublicFixture();
-  await prepare(page, fixture);
-
-  const measure = page.locator(".todayMeasureButton").first();
-  await measure.hover();
-  await expect
-    .poll(() => measure.evaluate((node) => getComputedStyle(node, "::after").transform))
-    .not.toBe("matrix(0, 0, 0, 1, 0, 0)");
-  const underline = await measure.evaluate((node) => {
-    const style = getComputedStyle(node, "::after");
-    return { left: style.left, right: style.right, transform: style.transform };
-  });
-  expect(underline.left).toBe("6px");
-  expect(underline.right).toBe("6px");
-  expect(underline.transform).not.toBe("matrix(0, 0, 0, 1, 0, 0)");
-
-  await page.locator(".todayRemoveButton").first().click();
-  await expect(page.locator(".toast").last()).toHaveClass(/toast--neutral/);
-
-  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
-  const dialog = page.getByRole("dialog", { name: "今日やるものを選ぶ" });
-  const progress = dialog.locator(".todayPickerProgress");
-  expect((await progress.boundingBox())!.width).toBeGreaterThanOrEqual(220);
-  await expect(progress.locator("span")).toHaveCSS("background-color", "rgb(111, 207, 151)");
-  const addButton = dialog.locator(".todayPickerAddButton").first();
-  const cancelButton = dialog.getByRole("button", { name: "キャンセル", exact: true });
-  expect((await addButton.boundingBox())!.height).toBe((await cancelButton.boundingBox())!.height);
-
-  await dialog.getByRole("tab", { name: /やりたいこと/ }).click();
-  const sourceHeading = dialog.locator(".todayPickerSourceHeading h3");
-  const panelHeading = dialog.locator(".todayPickerPanelHeading strong");
-  expect(await panelHeading.evaluate((node) => getComputedStyle(node).fontSize)).toBe(
-    await sourceHeading.evaluate((node) => getComputedStyle(node).fontSize),
-  );
-  expect(await panelHeading.evaluate((node) => getComputedStyle(node).color)).toBe(
-    await sourceHeading.evaluate((node) => getComputedStyle(node).color),
-  );
-});
-
 test("Wishlist rows drag to Today3 with gold guidance and use the shared adoption mutation", async ({
   page,
 }) => {
@@ -232,6 +190,12 @@ test("Project deletion save failure rolls Project, NextStep, Wishlist and comple
   await dialog.getByRole("button", { name: "残っている項目を完了扱いにして削除" }).click();
   await expect(dialog).toBeVisible();
   await expect(page.locator(".toast--error").last()).toContainText("保存できません");
+  await expect(card).toBeVisible();
+  await expect(card).toContainText(fixture.config.projects[1].nextStep!.text);
+  await dialog.getByRole("button", { name: "キャンセル", exact: true }).click();
+  const disclosure = page.locator(".inboxBand .disclosure");
+  if ((await disclosure.getAttribute("aria-expanded")) !== "true") await disclosure.click();
+  await expect(page.locator('[data-inbox-id="stretch-rollback"]')).toContainText("姿勢を整える");
   expect(await currentConfig(page)).toEqual(before);
 });
 

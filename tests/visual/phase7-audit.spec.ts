@@ -37,12 +37,10 @@ async function prepare(page: Page, short: number, planned: number) {
   return fixture;
 }
 
-
 // P7.0 boundary fixtures now exercise the implemented P7.1 manual-stop flow.
 const boundaries = [
   { short: 3, planned: 25, elapsed: [179, 180] },
   { short: 5, planned: 25, elapsed: [1499, 1500] },
-  { short: 3, planned: 3, elapsed: [180] },
 ];
 
 for (const { short, planned, elapsed } of boundaries) {
@@ -117,6 +115,8 @@ test("P7 baseline: paused time is excluded before and after resume", async ({ pa
   await page.clock.fastForward(600_000);
   await card.getByRole("button", { name: "終了", exact: true }).click();
   expect((await state(page)).calls.filter((c) => c.command === "record_session")).toHaveLength(0);
+  await expect(page.locator(".toast").last()).toContainText("1分未満なので記録しませんでした");
+  await expect(card.getByRole("status", { name: "未完了", exact: true })).toBeVisible();
   await card.getByRole("button", { name: "通常タイマー25分で開始" }).click();
   await page.clock.fastForward(59_000);
   await card.getByRole("button", { name: "このセッションを一時停止" }).click();

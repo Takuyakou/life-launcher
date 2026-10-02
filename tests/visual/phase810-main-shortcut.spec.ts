@@ -5,7 +5,6 @@ import { installTauriMock } from "./tauriMock";
 type MainWindowState = { visible: boolean; minimized: boolean; focused: boolean };
 type ShortcutControl = {
   setMainWindowState: (state: MainWindowState) => void;
-  mainWindowState: () => MainWindowState;
   emit: (event: string) => void;
   invokeCalls: { command: string }[];
   currentConfig: () => ReturnType<typeof createPublicFixture>["config"];
@@ -68,15 +67,6 @@ test("Main shortcut hides only a visible focused window", async ({ page }) => {
         ),
       )
       .toBe(true);
-    const actual = await page.evaluate(() =>
-      (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: ShortcutControl })
-        .__LIFE_LAUNCHER_VISUAL_QA__.mainWindowState(),
-    );
-    expect(actual.visible, name).toBe(name !== "foreground");
-    if (name !== "foreground") {
-      expect(actual.minimized, name).toBe(false);
-      expect(actual.focused, name).toBe(true);
-    }
     const commands = await page.evaluate((count) => {
       const qa = (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: ShortcutControl })
         .__LIFE_LAUNCHER_VISUAL_QA__;
@@ -90,6 +80,14 @@ test("Main shortcut badge fits beside Quick and follows its configured value", a
   await prepare(page);
   const badge = page.locator(".brandCopy .shortcutBadge");
   await expect(badge).toHaveText("Ctrl+Alt+Space");
+  const dictionaryBadge = page.locator(".launcherOpenButton .shortcutBadge");
+  for (const property of ["color", "border-top-color", "font-weight"] as const) {
+    const expected = await dictionaryBadge.evaluate(
+      (element, name) => getComputedStyle(element).getPropertyValue(name),
+      property,
+    );
+    await expect(badge).toHaveCSS(property, expected);
+  }
   await expect(badge).toHaveAttribute("title", /Life Launcherを表示\/隠す: Ctrl\+Alt\+Space/);
   const quick = page.locator(".brandCopy strong");
   const [quickBox, badgeBox, sidebarBox] = await Promise.all([

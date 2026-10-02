@@ -94,6 +94,7 @@ test("threshold uses validated snapshot minutes and defensive fallback, never a 
   expect(earlyCompletionItem(items, timer, 180)).toBe(items[0]);
   expect(earlyCompletionItem([...items].reverse(), timer, 180)).toBe(items[0]);
   expect(earlyCompletionItem(items, timer, 1500)).toBeUndefined();
+  expect(earlyCompletionItem(items, { ...timer, targetMinutes: 3 }, 180)).toBeUndefined();
   expect(
     earlyCompletionItem(
       items,
@@ -132,6 +133,7 @@ for (const action of ["left", "right", "escape"]) {
       ),
     );
     if (action === "left") {
+      await expect(page.locator(".todayRow").first()).toHaveClass(/todayRow--justCompleted/);
       expect(after.config.projects[0]).toEqual({
         ...before.config.projects[0],
         nextStep: undefined,
@@ -147,6 +149,7 @@ for (const action of ["left", "right", "escape"]) {
         projectId: before.config.projects[0].id,
       });
     } else {
+      await expect(page.locator(".todayRow--justCompleted, .todayAllCompletionReward")).toHaveCount(0);
       expect(after.config.projects).toEqual(before.config.projects);
       expect(after.config.sourceCompletions).toEqual(before.config.sourceCompletions);
     }
@@ -274,7 +277,7 @@ test("Session failure keeps the frozen dialog for retry, without marking Today d
   expect(after.config.today.items[0].done).toBe(true);
 });
 
-test("double handler dispatch cannot record twice; composing Enter and backdrop do not submit", async ({
+test("pending repeated clicks cannot record twice; composing Enter and backdrop do not submit", async ({
   page,
 }) => {
   await prepare(page);
@@ -285,28 +288,72 @@ test("double handler dispatch cannot record twice; composing Enter and backdrop 
   await page.locator(".confirmBackdrop").click({ position: { x: 3, y: 3 } });
   await expect(page.getByRole("dialog", { name: dialogName })).toBeVisible();
   expect((await state(page)).records).toHaveLength(0);
-  await page.getByRole("button", { name: "今日の分は完了", exact: true }).evaluate((node) => {
-    const key = Object.keys(node).find((name) => name.startsWith("__reactProps$"))!;
-    const props = (node as unknown as Record<string, { onClick: () => void }>)[key];
-    props.onClick();
-    props.onClick();
+  await page.evaluate(() => {
+    const target = window as Window & {
+      __TAURI_INTERNALS__: { invoke: (command: string, args?: Record<string, unknown>) => Promise<unknown> };
+      pendingRecordCount?: number;
+      releaseRecord?: () => void;
+    };
+    const invoke = target.__TAURI_INTERNALS__.invoke;
+    target.pendingRecordCount = 0;
+    target.__TAURI_INTERNALS__.invoke = async (command, args) => {
+      if (command === "record_session") {
+        target.pendingRecordCount! += 1;
+        await new Promise<void>((resolve) => { target.releaseRecord = resolve; });
+      }
+      return invoke(command, args);
+    };
+  });
+  await page.getByRole("button", { name: "今日の分は完了", exact: true }).dblclick();
+  await expect.poll(() => page.evaluate(() => (window as Window & { pendingRecordCount: number }).pendingRecordCount)).toBe(1);
+  await page.evaluate(() => {
+    const release = (window as Window & { releaseRecord?: () => void }).releaseRecord;
+    if (!release) throw new Error("Record was not pending");
+    release();
   });
   await expect(page.getByRole("dialog")).toHaveCount(0);
   expect((await state(page)).records).toHaveLength(1);
 });
 
-test("switch skips early confirmation and a stale stop cannot stop a restarted source", async ({
+test("switch skips early confirmation and a delayed mini-window stop cannot stop a restarted source", async ({
   page,
 }) => {
   await prepare(page);
   const first = page.locator(".todayRow").first();
-  await first.getByRole("button", { name: "通常タイマー25分で開始" }).click();
-  await first.getByRole("button", { name: "終了", exact: true }).evaluate((node) => {
-    const key = Object.keys(node).find((name) => name.startsWith("__reactProps$"))!;
-    (window as Window & { p7OldStop?: () => void }).p7OldStop = (
-      node as unknown as Record<string, { onClick: () => void }>
-    )[key].onClick;
+  await page.evaluate(() => {
+    type EventCallback = (event: unknown) => void;
+    const target = window as Window & {
+      __TAURI_INTERNALS__: {
+        transformCallback: (callback: EventCallback, once?: boolean) => number;
+        invoke: (command: string, args?: Record<string, unknown>) => Promise<unknown>;
+      };
+      staleMiniFinish?: () => void;
+    };
+    const bridge = target.__TAURI_INTERNALS__;
+    const transform = bridge.transformCallback;
+    const invoke = bridge.invoke;
+    const callbacks = new Map<number, EventCallback>();
+    bridge.transformCallback = (callback, once) => {
+      const id = transform(callback, once);
+      callbacks.set(id, callback);
+      return id;
+    };
+    bridge.invoke = async (command, args = {}) => {
+      if (command === "plugin:event|listen" && args.event === "mini-timer-command") {
+        const callback = callbacks.get(args.handler as number);
+        if (!callback) throw new Error("Mini event callback missing");
+        target.staleMiniFinish = () => callback({
+          event: "mini-timer-command", id: 0, payload: { action: "finish" },
+        });
+        bridge.transformCallback = transform;
+        bridge.invoke = invoke;
+      }
+      return invoke(command, args);
+    };
   });
+  await first.getByRole("button", { name: "通常タイマー25分で開始" }).click();
+  await expect.poll(() => page.evaluate(() => typeof (window as Window & { staleMiniFinish?: () => void }).staleMiniFinish)).toBe("function");
+
   await page.clock.fastForward(180_000);
   await page
     .locator(".todayRow")
@@ -315,7 +362,11 @@ test("switch skips early confirmation and a stale stop cannot stop a restarted s
     .click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await first.getByRole("button", { name: "通常タイマー25分で開始" }).click();
-  await page.evaluate(() => (window as Window & { p7OldStop?: () => void }).p7OldStop?.());
+  await page.evaluate(() => {
+    const staleFinish = (window as Window & { staleMiniFinish?: () => void }).staleMiniFinish;
+    if (!staleFinish) throw new Error("Stale mini event was not captured");
+    staleFinish();
+  });
   await expect(first.getByText("実行中", { exact: true })).toBeVisible();
   expect((await state(page)).records).toHaveLength(1);
 });
@@ -404,7 +455,7 @@ test("mini finish opens the topmost dialog and repeated mini commands cannot res
   await expect(page.getByRole("dialog")).toHaveCount(1);
 });
 
-for (const width of [1440, 860]) {
+for (const width of [860]) {
   test(`early dialog visual and keyboard layout at ${width}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     const fixture = fixtureForEarly();

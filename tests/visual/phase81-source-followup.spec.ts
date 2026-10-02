@@ -198,31 +198,6 @@ test("Phase 8.1 completion uses stable identity and is idempotent for done cards
   expect(second.source).toBeNull();
 });
 
-test("Phase 8.1 old Today snapshot never clears its replacement NextStep", () => {
-  const fixture = createPublicFixture();
-  fixture.config.projects[0].nextStep!.generationId = "gen-a";
-  snapshotCurrentNextStep(fixture);
-  const before = fixture.config;
-  const today = before.today.items[0];
-  before.projects[0].nextStep = {
-    ...before.projects[0].nextStep!,
-    text: "差し替え後の次の一手",
-    generationId: "gen-b",
-  };
-
-  const result = completeTodayItemAndPrepareSource(
-    before,
-    today.sourceKey!,
-    "2026-08-13T10:00:00+09:00",
-    "old-snapshot",
-  );
-
-  expect(result.source).toMatchObject({ kind: "nextStep", isCurrentSnapshot: false });
-  expect(result.config.today.items[0]).toEqual({ ...today, done: true });
-  expect(result.config.projects[0].nextStep?.text).toBe("差し替え後の次の一手");
-  expect(result.config.sourceCompletions).toEqual(before.sourceCompletions);
-});
-
 test("Phase 8.1 NextStep snapshot guard allows legacy fields and execution-setting edits", () => {
   const fixture = createPublicFixture();
   const today = fixture.config.today.items[0];

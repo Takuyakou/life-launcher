@@ -1008,119 +1008,76 @@ mod tests {
         assert_eq!(safe_icon_file_stem("///"), "button");
     }
 
-    #[test]
-    fn icon_source_path_uses_first_local_action() {
-        let button = LauncherButton {
+    fn source_button(icon_source: Option<&str>, actions: Vec<Action>) -> LauncherButton {
+        LauncherButton {
             id: "button".to_string(),
             label: "Button".to_string(),
             icon: None,
-            icon_source: None,
+            icon_source: icon_source.map(str::to_string),
             group: None,
             show_in_sidebar: true,
             show_in_overlay: true,
             overlay_page_id: None,
             aliases: Vec::new(),
             description: None,
-            actions: vec![
-                Action::OpenUrl {
-                    url: "https://example.com".to_string(),
-                },
-                Action::OpenFolder {
-                    path: "C:/Work".to_string(),
-                },
-            ],
-        };
-
-        assert_eq!(icon_source_path(&button), Some("C:/Work".to_string()));
+            actions,
+        }
     }
 
     #[test]
-    fn icon_source_path_prefers_explicit_source() {
-        let button = LauncherButton {
-            id: "button".to_string(),
-            label: "Button".to_string(),
-            icon: None,
-            icon_source: Some("C:/Users/Me/Desktop/App.lnk".to_string()),
-            group: None,
-            show_in_sidebar: true,
-            show_in_overlay: true,
-            overlay_page_id: None,
-            aliases: Vec::new(),
-            description: None,
-            actions: vec![Action::OpenApp {
-                path: "C:/Program Files/App/app.exe".to_string(),
-                args: Vec::new(),
-            }],
-        };
-
-        assert_eq!(
-            icon_source_path(&button),
-            Some("C:/Users/Me/Desktop/App.lnk".to_string())
-        );
-    }
-
-    #[test]
-    fn icon_source_path_uses_open_file_for_shell_icon() {
-        let button = LauncherButton {
-            id: "button".to_string(),
-            label: "Button".to_string(),
-            icon: None,
-            icon_source: None,
-            group: None,
-            show_in_sidebar: true,
-            show_in_overlay: true,
-            overlay_page_id: None,
-            aliases: Vec::new(),
-            description: None,
-            actions: vec![Action::OpenFile {
-                path: "C:/Work/sample.mid".to_string(),
-            }],
-        };
-
-        assert_eq!(
-            icon_source_path(&button),
-            Some("C:/Work/sample.mid".to_string())
-        );
-    }
-
-    #[test]
-    fn icon_source_path_uses_explicit_file_source() {
-        let button = LauncherButton {
-            id: "button".to_string(),
-            label: "Button".to_string(),
-            icon: None,
-            icon_source: Some("C:/Work/sample.mp4".to_string()),
-            group: None,
-            show_in_sidebar: true,
-            show_in_overlay: true,
-            overlay_page_id: None,
-            aliases: Vec::new(),
-            description: None,
-            actions: vec![Action::OpenFile {
-                path: "C:/Work/sample.mp4".to_string(),
-            }],
-        };
-
-        assert_eq!(
-            icon_source_path(&button),
-            Some("C:/Work/sample.mp4".to_string())
-        );
+    fn icon_source_path_prefers_explicit_source_then_first_local_action() {
+        let cases = [
+            (
+                "skip URL and use folder",
+                source_button(
+                    None,
+                    vec![
+                        Action::OpenUrl {
+                            url: "https://example.com".to_string(),
+                        },
+                        Action::OpenFolder {
+                            path: "C:/Work".to_string(),
+                        },
+                    ],
+                ),
+                "C:/Work",
+            ),
+            (
+                "explicit shortcut overrides executable",
+                source_button(
+                    Some("C:/Users/Me/Desktop/App.lnk"),
+                    vec![Action::OpenApp {
+                        path: "C:/Program Files/App/app.exe".to_string(),
+                        args: Vec::new(),
+                    }],
+                ),
+                "C:/Users/Me/Desktop/App.lnk",
+            ),
+            (
+                "open file supplies shell icon",
+                source_button(
+                    None,
+                    vec![Action::OpenFile {
+                        path: "C:/Work/sample.mid".to_string(),
+                    }],
+                ),
+                "C:/Work/sample.mid",
+            ),
+        ];
+        for (label, button, expected) in cases {
+            assert_eq!(
+                icon_source_path(&button).as_deref(),
+                Some(expected),
+                "{label}"
+            );
+        }
     }
 
     #[test]
     fn favicon_source_url_uses_first_http_url() {
-        let button = LauncherButton {
-            id: "button".to_string(),
-            label: "Button".to_string(),
-            icon: None,
-            icon_source: None,
-            group: None,
-            show_in_sidebar: true,
-            show_in_overlay: true,
-            overlay_page_id: None,
-            aliases: Vec::new(),
-            description: None,
-            actions: vec![
+        let button = source_button(
+            None,
+            vec![
                 Action::OpenUrl {
                     url: "mailto:test@example.com".to_string(),
                 },
@@ -1128,7 +1085,7 @@ mod tests {
                     url: "https://example.com/page".to_string(),
                 },
             ],
-        };
+        );
 
         assert_eq!(
             favicon_source_url(&button),

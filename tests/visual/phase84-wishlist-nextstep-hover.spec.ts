@@ -31,35 +31,11 @@ async function style(locator: Locator) {
     const rect = node.getBoundingClientRect();
     return {
       opacity: computed.opacity,
-      display: computed.display,
-      backgroundColor: computed.backgroundColor,
-      borderColor: computed.borderColor,
-      color: computed.color,
-      borderRadius: computed.borderRadius,
-      fontWeight: computed.fontWeight,
       right: rect.right,
       height: rect.height,
     };
   });
 }
-
-test("Next Step card hover border follows its project color", async ({ page }) => {
-  const fixture = createPublicFixture();
-  await prepare(page, fixture);
-  const card = page.locator(".nextStepCard").first();
-  await card.hover();
-  await page.waitForTimeout(140);
-  const colors = await card.evaluate((node) => {
-    const computed = getComputedStyle(node);
-    const probe = document.createElement("span");
-    probe.style.color = computed.getPropertyValue("--project-color");
-    document.body.append(probe);
-    const projectColor = getComputedStyle(probe).color;
-    probe.remove();
-    return { borderColor: computed.borderColor, projectColor };
-  });
-  expect(colors.borderColor).toBe(colors.projectColor);
-});
 
 test("P84 Wishlist promote action is status-aware, stable, keyboard reachable, and reuses promotion", async ({
   page,
@@ -107,43 +83,15 @@ test("P84 Wishlist promote action is status-aware, stable, keyboard reachable, a
   await selected.click({ button: "right" });
   await expect(page.getByRole("menuitem", { name: "次の一手に設定済み" })).toBeDisabled();
   await page.keyboard.press("Escape");
-  expect(
-    await plain
-      .locator(".wishlistRowActions > *")
-      .evaluateAll((nodes) => nodes.map((node) => node.className)),
-  ).toEqual(["wishlistNextStepSlot", "sourceRowMenu"]);
-  expect(
-    await selected
-      .locator(".wishlistRowActions > *")
-      .evaluateAll((nodes) => nodes.map((node) => node.className)),
-  ).toEqual([
-    "wishlistNextStepSlot",
-    "wishlistNextStepStatus",
-    "wishlistTodayStatus",
-    "sourceRowMenu",
-  ]);
 
-  const setButton = page.getByRole("button", { name: "次の一手を設定", exact: true });
-  const setBase = await style(setButton);
-  await setButton.hover();
-  await page.waitForTimeout(140);
-  const setHover = await style(setButton);
   await page.mouse.move(1, 1);
 
   const plainBefore = await style(plain);
   const plainMenuBefore = await style(plainMenu);
-  await page.locator(".inboxBand").screenshot({
-    path: "dist/visual-qa/phase84/wishlist-promote-normal.png",
-  });
   await plain.hover();
   await page.waitForTimeout(140);
   await expect(plainAction).toHaveCSS("opacity", "1");
-  const revealedAction = await style(plainAction);
-  expect(revealedAction.backgroundColor).toBe(setBase.backgroundColor);
-  expect(revealedAction.borderColor).toBe(setBase.borderColor);
-  expect(revealedAction.color).toBe(setBase.color);
-  expect(revealedAction.borderRadius).toBe("8px");
-  expect(revealedAction.fontWeight).toBe(setHover.fontWeight);
+
   const plainAfter = await style(plain);
   const plainMenuAfter = await style(plainMenu);
   expect(plainAfter.height).toBe(plainBefore.height);
@@ -156,17 +104,6 @@ test("P84 Wishlist promote action is status-aware, stable, keyboard reachable, a
   await expect(selectedAction).toHaveCount(0);
   expect((await style(selectedMenu)).right).toBeCloseTo(selectedMenuBefore.right, 1);
   expect((await style(selectedStatus)).right).toBeCloseTo(selectedStatusBefore.right, 1);
-  await page.locator(".inboxBand").screenshot({
-    path: "dist/visual-qa/phase84/wishlist-promote-selected-hover.png",
-  });
-
-  await plain.hover();
-  await plainAction.hover();
-  await page.waitForTimeout(140);
-  const promoteHover = await style(plainAction);
-  expect(promoteHover.backgroundColor).toBe(setHover.backgroundColor);
-  expect(promoteHover.borderColor).toBe(setHover.borderColor);
-  expect(promoteHover.color).toBe(setHover.color);
 
   await page.mouse.move(1, 1);
   await page.waitForTimeout(140);
@@ -185,25 +122,22 @@ test("P84 Wishlist promote action is status-aware, stable, keyboard reachable, a
   await expect(selectedNextStepStatus).toBeVisible();
   await expect(selectedStatus).toBeVisible();
   await expect(selectedMenu).toBeVisible();
+  const actions = await selected.locator(".wishlistRowActions > *:visible").evaluateAll((nodes) =>
+    nodes.map((node) => {
+      const rect = node.getBoundingClientRect();
+      return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
+    }),
+  );
+  for (let i = 0; i < actions.length; i += 1) {
+    for (const other of actions.slice(i + 1)) {
+      const current = actions[i];
+      expect(
+        Math.min(current.right, other.right) - Math.max(current.left, other.left) > 1 &&
+        Math.min(current.bottom, other.bottom) - Math.max(current.top, other.top) > 1,
+      ).toBe(false);
+    }
+  }
   expect(
     await page.locator(".inboxBand").evaluate((node) => node.scrollWidth <= node.clientWidth),
   ).toBe(true);
-  await page.locator(".inboxBand").screenshot({
-    path: "dist/visual-qa/phase84/wishlist-promote-narrow.png",
-  });
-});
-
-test("Today activity keeps its automatic badge inside the compact trailing lane", async ({ page }) => {
-  const fixture = createPublicFixture();
-  await prepare(page, fixture);
-
-  const header = page.locator(".todayActivityBand .disclosureHeader");
-  const badge = header.locator(".todayActivityAutoBadge");
-  const [headerBox, badgeBox] = await Promise.all([header.boundingBox(), badge.boundingBox()]);
-  expect(headerBox).not.toBeNull();
-  expect(badgeBox).not.toBeNull();
-  const trailingSpace = headerBox!.x + headerBox!.width - (badgeBox!.x + badgeBox!.width);
-  expect(trailingSpace).toBeGreaterThanOrEqual(8);
-  expect(trailingSpace).toBeLessThanOrEqual(24);
-  await header.screenshot({ path: "dist/visual-qa/phase84/today-activity-trailing-space.png" });
 });

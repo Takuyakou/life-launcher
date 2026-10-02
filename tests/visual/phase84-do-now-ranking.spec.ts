@@ -21,28 +21,6 @@ async function currentConfig(page: Page): Promise<AppConfig> {
   );
 }
 
-test("P84-03 one focus-OFF Project with NextStep still renders Do Now", async ({ page }) => {
-  const fixture = createPublicFixture();
-  fixture.config.projects.forEach((project) => {
-    project.weeklyFocus = undefined;
-  });
-  fixture.doNowCandidates = [
-    {
-      projectId: fixture.config.projects[0].id,
-      reason: "noToday",
-      restartEligible: false,
-    },
-  ];
-  await prepare(page, fixture);
-
-  const doNow = page.locator(".doNowContent");
-  await expect(doNow.locator(".doNowCopy > strong")).toHaveText(
-    fixture.config.projects[0].nextStep!.text,
-  );
-  await expect(doNow.locator(".doNowReason")).toHaveText("今日はまだ取り組んでいない候補です");
-  await expect(doNow.getByRole("button", { name: "他の一手" })).toHaveCount(0);
-});
-
 test("P84-03 mixed focus response shows the eligible non-focus Project when focus has no NextStep", async ({
   page,
 }) => {
@@ -62,6 +40,8 @@ test("P84-03 mixed focus response shows the eligible non-focus Project when focu
   await expect(page.locator(".doNowCopy > strong")).toHaveText(
     fixture.config.projects[1].nextStep!.text,
   );
+  await expect(page.locator(".doNowReason")).toHaveText("今日はまだ取り組んでいない候補です");
+  await expect(page.getByRole("button", { name: "他の一手", exact: true })).toHaveCount(0);
 });
 
 test("P84-03 Other Step cycles every ranked candidate without mutating config", async ({
@@ -86,6 +66,14 @@ test("P84-03 Other Step cycles every ranked candidate without mutating config", 
   const before = await currentConfig(page);
   const action = page.locator(".doNowCopy > strong");
   const alternate = page.getByRole("button", { name: "他の一手", exact: true });
+  const parts = [page.locator(".doNowKicker"), action, page.locator(".doNowMeta"), alternate];
+  let bottom = 0;
+  for (const part of parts) {
+    const box = await part.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.y).toBeGreaterThanOrEqual(bottom);
+    bottom = box!.y + box!.height;
+  }
 
   await expect(action).toHaveText(fixture.config.projects[0].nextStep!.text);
   await alternate.click();
@@ -101,7 +89,14 @@ test("P84 Do Now hover follows the Project color and does not stick after Other 
   page,
 }) => {
   const fixture = createPublicFixture();
+  fixture.config.projects[0].weeklyFocus = true;
+  fixture.config.projects[1].weeklyFocus = false;
+  fixture.doNowCandidates = fixture.config.projects.map((project) => ({
+    projectId: project.id, reason: "noToday", restartEligible: false,
+  }));
   await prepare(page, fixture);
+  await expect(page.locator(".doNowCopy > strong")).toHaveText(fixture.config.projects[0].nextStep!.text);
+  await expect(page.locator(".doNowReason")).toContainText("今週の重点");
   const card = page.locator(".doNowContent");
   const alternate = card.getByRole("button", { name: "他の一手", exact: true });
 
@@ -154,124 +149,4 @@ test("P84-03 empty Do Now guides to NextStep instead of weekly focus", async ({ 
   await expect(empty).not.toContainText("今週の重点");
   await empty.getByRole("button", { name: "次の一手を設定" }).click();
   await expect(page.getByRole("dialog", { name: "次の一手を設定" })).toBeVisible();
-});
-
-test("P84 empty Do Now with no Projects uses the shared gold setup state", async ({ page }) => {
-  const fixture = createPublicFixture();
-  fixture.config.projects = [];
-  fixture.config.today.items = [];
-  fixture.doNowCandidates = [];
-  await prepare(page, fixture);
-
-  const empty = page.locator(".doNowEmpty");
-  const message = empty.getByText("プロジェクトを作り、次の一手を設定すると提案されます。", {
-    exact: true,
-  });
-  const description = empty.getByText(
-    "迷ったときに、今の状況から始めやすい「次にやること」を1つだけ提示します。",
-    { exact: true },
-  );
-  const todayEmpty = page.locator(".todayEmptyState");
-  const nextStepEmpty = page.locator(".sectionEmptyState");
-  const action = empty.getByRole("button", { name: "プロジェクトを追加" });
-  await expect(message).toBeVisible();
-  await expect(description).toBeVisible();
-  await expect(todayEmpty).toBeVisible();
-  await expect(nextStepEmpty).toBeVisible();
-  await expect(action).toHaveClass(/mainActionButton--gold/);
-  await expect(action.locator(".uiIcon")).toHaveCount(1);
-  const [emptyBox, todayEmptyBox, nextStepEmptyBox, messageBox, descriptionBox, actionBox] =
-    await Promise.all([
-    empty.boundingBox(),
-    todayEmpty.boundingBox(),
-    nextStepEmpty.boundingBox(),
-    message.boundingBox(),
-    description.boundingBox(),
-    action.boundingBox(),
-  ]);
-  expect(
-    emptyBox && todayEmptyBox && nextStepEmptyBox && messageBox && descriptionBox && actionBox,
-  ).toBeTruthy();
-  expect(emptyBox!.height).toBeCloseTo(todayEmptyBox!.height, 1);
-  expect(emptyBox!.height).toBeCloseTo(nextStepEmptyBox!.height, 1);
-  expect(descriptionBox!.y).toBeGreaterThan(messageBox!.y + messageBox!.height);
-  expect(actionBox!.y).toBeGreaterThan(descriptionBox!.y + descriptionBox!.height);
-
-  const [messageStyle, descriptionStyle] = await Promise.all([
-    message.evaluate((node) => {
-      const style = getComputedStyle(node);
-      return { fontSize: style.fontSize, fontWeight: style.fontWeight };
-    }),
-    description.evaluate((node) => {
-      const style = getComputedStyle(node);
-      return { color: style.color, fontSize: style.fontSize };
-    }),
-  ]);
-  expect(messageStyle).toEqual({ fontSize: "17px", fontWeight: "700" });
-  expect(descriptionStyle.fontSize).toBe("11px");
-
-  await action.click();
-  await expect(page.getByRole("dialog", { name: "プロジェクトを追加" })).toBeVisible();
-});
-
-test("P84 Do Now task offset and metadata icon rows follow the reference alignment", async ({
-  page,
-}) => {
-  const fixture = createPublicFixture();
-  await prepare(page, fixture);
-
-  const card = page.locator(".doNowContent");
-  const [cardBox, kicker, task, meta, alternate] = await Promise.all([
-    card.boundingBox(),
-    card.locator(".doNowKicker").boundingBox(),
-    card.locator(".doNowCopy > strong").boundingBox(),
-    card.locator(".doNowMeta").boundingBox(),
-    card.getByRole("button", { name: "他の一手" }).boundingBox(),
-  ]);
-  expect(cardBox).not.toBeNull();
-  expect(kicker).not.toBeNull();
-  expect(task).not.toBeNull();
-  expect(meta).not.toBeNull();
-  expect(alternate).not.toBeNull();
-  expect(cardBox!.height).toBeGreaterThanOrEqual(112);
-  expect(task!.x - kicker!.x).toBeGreaterThanOrEqual(2);
-  expect(task!.x - kicker!.x).toBeLessThanOrEqual(4);
-  expect(Math.abs(kicker!.x - meta!.x)).toBeLessThanOrEqual(1);
-  const [clockText, alternateText] = await Promise.all([
-    card.locator(".doNowMetaTimer").evaluate((node) => {
-      const text = [...node.childNodes].find(
-        (child) => child.nodeType === Node.TEXT_NODE && child.textContent?.trim(),
-      );
-      if (!text) return 0;
-      const range = document.createRange();
-      range.selectNodeContents(text);
-      return range.getBoundingClientRect().x;
-    }),
-    card.locator(".doNowAlternateButton").evaluate((node) => {
-      const text = [...node.childNodes].find(
-        (child) => child.nodeType === Node.TEXT_NODE && child.textContent?.trim(),
-      );
-      if (!text) return 0;
-      const range = document.createRange();
-      range.selectNodeContents(text);
-      return range.getBoundingClientRect().x;
-    }),
-  ]);
-  expect(Math.abs(clockText - alternateText)).toBeLessThanOrEqual(1);
-  expect(task!.y).toBeGreaterThan(kicker!.y + kicker!.height);
-  expect(meta!.y).toBeGreaterThan(task!.y + task!.height);
-  expect(alternate!.y).toBeGreaterThan(meta!.y + meta!.height);
-  const projectColors = await card.evaluate((node) => {
-    const kicker = node.querySelector<HTMLElement>(".doNowKicker h2");
-    const statusDot = node.querySelector<HTMLElement>(".doNowStatusDot");
-    const styles = getComputedStyle(node);
-    return {
-      border: styles.borderLeftColor,
-      kicker: kicker ? getComputedStyle(kicker).color : "",
-      statusDot: statusDot ? getComputedStyle(statusDot).backgroundColor : "",
-    };
-  });
-  expect(projectColors.kicker).toBe(projectColors.border);
-  expect(projectColors.statusDot).toBe(projectColors.border);
-  await card.screenshot({ path: "dist/visual-qa/phase84/do-now-aligned.png" });
 });

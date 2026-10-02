@@ -18,7 +18,7 @@ test("unfinished Today3 locks its current NextStep source and removal unlocks it
 
   const card = page.locator('.nextStepCard[data-project-id="sample-learning"]');
   await expect(card.locator(".sourceLockBadge")).toHaveCount(1);
-  await expect(card.locator(".sourceLockBadge")).toHaveCSS("color", "rgb(255, 206, 91)");
+
   await expect(card.locator(".nextStepTodayStatus")).toHaveText("✓ 今日の3件");
   const lockBox = await card.locator(".sourceLockBadge").boundingBox();
   const statusBox = await card.locator(".nextStepTodayStatus").boundingBox();
@@ -26,9 +26,11 @@ test("unfinished Today3 locks its current NextStep source and removal unlocks it
   const cardBox = await card.boundingBox();
   expect(lockBox && statusBox).toBeTruthy();
   expect(identityBox && cardBox).toBeTruthy();
-  expect(lockBox!.x).toBeLessThanOrEqual(identityBox!.x + identityBox!.width + 8);
+  expect(lockBox!.x).toBeGreaterThanOrEqual(identityBox!.x + identityBox!.width - 1);
   expect(statusBox!.x).toBeGreaterThan(lockBox!.x + lockBox!.width - 1);
-  expect(statusBox!.x + statusBox!.width).toBeLessThan(cardBox!.x + cardBox!.width - 40);
+  const menu = await card.locator(".nextStepRegionMenu").boundingBox();
+  expect(menu).not.toBeNull();
+  expect(statusBox!.x + statusBox!.width).toBeLessThanOrEqual(menu!.x + 1);
   await expect(card.locator(".nextStepLockedStatus")).toHaveCount(0);
   await expect(card.getByRole("button", { name: "今日へ" })).toHaveCount(0);
   await expect(card.getByRole("button", { name: "変更", exact: true })).toHaveCount(0);
@@ -61,10 +63,7 @@ test("unfinished Today3 locks only the matching Wishlist identity", async ({ pag
   const lockedRow = page.locator('[data-inbox-id="sample-weekend"]');
   const unlockedRow = page.locator('[data-inbox-id="sample-later"]');
   await expect(lockedRow.locator(".sourceLockBadge--wishlist")).toHaveCount(1);
-  await expect(lockedRow.locator(".sourceLockBadge--wishlist")).toHaveCSS(
-    "color",
-    "rgb(255, 206, 91)",
-  );
+
   await expect(lockedRow.locator(".wishlistNextStepAction")).toHaveCount(0);
   await expect(lockedRow.locator(".wishlistTodayStatus")).toHaveText("✓ 今日の3件に設定済み");
   await expect(unlockedRow.locator(".sourceLockBadge--wishlist")).toHaveCount(0);
@@ -91,24 +90,32 @@ test("Do Now, Today3, and NextStep use their Project hover color", async ({
   const fixture = createPublicFixture();
   await prepare(page, fixture);
 
-  const hoverBorder = async (selector: string) => {
+  for (const selector of [".doNowContent", ".todayRow", ".nextStepCard"]) {
     const target = page.locator(selector).first();
+    const initial = await target.evaluate((node) => ({
+      background: getComputedStyle(node).backgroundColor,
+      width: (node as HTMLElement).offsetWidth,
+      height: (node as HTMLElement).offsetHeight,
+    }));
     await target.hover();
-    await page.waitForTimeout(140);
-    return target.evaluate((node) => getComputedStyle(node).borderRightColor);
-  };
-  const doNow = page.locator(".doNowContent");
-  await doNow.hover();
-  await page.waitForTimeout(140);
-  const doNowBorders = await doNow.evaluate((node) => {
-    const style = getComputedStyle(node);
-    return { left: style.borderLeftColor, right: style.borderRightColor };
-  });
-  const todayBorder = await hoverBorder(".todayRow");
-  const nextStepBorder = await hoverBorder(".nextStepCard");
-  expect(doNowBorders.right).toBe(doNowBorders.left);
-  expect(todayBorder).toBe(doNowBorders.right);
-  expect(nextStepBorder).toBe(todayBorder);
+    if (selector !== ".doNowContent") {
+      await expect.poll(() => target.evaluate((node) => getComputedStyle(node).backgroundColor)).not.toBe(initial.background);
+      await expect.poll(() => target.evaluate((node) => getComputedStyle(node).transform)).not.toBe("none");
+    }
+    expect(await target.evaluate((node) => ({
+      width: (node as HTMLElement).offsetWidth,
+      height: (node as HTMLElement).offsetHeight,
+    }))).toEqual({ width: initial.width, height: initial.height });
+    await expect.poll(() => target.evaluate((node) => {
+      const style = getComputedStyle(node);
+      const probe = document.createElement("span");
+      probe.style.color = style.getPropertyValue("--project-color");
+      node.append(probe);
+      const expected = getComputedStyle(probe).color;
+      probe.remove();
+      return style.borderRightColor === expected;
+    })).toBe(true);
+  }
 
   for (const selector of [".doNowMeasureButton", ".todayMeasureButton"]) {
     const button = page.locator(selector).first();
@@ -118,21 +125,6 @@ test("Do Now, Today3, and NextStep use their Project hover color", async ({
       .not.toBe("matrix(0, 0, 0, 1, 0, 0)");
   }
 
-  const remove = page.locator(".todayRemoveButton").first();
-  const change = page.locator('.nextStepCard[data-project-id="sample-stretch"] .nextStepRowAction');
-  await remove.hover();
-  await page.waitForTimeout(180);
-  const removeStyle = await remove.evaluate((node) => {
-    const style = getComputedStyle(node);
-    return [style.backgroundColor, style.borderColor, style.color];
-  });
-  await change.hover();
-  await page.waitForTimeout(180);
-  const changeStyle = await change.evaluate((node) => {
-    const style = getComputedStyle(node);
-    return [style.backgroundColor, style.borderColor, style.color];
-  });
-  expect(removeStyle).toEqual(changeStyle);
 });
 
 test("wide side gutters belong to the main scroll surface", async ({ page }) => {

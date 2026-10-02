@@ -2895,7 +2895,7 @@ mod tests {
     }
 
     #[test]
-    fn project_optional_fields_default_for_v3_config() {
+    fn optional_project_today_and_inbox_fields_default_for_legacy_inputs() {
         let project: Project = serde_json::from_value(serde_json::json!({
             "id": "legacy",
             "name": "旧プロジェクト",
@@ -2918,46 +2918,13 @@ mod tests {
         }))
         .expect("legacy today item without trigger must remain readable");
         assert_eq!(today_item.trigger, None);
-    }
 
-    #[test]
-    fn start_environment_fields_are_optional_and_instruction_references_follow_changes() {
         let legacy_inbox: InboxItem = serde_json::from_value(serde_json::json!({
             "text": "legacy"
         }))
         .expect("legacy inbox must remain readable");
         assert!(legacy_inbox.button_ids.is_empty());
         assert_eq!(legacy_inbox.instruction_path, None);
-
-        let mut config = sample_config();
-        config.today.items[0].instruction_path = Some("C:\\Docs\\Old\\Today.md".to_string());
-        config.today.items[0].instruction_open_on_start = Some(true);
-        config.inbox[0].instruction_path = Some("C:\\Docs\\Old\\Inbox.md".to_string());
-        config.inbox[0].instruction_open_on_start = Some(true);
-
-        let (_, _, changed) = rewrite_instruction_references_in_config(
-            &mut config,
-            "C:\\Docs\\Old",
-            Some("C:\\Docs\\New"),
-            false,
-        );
-        assert!(changed);
-        assert_eq!(
-            config.today.items[0].instruction_path.as_deref(),
-            Some("C:\\Docs\\New\\Today.md")
-        );
-        assert_eq!(
-            config.inbox[0].instruction_path.as_deref(),
-            Some("C:\\Docs\\New\\Inbox.md")
-        );
-
-        let (_, _, changed) =
-            rewrite_instruction_references_in_config(&mut config, "C:\\Docs", None, false);
-        assert!(changed);
-        assert_eq!(config.today.items[0].instruction_path, None);
-        assert_eq!(config.today.items[0].instruction_open_on_start, None);
-        assert_eq!(config.inbox[0].instruction_path, None);
-        assert_eq!(config.inbox[0].instruction_open_on_start, None);
     }
 
     #[test]
@@ -2968,14 +2935,19 @@ mod tests {
         let next_step = config.projects[0].next_step.as_mut().expect("next step");
         next_step.instruction_path = Some("c:\\docs\\Sub\\Guide.md".to_string());
         next_step.instruction_open_on_start = Some(true);
-        let original_buttons = config.buttons.clone();
+        config.today.items[0].instruction_path = Some("C:\\Docs\\Sub\\Today.md".to_string());
+        config.today.items[0].instruction_open_on_start = Some(true);
+        config.inbox[0].instruction_path = Some("C:\\Docs\\Sub\\Inbox.md".to_string());
+        config.inbox[0].instruction_open_on_start = Some(true);
+        let original_buttons = serde_json::to_value(&config.buttons).expect("serialize buttons");
 
-        let (projects, root_removed, _) = rewrite_instruction_references_in_config(
+        let (projects, root_removed, changed) = rewrite_instruction_references_in_config(
             &mut config,
             "C:\\Docs\\Sub",
             Some("C:\\Docs\\Renamed"),
             false,
         );
+        assert!(changed);
         assert_eq!(projects, vec![config.projects[0].name.clone()]);
         assert!(!root_removed);
         assert_eq!(
@@ -2985,19 +2957,48 @@ mod tests {
                 .and_then(|step| step.instruction_path.as_deref()),
             Some("C:\\Docs\\Renamed\\Guide.md")
         );
-        assert_eq!(config.buttons.len(), original_buttons.len());
-
-        let (projects, root_removed, _) =
-            rewrite_instruction_references_in_config(&mut config, "C:\\Docs", None, true);
-        assert_eq!(projects, vec![config.projects[0].name.clone()]);
-        assert!(root_removed);
-        let next_step = config.projects[0].next_step.as_ref().expect("next step");
-        assert_eq!(next_step.instruction_path, None);
-        assert_eq!(next_step.instruction_open_on_start, None);
         assert_eq!(
-            config.settings.instruction_folders,
-            Some(vec!["X:\\Other".to_string()])
+            config.today.items[0].instruction_path.as_deref(),
+            Some("C:\\Docs\\Renamed\\Today.md")
         );
+        assert_eq!(
+            config.inbox[0].instruction_path.as_deref(),
+            Some("C:\\Docs\\Renamed\\Inbox.md")
+        );
+        assert_eq!(
+            serde_json::to_value(&config.buttons).unwrap(),
+            original_buttons
+        );
+
+        for unregister_root in [false, true] {
+            let mut removed = config.clone();
+            let (projects, root_removed, changed) = rewrite_instruction_references_in_config(
+                &mut removed,
+                "C:\\Docs",
+                None,
+                unregister_root,
+            );
+            assert!(changed);
+            assert_eq!(projects, vec![config.projects[0].name.clone()]);
+            assert_eq!(root_removed, unregister_root);
+            let next_step = removed.projects[0].next_step.as_ref().expect("next step");
+            assert_eq!(next_step.instruction_path, None);
+            assert_eq!(next_step.instruction_open_on_start, None);
+            assert_eq!(removed.today.items[0].instruction_path, None);
+            assert_eq!(removed.today.items[0].instruction_open_on_start, None);
+            assert_eq!(removed.inbox[0].instruction_path, None);
+            assert_eq!(removed.inbox[0].instruction_open_on_start, None);
+            assert_eq!(
+                serde_json::to_value(&removed.buttons).unwrap(),
+                original_buttons
+            );
+            let expected_roots = if unregister_root {
+                vec!["X:\\Other".to_string()]
+            } else {
+                vec!["C:\\Docs".to_string(), "X:\\Other".to_string()]
+            };
+            assert_eq!(removed.settings.instruction_folders, Some(expected_roots));
+        }
     }
 
     #[cfg(windows)]
@@ -3780,7 +3781,7 @@ mod tests {
     }
 
     #[test]
-    fn load_migrates_missing_dictionary_order_with_one_backup_and_one_write() {
+    fn load_migrates_dictionary_order_once_and_persists_hide_show_transitions() {
         let _guard = ENV_LOCK.lock().expect("env lock");
         let root = std::env::temp_dir().join(format!(
             "life-launcher-dictionary-load-migration-{}",
@@ -3819,6 +3820,33 @@ mod tests {
         assert_eq!(fs::read(&path).expect("read config again"), rewritten);
         assert_eq!(config_backup_files(), backups);
 
+        let mut config = second.config;
+        config.buttons[0].show_in_overlay = false;
+        write_config(&path, &config).expect("write hidden config");
+        let hidden = load_config_from_disk().expect("normalize hidden config");
+        assert_eq!(
+            hidden.config.dictionary_order,
+            Some(vec!["documents".to_string()])
+        );
+
+        let mut reshown = hidden.config;
+        reshown.buttons[0].show_in_overlay = true;
+        write_config(&path, &reshown).expect("write reshown config");
+        let visible = load_config_from_disk().expect("append reshown button");
+        assert_eq!(
+            visible.config.dictionary_order,
+            Some(vec!["documents".to_string(), "music-web".to_string()])
+        );
+        let stable_bytes = fs::read(&path).expect("read stable config");
+        let stable_backups = config_backup_files();
+        let again = load_config_from_disk().expect("load stable config");
+        assert!(!again.changed);
+        assert_eq!(
+            fs::read(&path).expect("read stable config again"),
+            stable_bytes
+        );
+        assert_eq!(config_backup_files(), stable_backups);
+
         restore_test_appdata(previous_appdata, &root);
     }
 
@@ -3852,48 +3880,6 @@ mod tests {
         );
     }
 
-    #[test]
-    fn hidden_button_is_removed_and_reappears_at_dictionary_order_end_after_saves() {
-        let _guard = ENV_LOCK.lock().expect("env lock");
-        let root = std::env::temp_dir().join(format!(
-            "life-launcher-dictionary-hide-show-{}",
-            chrono::Local::now()
-                .timestamp_nanos_opt()
-                .unwrap_or_default()
-        ));
-        let previous_appdata = std::env::var_os("APPDATA");
-        std::env::set_var("APPDATA", &root);
-        let path = config_path().expect("config path");
-
-        let mut config = sample_config();
-        config.buttons[0].show_in_overlay = false;
-        write_config(&path, &config).expect("write hidden config");
-        let hidden = load_config_from_disk().expect("normalize hidden config");
-        assert_eq!(
-            hidden.config.dictionary_order,
-            Some(vec!["documents".to_string()])
-        );
-
-        let mut reshown = hidden.config;
-        reshown.buttons[0].show_in_overlay = true;
-        write_config(&path, &reshown).expect("write reshown config");
-        let visible = load_config_from_disk().expect("append reshown button");
-        assert_eq!(
-            visible.config.dictionary_order,
-            Some(vec!["documents".to_string(), "music-web".to_string()])
-        );
-        let stable_bytes = fs::read(&path).expect("read stable config");
-        let stable_backups = config_backup_files();
-        let again = load_config_from_disk().expect("load stable config");
-        assert!(!again.changed);
-        assert_eq!(
-            fs::read(&path).expect("read stable config again"),
-            stable_bytes
-        );
-        assert_eq!(config_backup_files(), stable_backups);
-
-        restore_test_appdata(previous_appdata, &root);
-    }
     static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
@@ -4317,43 +4303,50 @@ mod tests {
     }
 
     #[test]
-    fn undo_today_selection_accepts_frontend_defaulted_source_snapshot() {
+    fn undo_today_selection_rejects_full_capacity_and_accepts_retry_after_a_slot_opens() {
         let mut config = sample_config();
         let source_key = "project:compose".to_string();
-        config
-            .projects
-            .iter_mut()
-            .find(|project| project.id == "compose")
-            .expect("project exists")
-            .next_step
-            .as_mut()
-            .expect("next step")
-            .button_ids
-            .clear();
-        config.today.items.clear();
+        let mut removed_item = config.today.items[0].clone();
+        removed_item.source_key = Some(source_key.clone());
+        removed_item.project_id = Some("compose".to_string());
+        config.today.items = (0..TODAY_ITEM_LIMIT)
+            .map(|index| TodayItem {
+                source_key: Some(format!("manual:{index}")),
+                text: format!("existing item {index}"),
+                ..config.today.items[0].clone()
+            })
+            .collect();
         config
             .today
             .selection_mutation_tokens
-            .insert(source_key.clone(), "op-defaulted".to_string());
-        let mut source_snapshot = current_source_snapshot(&config, &source_key)
-            .expect("project snapshot")
-            .as_object()
-            .expect("project object")
-            .clone();
-        source_snapshot.insert("buttonIds".to_string(), serde_json::json!([]));
+            .insert(source_key.clone(), "retry-op".to_string());
+        config.settings.backup_keep = 17;
         let input = UndoTodaySelectionInput {
-            operation_id: "op-defaulted".to_string(),
+            operation_id: "retry-op".to_string(),
             day_key: config.today.date.clone(),
             source_key: source_key.clone(),
-            item: None,
-            previous_source_key: None,
-            next_source_key: None,
-            source_snapshot: Some(Value::Object(source_snapshot)),
-            restore_exclusion: true,
+            item: Some(removed_item.clone()),
+            previous_source_key: Some("manual:0".to_string()),
+            next_source_key: Some("manual:2".to_string()),
+            source_snapshot: current_source_snapshot(&config, &source_key),
+            restore_exclusion: false,
         };
 
+        let error = apply_undo_today_selection(config.clone(), &input)
+            .expect_err("full Today must reject undo");
+        assert!(error.contains("今日の3件が埋まっている"));
+
+        config.today.items.remove(1);
+        let expected_items = vec![
+            config.today.items[0].clone(),
+            removed_item,
+            config.today.items[1].clone(),
+        ];
         let result = apply_undo_today_selection(config, &input)
-            .expect("defaulted frontend snapshot is the same source");
+            .expect("the same undo succeeds once one slot is free");
+        assert_eq!(result.today.items, expected_items);
+        assert_eq!(result.today.items.len(), TODAY_ITEM_LIMIT);
+        assert_eq!(result.settings.backup_keep, 17);
         assert!(!result
             .today
             .selection_mutation_tokens
@@ -4361,9 +4354,15 @@ mod tests {
     }
 
     #[test]
-    fn undo_candidate_exclusion_does_not_adopt_when_it_removed_no_today_item() {
+    fn undo_candidate_exclusion_accepts_defaulted_snapshot_without_adopting_an_item() {
         let mut config = sample_config();
         let source_key = "project:compose".to_string();
+        config.projects[0]
+            .next_step
+            .as_mut()
+            .expect("next step")
+            .button_ids
+            .clear();
         config.today.items.clear();
         config
             .today
@@ -4373,7 +4372,11 @@ mod tests {
             .today
             .selection_mutation_tokens
             .insert(source_key.clone(), "exclude-op".to_string());
-        let input = UndoTodaySelectionInput {
+        let omitted_snapshot = current_source_snapshot(&config, &source_key).expect("snapshot");
+        assert!(omitted_snapshot["nextStep"].get("buttonIds").is_none());
+        let mut defaulted_snapshot = omitted_snapshot.clone();
+        defaulted_snapshot["nextStep"]["buttonIds"] = serde_json::json!([]);
+        let mut input = UndoTodaySelectionInput {
             operation_id: "exclude-op".to_string(),
             day_key: config.today.date.clone(),
             source_key: source_key.clone(),
@@ -4383,12 +4386,20 @@ mod tests {
             source_snapshot: current_source_snapshot(&config, &source_key),
             restore_exclusion: true,
         };
-        let result = apply_undo_today_selection(config, &input).expect("exclusion undo succeeds");
-        assert!(result.today.items.is_empty());
-        assert!(!result
-            .today
-            .candidate_excluded_source_keys
-            .contains(&source_key));
+        for snapshot in [omitted_snapshot, defaulted_snapshot] {
+            input.source_snapshot = Some(snapshot);
+            let result = apply_undo_today_selection(config.clone(), &input)
+                .expect("omitted and defaulted nested buttonIds describe the same source");
+            assert!(result.today.items.is_empty());
+            assert!(!result
+                .today
+                .candidate_excluded_source_keys
+                .contains(&source_key));
+            assert!(!result
+                .today
+                .selection_mutation_tokens
+                .contains_key(&source_key));
+        }
     }
 
     #[test]
@@ -4710,6 +4721,14 @@ mod migration_tests {
         let (again, changed_again) = migrate_config_value_to_v3(&migrated).expect("accept v3");
         assert!(!changed_again);
         assert_eq!(again, migrated);
+
+        let (first, migrated) = decode_config_for_v3(&source).expect("decode v2");
+        assert!(migrated);
+        assert_eq!(first.version, 3);
+        let written = serde_json::to_value(&first).expect("serialize v3");
+        let (second, migrated_again) = decode_config_for_v3(&written).expect("decode v3");
+        assert!(!migrated_again);
+        assert_eq!(serde_json::to_value(second).unwrap(), written);
     }
 
     #[test]
@@ -4732,27 +4751,5 @@ mod migration_tests {
         let error =
             decode_config_for_v3(&serde_json::json!([])).expect_err("array root must be rejected");
         assert!(error.contains("version") || error.contains("root"));
-    }
-
-    #[test]
-    fn config_v3_rejects_active_and_pending_next_step_settings_together() {
-        let mut value = serde_json::to_value(sample_config()).expect("sample config");
-        value["projects"][0]["legacyNextStepSettings"] = serde_json::json!({
-            "shortTimerMinutes": 5
-        });
-        let error = decode_config_for_v3(&value).expect_err("mutually exclusive fields must fail");
-        assert!(error.contains("both nextStep and legacyNextStepSettings"));
-    }
-
-    #[test]
-    fn config_v3_decoder_accepts_v2_then_accepts_written_v3_without_remigration() {
-        let source = v2_config_value();
-        let (first, migrated) = decode_config_for_v3(&source).expect("decode v2");
-        assert!(migrated);
-        assert_eq!(first.version, 3);
-        let written = serde_json::to_value(&first).expect("serialize v3");
-        let (second, migrated_again) = decode_config_for_v3(&written).expect("decode v3");
-        assert!(!migrated_again);
-        assert_eq!(serde_json::to_value(second).unwrap(), written);
     }
 }
