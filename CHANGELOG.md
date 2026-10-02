@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.3.4 - 2026-10-02
+
+### インストーラー
+
+- WindowsのNSISインストーラー・アンインストーラーに専用アイコンを設定し、セットアップ画面のサイドバー画像を更新。日本語Windowsではセットアップ画面を日本語で表示する。
+- カスタムヘッダー画像は使用せず、インストール後のLife Launcher本体アイコンは従来のものを維持。NSIS標準UIにより、途中画面右側に小さなLife Launcherアイコンが表示される場合がある。
+
+### 保守・セキュリティ
+
+- 古い仕様の無効テスト、重複した確認、画像比較に使われていない撮影処理を整理。重要な操作・データ保護・セキュリティ境界の検証を中心に、本番処理や利用者に見える結果を確認する形へ整理した。テスト整理によるアプリ機能の追加・削除はない。
+- HTMLのサニタイズに使うDOMPurifyを`3.4.13`から`3.4.16`へ更新し、既存の脆弱性に対応。
+- Rust依存の`event-listener`を脆弱性修正版の`5.4.2`へ更新。
+
+### アップデート時の注意
+
+- config schemaは`3`のまま。v1.3.3から設定データの形式は変わらず、既存の設定と実行記録を引き継ぐ。
+- 更新前にアプリを完全終了し、`%APPDATA%\life-launcher`を別の場所へバックアップすることを推奨。自動アップデーターはない。
+- Windows 10以降（x64）とMicrosoft Edge WebView2 Runtimeが必要。配布バイナリは未署名のため、Windows SmartScreenの警告が表示される場合がある。
+- Web Demoは別公開工程であり、この本体更新と同時に更新されるものではない。
+- 配布物は`Life-Launcher-v1.3.4-windows-x64-setup.exe`、`Life-Launcher-v1.3.4-windows-x64.exe`、`Life-Launcher-v1.3.4-windows-x64-portable.zip`、`SHA256SUMS.txt`。ZIP版もユーザーデータは`%APPDATA%\life-launcher`へ保存する。
+- 詳細は [v1.3.4 Release notes](docs/releases/v1.3.4.md) を参照。
+
 ## 1.3.3 - 2026-09-26
 
 ### 改善

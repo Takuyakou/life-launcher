@@ -18,9 +18,9 @@ Life Launcherは、迷っているときに「今やる一手」を1つ示し、
 
 <img src="docs/screenshots/web-demo.png" alt="Life Launcher Web Demo" width="720">
 
-Web Demoでは合成データを使い、今日の候補選択・タイマー・「今日の3件から外す」など、v1.1の中心的な流れを体験できます。変更した状態はブラウザのlocalStorageに保存します。Windows版のアプリ・ファイル・URL起動は実際には行わず、演出として確認できます。
+Web Demoでは合成データを使い、今日の候補選択・タイマー・「今日の3件から外す」など、Life Launcherの中心的な流れを体験できます。変更した状態はブラウザのlocalStorageに保存します。Windows版のアプリ・ファイル・URL起動は実際には行わず、演出として確認できます。
 
-※Windows製品版の完全移植ではありません。
+※Windows製品版の完全移植ではありません。Web Demoは別公開工程であり、v1.3.4の本体更新と同時に更新されるものではありません。
 
 ## 主な機能
 
@@ -55,6 +55,13 @@ Web Demoでは合成データを使い、今日の候補選択・タイマー・
 
 スクリーンショットは合成データから生成されています。実際のユーザー設定・アクティビティ・パス・ノートは含まれていません。
 
+## v1.3.4の変更
+
+- WindowsのNSISインストーラーとアンインストーラーに専用アイコンを設定し、セットアップ画面のサイドバー画像を更新しました。日本語Windowsではセットアップ画面を日本語で表示します。
+- カスタムヘッダー画像は使用せず、インストール後のLife Launcher本体アイコンは従来のものを維持します。NSIS標準UIにより、途中画面の右側に小さなLife Launcherアイコンが表示される場合があります。
+- 古い仕様の無効テスト、重複した確認、画像比較に使われていない撮影処理を整理しました。テスト整理によるアプリ機能の追加・削除はありません。
+- HTMLのサニタイズに使うDOMPurifyを`3.4.13`から`3.4.16`へ更新し、既存の脆弱性に対応しました。
+
 ## Download
 
 Life Launcherは、[GitHub Releases](https://github.com/Takuyakou/life-launcher/releases/latest)からダウンロードできます。公開中の最新版と配布ファイル名は、リンク先で確認してください。
@@ -63,19 +70,19 @@ Life Launcherは、[GitHub Releases](https://github.com/Takuyakou/life-launcher/
 
 通常はこちらを利用してください。
 
-v1.3.3のインストーラー: `Life-Launcher-v1.3.3-windows-x64-setup.exe`
+v1.3.4のインストーラー: `Life-Launcher-v1.3.4-windows-x64-setup.exe`
 
 ### Standalone EXE
 
 インストールせず直接起動できます。
 
-v1.3.3の単体実行版: `Life-Launcher-v1.3.3-windows-x64.exe`
+v1.3.4の単体実行版: `Life-Launcher-v1.3.4-windows-x64.exe`
 
 ### Portable ZIP
 
 ZIPを展開して利用できます。
 
-v1.3.3のZIP版: `Life-Launcher-v1.3.3-windows-x64-portable.zip`
+v1.3.4のZIP版: `Life-Launcher-v1.3.4-windows-x64-portable.zip`
 
 ZIP版もユーザーデータは`%APPDATA%\life-launcher`へ保存します。USBなどへデータごと持ち運ぶ方式ではありません。
 
@@ -89,9 +96,9 @@ ZIP版もユーザーデータは`%APPDATA%\life-launcher`へ保存します。U
 
 v1.2からv1.3への初回更新ではconfig schemaを`2`から`3`へ移行します。変換前のraw backupを作成し、移行・検証・backupに失敗した場合は元のconfigを書き換えません。Sessionの実行記録は削除しません。
 
-v1.3.2からv1.3.3への更新では設定データの形式は変わらず、既存の設定と記録を引き継げます。
+v1.3.3からv1.3.4への更新ではconfig schemaは`3`のままで、設定データの形式は変わりません。既存の設定と記録を引き継げます。
 
-詳しくは [v1.3.3 Release notes](docs/releases/v1.3.3.md) と [CHANGELOG](CHANGELOG.md) を参照してください。機能の全体像は [OVERVIEW](docs/OVERVIEW.md)、詳細は [現行仕様書](docs/spec/current-spec.md) にまとめています。
+詳しくは [v1.3.4 Release notes](docs/releases/v1.3.4.md) と [CHANGELOG](CHANGELOG.md) を参照してください。機能の全体像は [OVERVIEW](docs/OVERVIEW.md)、詳細は [現行仕様書](docs/spec/current-spec.md) にまとめています。
 
 ## 動作要件
 
