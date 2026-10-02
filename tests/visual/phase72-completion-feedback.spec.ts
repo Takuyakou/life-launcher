@@ -199,8 +199,14 @@ test("P72-05 removing and undoing a completed Today item never replays completio
 test("P72-05 individual planned completion shows one green feedback then keeps static done", async ({
   page,
 }) => {
-  await prepare(page, plannedFixture(0));
+  const fixture = plannedFixture(0);
+  fixture.config.today.items[2].text = "長い完了フィードバックでも操作領域が重ならず利用できることを確認する".repeat(3);
+  await page.setViewportSize({ width: 860, height: 900 });
+  await prepare(page, fixture);
   const row = await finishPlannedToday(page);
+  await expect(row.locator(".todayRemoveButton")).toBeVisible();
+  await expect(page.locator(".todayStartButton").first()).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await expect(row).toHaveClass(/todayRow--justCompleted/);
   await expect(page.locator(".todayAllCompletionReward, .doNowContent--hold")).toHaveCount(0);
   await expect(page.locator(".completionParticle")).toHaveCount(0);
@@ -221,35 +227,11 @@ test("P72-05 the third completion prioritizes one 3-of-3 milestone and keeps nex
   await expect(page.locator(".completionParticle")).toHaveCount(6);
   await expect(page.locator(".doNowContent--hold")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "次の3件を選ぶ" })).toBeEnabled();
-});
-
-test("P72-05 early completion yes rewards", async ({ page }) => {
-  const yesFixture = plannedFixture(0);
-  yesFixture.config.projects[0].nextStep!.shortTimerMinutes = 3;
-  yesFixture.config.today.items[2].shortTimerMinutes = 3;
-  yesFixture.config.today.items[2].defaultTimerMinutes = 25;
-  await prepare(page, yesFixture);
-  const row = page.locator(".todayRow").nth(2);
-  await row.getByRole("button", { name: "通常タイマー25分で開始" }).click();
-  await page.clock.fastForward(180_000);
-  await row.getByRole("button", { name: "終了", exact: true }).click();
-  await page.getByRole("button", { name: "今日の分は完了", exact: true }).click();
-  await expect(row).toHaveClass(/todayRow--justCompleted/);
-});
-
-test("P72-05 early completion no leaves no feedback", async ({ page }) => {
-  const fixture = plannedFixture(0);
-  fixture.config.projects[0].nextStep!.shortTimerMinutes = 3;
-  fixture.config.today.items[2].shortTimerMinutes = 3;
-  fixture.config.today.items[2].defaultTimerMinutes = 25;
-  await prepare(page, fixture);
-  const row = page.locator(".todayRow").nth(2);
-  await row.getByRole("button", { name: "通常タイマー25分で開始" }).click();
-  await page.clock.fastForward(180_000);
-  await row.getByRole("button", { name: "終了", exact: true }).click();
-  await page.getByRole("button", { name: "未完了のまま終了", exact: true }).click();
-  await expect(page.locator(".todayRow--justCompleted, .todayAllCompletionReward"))
-    .toHaveCount(0);
+  await expect(page.locator(".todayRow")).toHaveCount(3);
+  await expect(page.locator(".todayRow--complete")).toHaveCount(3);
+  await expect(page.locator(".todayCompletionStatus--complete")).toHaveCount(3);
+  await expect(page.locator(".todayRow .todayStartButton")).toHaveCount(0);
+  await expect(page.locator(".todayCompletionSummary")).toHaveText("3 / 3 完了");
 });
 
 test("P72-05 completion save failure records no feedback", async ({ page }) => {
@@ -277,9 +259,17 @@ test("P8.10 Do Now-only completion holds its snapshot until acknowledged", async
   await expect(hold.locator(".doNowStartPrimary, .doNowAlternateButton")).toHaveCount(0);
   await page.clock.fastForward(3_000);
   await expect(hold).toBeVisible();
-  await hold.getByRole("button", { name: "次の一手を見る" }).click();
+  const acknowledge = hold.getByRole("button", { name: "次の一手を見る" });
+  await expect(acknowledge).toHaveClass(/mainActionButton--neutral/);
+  await expect(acknowledge).toHaveCSS("color", "rgb(184, 176, 160)");
+  await expect(acknowledge).toHaveCSS("background-color", "rgb(33, 31, 26)");
+  await acknowledge.hover();
+  await expect(acknowledge).toHaveCSS("color", "rgb(255, 206, 91)");
+  await expect(acknowledge).toHaveCSS("background-color", "rgb(43, 41, 34)");
+  await acknowledge.focus();
+  await page.keyboard.press("Enter");
   await expect(hold).toHaveCount(0);
-  await expect(page.locator(".doNowStartPrimary")).toBeVisible();
+  await expect(page.locator(".doNowStartPrimary")).toBeFocused();
   await expect(page.locator(".doNowContent")).toContainText("ストレッチ");
   await expect(page.locator(".doNowContent")).not.toContainText(fixture.config.projects[0].nextStep!.text);
   await expect(page.locator(".todayRow--justCompleted, .todayAllCompletionReward"))
@@ -307,18 +297,6 @@ async function finishDoNowOnly(page: Page, fixture: VisualQaFixture) {
   await page.getByRole("button", { name: "終わる" }).click();
   await expect(page.locator(".doNowContent--hold")).toBeVisible();
 }
-
-test("P8.10 Do Now acknowledgement reevaluates to an empty state", async ({ page }) => {
-  const fixture = createPublicFixture();
-  await finishDoNowOnly(page, fixture);
-  await page.evaluate(() => {
-    (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: Control })
-      .__LIFE_LAUNCHER_VISUAL_QA__.setDoNowCandidates([]);
-  });
-  await page.getByRole("button", { name: "次の一手を見る" }).click();
-  await expect(page.locator(".doNowContent--hold")).toHaveCount(0);
-  await expect(page.locator(".doNowEmptyContent")).toBeVisible();
-});
 
 test("P8.10 Do Now completion survives source removal until acknowledgement", async ({ page }) => {
   const fixture = createPublicFixture();
@@ -362,24 +340,6 @@ test("P8.10 Do Now hold clears on another timer start", async ({ page }) => {
   await expect(page.locator(".doNowContent--hold")).toHaveCount(0);
 });
 
-test("P8.10 Do Now acknowledgement works by keyboard", async ({ page }) => {
-  await finishDoNowOnly(page, createPublicFixture());
-  const acknowledge = page.getByRole("button", { name: "次の一手を見る" });
-  await expect(acknowledge).toHaveClass(/mainActionButton--neutral/);
-  await expect(acknowledge).toHaveCSS("min-height", "38px");
-  await expect(acknowledge).toHaveCSS("font-weight", "850");
-  await expect(acknowledge).toHaveCSS("color", "rgb(184, 176, 160)");
-  await expect(acknowledge).toHaveCSS("background-color", "rgb(33, 31, 26)");
-  await acknowledge.hover();
-  await expect(acknowledge).toHaveCSS("border-top-color", "rgba(231, 185, 77, 0.48)");
-  await expect(acknowledge).toHaveCSS("color", "rgb(255, 206, 91)");
-  await expect(acknowledge).toHaveCSS("background-color", "rgb(43, 41, 34)");
-  await acknowledge.focus();
-  await page.keyboard.press("Enter");
-  await expect(page.locator(".doNowContent--hold")).toHaveCount(0);
-  await expect(page.locator(".doNowStartPrimary")).toBeFocused();
-});
-
 test("P72-05 a Do Now session linked to Today emits only the Today feedback", async ({ page }) => {
   const fixture = createPublicFixture();
   fixture.config.projects[0].nextStep!.shortTimerMinutes = 1;
@@ -396,6 +356,7 @@ test("P72-05 a Do Now session linked to Today emits only the Today feedback", as
   await page.clock.runFor(60_500);
   await page.getByRole("button", { name: "終わる" }).click();
   await expect(page.locator(".todayRow--justCompleted")).toHaveCount(1);
+  await expect(page.locator(".todayRow").getByRole("status", { name: "今日の分は完了", exact: true })).toBeVisible();
   await expect(page.locator(".doNowContent--hold, .todayAllCompletionReward"))
     .toHaveCount(0);
   await expect(page.locator(".doNowContent")).toContainText("ストレッチ");
@@ -411,22 +372,3 @@ test("P72-05 reduced motion keeps labels and colors without animation", async ({
   await expect(page.locator(".completionParticleLayer")).toBeHidden();
   expect(await reward.evaluate((node) => getComputedStyle(node).animationName)).toBe("none");
 });
-
-for (const width of [860]) {
-  test(`P72-05 long completion feedback stays bounded and leaves controls usable at ${width}`, async ({
-    page,
-  }) => {
-    const fixture = plannedFixture(0);
-    fixture.config.today.items[2].text =
-      "とても長い次の一手でも完了フィードバック中に本文とタイマー操作が押し合わず読みやすさと操作可能性を保つ";
-    await page.setViewportSize({ width, height: 900 });
-    await prepare(page, fixture);
-    const row = await finishPlannedToday(page);
-    await expect(row).toHaveClass(/todayRow--justCompleted/);
-    await expect(row.locator(".todayRemoveButton")).toBeVisible();
-    await expect(page.locator(".todayStartButton").first()).toBeVisible();
-    expect(
-      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
-    ).toBe(true);
-  });
-}

@@ -140,6 +140,10 @@ test("Project picker preserves order, enforces two selections, and restores focu
   await opener.click();
 
   let picker = page.getByRole("dialog", { name: "開始環境を選ぶ" });
+  await expect(picker.locator(".dialogActions > button")).toHaveText(["選択", "キャンセル"]);
+  await expect(picker.getByRole("button", { name: "キャンセル", exact: true })).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Tab");
   await expect(picker.getByRole("button", { name: "キャンセル", exact: true })).toBeFocused();
   await picker.getByRole("searchbox", { name: "開始環境を検索" }).fill("参考サイト");
   const referenceOption = picker.getByRole("option", { name: /参考サイト/ });
@@ -170,7 +174,7 @@ test("Project picker preserves order, enforces two selections, and restores focu
   expect(project?.nextStep?.buttonIds).toEqual(["sample-documents", "reference-site"]);
 });
 
-test("Wishlist edit uses the shared picker and keeps a cancelled picker draft", async ({
+test("Wishlist edit loads its selected environment and saves the shared picker selection", async ({
   page,
 }) => {
   const fixture = createPublicFixture();
@@ -184,12 +188,13 @@ test("Wishlist edit uses the shared picker and keeps a cancelled picker draft", 
   const opener = wishlistDialog.getByRole("button", { name: "開始環境を選ぶ" });
   await opener.click();
   const picker = page.getByRole("dialog", { name: "開始環境を選ぶ" });
+  await expect(picker.getByRole("option", { name: /サンプルエディター/ })).toHaveAttribute("aria-selected", "true");
   await picker.getByRole("option", { name: /サンプル資料/ }).click();
-  await picker.getByRole("button", { name: "キャンセル" }).click();
+  await picker.getByRole("button", { name: "選択", exact: true }).click();
   await expect(opener).toBeFocused();
-  await expect(wishlistDialog.locator(".startEnvironmentSelectedItem")).toHaveCount(1);
-  await wishlistDialog.getByRole("button", { name: "キャンセル" }).click();
-  expect((await currentConfig(page)).inbox[0].buttonIds).toEqual(["sample-editor"]);
+  await expect(wishlistDialog.locator(".startEnvironmentSelectedItem")).toHaveCount(2);
+  await wishlistDialog.getByRole("button", { name: "保存", exact: true }).click();
+  expect((await currentConfig(page)).inbox[0].buttonIds).toEqual(["sample-editor", "sample-documents"]);
 });
 
 test("Legacy selections over the limit are preserved and picker fits the narrow viewport", async ({

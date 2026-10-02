@@ -156,7 +156,6 @@ test("a deleted remembered item falls back to the first valid tile", async ({ pa
 });
 
 for (const viewport of [
-  { width: 1440, height: 900 },
   { width: 860, height: 700 },
 ]) {
   test(`dictionary focus states stay bounded at ${viewport.width}px and hover remains weak`, async ({

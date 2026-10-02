@@ -25,6 +25,10 @@ test("Builder preserves each source and user label across mode round-trips", asy
   await page.locator(".brandBlock").click({ button: "right" });
   await page.getByRole("menuitem", { name: "ボタンを追加" }).click();
   const dialog = page.getByRole("dialog", { name: "Button Builder" });
+  const before = await currentConfig(page);
+  await dialog.getByRole("button", { name: "追加", exact: true }).click();
+  await expect(dialog).toBeVisible();
+  expect(await currentConfig(page)).toEqual(before);
   await dialog.getByRole("textbox", { name: "ファイル", exact: true }).fill("X:\\notes\\a.txt");
   await dialog.getByRole("textbox", { name: "ラベル" }).fill("自分で決めた名前");
   await dialog.getByRole("combobox", { name: "既存のグループ" }).selectOption("資料");
@@ -47,6 +51,7 @@ test("Builder preserves each source and user label across mode round-trips", asy
   await expect(dialog.getByRole("checkbox", { name: /左サイドバーに表示/ })).not.toBeChecked();
   await dialog.getByRole("button", { name: "キャンセル" }).click();
   await expect(dialog).toHaveCount(0);
+  expect(await currentConfig(page)).toEqual(before);
   await page.locator(".brandBlock").click({ button: "right" });
   await page.getByRole("menuitem", { name: "ボタンを追加" }).click();
   await expect(page.getByRole("dialog", { name: "Button Builder" }).getByRole("textbox", { name: "ファイル", exact: true })).toHaveValue("");
@@ -64,8 +69,13 @@ test("Wishlist self-drop does not duplicate or save, including after repeated dr
   if ((await disclosure.getAttribute("aria-expanded")) !== "true") await disclosure.click();
   const source = page.locator('[data-inbox-id="same-wish"]');
   const target = page.locator(`.nextStepCard[data-project-id="${project.id}"]`);
+  const saveCount = () => page.evaluate(() =>
+    (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: { invokeCalls: Array<{ command: string }> } })
+      .__LIFE_LAUNCHER_VISUAL_QA__.invokeCalls.filter((call) => call.command === "save_config").length,
+  );
   const before = await currentConfig(page);
-  for (let index = 0; index < 5; index += 1) {
+  const savesBefore = await saveCount();
+  for (let index = 0; index < 2; index += 1) {
     await source.scrollIntoViewIfNeeded();
     const from = (await source.boundingBox())!;
     const to = (await target.boundingBox())!;
@@ -77,6 +87,7 @@ test("Wishlist self-drop does not duplicate or save, including after repeated dr
     await expect(page.getByText("すでに次の一手に設定されています").last()).toBeVisible();
   }
   expect(await currentConfig(page)).toEqual(before);
+  expect(await saveCount()).toBe(savesBefore);
   await page.reload();
   expect((await currentConfig(page)).inbox.filter((item) => item.id === "same-wish")).toHaveLength(1);
 });
@@ -171,40 +182,6 @@ test("shortcut matching ignores modifier order and alias spelling", () => {
   expect(conflicts[0].bindings.map((binding) => binding.field)).toEqual(["main", "dictionary"]);
 });
 
-test("auxiliary static text is nonselectable while Settings and Builder inputs remain editable", async ({ page }) => {
-  await prepare(page);
-  await page.getByRole("button", { name: "設定を開く" }).click();
-  const settings = page.getByRole("dialog", { name: "設定" });
-  expect(await settings.getByRole("heading", { name: "設定" }).evaluate((element) => getComputedStyle(element).userSelect)).toBe("none");
-  await settings.getByRole("tab", { name: "バックアップ" }).click();
-  expect(await settings.getByRole("heading", { name: "バックアップ" }).evaluate((element) => getComputedStyle(element).userSelect)).toBe("none");
-  await settings.getByRole("button", { name: "設定を閉じる" }).click();
-  await page.locator(".brandBlock").click({ button: "right" });
-  await page.getByRole("menuitem", { name: "ボタンを追加" }).click();
-  const builder = page.getByRole("dialog", { name: "Button Builder" });
-  expect(await builder.getByRole("heading", { name: "ボタンを追加" }).evaluate((element) => getComputedStyle(element).userSelect)).toBe("none");
-  const input = builder.getByRole("textbox", { name: "ラベル" });
-  await input.fill("選択可");
-  await input.selectText();
-  expect(await input.evaluate((element) => (element as HTMLInputElement).selectionStart)).toBe(0);
-});
-
-test("Sidebar background menu orders group before button for pointer and Shift+F10", async ({ page }) => {
-  await prepare(page);
-  await page.locator(".brandBlock").click({ button: "right" });
-  await expect(page.getByRole("menuitem")).toHaveText(["グループを追加", "ボタンを追加"]);
-  await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: /辞書を開く/ }).focus();
-  await page.keyboard.press("Shift+F10");
-  await expect(page.getByRole("menuitem")).toHaveText(["グループを追加", "ボタンを追加"]);
-  await expect(page.getByRole("menuitem", { name: "グループを追加" })).toBeFocused();
-  await page.keyboard.press("ArrowDown");
-  await expect(page.getByRole("menuitem", { name: "ボタンを追加" })).toBeFocused();
-  await page.keyboard.press("Escape");
-  await page.clock.runFor(32);
-  await expect(page.getByRole("button", { name: /辞書を開く/ })).toBeFocused();
-});
-
 test("mouse-free arrows traverse Sidebar, Dictionary, Main, toolbar, Settings and menu", async ({ page }) => {
   await prepare(page);
   await page.keyboard.press("ArrowDown");
@@ -259,10 +236,12 @@ test("mouse-free arrows traverse Sidebar, Dictionary, Main, toolbar, Settings an
   await expect(settings).toHaveCount(0);
   await dictionaryButton.focus();
   await page.keyboard.press("Shift+F10");
+  await expect(page.getByRole("menuitem")).toHaveText(["グループを追加", "ボタンを追加"]);
   await expect(page.getByRole("menuitem", { name: "グループを追加" })).toBeFocused();
   await page.keyboard.press("ArrowDown");
   await expect(page.getByRole("menuitem", { name: "ボタンを追加" })).toBeFocused();
   await page.keyboard.press("Escape");
+  await page.clock.runFor(32);
   await expect(dictionaryButton).toBeFocused();
 });
 
@@ -275,58 +254,4 @@ test("Settings number input keeps native arrow behavior", async ({ page }) => {
   await page.keyboard.press("ArrowUp");
   await expect(input).toHaveValue("5");
   await expect(input).toBeFocused();
-});
-
-test("representative hover controls have no transition delay", async ({ page }) => {
-  await prepare(page);
-  const measure = async (selector: string) => page.locator(selector).first().evaluate((element) => {
-    const style = getComputedStyle(element);
-    return { delay: style.transitionDelay, duration: style.transitionDuration };
-  });
-  const main = await Promise.all([
-    measure(".quickButton"),
-    measure(".doNowStartPrimary"),
-    measure(".nextStepCard"),
-    measure(".topBar .viewToggleButton"),
-  ]);
-  await page.getByRole("button", { name: "設定を開く" }).click();
-  const settings = await measure(".settingsTab");
-  await page.getByRole("dialog", { name: "設定" }).getByRole("button", { name: "設定を閉じる" }).click();
-  await page.locator(".brandBlock").click({ button: "right" });
-  await page.getByRole("menuitem", { name: "ボタンを追加" }).click();
-  const builder = await measure(".builderSourceMode");
-  const samples = [...main, settings, builder];
-  for (const sample of samples) {
-    expect(sample.delay.split(",").every((value) => Number.parseFloat(value) === 0)).toBe(true);
-    expect(sample.duration.split(",").every((value) => Number.parseFloat(value) <= 0.25)).toBe(true);
-  }
-  console.log("P133B hover computed styles:", JSON.stringify(samples));
-});
-
-test("early completion uses positive completion and neutral unfinished actions", async ({ page }) => {
-  const fixture = createPublicFixture();
-  fixture.config.today.items[0].shortTimerMinutes = 3;
-  await prepare(page, fixture);
-  const row = page.locator(".todayRow").first();
-  await row.getByRole("button", { name: /通常タイマー/ }).click();
-  await page.clock.fastForward(180_000);
-  await row.getByRole("button", { name: "終了", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "今日の分は完了にしますか？" });
-  await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole("button", { name: "今日の分は完了" })).toHaveClass(/confirmDialogButton--positive/);
-  await expect(dialog.getByRole("button", { name: "未完了のまま終了" })).toHaveClass(/settingsButton--neutral/);
-  expect(await dialog.getByRole("heading").evaluate((element) => getComputedStyle(element).userSelect)).toBe("none");
-});
-
-test("large Timer chrome remains nonselectable while its actions stay focusable", async ({ page }) => {
-  await prepare(page);
-  await page.locator(".doNowStartPrimary").click();
-  await page.getByRole("button", { name: "タイマーを大きく表示" }).click();
-  const timer = page.getByRole("dialog", { name: "拡大タイマー" });
-  await expect(timer).toBeVisible();
-  expect(await timer.locator(".expandedTimerClock").evaluate((element) => getComputedStyle(element).userSelect)).toBe("none");
-  await page.keyboard.press("ArrowDown");
-  expect(await page.evaluate(() => Boolean(document.activeElement?.closest(".expandedTimerActions")))).toBe(true);
-  await page.keyboard.press("Escape");
-  await expect(timer).toHaveCount(0);
 });

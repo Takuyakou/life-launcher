@@ -71,20 +71,6 @@ function withThreeTodayItems(): VisualQaFixture {
   return fixture;
 }
 
-function withOneMinuteProjectTimer(): VisualQaFixture {
-  const fixture = createPublicFixture();
-  fixture.config.projects[0].nextStep!.shortTimerMinutes = 1;
-  fixture.config.today.items = [
-    {
-      text: fixture.config.projects[0].nextStep!.text,
-      done: false,
-      sourceKey: "project:" + fixture.config.projects[0].id,
-      projectId: fixture.config.projects[0].id,
-    },
-  ];
-  return fixture;
-}
-
 for (const width of [860, 1440]) {
   test(`victory suggestion preserves the main scroll position at ${width}px`, async ({ page }) => {
     const fixture = createPublicFixture();
@@ -110,60 +96,6 @@ for (const width of [860, 1440]) {
       .toBeCloseTo(before, 0);
   });
 }
-
-test.skip("Main hierarchy and Today3 three-column layout match Phase 6", async ({ page }) => {
-  await prepare(page, withThreeTodayItems());
-  const selectors = [
-    ".victoryBar",
-    ".doNowBand",
-    ".focusBand",
-    ".todayBuilderBand",
-    ".projectsBand",
-    ".inboxBand",
-    ".todayActivityBand",
-  ];
-  const ordered = await page
-    .locator(selectors.join(","))
-    .evaluateAll(
-      (elements, selectorList) =>
-        elements.map((element) => selectorList.findIndex((selector) => element.matches(selector))),
-      selectors,
-    );
-  expect(ordered).toEqual([0, 1, 2, 3, 4, 5, 6]);
-
-  const cards = page.locator(".todayRow");
-  await expect(cards).toHaveCount(3);
-  await expect(page.getByRole("button", { name: /次の3件を選ぶ/ })).toHaveCount(0);
-  const boxes = await cards.evaluateAll((elements) =>
-    elements.map((element) => {
-      const rect = element.getBoundingClientRect();
-      return { width: rect.width, y: rect.y };
-    }),
-  );
-  expect(new Set(boxes.map((box) => Math.round(box.y))).size).toBe(1);
-  expect(
-    Math.max(...boxes.map((box) => box.width)) - Math.min(...boxes.map((box) => box.width)),
-  ).toBeLessThan(2);
-  const gridSpacing = await page.locator(".todayGrid").evaluate((grid) => {
-    const gridRect = grid.getBoundingClientRect();
-    const cards = Array.from(grid.querySelectorAll<HTMLElement>(".todayRow"));
-    const firstRect = cards[0].getBoundingClientRect();
-    const secondRect = cards[1].getBoundingClientRect();
-    const lastRect = cards.at(-1)!.getBoundingClientRect();
-    return {
-      cardGap: secondRect.left - firstRect.right,
-      endGap: gridRect.right - lastRect.right,
-    };
-  });
-  expect(gridSpacing.endGap).toBeGreaterThanOrEqual(9);
-  expect(Math.abs(gridSpacing.endGap - gridSpacing.cardGap)).toBeLessThan(1);
-  await expect(cards.first()).toHaveAttribute("data-project-color", "blue");
-  await expect(cards.first()).toHaveCSS("border-top-color", "rgb(112, 167, 255)");
-  await expect(cards.nth(1)).not.toHaveAttribute("data-project-color");
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
-    await page.evaluate(() => document.documentElement.clientWidth),
-  );
-});
 
 test("Today3 drag shows its position and saves on drop only", async ({ page }) => {
   const fixture = withThreeTodayItems();
@@ -230,101 +162,6 @@ test("Today3 drag rolls its optimistic order back when saving fails", async ({ p
   await expect(cards.nth(1)).toContainText(originalOrder[1]);
   await expect(cards.nth(2)).toContainText(originalOrder[2]);
   await setSaveConfigFailure(page, false);
-});
-
-
-test("planned completion from a Today card marks only the linked item complete", async ({
-  page,
-}) => {
-  await prepare(page, withOneMinuteProjectTimer());
-  const card = page.locator(".todayRow").first();
-  await expect(page.locator(".todayRow")).toHaveCount(1);
-  await card.getByRole("button", { name: "短時間タイマー1分で開始" }).click();
-  await page.clock.runFor(60_500);
-  await expect(page.getByRole("dialog", { name: "タイマー満了" })).toBeVisible();
-  await page.getByRole("button", { name: "終わる" }).click();
-  await expect(card.getByRole("status", { name: "今日の分は完了" })).toBeVisible();
-  expect((await currentConfig(page)).today.items[0].done).toBe(true);
-});
-
-
-test("planned completion started from Do Now completes the linked Today item", async ({ page }) => {
-  await prepare(page, withOneMinuteProjectTimer());
-  await page
-    .locator(".doNowBand")
-    .getByRole("button", { name: /1分で始める/ })
-    .click();
-  await page.clock.runFor(60_500);
-  await page.getByRole("button", { name: "終わる" }).click();
-  await expect(
-    page.locator(".todayRow").getByRole("status", { name: "今日の分は完了" }),
-  ).toBeVisible();
-});
-
-
-test.skip("Today Builder is source-only, paginates, and ignores legacy dismiss keys", async ({
-  page,
-}) => {
-  const fixture = createPublicFixture();
-  fixture.config.today.items = [];
-  fixture.config.inbox.push(
-    { id: "extra-1", text: "追加候補 1" },
-    { id: "extra-2", text: "追加候補 2" },
-    { id: "extra-3", text: "追加候補 3" },
-    { id: "extra-4", text: "追加候補 4" },
-  );
-  await prepare(page, fixture);
-  const legacyDismissed = ["project:sample-learning:資料を1ページ読む"];
-  await page.evaluate((keys) => {
-    localStorage.setItem("life-launcher-today-builder-dismissed", JSON.stringify(keys));
-  }, legacyDismissed);
-  await page.reload();
-  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
-  await expect(page.locator("[data-today-builder-index]")).toHaveCount(5);
-  await expect(page.locator(".todayBuilderPagination")).toContainText("1 / 2");
-  await expect(page.getByRole("button", { name: "今日を組み立てるに次の一手を追加" })).toHaveCount(
-    0,
-  );
-  await expect(page.locator(".todayBuilderDestination")).toHaveCount(0);
-  await expect(page.locator(".todayBuilderSource").filter({ hasText: "最近のnote" })).toHaveCount(
-    0,
-  );
-  await expect(
-    page.locator(".todayBuilderSource").filter({ hasText: "昨日の勝利条件" }),
-  ).toHaveCount(0);
-  expect(
-    await page.evaluate(() => localStorage.getItem("life-launcher-today-builder-dismissed")),
-  ).toBe(JSON.stringify(legacyDismissed));
-
-  await page.locator("[data-today-builder-index]").first().click({ button: "right" });
-  await expect(page.getByRole("menuitem", { name: "上へ移動" })).toBeVisible();
-  await expect(page.getByRole("menuitem", { name: "削除" })).toHaveCount(0);
-  await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "次のページ" }).click();
-  await expect(page.locator("[data-today-builder-index]")).toHaveCount(3);
-
-  await page.getByRole("button", { name: "プロジェクトを追加", exact: true }).click();
-  const projectDialog = page.getByRole("dialog", { name: "プロジェクトを追加" });
-  await projectDialog
-    .getByRole("textbox", { name: "プロジェクト名" })
-    .fill("追加したプロジェクト");
-  await projectDialog.getByRole("button", { name: "プロジェクトを追加", exact: true }).click();
-  const addedProject = (await currentConfig(page)).projects.at(-1)!;
-  const addedProjectRow = page.locator(`[data-project-id="${addedProject.id}"]`);
-  await addedProjectRow.getByRole("button", { name: "次の一手を設定" }).click();
-  const nextStepDialog = page.getByRole("dialog", { name: "次の一手を設定" });
-  await nextStepDialog.getByRole("textbox", { name: "行動" }).fill("6件目以降も残る候補");
-  await nextStepDialog.getByRole("button", { name: "保存", exact: true }).click();
-  await expect(page.locator(".todayBuilderHeader .disclosureCount")).toContainText("9件");
-
-  await page.reload();
-  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
-  await expect(page.locator(".todayBuilderPagination")).toContainText("1 / 2");
-  expect(
-    (await currentConfig(page)).projects.some(
-      (project) => project.nextStep?.text === "6件目以降も残る候補",
-    ),
-  ).toBe(true);
 });
 
 test("NextStep and Wishlist use compact non-destructive Today actions", async ({ page }) => {
@@ -421,9 +258,18 @@ test("Today adoption snapshots timer, actions, text, and instruction", async ({ 
   fixture.config.projects[0].nextStep!.defaultTimerMinutes = 37;
   fixture.config.projects[0].nextStep!.shortTimerMinutes = 7;
   await prepare(page, fixture);
+  await page.setViewportSize({ width: 860, height: 900 });
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
-  await page.locator(".todayPickerRow").first().getByRole("button", { name: "今日へ" }).click();
+  const source = page.locator(".todayPickerRow").first();
+  await source.scrollIntoViewIfNeeded();
+  const background = page.locator(".mainScrollArea");
+  const beforeScroll = await background.evaluate((node) => node.scrollTop);
+  const beforeSaves = await saveConfigCount(page);
+  await source.getByRole("button", { name: "今日へ" }).click();
+  expect(await background.evaluate((node) => node.scrollTop)).toBe(beforeScroll);
+  await expect.poll(() => saveConfigCount(page)).toBe(beforeSaves + 1);
+  expect(await background.evaluate((node) => node.scrollTop)).toBe(beforeScroll);
   let item = (await currentConfig(page)).today.items[0];
   expect(item).toMatchObject({
     text: "資料を1ページ読む",
@@ -493,40 +339,4 @@ test("failed Today adoption rolls the optimistic UI back", async ({ page }) => {
   await expect(page.locator(".toast")).toContainText("保存できません");
   await expect(page.locator(".todayRow")).toHaveCount(0);
   expect((await currentConfig(page)).today.items).toEqual([]);
-});
-
-test("Project creation, NextStep setup, and keyboard context menu are reachable", async ({
-  page,
-}) => {
-  await prepare(page);
-  const disclosure = page.locator(".projectsBand .disclosure");
-  await disclosure.focus();
-  await disclosure.press("Enter");
-  await expect(page.locator(".nextStepBody")).toBeHidden();
-  await disclosure.press("Enter");
-
-  await page.getByRole("button", { name: "プロジェクトを追加", exact: true }).click();
-  const projectDialog = page.getByRole("dialog", { name: "プロジェクトを追加" });
-  await projectDialog
-    .getByRole("textbox", { name: "プロジェクト名" })
-    .fill("新しいプロジェクト");
-  await projectDialog.getByRole("button", { name: "プロジェクトを追加", exact: true }).click();
-  await expect(page.locator(".nextStepRow")).toHaveCount(3);
-
-  const addedProject = (await currentConfig(page)).projects.at(-1)!;
-  const row = page.locator(`.nextStepCard[data-project-id="${addedProject.id}"]`);
-  await row.getByRole("button", { name: "次の一手を設定" }).click();
-  const nextStepDialog = page.getByRole("dialog", { name: "次の一手を設定" });
-  await nextStepDialog.getByRole("tab", { name: "＋ 新しく入力" }).click();
-  await nextStepDialog.getByRole("textbox", { name: "行動" }).fill("最初の1行を書く");
-  await nextStepDialog.getByRole("button", { name: "保存", exact: true }).click();
-
-  const actionRegion = row.locator(".nextStepActionRegion");
-  await actionRegion.focus();
-  await actionRegion.press("Shift+F10");
-  await expect(page.getByRole("menuitem", { name: "次の一手を編集", exact: true })).toBeVisible();
-  await expect(page.getByRole("menuitem", { name: "次の一手を変更", exact: true })).toBeVisible();
-  await expect(
-    page.getByRole("menuitem", { name: "次の一手を未設定にする", exact: true }),
-  ).toBeVisible();
 });

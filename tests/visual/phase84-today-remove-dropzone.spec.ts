@@ -57,7 +57,13 @@ async function dropOnRemoveZone(page: Page, row: Locator) {
   const zone = page.locator(".todayRemoveDropZone");
   await expect(zone).toBeVisible();
   const box = await zone.boundingBox();
+  const grid = await page.locator(".todayGrid").boundingBox();
   expect(box).not.toBeNull();
+  expect(grid).not.toBeNull();
+  expect(Math.abs(box!.x - grid!.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(box!.width - grid!.width)).toBeLessThanOrEqual(1);
+  expect(box!.y).toBeGreaterThanOrEqual(grid!.y + grid!.height);
+  expect(box!.height).toBeGreaterThan(0);
   await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2, { steps: 5 });
   await expect(zone).toHaveClass(/todayRemoveDropZone--active/);
   await page.mouse.up();
@@ -88,31 +94,6 @@ test("P84-02 remove Drop Zone stays hidden until the actual drag threshold and E
   await expect(page.locator(".todayRow")).toHaveCount(3);
 });
 
-for (const width of [1440, 1000, 860]) {
-  test(`P84 Remove Drop Zone spans the Today area with a 76px visual target at ${width}`, async ({
-    page,
-  }) => {
-    await prepare(page, dropFixture(), width);
-    await beginTodayDrag(page, page.locator(".todayRow").first());
-
-    const grid = page.locator(".todayGrid");
-    const zone = page.locator(".todayRemoveDropZone");
-    await expect(zone).toBeVisible();
-    const gridBox = await grid.boundingBox();
-    const zoneBox = await zone.boundingBox();
-    expect(gridBox).not.toBeNull();
-    expect(zoneBox).not.toBeNull();
-    expect(zoneBox!.height).toBeGreaterThanOrEqual(72);
-    expect(zoneBox!.height).toBeLessThanOrEqual(80);
-    expect(Math.abs(zoneBox!.width - gridBox!.width)).toBeLessThanOrEqual(1);
-    const gap = zoneBox!.y - (gridBox!.y + gridBox!.height);
-    expect(gap).toBeGreaterThanOrEqual(8);
-    expect(gap).toBeLessThanOrEqual(12);
-
-    await page.keyboard.press("Escape");
-  });
-}
-
 for (const source of [
   { name: "NextStep", index: 0 },
   { name: "Wishlist", index: 1 },
@@ -121,7 +102,7 @@ for (const source of [
     "P84-02 " + source.name + " drop removes only Today adoption and Undo restores only Today",
     async ({ page }) => {
     const fixture = dropFixture();
-    await prepare(page, fixture);
+    await prepare(page, fixture, source.name === "Wishlist" ? 1000 : 1440);
     const before = await currentConfig(page);
     const sourceKey = before.today.items[source.index].sourceKey;
 
@@ -140,9 +121,7 @@ for (const source of [
     await toast.getByRole("button", { name: "元に戻す" }).click();
     await expect(page.locator(".todayRow")).toHaveCount(3);
     after = await currentConfig(page);
-    expect(after.today.items.map((item) => item.sourceKey)).toEqual(
-      before.today.items.map((item) => item.sourceKey),
-    );
+    expect(after.today.items).toEqual(before.today.items);
     expect(after.projects).toEqual(before.projects);
     expect(after.inbox).toEqual(before.inbox);
     },

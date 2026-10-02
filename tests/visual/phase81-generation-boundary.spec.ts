@@ -110,7 +110,7 @@ test("generation boundary: same-text A completion leaves B and history unchanged
   );
 
   expect(result.source).toMatchObject({ kind: "nextStep", isCurrentSnapshot: false });
-  expect(result.config.today.items[0].done).toBe(true);
+  expect(result.config.today.items[0]).toEqual({ ...config.today.items[0], done: true });
   expect(result.config.projects[0].nextStep).toEqual(config.projects[0].nextStep);
   expect(result.config.sourceCompletions).toEqual(config.sourceCompletions);
 });

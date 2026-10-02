@@ -78,26 +78,13 @@ async function currentConfig(page: Page): Promise<AppConfig> {
   });
 }
 
-async function tabStyle(tab: ReturnType<Page["getByRole"]>) {
-  return tab.evaluate((element) => {
-    const style = getComputedStyle(element);
-    return {
-      backgroundColor: style.backgroundColor,
-      borderColor: style.borderColor,
-      boxShadow: style.boxShadow,
-      color: style.color,
-    };
-  });
-}
-
-test("category focus moves independently and selection style is shared", async ({ page }) => {
+test("category focus moves independently of its selected page", async ({ page }) => {
   await prepare(page, "dictionary");
   const allTab = page.getByRole("tab", { name: /すべて/ });
   const uncategorizedTab = page.getByRole("tab", { name: /未分類/ });
   const toolsTab = page.getByRole("tab", { name: /ツール/ });
 
   await allTab.click();
-  const allSelected = await tabStyle(allTab);
   await allTab.focus();
   await page.keyboard.press("ArrowRight");
   await expect(uncategorizedTab).toBeFocused();
@@ -114,39 +101,26 @@ test("category focus moves independently and selection style is shared", async (
   await expect(toolsTab).toBeFocused();
   await page.keyboard.press("Space");
   await expect(toolsTab).toHaveAttribute("aria-selected", "true");
-  expect(await tabStyle(toolsTab)).toEqual(allSelected);
   await toolsTab.hover();
-  expect(await tabStyle(toolsTab)).toEqual(allSelected);
   await allTab.focus();
   await page.keyboard.press("ArrowRight");
   await expect(uncategorizedTab).toBeFocused();
   await page.keyboard.press("ArrowRight");
   await expect(toolsTab).toBeFocused();
-  await expect(toolsTab).toHaveCSS("outline-style", "solid");
-  expect((await tabStyle(toolsTab)).backgroundColor).toBe(allSelected.backgroundColor);
+  expect(await toolsTab.evaluate((node) => node.matches(":focus-visible"))).toBe(true);
 
   await page.keyboard.press("ArrowDown");
   await expect(page.locator(".dictionaryTile:focus")).toHaveCount(1);
 });
 
-test("dictionary opens on a tile and arrow keys move immediately", async ({ page }) => {
-  await prepare(page, "dictionary", withDictionaryGrid(12));
+test("tile arrows recover from blur, follow visual rows and adapt after resize", async ({ page }) => {
+  await prepare(page, "dictionary");
   const tiles = page.locator(".dictionaryTile");
   await expect(tiles.first()).toBeFocused();
-  const firstBox = await tiles.first().boundingBox();
-  expect(firstBox).not.toBeNull();
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   await expect(page.locator(".dictionaryTile:focus")).toHaveCount(0);
   await page.keyboard.press("ArrowRight");
   await expect(tiles.nth(1)).toBeFocused();
-  await page.keyboard.press("ArrowDown");
-  await expect
-    .poll(async () => (await page.locator(".dictionaryTile:focus").boundingBox())?.y ?? 0)
-    .toBeGreaterThan(firstBox!.y);
-});
-
-test("tile arrows follow visual rows and adapt after resize", async ({ page }) => {
-  await prepare(page, "dictionary");
   const toolsTab = page.getByRole("tab", { name: /ツール/ });
   await toolsTab.click();
   const first = page.locator(".dictionaryTile").first();
@@ -308,7 +282,7 @@ test("Dictionary drag saves the reordered tile order and survives reload", async
   expect(renderedOrder).toEqual(savedOrder?.filter((id) => id.startsWith("grid-file-")));
 });
 
-test("Dictionary remains responsive with more than one hundred items", async ({ page }) => {
+test("Dictionary navigates a 120-item grid and finds its last item", async ({ page }) => {
   await prepare(page, "dictionary", withDictionaryGrid(120));
   await page.getByRole("tab", { name: /ツール/ }).click();
   await expect(page.locator(".dictionaryTile")).toHaveCount(120);
@@ -388,5 +362,9 @@ test("Quick button and group drag save only on drop and survive reload", async (
     })
     .toBe(true);
   await page.reload();
-  await expect(page.locator(".quickGroupHeader", { hasText: "リンク" })).toBeVisible();
+  const groupNames = await page.locator(".quickGroupHeader").allTextContents();
+  const linkIndex = groupNames.findIndex((name) => name.includes("リンク"));
+  const materialsIndex = groupNames.findIndex((name) => name.includes("資料"));
+  expect(linkIndex).toBeGreaterThanOrEqual(0);
+  expect(materialsIndex).toBeGreaterThan(linkIndex);
 });

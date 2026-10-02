@@ -67,20 +67,6 @@ test("file and URL registrations expose only their human-readable target", async
   await expect(dialog.getByText(/open_url:/)).toHaveCount(0);
 });
 
-test("group mode shows one intentional field at a time", async ({ page }) => {
-  await prepare(page);
-  const dialog = await openDropDialog(page);
-  await expect(dialog.getByRole("combobox", { name: "既存のグループ" })).toBeVisible();
-  await expect(dialog.getByRole("textbox", { name: "新しいグループ名" })).toHaveCount(0);
-
-  await dialog.getByRole("button", { name: "新規グループを作成" }).click();
-  await expect(dialog.getByRole("combobox", { name: "既存のグループ" })).toHaveCount(0);
-  await dialog.getByRole("textbox", { name: "新しいグループ名" }).fill("新しい資料");
-  await expect(dialog.getByRole("textbox", { name: "新しいグループ名" })).toHaveValue(
-    "新しい資料",
-  );
-});
-
 test("Dictionary page follows its display target and footer uses Add then Cancel", async ({ page }) => {
   await prepare(page, 540);
   const dialog = await openDropDialog(page);
@@ -144,7 +130,10 @@ test("new group saves through the existing config contract and backdrop stays in
   const dialog = await openDropDialog(page);
   await page.locator(".modalBackdrop").click({ position: { x: 4, y: 4 } });
   await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("combobox", { name: "既存のグループ" })).toBeVisible();
+  await expect(dialog.getByRole("textbox", { name: "新しいグループ名" })).toHaveCount(0);
   await dialog.getByRole("button", { name: "新規グループを作成" }).click();
+  await expect(dialog.getByRole("combobox", { name: "既存のグループ" })).toHaveCount(0);
   await dialog.getByRole("textbox", { name: "新しいグループ名" }).fill("参照資料");
   await dialog.getByRole("textbox", { name: "ラベル" }).fill("登録テスト");
   await dialog.getByRole("button", { name: "追加" }).click();

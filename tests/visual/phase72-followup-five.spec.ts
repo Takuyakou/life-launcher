@@ -132,110 +132,12 @@ test("follow-up: waiting clock shares vertical drag state and is disabled once a
   await expect(clock).not.toHaveClass(/timerClock--adjustable/);
 });
 
-test.skip("follow-up: excluded source reveals Builder guidance only after the 6px threshold", async ({
-  page,
-}) => {
-  const fixture = createPublicFixture();
-  fixture.config.today.candidateExcludedSourceKeys = ["project:sample-stretch"];
-  await prepare(page, fixture);
-  const source = page.locator(".nextStepRow", { hasText: "5分だけ体を動かす" });
-  const builder = page.locator(".todayBuilderBand");
-  const before = await saveCount(page);
-  const box = await source.boundingBox();
-  const builderBoxBefore = await builder.boundingBox();
-  const pageHeightBefore = await page.evaluate(() => document.documentElement.scrollHeight);
-  expect(box).not.toBeNull();
-  expect(builderBoxBefore).not.toBeNull();
-
-  await beginDrag(page, source, 4);
-  await expect(page.locator(".projectDragGhost")).toHaveCount(0);
-  await expect(page.locator(".todayBuilderBand--restoreTarget")).toHaveCount(0);
-  await page.mouse.move(box!.x + box!.width * 0.45 + 8, box!.y + box!.height * 0.5);
-  await expect(page.locator(".projectDragGhost")).toBeVisible();
-  await expect(page.locator(".todayBuilderBand--restoreTarget")).toBeVisible();
-  await expect(page.locator(".todayBuilderRestoreDropZone")).toHaveText(
-    /ここにドロップして今日を組み立てるに入れる/,
-  );
-  await expect(page.locator(".todayBuilderBand--restoreHover")).toHaveCount(0);
-  const builderBoxAfter = (await builder.boundingBox())!;
-  const sourceBoxAfter = (await source.boundingBox())!;
-  expect(builderBoxAfter.width).toBe(builderBoxBefore!.width);
-  expect(builderBoxAfter.height).toBe(builderBoxBefore!.height);
-  expect(sourceBoxAfter.width).toBe(box!.width);
-  expect(sourceBoxAfter.height).toBeCloseTo(box!.height, 3);
-  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(pageHeightBefore);
-  expect(await saveCount(page)).toBe(before);
-  await page.keyboard.press("Escape");
-  await expect(page.locator(".todayBuilderBand--restoreTarget")).toHaveCount(0);
-  await page.mouse.up();
-  expect(await saveCount(page)).toBe(before);
-});
-
-
-test.skip("follow-up: valid Builder candidate reveals Today guidance before target hover", async ({
-  page,
-}) => {
-  await prepare(page);
-  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
-  const source = page.locator(".todayPickerRow", { hasText: "5分だけ体を動かす" });
-  const todayGrid = page.locator(".todayGrid");
-  const gridBefore = await todayGrid.boundingBox();
-  const before = await saveCount(page);
-  await beginDrag(page, source, 8);
-  await expect(page.locator(".todayBuilderDragGhost")).toBeVisible();
-  await expect(page.locator(".todayBuilderDragGhost button")).toHaveCount(0);
-  await expect(todayGrid).toHaveClass(/todayGrid--dropGuidance/);
-  const guidance = page.locator(".todayDropGuidanceOverlay");
-  await expect(guidance).toBeVisible();
-  await expect(guidance).toHaveText(/ここにドロップして「今日の3件」に追加/);
-  const gridAfter = await todayGrid.boundingBox();
-  expect(gridAfter).toEqual(gridBefore);
-  await expect(page.locator(".todayGrid--dropTarget")).toHaveCount(0);
-  await expect(page.locator(".todayDropIndicator")).toHaveCount(0);
-  expect(await saveCount(page)).toBe(before);
-  await page.mouse.up();
-  await expect(page.locator(".todayDropGuidanceOverlay")).toHaveCount(0);
-  expect(await saveCount(page)).toBe(before);
-});
-
-
-test("follow-up: key controls remain contained at 100, 125 and 150 percent DPI", async ({
-  browser,
-}) => {
-  for (const deviceScaleFactor of [1, 1.25, 1.5]) {
-    const context = await browser.newContext({
-      colorScheme: "dark",
-      deviceScaleFactor,
-      locale: "ja-JP",
-      reducedMotion: "no-preference",
-      viewport: { width: 1440, height: 900 },
-    });
-    const page = await context.newPage();
-    await prepare(page);
-    const clock = page.locator(".timerDock .timerClock");
-    await expect(clock).toHaveCSS("cursor", "ns-resize");
-    await page
-      .locator(".todayRow")
-      .first()
-      .getByRole("button", { name: "今日の3件から外す" })
-      .click();
-    const toast = page.locator(".toast").last();
-    await toast.evaluate((node) => {
-      for (const animation of node.getAnimations()) animation.finish();
-    });
-    const toastBox = await toast.boundingBox();
-    expect(toastBox).not.toBeNull();
-    expect(toastBox!.x + toastBox!.width).toBeLessThanOrEqual(1440);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(1440);
-    await context.close();
-  }
-});
-
 for (const width of [860]) {
   test(
-    "follow-up: Warm Rich Toast and forward lifetime remain contained at " + width,
+    "follow-up: Undo remains usable before expiry and its acknowledgement expires at " + width,
     async ({ page }) => {
       await prepare(page, createPublicFixture(), width);
+      await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1000);
       await page
         .locator(".todayRow")
         .first()
@@ -243,36 +145,30 @@ for (const width of [860]) {
         .click();
       const toast = page.locator(".toast", { hasText: "今日の3件から外しました" }).last();
       await expect(toast).toBeVisible();
-      await expect(toast).toHaveCSS("--toast-duration", "8000ms");
-      await expect(toast.locator(".toastIconBadge")).toHaveCSS("width", "34px");
-      await expect(toast.locator(".toastIconBadge")).toHaveCSS("height", "34px");
-      await expect(toast).toHaveCSS("border-radius", "11px");
-      const borderColors = await toast.evaluate((node) => {
-        const style = getComputedStyle(node);
-        return [style.borderTopColor, style.borderRightColor, style.borderBottomColor];
-      });
-      expect(new Set(borderColors).size).toBe(1);
-      const railInsets = await toast.locator(".toastAccent").evaluate((node) => {
-        const style = getComputedStyle(node);
-        return [style.top, style.bottom];
-      });
-      expect(railInsets).toEqual(["10px", "10px"]);
-      const frames = await toast.locator(".toastLifetime").evaluate((node) => {
-        const animation = node.getAnimations()[0];
-        const effect = animation?.effect as KeyframeEffect | null;
-        return effect?.getKeyframes().map((frame) => frame.transform);
-      });
-      expect(frames?.[0]).toBe("scaleX(0)");
-      expect(frames?.at(-1)).toBe("scaleX(1)");
-      const stackBox = await page.locator(".toastStack").boundingBox();
-      expect(stackBox).not.toBeNull();
-      expect(Math.abs(width - (stackBox!.x + stackBox!.width) - 18)).toBeLessThan(1);
-      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+      // The native CSS entrance animation does not follow the mocked JS clock.
+      await expect.poll(async () => {
+        const box = await toast.boundingBox();
+        return box ? box.x + box.width : Infinity;
+      }).toBeLessThanOrEqual(width);
+      const box = (await toast.boundingBox())!;
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(width);
+      expect(box.y).toBeGreaterThanOrEqual(0);
+      expect(box.y + box.height).toBeLessThanOrEqual(900);
+      expect(await toast.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+      await page.mouse.move(1, 1);
+      await page.getByRole("button", { name: "使い方", exact: true }).focus();
+      await page.clock.runFor(7900);
+      await expect(toast).toBeVisible();
       await toast.getByRole("button", { name: "元に戻す" }).click();
-      await expect(page.locator(".toast", { hasText: "元に戻しました" }).last()).toHaveCSS(
-        "--toast-duration",
-        "4000ms",
-      );
+      const restored = page.locator(".toast", { hasText: "元に戻しました" }).last();
+      await expect(restored).toBeVisible();
+      await page.mouse.move(1, 1);
+      await page.getByRole("button", { name: "使い方", exact: true }).focus();
+      await page.clock.runFor(3900);
+      await expect(restored).toBeVisible();
+      await page.clock.runFor(400);
+      await expect(restored).toHaveCount(0);
     },
   );
 }

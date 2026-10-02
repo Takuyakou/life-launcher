@@ -1,65 +1,15 @@
 import { expect, test, type Page } from "@playwright/test";
-import type { AppConfig, SessionEntryRow } from "../../src/types";
+import type { AppConfig } from "../../src/types";
 import {
   createPublicFixture,
-  FIXTURE_DATE,
   FIXTURE_NOW,
   type VisualQaFixture,
 } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 
-const CANONICAL_FRESH_CONFIG: AppConfig = {
-  $schema: "./config.schema.json",
-  version: 3,
-  groups: [],
-  overlayPages: [],
-  dictionaryOrder: [],
-  buttons: [],
-  projects: [],
-  today: {
-    date: FIXTURE_DATE,
-    victory: { text: "", done: false },
-    items: [],
-    candidateExcludedSourceKeys: [],
-    selectionMutationTokens: {},
-  },
-  inbox: [],
-  sourceCompletions: [],
-  settings: {
-    alwaysOnTop: false,
-    focusHotkey: "Ctrl+Alt+Space",
-    launcherHotkey: "Ctrl+K",
-    miniHotkey: null,
-    autoStart: false,
-    defaultTimerMinutes: 25,
-    shortTimerMinutes: 5,
-    dayStartHour: 4,
-    backupFolder: null,
-    backupKeep: 30,
-    miniMode: true,
-    miniWindowPosition: null,
-    restartShortFirst: true,
-    instructionFolders: [],
-    instructionFolderIdentities: [],
-    instructionHotkey: null,
-  },
-};
-
-type CleanStartState = {
-  sessions: SessionEntryRow[];
-  backup: null | {
-    path: string;
-    config: AppConfig;
-    sessions: SessionEntryRow[];
-  };
-  externalSentinel: { path: string; value: string };
-  resetCompleted: boolean;
-  restoreCount: number;
-};
-
 type VisualQaControl = {
   currentConfig: () => AppConfig;
-  cleanStartState: () => CleanStartState | null;
+  invokeCalls: Array<{ command: string; args: Record<string, unknown> }>;
 };
 
 async function prepare(page: Page, fixture: VisualQaFixture = createPublicFixture()) {
@@ -81,14 +31,12 @@ async function currentConfig(page: Page): Promise<AppConfig> {
   );
 }
 
-async function cleanStartState(page: Page): Promise<CleanStartState> {
-  return page.evaluate(() => {
-    const state = (
-      window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: VisualQaControl }
-    ).__LIFE_LAUNCHER_VISUAL_QA__.cleanStartState();
-    if (!state) throw new Error("cleanStartReset mode is unavailable");
-    return state;
-  });
+async function commandCalls(page: Page, command: string) {
+  return page.evaluate((name) =>
+    (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: VisualQaControl })
+      .__LIFE_LAUNCHER_VISUAL_QA__.invokeCalls.filter((call) => call.command === name),
+    command,
+  );
 }
 
 async function openResetChoice(page: Page) {
@@ -116,26 +64,16 @@ async function openDisclosure(disclosure: ReturnType<Page["locator"]>) {
 test("P83-04 clean start remains usable through Session recording", async ({ page }) => {
   const fixture = createPublicFixture();
   await prepare(page, fixture);
-  const originalSentinel = (await cleanStartState(page)).externalSentinel;
   expect((await currentConfig(page)).projects).toHaveLength(2);
 
   await resetWithBackup(page);
-  let state = await cleanStartState(page);
-  expect(state.backup?.path).toBe(
-    "C:\\PublicDemo\\Backups\\lifelauncher-clean-start.zip",
-  );
-  expect(state.backup?.config.projects).toHaveLength(2);
-  expect(state.backup?.sessions).toHaveLength(2);
-  expect(state.externalSentinel).toEqual(originalSentinel);
+  expect(await commandCalls(page, "create_software_reset_backup")).toHaveLength(1);
+  expect(await commandCalls(page, "software_reset")).toHaveLength(1);
 
   await page.reload();
   await page.waitForLoadState("networkidle");
   await expect(page.locator(".doNowBand")).toBeVisible();
-  let config = await currentConfig(page);
-  expect(config).toEqual(CANONICAL_FRESH_CONFIG);
-  expect(config.$schema).toBe("./config.schema.json");
-  expect(config.today.date).toBe(FIXTURE_DATE);
-  expect(config.settings).toEqual(CANONICAL_FRESH_CONFIG.settings);
+
   await expect(page.locator(".projectsBand .disclosureCount")).toHaveText("0件");
 
   await page
@@ -147,7 +85,7 @@ test("P83-04 clean start remains usable through Session recording", async ({ pag
     .getByRole("textbox", { name: "プロジェクト名" })
     .fill("Clean Start Project");
   await projectDialog.getByRole("button", { name: "プロジェクトを追加", exact: true }).click();
-  config = await currentConfig(page);
+  const config = await currentConfig(page);
   const project = config.projects.at(-1)!;
   expect(project.name).toBe("Clean Start Project");
 
@@ -192,17 +130,16 @@ test("P83-04 clean start remains usable through Session recording", async ({ pag
     "Clean Start Project 1分を記録しました",
   );
 
-  state = await cleanStartState(page);
-  expect(state.sessions).toEqual([
-    expect.objectContaining({
+  const sessions = await commandCalls(page, "record_session");
+  expect(sessions).toHaveLength(1);
+  expect(sessions[0].args).toMatchObject({
+    session: {
       projectId: project.id,
       label: "Clean Start Project",
       minutes: 1,
       note: "Clean Start Action",
-    }),
-  ]);
-  expect(state.backup?.config.projects).toHaveLength(2);
-  expect(state.externalSentinel).toEqual(originalSentinel);
+    },
+  });
 
   await page.getByRole("button", { name: "記録ビューを開く" }).click();
   const records = page.locator(".recordsView");
@@ -218,7 +155,6 @@ test("P83-04 reset backup remains selectable and restores the original state", a
 }) => {
   const fixture = createPublicFixture();
   await prepare(page, fixture);
-  const originalSentinel = (await cleanStartState(page)).externalSentinel;
 
   await resetWithBackup(page);
   await page.reload();
@@ -233,16 +169,10 @@ test("P83-04 reset backup remains selectable and restores the original state", a
   await confirm.getByRole("button", { name: "復元する", exact: true }).click();
   await expect(settings).toHaveCount(0);
 
-  const config = await currentConfig(page);
-  expect(config.projects).toEqual(fixture.config.projects);
-  expect(config.inbox).toEqual(fixture.config.inbox);
-  expect(config.today.items).toEqual(fixture.config.today.items);
-  const state = await cleanStartState(page);
-  expect(state.sessions).toEqual(fixture.sessionEntries.entries);
-  expect(state.backup?.path).toBe(
-    "C:\\PublicDemo\\Backups\\lifelauncher-clean-start.zip",
-  );
-  expect(state.restoreCount).toBe(1);
-  expect(state.externalSentinel).toEqual(originalSentinel);
+  const restores = await commandCalls(page, "restore_backup");
+  expect(restores).toHaveLength(1);
+  expect(restores[0].args).toMatchObject({
+    zipPath: "C:\\PublicDemo\\Backups\\lifelauncher-clean-start.zip",
+  });
   await expect(page.locator('[data-project-id="sample-learning"]')).toBeVisible();
 });

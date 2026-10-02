@@ -1,7 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
-import { mkdir } from "node:fs/promises";
 
 async function prepare(page: Page) {
   await prepareFixture(page, createPublicFixture());
@@ -14,15 +13,41 @@ async function prepareFixture(page: Page, fixture: VisualQaFixture) {
   await expect(page.locator(".doNowStartPrimary")).toBeVisible();
 }
 
+async function expectExpandedTimerFits(page: Page) {
+  const viewport = page.viewportSize()!;
+  const overlay = page.getByRole("dialog", { name: "拡大タイマー" });
+  for (const selector of [".expandedTimerClock", ".expandedTimerActions", ".expandedTimerClose"]) {
+    const box = await overlay.locator(selector).boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.y).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width);
+    expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.height);
+  }
+}
+
 test("P8.10 TX-01 manual expand shares timer state and Esc keeps it running", async ({ page }) => {
-  await prepare(page);
+  const fixture = createPublicFixture();
+  fixture.config.today.items = [];
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await prepareFixture(page, fixture);
   await expect(page.getByRole("button", { name: "タイマーを大きく表示" })).toHaveCount(0);
   await page.locator(".doNowStartPrimary").click();
+  await expect(page.getByRole("dialog", { name: "拡大タイマー" })).toHaveCount(0);
   const expand = page.getByRole("button", { name: "タイマーを大きく表示" });
   await expect(expand).toBeVisible();
   await expand.click();
   const overlay = page.getByRole("dialog", { name: "拡大タイマー" });
   await expect(overlay).toBeVisible();
+  for (const viewport of [
+    { width: 1920, height: 1080 },
+    { width: 1200, height: 800 },
+    { width: 430, height: 380 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await expectExpandedTimerFits(page);
+  }
+  await page.setViewportSize({ width: 1920, height: 1080 });
   await expect(overlay.locator(".expandedTimerClock")).toHaveText(await page.locator(".timerDock .timerClock").innerText());
   await page.clock.runFor(5_000);
   await expect(overlay.locator(".expandedTimerClock")).toHaveText(await page.locator(".timerDock .timerClock").innerText());
@@ -31,6 +56,13 @@ test("P8.10 TX-01 manual expand shares timer state and Esc keeps it running", as
   await expect(page.locator(".timerDock .timerStateBadge")).toHaveText("一時停止");
   await overlay.getByRole("button", { name: "再開" }).click();
   await expect(overlay.getByText("実行中")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(overlay).toHaveCount(0);
+  await expect(expand).toBeFocused();
+  await expect(page.locator(".timerDock .timerStateBadge")).toHaveText("実行中");
+  await expand.click();
+  await overlay.locator(".expandedTimerClock").click();
+  await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
   await page.keyboard.press("Escape");
   await expect(overlay).toHaveCount(0);
   await expect(expand).toBeFocused();
@@ -44,6 +76,10 @@ test("P8.10 TX-01 overlay traps Tab, closes without backdrop click, and can end 
   const overlay = page.getByRole("dialog", { name: "拡大タイマー" });
   const close = overlay.getByRole("button", { name: "拡大表示を閉じる" });
   await expect(close).toBeFocused();
+  await expect(overlay.locator(".expandedTimerClock")).toHaveCSS("user-select", "none");
+  await page.keyboard.press("ArrowDown");
+  expect(await page.evaluate(() => Boolean(document.activeElement?.closest(".expandedTimerActions")))).toBe(true);
+  await close.focus();
   await page.keyboard.press("Shift+Tab");
   await expect(overlay.getByRole("button", { name: "終了" })).toBeFocused();
   await page.locator(".expandedTimerBackdrop").click({ position: { x: 3, y: 3 } });
@@ -61,10 +97,7 @@ test("P8.10 TX-01 measure mode has no progress bar and fits narrow window", asyn
   await expect(overlay.locator(".expandedTimerProgress")).toHaveCount(0);
   await expect(overlay.locator(".expandedTimerClock")).toHaveText("00:00");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-  const clock = await overlay.locator(".expandedTimerClock").boundingBox();
-  expect(clock).not.toBeNull();
-  expect(clock!.x).toBeGreaterThanOrEqual(0);
-  expect(clock!.x + clock!.width).toBeLessThanOrEqual(430);
+  await expectExpandedTimerFits(page);
 });
 
 test("P8.10 TX-02 expiry keeps overlay and existing continue/finish flow", async ({ page }) => {
@@ -81,9 +114,6 @@ test("P8.10 TX-02 expiry keeps overlay and existing continue/finish flow", async
   await expect(overlay.getByText("時間になりました")).toBeVisible();
   const prompt = page.getByRole("dialog", { name: "タイマー満了" });
   await expect(prompt).toBeVisible();
-  await expect(page.locator(".modalBackdrop").filter({ has: prompt })).toHaveCSS("z-index", "95");
-  await mkdir("dist/visual-qa", { recursive: true });
-  await page.screenshot({ path: "dist/visual-qa/expanded-timer-complete.png" });
   await prompt.getByRole("button", { name: /続ける/ }).click();
   await expect(prompt).toHaveCount(0);
   await expect(overlay).toBeVisible();
@@ -112,7 +142,11 @@ test("P8.10 TX-02 early stop uses the existing Today confirmation", async ({ pag
   await page.clock.fastForward(180_000);
   await page.getByRole("button", { name: "タイマーを大きく表示" }).click();
   await page.getByRole("dialog", { name: "拡大タイマー" }).getByRole("button", { name: "終了" }).click();
-  await expect(page.getByRole("dialog", { name: "今日の分は完了にしますか？" })).toBeVisible();
+  const confirmation = page.getByRole("dialog", { name: "今日の分は完了にしますか？" });
+  await expect(confirmation).toBeVisible();
+  await expect(confirmation.getByRole("button", { name: "今日の分は完了" })).toHaveClass(/confirmDialogButton--positive/);
+  await expect(confirmation.getByRole("button", { name: "未完了のまま終了" })).toHaveClass(/settingsButton--neutral/);
+  await expect(confirmation.getByRole("heading")).toHaveCSS("user-select", "none");
   await page.getByRole("button", { name: "未完了のまま終了" }).click();
   await expect(page.getByRole("dialog", { name: "拡大タイマー" })).toHaveCount(0);
 });
@@ -136,14 +170,6 @@ test("P8.10 TX-03 NextStep auto-expand is off by default and can be saved", asyn
   expect(saved.projects[0].nextStep?.expandTimerOnStart).toBe(true);
   await page.locator(".doNowStartPrimary").click();
   await expect(page.getByRole("dialog", { name: "拡大タイマー" })).toBeVisible();
-});
-
-test("P8.10 TX-03 NextStep without preference does not auto-expand", async ({ page }) => {
-  const fixture = createPublicFixture();
-  fixture.config.today.items = [];
-  await prepareFixture(page, fixture);
-  await page.locator(".doNowStartPrimary").click();
-  await expect(page.getByRole("dialog", { name: "拡大タイマー" })).toHaveCount(0);
 });
 
 test("P8.10 TX-03 Today picker snapshots the NextStep preference", async ({ page }) => {
@@ -190,42 +216,27 @@ test("P8.10 TX-03 Wishlist Today item never auto-expands", async ({ page }) => {
   await expect(page.getByRole("dialog", { name: "拡大タイマー" })).toHaveCount(0);
 });
 
-test("P8.10 TX-03 explicit auto-expand restores a hidden Main", async ({ page }) => {
+test("P8.10 TX-03 explicit auto-expand requests focus for a hidden Main", async ({ page }) => {
   const fixture = createPublicFixture();
   fixture.config.projects[0].nextStep!.expandTimerOnStart = true;
   fixture.config.today.items = [];
   await prepareFixture(page, fixture);
+  const before = await page.evaluate(() =>
+    (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: { invokeCalls: Array<{ command: string }> } })
+      .__LIFE_LAUNCHER_VISUAL_QA__.invokeCalls.length,
+  );
   await page.evaluate(() => {
     (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: { setMainWindowState: (state: { visible: boolean; minimized: boolean; focused: boolean }) => void } })
       .__LIFE_LAUNCHER_VISUAL_QA__.setMainWindowState({ visible: false, minimized: false, focused: false });
   });
   await page.locator(".doNowStartPrimary").click();
   await expect(page.getByRole("dialog", { name: "拡大タイマー" })).toBeVisible();
-  await expect.poll(() => page.evaluate(() =>
-    (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: { mainWindowState: () => { visible: boolean } } })
-      .__LIFE_LAUNCHER_VISUAL_QA__.mainWindowState().visible,
+  await expect.poll(() => page.evaluate((count) =>
+    (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: { invokeCalls: Array<{ command: string }> } })
+      .__LIFE_LAUNCHER_VISUAL_QA__.invokeCalls.slice(count)
+      .some((call) => call.command === "focus_dashboard_window"), before,
   )).toBe(true);
 });
-
-for (const viewport of [{ width: 430, height: 380 }, { width: 1200, height: 800 }, { width: 1920, height: 1080 }]) {
-  test(`P8.10 TX-01 expanded timer fits ${viewport.width}x${viewport.height}`, async ({ page }) => {
-    await page.setViewportSize(viewport);
-    await prepare(page);
-    await page.locator(".doNowStartPrimary").click();
-    await page.getByRole("button", { name: "タイマーを大きく表示" }).click();
-    const overlay = page.getByRole("dialog", { name: "拡大タイマー" });
-    for (const selector of [".expandedTimerClock", ".expandedTimerActions", ".expandedTimerClose"]) {
-      const box = await overlay.locator(selector).boundingBox();
-      expect(box).not.toBeNull();
-      expect(box!.x).toBeGreaterThanOrEqual(0);
-      expect(box!.y).toBeGreaterThanOrEqual(0);
-      expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width);
-      expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.height);
-    }
-    await mkdir("dist/visual-qa", { recursive: true });
-    await page.screenshot({ path: `dist/visual-qa/expanded-timer-${viewport.width}.png` });
-  });
-}
 
 test("P8.10 TX-04 display request follows expanded timer and releases on close", async ({ page }) => {
   await prepare(page);
@@ -246,18 +257,6 @@ test("P8.10 TX-04 display request follows expanded timer and releases on close",
   await page.getByRole("dialog", { name: "拡大タイマー" }).getByRole("button", { name: "終了" }).click();
   await expect.poll(async () => (await calls()).filter((call) => !call.args.active).length).toBe(2);
   expect((await calls())[2].args.leaseId).not.toBe(acquired);
-});
-
-test("P8.10 TX-01 Escape closes after focus leaves the expanded timer controls", async ({ page }) => {
-  await prepare(page);
-  await page.locator(".doNowStartPrimary").click();
-  await page.getByRole("button", { name: "タイマーを大きく表示" }).click();
-  const overlay = page.getByRole("dialog", { name: "拡大タイマー" });
-  await overlay.locator(".expandedTimerClock").click();
-  await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
-  await page.keyboard.press("Escape");
-  await expect(overlay).toHaveCount(0);
-  await expect(page.locator(".timerDock .timerStateBadge")).toHaveText("実行中");
 });
 
 for (const state of [

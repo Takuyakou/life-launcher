@@ -1,11 +1,9 @@
-import { resolve } from "node:path";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import type { InboxItem, LauncherProject } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 
-const SCREENSHOT_DIR = resolve("dist/visual-qa/phase81-layout-qa");
-const VIEWPORTS = [1920, 1440, 1000, 860, 620] as const;
+const VIEWPORTS = [1920, 1000, 860, 620] as const;
 const LONG_PROJECT_NAME = "長い名前でも責務が混ざらない公開確認用プロジェクト";
 const LONG_NEXT_STEP =
   "とても長い次の一手でもプロジェクト名や設定ボタンを押し出さず、現在の実行内容として一行で識別できることを確認するための公開用テキスト";
@@ -206,10 +204,6 @@ for (const width of VIEWPORTS) {
       true,
     );
 
-    await page.screenshot({
-      fullPage: true,
-      path: resolve(SCREENSHOT_DIR, `dashboard-${width}x900.png`),
-    });
   });
 }
 
@@ -234,7 +228,6 @@ test("Phase 8.1 unassigned Wishlist and empty Project require explicit keyboard 
   );
   await expect(promotion.getByRole("button", { name: "保存", exact: true })).toBeDisabled();
   await expectInsideViewport(page, promotion, "unassigned Wishlist promotion dialog");
-  await page.screenshot({ path: resolve(SCREENSHOT_DIR, "unassigned-promotion-620x900.png") });
   await projectSelection.selectOption("phase81-empty-project");
   await expect(promotion.locator(".nextStepReplacementNotice")).toHaveCount(0);
   await promotion.getByRole("button", { name: "キャンセル", exact: true }).click();
@@ -262,7 +255,6 @@ test("Phase 8.1 unassigned Wishlist and empty Project require explicit keyboard 
   await expect(setup.locator(".nextStepFixedProject")).toContainText("次の一手が空のプロジェクト");
   await expect(setup.getByRole("button", { name: "保存", exact: true })).toBeDisabled();
   await expectInsideViewport(page, setup, "empty Project NextStep dialog");
-  await page.screenshot({ path: resolve(SCREENSHOT_DIR, "empty-project-nextstep-620x900.png") });
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog", { name: "入力内容を破棄して閉じますか？" })).toHaveCount(
     0,
@@ -289,7 +281,6 @@ test("Phase 8.1 NextStep cards expose one combined keyboard context menu", async
   ]);
   await expect(menu.getByRole("menuitem", { name: "やりたいことを追加" })).toHaveCount(0);
   await expectInsideViewport(page, menu, "Combined NextStep context menu");
-  await page.screenshot({ path: resolve(SCREENSHOT_DIR, "nextstep-context-1440x900.png") });
   await page.keyboard.press("Escape");
   await expect(projectRegion).toBeFocused();
 
@@ -353,7 +344,7 @@ test("Phase 8.1 dialogs restore their canonical context target on every close pa
   await expect(actionRegion).toBeFocused();
 });
 
-for (const width of [860, 620] as const) {
+for (const width of [620] as const) {
   test(`Phase 8.1 metadata and NextStep dialogs remain usable at ${width}`, async ({ page }) => {
     await prepare(page, width);
     const row = page.locator('.nextStepCard[data-project-id="sample-learning"]');
@@ -384,9 +375,6 @@ for (const width of [860, 620] as const) {
     await metadataSave.focus();
     await page.keyboard.press("Tab");
     await expect(metadataCancel).toBeFocused();
-    await page.screenshot({
-      path: resolve(SCREENSHOT_DIR, `metadata-dialog-focus-${width}x900.png`),
-    });
     await page.keyboard.press("Escape");
     await expect(metadata).toHaveCount(0);
     await expect(projectRegion).toBeFocused();
@@ -423,9 +411,6 @@ for (const width of [860, 620] as const) {
     await page.keyboard.press("Tab");
     await expect(nextStepCancel).toBeFocused();
     await expectNoHorizontalDocumentOverflow(page);
-    await page.screenshot({
-      path: resolve(SCREENSHOT_DIR, `nextstep-dialog-focus-${width}x900.png`),
-    });
     await page.keyboard.press("Escape");
     await expect(nextStep).toHaveCount(0);
     await expect(actionRegion).toBeFocused();

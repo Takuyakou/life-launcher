@@ -460,13 +460,20 @@ pub fn load_next_step_suggestions(
     project_id: String,
 ) -> Result<Vec<String>, String> {
     let path = sessions_path()?;
+    load_next_step_suggestions_from_path(&path, &project_id)
+}
+
+fn load_next_step_suggestions_from_path(
+    path: &PathBuf,
+    project_id: &str,
+) -> Result<Vec<String>, String> {
     let project_id = project_id.trim();
     if project_id.is_empty() {
         return Ok(Vec::new());
     }
 
     let mut suggestions = Vec::new();
-    for entry in read_session_entries(&path)?.iter().rev() {
+    for entry in read_session_entries(path)?.iter().rev() {
         if entry.project_id.as_deref() != Some(project_id) {
             continue;
         }
@@ -788,6 +795,32 @@ fn rewrite_session_entries(path: &PathBuf, entries: &[SessionLogEntry]) -> Resul
 mod tests {
     use super::*;
 
+    fn candidate_project(id: &str, weekly_focus: Option<bool>, step: Option<&str>) -> Project {
+        let mut project = crate::models::sample_config().projects.remove(0);
+        project.id = id.to_string();
+        project.name = id.to_string();
+        project.weekly_focus = weekly_focus;
+        if let Some(text) = step {
+            project.next_step.as_mut().expect("next step").text = text.to_string();
+        } else {
+            project.next_step = None;
+        }
+        project
+    }
+
+    fn candidate_session(project_id: &str, date: &str, started_at: &str) -> SessionLogEntry {
+        SessionLogEntry {
+            id: None,
+            date: date.to_string(),
+            project_id: Some(project_id.to_string()),
+            label: project_id.to_string(),
+            started_at: started_at.to_string(),
+            minutes: 10,
+            note: String::new(),
+            manual: false,
+        }
+    }
+
     #[test]
     fn reads_legacy_session_without_note() {
         let path = std::env::temp_dir().join(format!(
@@ -902,86 +935,54 @@ mod tests {
     }
 
     #[test]
-    fn next_step_suggestions_are_unique_and_project_scoped() {
+    fn next_step_suggestions_are_project_scoped_trimmed_unique_and_limited_to_latest_five() {
         let path = std::env::temp_dir().join(format!(
             "life-launcher-next-step-suggestions-{}.jsonl",
             chrono::Local::now()
                 .timestamp_nanos_opt()
                 .unwrap_or_default()
         ));
-        let entries = [
-            SessionLogEntry {
-                id: None,
-                date: "2026-07-08".to_string(),
-                project_id: Some("compose".to_string()),
-                label: "compose".to_string(),
-                started_at: "10:00".to_string(),
-                minutes: 10,
-                note: "loop".to_string(),
-                manual: false,
-            },
-            SessionLogEntry {
-                id: None,
-                date: "2026-07-08".to_string(),
-                project_id: Some("other".to_string()),
-                label: "other".to_string(),
-                started_at: "11:00".to_string(),
-                minutes: 10,
-                note: "other note".to_string(),
-                manual: false,
-            },
-            SessionLogEntry {
-                id: None,
-                date: "2026-07-08".to_string(),
-                project_id: None,
-                label: "today".to_string(),
-                started_at: "12:00".to_string(),
-                minutes: 10,
-                note: "today note".to_string(),
-                manual: false,
-            },
-            SessionLogEntry {
-                id: None,
-                date: "2026-07-08".to_string(),
-                project_id: Some("compose".to_string()),
-                label: "compose".to_string(),
-                started_at: "13:00".to_string(),
-                minutes: 10,
-                note: "loop".to_string(),
-                manual: false,
-            },
-            SessionLogEntry {
-                id: None,
-                date: "2026-07-08".to_string(),
-                project_id: Some("compose".to_string()),
-                label: "compose".to_string(),
-                started_at: "14:00".to_string(),
-                minutes: 10,
-                note: "bass".to_string(),
-                manual: false,
-            },
-        ];
+        let mut entries = [
+            "alpha", "beta", "gamma", "delta", "epsilon", "zeta", " zeta ", "  ",
+        ]
+        .into_iter()
+        .map(|note| {
+            let mut entry = candidate_session("compose", "2026-07-08", "10:00");
+            entry.note = note.to_string();
+            entry
+        })
+        .collect::<Vec<_>>();
+        let mut other = candidate_session("other", "2026-07-08", "11:00");
+        other.note = "other note".to_string();
+        entries.push(other);
+        let mut unclassified = candidate_session("today", "2026-07-08", "12:00");
+        unclassified.project_id = None;
+        unclassified.note = "today note".to_string();
+        entries.push(unclassified);
         for entry in &entries {
             append_session_entry(&path, entry).expect("append session");
         }
 
-        let mut suggestions = Vec::new();
-        for entry in read_session_entries(&path)
-            .expect("read sessions")
-            .iter()
-            .rev()
-        {
-            if entry.project_id.as_deref() != Some("compose") {
-                continue;
-            }
-            let note = entry.note.trim();
-            if note.is_empty() || suggestions.iter().any(|item| item == note) {
-                continue;
-            }
-            suggestions.push(note.to_string());
+        assert_eq!(
+            serde_json::to_value(read_session_entries(&path).expect("read sessions"))
+                .expect("serialize read entries"),
+            serde_json::to_value(&entries).expect("serialize appended entries")
+        );
+        let before = fs::read(&path).expect("read original bytes");
+        assert_eq!(
+            load_next_step_suggestions_from_path(&path, " compose ").expect("load suggestions"),
+            vec!["zeta", "epsilon", "delta", "gamma", "beta"]
+        );
+        assert_eq!(
+            load_next_step_suggestions_from_path(&path, "other").expect("load other project"),
+            vec!["other note"]
+        );
+        for project_id in ["", "  ", "unknown"] {
+            assert!(load_next_step_suggestions_from_path(&path, project_id)
+                .expect("load empty suggestions")
+                .is_empty());
         }
-
-        assert_eq!(suggestions, vec!["bass".to_string(), "loop".to_string()]);
+        assert_eq!(fs::read(&path).expect("read unchanged bytes"), before);
         let _ = fs::remove_file(path);
     }
 
@@ -1106,34 +1107,16 @@ mod tests {
 
     #[test]
     fn do_now_candidates_include_non_focus_exclude_empty_and_use_manual_order_for_ties() {
-        let mut projects = crate::models::sample_config().projects;
-        projects[0].id = "first".to_string();
-        projects[0].weekly_focus = Some(true);
-        projects[0].next_step.as_mut().expect("next step").text = "first step".to_string();
-        projects[1].id = "second".to_string();
-        projects[1].weekly_focus = Some(true);
-        projects[1].next_step.as_mut().expect("next step").text = "second step".to_string();
-        let mut excluded = projects[0].clone();
-        excluded.id = "excluded".to_string();
-        excluded.weekly_focus = Some(false);
-        projects.push(excluded);
-        let mut empty = projects[0].clone();
-        empty.id = "empty".to_string();
-        empty.next_step = None;
-        projects.push(empty);
-        let entries = ["first", "second"]
-            .into_iter()
-            .map(|project_id| SessionLogEntry {
-                id: None,
-                date: "2026-07-16".to_string(),
-                project_id: Some(project_id.to_string()),
-                label: project_id.to_string(),
-                started_at: "10:00".to_string(),
-                minutes: 10,
-                note: String::new(),
-                manual: false,
-            })
-            .collect::<Vec<_>>();
+        let projects = vec![
+            candidate_project("first", Some(true), Some("first step")),
+            candidate_project("second", Some(true), Some("second step")),
+            candidate_project("excluded", Some(false), Some("non-focus step")),
+            candidate_project("empty", Some(true), None),
+        ];
+        let entries = vec![
+            candidate_session("first", "2026-07-16", "10:00"),
+            candidate_session("second", "2026-07-16", "10:00"),
+        ];
 
         let candidates = build_do_now_candidates(&projects, &entries, "2026-07-16");
 
@@ -1201,24 +1184,11 @@ mod tests {
 
     #[test]
     fn do_now_candidates_prioritize_focus_without_using_it_as_eligibility() {
-        let mut projects = crate::models::sample_config().projects;
-        projects[0].id = "focus".to_string();
-        projects[0].weekly_focus = Some(true);
-        projects[0].next_step.as_mut().expect("next step").text = "focus step".to_string();
-        projects[1].id = "available".to_string();
-        projects[1].weekly_focus = Some(false);
-        projects[1].next_step.as_mut().expect("next step").text = "available step".to_string();
-
-        let today_entry = SessionLogEntry {
-            id: None,
-            date: "2026-07-16".to_string(),
-            project_id: Some("focus".to_string()),
-            label: "focus".to_string(),
-            started_at: "10:00".to_string(),
-            minutes: 10,
-            note: String::new(),
-            manual: false,
-        };
+        let mut projects = vec![
+            candidate_project("focus", Some(true), Some("focus step")),
+            candidate_project("available", Some(false), Some("available step")),
+        ];
+        let today_entry = candidate_session("focus", "2026-07-16", "10:00");
         let ranked = build_do_now_candidates(&projects, &[today_entry], "2026-07-16");
         assert_eq!(
             ranked
@@ -1236,13 +1206,10 @@ mod tests {
 
     #[test]
     fn do_now_candidates_use_manual_order_for_equal_state_and_empty_without_steps() {
-        let mut projects = crate::models::sample_config().projects;
-        projects[0].id = "first".to_string();
-        projects[0].weekly_focus = None;
-        projects[0].next_step.as_mut().expect("next step").text = "first step".to_string();
-        projects[1].id = "second".to_string();
-        projects[1].weekly_focus = Some(false);
-        projects[1].next_step.as_mut().expect("next step").text = "second step".to_string();
+        let mut projects = vec![
+            candidate_project("first", None, Some("first step")),
+            candidate_project("second", Some(false), Some("second step")),
+        ];
 
         let tied = build_do_now_candidates(&projects, &[], "2026-07-16");
         assert_eq!(

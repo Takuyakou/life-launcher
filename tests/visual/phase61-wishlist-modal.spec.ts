@@ -68,13 +68,20 @@ function wishlistDialog(page: Page) {
 test("Wishlist add uses one compact modal and saves once on a double click", async ({ page }) => {
   const fixture = createPublicFixture();
   const initialCount = fixture.config.inbox.length;
-  await prepare(page, fixture);
+  await prepare(page, fixture, { width: 860, height: 700 });
   const opener = wishlistAddButton(page);
   await opener.click();
 
   const dialog = wishlistDialog(page);
   const input = dialog.getByRole("textbox", { name: "やりたいこと" });
   await expect(dialog).toBeVisible();
+  await expect(dialog.locator(".dialogActions > button")).toHaveText(["保存", "キャンセル"]);
+  const box = (await dialog.boundingBox())!;
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(860);
+  expect(box.y + box.height).toBeLessThanOrEqual(700);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await expect(page.locator(".inboxAddRow")).toHaveCount(0);
   await expect(input).toBeFocused();
   await expect(input).toHaveAttribute("maxlength", "120");
@@ -220,28 +227,6 @@ test("Wishlist save failure keeps the dialog and draft for retry", async ({ page
   await dialog.getByRole("button", { name: "保存" }).click();
   await expect(dialog).toHaveCount(0);
   expect((await currentConfig(page)).inbox).toHaveLength(initialCount + 1);
-});
-
-test("Wishlist modal stays within the narrow viewport without horizontal overflow", async ({
-  page,
-}) => {
-  await prepare(page, createPublicFixture(), { width: 860, height: 700 });
-  for (const viewport of [{ width: 860, height: 700 }]) {
-    await page.setViewportSize(viewport);
-    await wishlistAddButton(page).click();
-    const dialog = wishlistDialog(page);
-    const box = await dialog.boundingBox();
-    expect(box).not.toBeNull();
-    expect(box!.x).toBeGreaterThanOrEqual(0);
-    expect(box!.y).toBeGreaterThanOrEqual(0);
-    expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width);
-    expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.height);
-    expect(
-      await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
-    ).toBe(true);
-    await page.keyboard.press("Escape");
-    await expect(dialog).toHaveCount(0);
-  }
 });
 
 test("Project metadata editing preserves its separate NextStep package", async ({ page }) => {

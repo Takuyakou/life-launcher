@@ -1,5 +1,4 @@
 import { expect, test, type Page } from "@playwright/test";
-import { resolve } from "node:path";
 import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 
@@ -8,8 +7,6 @@ type InvokeCall = { command: string; args: Record<string, unknown> };
 type VisualQaControl = {
   invokeCalls: InvokeCall[];
 };
-
-const SCREENSHOT_DIR = resolve("dist/visual-qa/phase83-settings-maintenance");
 
 async function prepare(page: Page, width = 1440) {
   await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
@@ -76,8 +73,8 @@ test("P83-01 Settings footer preserves behavior with Save left and Cancel right"
   ).toBeVisible();
 });
 
-test("P83-01 Maintenance groups keep immediate and confirmed handlers", async ({ page }) => {
-  await prepare(page);
+test("P83-01 Maintenance groups keep immediate and confirmed handlers at narrow width", async ({ page }) => {
+  await prepare(page, 860);
   const settings = await openMaintenance(page);
   const groups = settings.locator(".maintenanceGroup");
 
@@ -149,6 +146,14 @@ test("P83-01 Maintenance groups keep immediate and confirmed handlers", async ({
   const beforeResetClick = await commandCount(page, "software_reset");
   await reset.getByRole("button", { name: "ソフトウェアリセット..." }).click();
   expect(await commandCount(page, "software_reset")).toBe(beforeResetClick);
+  await page.getByRole("dialog", { name: "リセット前にバックアップしますか？" })
+    .getByRole("button", { name: "キャンセル", exact: true }).click();
+  const footer = settings.locator(".settingsDialogActions");
+  const cancel = footer.getByRole("button", { name: "キャンセル", exact: true });
+  await expect(footer).toBeInViewport();
+  await expect(cancel).toBeInViewport();
+  await cancel.click();
+  await expect(settings).toHaveCount(0);
 });
 
 test("P83-01 Maintenance controls follow a complete keyboard tab sequence", async ({ page }) => {
@@ -175,15 +180,3 @@ test("P83-01 Maintenance controls follow a complete keyboard tab sequence", asyn
     await expect(settings.getByRole("button", { name: label, exact: true })).toBeFocused();
   }
 });
-
-for (const width of [1440, 860] as const) {
-  test(`P83-01 Maintenance visual QA at ${width}px`, async ({ page }) => {
-    await prepare(page, width);
-    const settings = await openMaintenance(page);
-    await expect(settings.locator(".maintenanceGroup--reset")).toBeVisible();
-    await expect(settings.locator(".settingsDialogActions")).toBeVisible();
-    await page.screenshot({
-      path: resolve(SCREENSHOT_DIR, `maintenance-${width}x900.png`),
-    });
-  });
-}

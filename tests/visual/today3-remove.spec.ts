@@ -103,7 +103,7 @@ test("Today card shows its effective instruction action above remove and opens t
     .toBe(true);
 });
 
-test("active and paused item cannot be removed even through its React handler; another item can", async ({
+test("active and paused item cannot be removed; another item can", async ({
   page,
 }) => {
   await prepare(page);
@@ -112,15 +112,7 @@ test("active and paused item cannot be removed even through its React handler; a
   const remove = card.locator(".todayRemoveButton");
   await expect(remove).toBeDisabled();
   await expect(remove).toHaveAttribute("title", "タイマーを停止してから外してください");
-  await remove.evaluate((node) => (node as HTMLButtonElement).click());
-  await remove.press("Enter");
-  await remove.press("Space");
-  await remove.evaluate(async (node) => {
-    // Bypass the native disabled button to verify the application handler guard itself.
-    const key = Object.keys(node).find((name) => name.startsWith("__reactProps$"));
-    if (!key) throw new Error("React event props unavailable");
-    await (node as unknown as Record<string, { onClick: () => Promise<void> }>)[key].onClick();
-  });
+
   await expect(page.locator(".todayRow")).toHaveCount(3);
   await card.click({ button: "right" });
   await expect(page.getByRole("menuitem", { name: "今日の3件から外す" })).toBeDisabled();

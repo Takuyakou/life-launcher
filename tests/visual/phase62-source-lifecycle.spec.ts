@@ -86,10 +86,13 @@ test("completing a Wishlist item removes only its active source and records its 
   const item = page.locator(".inboxRow", { hasText: "週末に試すアイデア" });
   await item.click({ button: "right" });
   await page.getByRole("menuitem", { name: "完了にする" }).click();
-  await page
-    .getByRole("dialog", { name: "完了にしますか？" })
-    .getByRole("button", { name: "完了にする" })
-    .click();
+  const confirmation = page.getByRole("dialog", { name: "完了にしますか？" });
+  await expect(confirmation.locator(".confirmDialogActions button")).toHaveText(["完了にする", "キャンセル"]);
+  await expect(confirmation.getByRole("button", { name: "キャンセル" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await item.click({ button: "right" });
+  await page.getByRole("menuitem", { name: "完了にする" }).click();
+  await confirmation.getByRole("button", { name: "完了にする" }).click();
 
   const config = await currentConfig(page);
   expect(config.inbox.some((entry) => entry.id === "sample-weekend")).toBe(false);
@@ -123,6 +126,7 @@ test("deleting a source removes linked Today3 without creating completion histor
   const dialog = page.getByRole("dialog", { name: "削除しますか？" });
   await expect(dialog.getByRole("button", { name: "キャンセル" })).toBeFocused();
   await expect(dialog).toContainText("完了としては記録されません");
+  await expect(dialog.locator(".confirmDialogActions button")).toHaveText(["削除", "キャンセル"]);
   await dialog.getByRole("button", { name: "削除", exact: true }).click();
 
   const config = await currentConfig(page);
@@ -200,6 +204,7 @@ test("Today3 planned completion clears its NextStep source and records history",
 
   const config = await currentConfig(page);
   expect(config.today.items[0].done).toBe(true);
+  await expect(page.locator(".todayRow").getByRole("status", { name: "今日の分は完了", exact: true })).toBeVisible();
   expect(config.projects[0].nextStep).toBeUndefined();
   expect(config.sourceCompletions).toHaveLength(1);
   expect(config.sourceCompletions[0]).toMatchObject({

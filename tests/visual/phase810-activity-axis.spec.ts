@@ -2,17 +2,13 @@ import { expect, test } from "@playwright/test";
 import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 
-test("Today activity durations share the header badge right edge at every display size", async ({
-  page,
-}) => {
-  await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
-  const cases = [
-    { width: 860, height: 560, size: "standard" },
-    { width: 1180, height: 760, size: "large" },
-    { width: 1600, height: 1000, size: "xlarge" },
-  ] as const;
-
-  for (const { width, height, size } of cases) {
+for (const { width, height, size } of [
+  { width: 860, height: 560, size: "standard" },
+  { width: 1180, height: 760, size: "large" },
+  { width: 1600, height: 1000, size: "xlarge" },
+] as const) {
+  test(`Today activity ${size} aligns durations and keeps its badge clear of header text`, async ({ page }) => {
+    await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
     const fixture = createPublicFixture();
     fixture.config.settings.mainDisplaySize = size;
     const base = fixture.sessionEntries.entries[0];
@@ -27,6 +23,7 @@ test("Today activity durations share the header badge right edge at every displa
     await installTauriMock(page, fixture, "main");
     await page.goto("/");
     await page.evaluate(async () => document.fonts.ready);
+    await expect(page.locator(".mainScrollContent")).toHaveAttribute("data-main-display-size", size);
     await page.locator(".todayActivityBand .disclosure").click();
 
     const badge = page.locator(".todayActivityAutoBadge");
@@ -36,6 +33,18 @@ test("Today activity durations share the header badge right edge at every displa
     await expect(durations.first()).toHaveCSS("font-variant-numeric", "tabular-nums");
     const badgeBox = await badge.boundingBox();
     expect(badgeBox).not.toBeNull();
+    const header = page.locator(".todayActivityBand .disclosureHeader");
+    const headerBox = (await header.boundingBox())!;
+    expect(badgeBox!.x).toBeGreaterThanOrEqual(headerBox.x);
+    expect(badgeBox!.x + badgeBox!.width).toBeLessThanOrEqual(headerBox.x + headerBox.width);
+    expect(badgeBox!.y).toBeGreaterThanOrEqual(headerBox.y);
+    expect(badgeBox!.y + badgeBox!.height).toBeLessThanOrEqual(headerBox.y + headerBox.height);
+    for (const selector of [".disclosureLabel", ".disclosureCount", ".disclosureDescription"]) {
+      const copy = header.locator(selector);
+      await expect(copy).toBeVisible();
+      const copyBox = (await copy.boundingBox())!;
+      expect(copyBox.x + copyBox.width).toBeLessThanOrEqual(badgeBox!.x);
+    }
     for (const duration of await durations.all()) {
       const box = await duration.boundingBox();
       expect(box).not.toBeNull();
@@ -46,8 +55,5 @@ test("Today activity durations share the header badge right edge at every displa
       "09:10",
       "10:10",
     ]);
-    await page.locator(".todayActivityBand").screenshot({
-      path: `dist/visual-qa/phase810/today-activity-${size}.png`,
-    });
-  }
-});
+  });
+}

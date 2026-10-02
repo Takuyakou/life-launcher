@@ -116,6 +116,8 @@ test("Phase 8.1 creates metadata-only Projects once and keeps a pending save mod
   await prepare(page, fixture);
   await page.getByRole("button", { name: "プロジェクトを追加", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "プロジェクトを追加" });
+  await expect(dialog.getByRole("textbox", { name: "プロジェクト名" })).toBeFocused();
+  await expect(dialog.getByRole("textbox", { name: "行動" })).toHaveCount(0);
   await dialog.getByRole("textbox", { name: "プロジェクト名" }).fill("契約確認プロジェクト");
   await dialog.getByRole("textbox", { name: "目標（任意）" }).fill("入口を分離する");
   await delayNextConfigSave(page);
@@ -336,6 +338,12 @@ test("Phase 8.1 Wishlist promotion starts from a reset execution package", async
     ),
   );
   expect(nativeCalls).toEqual([]);
+  await expect(page.locator('[data-inbox-id="sample-weekend"] .wishlistNextStepStatus')).toHaveText("✓ 次の一手に設定済み");
+  await page.reload();
+  await expect(page.locator('.nextStepCard[data-project-id="sample-learning"]')).toContainText("週末に試すアイデア");
+  const reloaded = await currentConfig(page);
+  expect(reloaded.projects[0].nextStep).toEqual(promoted);
+  expect(reloaded.inbox.at(-1)).toEqual(config.inbox.at(-1));
 });
 
 test("Phase 8.1 instruction linking persists, excludes empty Projects, and rejects a stale NextStep", async ({

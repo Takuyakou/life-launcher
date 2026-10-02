@@ -44,6 +44,15 @@ function withHistory(): VisualQaFixture {
     note: index === 1 ? "" : `保存済みの実行内容 ${index + 1}`,
     manual: false,
   }));
+  fixture.config.sourceCompletions = [{
+    id: "completion-records-copy",
+    sourceType: "nextStep",
+    sourceIdentity: "project:completed-copy",
+    textSnapshot: "完了履歴に表示する長い日本語の項目名を確認する",
+    projectId: project.id,
+    projectNameSnapshot: project.name,
+    completedAt: "2026-08-13T08:15:00+09:00",
+  }];
   fixture.sessionSummary.projects = [
     { projectId: project.id, label: project.name, activeDays: 7, totalMinutes: 91 },
   ];
@@ -111,7 +120,15 @@ test("all records supports filters, keyboard context actions and execution-recor
 
   const search = records.getByRole("textbox", { name: "実行記録を検索" });
   await search.fill("資料の要点");
+  await expect.poll(() => page.evaluate(() =>
+    (window as Window & {
+      __LIFE_LAUNCHER_VISUAL_QA__: { invokeCalls: Array<{ command: string; args: { filter?: { query?: string } } }> };
+    }).__LIFE_LAUNCHER_VISUAL_QA__.invokeCalls.some((call) =>
+      call.command === "load_session_entries" && call.args.filter?.query === "資料の要点",
+    ),
+  )).toBe(true);
   await expect(records.locator(".recordsCompactRow")).toHaveCount(1);
+  await expect(records.locator(".recordsCompactRow").first()).toContainText("資料の要点");
   await search.fill("");
   await records.getByRole("button", { name: "ストレッチ", exact: true }).click();
   await expect(records.locator(".recordsCompactRow")).toHaveCount(1);
@@ -126,6 +143,13 @@ test("all records supports filters, keyboard context actions and execution-recor
   await expect(editDialog.locator(".formDialogActions button")).toHaveText(["保存", "キャンセル"]);
   await editDialog.getByRole("button", { name: "キャンセル" }).click();
 
+  const older = records.locator(".recordsOlderNotes");
+  await expect(older).not.toHaveAttribute("open", "");
+  await expect(older.locator("input")).toHaveCount(3);
+  await expect(older.locator("input").first()).not.toBeVisible();
+  await older.getByText("以前のメモ", { exact: true }).click();
+  await expect(older.getByRole("textbox").first()).toBeVisible();
+
   await records.getByRole("button", { name: "実行記録を追加" }).click();
   const addDialog = page.getByRole("dialog", { name: "実行記録を追加" });
   await expect(addDialog.getByText("プロジェクト", { exact: true })).toBeVisible();
@@ -133,26 +157,25 @@ test("all records supports filters, keyboard context actions and execution-recor
   await expect(addDialog.locator(".formDialogActions button")).toHaveText(["追加", "キャンセル"]);
 });
 
-test("older notes stay collapsed until requested", async ({ page }) => {
-  await prepare(page);
-  const records = await openRecords(page);
-  await records.getByRole("tab", { name: "すべての記録" }).click();
-  const older = records.locator(".recordsOlderNotes");
-
-  await expect(older).not.toHaveAttribute("open", "");
-  await expect(older.locator("input")).toHaveCount(3);
-  await expect(older.locator("input").first()).not.toBeVisible();
-  await older.getByText("以前のメモ", { exact: true }).click();
-  await expect(older.getByRole("textbox").first()).toBeVisible();
-});
-
 for (const viewport of [
-  { width: 860, height: 700 },
   { width: 520, height: 760 },
 ]) {
   test(`records remains within ${viewport.width}px and exposes row actions on focus`, async ({ page }) => {
     await prepare(page, withHistory(), viewport);
     const records = await openRecords(page);
+    for (const width of [860, viewport.width]) {
+      await page.setViewportSize({ width, height: viewport.height });
+      const headings = records.locator(".recordsInlineHeading");
+      expect(await headings.count()).toBeGreaterThan(0);
+      for (const heading of await headings.all()) {
+        const box = await heading.boundingBox();
+        expect(box).not.toBeNull();
+        expect(box!.x).toBeGreaterThanOrEqual(0);
+        expect(box!.x + box!.width).toBeLessThanOrEqual(width);
+        expect(await heading.evaluate((node) => node.scrollWidth <= node.clientWidth + 1)).toBe(true);
+      }
+      expect(await records.evaluate((node) => node.scrollWidth <= node.clientWidth + 1)).toBe(true);
+    }
     await records.getByRole("tab", { name: "すべての記録" }).click();
     const row = records.locator(".recordsCompactRow").first();
     const menu = row.locator(".recordsSessionMenuButton");

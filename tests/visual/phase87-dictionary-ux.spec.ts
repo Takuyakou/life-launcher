@@ -28,15 +28,6 @@ async function prepare(page: Page, view: "main" | "dictionary", width = 1000) {
   await page.evaluate(async () => document.fonts.ready);
 }
 
-test("Main dictionary entry uses the outline book icon without changing shortcut text", async ({
-  page,
-}) => {
-  await prepare(page, "main");
-  const entry = page.getByRole("button", { name: /辞書を開く/ });
-  await expect(entry.locator(".uiIcon")).toHaveCount(1);
-  await expect(entry.locator("kbd")).toHaveText("Ctrl+K");
-});
-
 test("Main remains interactive while Dictionary is visible", async ({ page }) => {
   await prepare(page, "main");
   await page.evaluate(() => {
@@ -90,7 +81,14 @@ test("Dictionary settings opens from the icon and titlebar context menu", async 
   const settings = page.getByRole("button", { name: "辞書の設定" });
   await expect(settings).toHaveAttribute("title", "辞書の設定");
   await settings.click();
-  await expect(page.getByRole("dialog", { name: "辞書の設定" })).toBeVisible();
+  const dialog = page.getByRole("dialog", { name: "辞書の設定" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).not.toHaveAttribute("aria-modal");
+  await expect(page.locator(".dictionarySettingsBackdrop")).toHaveCSS("pointer-events", "none");
+  const save = dialog.getByRole("button", { name: "保存" });
+  await expect(save).toHaveCSS("color", "rgb(111, 207, 151)");
+  await save.hover();
+  await expect(save).toHaveCSS("background-color", "rgb(48, 66, 53)");
   await page.getByRole("button", { name: "辞書の設定を閉じる" }).click();
 
   await page
@@ -102,36 +100,30 @@ test("Dictionary settings opens from the icon and titlebar context menu", async 
   await expect(page.getByRole("dialog", { name: "辞書の設定" })).toBeVisible();
 });
 
-for (const size of ["small", "medium", "large"] as const) {
-  test(`Dictionary ${size} size applies and persists`, async ({ page }) => {
-    await prepare(page, "dictionary", 720);
-    await page.getByRole("button", { name: "辞書の設定" }).click();
-    await page
-      .getByRole("radio", {
-        name: size === "small" ? "小" : size === "medium" ? "中" : "大",
-      })
-      .click();
-    await page.getByRole("button", { name: "保存" }).click();
-    await expect(page.locator(".dictionaryWindowShell")).toHaveAttribute("data-tile-size", size);
-    await expect(page.locator(".dictionaryTile").first()).toBeVisible();
-
-    await page.reload();
-    await expect(page.locator(".dictionaryWindowShell")).toHaveAttribute("data-tile-size", size);
-    await expect(page.locator(".dictionaryTile").first()).toBeVisible();
-    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
-      await page.evaluate(() => document.documentElement.clientWidth),
-    );
-  });
-}
-
-test("Dictionary defaults to auto and Cancel keeps the saved preference", async ({ page }) => {
+test("Dictionary defaults to auto, cancels drafts, and persists every tile size", async ({ page }) => {
   await prepare(page, "dictionary", 520);
-  await expect(page.locator(".dictionaryWindowShell")).toHaveAttribute("data-tile-size", "auto");
+  const shell = page.locator(".dictionaryWindowShell");
+  await expect(shell).toHaveAttribute("data-tile-size", "auto");
   await page.getByRole("button", { name: "辞書の設定" }).click();
   await expect(page.getByRole("radio", { name: "自動" })).toHaveAttribute("aria-checked", "true");
   await page.getByRole("radio", { name: "大" }).click();
   await page.getByRole("button", { name: "キャンセル" }).click();
-  await expect(page.locator(".dictionaryWindowShell")).toHaveAttribute("data-tile-size", "auto");
+  await expect(shell).toHaveAttribute("data-tile-size", "auto");
+
+  await page.setViewportSize({ width: 720, height: 640 });
+  for (const [size, label] of [["small", "小"], ["medium", "中"], ["large", "大"]] as const) {
+    await page.getByRole("button", { name: "辞書の設定" }).click();
+    await page.getByRole("radio", { name: label }).click();
+    await page.getByRole("button", { name: "保存" }).click();
+    await expect(shell).toHaveAttribute("data-tile-size", size);
+    await expect(page.locator(".dictionaryTile").first()).toBeVisible();
+    await page.reload();
+    await expect(shell).toHaveAttribute("data-tile-size", size);
+    await expect(page.locator(".dictionaryTile").first()).toBeVisible();
+    expect(await page.evaluate(() =>
+      document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+    )).toBe(true);
+  }
 });
 
 test("Dictionary list mode is compact, independent from icon size, and persists", async ({
@@ -152,18 +144,4 @@ test("Dictionary list mode is compact, independent from icon size, and persists"
   await page.reload();
   await expect(shell).toHaveAttribute("data-view-mode", "list");
   await expect(shell).toHaveAttribute("data-tile-size", "large");
-});
-
-test("Dictionary settings is modeless and Save uses the positive action color", async ({
-  page,
-}) => {
-  await prepare(page, "dictionary");
-  await page.getByRole("button", { name: "辞書の設定" }).click();
-  const dialog = page.getByRole("dialog", { name: "辞書の設定" });
-  const save = dialog.getByRole("button", { name: "保存" });
-  await expect(dialog).not.toHaveAttribute("aria-modal");
-  await expect(page.locator(".dictionarySettingsBackdrop")).toHaveCSS("pointer-events", "none");
-  await expect(save).toHaveCSS("color", "rgb(111, 207, 151)");
-  await save.hover();
-  await expect(save).toHaveCSS("background-color", "rgb(48, 66, 53)");
 });

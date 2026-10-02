@@ -44,11 +44,26 @@ test("static chrome cannot be text-selected while editable fields remain selecta
   await page.mouse.move(box!.x + box!.width - 4, box!.y + 25, { steps: 8 });
   await page.mouse.up();
   expect(await page.evaluate(() => window.getSelection()?.toString())).toBe("");
+  await page.getByRole("button", { name: "設定を開く" }).click();
+  const settings = page.getByRole("dialog", { name: "設定" });
+  await expect(settings.getByRole("heading", { name: "設定", exact: true })).toHaveCSS("user-select", "none");
+  const dayStart = settings.getByRole("spinbutton", { name: "日付切替時刻" });
+  const originalDayStart = await dayStart.inputValue();
+  await dayStart.fill("5");
+  await expect(dayStart).toHaveValue("5");
+  await dayStart.fill(originalDayStart);
+  await settings.getByRole("tab", { name: "バックアップ" }).click();
+  await expect(settings.getByRole("heading", { name: "バックアップ", exact: true })).toHaveCSS("user-select", "none");
+  await settings.getByRole("button", { name: "設定を閉じる" }).click();
   const dialog = await openBuilder(page);
+  await expect(dialog.getByRole("heading", { name: "ボタンを追加" })).toHaveCSS("user-select", "none");
   const input = dialog.getByRole("textbox", { name: "ラベル" });
   await input.fill("選択できます");
   await input.selectText();
-  expect(await input.evaluate((element) => (element as HTMLInputElement).selectionStart)).toBe(0);
+  expect(await input.evaluate((element) => {
+    const input = element as HTMLInputElement;
+    return [input.selectionStart, input.selectionEnd];
+  })).toEqual([0, "選択できます".length]);
 });
 
 test("internal asset URL is ignored but an external URL still opens Drop Register", async ({
@@ -89,31 +104,6 @@ test("internal asset URL is ignored but an external URL still opens Drop Registe
   await expect(page.getByRole("dialog", { name: "ボタン登録" })).toBeVisible();
 });
 
-test("saved empty groups remain visible after reload; no phantom group appears with no groups", async ({
-  page,
-}) => {
-  const fixture = createPublicFixture();
-  fixture.config.buttons = [];
-  fixture.config.groups = ["空グループ"];
-  await prepare(page, fixture);
-  await expect(page.locator(".quickGroupHeader", { hasText: "空グループ" })).toContainText("0");
-  await page.reload();
-  await expect(page.locator(".quickGroupHeader", { hasText: "空グループ" })).toContainText("0");
-  await page.evaluate(() => {
-    const qa = (
-      window as Window & {
-        __LIFE_LAUNCHER_VISUAL_QA__: {
-          updateConfig: (config: VisualQaFixture["config"]) => void;
-          currentConfig: () => VisualQaFixture["config"];
-        };
-      }
-    ).__LIFE_LAUNCHER_VISUAL_QA__;
-    qa.updateConfig({ ...qa.currentConfig(), groups: [] });
-  });
-  await expect(page.locator(".quickGroupHeader")).toHaveCount(0);
-  await expect(page.getByText("サイドバー表示の項目がありません")).toBeVisible();
-});
-
 test("group context preselects group and manual URL saves through shared registration", async ({
   page,
 }) => {
@@ -141,15 +131,6 @@ test("group context preselects group and manual URL saves through shared registr
   });
 });
 
-test("manual Builder cancel does not save and incomplete target keeps draft", async ({ page }) => {
-  await prepare(page);
-  const dialog = await openBuilder(page);
-  await dialog.getByRole("button", { name: "追加", exact: true }).click();
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole("button", { name: "キャンセル" }).click();
-  await expect(dialog).toHaveCount(0);
-});
-
 test("Do Now excludes by project identity even when candidate labels match", async ({ page }) => {
   const fixture = createPublicFixture();
   fixture.config.projects[1].name = fixture.config.projects[0].name;
@@ -159,7 +140,10 @@ test("Do Now excludes by project identity even when candidate labels match", asy
   await page.locator(".doNowStartPrimary").click();
   await page.clock.runFor(60_500);
   await page.getByRole("button", { name: "終わる" }).click();
-  await page.getByRole("button", { name: "次の一手を見る" }).click();
+  const hold = page.locator(".doNowContent--hold");
+  await expect(hold).toBeVisible();
+  await expect(hold).toContainText(fixture.config.projects[0].nextStep!.text);
+  await hold.getByRole("button", { name: "次の一手を見る" }).click();
   await expect(page.locator(".doNowContent")).toContainText(
     fixture.config.projects[1].nextStep!.text,
   );
@@ -283,9 +267,22 @@ test("creating an empty group shows it immediately; deleting the last button kee
   fixture.config.groups = ["最後の1件"];
   fixture.config.buttons = [{ ...fixture.config.buttons[0], group: "最後の1件" }];
   await prepare(page, fixture);
+  await page.locator(".timerDock").click({ button: "right", position: { x: 6, y: 6 } });
+  await expect(page.getByRole("menuitem", { name: "グループを追加" })).toHaveCount(0);
   await page.locator(".brandBlock").click({ button: "right" });
   await page.getByRole("menuitem", { name: "グループを追加" }).click();
   const groupDialog = page.getByRole("dialog", { name: "グループ追加" });
+  const actions = groupDialog.locator(".formDialogActions").getByRole("button");
+  await expect(actions).toHaveText(["追加", "キャンセル"]);
+  await expect(actions.first()).toBeDisabled();
+  await groupDialog.getByRole("textbox", { name: "グループ名" }).fill("確認用グループ");
+  await expect(actions.first()).toHaveCSS("color", "rgb(111, 207, 151)");
+  await expect(actions.last()).toHaveCSS("color", "rgb(255, 180, 173)");
+  await actions.last().click();
+  await expect(groupDialog).toHaveCount(0);
+  await expect(page.locator(".quickGroupHeader", { hasText: "確認用グループ" })).toHaveCount(0);
+  await page.locator(".brandBlock").click({ button: "right" });
+  await page.getByRole("menuitem", { name: "グループを追加" }).click();
   await groupDialog.getByRole("textbox", { name: "グループ名" }).fill("新しい空グループ");
   await groupDialog.getByRole("button", { name: "追加", exact: true }).click();
   await expect(page.locator(".quickGroupHeader", { hasText: "新しい空グループ" })).toContainText(
@@ -304,6 +301,20 @@ test("creating an empty group shows it immediately; deleting the last button kee
   await expect(page.locator(".quickGroupHeader", { hasText: "新しい空グループ" })).toContainText(
     "0",
   );
+  await expect(page.locator(".quickButton")).toHaveCount(0);
+  await page.evaluate(() => {
+    const qa = (
+      window as Window & {
+        __LIFE_LAUNCHER_VISUAL_QA__: {
+          updateConfig: (config: VisualQaFixture["config"]) => void;
+          currentConfig: () => VisualQaFixture["config"];
+        };
+      }
+    ).__LIFE_LAUNCHER_VISUAL_QA__;
+    qa.updateConfig({ ...qa.currentConfig(), groups: [] });
+  });
+  await expect(page.locator(".quickGroupHeader")).toHaveCount(0);
+  await expect(page.getByText("サイドバー表示の項目がありません")).toBeVisible();
 });
 
 test("explicitly deleting an empty group removes only that group", async ({ page }) => {
@@ -316,62 +327,4 @@ test("explicitly deleting an empty group removes only that group", async ({ page
   await page.getByRole("button", { name: "削除する" }).click();
   await expect(page.locator(".quickGroupHeader", { hasText: "空A" })).toHaveCount(0);
   await expect(page.locator(".quickGroupHeader", { hasText: "空B" })).toContainText("0");
-});
-
-test("P133A deterministic visual QA captures key states", async ({ page }, testInfo) => {
-  const fixture = createPublicFixture();
-  fixture.config.groups.push("空グループ");
-  fixture.config.projects[0].nextStep!.shortTimerMinutes = 1;
-  fixture.config.today.items = [{ text: "別の項目", done: false, sourceKey: "manual:other" }];
-  await prepare(page, fixture);
-  const capture = async (name: string) => {
-    await page.screenshot({ path: testInfo.outputPath(`${name}.png`), animations: "disabled" });
-  };
-
-  await capture("01-main-normal-empty-group");
-  await page.locator(".brandBlock").click({ button: "right" });
-  await capture("02-sidebar-context-menu");
-  await page.getByRole("menuitem", { name: "ボタンを追加" }).click();
-  const dialog = page.getByRole("dialog", { name: "Button Builder" });
-  await capture("03-button-builder-file");
-  await dialog.getByRole("button", { name: "フォルダ" }).click();
-  await capture("04-button-builder-folder");
-  await dialog.getByRole("button", { name: "URL" }).click();
-  await capture("05-button-builder-url");
-  await dialog.getByRole("button", { name: "キャンセル" }).click();
-
-  await page.locator(".doNowStartPrimary").hover();
-  await capture("06-main-hover");
-  await page.evaluate(() => {
-    const data = new DataTransfer();
-    data.setData("text/uri-list", "https://example.com/drop-target");
-    document
-      .querySelector(".appShell")!
-      .dispatchEvent(
-        new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer: data }),
-      );
-  });
-  await capture("07-main-drag-over");
-  await page.evaluate(() => {
-    const data = new DataTransfer();
-    data.setData("text/uri-list", `${location.origin}/life-launcher-icon.svg`);
-    document
-      .querySelector(".appShell")!
-      .dispatchEvent(
-        new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: data }),
-      );
-  });
-
-  await page.locator(".doNowStartPrimary").click();
-  await page.clock.runFor(60_500);
-  await page.getByRole("button", { name: "終わる" }).click();
-  await expect(page.locator(".doNowContent--hold")).toBeVisible();
-  await capture("08-do-now-complete-hold");
-  await page.getByRole("button", { name: "次の一手を見る" }).click();
-  await expect(page.locator(".doNowContent")).toContainText("ストレッチ");
-  await capture("09-do-now-next-candidate");
-
-  await page.setViewportSize({ width: 860, height: 700 });
-  await page.clock.fastForward(4_000);
-  await capture("10-narrow-main-empty-group");
 });

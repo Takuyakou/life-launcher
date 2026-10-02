@@ -85,6 +85,16 @@ test("P71 Today Project editor saves both in one call; failure retains draft",as
   const before=await current(page);
   await edit(page);
   const dialog=page.getByRole("dialog",{name:"次の一手を編集",exact:true});
+  await expect(dialog.locator(".dialogActions > button")).toHaveText(["保存","キャンセル"]);
+  await expect(dialog.locator(".projectTimerSetting > span")).toHaveText(["短時間","通常"]);
+  for (const width of [1440, 860]) {
+    await page.setViewportSize({ width, height: 900 });
+    const short = dialog.getByRole("spinbutton", { name: "短時間タイマー分数" });
+    const normal = dialog.getByRole("spinbutton", { name: "通常タイマー分数" });
+    await short.scrollIntoViewIfNeeded();
+    const a = (await short.boundingBox())!, b = (await normal.boundingBox())!;
+    expect(width <= 900 ? a.y + a.height <= b.y : a.x + a.width <= b.x).toBe(true);
+  }
   await dialog.getByRole("textbox",{name:"行動",exact:true}).fill("同期した次の一手");
   await page.evaluate(()=>{
     (window as Window & {__LIFE_LAUNCHER_VISUAL_QA__: {setSaveConfigFailure:(v:boolean)=>void}}).__LIFE_LAUNCHER_VISUAL_QA__.setSaveConfigFailure(true);
@@ -116,11 +126,6 @@ test("P71 running/paused blocks Today and source edit, other source stays editab
     await page.locator(".nextStepRow").first().click({button:"right"});
     const editButton=page.getByRole("menuitem",{name:"次の一手を編集",exact:true});
     await expect(editButton).toBeDisabled();
-    await editButton.evaluate(node=>{
-      const props=Object.keys(node).find(key=>key.startsWith("__reactProps$"));
-      if(!props) throw new Error("React props unavailable");
-      (node as unknown as Record<string,{onClick:()=>void}>)[props].onClick();
-    });
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await page.keyboard.press("Escape");
   }
@@ -171,11 +176,9 @@ test("P71 direct save is rejected if the same timer starts after editor opens",a
   await edit(page);
   const editor=page.getByRole("dialog",{name:"次の一手を編集",exact:true});
   await editor.getByRole("textbox",{name:"行動",exact:true}).fill("保存してはいけない");
-  await page.locator(".todayRow").first().getByRole("button",{name:"通常タイマー25分で開始"}).evaluate(node=>{
-    const props=Object.keys(node).find(k=>k.startsWith("__reactProps$"));
-    if(!props) throw new Error("React props unavailable");
-    (node as unknown as Record<string,{onClick:()=>void}>)[props].onClick();
-  });
+  // Simulate a competing DOM command while the modal owns pointer focus.
+  await page.locator(".todayRow").first().getByRole("button",{name:"通常タイマー25分で開始"}).evaluate((node: HTMLButtonElement) => node.click());
+  await expect(page.locator(".todayRow").first()).toHaveClass(/todayRow--running/);
   await editor.getByRole("button",{name:"保存",exact:true}).click();
   await expect(page.locator(".toast").last()).toContainText("タイマーを停止してから編集してください");
   await expect(editor).toBeVisible();

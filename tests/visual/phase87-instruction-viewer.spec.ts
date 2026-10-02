@@ -34,6 +34,11 @@ async function prepareEmpty(page: Page) {
 
 test("empty viewer uses the toolbar load action and cancel returns from pending state", async ({ page }) => {
   await prepareEmpty(page);
+  await expect(page).toHaveTitle("Life Launcher 手順書ビューアー");
+  await expect(page.getByRole("button", { name: "手順書を編集" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "手順書ウィンドウを閉じる" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /常に手前/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "ビューアーのサイズを切り替える" })).toBeVisible();
   const empty = page.locator(".instructionTreeMessage");
   await expect(empty.getByRole("button")).toHaveCount(0);
   await page.evaluate(() => {
@@ -101,15 +106,6 @@ test("viewer size cycle includes a 1920 x 1080 extra-large preset", () => {
   );
   expect(fitted).toMatchObject({ width: 1888, height: 1048 });
   expect(nextInstructionWindowSizePreset(1888, 1048, 1888, 1048)).toBe("compact");
-});
-
-test("viewer toolbar is contextual and uses the current terminology", async ({ page }) => {
-  await prepareEmpty(page);
-  await expect(page).toHaveTitle("Life Launcher 手順書ビューアー");
-  await expect(page.getByRole("button", { name: "手順書を編集" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "手順書ウィンドウを閉じる" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /常に手前/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: "ビューアーのサイズを切り替える" })).toBeVisible();
 });
 
 test("viewer sidebar resizes within balanced limits and size cycle resets the split", async ({
