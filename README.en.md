@@ -18,9 +18,9 @@ Try the central Life Launcher flow in your browser without installing the Window
 
 <img src="docs/screenshots/web-demo.png" alt="Life Launcher Web Demo" width="720">
 
-The Web Demo uses synthetic data to demonstrate the central v1.1 flow, including choosing today's items, running timers, and removing an item from Today's Three. Changes are stored in your browser's localStorage. Launching apps, files, and URLs is simulated rather than performed.
+The Web Demo uses synthetic data to demonstrate the central Life Launcher flow, including choosing today's items, running timers, and removing an item from Today's Three. Changes are stored in your browser's localStorage. Launching apps, files, and URLs is simulated rather than performed.
 
-Note: it is not a complete port of the Windows product.
+Note: it is not a complete port of the Windows product. The Web Demo has a separate publishing process and is not updated alongside the v1.3.4 desktop release.
 
 ## Highlights
 
@@ -55,6 +55,13 @@ Note: it is not a complete port of the Windows product.
 
 The screenshots are generated from synthetic data. They do not contain real user configuration, activity, paths, or notes.
 
+## Changes In v1.3.4
+
+- The Windows NSIS installer and uninstaller now use dedicated icons, and the setup sidebar image has been updated. Setup displays in Japanese on Japanese Windows.
+- No custom header image is used, and the installed Life Launcher app keeps its existing icon. The standard NSIS UI may display a small Life Launcher icon on the right side of intermediate setup pages.
+- Disabled tests for older specifications, duplicate checks, and screenshot capture steps not used for image comparisons have been cleaned up. This test cleanup does not add or remove app features.
+- DOMPurify, used to sanitize HTML, has been updated from `3.4.13` to `3.4.16` to address existing vulnerabilities.
+
 ## Download
 
 Download Life Launcher from [GitHub Releases](https://github.com/Takuyakou/life-launcher/releases/latest). Check that page for the latest published version and filenames.
@@ -63,19 +70,19 @@ Download Life Launcher from [GitHub Releases](https://github.com/Takuyakou/life-
 
 Use this for the standard installation flow.
 
-v1.3.3 installer: `Life-Launcher-v1.3.3-windows-x64-setup.exe`
+v1.3.4 installer: `Life-Launcher-v1.3.4-windows-x64-setup.exe`
 
 ### Standalone EXE
 
 Run the app directly without installing it.
 
-v1.3.3 standalone: `Life-Launcher-v1.3.3-windows-x64.exe`
+v1.3.4 standalone: `Life-Launcher-v1.3.4-windows-x64.exe`
 
 ### Portable ZIP
 
 Extract the ZIP archive and run the app.
 
-v1.3.3 ZIP: `Life-Launcher-v1.3.3-windows-x64-portable.zip`
+v1.3.4 ZIP: `Life-Launcher-v1.3.4-windows-x64-portable.zip`
 
 The ZIP edition also stores user data in `%APPDATA%\life-launcher`. It does not carry your data alongside the executable on a USB drive.
 
@@ -89,9 +96,9 @@ Fully exit Life Launcher and back up the `%APPDATA%\life-launcher` folder to ano
 
 The first launch after updating from v1.2 to v1.3 migrates config schema `2` to `3`. The app creates a raw pre-migration backup and leaves the original config unchanged if migration, validation, or backup fails. Session records are not deleted.
 
-Updating from v1.3.2 to v1.3.3 does not change the configuration schema; existing settings and session records remain available.
+Updating from v1.3.3 to v1.3.4 keeps config schema at `3`, with no change to the configuration format. Existing settings and session records remain available.
 
-See the [v1.3.3 release notes](docs/releases/v1.3.3.md) and [changelog](CHANGELOG.md) for details. The [overview](docs/OVERVIEW.md) and [current specification](docs/spec/current-spec.md) cover the wider feature set. These detailed documents are currently in Japanese.
+See the [v1.3.4 release notes](docs/releases/v1.3.4.md) and [changelog](CHANGELOG.md) for details. The [overview](docs/OVERVIEW.md) and [current specification](docs/spec/current-spec.md) cover the wider feature set. These detailed documents are currently in Japanese.
 
 ## Runtime Requirements
 

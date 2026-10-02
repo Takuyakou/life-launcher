@@ -16,7 +16,7 @@
 - `src-tauri/installer/nsis-installer.ico`: インストーラー専用アイコン。
 - `src-tauri/installer/nsis-sidebar.bmp`: 差し替えサイドバー画像。
 - `src-tauri/installer/nsis-header.bmp`: 追加後、今回の修正で削除。
-- `docs/screenshots/ui-05-nsis/`: 実機画面5枚。
+- `docs/screenshots/ui-05-nsis/`: 当時の実機画面5枚。現行ツリーでは2枚を掲載し、他3枚はPR #111の履歴を参照。
 - `docs/release/v1.3.3/ui-05-nsis-work-report.md`: 本報告書。
 
 ## 実機確認
@@ -31,7 +31,7 @@
 | ローカルチェック | `npm.cmd run lint`、`npm.cmd run public:check`（422ファイル、blocker 0）、`git diff --check` 成功 |
 | PRのコード変更CI | `f133381`で成功。ビルド、画面テスト、Rust check/clippy/test、npm auditを含む |
 
-実画面は `docs/screenshots/ui-05-nsis/` の `welcome-100.png`、`directory-100.png`、`installing-100.png`、`finish-100.png`、`uninstall-100.png` に保存し、PR本文にも掲載した。撮影環境はWindowsの100%表示（96 DPI）。
+当時の実画面5枚は `docs/screenshots/ui-05-nsis/` に保存し、PR本文にも掲載した。撮影環境はWindowsの100%表示（96 DPI）。現行ツリーでは `welcome-100.png` と `finish-100.png` の2枚を掲載している。`directory-100.png`、`installing-100.png`、`uninstall-100.png` の3枚は、公開用パス整理のため現行ツリーでは非掲載とし、PR #111の履歴を保持している。過去画像の加工は行っておらず、当時の試験結果も変更していない。
 
 ## 未達・確認事項
 
@@ -41,6 +41,6 @@
 
 ## 成果物
 
-- 改訂版setup.exe: `D:\dev\Life Launcher-v133-release\release-candidate\ui-05-revision\Life-Launcher-v1.3.3-windows-x64-setup.exe`
+- 改訂版setup.exe: `Life-Launcher-v1.3.3-windows-x64-setup.exe`
 - setup.exe SHA-256: `DE078A071AE0A14661C6E8CDD128733AAC34B5EEC5A852DE55AEC50FA4F3E675`
 - ビルド成果物と試験用プロファイルはDドライブに配置。試験インストールはアンインストール済み。
