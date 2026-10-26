@@ -13341,7 +13341,7 @@ button.mainActionButton:is(
 }
 
 .mainScrollContent:is([data-main-display-size="large"], [data-main-display-size="xlarge"])
-  :is(.victoryTextButton, .victoryInput, .todayTextButton, .todayEditInput) {
+  :is(.todayTextButton, .todayEditInput) {
   font-size: var(--dashboard-font-body);
 }
 
