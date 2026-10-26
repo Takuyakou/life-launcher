@@ -4,7 +4,7 @@
 
 ## 1. 判定
 
-`BASELINE READY`(ローカル)。ただし CI(`windows-latest`)での一致は未確認。ブランチを push していないため。
+`BASELINE READY`。ローカルと CI(`windows-latest`)の両方で、画像比較13枚が `maxDiffPixelRatio: 0.001` で一致した(PR #116、コミット `503d51a`、CI 成功)。
 
 ## 2. 実装内容の要約
 
@@ -30,10 +30,10 @@
 
 - [x] fixture が3つに分かれ、`pickerFixture` の候補が6件以上: 次の一手5件 + やりたいこと5件 = 10件
 - [x] `phase9-flow.spec.ts` が v1.3.4 の製品コードのまま通る
-- [ ] 基準画像13枚がコミットされ、ローカルと CI で通る: 13枚すべて作成し、ローカルで2回連続一致。コミットと CI 確認は未実施
+- [x] 基準画像13枚がコミットされ、ローカルと CI で通る: 13枚すべてコミット済み。ローカルで3回連続一致、CI でも 389 件通過(12.参照)
 - [x] `docs/phase9/baseline-v1.3.4/` に v1.3.4 の画像が保存されている(13枚)
 - [x] 実行時間の前後比較がある(6.参照)
-- [x] 必須ゲート(7.参照。`public:check` のローカル既存の指摘1件を除く)
+- [x] 必須ゲート(8.参照。ローカルと CI の両方で通過)
 - [x] 製品コードの差分がない
 
 ## 5. fixture
@@ -58,9 +58,10 @@
 | `npm.cmd run test:visual` | 375件、1.4分 | 389件、1.4分(壁時計 1分22秒) |
 | `phase9-flow.spec.ts` 単体 | — | 1件、約3.2秒(テスト本体 1.3秒) |
 | `phase9-visual.spec.ts` 単体 | — | 13件、約9.6秒(基準画像の生成を含む) |
+| CI(`windows-latest`、1ワーカー)の `test:visual` | 375件、6.8分(`main` `901255c`) | 389件、7.1分(PR #116 `503d51a`) |
 | 上記2つを合わせて再実行 | — | 14件、約7.6秒 |
 
-追加分は全体の所要時間にほぼ影響しなかった。ワーカー数は既存設定のまま。
+追加分は全体の所要時間にほぼ影響しなかった(CI で約0.3分の増加)。ワーカー数は既存設定のまま。
 
 ## 7. 画像比較
 
@@ -113,3 +114,11 @@
 ## 11. 提案(実装していないこと)
 
 - 画像比較の基準画像は Windows でしか作っていない。CI の `windows-latest` で一致しない場合に備え、最初の PR で CI の結果を確認してから次の Stage へ進むとよい。
+
+## 12. CI の結果
+
+- 対象: [PR #116](https://github.com/Takuyakou/life-launcher/pull/116)、コミット `503d51a`、ワークフロー `CI`(`windows-latest`)。
+- 結果: 成功。`npm.cmd run test:visual` は 389件通過(7.1分、1ワーカー)。`phase9-visual.spec.ts` の13画面と `phase9-flow.spec.ts` の1件を含む。
+- 画像比較は `maxDiffPixelRatio: 0.001` のまま、13枚とも一致した。閾値は上げていない。
+- 同じ CI で `public:check`、lint、build、cargo の `fmt` / `check` / `clippy` / `test` も通過した。
+- `main` へのマージはしていない。
