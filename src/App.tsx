@@ -2238,8 +2238,9 @@ function DashboardApp() {
   const [weeklyReview, setWeeklyReview] = useState<WeeklyReviewResponse | null>(null);
   const [staleNextStepProjectIds, setStaleNextStepProjectIds] = useState<string[]>([]);
   const [doNowResponse, setDoNowResponse] = useState<DoNowResponse | null>(null);
-  const [doNowCandidateIndex, setDoNowCandidateIndex] = useState(0);
-  const doNowPickedProjectIdRef = useRef<string | null>(null);
+  // The Project picked with "other step"; null shows the first candidate. Held by Project id so a
+  // reordered candidate list never silently switches to another Project.
+  const [doNowPickedProjectId, setDoNowPickedProjectId] = useState<string | null>(null);
   const [sessionEntries, setSessionEntries] = useState<SessionEntriesResponse | null>(null);
   const [recordsWeekSessions, setRecordsWeekSessions] = useState<SessionEntryRow[]>([]);
   const [recordsAllSessions, setRecordsAllSessions] = useState<SessionEntryRow[]>([]);
@@ -3008,18 +3009,12 @@ function DashboardApp() {
   }, []);
 
   const applyDoNowResponse = useCallback((response: DoNowResponse) => {
-    // A candidate picked with "other step" that is no longer offered returns to the first one.
-    // Read the ref here, not in the updater: updaters run twice and the ref changes on render.
-    const picked = doNowPickedProjectIdRef.current;
-    const pickedVanished =
-      picked !== null && !response.candidates.some((candidate) => candidate.projectId === picked);
     setDoNowResponse(response);
-    setDoNowCandidateIndex((current) =>
-      pickedVanished
-        ? 0
-        : response.candidates.length > 0
-          ? Math.min(current, response.candidates.length - 1)
-          : 0,
+    // A picked Project that is no longer offered returns to the first candidate and stays there.
+    setDoNowPickedProjectId((picked) =>
+      picked !== null && !response.candidates.some((candidate) => candidate.projectId === picked)
+        ? null
+        : picked,
     );
   }, []);
 
@@ -7220,7 +7215,7 @@ function DashboardApp() {
     }
     if (completedSourceKey && timer.doNowSnapshot) {
       setDoNowExcludedProjectId(timer.doNowSnapshot.projectId);
-      setDoNowCandidateIndex(0);
+      setDoNowPickedProjectId(null);
     }
     if (completedSourceKey && nextItems.length === 3 && nextItems.every((item) => item.done)) {
       showCompletionFeedback({ key, kind: "todayAll", label: timer.note || timer.label });
@@ -9841,9 +9836,12 @@ function DashboardApp() {
     doNowExcludedProjectId !== null &&
     (doNowResponse?.candidates.length ?? 0) > 0 &&
     doNowCandidates.length === 0;
-  const doNowSelection = doNowCandidates[doNowCandidateIndex] ?? doNowCandidates[0];
-  doNowPickedProjectIdRef.current =
-    doNowCandidateIndex > 0 ? (doNowSelection?.project.id ?? null) : null;
+  const doNowPickedIndex =
+    doNowPickedProjectId === null
+      ? -1
+      : doNowCandidates.findIndex(({ project }) => project.id === doNowPickedProjectId);
+  const doNowCandidateIndex = Math.max(0, doNowPickedIndex);
+  const doNowSelection = doNowCandidates[doNowCandidateIndex];
   const doNowRestartPreferred = Boolean(
     doNowSelection?.candidate.restartEligible && (config.settings.restartShortFirst ?? true),
   );
@@ -9915,12 +9913,13 @@ function DashboardApp() {
   };
   const showNextDoNowCandidate = () => {
     if (doNowCandidates.length <= 1) return;
-    setDoNowCandidateIndex((index) => (index + 1) % doNowCandidates.length);
+    const next = doNowCandidates[(doNowCandidateIndex + 1) % doNowCandidates.length];
+    setDoNowPickedProjectId(next === doNowCandidates[0] ? null : next.project.id);
   };
   const acknowledgeDoNowCompletion = async () => {
     if (!(await refreshDoNow())) return;
     setDoNowExcludedProjectId(doNowCompletionHold?.projectId ?? null);
-    setDoNowCandidateIndex(0);
+    setDoNowPickedProjectId(null);
     setDoNowCompletionHold(null);
     window.requestAnimationFrame(() => {
       document
@@ -11230,7 +11229,7 @@ function DashboardApp() {
                             onClick={() => {
                               if (doNowOnlyExcluded) {
                                 setDoNowExcludedProjectId(null);
-                                setDoNowCandidateIndex(0);
+                                setDoNowPickedProjectId(null);
                               } else if (nextStepSetupProject) {
                                 openNextStepEditor(nextStepSetupProject);
                               } else {

@@ -144,7 +144,7 @@ test("P9-05 a candidate picked with the other-step button returns to the first o
   await expect(reason(page)).toHaveText("今日の3件に入っている一手です");
 });
 
-test("P9-05 a picked candidate that is still offered keeps its place (unchanged behaviour)", async ({
+test("P9-05 a picked candidate stays the same Project when the order changes its position", async ({
   page,
 }) => {
   const all = [candidate(LEARNING, "today3"), candidate(STRETCH, "noToday"), candidate(WRITING, "noToday")];
@@ -152,7 +152,46 @@ test("P9-05 a picked candidate that is still offered keeps its place (unchanged 
   await page.locator(".doNowAlternateButton").click();
   await expect(page.locator(".doNowContent")).toContainText("5分だけ体を動かす");
 
-  await changeCandidates(page, [candidate(LEARNING, "today3"), candidate(STRETCH, "noToday")]);
+  // The picked Project (stretch) moves from index 1 to the last place.
+  await changeCandidates(page, [candidate(WRITING, "today3"), candidate(LEARNING, "noToday"), candidate(STRETCH, "noToday")]);
   await expect(page.locator(".doNowContent")).toContainText("5分だけ体を動かす");
-  await expect(reason(page)).toHaveText("今の状況から選んだ別の候補です");
+  await expect(page.locator(".doNowContent")).not.toContainText("見出しを3つ書き出す");
+
+  // ... to the first place: still shown, now as the first candidate.
+  await changeCandidates(page, [candidate(STRETCH, "today3"), candidate(WRITING, "noToday"), candidate(LEARNING, "noToday")]);
+  await expect(page.locator(".doNowContent")).toContainText("5分だけ体を動かす");
+  await expect(reason(page)).toHaveText("今日の3件に入っている一手です");
+
+  // ... and a shorter list that still offers it.
+  await changeCandidates(page, [candidate(LEARNING, "noToday"), candidate(STRETCH, "noToday")]);
+  await expect(page.locator(".doNowContent")).toContainText("5分だけ体を動かす");
+});
+
+test("P9-05 once a picked candidate has disappeared it stays on the first candidate even if it returns", async ({
+  page,
+}) => {
+  const all = [candidate(LEARNING, "today3"), candidate(STRETCH, "noToday"), candidate(WRITING, "noToday")];
+  await prepare(page, all);
+  await page.locator(".doNowAlternateButton").click();
+  await expect(page.locator(".doNowContent")).toContainText("5分だけ体を動かす");
+
+  await changeCandidates(page, [candidate(LEARNING, "today3"), candidate(WRITING, "noToday")]);
+  await expect(page.locator(".doNowContent")).toContainText("資料を1ページ読む");
+  await changeCandidates(page, all);
+  await expect(page.locator(".doNowContent")).toContainText("資料を1ページ読む");
+});
+
+test("P9-05 other-step cycling continues from the picked Project and wraps to the first candidate", async ({
+  page,
+}) => {
+  const all = [candidate(LEARNING, "today3"), candidate(STRETCH, "noToday"), candidate(WRITING, "noToday")];
+  await prepare(page, all);
+  const next = page.locator(".doNowAlternateButton");
+  await next.click();
+  await expect(page.locator(".doNowContent")).toContainText("5分だけ体を動かす");
+  await next.click();
+  await expect(page.locator(".doNowContent")).toContainText("見出しを3つ書き出す");
+  await next.click();
+  await expect(page.locator(".doNowContent")).toContainText("資料を1ページ読む");
+  await expect(reason(page)).toHaveText("今日の3件に入っている一手です");
 });
