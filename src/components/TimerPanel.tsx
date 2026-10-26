@@ -7,6 +7,7 @@ export type TimerPanelState = "waiting" | "running" | "paused" | "complete";
 type TimerPanelProps = {
   variant: TimerPanelVariant;
   label: string;
+  actionText?: string;
   status: string;
   state: TimerPanelState;
   clock: string;
@@ -30,6 +31,7 @@ type TimerPanelProps = {
 export function TimerPanel({
   variant,
   label,
+  actionText,
   status,
   state,
   clock,
@@ -60,7 +62,12 @@ export function TimerPanel({
 
   return (
     <section
-      className={variant === "sidebar" ? "timerDock timerPanel" : "timerPanel timerPanel--mini"}
+      className={[
+        variant === "sidebar" ? "timerDock timerPanel" : "timerPanel timerPanel--mini",
+        active ? "timerPanel--active" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
       onContextMenu={
         variant === "sidebar"
           ? (event) => {
@@ -91,7 +98,12 @@ export function TimerPanel({
         ) : (
           <span>タイマー</span>
         )}
-        {identity ?? <strong>{label}</strong>}
+        {identity}
+        {(actionText ?? (identity ? undefined : label)) !== undefined && (
+          <strong className="timerActionText" title={actionText ?? label}>
+            {actionText ?? label}
+          </strong>
+        )}
       </div>
       <div className="timerStateRow">
         <span className={stateClass}>{status}</span>
