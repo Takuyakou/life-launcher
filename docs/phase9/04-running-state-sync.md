@@ -110,7 +110,8 @@
 | `258d13b`(最初の実装) | **失敗**: 409件通過、1件失敗、1件未実行(`phase6-readiness.spec.ts` の `registration stays in source sections and persists after reload`)。cargo は未到達 |
 | `f0fef5a`(計測中の表示、解除の拒否の共通化) | **成功**(`test:visual` と cargo を含む全ステップ) |
 | `fa50b69`(報告の更新) | **成功** |
-| `bff5617`(報告にCIの調査を追記、docs のみ) | 実行中(docs のみの変更。結果は確定後に追記する) |
+| `bff5617`(報告にCIの調査を追記、docs のみ) | **成功** |
+| `e572ba5`(報告にCIの成功結果を反映、docs のみ) | **成功** |
 
 **失敗したテストの原因(P9-04 とは無関係と判断)**
 
