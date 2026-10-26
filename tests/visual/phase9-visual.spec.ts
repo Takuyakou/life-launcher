@@ -11,7 +11,7 @@ import { installTauriMock } from "./tauriMock";
 // Same-machine renders are pixel-identical; the ratio only absorbs font rasterization drift
 // between this machine and the windows-latest CI runner.
 const SCREENSHOT_OPTIONS = {
-  maxDiffPixelRatio: 0.01,
+  maxDiffPixelRatio: 0.001,
   animations: "disabled",
   caret: "hide",
 } as const;

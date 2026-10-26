@@ -65,17 +65,17 @@
 ## 7. 画像比較
 
 - 比較対象は13画面(main-standard / main-large / main-xlarge / main-min / main-running / timer-expanded / today-picker / settings-basic / mini-idle / mini-running / records-review / records-week / records-all)。13枚すべて作成できた。
-- 閾値: `maxDiffPixelRatio: 0.01`(上限どおり)。同じ PC では2回とも画素まで一致した。0.01 は CI ランナーとのフォント描画の差を吸収するための余裕。
+- 閾値: `maxDiffPixelRatio: 0.001`(約730px、1080×680 の画面)。当初は上限の 0.01 にしていたが、約7,300px まで許すと勝利条件の文字サイズ変更(約3,700px)のような不具合を検出できないため、オーナー指示で 0.001 に下げた。同じ PC では3回連続で画素まで一致した。
 - 日時は `page.clock` で固定し、`pauseAt` で一時停止して実行中のタイマー表示を 24:55 に固定した。アニメーション・トランジション・キャレットは止めている。
 - `mini-running` は `mini-timer-snapshot` を `emit` で送って作った(作れたので除外なし)。
 - 基準画像の内容は目視で確認した。ミニの待機中の重なり(P9-03)や、今日やるものを選ぶ画面で候補が約1行しか見えない状態(P9-08)も v1.3.4 のまま写っている。
-- 基準画像は Windows 用(`-win32.png`)。ローカルは Windows 11。CI での一致は push 後に確認が必要で、0.01 でも一致しない場合は閾値を緩めず停止する。
+- 基準画像は Windows 用(`-win32.png`)。ローカルは Windows 11。CI(`windows-latest`)での一致は 12. に記す。
 
 ## 8. 実行したゲート
 
 | ゲート | 結果 |
 | --- | --- |
-| `npm.cmd run public:check` | 作業ツリー内の `.tmp/playwright-transform-cache/…`(`.gitignore` 対象のローカルキャッシュ、2026-10-26 11:22 作成)に D ドライブの絶対パスがあるという指摘が1件残る。P9-00 の変更ではない既存のもの。CI は新しい checkout なので出ない。それ以外はなし |
+| `npm.cmd run public:check` | 通過(3455ファイル、blocker 0)。ローカルの古いキャッシュ `.tmp/playwright-transform-cache/` はオーナー指示で削除した |
 | `npm.cmd run lint` | 通過 |
 | `npm.cmd run build` | 通過(チャンクサイズの警告のみ、既存) |
 | `npm.cmd run test:visual` | 389件通過、1.4分 |
@@ -84,6 +84,20 @@
 | `cargo clippy --all-targets -- -D warnings` | 通過 |
 | `cargo test` | 通過(124件 + 1件) |
 | `git diff --check` | 通過(LF→CRLF の警告のみ) |
+
+### 検出力の確認(コミットしない一時変更)
+
+`src/styles.css` の `.victoryInput, .victoryTextButton` の `font-size` を 1px 下げ(`calc(var(--dashboard-font-action) - 1px)`)、`phase9-visual.spec.ts` を実行した。
+
+| 画面 | 結果 | 差 |
+| --- | --- | --- |
+| main-standard | 失敗(検出) | 11,810 px(比率 0.02) |
+| main-min | 失敗(検出) | 13,208 px(比率 0.02) |
+| main-running | 失敗(検出) | 8,918 px(比率 0.02) |
+| main-large / main-xlarge | 通過 | 差なし(大・特大では別のCSSが勝つため。P9-01 の不具合と同じ原因) |
+| 上記以外の7画面 | 通過 | 差なし |
+
+閾値 0.001 は約730px。この1px変更の約12倍あり、確実に検出できる。確認後に元へ戻した(`src/` の差分なし)。
 
 ## 9. 更新した基準画像
 
@@ -99,4 +113,3 @@
 ## 11. 提案(実装していないこと)
 
 - 画像比較の基準画像は Windows でしか作っていない。CI の `windows-latest` で一致しない場合に備え、最初の PR で CI の結果を確認してから次の Stage へ進むとよい。
-- ローカルの `.tmp/` に古い Playwright キャッシュが残っていて `public:check` が失敗する。掃除はオーナー判断。
