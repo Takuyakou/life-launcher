@@ -33,7 +33,13 @@ const allowedInternalArtifactPaths = new Set([
   "docs/phase7.2/00-baseline.md",
   "docs/phase7.2/00-timer-size-baseline.md",
   "docs/phase8.2/00-baseline-audit.md",
+  "docs/phase9/00-baseline.md",
   // User-approved exact synthetic outputs; content checks still run below.
+  ...[
+    "main-standard", "main-large", "main-xlarge", "main-min", "main-running", "timer-expanded",
+    "today-picker", "settings-basic", "mini-idle", "mini-running", "records-review",
+    "records-week", "records-all",
+  ].map((name) => `docs/phase9/baseline-v1.3.4/${name}.png`),
   ...[1920, 1440, 1366, 1000, 860].flatMap((width) => [
     `docs/phase7.2/screenshots/baseline/timer-${width}.json`,
     ...["idle", "hover", "focus", "running"].map(
