@@ -159,11 +159,16 @@ test("P9-04 flow: started from Today3, Do Now follows to completion", async ({ p
   expect(await recordSessionCount(page)).toBe(1);
 });
 
-test("P9-04 Measure shows the elapsed time in Do Now", async ({ page }) => {
+test("P9-04 Measure says 計測中 in Do Now and shows the elapsed time only beside the buttons", async ({
+  page,
+}) => {
   await prepare(page);
   await doNowCard(page).locator(".doNowMeasureButton").click();
   await page.clock.runFor(65_000);
-  await expect(doNowCard(page).locator(".doNowMetaTimer")).toContainText("経過 01:05");
+  const meta = doNowCard(page).locator(".doNowMetaTimer");
+  await expect(meta).toContainText("計測中");
+  await expect(meta).not.toContainText(/\d{2}:\d{2}/);
+  await expect(doNowCard(page).locator(".doNowActions .measureElapsedClock")).toHaveText("01:05");
   await expect(firstRow(page)).toHaveClass(/todayRow--running/);
 });
 
@@ -297,3 +302,54 @@ for (const [name, projectGeneration, itemGeneration] of [
     await expectNotRunning(doNowCard(page));
   });
 }
+
+// ---- an item whose action the Timer is running cannot leave Today3, wherever it was started ----
+
+test("P9-04 an item running from Do Now cannot be removed by button, menu or drag", async ({
+  page,
+}) => {
+  await prepare(page);
+  await doNowCard(page).locator(".doNowStartPrimary").click();
+  await expectBothCards(page, "running");
+
+  const row = firstRow(page);
+  const remove = row.locator(".todayRemoveButton");
+  await expect(remove).toBeDisabled();
+  await expect(remove).toHaveAttribute("title", "タイマーを停止してから外してください");
+  await row.click({ button: "right" });
+  await expect(page.getByRole("menuitem", { name: "今日の3件から外す" })).toBeDisabled();
+  await page.keyboard.press("Escape");
+
+  // The drag path goes straight to the handler, which refuses as well.
+  const box = (await row.boundingBox())!;
+  await page.mouse.move(box.x + 6, box.y + box.height - 8);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 6, box.y + box.height + 4, { steps: 3 });
+  const zone = page.locator(".todayRemoveDropZone");
+  await expect(zone).toBeVisible();
+  const zoneBox = (await zone.boundingBox())!;
+  await page.mouse.move(zoneBox.x + zoneBox.width / 2, zoneBox.y + zoneBox.height / 2, {
+    steps: 4,
+  });
+  await page.mouse.up();
+  await expect(page.locator(".toast").last()).toContainText("タイマーを停止してから外してください");
+  await expect(page.locator(".todayRow")).toHaveCount(3);
+  await expect(row).toHaveClass(/todayRow--running/);
+
+  await doNowCard(page).locator(".runningStopButton").click();
+  await expect(remove).toBeEnabled();
+});
+
+test("P9-04 the Today picker cannot remove an item running from Do Now", async ({ page }) => {
+  const fixture = createFullTodayFixture();
+  fixture.config.today.items = fixture.config.today.items.slice(0, 2);
+  await prepare(page, fixture);
+  await doNowCard(page).locator(".doNowStartPrimary").click();
+  await expectBothCards(page, "running");
+
+  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
+  const picker = page.getByRole("dialog", { name: "今日やるものを選ぶ" });
+  const selected = picker.getByRole("button", { name: /今日から外す/ });
+  await expect(selected.first()).toBeDisabled();
+  await expect(selected.nth(1)).toBeEnabled();
+});

@@ -244,7 +244,7 @@ Main Window
 - Picker上部は他の追加dialogと同じeyebrow、見出し、閉じる操作を持つ。「追加先: 今日の3件」には現在の採用数を示す緑の3段階progress indicatorを隣接させ、選択成功時に滑らかに更新する。追加元のsection見出しは同じ文字サイズとprimary colorへ揃え、footerのキャンセルは候補の「＋ 今日へ」と同じ高さにする。
 - 候補はUI非依存の共通生成処理でNextStepとWishlistから作る。勝利条件、Session、Do Now順位、完了履歴、weeklyFocusは候補生成へ混在させない。
 - Pickerは「次の一手」「やりたいこと」の2groupを表示し、各候補のProject識別、本文、未採用時の「＋ 今日へ」を示す。新規ProjectやWishlistの登録操作は置かない。
-- 採用済み候補はstable source identityとlegacy aliasで判定して候補一覧から外し、上部の選択済み枠へ弱いgreenの「✓ 選択済み」と「今日から外す」を表示する。Picker内の採用解除はbuttonだけで、D&D affordanceと解除Drop Zoneは置かない。同じ本文でもstable identityが異なるWishlistは別候補として扱う。
+- 採用済み候補はstable source identityとlegacy aliasで判定して候補一覧から外し、上部の選択済み枠へ弱いgreenの「✓ 選択済み」と「今日から外す」を表示する。Picker内の採用解除はbuttonだけで、D&D affordanceと解除Drop Zoneは置かない。実行中のTimerと「同じ行動」(§14)の項目は、Today3と同じく外せない(buttonを無効にし、handlerも拒否する)。同じ本文でもstable identityが異なるWishlistは別候補として扱う。
 - 「＋ 今日へ」は既存のToday adoption境界を再利用する。元のNextStep / Wishlistを変更せず、本文、generationId、trigger、projectId、buttonIds、手順書path / 開始時表示、通常 / 短時間TimerをToday snapshotへ保存する。
 - handlerは保存直前にも空本文、重複、最大3件を確認する。選択と解除はPicker内表示へ即時反映し、「決定」で現在状態を維持する。3件目の保存成功時は「決定」と同義でPickerを閉じ、緑の「今日の3件を選択しました」Toastを表示し、以後は追加入口を表示しない。
 - 保存は既存のoptimistic rollback契約に従い、失敗時はPickerを開いたまま採用前のToday3へ戻す。選択操作でMainのscroll位置を動かさない。
@@ -276,7 +276,7 @@ Main Window
 - Today3カードを約6px以上dragすると、grid直下に「↓ ここにドロップして今日の3件から外す」の専用Drop Zoneを表示する。pointerまたは掴んだカードの上端がDrop Zone内に入った状態でdropすると、対象のToday3採用だけを解除する。通常時とdrag閾値未満では表示しない。
 - カードの右クリックと常時表示する「…」は同じ操作メニューを開く。並べ替え表記は画面上の配置に合わせて「左へ移動」「右へ移動」とする。キーボードではShift+F10、メニュー内の矢印キー、Escapeとフォーカス復帰を利用できる。
 - D&Dと右クリックの「今日の3件から外す」は同じ解除処理を使い、元の次の一手・やりたいこと、Session、今日の実行を保持する。sourceの完了・削除や候補除外にはせず、保存成功後は黄色の情報Toastで8秒間の「元に戻す」を表示する。
-- 対象Today3をsourceとするタイマーが実行中・一時停止中・満了確認中はUIとhandlerで解除を拒否する。他のToday3のタイマーは解除を妨げない。保存失敗時は既存の保存契約でsnapshotと表示順をrollbackする。
+- 対象Today3をsourceとするタイマーが実行中・一時停止中・満了確認中はUIとhandlerで解除を拒否する。今やる一手から開始したTimerでも、対象の今日の項目と「同じ行動」(§14)であれば同じく拒否する。右クリック、常時表示の「今日の3件から外す」、D&Dの解除Drop Zone、今日やるものを選ぶ画面の「今日から外す」はすべて同じ判定(`timerRunsTodayItem`)を使い、拒否時は「タイマーを停止してから外してください」を表示する。他のToday3のタイマーは解除を妨げない。保存失敗時は既存の保存契約でsnapshotと表示順をrollbackする。
 - 完了済みも従来の右クリック解除と同じく対象とする。「次の3件を選ぶ」は引き続き3件全完了時のみ表示し、1件外した場合は残る完了状態を保ったまま空き枠へ再採用できる。
 - 短時間開始、通常開始、時間を決めない計測を常時表示する。
 - ボタンは高さ36px、短時間・通常は幅82px、計測は幅34pxのicon controlとし、6pxの間隔を含む210pxのclusterへ収めて3/2/1列を崩さない。計測中は経過時間・一時停止/再開・終了を202px幅のcompact stripへ収める。中間幅では余白だけを縮め、カードの高さは変えない。

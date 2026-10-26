@@ -53,3 +53,17 @@ export function timerMatchesProjectNextStep(
     sameSourceGeneration(nextStepGenerationId, timer.sourceGenerationId)
   );
 }
+
+/** Whether the Timer counts for this Today item: its own Timer, or the same action started elsewhere. */
+export function timerRunsTodayItem(
+  entries: TodayEntry[],
+  timer: TimerSourceRef | null,
+  ownTimerSourceId: string,
+  sourceKey: string,
+): boolean {
+  if (!timer) return false;
+  return (
+    timer.sourceId === ownTimerSourceId ||
+    findTodayEntryForTimer(entries, timer)?.sourceKey === sourceKey
+  );
+}
