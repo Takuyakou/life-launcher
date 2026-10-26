@@ -7539,8 +7539,17 @@ input[type="number"]::-webkit-inner-spin-button {
   color: #ffb4ad;
 }
 
+/* P9-06: the neutral settings button reacts like the neutral Main action (the yellow focus ring stays). */
 .secondaryButton.settingsButton--neutral:hover:not(:disabled),
-.secondaryButton.settingsButton--neutral:focus-visible,
+.secondaryButton.settingsButton--neutral:focus-visible {
+  border-color: var(--muted);
+  background: var(--control-neutral-hover-bg);
+  color: var(--text);
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.22);
+  filter: brightness(1.04);
+  transform: translateY(-1px);
+}
+
 .secondaryButton.settingsButton--warning:hover:not(:disabled),
 .secondaryButton.settingsButton--warning:focus-visible {
   border-color: var(--accent);

@@ -180,3 +180,53 @@ test("P9-06 the Today3 entry, the victory bar, keyboard focus and the running ti
   await expect(page.locator(".timerDock .timerStateBadge")).toHaveText("実行中");
   expect((await styleOf(page, ".timerDock .timerClock")).color).toBe(accentStrong);
 });
+
+test("P9-06 neutral settings buttons react like the neutral Main action and keep the yellow focus ring", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "設定を開く" }).click();
+  const settings = page.getByRole("dialog", { name: "設定" });
+  await settings.getByRole("tab", { name: "メンテナンス" }).click();
+
+  const hoverBorder = await token(page, "--muted");
+  const hoverBackground = await token(page, "--control-neutral-hover-bg", "backgroundColor");
+  for (const name of ["アイコンキャッシュ再生成", "configフォルダを開く"]) {
+    const selector = `button:has-text("${name}")`;
+    await page.mouse.move(0, 0);
+    await page.locator(selector).hover();
+    await expect.poll(async () => (await styleOf(page, selector)).background, { message: name }).toBe(hoverBackground);
+    expect((await styleOf(page, selector)).border, name).toBe(hoverBorder);
+  }
+
+  // Keyboard focus keeps the yellow ring.
+  const first = 'button:has-text("アイコンキャッシュ再生成")';
+  await page.mouse.move(0, 0);
+  await page.locator(first).focus();
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Tab");
+  const focused = await styleOf(page, first);
+  expect(focused.outlineStyle).toBe("solid");
+  expect(focused.outline).toBe(await token(page, "--accent-strong"));
+});
+
+test("P9-06 the instruction folder 'remove' button is red like 'clear backup folder'", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "設定を開く" }).click();
+  const settings = page.getByRole("dialog", { name: "設定" });
+
+  await settings.getByRole("tab", { name: "バックアップ" }).click();
+  const clear = await styleOf(page, 'button:has-text("バックアップを未設定にする")');
+
+  await settings.getByRole("tab", { name: "手順書" }).click();
+  const removeSelector = ".instructionFolderSettingsRow button";
+  const remove = await styleOf(page, removeSelector);
+  expect(remove).toMatchObject({ color: clear.color, background: clear.background, border: clear.border });
+  expect(remove.border).toBe(await token(page, "--error"));
+  await page.locator(removeSelector).first().hover();
+  await expect
+    .poll(async () => (await styleOf(page, removeSelector)).background)
+    .toBe(await token(page, "--control-danger-hover-bg", "backgroundColor"));
+});

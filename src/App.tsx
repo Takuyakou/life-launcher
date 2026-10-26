@@ -14671,7 +14671,7 @@ function DashboardApp() {
                       <div className="instructionFolderSettingsRow" key={folder}>
                         <span title={folder}>{folder}</span>
                         <button
-                          className="secondaryButton settingsButton--warning"
+                          className="dangerButton settingsButton--danger"
                           disabled={instructionSettingsBusy}
                           onClick={() => removeInstructionFolder(folder)}
                           type="button"
