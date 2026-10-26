@@ -97,7 +97,8 @@ export const HELP_GUIDE_SECTIONS: HelpGuideSection[] = [
           },
           {
             term: "今やる一手",
-            description: "迷ったときに、今の状況から始めやすい「次にやること」を1つだけ提示します。",
+            description:
+              "迷ったときに、始めやすい「次にやること」を1つだけ提示します。今日の3件に入っている次の一手があれば、それを優先します。",
           },
         ],
       },

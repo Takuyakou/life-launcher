@@ -11,7 +11,7 @@ use crate::models::{
     today_date, week_start_date, DeleteSessionEntryInput, DoNowCandidate, DoNowResponse,
     ManualSessionInput, Project, ProjectSessionTotal, RecentSessionEntry, SessionEntriesFilter,
     SessionEntriesResponse, SessionEntryRow, SessionLogEntry, SessionLogInput,
-    SessionSummaryResponse, SessionTotalResponse, UpdateSessionEntryInput,
+    SessionSummaryResponse, SessionTotalResponse, Today, UpdateSessionEntryInput,
     WeeklyReviewProjectSummary, WeeklyReviewResponse,
 };
 use crate::state::AppState;
@@ -211,14 +211,30 @@ pub fn load_do_now_candidates(
     let entries = read_session_entries(&sessions_path()?)?;
 
     Ok(DoNowResponse {
-        candidates: build_do_now_candidates(&config.projects, &entries, &date),
+        candidates: build_do_now_candidates(&config.projects, &entries, &config.today, &date),
         date,
     })
+}
+
+/// Whether today's Today3 holds an unfinished item adopted from this Project's current Next Step
+/// (same generation, strictly: both missing counts as equal, only one present does not).
+fn project_in_today3(project: &Project, today: &Today, date: &str) -> bool {
+    let Some(step) = project.next_step.as_ref() else {
+        return false;
+    };
+    let source_key = format!("project:{}", project.id);
+    today.date == date
+        && today.items.iter().any(|item| {
+            !item.done
+                && item.source_key.as_deref().map(str::trim) == Some(source_key.as_str())
+                && item.source_generation_id == step.generation_id
+        })
 }
 
 fn build_do_now_candidates(
     projects: &[Project],
     entries: &[SessionLogEntry],
+    today_state: &Today,
     date: &str,
 ) -> Vec<DoNowCandidate> {
     let today = NaiveDate::parse_from_str(date, "%Y-%m-%d").ok();
@@ -232,6 +248,7 @@ fn build_do_now_candidates(
                 .is_some_and(|step| !step.text.trim().is_empty())
         })
         .map(|(manual_index, project)| {
+            let in_today3 = project_in_today3(project, today_state, date);
             let weekly_focus = project.weekly_focus == Some(true);
             let executed_today = entries.iter().any(|entry| {
                 entry.date == date && entry.project_id.as_deref() == Some(project.id.as_str())
@@ -255,14 +272,17 @@ fn build_do_now_candidates(
                 executed_today,
                 last_session,
                 restart_eligible,
+                in_today3,
             )
         })
         .collect::<Vec<_>>();
 
     candidates.sort_by(|left, right| {
+        // A Project whose current Next Step is already in Today3 comes first; not a filter.
         right
-            .1
-            .cmp(&left.1)
+            .6
+            .cmp(&left.6)
+            .then_with(|| right.1.cmp(&left.1))
             .then_with(|| left.3.cmp(&right.3))
             .then_with(|| left.4.cmp(&right.4))
             .then_with(|| left.0.cmp(&right.0))
@@ -274,9 +294,19 @@ fn build_do_now_candidates(
         .map(
             |(
                 index,
-                (_, weekly_focus, project_id, executed_today, last_session, restart_eligible),
+                (
+                    _,
+                    weekly_focus,
+                    project_id,
+                    executed_today,
+                    last_session,
+                    restart_eligible,
+                    in_today3,
+                ),
             )| {
-                let reason = if !executed_today {
+                let reason = if *in_today3 {
+                    "today3"
+                } else if !executed_today {
                     "noToday"
                 } else if candidates
                     .iter()
@@ -286,6 +316,7 @@ fn build_do_now_candidates(
                             && candidate.1 == *weekly_focus
                             && candidate.3 == *executed_today
                             && candidate.4 == *last_session
+                            && candidate.6 == *in_today3
                     })
                 {
                     "manualOrder"
@@ -794,6 +825,7 @@ fn rewrite_session_entries(path: &PathBuf, entries: &[SessionLogEntry]) -> Resul
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::TodayItem;
 
     fn candidate_project(id: &str, weekly_focus: Option<bool>, step: Option<&str>) -> Project {
         let mut project = crate::models::sample_config().projects.remove(0);
@@ -806,6 +838,203 @@ mod tests {
             project.next_step = None;
         }
         project
+    }
+
+    fn no_today() -> Today {
+        let mut today = crate::models::sample_config().today;
+        today.date = "2026-07-16".to_string();
+        today.items.clear();
+        today
+    }
+
+    fn today_with(items: Vec<TodayItem>) -> Today {
+        let mut today = no_today();
+        today.items = items;
+        today
+    }
+
+    fn today_item(source_key: &str, generation: Option<&str>, done: bool) -> TodayItem {
+        let mut item = crate::models::sample_config().today.items.remove(0);
+        item.done = done;
+        item.source_key = Some(source_key.to_string());
+        item.source_generation_id = generation.map(str::to_string);
+        item
+    }
+
+    fn project_with_generation(
+        id: &str,
+        weekly_focus: Option<bool>,
+        generation: Option<&str>,
+    ) -> Project {
+        let mut project = candidate_project(id, weekly_focus, Some(&format!("{id} step")));
+        project.next_step.as_mut().expect("next step").generation_id =
+            generation.map(str::to_string);
+        project
+    }
+
+    fn candidate_order(candidates: &[DoNowCandidate]) -> Vec<&str> {
+        candidates
+            .iter()
+            .map(|candidate| candidate.project_id.as_str())
+            .collect()
+    }
+
+    #[test]
+    fn do_now_candidates_put_the_project_in_today3_first_even_against_focus_and_today_sessions() {
+        let projects = vec![
+            project_with_generation("focus", Some(true), Some("g-focus")),
+            project_with_generation("adopted", Some(false), Some("g1")),
+        ];
+        // "adopted" is not a weekly focus and already ran today, yet its Next Step is in Today3.
+        let entries = vec![candidate_session("adopted", "2026-07-16", "09:00")];
+        let today = today_with(vec![today_item("project:adopted", Some("g1"), false)]);
+
+        let candidates = build_do_now_candidates(&projects, &entries, &today, "2026-07-16");
+
+        assert_eq!(candidate_order(&candidates), vec!["adopted", "focus"]);
+        assert_eq!(candidates[0].reason, "today3");
+        assert_eq!(candidates[1].reason, "noToday");
+        // Not a filter: the other Project stays selectable.
+        assert_eq!(candidates.len(), 2);
+    }
+
+    #[test]
+    fn do_now_candidates_ignore_today3_items_that_are_not_the_current_unfinished_next_step() {
+        let projects = vec![
+            project_with_generation("focus", Some(true), Some("g-focus")),
+            project_with_generation("target", Some(false), Some("g1")),
+        ];
+        let cases = [
+            (
+                "finished item",
+                today_item("project:target", Some("g1"), true),
+            ),
+            (
+                "different generation",
+                today_item("project:target", Some("g0"), false),
+            ),
+            (
+                "item has no generation",
+                today_item("project:target", None, false),
+            ),
+            (
+                "manual item",
+                today_item("manual:target", Some("g1"), false),
+            ),
+            (
+                "wishlist item",
+                today_item("wishlist:target", Some("g1"), false),
+            ),
+        ];
+        for (name, item) in cases {
+            let candidates =
+                build_do_now_candidates(&projects, &[], &today_with(vec![item]), "2026-07-16");
+            assert_eq!(
+                candidate_order(&candidates),
+                vec!["focus", "target"],
+                "{name}"
+            );
+            assert!(
+                candidates
+                    .iter()
+                    .all(|candidate| candidate.reason != "today3"),
+                "{name}"
+            );
+        }
+
+        // Only the Next Step has a generation, or only the item has one: no match.
+        let only_project = vec![
+            project_with_generation("focus", Some(true), None),
+            project_with_generation("target", Some(false), Some("g1")),
+        ];
+        let candidates = build_do_now_candidates(
+            &only_project,
+            &[],
+            &today_with(vec![today_item("project:target", None, false)]),
+            "2026-07-16",
+        );
+        assert_eq!(candidate_order(&candidates), vec!["focus", "target"]);
+    }
+
+    #[test]
+    fn do_now_candidates_treat_missing_generation_on_both_sides_as_a_match() {
+        let projects = vec![
+            project_with_generation("focus", Some(true), None),
+            project_with_generation("legacy", Some(false), None),
+        ];
+        let today = today_with(vec![today_item("project:legacy", None, false)]);
+
+        let candidates = build_do_now_candidates(&projects, &[], &today, "2026-07-16");
+
+        assert_eq!(candidate_order(&candidates), vec!["legacy", "focus"]);
+        assert_eq!(candidates[0].reason, "today3");
+    }
+
+    #[test]
+    fn do_now_candidates_ignore_a_today_state_from_another_day() {
+        let projects = vec![
+            project_with_generation("focus", Some(true), Some("g-focus")),
+            project_with_generation("adopted", Some(false), Some("g1")),
+        ];
+        let mut today = today_with(vec![today_item("project:adopted", Some("g1"), false)]);
+        today.date = "2026-07-15".to_string();
+
+        let candidates = build_do_now_candidates(&projects, &[], &today, "2026-07-16");
+
+        assert_eq!(candidate_order(&candidates), vec!["focus", "adopted"]);
+        assert!(candidates
+            .iter()
+            .all(|candidate| candidate.reason != "today3"));
+    }
+
+    #[test]
+    fn do_now_candidates_keep_the_existing_order_among_several_today3_projects() {
+        let projects = vec![
+            project_with_generation("plain", Some(false), Some("g-plain")),
+            project_with_generation("focus", Some(true), Some("g-focus")),
+            project_with_generation("outside", Some(true), Some("g-outside")),
+        ];
+        let today = today_with(vec![
+            today_item("project:plain", Some("g-plain"), false),
+            today_item("project:focus", Some("g-focus"), false),
+        ]);
+
+        let candidates = build_do_now_candidates(&projects, &[], &today, "2026-07-16");
+
+        // Today3 group first, ordered by the old rules (focus first); the rest follow.
+        assert_eq!(
+            candidate_order(&candidates),
+            vec!["focus", "plain", "outside"]
+        );
+        assert_eq!(candidates[0].reason, "today3");
+        assert_eq!(candidates[1].reason, "today3");
+        assert_ne!(candidates[2].reason, "today3");
+    }
+
+    #[test]
+    fn do_now_candidates_match_the_old_order_when_today3_is_empty_or_all_finished() {
+        let projects = vec![
+            project_with_generation("a", Some(false), Some("ga")),
+            project_with_generation("b", Some(true), Some("gb")),
+            project_with_generation("c", None, Some("gc")),
+        ];
+        let entries = vec![candidate_session("b", "2026-07-16", "09:00")];
+        let old = build_do_now_candidates(&projects, &entries, &no_today(), "2026-07-16");
+        let finished = today_with(vec![
+            today_item("project:a", Some("ga"), true),
+            today_item("project:b", Some("gb"), true),
+            today_item("project:c", Some("gc"), true),
+        ]);
+        let all_finished = build_do_now_candidates(&projects, &entries, &finished, "2026-07-16");
+
+        assert_eq!(candidate_order(&all_finished), candidate_order(&old));
+        assert_eq!(
+            all_finished
+                .iter()
+                .map(|c| c.reason.as_str())
+                .collect::<Vec<_>>(),
+            old.iter().map(|c| c.reason.as_str()).collect::<Vec<_>>()
+        );
     }
 
     fn candidate_session(project_id: &str, date: &str, started_at: &str) -> SessionLogEntry {
@@ -1092,7 +1321,7 @@ mod tests {
             },
         ];
 
-        let candidates = build_do_now_candidates(&projects, &entries, "2026-07-16");
+        let candidates = build_do_now_candidates(&projects, &entries, &no_today(), "2026-07-16");
 
         assert_eq!(
             candidates
@@ -1118,7 +1347,7 @@ mod tests {
             candidate_session("second", "2026-07-16", "10:00"),
         ];
 
-        let candidates = build_do_now_candidates(&projects, &entries, "2026-07-16");
+        let candidates = build_do_now_candidates(&projects, &entries, &no_today(), "2026-07-16");
 
         assert_eq!(candidates.len(), 3);
         assert_eq!(
@@ -1164,7 +1393,7 @@ mod tests {
             session("recent", "2026-07-01"),
         ];
 
-        let candidates = build_do_now_candidates(&projects, &entries, "2026-07-16");
+        let candidates = build_do_now_candidates(&projects, &entries, &no_today(), "2026-07-16");
 
         assert_eq!(
             candidates
@@ -1189,7 +1418,7 @@ mod tests {
             candidate_project("available", Some(false), Some("available step")),
         ];
         let today_entry = candidate_session("focus", "2026-07-16", "10:00");
-        let ranked = build_do_now_candidates(&projects, &[today_entry], "2026-07-16");
+        let ranked = build_do_now_candidates(&projects, &[today_entry], &no_today(), "2026-07-16");
         assert_eq!(
             ranked
                 .iter()
@@ -1199,7 +1428,7 @@ mod tests {
         );
 
         projects[0].next_step = None;
-        let fallback = build_do_now_candidates(&projects, &[], "2026-07-16");
+        let fallback = build_do_now_candidates(&projects, &[], &no_today(), "2026-07-16");
         assert_eq!(fallback.len(), 1);
         assert_eq!(fallback[0].project_id, "available");
     }
@@ -1211,7 +1440,7 @@ mod tests {
             candidate_project("second", Some(false), Some("second step")),
         ];
 
-        let tied = build_do_now_candidates(&projects, &[], "2026-07-16");
+        let tied = build_do_now_candidates(&projects, &[], &no_today(), "2026-07-16");
         assert_eq!(
             tied.iter()
                 .map(|candidate| candidate.project_id.as_str())
@@ -1222,7 +1451,7 @@ mod tests {
         projects
             .iter_mut()
             .for_each(|project| project.next_step = None);
-        assert!(build_do_now_candidates(&projects, &[], "2026-07-16").is_empty());
+        assert!(build_do_now_candidates(&projects, &[], &no_today(), "2026-07-16").is_empty());
     }
 
     #[test]
@@ -1231,7 +1460,8 @@ mod tests {
         project.weekly_focus = Some(true);
         project.next_step.as_mut().expect("next step").text = "resume".to_string();
 
-        let new_project = build_do_now_candidates(&[project.clone()], &[], "2026-07-16");
+        let new_project =
+            build_do_now_candidates(&[project.clone()], &[], &no_today(), "2026-07-16");
         assert!(!new_project[0].restart_eligible);
 
         let session_at = |date: &str| SessionLogEntry {
@@ -1247,11 +1477,16 @@ mod tests {
         let thirteen_days = build_do_now_candidates(
             &[project.clone()],
             &[session_at("2026-07-03")],
+            &no_today(),
             "2026-07-16",
         );
         let fourteen_day_session = session_at("2026-07-02");
-        let fourteen_days =
-            build_do_now_candidates(&[project], &[fourteen_day_session], "2026-07-16");
+        let fourteen_days = build_do_now_candidates(
+            &[project],
+            &[fourteen_day_session],
+            &no_today(),
+            "2026-07-16",
+        );
 
         assert!(!thirteen_days[0].restart_eligible);
         assert!(fourteen_days[0].restart_eligible);

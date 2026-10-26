@@ -2239,6 +2239,7 @@ function DashboardApp() {
   const [staleNextStepProjectIds, setStaleNextStepProjectIds] = useState<string[]>([]);
   const [doNowResponse, setDoNowResponse] = useState<DoNowResponse | null>(null);
   const [doNowCandidateIndex, setDoNowCandidateIndex] = useState(0);
+  const doNowPickedProjectIdRef = useRef<string | null>(null);
   const [sessionEntries, setSessionEntries] = useState<SessionEntriesResponse | null>(null);
   const [recordsWeekSessions, setRecordsWeekSessions] = useState<SessionEntryRow[]>([]);
   const [recordsAllSessions, setRecordsAllSessions] = useState<SessionEntryRow[]>([]);
@@ -3006,20 +3007,32 @@ function DashboardApp() {
     }
   }, []);
 
+  const applyDoNowResponse = useCallback((response: DoNowResponse) => {
+    // A candidate picked with "other step" that is no longer offered returns to the first one.
+    // Read the ref here, not in the updater: updaters run twice and the ref changes on render.
+    const picked = doNowPickedProjectIdRef.current;
+    const pickedVanished =
+      picked !== null && !response.candidates.some((candidate) => candidate.projectId === picked);
+    setDoNowResponse(response);
+    setDoNowCandidateIndex((current) =>
+      pickedVanished
+        ? 0
+        : response.candidates.length > 0
+          ? Math.min(current, response.candidates.length - 1)
+          : 0,
+    );
+  }, []);
+
   const refreshDoNow = useCallback(async () => {
     try {
-      const response = await loadDoNowCandidates();
-      setDoNowResponse(response);
-      setDoNowCandidateIndex((current) =>
-        response.candidates.length > 0 ? Math.min(current, response.candidates.length - 1) : 0,
-      );
+      applyDoNowResponse(await loadDoNowCandidates());
       return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       showToast("error", `今やる一手を読めません: ${message}`);
       return false;
     }
-  }, [showToast]);
+  }, [applyDoNowResponse, showToast]);
 
   useEffect(() => {
     if (doNowCompletionHold && config?.today.date !== doNowCompletionHold.date) {
@@ -3036,12 +3049,12 @@ function DashboardApp() {
       const [response, doNow] = await Promise.all([loadTodaySessionTotal(), loadDoNowCandidates()]);
       setTodaySessionMinutes(response.totalMinutes);
       setTodaySessionDate(response.date);
-      setDoNowResponse(doNow);
+      applyDoNowResponse(doNow);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       showToast("error", `実行記録を読めません: ${message}`);
     }
-  }, [showToast]);
+  }, [applyDoNowResponse, showToast]);
 
   const refreshTodayActivity = useCallback(async () => {
     try {
@@ -9829,6 +9842,8 @@ function DashboardApp() {
     (doNowResponse?.candidates.length ?? 0) > 0 &&
     doNowCandidates.length === 0;
   const doNowSelection = doNowCandidates[doNowCandidateIndex] ?? doNowCandidates[0];
+  doNowPickedProjectIdRef.current =
+    doNowCandidateIndex > 0 ? (doNowSelection?.project.id ?? null) : null;
   const doNowRestartPreferred = Boolean(
     doNowSelection?.candidate.restartEligible && (config.settings.restartShortFirst ?? true),
   );
@@ -9837,7 +9852,9 @@ function DashboardApp() {
       ? "14日以上空いているため、短時間から再開できます"
       : doNowCandidateIndex > 0
         ? "今の状況から選んだ別の候補です"
-        : doNowSelection.candidate.reason === "noToday"
+        : doNowSelection.candidate.reason === "today3"
+          ? "今日の3件に入っている一手です"
+          : doNowSelection.candidate.reason === "noToday"
           ? doNowSelection.project.weeklyFocus === true
             ? "今週の重点で、今日はまだ取り組んでいません"
             : "今日はまだ取り組んでいない候補です"
