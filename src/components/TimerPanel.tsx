@@ -51,6 +51,8 @@ export function TimerPanel({
   onClockPointerMove,
   onClockPointerUp,
 }: TimerPanelProps) {
+  // The idle mini is only a heading, a badge and a hint: no second "waiting" word, no clock.
+  const idleMini = variant === "mini" && !active;
   const stateClass =
     state === "complete"
       ? "timerStateBadge timerStateBadge--complete"
@@ -65,6 +67,7 @@ export function TimerPanel({
       className={[
         variant === "sidebar" ? "timerDock timerPanel" : "timerPanel timerPanel--mini",
         active ? "timerPanel--active" : "",
+        idleMini ? "timerPanel--idle" : "",
       ]
         .filter(Boolean)
         .join(" ")}
@@ -99,7 +102,7 @@ export function TimerPanel({
           <span>タイマー</span>
         )}
         {identity}
-        {(actionText ?? (identity ? undefined : label)) !== undefined && (
+        {!idleMini && (actionText ?? (identity ? undefined : label)) !== undefined && (
           <strong className="timerActionText" title={actionText ?? label}>
             {actionText ?? label}
           </strong>
@@ -108,24 +111,26 @@ export function TimerPanel({
       <div className="timerStateRow">
         <span className={stateClass}>{status}</span>
       </div>
-      <div
-        className={[
-          "timerClock",
-          paused ? "timerClock--paused" : "",
-          clockAdjustable ? "timerClock--adjustable" : "",
-          clockDragging ? "timerClock--dragging" : "",
-        ]
-          .filter(Boolean)
-          .join(" ")}
-        onPointerCancel={onClockPointerCancel}
-        onPointerDown={onClockPointerDown}
-        onPointerMove={onClockPointerMove}
-        onPointerUp={onClockPointerUp}
-        title={clockAdjustable ? "上下にドラッグして分数を変更" : undefined}
-      >
-        {clock}
-      </div>
-      {progressPercent !== null && (
+      {!idleMini && (
+        <div
+          className={[
+            "timerClock",
+            paused ? "timerClock--paused" : "",
+            clockAdjustable ? "timerClock--adjustable" : "",
+            clockDragging ? "timerClock--dragging" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          onPointerCancel={onClockPointerCancel}
+          onPointerDown={onClockPointerDown}
+          onPointerMove={onClockPointerMove}
+          onPointerUp={onClockPointerUp}
+          title={clockAdjustable ? "上下にドラッグして分数を変更" : undefined}
+        >
+          {clock}
+        </div>
+      )}
+      {!idleMini && progressPercent !== null && (
         <div className="timerProgress" aria-hidden="true">
           <span style={{ width: `${progressPercent}%` }} />
         </div>
