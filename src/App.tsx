@@ -281,6 +281,8 @@ type ActiveTimer = {
   projectId: string | null;
   label: string;
   note: string;
+  // Display-only text captured at start; `note` is what gets recorded and may be a template.
+  actionText?: string;
   doNowSnapshot?: DoNowCompletionSnapshot;
   continuedAfterCompletion?: boolean;
   startedAtMs: number;
@@ -827,6 +829,7 @@ type NumberInputDrag = {
 type MiniTimerSnapshot = {
   active: boolean;
   label: string;
+  actionText: string;
   mode: TimerMode;
   remainingClock: string;
   paused: boolean;
@@ -965,10 +968,15 @@ function isDictionaryView(): boolean {
   return new URLSearchParams(window.location.search).get("view") === "dictionary";
 }
 
+function timerActionText(timer: Pick<ActiveTimer, "actionText" | "label">): string {
+  return timer.actionText?.trim() || timer.label;
+}
+
 function inactiveMiniSnapshot(): MiniTimerSnapshot {
   return {
     active: false,
     label: "",
+    actionText: "",
     mode: "countdown",
     remainingClock: "00:00",
     paused: false,
@@ -2064,6 +2072,7 @@ function MiniModeApp() {
             />
           ) : undefined
         }
+        actionText={snapshot.active ? snapshot.actionText || snapshot.label : undefined}
         label={snapshot.active ? snapshot.label : "待機中"}
         onFinish={() => sendCommand("finish")}
         onPause={() => sendCommand("pause")}
@@ -2780,6 +2789,7 @@ function DashboardApp() {
     return {
       active: true,
       label: activeTimer.label,
+      actionText: timerActionText(activeTimer),
       mode: activeTimer.mode,
       remainingClock: formatClock(
         activeTimer.mode === "measure"
@@ -7349,6 +7359,13 @@ function DashboardApp() {
           ? (config.projects.find((project) => project.id === projectId)?.nextStep?.text ?? "")
           : cleanLabel;
       const note = noteOverride?.trim() || fallbackNote;
+      const startedNextStepText =
+        projectId !== null && sourceId === projectId
+          ? timerConfig.projects.find((project) => project.id === projectId)?.nextStep?.text
+          : undefined;
+      const actionText =
+        (sourceId.startsWith("today:") ? directTodayItem?.text : startedNextStepText)?.trim() ||
+        cleanLabel;
       setNow(start.getTime());
       const nextTimer: ActiveTimer = {
         instanceId: requestId,
@@ -7357,6 +7374,7 @@ function DashboardApp() {
         projectId,
         label: cleanLabel,
         note,
+        actionText,
         ...(doNowProject && {
           doNowSnapshot: {
             projectId: doNowProject.id,
@@ -10262,6 +10280,7 @@ function DashboardApp() {
               />
             ) : undefined
           }
+          actionText={activeTimer ? timerActionText(activeTimer) : undefined}
           label={activeTimer ? activeTimer.label : "通常タイマー"}
           onFinish={() => {
             if (activeTimer) finishActiveTimer(activeTimer);
@@ -16223,7 +16242,7 @@ function DashboardApp() {
               projectId={activeTimerProject.id}
             />
           ) : undefined}
-          label={activeTimer.label}
+          label={timerActionText(activeTimer)}
           onClose={() => {
             setExpandedTimerOpen(false);
             window.requestAnimationFrame(() => expandTimerButtonRef.current?.focus({ preventScroll: true }));

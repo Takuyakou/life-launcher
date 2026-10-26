@@ -112,7 +112,8 @@ test("P9-00 visual mini-running", async ({ page }) => {
   await page.evaluate(() =>
     (window as QaWindow).__LIFE_LAUNCHER_VISUAL_QA__.emit("mini-timer-snapshot", {
       active: true,
-      label: "資料を1ページ読む",
+      label: "サンプル学習",
+      actionText: "資料を1ページ読む",
       mode: "countdown",
       remainingClock: "24:55",
       paused: false,

@@ -13434,3 +13434,75 @@ button.mainActionButton:is(
     gap: 4px;
   }
 }
+
+/* P9-02: running Timer shows the action text in the sidebar, expanded and mini views. */
+.timerPanel--active .timerMeta strong.timerActionText {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.expandedTimerBody .expandedTimerTask {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.timerPanel--mini.timerPanel--active {
+  grid-template-rows: 18px 17px 26px 3px 26px;
+  grid-template-areas:
+    "identity state"
+    "action action"
+    "clock clock"
+    "progress progress"
+    "controls controls";
+  gap: 1px 8px;
+}
+
+.timerPanel--mini.timerPanel--active .timerMeta {
+  display: contents;
+}
+
+.timerPanel--mini.timerPanel--active .timerMeta > span:not(.projectIdentity) {
+  display: none;
+}
+
+.timerPanel--mini.timerPanel--active .timerMeta > .projectIdentity {
+  grid-area: identity;
+  min-height: 0;
+}
+
+.timerPanel--mini.timerPanel--active .timerMeta > strong.timerActionText {
+  display: block;
+  grid-area: action;
+  min-height: 0;
+  font-size: 14px;
+  line-height: 17px;
+  white-space: nowrap;
+}
+
+.timerPanel--mini.timerPanel--active .timerStateRow {
+  display: flex;
+  align-items: center;
+  min-height: 0;
+}
+
+.timerPanel--mini.timerPanel--active .timerStateBadge {
+  min-height: 18px;
+  padding-block: 0;
+  line-height: 1;
+  font-size: 11px;
+}
+
+.timerPanel--mini.timerPanel--active .timerClock {
+  font-size: 26px;
+}
+
+.timerPanel--mini.timerPanel--active .timerControls .secondaryButton {
+  min-height: 26px;
+  padding-block: 3px;
+}
