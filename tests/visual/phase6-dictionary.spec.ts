@@ -80,6 +80,7 @@ async function currentConfig(page: Page): Promise<AppConfig> {
 
 test("category focus moves independently of its selected page", async ({ page }) => {
   await prepare(page, "dictionary");
+  await expect(page.locator(".dictionaryTile").first()).toBeFocused();
   const allTab = page.getByRole("tab", { name: /すべて/ });
   const uncategorizedTab = page.getByRole("tab", { name: /未分類/ });
   const toolsTab = page.getByRole("tab", { name: /ツール/ });
