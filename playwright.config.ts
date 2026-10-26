@@ -1,10 +1,16 @@
 import { defineConfig } from "@playwright/test";
+import { availableParallelism } from "node:os";
+
+const localWorkers = Math.max(1, Math.min(4, Math.floor(availableParallelism() / 2)));
 
 export default defineConfig({
   testDir: "./tests/visual",
   outputDir: "dist/visual-qa/test-results",
   fullyParallel: false,
-  workers: 1,
+  // Keep CI serial until its runner is benchmarked independently.
+  workers: process.env.CI ? 1 : localWorkers,
+  // An explicit project keeps --workers from inheriting a per-project cap.
+  projects: [{}],
   use: {
     baseURL: "http://127.0.0.1:1437",
     viewport: { width: 1366, height: 768 },

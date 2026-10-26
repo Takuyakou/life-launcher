@@ -116,6 +116,11 @@ test("Do Now timer labels and glyphs remain separate on hover and keyboard focus
   const normal = page.locator(".doNowStartSecondary");
   await expect(short.locator(".timerStartDuration")).toHaveText("5分で始める");
   await expect(normal.locator(".timerStartDuration")).toHaveText("通常 25分");
+  // Settle the card's own hover motion before measuring its child button.
+  await page.locator(".doNowKicker").hover();
+  await expect.poll(() => page.locator(".doNowContent").evaluate((node) =>
+    node.getAnimations().some((animation) => animation.playState === "running"),
+  )).toBe(false);
   const before = await short.boundingBox();
   await short.hover();
   await expect(short.locator(".timerStartDuration")).toHaveCSS("opacity", "1");
