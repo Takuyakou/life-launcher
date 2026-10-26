@@ -13506,3 +13506,11 @@ button.mainActionButton:is(
   min-height: 26px;
   padding-block: 3px;
 }
+
+/* P9-03: the idle mini is a heading, a "waiting" badge and a hint. */
+.timerPanel--mini.timerPanel--idle {
+  grid-template-rows: 20px 28px;
+  grid-template-areas:
+    "meta state"
+    "controls controls";
+}
