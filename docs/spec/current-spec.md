@@ -127,16 +127,29 @@ Main Window
 | Warning                | `#f2a65a`             |
 | Error                  | `#f06f68`             |
 
-- 黄色は選択、挿入位置、フォーカス、勝利条件。
-- 緑は短時間開始、実行中、成功。
-- 青は通常タイマー開始。
-- 橙は一時停止、赤は終了・削除・破棄。
+### 4.1.1 色の役割
+
+色は「ボタンの役割」と「タイマーの種類・状態」の2つの軸で使う。同じ緑・赤でも軸が違うため、次の表で区別する。
+
+| 色 | ボタンの役割 | タイマーの種類・状態、その他 |
+| --- | --- | --- |
+| 黄色(アクセント) | 今日の3件の選択入口(「今日やるものを選ぶ」、Picker内の「＋ 今日へ」)、空状態の最初の操作 | 今日の勝利条件、今日の3件の選択・挿入位置、キーボードフォーカス、実行中の時間表示 |
+| 緑 | 保存・決定 | 短時間タイマー、実行中、完了、成功 |
+| 青 | なし | 通常タイマー |
+| 橙 | なし | 一時停止 |
+| 赤 | キャンセル、削除、初期化、復元、バックアップを未設定にする | 終了、破棄 |
+| 中立色 | 追加(「＋ プロジェクト」「＋ やりたいこと」、次の一手カードの「＋ 今日へ」)、編集・設定、メンテナンス操作、その他の補助操作 | 待機中、補助表示 |
+
+- 保存・決定の緑とキャンセルの赤はオーナー指定で、変えない。
+- 色は上の既存tokenだけで指定し、新しい色を作らない。
+- 今やる一手の表示色はプロジェクト色で、黄色は使わない。
+- 追加ボタン、メンテナンスの「アイコンキャッシュ再生成」「ミニウィンドウ位置をリセット」「手順書ウィンドウ位置をリセット」は中立色にし、黄色を勝利条件、今日の3件の選択、フォーカス、実行中の時間へ集める。「バックアップから復元」は「バックアップを未設定にする」と同じ赤の扱いにする。
 - プロジェクト色はamber、blue、green、violet、rose、cyan、orange、slate。
 
 ### 4.2 Main本文のAction
 
 - Main本文と記録画面の明示的なAction buttonだけに、共通のhover、keyboard focus、pressed feedbackを適用する。
-- 作成・追加はgold、編集・設定・非破壊操作はneutral、今日への採用・復元はpositiveを使う。Timerのgreen / blue / neutral、破壊操作のred、statusとプロジェクト色は既存semanticを維持する。
+- 今日の3件の選択入口と空状態の最初の操作はgold、追加・編集・設定・非破壊操作はneutral、今日への採用・復元はpositiveを使う(色の役割は§4.1.1)。Timerのgreen / blue / neutral、破壊操作のred、statusとプロジェクト色は既存semanticを維持する。
 - hoverとkeyboard focusは背景と境界を強め、`translateY(-1px)`と控えめなshadowを120msで表示する。pressedは`translateY(0) scale(.985)`へ戻し、buttonのレイアウト寸法は変えない。
 - `prefers-reduced-motion`では色とfocus feedbackを残し、移動・拡縮とtransform transitionを止める。disabledまたは`aria-disabled`のActionは移動させない。
 - 上部toolbar、sidebar、context menu、section header、status / badge、D&D surface、ellipsis / icon control、Timer controlは共通Action hoverの対象外とする。
