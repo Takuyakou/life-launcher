@@ -1,3 +1,4 @@
+import { sameSourceGeneration, timerTodaySourceKey } from "./timerSource";
 import type { TodayItem } from "./types";
 
 export function earlyCompletionThresholdSeconds(snapshot: unknown): number {
@@ -20,15 +21,11 @@ export function earlyCompletionItem(
 ): TodayItem | undefined {
   if (timer.targetMinutes !== null && elapsedSeconds >= timer.targetMinutes * 60) return;
   // Direct Today identity must not also complete a different Project adoption.
-  const key = timer.sourceId.startsWith("today:")
-    ? timer.sourceId.slice("today:".length)
-    : timer.projectId && timer.sourceId === timer.projectId
-      ? `project:${timer.projectId}`
-      : null;
+  const key = timerTodaySourceKey(timer);
   const matches = items.filter(
     (item) =>
       item.sourceKey?.trim() === key &&
-      item.sourceGenerationId === timer.sourceGenerationId,
+      sameSourceGeneration(item.sourceGenerationId, timer.sourceGenerationId),
   );
   const item = matches.length === 1 ? matches[0] : undefined;
   return item &&

@@ -106,6 +106,11 @@ import {
 } from "./types";
 import { ConfirmDialog, type ConfirmDialogRequest } from "./components/ConfirmDialog";
 import { earlyCompletionItem } from "./earlyCompletion";
+import {
+  findTodayEntryForTimer,
+  timerMatchesProjectNextStep,
+  timerRunsTodayItem,
+} from "./timerSource";
 import { ContextMenu, ContextMenuItem } from "./components/ContextMenu";
 import { HelpGuideDialog } from "./components/HelpGuideDialog";
 import { ProjectIdentity } from "./components/ProjectIdentity";
@@ -906,6 +911,10 @@ function todaySourceKey(item: TodayItem, index: number): string {
 
 function todayTimerSourceId(item: TodayItem, index: number): string {
   return `today:${todaySourceKey(item, index)}`;
+}
+
+function todayEntries(items: TodayItem[]) {
+  return items.map((item, index) => ({ item, sourceKey: todaySourceKey(item, index) }));
 }
 
 function toggleDisclosureFromBar(event: ReactMouseEvent<HTMLElement>, toggle: () => void) {
@@ -7512,23 +7521,10 @@ function DashboardApp() {
         if (!finished) return false;
         const current = configRef.current;
         if (!current) return true;
-        const directSourceKey = completedTimer.sourceId.startsWith("today:")
-          ? completedTimer.sourceId.slice("today:".length)
-          : null;
-        const projectSourceKey =
-          completedTimer.projectId && completedTimer.sourceId === completedTimer.projectId
-            ? `project:${completedTimer.projectId}`
-            : null;
-        const targetSourceKey = directSourceKey ?? projectSourceKey;
-        const completedEntry = current.today.items
-          .map((item, index) => ({ item, sourceKey: todaySourceKey(item, index) }))
-          .find(
-            ({ item, sourceKey }) =>
-              !item.done &&
-              targetSourceKey !== null &&
-              sourceKey === targetSourceKey &&
-              item.sourceGenerationId === completedTimer.sourceGenerationId,
-          );
+        const completedEntry = findTodayEntryForTimer(
+          todayEntries(current.today.items),
+          completedTimer,
+        );
         const prepared = completedEntry
           ? completeTodayItemAndPrepareSource(
               current,
@@ -7800,7 +7796,12 @@ function DashboardApp() {
     );
     if (index < 0) return;
     if (
-      activeTimerRef.current?.sourceId === todayTimerSourceId(current.today.items[index], index)
+      timerRunsTodayItem(
+        todayEntries(current.today.items),
+        activeTimerRef.current,
+        todayTimerSourceId(current.today.items[index], index),
+        sourceKey,
+      )
     ) {
       showToast("warn", "タイマーを停止してから外してください");
       return;
@@ -8341,6 +8342,19 @@ function DashboardApp() {
     if (todayPickerSaving) return;
     const current = configRef.current;
     if (!current) return;
+    const draftItem = todayPickerDraftItems[index];
+    if (
+      draftItem &&
+      timerRunsTodayItem(
+        todayEntries(todayPickerDraftItems),
+        activeTimerRef.current,
+        todayTimerSourceId(draftItem, index),
+        todaySourceKey(draftItem, index),
+      )
+    ) {
+      showToast("warn", "タイマーを停止してから外してください");
+      return;
+    }
     const nextItems = todayPickerDraftItems.filter((_, itemIndex) => itemIndex !== index);
     setTodayPickerSaving(true);
     if (!(await persistConfig({ ...current, today: { ...current.today, items: nextItems } }))) {
@@ -9513,6 +9527,12 @@ function DashboardApp() {
   };
   const renderTodayPickerSelectedItem = (item: TodayItem, index: number) => {
     const project = item.projectId ? projectsById.get(item.projectId) : undefined;
+    const pickerItemRunning = timerRunsTodayItem(
+      todayEntries(todayPickerDraftItems),
+      activeTimer,
+      todayTimerSourceId(item, index),
+      todaySourceKey(item, index),
+    );
     return (
       <div
         className="todayPickerSlot todayPickerSlot--selected todayPickerRow todayPickerRow--selected"
@@ -9537,9 +9557,10 @@ function DashboardApp() {
         <button
           aria-label="今日から外す"
           className="todayPickerRemoveButton todayRemoveButton mainActionButton mainActionButton--neutral"
-          disabled={todayPickerSaving}
+          disabled={todayPickerSaving || pickerItemRunning}
           onClick={() => removeTodayPickerDraftItem(index)}
           onPointerDown={(event) => event.stopPropagation()}
+          title={pickerItemRunning ? "タイマーを停止してから外してください" : undefined}
           type="button"
         >
           <span aria-hidden="true">↩</span>
@@ -9832,8 +9853,23 @@ function DashboardApp() {
     : config.settings.shortTimerMinutes;
   const doNowInstructionPath = doNowSelection?.project.nextStep?.instructionPath?.trim() ?? "";
   const isDoNowRunning = Boolean(
-    doNowSelection && activeTimer?.sourceId === doNowSelection.project.id,
+    doNowSelection &&
+      activeTimer &&
+      timerMatchesProjectNextStep(
+        activeTimer,
+        doNowSelection.project.id,
+        doNowSelection.project.nextStep?.generationId,
+      ),
   );
+  // One running state derived from the single activeTimer, using the same "same action" rule as
+  // completion, so Do Now and Today3 cannot disagree.
+  const isTimerOnTodayItem = (item: TodayItem, index: number) =>
+    timerRunsTodayItem(
+      todayEntries(config?.today.items ?? []),
+      activeTimer,
+      todayTimerSourceId(item, index),
+      todaySourceKey(item, index),
+    );
   const startDoNowProject = (
     project: LauncherProject,
     timerKind: "short" | "normal" | "measure",
@@ -11031,7 +11067,12 @@ function DashboardApp() {
                         </strong>
                         <div className="doNowMeta">
                           <span className="doNowMetaItem doNowMetaTimer">
-                            <UiIcon name="clock" size={16} /> 通常 {doNowDefaultTimerMinutes}分
+                            <UiIcon name="clock" size={16} />{" "}
+                            {isDoNowRunning && activeTimer
+                              ? activeTimer.mode === "measure"
+                                ? "計測中"
+                                : `残り ${timerClock}`
+                              : `通常 ${doNowDefaultTimerMinutes}分`}
                           </span>
                           {doNowSelection.project.nextStep?.trigger?.trim() && (
                             <span
@@ -11271,7 +11312,7 @@ function DashboardApp() {
                           )}
                           {config.today.items.map((item, index) => {
                             const timerSourceId = todayTimerSourceId(item, index);
-                            const isRunningTodayItem = activeTimer?.sourceId === timerSourceId;
+                            const isRunningTodayItem = activeTimer !== null && isTimerOnTodayItem(item, index);
                             const project = item.projectId
                               ? projectsById.get(item.projectId)
                               : undefined;
@@ -11888,11 +11929,7 @@ function DashboardApp() {
                             const isSelected = selectedIndex >= 0;
                             const selectedTimerRunning =
                               isSelected &&
-                              activeTimer?.sourceId ===
-                                todayTimerSourceId(
-                                  config.today.items[selectedIndex],
-                                  selectedIndex,
-                                );
+                              isTimerOnTodayItem(config.today.items[selectedIndex], selectedIndex);
                             const isFull = config.today.items.length >= TODAY_ITEM_LIMIT;
                             return (
                               <div
@@ -13403,13 +13440,11 @@ function DashboardApp() {
               <ContextMenuItem
                 disabled={
                   !!config?.today.items[contextMenu.index] &&
-                  activeTimer?.sourceId ===
-                    todayTimerSourceId(config.today.items[contextMenu.index], contextMenu.index)
+                  isTimerOnTodayItem(config.today.items[contextMenu.index], contextMenu.index)
                 }
                 title={
                   config?.today.items[contextMenu.index] &&
-                  activeTimer?.sourceId ===
-                    todayTimerSourceId(config.today.items[contextMenu.index], contextMenu.index)
+                  isTimerOnTodayItem(config.today.items[contextMenu.index], contextMenu.index)
                     ? "タイマーを停止してから外してください"
                     : undefined
                 }
