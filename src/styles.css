@@ -13523,3 +13523,113 @@ button.mainActionButton:is(
     "meta state"
     "controls controls";
 }
+
+/*
+ * P9-07: borders only where they carry a role (victory condition, cards, start buttons, inputs,
+ * dialogs, menus, toasts). Grouping is done with spacing and section headings. A border that goes
+ * away keeps its width and turns transparent, so no box, hit area or layout changes size.
+ */
+.topPills {
+  border-color: transparent;
+  background: transparent;
+}
+
+.topPills .viewToggleButton:hover:not(:disabled):not(.viewToggleButton--active),
+.topPills .viewToggleButton:focus-visible:not(.viewToggleButton--active) {
+  border-color: transparent;
+  background: var(--control-neutral-hover-bg);
+  color: var(--text);
+}
+
+.topPills .viewToggleButton:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+
+.doNowBand,
+.focusBand,
+.projectsBand,
+.inboxBand,
+.todayActivityBand {
+  border-top-color: transparent;
+}
+
+.todaySectionBar,
+.disclosureHeader {
+  border-color: transparent;
+  background: transparent;
+}
+
+.todaySectionBar:hover,
+.todaySectionBar:has(.todaySectionDisclosure:focus-visible),
+.disclosureHeader:hover,
+.disclosureHeader:has(.disclosure:focus-visible) {
+  border-color: transparent;
+  background: var(--control-neutral-hover-bg);
+}
+
+.todaySectionBar:has(.todaySectionDisclosure:focus-visible),
+.disclosureHeader:has(.disclosure:focus-visible) {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: -2px;
+}
+
+/* Text buttons: "手順書", "今日の3件から外す", "他の一手", "＋ きっかけ". */
+.doNowAlternateButton,
+.doNowContent .doNowInstructionButton,
+.todayRow .todayInstructionButton,
+.todayRow .todayRemoveButton {
+  --main-action-bg: transparent;
+  --main-action-border: transparent;
+  --main-action-hover-border: transparent;
+  --main-action-active-border: transparent;
+  --main-action-hover-color: var(--text);
+}
+
+.doNowAlternateButton:hover,
+.doNowAlternateButton:focus-visible,
+.doNowContent .doNowInstructionButton:hover:not(:disabled),
+.doNowContent .doNowInstructionButton:focus-visible,
+.todayRow .todayInstructionButton:hover:not(:disabled),
+.todayRow .todayInstructionButton:focus-visible,
+.todayRow .todayRemoveButton:hover:not(:disabled),
+.todayRow .todayRemoveButton:focus-visible,
+.todayRow .todayRemoveButton.mainActionButton--neutral:hover:not(:disabled),
+.todayRow .todayRemoveButton.mainActionButton--neutral:focus-visible {
+  border-color: transparent;
+  background: var(--control-neutral-hover-bg);
+  color: var(--text);
+}
+
+.doNowAlternateButton:focus-visible,
+.doNowContent .doNowInstructionButton:focus-visible,
+.todayRow .todayInstructionButton:focus-visible,
+.todayRow .todayRemoveButton:focus-visible,
+.todayTriggerButton--empty:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+
+.todayTriggerButton--empty {
+  border-color: transparent;
+  background: transparent;
+}
+
+.todayTriggerButton--empty:hover,
+.todayTriggerButton--empty:focus-visible {
+  border-color: transparent;
+  background: var(--control-neutral-hover-bg);
+  color: var(--text);
+}
+
+/* "今日やるものを選ぶ": the dashed outer frame stays; the inner chip loses its border. */
+.todayPickerEntryVisual,
+.todayPickerEntry:hover .todayPickerEntryVisual,
+.todayPickerEntry:focus-visible .todayPickerEntryVisual {
+  border-color: transparent;
+}
+
+.todayPickerEntry:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
