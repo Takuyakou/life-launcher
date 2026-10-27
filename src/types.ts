@@ -436,7 +436,7 @@ export type NextStepFreshnessResponse = {
 
 export type DoNowCandidate = {
   projectId: string;
-  reason: "noToday" | "oldestSession" | "manualOrder" | string;
+  reason: "today3" | "noToday" | "oldestSession" | "manualOrder" | string;
   restartEligible: boolean;
 };
 
