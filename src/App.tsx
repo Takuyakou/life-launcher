@@ -12284,7 +12284,7 @@ function DashboardApp() {
                     <div className="disclosureHeaderActions">
                       <button
                         aria-label="プロジェクトを追加"
-                        className="sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd nextStepHeaderAdd--project mainActionButton mainActionButton--gold"
+                        className="sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd nextStepHeaderAdd--project mainActionButton mainActionButton--neutral"
                         onPointerDown={(event) => event.stopPropagation()}
                         onClick={(event) => {
                           event.stopPropagation();
@@ -12505,7 +12505,7 @@ function DashboardApp() {
                                   !sourceLocked && (
                                     <div className="nextStepCardActions">
                                       <button
-                                        className="nextStepTodayAdd mainActionButton mainActionButton--gold"
+                                        className="nextStepTodayAdd mainActionButton mainActionButton--neutral"
                                         disabled={
                                           !todayCandidate ||
                                           alreadySelected ||
@@ -12703,7 +12703,7 @@ function DashboardApp() {
                     <div className="disclosureHeaderActions">
                       <button
                         aria-label="やりたいことを追加"
-                        className="sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd nextStepHeaderAdd--wishlist mainActionButton mainActionButton--gold"
+                        className="sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd nextStepHeaderAdd--wishlist mainActionButton mainActionButton--neutral"
                         disabled={inboxAddOpen}
                         onPointerDown={(event) => event.stopPropagation()}
                         onClick={(event) => {
@@ -14671,7 +14671,7 @@ function DashboardApp() {
                       <div className="instructionFolderSettingsRow" key={folder}>
                         <span title={folder}>{folder}</span>
                         <button
-                          className="secondaryButton settingsButton--warning"
+                          className="dangerButton settingsButton--danger"
                           disabled={instructionSettingsBusy}
                           onClick={() => removeInstructionFolder(folder)}
                           type="button"
@@ -14749,7 +14749,7 @@ function DashboardApp() {
                   バックアップを未設定にする
                 </button>
                 <button
-                  className="secondaryButton settingsButton--warning"
+                  className="dangerButton settingsButton--danger"
                   onClick={chooseBackupZipForRestore}
                   type="button"
                 >
@@ -14800,21 +14800,21 @@ function DashboardApp() {
                   <h4 id="maintenance-display-heading">表示・キャッシュ</h4>
                   <div className="settingsButtonRow">
                     <button
-                      className="secondaryButton settingsButton--warning"
+                      className="secondaryButton settingsButton--neutral"
                       onClick={requestIconCacheRegeneration}
                       type="button"
                     >
                       アイコンキャッシュ再生成
                     </button>
                     <button
-                      className="secondaryButton settingsButton--warning"
+                      className="secondaryButton settingsButton--neutral"
                       onClick={requestMiniWindowPositionReset}
                       type="button"
                     >
                       ミニウィンドウ位置をリセット
                     </button>
                     <button
-                      className="secondaryButton settingsButton--warning"
+                      className="secondaryButton settingsButton--neutral"
                       onClick={requestInstructionWindowPositionReset}
                       type="button"
                     >

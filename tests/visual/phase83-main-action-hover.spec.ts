@@ -70,8 +70,12 @@ async function expectActionHover(locator: Locator) {
 }
 
 test("P83-03 gold and neutral actions respond to hover, focus and press without resizing", async ({ page }) => {
-  await prepare(page);
-  const gold = page.locator(".nextStepHeaderAdd--project");
+  // P9-06: the add buttons are neutral now; with an empty Today3, "＋ 今日やるものを選ぶ" is
+  // the gold action on Main.
+  const fixture = actionFixture();
+  fixture.config.today.items = [];
+  await prepare(page, fixture);
+  const gold = page.locator(".todayEmptyState .mainActionButton--gold");
   const neutral = page.locator(".nextStepRowAction").first();
   expect((await readStyle(gold)).backgroundColor).not.toBe((await readStyle(neutral)).backgroundColor);
   for (const action of [gold, neutral]) {
