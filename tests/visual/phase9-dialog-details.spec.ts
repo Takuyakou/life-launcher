@@ -119,7 +119,12 @@ test("P9-10 the mini setting is named 'use the mini timer' and still only gates 
   const saved = await page.evaluate(() => (window as QaWindow).__LIFE_LAUNCHER_VISUAL_QA__.currentConfig());
   expect(saved.settings.miniMode).toBe(false);
   // Same stored key, same effect: the top menu Mini button is disabled.
-  await expect(page.getByRole("button", { name: "ミニモードへ切り替え" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "ミニタイマーへ切り替え" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "ミニタイマーへ切り替え" })).toHaveAttribute(
+    "title",
+    "設定で「ミニタイマーを使う」をオンにしてください",
+  );
+  await expect(page.getByText("ミニモード")).toHaveCount(0);
 });
 
 // 4. Shortcut hints ---------------------------------------------------------------------------
@@ -132,7 +137,7 @@ test("P9-10 an unset shortcut shows 未設定 once; the line below appears only 
   await open(page, fixture);
   const settings = await openSettings(page, "ショートカット");
 
-  const unset = settings.locator(".shortcutCaptureField", { hasText: "ミニモード切替" });
+  const unset = settings.locator(".shortcutCaptureField", { hasText: "ミニタイマー切替" });
   await expect(unset.locator("kbd")).toHaveText("未設定");
   await expect(unset.locator("small")).toHaveCount(0);
 
@@ -146,6 +151,35 @@ test("P9-10 an unset shortcut shows 未設定 once; the line below appears only 
   await page.keyboard.press("Escape");
   await expect(unset.locator("small")).toHaveCount(0);
   await expect(settings.locator("small", { hasText: /^未設定$/ })).toHaveCount(0);
+});
+
+test("P9-10 shortcut inputs in the same row share one top whether or not they have a line below", async ({
+  page,
+}) => {
+  const fixture = createPickerFixture();
+  fixture.config.settings.miniHotkey = null;
+  await open(page, fixture);
+  const settings = await openSettings(page, "ショートカット");
+  const fields = settings.locator(".shortcutCaptureField");
+  await expect(fields).toHaveCount(4);
+  const boxes = await fields.evaluateAll((nodes) =>
+    nodes.map((node) => {
+      const field = node.getBoundingClientRect();
+      const control = node.querySelector(".shortcutCaptureControl")!.getBoundingClientRect();
+      return { fieldTop: field.top, controlTop: control.top, hasLine: Boolean(node.querySelector("small")) };
+    }),
+  );
+  // Both kinds exist: with the line (registered) and without it (unset).
+  expect(boxes.some((box) => box.hasLine)).toBe(true);
+  expect(boxes.some((box) => !box.hasLine)).toBe(true);
+  // The input sits at the same distance from its field's top, so fields in one row have equal input tops.
+  const offsets = boxes.map((box) => Math.round(box.controlTop - box.fieldTop));
+  expect(new Set(offsets).size).toBe(1);
+  for (const a of boxes) {
+    for (const b of boxes) {
+      if (Math.abs(a.fieldTop - b.fieldTop) < 1) expect(Math.abs(a.controlTop - b.controlTop)).toBeLessThan(1);
+    }
+  }
 });
 
 test("P9-10 a conflicting shortcut still shows its warning line", async ({ page }) => {
@@ -334,7 +368,7 @@ test("P9-10 the older notes disclosure has an arrow, shows the day count, and to
   const records = await openAllRecords(page);
   const older = records.locator(".recordsOlderNotes");
   const summary = older.locator("summary");
-  await expect(summary).toHaveText("以前のメモ(3日)");
+  await expect(summary).toHaveText("以前のメモ（3日）");
   // The same chevron icons as the other disclosures, and the native marker is not the indicator.
   await expect(summary.locator("svg")).toHaveCount(1);
   const closedIcon = await summary.locator("svg").evaluate((svg) => svg.innerHTML);

@@ -388,7 +388,7 @@ export function RecordsView({
           >
             <summary>
               <UiIcon name={olderNotesOpen ? "chevronDown" : "chevronRight"} size={16} />
-              {notesHistory?.entries.length ? `以前のメモ(${notesHistory.entries.length}日)` : "以前のメモ"}
+              {notesHistory?.entries.length ? `以前のメモ（${notesHistory.entries.length}日）` : "以前のメモ"}
             </summary>
             {notesHistory?.entries.length ? (
               <div className="notesHistoryList">

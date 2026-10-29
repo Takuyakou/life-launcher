@@ -161,11 +161,11 @@ test("shortcut conflict names every action and clears when the duplicate is remo
   await dialog.getByRole("tab", { name: "ショートカット" }).click();
   await expect(dialog.getByRole("alert")).toContainText("メイン呼び出し");
   await expect(dialog.getByRole("alert")).toContainText("辞書");
-  await expect(dialog.getByRole("alert")).toContainText("ミニモード切替");
+  await expect(dialog.getByRole("alert")).toContainText("ミニタイマー切替");
   await expect(dialog.locator(".shortcutCaptureField--conflict")).toHaveCount(3);
   await dialog.getByRole("button", { name: "保存", exact: true }).click();
   await expect(dialog).toBeVisible();
-  await dialog.getByRole("button", { name: "ミニモード切替のショートカットを解除" }).click();
+  await dialog.getByRole("button", { name: "ミニタイマー切替のショートカットを解除" }).click();
   await expect(dialog.locator(".shortcutCaptureField--conflict")).toHaveCount(2);
   await dialog.getByRole("button", { name: "メイン呼び出しのショートカットを解除" }).click();
   await expect(dialog.getByRole("alert")).toHaveCount(0);
@@ -175,7 +175,7 @@ test("shortcut matching ignores modifier order and alias spelling", () => {
   const conflicts = findShortcutConflicts([
     { field: "main", label: "メイン呼び出し", value: "Ctrl+Alt+K" },
     { field: "dictionary", label: "辞書", value: "Alt+Ctrl+K" },
-    { field: "mini", label: "ミニモード切替", value: "Ctrl+K" },
+    { field: "mini", label: "ミニタイマー切替", value: "Ctrl+K" },
     { field: "instructions", label: "手順書", value: "Command+Shift+J" },
   ]);
   expect(conflicts).toHaveLength(1);

@@ -147,7 +147,7 @@ test("all records supports filters, keyboard context actions and execution-recor
   await expect(older).not.toHaveAttribute("open", "");
   await expect(older.locator("input")).toHaveCount(3);
   await expect(older.locator("input").first()).not.toBeVisible();
-  await older.getByText("以前のメモ(1日)", { exact: true }).click();
+  await older.getByText("以前のメモ（1日）", { exact: true }).click();
   await expect(older.getByRole("textbox").first()).toBeVisible();
 
   await records.getByRole("button", { name: "実行記録を追加" }).click();

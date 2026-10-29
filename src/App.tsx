@@ -436,7 +436,7 @@ const SHORTCUT_DRAFT_FIELDS: ReadonlyArray<{
 }> = [
   { field: "focusHotkey", label: "メイン呼び出し" },
   { field: "launcherHotkey", label: "辞書" },
-  { field: "miniHotkey", label: "ミニモード切替" },
+  { field: "miniHotkey", label: "ミニタイマー切替" },
   { field: "instructionHotkey", label: "手順書" },
 ];
 
@@ -3433,7 +3433,7 @@ function DashboardApp() {
   const openMiniMode = useCallback(async () => {
     if (expandedTimerOpen) return;
     if (!config?.settings.miniMode) {
-      showToast("warn", "設定でミニモードを有効にしてください");
+      showToast("warn", "設定で「ミニタイマーを使う」をオンにしてください");
       return;
     }
     let stage = "メイン画面の取得";
@@ -3458,7 +3458,7 @@ function DashboardApp() {
       await focusDashboardWindow().catch(() => undefined);
       const message = error instanceof Error ? error.message : String(error);
       console.error(`[mini-mode] ${stage}で失敗しました`, error);
-      showToast("warn", `ミニモードを開けません (${stage}): ${message}`);
+      showToast("warn", `ミニタイマーを開けません (${stage}): ${message}`);
     }
   }, [config?.settings.miniMode, ensureMiniWindow, expandedTimerOpen, miniSnapshot, showToast]);
 
@@ -10780,12 +10780,12 @@ function DashboardApp() {
                 onClick={() => void toggleMiniMode()}
                 title={
                   miniTransitioning
-                    ? "ミニモードを準備中"
+                    ? "ミニタイマーを準備中"
                     : config.settings.miniMode
-                      ? "ミニモードへ切り替え"
-                      : "設定でミニモードを有効にしてください"
+                      ? "ミニタイマーへ切り替え"
+                      : "設定で「ミニタイマーを使う」をオンにしてください"
                 }
-                aria-label="ミニモードへ切り替え"
+                aria-label="ミニタイマーへ切り替え"
                 type="button"
               >
                 <UiIcon name="miniMode" size={18} />
