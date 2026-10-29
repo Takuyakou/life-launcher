@@ -99,7 +99,7 @@ test("P84 Wishlist selection swaps atomically and returns the previous NextStep"
   const row = page.locator('[data-inbox-id="sample-weekend"]');
   await row.hover();
   await row.getByRole("button", { name: "週末に試すアイデアの次の一手を設定" }).click();
-  const dialog = page.getByRole("dialog", { name: "次の一手を変更" });
+  const dialog = page.getByRole("dialog", { name: "次の一手を入れ替える" });
   await expect(dialog.getByRole("tab", { name: "やりたいことから選ぶ" })).toHaveAttribute(
     "aria-selected",
     "true",

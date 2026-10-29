@@ -13642,3 +13642,51 @@ button.mainActionButton:is(
   outline: 2px solid var(--accent-strong);
   outline-offset: 2px;
 }
+
+/* P9-09: the waiting sidebar Timer shows the minutes in a neutral colour; running and paused keep theirs. */
+.timerDock .timerClock--adjustable:not(.timerClock--dragging) {
+  color: var(--text-muted-readable);
+}
+
+/* P9-09: guide shown when an open sidebar group has no buttons (it is still part of the group drop target). */
+.quickGroupEmpty {
+  margin: 0;
+  padding: 4px 8px 6px;
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* P9-09: the completion dialog heading is the action text, so long text wraps and stops at three lines. */
+.timerCompleteHeading {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+/* P9-09: with only one of the count / completion displays shown, place each in its own column. */
+.todaySectionBar > .todaySectionCount {
+  grid-column: 2;
+}
+
+/* The completion display starts where the right-aligned 22px count used to start (column width - 22px),
+   so the numbers of all section bars stay in one column. */
+.todaySectionBar > .todayCompletionSummary {
+  grid-column: 2 / 4;
+  justify-self: start;
+  margin-left: 8px;
+}
+
+.mainScrollContent[data-main-display-size="large"] .todaySectionBar > .todayCompletionSummary {
+  margin-left: 12px;
+}
+
+.mainScrollContent[data-main-display-size="xlarge"] .todaySectionBar > .todayCompletionSummary {
+  margin-left: 16px;
+}
+
+.todaySectionBar > .todaySectionDescription {
+  grid-column: 4;
+}

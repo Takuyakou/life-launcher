@@ -497,6 +497,7 @@ type TimerCompletionPrompt = {
   projectId: string | null;
   targetMinutes: number;
   label: string;
+  actionText?: string;
 };
 
 type CompletionFeedback = {
@@ -7163,6 +7164,7 @@ function DashboardApp() {
           projectId: timer.projectId,
           targetMinutes: timer.targetMinutes,
           label: timer.label,
+          actionText: timer.actionText,
         });
         return false;
       }
@@ -7316,6 +7318,7 @@ function DashboardApp() {
         projectId: activeTimer.projectId,
         targetMinutes: activeTimer.targetMinutes,
         label: activeTimer.label,
+        actionText: activeTimer.actionText,
       });
       void focusDashboardWindow().catch(() => undefined);
       void notifyTimerComplete(activeTimer.label).catch(() => undefined);
@@ -9824,6 +9827,9 @@ function DashboardApp() {
   const activeTimerProject = activeTimer?.projectId
     ? config.projects.find((project) => project.id === activeTimer.projectId)
     : undefined;
+  const completionProject = completionPrompt?.projectId
+    ? config.projects.find((project) => project.id === completionPrompt.projectId)
+    : undefined;
   const nextStepSetupProject =
     config.projects.find((project) => !project.nextStep?.text.trim()) ?? config.projects[0];
   const doNowCandidates = (doNowResponse?.candidates ?? [])
@@ -10206,6 +10212,9 @@ function DashboardApp() {
                   </button>
                   {!collapsed && (
                     <div className="quickGroupItems" data-sidebar-group-name={group.name}>
+                      {group.buttons.length === 0 && (
+                        <p className="quickGroupEmpty">見出しを右クリックしてボタンを追加できます</p>
+                      )}
                       {group.buttons.map((button) => (
                         <div
                           className={
@@ -10362,7 +10371,6 @@ function DashboardApp() {
           variant="sidebar"
           waitingContent={
             <div className="timerPresetControls" aria-label="通常タイマーの分数">
-              <span className="timerHint">通常タイマー</span>
               <div className="timerPresetRow">
                 <button
                   className="timerPresetButton"
@@ -11265,16 +11273,19 @@ function DashboardApp() {
                       <UiIcon name={todayOpen ? "chevronDown" : "chevronRight"} size={16} />
                       <h2>今日の3件</h2>
                     </button>
-                    <span className="todaySectionCount">{config.today.items.length}件</span>
-                    <span
-                      className={
-                        todayAllCompleted
-                          ? "todayCompletionSummary todayCompletionSummary--complete"
-                          : "todayCompletionSummary"
-                      }
-                    >
-                      {todayCompletedCount} / {config.today.items.length} 完了
-                    </span>
+                    {config.today.items.length === 0 ? (
+                      <span className="todaySectionCount">0件</span>
+                    ) : (
+                      <span
+                        className={
+                          todayAllCompleted
+                            ? "todayCompletionSummary todayCompletionSummary--complete"
+                            : "todayCompletionSummary"
+                        }
+                      >
+                        {todayCompletedCount} / {config.today.items.length} 完了
+                      </span>
+                    )}
                     <span className="todaySectionDescription">
                       今日やると決めたもの。タイマーから開始します。
                     </span>
@@ -12539,7 +12550,7 @@ function DashboardApp() {
                                         title={sourceEditBlockReason(projectSourceKey) ?? undefined}
                                         type="button"
                                       >
-                                        変更
+                                        編集
                                       </button>
                                     </div>
                                   )
@@ -13612,9 +13623,6 @@ function DashboardApp() {
               >
                 プロジェクトを編集
               </ContextMenuItem>
-              <ContextMenuItem onClick={openProjectManagement} type="button">
-                プロジェクトを管理
-              </ContextMenuItem>
               {contextMenu.project.nextStep?.text.trim() ? (
                 <>
                   <ContextMenuItem
@@ -13637,7 +13645,7 @@ function DashboardApp() {
                     title={sourceEditBlockReason(`project:${contextMenu.project.id}`) ?? undefined}
                     type="button"
                   >
-                    次の一手を変更
+                    別の行動に入れ替える
                   </ContextMenuItem>
                   <ContextMenuItem
                     disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
@@ -15637,7 +15645,7 @@ function DashboardApp() {
           const dialogTitle = editingExisting
             ? "次の一手を編集"
             : replacingExisting
-              ? "次の一手を変更"
+              ? "次の一手を入れ替える"
               : "次の一手を設定";
           const saveDisabled =
             sourceEditSaving ||
@@ -16319,7 +16327,15 @@ function DashboardApp() {
           >
             <div>
               <p className="eyebrow">Timer Complete</p>
-              <h2>{completionPrompt.label}</h2>
+              {completionProject && (
+                <ProjectIdentity
+                  colorId={completionProject.colorId}
+                  compact
+                  name={completionProject.name}
+                  projectId={completionProject.id}
+                />
+              )}
+              <h2 className="timerCompleteHeading">{timerActionText(completionPrompt)}</h2>
             </div>
 
             <p className="timerCompleteText">予定時間になりました</p>

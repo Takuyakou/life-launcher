@@ -112,7 +112,7 @@ test("P84 Wishlist promote action is status-aware, stable, keyboard reachable, a
   await expect(plainAction).toBeFocused();
   await expect(plainAction).toHaveCSS("opacity", "1");
   await plainAction.press("Enter");
-  const dialog = page.getByRole("dialog", { name: /次の一手を(設定|変更)/ });
+  const dialog = page.getByRole("dialog", { name: /次の一手を(設定|入れ替える)/ });
   await expect(dialog).toBeVisible();
   expect((await currentConfig(page)).today).toEqual(originalToday);
   await dialog.getByRole("button", { name: "キャンセル", exact: true }).click();

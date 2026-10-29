@@ -294,7 +294,7 @@ test("Phase 8.1 Wishlist promotion starts from a reset execution package", async
   await openWishlistSection(page);
   await page.locator('[data-inbox-id="sample-weekend"]').click({ button: "right" });
   await page.getByRole("menuitem", { name: "次の一手にする" }).click();
-  const dialog = page.getByRole("dialog", { name: "次の一手を変更" });
+  const dialog = page.getByRole("dialog", { name: "次の一手を入れ替える" });
 
   await expect(dialog.getByRole("textbox", { name: "行動" })).toHaveCount(0);
   await expect(dialog.getByRole("radio", { name: "週末に試すアイデア" })).toHaveAttribute(

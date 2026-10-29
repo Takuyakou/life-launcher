@@ -19,7 +19,7 @@ test("a NextStep context menu exposes edit, change and unset without legacy regi
     .locator(".nextStepActionRegion");
 
   await row.click({ button: "right" });
-  for (const name of ["次の一手を編集", "次の一手を変更", "次の一手を未設定にする"]) {
+  for (const name of ["次の一手を編集", "別の行動に入れ替える", "次の一手を未設定にする"]) {
     await expect(page.getByRole("menuitem", { name, exact: true })).toBeEnabled();
   }
   await expect(page.getByRole("menuitem", { name: "やりたいことを追加" })).toHaveCount(0);

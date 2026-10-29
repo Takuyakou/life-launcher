@@ -71,7 +71,7 @@ test("Today header collapses and dashboard metadata keeps one vertical rhythm", 
     .evaluateAll((bands) =>
       bands.map((band) => {
         const title = band.querySelector(".todaySectionDisclosure h2, .disclosureLabel strong")!;
-        const count = band.querySelector(".todaySectionCount, .disclosureCount")!;
+        const count = band.querySelector(".todaySectionCount, .todayCompletionSummary, .disclosureCount")!;
         return [title.getBoundingClientRect().x, count.getBoundingClientRect().x];
       }),
     );
