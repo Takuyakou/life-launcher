@@ -236,7 +236,7 @@ test("Record tabs stay opaque and unobstructed while scrolling at desktop and na
       if (position !== "top") expect(Math.abs(headerBox.y - areaBox.y)).toBeLessThanOrEqual(1);
 
       const controls = header.locator("button");
-      await expect(controls).toHaveCount(4);
+      await expect(controls).toHaveCount(3);
       const boxes = [];
       for (const control of await controls.all()) {
         const box = (await control.boundingBox())!;

@@ -32,7 +32,6 @@ type RecordsViewProps = {
   sessionSearch: string;
   sessionProjectFilter: string;
   sessionDateScope: RecordsDateScope;
-  onBack: () => void;
   onSearchChange: (value: string) => void;
   onProjectFilterChange: (value: string) => void;
   onDateScopeChange: (value: RecordsDateScope) => void;
@@ -83,7 +82,6 @@ export function RecordsView({
   sessionSearch,
   sessionProjectFilter,
   sessionDateScope,
-  onBack,
   onSearchChange,
   onProjectFilterChange,
   onDateScopeChange,
@@ -100,6 +98,7 @@ export function RecordsView({
   const [weeklyExpanded, setWeeklyExpanded] = useState<Record<string, boolean>>({});
   const [cumulativeExpanded, setCumulativeExpanded] = useState<Record<string, boolean>>({});
   const [cumulativePages, setCumulativePages] = useState<Record<string, number>>({});
+  const [olderNotesOpen, setOlderNotesOpen] = useState(false);
 
   const openKeyboardMenu = (event: KeyboardEvent<HTMLElement>, session: SessionEntryRow) => {
     if (event.key !== "ContextMenu" && !(event.shiftKey && event.key === "F10")) return;
@@ -111,14 +110,6 @@ export function RecordsView({
   return (
     <section className="recordsView" data-skip-target="records" tabIndex={-1}>
       <header className="recordsViewHeader">
-        <button
-          className="recordsBackButton mainActionButton mainActionButton--neutral"
-          onClick={onBack}
-          type="button"
-        >
-          <UiIcon name="back" size={16} />
-          メイン
-        </button>
         <nav aria-label="記録の表示" className="recordsTabs" role="tablist">
           {([
             ["review", "ふりかえり"],
@@ -390,8 +381,15 @@ export function RecordsView({
             ) : <p className="quietText">条件に一致する実行記録がありません。検索語またはフィルターを変更してください。</p>}
           </section>
 
-          <details className="recordsSection recordsOlderNotes">
-            <summary>以前のメモ</summary>
+          <details
+            className="recordsSection recordsOlderNotes"
+            onToggle={(event) => setOlderNotesOpen(event.currentTarget.open)}
+            open={olderNotesOpen}
+          >
+            <summary>
+              <UiIcon name={olderNotesOpen ? "chevronDown" : "chevronRight"} size={16} />
+              {notesHistory?.entries.length ? `以前のメモ(${notesHistory.entries.length}日)` : "以前のメモ"}
+            </summary>
             {notesHistory?.entries.length ? (
               <div className="notesHistoryList">
                 {notesHistory.entries.map((entry) => (

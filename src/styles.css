@@ -12747,29 +12747,6 @@ input[type="number"]::-webkit-inner-spin-button {
   background: var(--app-background);
 }
 
-.recordsBackButton {
-  min-width: 92px;
-  min-height: 34px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 5px 10px;
-  background: var(--surface-soft);
-  color: var(--text-muted-readable);
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.recordsBackButton:hover,
-.recordsBackButton:focus-visible {
-  border-color: var(--accent);
-  background: var(--surface-strong);
-  color: var(--text);
-}
-
 .recordsTabs {
   min-width: 0;
   display: flex;
@@ -12997,6 +12974,8 @@ input[type="number"]::-webkit-inner-spin-button {
   min-height: 38px;
   display: flex;
   align-items: center;
+  gap: 8px;
+  list-style: none;
   color: var(--text-muted-readable);
   cursor: pointer;
   font-size: 13px;
@@ -13013,10 +12992,6 @@ input[type="number"]::-webkit-inner-spin-button {
     align-items: stretch;
     flex-direction: column;
     gap: 7px;
-  }
-
-  .recordsBackButton {
-    align-self: flex-start;
   }
 
   .recordsTabs {
@@ -13689,4 +13664,23 @@ button.mainActionButton:is(
 
 .todaySectionBar > .todaySectionDescription {
   grid-column: 4;
+}
+
+/* P9-10: unit shown to the right of a number input, left of the spin affordance (same look as the sidebar Timer "分"). */
+.numberDragInput .numberDragUnit {
+  position: absolute;
+  top: 50%;
+  right: 30px;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  pointer-events: none;
+}
+
+/* P9-10: the primary (save / add) button in a dialog's action row has the same text size as its cancel button
+   (the global .primaryButton has no font-size and fell back to 16px). :where() keeps specificity low so the
+   Today Picker's own 11px override still applies to both of its buttons. */
+:where(.dialogActions, .dictionarySettingsActions, .instructionUnsavedActions) .primaryButton {
+  font-size: 12px;
 }

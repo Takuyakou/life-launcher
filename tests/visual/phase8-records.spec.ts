@@ -82,7 +82,7 @@ test("records opens on review and keeps the three information layers separate", 
   await expect(records.getByRole("heading", { name: "今週の重点" })).toBeVisible();
   await expect(records.getByText("今日", { exact: true })).toHaveCount(0);
 
-  await records.getByRole("button", { name: "メイン" }).click();
+  await page.getByRole("button", { name: "メイン画面に戻る" }).click();
   await expect(page.locator(".doNowBand")).toBeVisible();
 });
 
@@ -147,7 +147,7 @@ test("all records supports filters, keyboard context actions and execution-recor
   await expect(older).not.toHaveAttribute("open", "");
   await expect(older.locator("input")).toHaveCount(3);
   await expect(older.locator("input").first()).not.toBeVisible();
-  await older.getByText("以前のメモ", { exact: true }).click();
+  await older.getByText("以前のメモ(1日)", { exact: true }).click();
   await expect(older.getByRole("textbox").first()).toBeVisible();
 
   await records.getByRole("button", { name: "実行記録を追加" }).click();

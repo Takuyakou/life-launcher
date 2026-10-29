@@ -10443,7 +10443,7 @@ function DashboardApp() {
           >
             <header className="launcherOverlayHeader">
               <div>
-                <p className="eyebrow">Launcher</p>
+                <p className="eyebrow">Dictionary</p>
                 <h2>辞書</h2>
               </div>
               <button
@@ -10878,7 +10878,6 @@ function DashboardApp() {
                 filteredSessions={sessionEntries}
                 notesHistory={notesHistory}
                 onAddSession={openManualSessionDialog}
-                onBack={() => setActiveView("main")}
                 onDateScopeChange={setSessionDateScope}
                 onEditProject={openProjectEditDialog}
                 onHistoryNoteBlur={flushHistoryNotesSave}
@@ -13791,7 +13790,7 @@ function DashboardApp() {
             tabIndex={-1}
           >
             <div>
-              <p className="eyebrow">Someday</p>
+              <p className="eyebrow">Wishlist</p>
               <h2>やりたいことを編集</h2>
             </div>
 
@@ -14459,6 +14458,9 @@ function DashboardApp() {
                       type="number"
                       value={settingsDraft.dayStartHour}
                     />
+                    <span aria-hidden="true" className="numberDragUnit">
+                      時
+                    </span>
                     <span aria-hidden="true" className="numberDragAffordance" />
                   </span>
                 </label>
@@ -14492,7 +14494,7 @@ function DashboardApp() {
                     }
                     type="checkbox"
                   />
-                  <span>ミニモード</span>
+                  <span>ミニタイマーを使う</span>
                 </label>
                 <label className="settingsToggle settingsToggle--wide">
                   <input
@@ -14652,11 +14654,13 @@ function DashboardApp() {
                           <UiIcon name="close" size={16} />
                         </button>
                       </div>
-                      <small className="quietText quietText--small">
-                        {recording
-                          ? "キーの組み合わせを押してください。Escapeで取消"
-                          : shortcutValidationMessage(value, others)}
-                      </small>
+                      {(recording || value.trim()) && (
+                        <small className="quietText quietText--small">
+                          {recording
+                            ? "キーの組み合わせを押してください。Escapeで取消"
+                            : shortcutValidationMessage(value, others)}
+                        </small>
+                      )}
                     </div>
                   );
                 })}
@@ -14774,6 +14778,9 @@ function DashboardApp() {
               }
             >
               <h3>メンテナンス</h3>
+              <p className="quietText quietText--small">
+                このタブの操作は押すとすぐ実行されます。保存は不要です。
+              </p>
               <div className="maintenanceGroups">
                 <section aria-labelledby="maintenance-data-heading" className="maintenanceGroup">
                   <h4 id="maintenance-data-heading">データ・フォルダ</h4>
