@@ -126,7 +126,13 @@ await addedProjectRow.focus();
 
 ## 10. CI の結果
 
-(push 後に追記)
+[PR #127](https://github.com/Takuyakou/life-launcher/pull/127)(マージ先は `main`)、ワークフロー `CI`(`windows-latest`)。
+
+| コミット | 結果 |
+| --- | --- |
+| `b6bcfdf`(修正と、この報告の最初の版) | 成功(11分41秒) |
+
+この表の追記そのものを含むコミットの CI は、この表には載せていない(PR の画面で確認できる)。
 
 ## 11. 判断メモ
 
