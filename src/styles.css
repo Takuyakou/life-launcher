@@ -7155,7 +7155,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .launcherSearchResult {
-  min-height: 58px;
+  min-height: 61px;
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr);
   align-items: center;
@@ -9852,7 +9852,7 @@ input[type="number"]::-webkit-inner-spin-button {
   --today-picker-font-meta: 11px;
   width: min(720px, 100%);
   height: min(720px, calc(100vh - 24px));
-  max-height: min(82vh, 720px);
+  max-height: min(calc(100vh - 24px), 720px);
   grid-template-rows: auto auto minmax(0, 1fr) auto;
   gap: 0;
   overflow: hidden;
@@ -9860,7 +9860,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayPickerDialog .modalTitleRow {
-  padding: 15px 16px 13px;
+  padding: 12px 16px 10px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -9919,8 +9919,8 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .todayPickerDestination {
   display: grid;
-  gap: 9px;
-  padding: 14px 14px 16px;
+  gap: 6px;
+  padding: 10px 14px 12px;
   border-bottom: 1px solid var(--line);
   background: var(--surface-soft);
 }
@@ -9968,36 +9968,49 @@ input[type="number"]::-webkit-inner-spin-button {
   line-height: 1.35;
 }
 
+/* P9-08: the slot band keeps the height of a filled slot, so adding a candidate does not move the list. */
 .todayPickerSlots {
+  min-height: 61px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
   gap: 7px;
 }
 
 .todayPickerSlot {
   min-width: 0;
-  min-height: 90px;
   border: 1px solid var(--line-soft);
   border-radius: var(--radius);
-  padding: 9px 9px 8px;
+  padding: 7px 9px 4px;
   background: var(--surface);
 }
 
 .todayPickerSlot.todayPickerRow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  align-items: start;
-  gap: 5px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "project project"
+    "task remove";
+  align-items: center;
+  gap: 6px;
+}
+
+.todayPickerSlot.todayPickerRow > .todayPickerSlotProject {
+  min-height: 18px;
+  grid-area: project;
+}
+
+.todayPickerSlot.todayPickerRow > .todayPickerSlotTask {
+  grid-area: task;
 }
 
 .todayPickerRemoveButton {
   width: auto;
   min-width: 0;
-  min-height: 31px;
-  height: 31px;
+  min-height: 24px;
+  height: 24px;
   justify-self: end;
-  padding: 0 11px;
+  padding: 0 9px;
   font-size: 10px;
   font-weight: 800;
   line-height: 1;
@@ -10005,12 +10018,12 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayPickerSlot.todayPickerRow > .todayPickerRemoveButton {
-  grid-column: 1;
-  grid-row: 3;
+  grid-area: remove;
   width: auto;
 }
 
 .todayPickerSlot--empty {
+  height: 44px;
   display: grid;
   place-items: center;
   border-style: dashed;
@@ -10061,8 +10074,8 @@ input[type="number"]::-webkit-inner-spin-button {
   min-height: 0;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
-  gap: 10px;
-  padding: 18px 14px 0;
+  gap: 8px;
+  padding: 10px 14px 0;
 }
 
 .todayPickerSourceHeading > span {
@@ -10081,13 +10094,13 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .todayPickerSourceTab {
   min-width: 0;
-  min-height: 46px;
+  min-height: 40px;
   display: grid;
   align-content: center;
-  gap: 3px;
+  gap: 2px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 7px 10px;
+  padding: 5px 10px;
   background: var(--surface-soft);
   color: var(--text-muted-readable);
   text-align: left;
@@ -10137,7 +10150,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayPickerPanelHeading {
-  min-height: 38px;
+  min-height: 32px;
   display: flex;
   align-items: center;
   gap: 7px;
@@ -10160,13 +10173,13 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayPickerRow:not(.todayPickerSlot) {
-  min-height: 60px;
+  min-height: 52px;
   display: grid;
   grid-template-columns: minmax(130px, 170px) minmax(0, 1fr) 96px;
   align-items: center;
   gap: 14px;
   border-top: 1px solid var(--line-soft);
-  padding: 9px 4px;
+  padding: 6px 4px;
 }
 
 .todayPickerCopy {
@@ -10303,7 +10316,7 @@ input[type="number"]::-webkit-inner-spin-button {
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
-  padding: 10px calc(24px + var(--scrollbar-size)) 10px 14px;
+  padding: 8px calc(24px + var(--scrollbar-size)) 8px 14px;
   border-top: 1px solid var(--line);
 }
 
@@ -10354,10 +10367,6 @@ input[type="number"]::-webkit-inner-spin-button {
 
   .todayPickerSlots {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .todayPickerSlot {
-    min-height: 82px;
   }
 
   .todayPickerRow:not(.todayPickerSlot) {
