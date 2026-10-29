@@ -190,6 +190,9 @@ test("registration stays in source sections and persists after reload", async ({
   await wishlistInput.fill("再起動後も残るやりたいこと");
   await wishlistInput.press("Enter");
   await expect(wishlistDialog).toHaveCount(0);
+  // Closing a dialog hands focus back to its opener on the next animation frame. Wait for that,
+  // or it can land after the focus below and open the Wishlist section menu instead.
+  await expect(wishlist.getByRole("button", { name: "やりたいことを追加" })).toBeFocused();
 
   await addedProjectRow.focus();
   await page.keyboard.press("Shift+F10");
