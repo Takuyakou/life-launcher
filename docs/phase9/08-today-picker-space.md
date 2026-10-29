@@ -4,7 +4,7 @@
 
 ## 1. 判定
 
-`DONE`(CI の結果は 11. に追記)
+`DONE`
 
 ## 2. 実装内容の要約
 
@@ -97,7 +97,13 @@
 
 ## 11. CI の結果
 
-(PR 作成後に追記)
+[PR #124](https://github.com/Takuyakou/life-launcher/pull/124)(マージ先は `main`)、ワークフロー `CI`(`windows-latest`)。
+
+| コミット | 結果 |
+| --- | --- |
+| `5ea08ac`(実装) | 成功(11分15秒)。ローカルで失敗した `phase9-color-roles` の hover テストも CI では通った |
+
+`phase9-color-roles` の hover テストは、このマシンでだけ失敗する(10. 参照)。
 
 ## 12. 判断メモ
 
