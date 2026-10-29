@@ -48,6 +48,10 @@ const look = (page: Page, selector: string, index = 0): Promise<Look> =>
       };
     });
 
+/** Waits until the element looks as expected; hover and focus colours arrive through transitions. */
+const expectLook = (page: Page, selector: string, expected: Partial<Look>, message?: string) =>
+  expect.poll(() => look(page, selector), { message }).toMatchObject(expected);
+
 const token = (page: Page, name: string, property: "color" | "backgroundColor" = "color") =>
   page.evaluate(
     ([tokenName, prop]) => {
@@ -166,10 +170,7 @@ test("P9-07 border-less buttons still react to hover and show the yellow focus r
   for (const entry of BORDERLESS_BUTTONS) {
     const rest = await look(page, entry.selector);
     await page.locator(entry.selector).first().hover();
-    await expect
-      .poll(async () => (await look(page, entry.selector)).background, { message: `${entry.name} hover` })
-      .toBe(hoverBackground);
-    expect((await look(page, entry.selector)).visibleBorder, `${entry.name} hover border`).toBe(false);
+    await expectLook(page, entry.selector, { background: hoverBackground, visibleBorder: false }, `${entry.name} hover`);
     expect(rest.background).not.toBe(hoverBackground);
     await page.mouse.move(0, 0);
 
@@ -177,10 +178,12 @@ test("P9-07 border-less buttons still react to hover and show the yellow focus r
     await page.locator(entry.selector).first().focus();
     await page.keyboard.press("Shift+Tab");
     await page.keyboard.press("Tab");
-    const focused = await look(page, entry.selector);
-    expect(focused.outlineStyle, `${entry.name} focus ring`).toBe("solid");
-    expect(focused.outlineColor, `${entry.name} focus ring colour`).toBe(accentStrong);
-    expect(focused.visibleBorder, `${entry.name} focus border`).toBe(false);
+    await expectLook(
+      page,
+      entry.selector,
+      { outlineStyle: "solid", outlineColor: accentStrong, visibleBorder: false },
+      `${entry.name} focus ring`,
+    );
   }
 
   // Section bars: hover paints the bar, keyboard focus on the toggle rings the whole bar.
@@ -189,14 +192,12 @@ test("P9-07 border-less buttons still react to hover and show the yellow focus r
     [".projectsBand .disclosureHeader", ".projectsBand .disclosureHeader .disclosure"],
   ] as const) {
     await page.locator(bar).first().hover();
-    await expect.poll(async () => (await look(page, bar)).background).toBe(hoverBackground);
+    await expectLook(page, bar, { background: hoverBackground }, `${bar} hover`);
     await page.mouse.move(0, 0);
     await page.locator(toggle).first().focus();
     await page.keyboard.press("Shift+Tab");
     await page.keyboard.press("Tab");
-    const focusedBar = await look(page, bar);
-    expect(focusedBar.outlineStyle, `${bar} focus ring`).toBe("solid");
-    expect(focusedBar.outlineColor).toBe(accentStrong);
+    await expectLook(page, bar, { outlineStyle: "solid", outlineColor: accentStrong }, `${bar} focus ring`);
   }
 
   // Today "＋ きっかけ" appears when its zone is hovered, then reacts like the other text buttons.
@@ -204,15 +205,12 @@ test("P9-07 border-less buttons still react to hover and show the yellow focus r
   const trigger = ".todayRow:first-child .todayTriggerButton--empty";
   await row.locator(".todayTriggerZone").hover();
   await row.locator(".todayTriggerButton--empty").hover();
-  await expect.poll(async () => (await look(page, trigger)).background).toBe(hoverBackground);
-  expect((await look(page, trigger)).visibleBorder).toBe(false);
+  await expectLook(page, trigger, { background: hoverBackground, visibleBorder: false }, "trigger hover");
   await page.mouse.move(0, 0);
   await row.locator(".todayTriggerButton--empty").focus();
   await page.keyboard.press("Shift+Tab");
   await page.keyboard.press("Tab");
-  const focusedTrigger = await look(page, trigger);
-  expect(focusedTrigger.outlineStyle).toBe("solid");
-  expect(focusedTrigger.outlineColor).toBe(accentStrong);
+  await expectLook(page, trigger, { outlineStyle: "solid", outlineColor: accentStrong }, "trigger focus ring");
 });
 
 test("P9-07 hit areas never get smaller than before", async ({ page }) => {

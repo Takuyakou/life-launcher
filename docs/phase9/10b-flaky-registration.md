@@ -20,6 +20,7 @@
 | --- | --- |
 | `tests/visual/phase6-readiness.spec.ts` | `registration` で、やりたいことの追加ダイアログを閉じたあと、フォーカスが「やりたいことを追加」ボタンへ戻るのを待つ1行(とコメント)を追加 |
 | `tests/visual/phase9-color-roles.spec.ts` | 色の確認用の `expectStyle`(`expect.poll`)を追加し、hover の背景色・枠線、フォーカスの輪の確認5か所をこれに置き換え |
+| `tests/visual/phase9-border-roles.spec.ts` | オーナー指示による追加。hover・フォーカスの確認(「border-less buttons still react to hover…」)の1回読みを、`expect.poll` の `expectLook` に置き換え(14. に詳細) |
 | `docs/phase9/10b-flaky-registration.md` | この報告 |
 
 製品コード(`src/`、`src-tauri/`)、基準画像、仕様書(`docs/spec/current-spec.md`)、ヘルプ(`helpGuide.ts`)は変えていない(テストだけの修正のため)。
@@ -91,7 +92,7 @@ await addedProjectRow.focus();
 
 ## 7. 調べて、直さなかったもの
 
-- `phase9-border-roles.spec.ts`(P9-07)にも、hover・フォーカスのあとに1回だけ読む同じ形がある。50回の繰り返しで失敗が出なかったので、今回は変えていない(提案、12.)。
+- `phase9-border-roles.spec.ts`(P9-07)にも、hover・フォーカスのあとに1回だけ読む同じ形がある。最初は50回の繰り返しで失敗が出なかったので変えず、提案(12.)にした。オーナーの指示で、この後に直した(14.)。
 - `phase9-color-roles` の ほかの1回読み(静止状態の色、実行中の時計の色など)は、transition の途中にならない状態を読んでいるので、そのままにした。
 
 ## 8. 修正後の繰り返し実行
@@ -142,5 +143,21 @@ await addedProjectRow.focus();
 
 ## 12. 提案(実装していないこと)
 
-- `phase9-border-roles.spec.ts` の hover・フォーカスの確認(`look` の1回読み)も、`expect.poll` の形にそろえる。今回の繰り返しでは失敗は出なかった。
+- (実施済み: 14.)`phase9-border-roles.spec.ts` の hover・フォーカスの確認を `expect.poll` の形にそろえる。
 - ダイアログを閉じたあとにフォーカスの位置へ依存するテストが、ほかにもないか確認する(`registration` と同じ形の失敗の予防)。
+
+## 14. オーナー指示による追加: `phase9-border-roles` を同じ形にそろえる
+
+同じ原因(transition の途中の値を1回だけ読む)で確率的に落ちうるため、`phase9-border-roles.spec.ts` の「P9-07 border-less buttons still react to hover and show the yellow focus ring」の読み出しを `expect.poll` に置き換えた。期待値は変えていない。
+
+- `expectLook(page, selector, expected, message)` を追加した(`look` を `expect.poll` で繰り返し読み、期待のプロパティが全部そろうまで待つ)。
+- 置き換えた場所(すべて同じテスト内):
+  - 枠なしボタン5種の hover(背景色と「枠が見えない」)
+  - 同じボタンのキーボードフォーカス(輪の種類・色と「枠が見えない」)
+  - セクションバー2種の hover(背景色)とフォーカスの輪
+  - 「＋ きっかけ」の hover(背景色と「枠が見えない」)とフォーカスの輪
+- 静止状態を読む確認(枠が消えたこと、当たり判定の大きさなど)は、transition の途中にならないのでそのままにした。
+
+| テスト | 実行回数 | 失敗 |
+| --- | --- | --- |
+| `phase9-border-roles` の9件すべて(4並列) | 各50(計450) | **0** |
