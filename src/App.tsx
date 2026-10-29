@@ -10213,7 +10213,7 @@ function DashboardApp() {
                   {!collapsed && (
                     <div className="quickGroupItems" data-sidebar-group-name={group.name}>
                       {group.buttons.length === 0 && (
-                        <p className="quickGroupEmpty">見出しを右クリックしてボタンを追加できます</p>
+                        <p className="quickGroupEmpty">見出しを右クリックしてボタンを追加</p>
                       )}
                       {group.buttons.map((button) => (
                         <div
@@ -15648,10 +15648,13 @@ function DashboardApp() {
           const replacingExisting = Boolean(
             wishlistMode && selectedWishlist && nextStepProject?.nextStep?.text.trim(),
           );
+          const swappingExisting = Boolean(
+            nextStepEditDraft.mode === "promote" && nextStepProject?.nextStep?.text.trim(),
+          );
           const editingExisting = !wishlistMode && nextStepEditDraft.mode === "edit";
           const dialogTitle = editingExisting
             ? "次の一手を編集"
-            : replacingExisting
+            : replacingExisting || swappingExisting
               ? "次の一手を入れ替える"
               : "次の一手を設定";
           const saveDisabled =
