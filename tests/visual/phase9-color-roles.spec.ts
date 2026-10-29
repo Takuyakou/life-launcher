@@ -49,6 +49,17 @@ const styleOf = (page: Page, selector: string) =>
       };
     });
 
+/**
+ * Colours change through a CSS transition, so a computed colour read right after hover or focus can still be mid-way.
+ * Wait until the property reaches the expected value instead of reading it once.
+ */
+const expectStyle = (
+  page: Page,
+  selector: string,
+  expected: Partial<Record<"color" | "background" | "border" | "outline" | "outlineStyle", string>>,
+  message?: string,
+) => expect.poll(() => styleOf(page, selector), { message }).toMatchObject(expected);
+
 const ADD_BUTTONS = [".nextStepHeaderAdd--project", ".nextStepHeaderAdd--wishlist", ".nextStepTodayAdd"];
 
 test("P9-06 add buttons on Main use the neutral tokens, with visible hover, focus and pressed states", async ({
@@ -73,10 +84,7 @@ test("P9-06 add buttons on Main use the neutral tokens, with visible hover, focu
     expect(await styleOf(page, selector), selector).toMatchObject(neutral);
 
     await button.hover();
-    await expect
-      .poll(async () => (await styleOf(page, selector)).background, { message: `${selector} hover` })
-      .toBe(hoverBackground);
-    expect((await styleOf(page, selector)).border).toBe(hoverBorder);
+    await expectStyle(page, selector, { background: hoverBackground, border: hoverBorder }, `${selector} hover`);
 
     // Hold the press, then leave the button before releasing so it is not a click.
     await page.mouse.down();
@@ -91,9 +99,12 @@ test("P9-06 add buttons on Main use the neutral tokens, with visible hover, focu
   await page.locator(ADD_BUTTONS[0]).focus();
   await page.keyboard.press("Shift+Tab");
   await page.keyboard.press("Tab");
-  const focused = await styleOf(page, ADD_BUTTONS[0]);
-  expect(focused.outlineStyle).toBe("solid");
-  expect(focused.outline).toBe(await token(page, "--accent-strong"));
+  await expectStyle(
+    page,
+    ADD_BUTTONS[0],
+    { outlineStyle: "solid", outline: await token(page, "--accent-strong") },
+    "focus ring",
+  );
 });
 
 test("P9-06 the three maintenance buttons are neutral and 'restore from backup' is red like 'clear backup folder'", async ({
@@ -171,9 +182,7 @@ test("P9-06 the Today3 entry, the victory bar, keyboard focus and the running ti
   await page.locator(".victoryTextButton").focus();
   await page.keyboard.press("Shift+Tab");
   await page.keyboard.press("Tab");
-  const focus = await styleOf(page, ".victoryTextButton");
-  expect(focus.outlineStyle).toBe("solid");
-  expect(focus.outline).toBe(accent);
+  await expectStyle(page, ".victoryTextButton", { outlineStyle: "solid", outline: accent }, "victory focus ring");
 
   // The running time.
   await page.locator(".doNowStartPrimary").click();
@@ -195,8 +204,7 @@ test("P9-06 neutral settings buttons react like the neutral Main action and keep
     const selector = `button:has-text("${name}")`;
     await page.mouse.move(0, 0);
     await page.locator(selector).hover();
-    await expect.poll(async () => (await styleOf(page, selector)).background, { message: name }).toBe(hoverBackground);
-    expect((await styleOf(page, selector)).border, name).toBe(hoverBorder);
+    await expectStyle(page, selector, { background: hoverBackground, border: hoverBorder }, name);
   }
 
   // Keyboard focus keeps the yellow ring.
@@ -205,9 +213,12 @@ test("P9-06 neutral settings buttons react like the neutral Main action and keep
   await page.locator(first).focus();
   await page.keyboard.press("Shift+Tab");
   await page.keyboard.press("Tab");
-  const focused = await styleOf(page, first);
-  expect(focused.outlineStyle).toBe("solid");
-  expect(focused.outline).toBe(await token(page, "--accent-strong"));
+  await expectStyle(
+    page,
+    first,
+    { outlineStyle: "solid", outline: await token(page, "--accent-strong") },
+    "settings focus ring",
+  );
 });
 
 test("P9-06 the instruction folder 'remove' button is red like 'clear backup folder'", async ({
