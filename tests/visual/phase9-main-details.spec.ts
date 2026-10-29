@@ -132,8 +132,9 @@ test("P9-09 the card button 'edit' keeps the generation and the menu item 'swap'
   await card.getByRole("button", { name: `${PROJECT}の次の一手の操作` }).click();
   await page.getByRole("menuitem", { name: "別の行動に入れ替える", exact: true }).click();
   // Swapping starts from an empty action (a new generation): a different dialog from "edit".
-  const swap = page.getByRole("dialog", { name: "次の一手を設定" });
+  const swap = page.getByRole("dialog", { name: "次の一手を入れ替える" });
   await expect(swap).toBeVisible();
+  await expect(swap.getByRole("heading", { name: "次の一手を入れ替える" })).toBeVisible();
   await expect(swap.getByRole("textbox", { name: "行動" })).toHaveValue("");
   await expect(page.getByRole("dialog", { name: "次の一手を編集" })).toHaveCount(0);
 });
@@ -183,7 +184,14 @@ test("P9-09 an open sidebar group without buttons shows a guide, and a button ca
   await expect(empty.locator(".quickGroupHeader")).toContainText("リンク");
   await expect(empty.locator(".quickGroupHeader small")).toHaveText("0");
   const guide = empty.locator(".quickGroupEmpty");
-  await expect(guide).toHaveText("見出しを右クリックしてボタンを追加できます");
+  await expect(guide).toHaveText("見出しを右クリックしてボタンを追加");
+  // It fits on one line (the text height is one line of the 12px / 1.4 style).
+  const guideLines = await guide.evaluate((el) => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    return new Set([...range.getClientRects()].map((rect) => Math.round(rect.top))).size;
+  });
+  expect(guideLines).toBe(1);
   // Groups that have buttons do not show it.
   await expect(page.locator(".quickGroup", { hasText: "資料" }).locator(".quickGroupEmpty")).toHaveCount(0);
   // A collapsed group shows no guide.
