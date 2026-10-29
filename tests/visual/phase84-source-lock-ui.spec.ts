@@ -33,7 +33,7 @@ test("unfinished Today3 locks its current NextStep source and removal unlocks it
   expect(statusBox!.x + statusBox!.width).toBeLessThanOrEqual(menu!.x + 1);
   await expect(card.locator(".nextStepLockedStatus")).toHaveCount(0);
   await expect(card.getByRole("button", { name: "今日へ" })).toHaveCount(0);
-  await expect(card.getByRole("button", { name: "変更", exact: true })).toHaveCount(0);
+  await expect(card.getByRole("button", { name: "編集", exact: true })).toHaveCount(0);
 
   await card.click({ button: "right" });
   const edit = page.getByRole("menuitem", { name: "次の一手を編集", exact: true });
@@ -45,7 +45,7 @@ test("unfinished Today3 locks its current NextStep source and removal unlocks it
   await expect(card.locator(".sourceLockBadge")).toHaveCount(0);
   await expect(card.locator(".nextStepTodayStatus")).toHaveCount(0);
   await expect(card.getByRole("button", { name: "今日へ" })).toBeVisible();
-  await expect(card.getByRole("button", { name: "変更", exact: true })).toBeVisible();
+  await expect(card.getByRole("button", { name: "編集", exact: true })).toBeVisible();
 });
 
 test("unfinished Today3 locks only the matching Wishlist identity", async ({ page }) => {

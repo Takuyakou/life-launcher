@@ -41,7 +41,7 @@ async function openPromotion(page: Page, itemId = "sample-weekend") {
   const menu = page.getByRole("menu");
   await expect(menu.getByRole("menuitem", { name: "＋ 今日へ", exact: true })).toHaveCount(0);
   await menu.getByRole("menuitem", { name: "次の一手にする" }).click();
-  return page.getByRole("dialog", { name: /次の一手を(設定|変更)/ });
+  return page.getByRole("dialog", { name: /次の一手を(設定|入れ替える)/ });
 }
 
 function replacementFixture(): {
@@ -465,9 +465,8 @@ test("Phase 8.4 NextStep menu offers edit, change and unset without legacy regis
   const menu = page.getByRole("menu");
   await expect(menu.getByRole("menuitem")).toHaveText([
     "プロジェクトを編集",
-    "プロジェクトを管理",
     "次の一手を編集",
-    "次の一手を変更",
+    "別の行動に入れ替える",
     "次の一手を未設定にする",
     "プロジェクトを削除…",
   ]);
@@ -563,7 +562,7 @@ test("v1.3 NextStep uses a compact 3x2 grid with aligned actions and six-item ex
   ).toBe(3);
   const configuredAction = page
     .locator(".nextStepCard", { hasText: template.nextStep!.text })
-    .getByRole("button", { name: "変更" });
+    .getByRole("button", { name: "編集" });
   const unsetAction = page
     .locator(".nextStepCard", { hasText: "まだ次の一手がありません" })
     .getByRole("button", { name: "次の一手を設定" })

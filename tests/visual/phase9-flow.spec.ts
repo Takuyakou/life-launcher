@@ -212,7 +212,7 @@ test("P9-04 case 3: swapping the Next Step while running never makes the new act
   // Source Lock: the running Project's Next Step cannot be swapped from the UI.
   const learningCard = page.locator(".nextStepCard").filter({ hasText: NEXT_STEP_TEXT }).first();
   await expect(learningCard.getByLabel("今日の3件で使用中のためロック中")).toBeVisible();
-  await expect(learningCard.getByRole("button", { name: "変更" })).toHaveCount(0);
+  await expect(learningCard.getByRole("button", { name: "編集" })).toHaveCount(0);
 
   // Even if the config changes underneath (e.g. an external edit), a new generation is not "running".
   await page.evaluate(() => {
