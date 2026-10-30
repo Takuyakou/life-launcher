@@ -72,12 +72,13 @@ test("Today header collapses and dashboard metadata keeps one vertical rhythm", 
       bands.map((band) => {
         const title = band.querySelector(".todaySectionDisclosure h2, .disclosureLabel strong")!;
         const count = band.querySelector(".todaySectionCount, .todayCompletionSummary, .disclosureCount")!;
-        return [title.getBoundingClientRect().x, count.getBoundingClientRect().x];
+        // P9-14: the count sits right after the name (no shared count column), so the name-to-count gap is what lines up.
+        return [title.getBoundingClientRect().x, count.getBoundingClientRect().x - title.getBoundingClientRect().right];
       }),
     );
-  horizontalColumns.forEach(([titleX, countX]) => {
+  horizontalColumns.forEach(([titleX, gap]) => {
     expect(Math.abs(titleX - horizontalColumns[0][0])).toBeLessThanOrEqual(2);
-    expect(Math.abs(countX - horizontalColumns[0][1])).toBeLessThanOrEqual(2);
+    expect(Math.abs(gap - horizontalColumns[0][1])).toBeLessThanOrEqual(1);
   });
 
   const todayTitle = page.locator(".todaySectionDisclosure h2");

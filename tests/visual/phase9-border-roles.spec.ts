@@ -84,10 +84,6 @@ test("P9-07 frames that carry no role are gone", async ({ page }) => {
     ".projectsBand",
     ".inboxBand",
     ".todayActivityBand",
-    ".todaySectionBar",
-    ".projectsBand .disclosureHeader",
-    ".inboxBand .disclosureHeader",
-    ".todayActivityBand .disclosureHeader",
     ...BORDERLESS_BUTTONS.map((entry) => entry.selector),
     ".todayTriggerButton--empty",
   ]) {
@@ -96,8 +92,14 @@ test("P9-07 frames that carry no role are gone", async ({ page }) => {
   }
   // The top menu frame and the section bars are plain too (no tinted background).
   expect((await look(page, ".topPills")).background).toBe("rgba(0, 0, 0, 0)");
-  for (const selector of [".todaySectionBar", ".projectsBand .disclosureHeader", ".inboxBand .disclosureHeader"]) {
-    expect((await look(page, selector)).background, selector).toBe("rgba(0, 0, 0, 0)");
+  // P9-14: the four section bars have their v1.3.4 frame back (1px var(--line)); the background stays plain.
+  const line = await token(page, "--line");
+  for (const selector of [".todaySectionBar", ".projectsBand .disclosureHeader", ".inboxBand .disclosureHeader", ".todayActivityBand .disclosureHeader"]) {
+    const found = await look(page, selector);
+    expect(found.visibleBorder, `${selector} border`).toBe(true);
+    await expect(page.locator(selector).first(), selector).toHaveCSS("border-top-color", line);
+    await expect(page.locator(selector).first(), selector).toHaveCSS("border-top-width", "1px");
+    expect(found.background, selector).toBe("rgba(0, 0, 0, 0)");
   }
 });
 

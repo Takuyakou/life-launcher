@@ -3987,8 +3987,15 @@ input[type="number"]::-webkit-inner-spin-button {
   color: var(--accent-strong);
 }
 
-.victoryTextButton--empty {
+.victoryTextButton--empty,
+.victoryTextButton--empty:hover {
   color: var(--muted);
+}
+
+/* P9-14: the focus put on the button automatically on an empty morning shows no ring; the flag is removed on blur or
+   on the first key press, so keyboard use shows the ring as usual. */
+.victoryTextButton[data-auto-focus]:focus-visible {
+  outline: none;
 }
 
 .victoryTextButton:focus-visible {
@@ -8770,7 +8777,7 @@ input[type="number"]::-webkit-inner-spin-button {
   min-width: 0;
   overflow: hidden;
   color: var(--text-muted-readable);
-  font-size: 11px;
+  font-size: var(--dashboard-font-meta);
   font-weight: 450;
   line-height: 1.4;
   text-overflow: ellipsis;
@@ -9107,7 +9114,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .todaySectionBar {
   min-height: 48px;
   display: grid;
-  grid-template-columns: 120px 30px max-content minmax(0, 1fr);
+  grid-template-columns: max-content max-content minmax(0, 1fr);
   align-items: center;
   gap: 8px;
   margin-bottom: 10px;
@@ -9128,7 +9135,7 @@ input[type="number"]::-webkit-inner-spin-button {
   margin: 0;
   color: var(--text);
   font-size: var(--dashboard-font-section);
-  font-weight: 650;
+  font-weight: 900; /* P9-14: same as the other bars' names (<strong> inside the 650 .disclosure = bolder = 900) */
   line-height: 1.35;
 }
 
@@ -9190,7 +9197,8 @@ input[type="number"]::-webkit-inner-spin-button {
 .todaySectionDescription {
   min-width: 0;
   overflow: hidden;
-  color: var(--muted);
+  color: var(--text-muted-readable);
+  font-weight: 450;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -10503,7 +10511,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .projectsBand .disclosureHeader,
 .inboxBand .disclosureHeader {
-  grid-template-columns: 120px 30px minmax(0, 1fr) max-content;
+  grid-template-columns: max-content max-content minmax(0, 1fr) max-content;
   min-height: 48px;
 }
 
@@ -10514,7 +10522,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayActivityBand .disclosureHeader {
-  grid-template-columns: 120px 30px minmax(0, 1fr) max-content;
+  grid-template-columns: max-content max-content minmax(0, 1fr) max-content;
   padding-inline-end: var(--today-activity-end-inset);
 }
 
@@ -12324,8 +12332,9 @@ input[type="number"]::-webkit-inner-spin-button {
   animation: completion-gold-pulse 850ms ease-out;
 }
 
-/* P9-13: like the Main cards, the victory bar strengthens its border, brightens and lifts 1px on hover or when
-   anything inside has focus. Only the border colour / background / lift change (the colours stay the gold of the bar). */
+/* P9-13 / P9-14: like the Main cards, the victory bar strengthens its border, brightens and lifts 1px on hover, or
+   while the input is being edited (the input shows no ring). Keyboard focus on the text button, the checkbox or a
+   suggestion chip keeps the bar as it is: their own ring is the only square. An empty victory (--empty) never lights up. */
 .victoryBar {
   transition:
     background-color 120ms ease,
@@ -12333,15 +12342,15 @@ input[type="number"]::-webkit-inner-spin-button {
     transform 120ms ease;
 }
 
-.victoryBar:hover,
-.victoryBar:focus-within {
+.victoryBar:not(.victoryBar--empty):hover,
+.victoryBar:not(.victoryBar--empty):has(.victoryInput:focus) {
   border-color: var(--accent);
   background: rgba(231, 185, 77, 0.08);
   transform: translateY(-1px);
 }
 
-.victoryBar--done:hover,
-.victoryBar--done:focus-within {
+.victoryBar--done:not(.victoryBar--empty):hover,
+.victoryBar--done:not(.victoryBar--empty):has(.victoryInput:focus) {
   background:
     linear-gradient(
       120deg,
@@ -13384,33 +13393,7 @@ button.mainActionButton:is(
     gap: 8px;
   }
 }
-.mainScrollContent[data-main-display-size="large"]
-  :is(
-    .projectsBand .disclosureHeader,
-    .inboxBand .disclosureHeader,
-    .todayActivityBand .disclosureHeader
-  ) {
-  grid-template-columns: 132px 34px minmax(0, 1fr) max-content;
-}
-
-/* P9-13: .todaySectionBar is kept out of the :is() above (its specificity would outrank this rule) so that the
-   description starts right after the count, as at the standard size. */
-.mainScrollContent[data-main-display-size="large"] .todaySectionBar {
-  grid-template-columns: 132px 34px max-content minmax(0, 1fr);
-}
-
-.mainScrollContent[data-main-display-size="xlarge"]
-  :is(
-    .projectsBand .disclosureHeader,
-    .inboxBand .disclosureHeader,
-    .todayActivityBand .disclosureHeader
-  ) {
-  grid-template-columns: 144px 38px minmax(0, 1fr) max-content;
-}
-
-.mainScrollContent[data-main-display-size="xlarge"] .todaySectionBar {
-  grid-template-columns: 144px 38px max-content minmax(0, 1fr);
-}
+/* P9-14: the four Main section bars place the count right after the name (no fixed name column), at every display size. */
 
 /* P8.9 review refinement: balance the Main toolbar with enlarged content. */
 .mainPanel[data-main-display-size="large"] > .topBar {
@@ -13568,24 +13551,18 @@ button.mainActionButton:is(
   border-top-color: transparent;
 }
 
-.todaySectionBar,
-.disclosureHeader {
-  border-color: transparent;
-  background: transparent;
-}
-
-.todaySectionBar:hover,
-.todaySectionBar:has(.todaySectionDisclosure:focus-visible),
-.disclosureHeader:hover,
-.disclosureHeader:has(.disclosure:focus-visible) {
-  border-color: transparent;
-  background: var(--control-neutral-hover-bg);
-}
-
+/* P9-14: the four section bars get their v1.3.4 frame back (1px var(--line), var(--muted) on hover); the rest of
+   P9-07 (no top lines between sections, etc.) stays. When the bar's own toggle has keyboard focus, the bar shows the
+   ring and the toggle shows none (one square, not two). */
 .todaySectionBar:has(.todaySectionDisclosure:focus-visible),
 .disclosureHeader:has(.disclosure:focus-visible) {
   outline: 2px solid var(--accent-strong);
   outline-offset: -2px;
+}
+
+.todaySectionDisclosure:focus-visible,
+.disclosureHeader .disclosure:focus-visible {
+  outline: none;
 }
 
 /* Text buttons: "手順書", "今日の3件から外す", "他の一手", "＋ きっかけ". */
@@ -13674,26 +13651,15 @@ button.mainActionButton:is(
 /* P9-09: with only one of the count / completion displays shown, place each in its own column. */
 .todaySectionBar > .todaySectionCount {
   grid-column: 2;
-}
-
-/* The completion display starts where the right-aligned 22px count used to start (column width - 22px),
-   so the numbers of all section bars stay in one column. */
-.todaySectionBar > .todayCompletionSummary {
-  grid-column: 2 / 4;
   justify-self: start;
-  margin-left: 8px;
 }
 
-.mainScrollContent[data-main-display-size="large"] .todaySectionBar > .todayCompletionSummary {
-  margin-left: 12px;
-}
-
-.mainScrollContent[data-main-display-size="xlarge"] .todaySectionBar > .todayCompletionSummary {
-  margin-left: 16px;
+.todaySectionBar > .todayCompletionSummary {
+  grid-column: 2;
 }
 
 .todaySectionBar > .todaySectionDescription {
-  grid-column: 4;
+  grid-column: 3;
 }
 
 /* P9-10: unit shown to the right of a number input, left of the spin affordance (same look as the sidebar Timer "分"). */

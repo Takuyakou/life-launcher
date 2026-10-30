@@ -3259,7 +3259,11 @@ function DashboardApp() {
 
     morningFocusDateRef.current = config.today.date;
     window.requestAnimationFrame(() => {
-      victoryNavigationRef.current?.focus({ preventScroll: true });
+      const button = victoryNavigationRef.current;
+      if (!button) return;
+      // The automatic focus shows no ring (cleared on blur / key press by clearVictoryAutoFocus).
+      button.dataset.autoFocus = "";
+      button.focus({ preventScroll: true });
     });
   }, [activeView, config]);
 
@@ -7689,6 +7693,10 @@ function DashboardApp() {
     return persistConfig({ ...config, today: { ...config.today, victory } });
   };
 
+  const clearVictoryAutoFocus = (event: { currentTarget: HTMLElement }) => {
+    delete event.currentTarget.dataset.autoFocus;
+  };
+
   const enterVictoryEditing = () => {
     victorySaveRef.current = null;
     setVictoryEditing(true);
@@ -10905,6 +10913,7 @@ function DashboardApp() {
                   className={[
                     "victoryBar",
                     victoryDone ? "victoryBar--done" : "",
+                    victoryText ? "" : "victoryBar--empty",
                     completionFeedback?.kind === "victory" ? "victoryBar--reward" : "",
                   ]
                     .filter(Boolean)
@@ -10955,7 +10964,9 @@ function DashboardApp() {
                               ? "victoryTextButton"
                               : "victoryTextButton victoryTextButton--empty"
                         }
+                        onBlur={clearVictoryAutoFocus}
                         onClick={enterVictoryEditing}
+                        onKeyDown={clearVictoryAutoFocus}
                         ref={victoryNavigationRef}
                         type="button"
                       >
