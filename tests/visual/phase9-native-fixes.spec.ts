@@ -13,13 +13,6 @@ async function open(page: Page, fixture: VisualQaFixture, display: Display = "st
   await expect(page.locator(".doNowBand")).toBeVisible();
 }
 
-const columns = (page: Page, selector: string): Promise<number[]> =>
-  page.locator(selector).first().evaluate((element) =>
-    getComputedStyle(element)
-      .gridTemplateColumns.split(" ")
-      .map((column) => parseFloat(column)),
-  );
-
 /** Distance from the right edge of the count / completion display to the left edge of the description. */
 const countToDescription = (page: Page) =>
   page.locator(".todaySectionBar").evaluate((bar) => {
@@ -28,43 +21,52 @@ const countToDescription = (page: Page) =>
     return description.left - count.right;
   });
 
-// Measured on main before P9-13 (1080x680, createFullTodayFixture). These headings must not move.
-const OTHER_HEADINGS: Record<Display, { leading: number[]; next: number }> = {
-  standard: { leading: [120, 30], next: 481.19 },
-  large: { leading: [132, 34], next: 455.47 },
-  xlarge: { leading: [144, 38], next: 433.77 },
-};
+/** Distance from the right edge of a section name to the left edge of its count (P9-14: the same for the four bars). */
+const nameToCount = (page: Page, selector: string) =>
+  page.locator(selector).first().evaluate((bar) => {
+    const name = bar.querySelector("h2, strong")!.getBoundingClientRect();
+    const count = bar.querySelector(".todayCompletionSummary, .todaySectionCount, .disclosureCount")!.getBoundingClientRect();
+    return count.left - name.right;
+  });
+
+const HEADINGS = [".todaySectionBar", ".projectsBand .disclosureHeader", ".inboxBand .disclosureHeader", ".todayActivityBand .disclosureHeader"];
 
 for (const display of ["standard", "large", "xlarge"] as const) {
   test(`P9-13 Today heading description follows the count (${display})`, async ({ page }) => {
     await open(page, createFullTodayFixture(), display);
     // 8px column gap; a few px of tolerance for the font.
-    await expect.poll(() => countToDescription(page)).toBeGreaterThanOrEqual(0);
-    await expect.poll(() => countToDescription(page)).toBeLessThanOrEqual(12);
-    const today = await columns(page, ".todaySectionBar");
-    expect(today.slice(0, 2)).toEqual(OTHER_HEADINGS[display].leading);
-    // 3rd column fits "n / n 完了" only (tens of px), the description takes the rest.
-    expect(today[2]).toBeGreaterThan(10);
-    expect(today[2]).toBeLessThan(60);
-    expect(today[3]).toBeGreaterThan(today[2] * 10);
+    await expect.poll(() => countToDescription(page)).toBeGreaterThanOrEqual(7);
+    await expect.poll(() => countToDescription(page)).toBeLessThanOrEqual(9);
+    // P9-14: no fixed name column any more; the count column is as wide as "n / n 完了", the description takes the rest.
+    const [name, count, rest] = await page.locator(".todaySectionBar").evaluate((bar) =>
+      getComputedStyle(bar).gridTemplateColumns.split(" ").map((column) => parseFloat(column)),
+    );
+    expect(name).toBeGreaterThan(80);
+    expect(count).toBeGreaterThan(10);
+    expect(count).toBeLessThan(80);
+    expect(rest).toBeGreaterThan(count * 5);
   });
 
-  test(`P9-13 Today heading with 0 items lines up like the standard size (${display})`, async ({ page }) => {
+  test(`P9-13 Today heading with 0 items lines up like the other sizes (${display})`, async ({ page }) => {
     await open(page, createPickerFixture(), display);
     await expect(page.locator(".todaySectionCount")).toHaveText("0件");
-    // "0件" sits in column 2; column 3 is empty, so the description follows after two 8px gaps.
-    await expect.poll(() => countToDescription(page)).toBeGreaterThanOrEqual(15);
-    await expect.poll(() => countToDescription(page)).toBeLessThanOrEqual(17);
-    expect((await columns(page, ".todaySectionBar"))[2]).toBe(0);
+    // P9-14: "0件" sits in column 2 and the description follows after one 8px gap, as with "n / n 完了".
+    await expect.poll(() => countToDescription(page)).toBeGreaterThanOrEqual(7);
+    await expect.poll(() => countToDescription(page)).toBeLessThanOrEqual(9);
   });
 
-  test(`P9-13 other headings keep their columns (${display})`, async ({ page }) => {
+  test(`P9-13 other headings put the count right after the name (${display})`, async ({ page }) => {
     await open(page, createFullTodayFixture(), display);
-    const expected = OTHER_HEADINGS[display];
-    for (const selector of [".projectsBand .disclosureHeader", ".inboxBand .disclosureHeader", ".todayActivityBand .disclosureHeader"]) {
-      expect((await columns(page, selector)).slice(0, 2)).toEqual(expected.leading);
+    // P9-14 (replaces the fixed 120/132/144px name column checks): the same name-to-count gap for all four, 12-18px.
+    for (const selector of HEADINGS) {
+      await expect.poll(() => nameToCount(page, selector), { message: selector }).toBeGreaterThanOrEqual(12);
+      await expect.poll(() => nameToCount(page, selector), { message: selector }).toBeLessThanOrEqual(18.5);
     }
-    expect((await columns(page, ".projectsBand .disclosureHeader"))[2]).toBeCloseTo(expected.next, 0);
+    // The Next Step bar still has the flexible description column and the actions column.
+    const columns = await page
+      .locator(".projectsBand .disclosureHeader")
+      .evaluate((bar) => getComputedStyle(bar).gridTemplateColumns.split(" ").length);
+    expect(columns).toBe(4);
   });
 }
 
@@ -117,16 +119,17 @@ test("P9-13 victory bar reacts to hover like the cards (achieved)", async ({ pag
   await expect.poll(() => bar(page)).toMatchObject({ border: before.border, image: before.image, transform: "none" });
 });
 
-test("P9-13 victory bar reacts to keyboard focus and keeps the focus ring", async ({ page }) => {
+test("P9-13 victory bar keeps the keyboard focus ring; the frame stays as it is (P9-14)", async ({ page }) => {
   await open(page, createFullTodayFixture());
   await page.getByRole("checkbox", { name: "勝利条件を達成" }).focus();
   await page.keyboard.press("Tab");
   const text = page.locator(".victoryTextButton");
   await expect(text).toBeFocused();
-  await expect.poll(() => bar(page)).toMatchObject({ border: GOLD, background: "rgba(231, 185, 77, 0.08)", transform: LIFT });
+  // P9-14: keyboard focus shows the inner ring only; the frame does not light up (no second square).
   await expect(text).toHaveCSS("outline-style", "solid");
   await expect(text).toHaveCSS("outline-color", GOLD);
   await expect(text).toHaveCSS("outline-width", "2px");
+  await expect.poll(() => bar(page)).toMatchObject({ border: "rgba(231, 185, 77, 0.42)", transform: "none" });
 });
 
 test("P9-13 victory bar stays strong while editing, and an empty spot does not start editing", async ({ page }) => {
