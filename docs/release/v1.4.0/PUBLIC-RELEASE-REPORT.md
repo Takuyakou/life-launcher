@@ -21,7 +21,7 @@ Life Launcher v1.4.0 RELEASED
 | 10.5 下書きの Release | 成功。アセットは4つ、本文は `docs/releases/v1.4.0.md` |
 | 10.6 下書きの確認 | 成功。新しい空のフォルダーへダウンロードし、3ファイルのハッシュが、公開した `SHA256SUMS.txt` と判定書 4. の両方に一致。アセットは4つだけ。全件一致を確かめてから公開に進んだ |
 | 10.7 公開 | 成功。`gh release edit v1.4.0 --draft=false` |
-| 10.8 公開後の確認 | 一部成功。ハッシュの照合、`releases/latest`、README のファイル名は成功。**ダウンロードした EXE の起動の確認は行っていない**(下記) |
+| 10.8 公開後の確認 | 成功。ハッシュの照合、`releases/latest`、README のファイル名、ダウンロードした単体 EXE とポータブル ZIP の EXE の起動(下記)。起動は、別のインスタンスが起動中だったため、オーナーがそれを閉じた後に行った |
 | 10.9 記録 | この報告書 |
 
 判定書と違う操作はしていない。10.1 の `gh release view` が終了コード 1 になるのは、「release not found」が期待の結果のため(この1件だけを許容した)。
@@ -43,14 +43,18 @@ Life Launcher v1.4.0 RELEASED
 - `releases/latest`(GitHub の API)は `v1.4.0` を返す。
 - README、README.en.md のダウンロードのリンクは `releases/latest`、記載のファイル名(`Life-Launcher-v1.4.0-windows-x64-setup.exe`、`…-windows-x64.exe`、`…-windows-x64-portable.zip`)は実際のアセット名と一致。
 
-## 起動の確認(未実施)
+## 起動の確認
 
-判定書 10.8 の「ダウンロードした単体 EXE と、ポータブル ZIP を展開した EXE を起動する」確認は、**行っていない**。公開作業の時点で、別の Life Launcher が起動中だった(PID 33656、`D:\dev\life-launcher-installer-smoke-v1.0.0-merged-main\installed\life-launcher.exe`、2026-10-31 0:06 起動)。このアプリは単一インスタンスのため(`tauri-plugin-single-instance`)、ダウンロードした EXE を起動すると、起動中のアプリへ引き継がれて終了するだけで、確認にならない。起動中のアプリは、実装担当が閉じない(オーナーのアプリ)。
+公開作業の時点で、別の Life Launcher が起動中だった(PID 33656、2026-10-31 0:06 起動、`D:\dev\life-launcher-installer-smoke-v1.0.0-merged-main\installed\life-launcher.exe`)。このアプリは単一インスタンスのため(`tauri-plugin-single-instance`)、ダウンロードした EXE を起動しても確認にならないので、その時は起動しなかった。オーナーが起動中のアプリを閉じた後、Life Launcher のプロセスが無いことを確認して、2回目の再ダウンロード(公開後)の EXE を起動して確かめた。
 
-起動の確認は、起動中のアプリを閉じたあと、オーナーが行う。公開した EXE と同じバイト列(ハッシュ一致)の候補は、公開前に、作り直したビルドで次を確認済み(`FINAL-RELEASE-DECISION.md` の 9. B・C)。
+| 対象 | 結果 |
+| --- | --- |
+| ダウンロードした単体 EXE(`Life-Launcher-v1.4.0-windows-x64.exe`) | 起動して約0.3秒でウィンドウ「Life Launcher」が出た。自己終了(`LIFE_LAUNCHER_RELEASE_SMOKE_EXIT_AFTER_MS` = 20秒)で終了コード 0。`config.json`(`version` 3)を新規作成 |
+| ポータブル ZIP を展開した EXE | 同じ手順で、ウィンドウが出て(約0.3秒)、終了コード 0。`config.json`(`version` 3)を新規作成。`config.json` は単体 EXE と同じ内容(668 バイト、SHA-256 の先頭 `7015705A23D4FA1F`) |
 
-- 実装担当: 単体 EXE とポータブル ZIP 内の EXE を、空のプロファイルで起動してメイン画面を確認(約0.3秒でウィンドウ表示、自己終了で終了コード 0、`config.json` schema 3 を新規作成)。
-- オーナー: C の5項目(インストーラーでの実インストールと起動を含む)を確認済み。
+- 起動は、`%APPDATA%` を一時フォルダーに切り替えた空のプロファイルで行った(`%APPDATA%\life-launcher` には触れていない。自動起動の登録・ウィンドウの位置・WebView2 のデータは普段の場所に触れる。判定書 9. D のとおり)。
+- 環境の注意(以前の版と同じ): このマシンでは既定のグローバルホットキー(`Ctrl+Alt+Space`)がすでに登録されていて、起動時に登録をスキップする(アプリは起動を続ける)。終了時に WebView2 が `Failed to unregister class Chrome_WidgetWin_0`(エラー 1412)を出すが、終了コードは 0。
+- 公開前に、同じバイト列の候補で、オーナーが C の5項目(インストーラーでの実インストールと起動を含む)を確認済み(`FINAL-RELEASE-DECISION.md` の 9. C)。
 
 ## 公開に関するその他の事実
 
