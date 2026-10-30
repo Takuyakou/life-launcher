@@ -59,7 +59,7 @@ The screenshots are generated from synthetic data. They do not contain real user
 
 - Do Now now prefers a Next Step that is already in Today's 3. Starting from either Do Now or Today's 3 shows the same running state in both.
 - The Timer (sidebar, expanded Timer, mini timer) now shows the action you are working on. The overlap in the idle mini timer is fixed.
-- Fixed the Victory text becoming smaller, and the Today's 3 heading description being pushed to the right edge, at the Large and Extra Large display sizes. The Victory bar now reacts to hover like the other cards.
+- Fixed the Victory text becoming smaller, and the Today's 3 heading description being pushed to the right edge, at the Large and Extra Large display sizes. The Victory bar now reacts to hover like the other cards (it stays plain while empty). The section heading frames and text are aligned, and keyboard focus on a heading or the Victory bar no longer shows a doubled yellow square.
 - Button colors follow a consistent role, and borders that carry no role were removed. The "choose today's items" screen shows more candidates.
 - Details were polished across the Main screen, dialogs, Settings, and Records (a duplicated count, "Edit" versus "Swap for another action", a guide for empty sidebar groups, "Mini mode" renamed to "mini timer", and more).
 - Includes dependency vulnerability fixes. Config schema stays at `3`, with no new features or data-format changes.
