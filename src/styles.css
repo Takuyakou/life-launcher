@@ -12324,6 +12324,34 @@ input[type="number"]::-webkit-inner-spin-button {
   animation: completion-gold-pulse 850ms ease-out;
 }
 
+/* P9-13: like the Main cards, the victory bar strengthens its border, brightens and lifts 1px on hover or when
+   anything inside has focus. Only the border colour / background / lift change (the colours stay the gold of the bar). */
+.victoryBar {
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    transform 120ms ease;
+}
+
+.victoryBar:hover,
+.victoryBar:focus-within {
+  border-color: var(--accent);
+  background: rgba(231, 185, 77, 0.08);
+  transform: translateY(-1px);
+}
+
+.victoryBar--done:hover,
+.victoryBar--done:focus-within {
+  background:
+    linear-gradient(
+      120deg,
+      rgba(231, 185, 77, 0.14),
+      rgba(231, 185, 77, 0.025) 48%,
+      transparent 75%
+    ),
+    var(--surface);
+}
+
 .doNowContent--hold,
 .doNowContent--hold:hover {
   border-color: rgba(111, 207, 151, 0.58);
@@ -13358,7 +13386,6 @@ button.mainActionButton:is(
 }
 .mainScrollContent[data-main-display-size="large"]
   :is(
-    .todaySectionBar,
     .projectsBand .disclosureHeader,
     .inboxBand .disclosureHeader,
     .todayActivityBand .disclosureHeader
@@ -13366,13 +13393,14 @@ button.mainActionButton:is(
   grid-template-columns: 132px 34px minmax(0, 1fr) max-content;
 }
 
+/* P9-13: .todaySectionBar is kept out of the :is() above (its specificity would outrank this rule) so that the
+   description starts right after the count, as at the standard size. */
 .mainScrollContent[data-main-display-size="large"] .todaySectionBar {
   grid-template-columns: 132px 34px max-content minmax(0, 1fr);
 }
 
 .mainScrollContent[data-main-display-size="xlarge"]
   :is(
-    .todaySectionBar,
     .projectsBand .disclosureHeader,
     .inboxBand .disclosureHeader,
     .todayActivityBand .disclosureHeader
