@@ -1,9 +1,10 @@
 # Life Launcher v1.4.0 Final Release Decision
 
-**READY FOR USER APPROVAL**(「9. のネイティブ確認 C のオーナー確認が済めば公開できる」という意味です。C は確認待ちで、PASS とは書いていません)
+**READY FOR USER APPROVAL**(オーナーの実機確認 C の5項目が済んだので、オーナーが公開を承認すれば公開できる、という意味です)
 
-- 日付: 2026-10-30(JST)
-- 候補のソース: ブランチ `release/v1.4.0`、コミット `9a86f7a5cf6a5f71e69e7be80be3af3e1b0b5b3d`(`main` = `a4a94e7`〔PR #131、P9-14 のマージ〕+ バージョン・公開文書・公開スクリーンショット + P9-13・P9-14 の公開文書の追記)。この後に足したコミットは、この判定書、`native-checklist.md` だけで、成果物には含まれない。
+- 独立精査(P9-12R、Codex)の判定は **INCONCLUSIVE**。理由は1つで、配布用の EXE を、実際の PC から切り離した環境で起動して確かめていないこと(R1)。ほかの確認(ソース、ハッシュ、バージョン、ZIP、秘密情報、Defender、必須ゲート3回、データ形式)はすべて一致し、公開を止める不具合は見つかっていない。R1 は、オーナーが自分の PC で行った実機確認(9. C)で代えた(9. D)。
+- 日付: 2026-10-30(JST)に作成。2026-10-31 に、P9-12R の指摘の反映とオーナーの実機確認の記録を足した(P9-12d)。
+- 候補のソース: ブランチ `release/v1.4.0`、コミット `9a86f7a5cf6a5f71e69e7be80be3af3e1b0b5b3d`(`main` = `a4a94e7`〔PR #131、P9-14 のマージ〕+ バージョン・公開文書・公開スクリーンショット + P9-13・P9-14 の公開文書の追記)。この後に足したコミットは、この判定書、`native-checklist.md`、`RELEASE-REVIEW-codex.md` だけで、成果物には含まれない(`git diff --name-only 9a86f7a..HEAD` は `docs/release/v1.4.0/` の下の文書だけ)。
 - config schema: 3(v1.3.4 から変更なし)
 - 公開(tag、GitHub Release、アセットのアップロード、Web Demo の deploy)は**行っていない**。オーナーの明示承認を待つ。`release/v1.4.0` の PR(#129)も `main` へマージしていない。
 - この版は P9-12 の判定書を、P9-12b に続いてもう一度作り直したもの(P9-12c)。前回の候補(P9-12b のビルド)は、P9-13 のビルドをオーナーが実機で確認して見つかった5点を P9-14 で直したため、置き換えた。
@@ -13,7 +14,8 @@
 - バージョン情報は、すべて 1.4.0 で一致している(2.)。
 - 成果物3つと `SHA256SUMS.txt` を作り直し、リリースゲートはすべてやり直して通った(5.、前回の結果は流用していない)。
 - Windows Defender のスキャンは、候補フォルダと各成果物で検出 0 件(5.)。
-- 実機確認(9.)は、A(前回までのビルドでオーナーと実装担当が確認した結果)、B(作り直したビルドで実装担当が確認した結果)、C(作り直したビルドでオーナーに確認してもらう5項目)に分けて書いた。**C はオーナー確認待ち**。
+- 実機確認(9.)は、A(前回までのビルドでオーナーと実装担当が確認した結果)、B(作り直したビルドで実装担当が確認した結果)、C(作り直したビルドでオーナーが確認した5項目)に分けて書いた。**C の5項目は、オーナーが 2026-10-31 に確認した**(1〜4 は「確認しました」とのチャットでの報告、5 はインストールと起動ができたとの報告。5 の注意は 9. C と 11. にある)。
+- P9-12R の判定は `INCONCLUSIVE`(理由 R1)。R1 は、切り離した環境での起動確認を行わず、オーナーの実機確認(9. C)で代えることを、オーナーが 2026-10-30 に判断した(9. D)。
 - 実機確認で見つかった点は、P9-13(2件)と P9-14(5点)で直して `main` に入っている(3.)。
 
 ## 2. バージョン情報
@@ -88,7 +90,7 @@ P9-12 のビルド(ソース `731cb08`、P9-13 の前):
 | 10 | 必須ゲート | **通過** | 下の表 |
 | 11 | インストーラー画像(PR #111) | **通過** | PR #111 は `main` に入っている。`tauri.conf.json` に `installerIcon`、`sidebarImage`(`installer/nsis-sidebar.bmp`、実寸 190×290)、`uninstallerIcon` があり、`headerImage` はない。作り直したインストーラーの最初の画面で、日本語、サイドバー画像(Life Launcher のロゴ、「今やる一手を、開始まで。」)の表示を確認(100%) |
 | 12 | 公開スクリーンショット | **通過** | `npm.cmd run screenshot:public` を再実行。見出しの見た目が変わったので、`main-dashboard.png`(9,919 画素、x 268〜1341、y 331〜767)と `contact-sheet.png`(13,300 画素)が変わり、コミットした。`dictionary.png` は 7 画素(x 12〜13、y 132〜157)だけ違ったが、見出しと無関係な描画の揺れなので、コミットせず元に戻した。`instruction-viewer.png` と `web-demo.png` は変わっていない。合成データだけで、個人データ、パス、ノートは写っていない |
-| 13 | CI(`windows-latest`) | push 後に確認 | ビルドに使ったコミット `9a86f7a` と、この判定書を含む最新コミットの CI(PR #129 の `verify`)は、push 後に確認する。結果は報告で伝える |
+| 13 | CI(`windows-latest`) | 最新の HEAD は成功(下記)。`9a86f7a` 単体は走っていない | **最新の HEAD の CI**: PR #129 の `verify` は、P9-12c のコミット `135d9db` で成功した(run 41029806652、`windows-latest`、499 件、Rust 130+1、監査)。この Stage(P9-12d)のコミットの push 後の結果は、報告(チャット)に書く。**ビルドに使ったコミット `9a86f7a` 単体の CI は走っていない**。`9a86f7a` は PR #129 の途中のコミットで、CI はその後の HEAD で走った。`9a86f7a` と `135d9db` の差分は文書 2 ファイルだけ(P9-12R で確認) |
 
 ### 必須ゲート(`release/v1.4.0`、作り直したビルドのソース)
 
@@ -97,10 +99,18 @@ P9-12 のビルド(ソース `731cb08`、P9-13 の前):
 | `npm.cmd run public:check` | 通過(3575ファイル、blocker 0) |
 | `npm.cmd run lint` | 通過 |
 | `npm.cmd run build` | 通過 |
-| `npm.cmd run test:visual` | **499件すべて通過**(P9-13 の14件、P9-14 の18件を含む)、1.8分(110秒)。※1回目の実行で、フォーカスが外れたことが原因と思われる1件(`post-v133b-followup`「mouse … toolbar Settings and menu」の `toBeFocused`)が落ちた。そのテストだけを10回(90件)繰り返して全件通り、全体の再実行は 499 件通った。製品のコードの問題ではなく、実行中に別のウィンドウへフォーカスが移った環境の揺れと判断した |
+| `npm.cmd run test:visual` | **499件すべて通過**(P9-13 の14件、P9-14 の18件を含む)、1.8分(110秒)。※1回目の実行で、1件(`post-v133b-followup`「mouse … toolbar Settings and menu」の `toBeFocused`)が落ちた。**1回目の失敗の原因は不明**。直後に、そのテストだけを10回繰り返して全件通り、全体の再実行は 499 件通った。P9-12R(独立精査)でも、全体 3 回(499 件すべて成功)とそのテスト単独 10 回(10/10 成功)を実行し、**再現しなかった**。コードの読み取りで、確定的な製品の競合は見つからなかった。原因が分からないままなので、再発した場合は、`document.activeElement`、イベントの時刻、前面ウィンドウを同時に記録する |
 | `cargo fmt -- --check` / `cargo check` / `cargo clippy --all-targets -- -D warnings` | 通過 |
 | `cargo test` | 通過(130件 + 1件) |
 | `git diff --check` | 通過 |
+
+### 独立の追加確認(2026-10-31)
+
+6. の走査は EXE の生バイトが対象で、画面の資産(JS・CSS)は EXE の中で圧縮されていて中まで見られない。そこで、次を追加で確かめた。
+
+- `9a86f7a` と同じソース(`9a86f7a..HEAD` は文書だけ)から `npm.cmd run build` で作り直した `dist/` を走査した。`C:\Users`、`D:\dev`、開発者のユーザー名、`Takuyakou`、秘密鍵ヘッダー、トークン接頭辞(`ghp_`、`github_pat_`、`gho_`、`AKIA`、`xoxb-`、`xoxp-`、`sk-ant-`)、`sourceMappingURL` は 0 件、`.map` ファイルも 0 件。URL は、仕様の名前空間(w3.org、json-schema.org)、ライブラリのエラー説明(`reactjs.org`、`markedjs/marked`)、入力欄のプレースホルダー例(`https://example.com/`)、CSP とローカルの資産の `asset.localhost` だけで、外部へ通信する URL はない。P9-14 のクラス名(`victoryBar--empty`)が含まれる。
+- `v1.3.4..9a86f7a` で、Tauri の権限(`src-tauri/capabilities`)は変わらず、`tauri.conf.json`(CSP を含む)はバージョン番号以外変わっていない。Rust に、新しいコマンド・外部プロセスの実行・`unsafe` の追加はない。画面のコードに `dangerouslySetInnerHTML`・`innerHTML`・`eval(`・`fetch(` の追加はない。コミットの作者のメールアドレスは GitHub の noreply だけ。
+- 限界: 上は、ビルドの出力を作り直したものの確認で、候補の EXE の中から取り出した資産そのものの照合ではない(ビルドの来歴 R6 と同じ限界。13. に次の版の課題として書いた)。
 
 ## 6. 変更の概要(v1.3.4 → v1.4.0)
 
@@ -135,7 +145,7 @@ Phase 9(UI/UX 整理)の P9-00〜P9-11、P9-10b、P9-13、P9-14。機能の追�
 
 ### A. オーナーと Claude が実機で確認した結果(前回までのビルド)
 
-確認した環境: Windows 11、表示倍率 100% と 150%。隔離したテスト用プロファイル(`release-candidate/native-check/`、`createFullTodayFixture` から作った合成データ)。実際のデータには触れていない。
+確認した環境: Windows 11、表示倍率 100% と 150%。隔離したテスト用プロファイル(`release-candidate/native-check/`、`createFullTodayFixture` から作った合成データ)。`%APPDATA%\life-launcher` には触れていない(自動起動の登録、ウィンドウの位置、WebView2 のデータは普段の場所に触れる。B と D を参照)。
 
 | # | 項目 | 結果 |
 | --- | --- | --- |
@@ -156,7 +166,7 @@ A の確認は前回までのビルドで行ったもので、P9-13・P9-14 で�
 
 ### B. 作り直したビルドで、実装担当が確かめたこと
 
-確認した環境: Windows 11 Home 10.0.26200(x64)、表示倍率 100%(`GetDpiForWindow` = 96)。確認の方法: 成果物の EXE を起動し、アプリの自己終了用の既存の仕組み(環境変数 `LIFE_LAUNCHER_RELEASE_SMOKE_EXIT_AFTER_MS`)で終了させた。確認用の `%APPDATA%` は一時フォルダーに切り替え、**このマシンの実際のデータには触れていない**(P9-12b と同じ方法)。
+確認した環境: Windows 11 Home 10.0.26200(x64)、表示倍率 100%(`GetDpiForWindow` = 96)。確認の方法: 成果物の EXE を起動し、アプリの自己終了用の既存の仕組み(環境変数 `LIFE_LAUNCHER_RELEASE_SMOKE_EXIT_AFTER_MS`)で終了させた。確認用の `%APPDATA%` は一時フォルダーに切り替えた(P9-12b と同じ方法)。**`%APPDATA%\life-launcher` には触れていない。ただし、自動起動の登録(`HKCU\...\Run` と `StartupApproved\Run`)、ウィンドウの位置(`app_config_dir` の `.window-state.json`)、WebView2 のデータ(Local AppData の識別子のフォルダー)は、`APPDATA` を切り替えても普段の場所に触れる**(P9-12R の R1)。
 
 | # | 項目 | 結果 | 内容 |
 | --- | --- | --- | --- |
@@ -170,32 +180,130 @@ A の確認は前回までのビルドで行ったもので、P9-13・P9-14 で�
 - このマシンでは、既定のグローバルホットキー(`Ctrl+Alt+Space`)が、すでに別のものに登録されていて、起動時に登録をスキップする(アプリは起動を続ける)。
 - 終了時に、WebView2 が `Failed to unregister class Chrome_WidgetWin_0`(エラー 1412)を出すが、終了コードは 0。以前の版と同じ。
 
-### C. 作り直したビルドで、オーナーに確認してもらうこと(**オーナー確認待ち**)
+### C. 作り直したビルドで、オーナーが確認したこと(2026-10-31)
 
-手順と期待結果は `docs/release/v1.4.0/native-checklist.md`。確認が済むまで PASS とは書かない。
+手順と期待結果、確認の記録は `docs/release/v1.4.0/native-checklist.md`。確認したビルドは 4. のハッシュのもの。オーナーが言った結果だけを書く。
 
 | # | 項目 | 状態 |
 | --- | --- | --- |
-| 1 | 標準・大・特大で、4つの見出しに枠があり、名前と件数の間が詰まってそろい、説明の文字の大きさがそろっている | オーナー確認待ち |
-| 2 | 十字キーで見出しへ移ると、黄色い四角が1つだけ出る | オーナー確認待ち |
-| 3 | 勝利条件を空にしてアプリを起動し直すと、勝利条件が光っていない。マウスを乗せても光らない。そのまま Enter で入力を始められる | オーナー確認待ち |
-| 4 | 勝利条件が入っているとき、マウスを乗せると枠が金色に強まり、少し明るくなって 1px 浮く。Tab で本文に移ると、内側の黄色い輪だけが出る | オーナー確認待ち |
-| 5 | `Life-Launcher-v1.4.0-windows-x64-setup.exe` で実際にインストールし、起動できる(**インストールした版は実際のデータで起動する**。確認の前に `%APPDATA%\life-launcher` のバックアップを推奨) | オーナー確認待ち |
+| 1 | 標準・大・特大で、4つの見出しに枠があり、名前と件数の間が詰まってそろい、説明の文字の大きさがそろっている | 確認済み(オーナーが「確認しました」と報告。項目ごとの返答はなし) |
+| 2 | 十字キーで見出しへ移ると、黄色い四角が1つだけ出る | 確認済み(同上) |
+| 3 | 勝利条件を空にしてアプリを起動し直すと、勝利条件が光っていない。マウスを乗せても光らない。そのまま Enter で入力を始められる | 確認済み(同上) |
+| 4 | 勝利条件が入っているとき、マウスを乗せると枠が金色に強まり、少し明るくなって 1px 浮く。Tab で本文に移ると、内側の黄色い輪だけが出る | 確認済み(同上) |
+| 5 | `Life-Launcher-v1.4.0-windows-x64-setup.exe` で実際にインストールし、起動できる(**インストールした版は実際のデータで起動する**) | 確認済み。インストールと起動はできた。注意あり(下) |
+
+**5. の注意**: 何もインストールされていないはずの PC で、インストーラーに「インストールする前にアンインストールする」の選択肢が出た。それを選ぶと「アンインストールできません。」と出て、選択画面に戻った(「アンインストールしない」を選べばインストールできる)。以前のインストールの登録情報(`Software\Microsoft\Windows\CurrentVersion\Uninstall\Life Launcher`)だけが残っていたと考えられる。Tauri 標準の NSIS インストーラーの動きで、v1.4.0 の変更とは関係ない。期待どおりの結果として扱う(停止の条件には当たらない)。11. に既知の制限として、13. に次の版で行うことを書いた。
+
+### D. 独立精査(P9-12R)の判定と、R1 の扱い
+
+- P9-12R(Codex、報告 `docs/release/v1.4.0/RELEASE-REVIEW-codex.md`、2026-10-30、対象 HEAD `135d9db`)の判定は **INCONCLUSIVE**。ソース、ハッシュ、バージョン、ZIP、秘密情報の生バイト走査、Defender、必須ゲート、データ形式の不変は一致し、公開を止める不具合は見つからなかった。理由は1つで、配布用の EXE を、実際の PC から切り離した環境で起動して確かめていないこと(R1)。
+- R1 についてのオーナーの判断(2026-10-30): オーナーの PC は Windows 11 Home で、Windows サンドボックスは使えない。切り離した環境での起動確認は行わず、**オーナーが自分の PC で行う実機確認(C の5項目。配布 EXE の起動と、インストーラーでの実際のインストールを含む)で代える**。
+- テスト用の起動(`launch-v140-isolated.bat`)で、自動起動の登録・ウィンドウの位置・WebView2 のデータ(辞書・手順書の表示設定)が普段の場所に触れることは、オーナーの PC で同じアプリを使うので受け入れる。自動起動の登録は、普段のアプリ(インストールした v1.4.0)を起動すると、設定どおりに登録し直される。
+- C の5項目は 2026-10-31 に確認済み。したがって R1 は、オーナーの判断どおり、オーナーの実機確認で代えた。これは、切り離した環境での独立した起動確認が行われたという意味ではない。
+- R2〜R5 は、この判定書の 5.(R2、R5、追加確認)、10.(R4)、11.(R3)に反映した。R6・R7 は次の版の課題(13.)。
 
 ## 10. 承認後の公開手順
 
-オーナーの明示承認があるまで、次は**実行しない**。
+オーナーの明示承認があるまで、次は**実行しない**(PowerShell で上から順に実行する)。各コマンド(`git`、`gh` など)は、実行のたびに終了コードを確かめ、0 でなければそこで止める(`if ($LASTEXITCODE -ne 0) { throw "失敗" }`)。次のコマンドは、公開に使う前に、その時点の状態で読み直す。
 
-1. **公開前の確認**: `origin/main` が想定どおりか(`release/v1.4.0` を `main` へマージした後のコミットか)、タグ `v1.4.0` と GitHub Release が、まだ存在しないことを確認する。成果物は、この判定書の 4. のハッシュと同じものを使う(`release-candidate/v1.4.0/` の3ファイルを `Get-FileHash` で計算し、4. と一致することを確かめる。一致しない、または作り直す場合は、ハッシュ、ZIP の中身、バージョン情報、Defender を、この判定書のとおりにやり直す)。
-2. **マージ**: `release/v1.4.0` の PR(#129)を、CI の成功を確認して `main` へマージする(オーナーの指示で)。マージ後の `main` のソースが、ビルドしたソースと(ドキュメントを除いて)同じことを確認する。
-3. **タグ**: マージ後の `main` に `v1.4.0` を作って push する。
-4. **GitHub Release**: タイトル `Life Launcher v1.4.0`、本文は `docs/releases/v1.4.0.md`。アセットは `Life-Launcher-v1.4.0-windows-x64-setup.exe`、`Life-Launcher-v1.4.0-windows-x64.exe`、`Life-Launcher-v1.4.0-windows-x64-portable.zip`、`SHA256SUMS.txt` の4つだけ。
-5. **公開後の確認(必須)**:
-   - GitHub から全アセットを、新しい空のフォルダーへ**再ダウンロード**し、`Get-FileHash` で SHA-256 を計算して、公開した `SHA256SUMS.txt` と照合する。さらに、この判定書の 4. のハッシュ(`b6acfae2…1e4a`、`0f833c17…bb6`、`5fdfe119…5ee`)とも一致することを確かめる。
-   - ダウンロードした単体 EXE を起動して、メイン画面が出ることを確認する(ポータブル ZIP は展開して、同じように起動する)。
-   - `releases/latest` のリンクが v1.4.0 を指すこと、README のダウンロードの説明と、実際のファイル名が合っていることを確認する。
-6. **公開後の記録**: 公開結果(タグ、Release の URL、再ダウンロードのハッシュの照合結果、起動の確認)を `docs/release/v1.4.0/PUBLIC-RELEASE-REPORT.md` に書く(v1.3.2 と同じ形式)。
-7. **Web Demo**: v1.4.0 の変更の Web Demo への反映は、別の判断(この判定書の範囲外)。差分の一覧は `docs/phase9/11-integrated-regression.md` の 16.
+### 10.1 マージの前の確認
+
+1. `release/v1.4.0` の HEAD が、オーナーが承認したコミット(P9-12d の最後のコミット)であること。PR #129 の CI(`verify`)がそのコミットで成功していること。
+2. タグ `v1.4.0` と GitHub Release が無いこと。`gh release view` は、「release not found」以外の失敗(認証・通信など)を「無い」と判断しない。
+3. `release-candidate/v1.4.0/` の3ファイルの SHA-256 が、4. と一致すること。**一致しなければ停止する**(作り直さない。オーナーに報告する)。
+
+```powershell
+$repo = (git rev-parse --show-toplevel).Trim()
+$candidate = Join-Path $repo "release-candidate/v1.4.0"
+git fetch origin
+$head = (git rev-parse origin/release/v1.4.0).Trim()   # オーナーが承認したコミットと同じか確かめる
+gh pr view 129 --json state,headRefOid,statusCheckRollup
+git ls-remote --tags origin refs/tags/v1.4.0           # 何も出ないこと
+gh release view v1.4.0                                  # "release not found" になること(ほかの失敗は停止)
+Get-ChildItem $candidate -File -Include *.exe,*.zip | Get-FileHash -Algorithm SHA256   # 4. と照合
+```
+
+### 10.2 マージ
+
+オーナーの指示で、承認したコミットを指定してマージする(その間に PR の HEAD が動いていたら失敗する)。
+
+```powershell
+gh pr merge 129 --merge --match-head-commit $head
+```
+
+### 10.3 マージの後の確認
+
+1. マージ後の `main` と、ビルドに使ったコミット `9a86f7a` の差分が**文書だけ**であること。製品のファイル(`src/`、`src-tauri/`、`package.json`、ロックファイルなど)の差分が1つでもあれば停止する。
+2. マージ後の `main` の CI が成功していること。
+
+```powershell
+git fetch origin
+$unexpected = @(git diff --name-only 9a86f7a origin/main |
+  Where-Object { $_ -notmatch '^docs/|^README(?:\.en)?\.md$|^CHANGELOG\.md$' })
+if ($unexpected.Count) { throw "main の製品差分を確認するまで停止: $unexpected" }
+$releaseCommit = (git rev-parse origin/main).Trim()
+gh run list --branch main --commit $releaseCommit --json status,conclusion,name   # 成功を確認
+```
+
+### 10.4 タグ
+
+マージ後の `main` のコミット(`$releaseCommit`)に、注釈つきのタグ `v1.4.0` を付けて push する。違うコミットに付けない。
+
+```powershell
+git tag -a v1.4.0 $releaseCommit -m "Life Launcher v1.4.0"
+git push origin refs/tags/v1.4.0
+```
+
+### 10.5 下書きの Release
+
+アセットは次の4つだけ。
+
+```powershell
+$assets = @(
+  "Life-Launcher-v1.4.0-windows-x64-setup.exe",
+  "Life-Launcher-v1.4.0-windows-x64.exe",
+  "Life-Launcher-v1.4.0-windows-x64-portable.zip",
+  "SHA256SUMS.txt"
+) | ForEach-Object { Join-Path $candidate $_ }
+gh release create v1.4.0 @assets --verify-tag --draft --title "Life Launcher v1.4.0" --notes-file docs/releases/v1.4.0.md
+```
+
+### 10.6 下書きの確認
+
+新しい空のフォルダーへダウンロードし、ハッシュを、公開した `SHA256SUMS.txt` と、この判定書の 4. の**両方**と照合する。アセットが4つだけであること。
+
+```powershell
+$download = Join-Path $repo ".local-evaluation/v140-redownload"
+if (Test-Path $download) { throw "新しい空の検証先を用意する" }
+gh release download v1.4.0 --dir $download
+Get-ChildItem $download -File | Get-FileHash -Algorithm SHA256
+```
+
+### 10.7 公開
+
+```powershell
+gh release edit v1.4.0 --draft=false
+gh release view v1.4.0 --json tagName,url,isDraft
+```
+
+### 10.8 公開後の確認(必須)
+
+- もう一度、**新しい空のフォルダー**へダウンロードし、10.6 と同じ照合(公開した `SHA256SUMS.txt` と、4. の `b6acfae2…1e4a`、`0f833c17…bb6`、`5fdfe119…5ee`)をする。
+- ダウンロードした単体 EXE と、ポータブル ZIP を展開した EXE が起動し、メイン画面が出ること(オーナーの PC で起動してよい。R1 と同じ扱いで、自動起動の登録・ウィンドウの位置・WebView2 のデータは普段の場所に触れる)。
+- `releases/latest` が v1.4.0 を指すこと。README のダウンロードの説明と、実際のファイル名が合っていること。
+- `gh release view` だけで、起動やリンクの確認を済ませたことにしない。
+
+### 10.9 記録
+
+`docs/release/v1.4.0/PUBLIC-RELEASE-REPORT.md` に、マージのコミット、タグ、Release の URL、照合したハッシュ、起動の確認を書く(v1.3.2 と同じ形式)。
+
+### 10.10 失敗したとき
+
+アップロード・照合・起動のどれかが失敗したら、**下書きのまま止めて**オーナーに報告する。成果物を作り直さない。別の空の取得先で再確認し、通信の問題と候補の問題を分ける。タグの付け直し(force)と、アセットの無条件の上書き(`--clobber`)をしない。公開した後に問題が分かった場合も、オーナーの判断なしにタグや配布物を差し替えない(最新版としての案内を止めるかどうかは、原因を確かめてからオーナーが決める)。
+
+### 10.11 Web Demo
+
+v1.4.0 の変更の Web Demo への反映は、別の判断(この判定書の範囲外)。差分の一覧は `docs/phase9/11-integrated-regression.md` の 16.
 
 ## 11. 既知の制限
 
@@ -204,12 +312,24 @@ A の確認は前回までのビルドで行ったもので、P9-13・P9-14 で�
 - ブックマーク名の取得は、ローカルのブラウザープロファイルを読める場合に限る。
 - HTML 手順書は、静的な HTML/CSS と登録したフォルダー内の相対 asset だけを表示する(JavaScript に依存する画面、フォーム、入れ子のフレーム、外部 asset は動作しない)。
 - 配布バイナリは未署名で、Windows SmartScreen の警告が出ることがある。WebView2 Runtime が必要。自動アップデーターはない。
-- 9. の C(オーナー確認待ち)の5項目。
-- 「今日やるものを選ぶ」画面の見出しの二重の四角は、Main と同じ規則が当たるが、画面では確かめていない(`docs/phase9/14-heading-victory-polish.md` 3.5)。
-- 達成済みの勝利条件の枠は、Main で 0.72 ではなく 0.42 の濃さのまま(P8.9 の上書き。意図した見た目か、取りこぼしかはオーナーの判断待ち。公開をとめるものではない)。
+- 以前のインストールの登録情報だけが残っている PC(本体のフォルダーを手で消した場合など)では、インストーラーに「インストールする前にアンインストールする」が出て、選ぶと「アンインストールできません。」で戻る。「アンインストールしない」を選べばインストールできる(Tauri 標準のインストーラーの動き。9. C の 5.)。
+- 達成済みの勝利条件の枠は、Main で 0.72 ではなく 0.42 の濃さのまま。v1.4.0 では変えない(オーナー判断 2026-10-30)。
 - Rust の依存の情報警告 11 件(7.)。
 - Web Demo は v1.4.0 の変更を反映していない(今日の3件の優先、件数の二重表示、「変更」というボタン名など)。
+- 切り離した環境(別の Windows ユーザー、仮想マシンなど)での、配布 EXE の独立した起動確認は行っていない(R1。オーナーの実機確認で代えた。9. D)。
+
+### 保守のメモ
+
+- 「今日やるものを選ぶ」画面の旧い見出し(`.todayBuilderHeader`)は、`legacyTodayBuilderVisible()`(`src/App.tsx`)が常に `false` を返すため、通常は表示されない(P9-12R で確認、この Stage でも確認)。ここの見出しの二重の四角は、画面では確かめていないが、通常は到達しない。この見出しを再び表示するときは、先に確かめる(`docs/phase9/14-heading-victory-polish.md` 3.5)。
 
 ## 12. この Stage で、行わなかったこと
 
-tag、GitHub Release、アセットのアップロード、Web Demo の deploy、`main` へのマージ(PR #129)。Windows のインストーラーの実インストール(9. の C の 5.)。
+tag、GitHub Release、アセットのアップロード、Web Demo の deploy、`main` へのマージ(PR #129)。成果物(`release-candidate/v1.4.0/`)の作り直しと変更(3ファイルのハッシュは 4. のまま)。製品コード、テスト、`package.json`、Cargo のファイル、公開文書(CHANGELOG、リリースノート、README)の変更。
+
+## 13. 次の版で行うこと(v1.4.1 以降)
+
+- 正式スクリプト(`scripts/prepare-release-candidate.ps1`)に、ビルドしたコミット、作業ツリーがきれいだったか、Node・Rust・Tauri CLI のバージョン、ビルド直後のハッシュを記録させる(R6)。
+- テスト用の起動(`launch-v140-isolated.bat`)で、普段のアプリの自動起動の登録・ウィンドウの位置・WebView2 のデータに触れない方法を用意する(R1)。
+- 未使用の CSS の削除、スタイルの確認の待ち方(単発の読み取りをやめる)、画像比較の閾値を見直す(R7)。
+- 以前のインストールの登録情報だけが残っているときに、インストーラーが出す「インストールする前にアンインストールする」の案内を分かりやすくする方法(インストーラーの文言、README の困ったときの説明など)を検討する(9. C の 5.)。
+- 1回だけ落ちた `post-v133b-followup` のフォーカスのテストは、再発した場合に `document.activeElement`、イベントの時刻、前面ウィンドウを同時に記録する(5.)。
