@@ -20,7 +20,7 @@ Try the central Life Launcher flow in your browser without installing the Window
 
 The Web Demo uses synthetic data to demonstrate the central Life Launcher flow, including choosing today's items, running timers, and removing an item from Today's Three. Changes are stored in your browser's localStorage. Launching apps, files, and URLs is simulated rather than performed.
 
-Note: it is not a complete port of the Windows product. The Web Demo has a separate publishing process and is not updated alongside the v1.3.4 desktop release.
+Note: it is not a complete port of the Windows product. The Web Demo has a separate publishing process and is not updated alongside the v1.4.0 desktop release.
 
 ## Highlights
 
@@ -55,12 +55,14 @@ Note: it is not a complete port of the Windows product. The Web Demo has a separ
 
 The screenshots are generated from synthetic data. They do not contain real user configuration, activity, paths, or notes.
 
-## Changes In v1.3.4
+## Changes In v1.4.0
 
-- The Windows NSIS installer and uninstaller now use dedicated icons, and the setup sidebar image has been updated. Setup displays in Japanese on Japanese Windows.
-- No custom header image is used, and the installed Life Launcher app keeps its existing icon. The standard NSIS UI may display a small Life Launcher icon on the right side of intermediate setup pages.
-- Disabled tests for older specifications, duplicate checks, and screenshot capture steps not used for image comparisons have been cleaned up. This test cleanup does not add or remove app features.
-- DOMPurify, used to sanitize HTML, has been updated from `3.4.13` to `3.4.16` to address existing vulnerabilities.
+- Do Now now prefers a Next Step that is already in Today's 3. Starting from either Do Now or Today's 3 shows the same running state in both.
+- The Timer (sidebar, expanded Timer, mini timer) now shows the action you are working on. The overlap in the idle mini timer is fixed.
+- Fixed the Victory text becoming smaller, and the Today's 3 heading description being pushed to the right edge, at the Large and Extra Large display sizes. The Victory bar now reacts to hover like the other cards (it stays plain while empty). The section heading frames and text are aligned, and keyboard focus on a heading or the Victory bar no longer shows a doubled yellow square.
+- Button colors follow a consistent role, and borders that carry no role were removed. The "choose today's items" screen shows more candidates.
+- Details were polished across the Main screen, dialogs, Settings, and Records (a duplicated count, "Edit" versus "Swap for another action", a guide for empty sidebar groups, "Mini mode" renamed to "mini timer", and more).
+- Includes dependency vulnerability fixes. Config schema stays at `3`, with no new features or data-format changes.
 
 ## Download
 
@@ -70,19 +72,19 @@ Download Life Launcher from [GitHub Releases](https://github.com/Takuyakou/life-
 
 Use this for the standard installation flow.
 
-v1.3.4 installer: `Life-Launcher-v1.3.4-windows-x64-setup.exe`
+v1.4.0 installer: `Life-Launcher-v1.4.0-windows-x64-setup.exe`
 
 ### Standalone EXE
 
 Run the app directly without installing it.
 
-v1.3.4 standalone: `Life-Launcher-v1.3.4-windows-x64.exe`
+v1.4.0 standalone: `Life-Launcher-v1.4.0-windows-x64.exe`
 
 ### Portable ZIP
 
 Extract the ZIP archive and run the app.
 
-v1.3.4 ZIP: `Life-Launcher-v1.3.4-windows-x64-portable.zip`
+v1.4.0 ZIP: `Life-Launcher-v1.4.0-windows-x64-portable.zip`
 
 The ZIP edition also stores user data in `%APPDATA%\life-launcher`. It does not carry your data alongside the executable on a USB drive.
 
@@ -96,9 +98,9 @@ Fully exit Life Launcher and back up the `%APPDATA%\life-launcher` folder to ano
 
 The first launch after updating from v1.2 to v1.3 migrates config schema `2` to `3`. The app creates a raw pre-migration backup and leaves the original config unchanged if migration, validation, or backup fails. Session records are not deleted.
 
-Updating from v1.3.3 to v1.3.4 keeps config schema at `3`, with no change to the configuration format. Existing settings and session records remain available.
+Updating from v1.3.4 to v1.4.0 keeps config schema at `3`, with no change to the configuration format. Existing settings and session records remain available.
 
-See the [v1.3.4 release notes](docs/releases/v1.3.4.md) and [changelog](CHANGELOG.md) for details. The [overview](docs/OVERVIEW.md) and [current specification](docs/spec/current-spec.md) cover the wider feature set. These detailed documents are currently in Japanese.
+See the [v1.4.0 release notes](docs/releases/v1.4.0.md) and [changelog](CHANGELOG.md) for details. The [overview](docs/OVERVIEW.md) and [current specification](docs/spec/current-spec.md) cover the wider feature set. These detailed documents are currently in Japanese.
 
 ## Runtime Requirements
 

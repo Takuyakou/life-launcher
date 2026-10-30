@@ -1,20 +1,28 @@
-# Life Launcher v1.3.3 UI/UX・機能仕様書
+# Life Launcher v1.4.0 UI/UX・機能仕様書
 
 ## 0. 文書情報
 
 | 項目             | 内容                                                                   |
 | ---------------- | ---------------------------------------------------------------------- |
-| 文書版           | 1.3.3                                                                  |
+| 文書版           | 1.4.0                                                                  |
 | 対象             | Windowsデスクトップ版 Life Launcher                                    |
-| 実装基準         | Public repository `Takuyakou/life-launcher` のv1.3.3実装             |
-| 作業branch       | PR #108統合後の`main`                                                  |
-| 監査基準コミット | `2242ab7`（PR #108マージ）                                              |
-| 確認日           | 2026-09-26                                                             |
+| 実装基準         | Public repository `Takuyakou/life-launcher` のv1.4.0実装             |
+| 作業branch       | `release/v1.4.0`(PR #128統合後の`main`が起点)                          |
+| 監査基準コミット | `2a6222b`（PR #128マージ）                                             |
+| 確認日           | 2026-10-29                                                             |
 | UI実装           | Tauri 2 / React 18 / TypeScript / CSS                                  |
 
-本書は、Life Launcher v1.3.3のUI/UXと主要機能を、現在のコード、型、設定、capability、テストから整理した現行仕様書である。
+本書は、Life Launcher v1.4.0のUI/UXと主要機能を、現在のコード、型、設定、capability、テストから整理した現行仕様書である。
 
-アプリ版は`1.3.3`、config schemaは`3`である。Project / NextStep / Wishlist再構成、Dictionary / Drop Register / Instruction Viewer / Guide改善、メイン表示サイズ、拡大Timer、キーボード操作と完了表示の修正を含む。機能の入口は [Overview](../OVERVIEW.md) を参照する。
+アプリ版は`1.4.0`、config schemaは`3`である。Project / NextStep / Wishlist再構成、Dictionary / Drop Register / Instruction Viewer / Guide改善、メイン表示サイズ、拡大Timer、キーボード操作と完了表示の修正を含む。機能の入口は [Overview](../OVERVIEW.md) を参照する。
+
+## v1.4.0（Phase 9）での変更
+
+- 今やる一手は、今日の3件に入っている未完了の次の一手を優先する（§8）。今やる一手と今日の3件は、同じ単一のTimerから実行中表示を導く（§10、§14）。
+- サイドバー・拡大タイマー・ミニに行動文を表示する。待機中のミニは見出し・状態・案内だけにする。大・特大でも勝利条件を標準より小さくしない。
+- 色の役割（§4.1.1）と枠線の役割（§4.1.2）を定義した。今日やるものを選ぶ画面は候補領域を優先して確保する（§9）。
+- メイン画面・ダイアログ・設定・記録の細部（件数表示、操作名の使い分け、空グループの案内、英語小見出し、ミニタイマーの表記など）を整えた。各項の「P9-xx」が対応するStageを示す。
+- config schema、データ形式、セッション記録の書き込み内容は変えていない。
 
 ## v1.3.2でのメイン画面表示
 
