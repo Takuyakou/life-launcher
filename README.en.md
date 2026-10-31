@@ -100,6 +100,8 @@ The first launch after updating from v1.2 to v1.3 migrates config schema `2` to 
 
 Updating from v1.3.4 to v1.4.0 keeps config schema at `3`, with no change to the configuration format. Existing settings and session records remain available.
 
+If you choose "Uninstall before installing" in the installer and it reports "Could not uninstall the previous version", quit Life Launcher and try again, or choose "Do not uninstall". Your settings and records are kept.
+
 See the [v1.4.0 release notes](docs/releases/v1.4.0.md) and [changelog](CHANGELOG.md) for details. The [overview](docs/OVERVIEW.md) and [current specification](docs/spec/current-spec.md) cover the wider feature set. These detailed documents are currently in Japanese.
 
 ## Runtime Requirements

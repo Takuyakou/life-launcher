@@ -100,6 +100,8 @@ v1.2からv1.3への初回更新ではconfig schemaを`2`から`3`へ移行し�
 
 v1.3.4からv1.4.0への更新ではconfig schemaは`3`のままで、設定データの形式は変わりません。既存の設定と記録を引き継げます。
 
+インストーラーで「インストールする前にアンインストールする」を選んで「以前のバージョンをアンインストールできませんでした」と出たときは、Life Launcherを終了してからやり直すか、「アンインストールしない」を選んでください。設定と記録は消えません。
+
 詳しくは [v1.4.0 Release notes](docs/releases/v1.4.0.md) と [CHANGELOG](CHANGELOG.md) を参照してください。機能の全体像は [OVERVIEW](docs/OVERVIEW.md)、詳細は [現行仕様書](docs/spec/current-spec.md) にまとめています。
 
 ## 動作要件
