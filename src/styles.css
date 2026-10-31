@@ -12332,9 +12332,10 @@ input[type="number"]::-webkit-inner-spin-button {
   animation: completion-gold-pulse 850ms ease-out;
 }
 
-/* P9-13 / P9-14: like the Main cards, the victory bar strengthens its border, brightens and lifts 1px on hover, or
-   while the input is being edited (the input shows no ring). Keyboard focus on the text button, the checkbox or a
-   suggestion chip keeps the bar as it is: their own ring is the only square. An empty victory (--empty) never lights up. */
+/* P9-13 / P9-14 / P95-01: like the Main cards, the victory bar strengthens its border, brightens and lifts 1px on hover,
+   or while the input is being edited (the input shows no ring). This holds for an empty victory too (the frame only: the
+   empty text stays muted, see .victoryTextButton--empty). Keyboard focus on the text button, the checkbox or a
+   suggestion chip keeps the bar as it is: their own ring is the only square. */
 .victoryBar {
   transition:
     background-color 120ms ease,
@@ -12342,15 +12343,15 @@ input[type="number"]::-webkit-inner-spin-button {
     transform 120ms ease;
 }
 
-.victoryBar:not(.victoryBar--empty):hover,
-.victoryBar:not(.victoryBar--empty):has(.victoryInput:focus) {
+.victoryBar:hover,
+.victoryBar:has(.victoryInput:focus) {
   border-color: var(--accent);
   background: rgba(231, 185, 77, 0.08);
   transform: translateY(-1px);
 }
 
-.victoryBar--done:not(.victoryBar--empty):hover,
-.victoryBar--done:not(.victoryBar--empty):has(.victoryInput:focus) {
+.victoryBar--done:hover,
+.victoryBar--done:has(.victoryInput:focus) {
   background:
     linear-gradient(
       120deg,
@@ -13679,4 +13680,41 @@ button.mainActionButton:is(
    Today Picker's own 11px override still applies to both of its buttons. */
 :where(.dialogActions, .dictionarySettingsActions, .instructionUnsavedActions) .primaryButton {
   font-size: 12px;
+}
+
+/* P95-01: the counts of the four Main section bars start at the same x. Each name cell is at least as wide as the widest of
+   the four names set in the same font (in Yu Gothic UI that is "やりたいこと"), via a zero-height hidden copy of all four
+   (no fixed px width, no script), so the widest name keeps the P9-14 gap (18px) to its count and the others get the
+   extra room. */
+.todaySectionBar h2::after,
+.projectsBand .disclosureLabel strong::after,
+.inboxBand .disclosureLabel strong::after,
+.todayActivityBand .disclosureLabel strong::after {
+  content: "やりたいこと\A今日の実行\A今日の3件\A次の一手";
+  display: block;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  white-space: pre;
+}
+
+.projectsBand .disclosureLabel strong,
+.inboxBand .disclosureLabel strong,
+.todayActivityBand .disclosureLabel strong {
+  display: inline-grid;
+  align-content: center;
+}
+
+/* P95-01: right-hand text of a Records heading ends where the text inside the frame below it ends (that frame's own
+   padding, plus its 1px border for the bordered accordion list / checklist chips). Left side unchanged. */
+.recordsSection > .sectionHeading:not(:has(> .sectionLinkButton)) {
+  padding-inline-end: 13px;
+}
+
+.recordsSection.sourceCompletionSection > .sectionHeading {
+  padding-inline-end: 10px;
+}
+
+.weeklyReviewBlockHeading {
+  padding-inline-end: 10px;
 }

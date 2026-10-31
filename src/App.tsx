@@ -3267,11 +3267,14 @@ function DashboardApp() {
     });
   }, [activeView, config]);
 
+  // Keyed on the timer instance, not the timer object: pause/resume replace the object, and
+  // re-creating the interval each time starves it when the buttons are pressed faster than a tick.
+  const activeTimerInstanceId = activeTimer?.instanceId ?? null;
   useEffect(() => {
-    if (!activeTimer) return undefined;
+    if (activeTimerInstanceId === null) return undefined;
     const timer = window.setInterval(() => setNow(Date.now()), TIMER_TICK_MS);
     return () => window.clearInterval(timer);
-  }, [activeTimer]);
+  }, [activeTimerInstanceId]);
 
   useEffect(() => {
     if (!config) return;
@@ -7419,8 +7422,6 @@ function DashboardApp() {
       setActiveTimer(nextTimer);
       setExpandedTimerOpen(expandOnStart);
 
-      showToast("ok", "タイマーを開始しました");
-
       if (actions.length > 0) {
         void runActions(sourceId, actions);
       }
@@ -7586,27 +7587,25 @@ function DashboardApp() {
   const togglePause = useCallback(() => {
     if (earlyStopRef.current || finishingTimerRef.current !== null || plannedCommitRef.current)
       return;
-    setActiveTimer((timer) => {
-      if (!timer) return timer;
-      const current = Date.now();
-      if (!timer.paused) {
-        const nextTimer = { ...timer, paused: true, pausedStartedAtMs: current };
-        activeTimerRef.current = nextTimer;
-        showToast("neutral", "タイマーを一時停止しました");
-        return nextTimer;
-      }
-
-      const pausedDelta = timer.pausedStartedAtMs ? current - timer.pausedStartedAtMs : 0;
-      const nextTimer = {
-        ...timer,
-        paused: false,
-        pausedStartedAtMs: null,
-        pausedTotalMs: timer.pausedTotalMs + pausedDelta,
-      };
-      activeTimerRef.current = nextTimer;
-      return nextTimer;
-    });
-  }, [showToast]);
+    // Compute the next state once, outside the state updater: the updater may be called more than
+    // once and must not read the clock or write the ref. The display clock (`now`) is aligned to the
+    // moment of the press so that rapid pause/resume never leaves it behind pausedTotalMs.
+    const timer = activeTimerRef.current;
+    if (!timer) return;
+    const current = Date.now();
+    const pausedDelta = timer.pausedStartedAtMs ? current - timer.pausedStartedAtMs : 0;
+    const nextTimer: ActiveTimer = timer.paused
+      ? {
+          ...timer,
+          paused: false,
+          pausedStartedAtMs: null,
+          pausedTotalMs: timer.pausedTotalMs + pausedDelta,
+        }
+      : { ...timer, paused: true, pausedStartedAtMs: current };
+    activeTimerRef.current = nextTimer;
+    setNow(current);
+    setActiveTimer(nextTimer);
+  }, []);
 
   useEffect(() => {
     let disposed = false;
@@ -10746,9 +10745,7 @@ function DashboardApp() {
 
       <section
         className="mainPanel"
-        data-main-display-size={
-          activeView === "main" ? (config.settings.mainDisplaySize ?? "standard") : undefined
-        }
+        data-main-display-size={config.settings.mainDisplaySize ?? "standard"}
       >
         <header className="topBar">
           <div className="topSummary">
