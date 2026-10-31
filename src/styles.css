@@ -13682,27 +13682,27 @@ button.mainActionButton:is(
   font-size: 12px;
 }
 
-/* P95-01: the counts of the four Main section bars start at the same x. Each name cell is at least as wide as the widest of
-   the four names set in the same font (in Yu Gothic UI that is "やりたいこと"), via a zero-height hidden copy of all four
-   (no fixed px width, no script), so the widest name keeps the P9-14 gap (18px) to its count and the others get the
-   extra room. */
-.todaySectionBar h2::after,
-.projectsBand .disclosureLabel strong::after,
-.inboxBand .disclosureLabel strong::after,
-.todayActivityBand .disclosureLabel strong::after {
-  content: "やりたいこと\A今日の実行\A今日の3件\A次の一手";
-  display: block;
-  height: 0;
-  overflow: hidden;
-  visibility: hidden;
-  white-space: pre;
-}
-
+/* P95-01: the counts of the four Main section bars start at the same x, 18px (P9-14) after "やりたいこと". Each name cell is
+   exactly as wide as a zero-height hidden copy of "やりたいこと" set in the same font (no fixed px width, no script); the
+   real name sits in a 0-width first track and overflows it, so a longer name (e.g. "今日の実行") does not push its count. */
+.todaySectionBar h2,
 .projectsBand .disclosureLabel strong,
 .inboxBand .disclosureLabel strong,
 .todayActivityBand .disclosureLabel strong {
   display: inline-grid;
+  grid-template-columns: 0 auto;
   align-content: center;
+  white-space: nowrap;
+}
+
+.todaySectionBar h2::after,
+.projectsBand .disclosureLabel strong::after,
+.inboxBand .disclosureLabel strong::after,
+.todayActivityBand .disclosureLabel strong::after {
+  content: "やりたいこと";
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
 }
 
 /* P95-01: right-hand text of a Records heading ends where the text inside the frame below it ends (that frame's own

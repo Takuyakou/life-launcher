@@ -532,10 +532,12 @@ for (const display of DISPLAYS) {
       expect(Math.abs(found.countLeft - first), `${BARS[index]} count left`).toBeLessThanOrEqual(1);
       expect(Math.abs(found.descriptionLeft - found.countRight - 8), `${BARS[index]} count->description`).toBeLessThanOrEqual(1);
     }
-    // The widest name (「やりたいこと」 in Yu Gothic UI) ends 18px before the counts; every other name has at least that much.
-    const widest = Math.max(...geometry.map((found) => found.textRight));
-    expect(Math.abs(first - widest - 18), "widest name -> count").toBeLessThanOrEqual(1);
-    expect(first - geometry[2].textRight, "やりたいこと -> count").toBeGreaterThanOrEqual(17);
+    // The baseline is 「やりたいこと」 (the inbox bar): its text ends 18px before the counts (P9-14). A longer name may sit closer
+    // (a few px) but never touches its count.
+    expect(Math.abs(first - geometry[2].textRight - 18), "やりたいこと -> count").toBeLessThanOrEqual(1);
+    for (const [index, found] of geometry.entries()) {
+      expect(first - found.textRight, `${BARS[index]} name -> count`).toBeGreaterThanOrEqual(10);
+    }
   });
 
   test(`P95-01 the Today bar with 0 items has its count at the same x (${display})`, async ({ page }) => {
