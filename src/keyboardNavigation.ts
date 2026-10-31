@@ -24,6 +24,81 @@ function step(container: Element, current: HTMLElement, offset: number, event: K
   return focus(items[index + offset], event);
 }
 
+// Settings dialog fields: arrows always move focus ("navigating"); Enter, a click or typing starts
+// "editing", where the field behaves natively. Enter commits, Esc restores the value from before.
+const SETTINGS = ".settingsDialog";
+const FIELD = 'input:not([type="checkbox"]):not([type="radio"]):not([readonly])';
+let editing: { input: HTMLInputElement; original: string } | null = null;
+
+const isEditing = (element: Element | null) =>
+  element !== null && editing?.input === element && element.isConnected;
+
+function startEditing(input: HTMLInputElement, selectAll: boolean) {
+  editing = { input, original: input.value };
+  input.dataset.editing = "true";
+  if (selectAll) input.select();
+}
+
+function stopEditing(revert: boolean) {
+  if (!editing) return;
+  const { input, original } = editing;
+  editing = null;
+  delete input.dataset.editing;
+  if (revert && input.value !== original) {
+    // The native setter plus an input event reaches React's onChange for a controlled input.
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, original);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+}
+
+function settingsFieldKey(event: KeyboardEvent) {
+  const input = document.activeElement;
+  if (
+    event.isComposing ||
+    event.altKey ||
+    event.ctrlKey ||
+    event.metaKey ||
+    !(input instanceof HTMLInputElement) ||
+    !input.closest(SETTINGS)
+  ) return;
+  if (input.matches(FIELD)) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      if (isEditing(input)) stopEditing(false);
+      else startEditing(input, true);
+    } else if (event.key === "Escape" && isEditing(input)) {
+      event.preventDefault();
+      event.stopPropagation();
+      stopEditing(true);
+    }
+  } else if (event.key === "Enter" && !event.repeat && (input.type === "checkbox" || input.type === "radio")) {
+    event.preventDefault();
+    input.click();
+  }
+}
+
+export function installSettingsFieldEditing(): () => void {
+  const target = (event: Event) => (event.target instanceof HTMLInputElement ? event.target : null);
+  // Typing or clicking a field edits it too; beforeinput still sees the value from before the change.
+  const onEdit = (event: Event) => {
+    const input = target(event);
+    if (input?.closest(SETTINGS) && input.matches(FIELD) && !isEditing(input)) startEditing(input, false);
+  };
+  const onFocusOut = (event: Event) => {
+    if (isEditing(target(event))) stopEditing(false);
+  };
+  document.addEventListener("keydown", settingsFieldKey);
+  document.addEventListener("beforeinput", onEdit, true);
+  document.addEventListener("pointerdown", onEdit, true);
+  document.addEventListener("focusout", onFocusOut, true);
+  return () => {
+    document.removeEventListener("keydown", settingsFieldKey);
+    document.removeEventListener("beforeinput", onEdit, true);
+    document.removeEventListener("pointerdown", onEdit, true);
+    document.removeEventListener("focusout", onFocusOut, true);
+  };
+}
+
 export function navigateAppArrow(event: KeyboardEvent, captureActive: boolean): void {
   if (
     captureActive ||
@@ -35,7 +110,9 @@ export function navigateAppArrow(event: KeyboardEvent, captureActive: boolean): 
   ) return;
   const current = document.activeElement;
   if (!(current instanceof HTMLElement)) return;
-  if (current.matches('input:not([type="checkbox"]), textarea, select, [contenteditable="true"]')) return;
+  const settingsInput =
+    current instanceof HTMLInputElement && current.closest(SETTINGS) !== null && !isEditing(current);
+  if (!settingsInput && current.matches('input:not([type="checkbox"]), textarea, select, [contenteditable="true"]')) return;
   if (current.closest('[role="menu"], .launcherOverlay')) return;
 
   const modals = Array.from(
@@ -50,6 +127,8 @@ export function navigateAppArrow(event: KeyboardEvent, captureActive: boolean): 
       focus(first, event);
       return;
     }
+    // A number field or radio would otherwise change its value or caret on an arrow key.
+    if (settingsInput) event.preventDefault();
     const tab = current.closest<HTMLElement>('.settingsTabs [role="tab"]');
     if (tab && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
       const tabs = available(tab.closest('.settingsTabs')!);
@@ -64,7 +143,9 @@ export function navigateAppArrow(event: KeyboardEvent, captureActive: boolean): 
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       step(surface, current, event.key === "ArrowDown" ? 1 : -1, event);
     } else {
-      const group = current.closest('.dialogActions, .builderSourceModes, .displayTargetList, .settingsButtonRow');
+      const group = current.closest(
+        '.dialogActions, .builderSourceModes, .displayTargetList, .settingsButtonRow, .settingsGrid, .settingsToggleGrid, .settingsDisplayChoices, .shortcutCaptureControl, .folderPickerRow',
+      );
       if (group) step(group, current, event.key === "ArrowRight" ? 1 : -1, event);
     }
     return;

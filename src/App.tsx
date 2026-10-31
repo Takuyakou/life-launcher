@@ -168,7 +168,7 @@ import { UiIcon } from "./components/UiIcon";
 import { ShortcutBadge } from "./components/ShortcutBadge";
 import { findShortcutConflicts } from "./shortcutConflicts";
 import { localDayKey } from "./localDay";
-import { navigateAppArrow } from "./keyboardNavigation";
+import { installSettingsFieldEditing, navigateAppArrow } from "./keyboardNavigation";
 import {
   getButtonsForOverlayPage,
   getOverlayPageCounts,
@@ -2300,7 +2300,11 @@ function DashboardApp() {
     const onKeyDown = (event: globalThis.KeyboardEvent) =>
       navigateAppArrow(event, shortcutCaptureActiveRef.current);
     document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+    const removeSettingsFieldEditing = installSettingsFieldEditing();
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      removeSettingsFieldEditing();
+    };
   }, []);
   const [helpGuideOpen, setHelpGuideOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSectionKey>("basic");
