@@ -237,11 +237,12 @@ for (const size of ["large", "xlarge"] as const) {
       await page.getByRole("button", { name: "記録ビューを開く" }).click();
       await expect(page.locator(".mainScrollContent")).not.toHaveAttribute("data-main-display-size", /large|xlarge/);
       expect(await toolbar.evaluate((element) => getComputedStyle(element).fontSize)).toBe(toolbarFont);
+      // P95-01: the top menu keeps the size of the display setting in Records too.
       const recordsButtonBox = (await button.boundingBox())!;
-      expect(recordsButtonBox.height).toBeLessThan(mainButtonBox.height);
+      expect(recordsButtonBox.height).toBeCloseTo(mainButtonBox.height, 0);
       const recordsLabelSize = await button.locator(".viewToggleButtonLabel")
         .evaluate((element) => parseFloat(getComputedStyle(element).fontSize));
-      expect(recordsLabelSize).toBeLessThan(mainLabelSize);
+      expect(recordsLabelSize).toBe(mainLabelSize);
     },
   );
 }

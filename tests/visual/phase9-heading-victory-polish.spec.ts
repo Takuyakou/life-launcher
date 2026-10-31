@@ -186,18 +186,17 @@ test("P9-14 an empty victory bar starts focused without a ring and without light
   await expect(page.locator(".victoryInput")).toBeFocused();
 });
 
-test("P9-14 an empty victory bar does not react to the mouse", async ({ page }) => {
+test("P9-14 / P95-01 an empty victory bar reacts to the mouse with its frame only, never its text", async ({ page }) => {
   await open(page, emptyVictory());
   const text = page.locator(".victoryTextButton");
   const resting = await text.evaluate((element) => getComputedStyle(element).color);
-  const restingBar = await bar(page);
   await text.hover();
-  await page.waitForTimeout(250);
+  await expect.poll(() => bar(page)).toMatchObject({ border: GOLD, transform: LIFT });
   expect(await text.evaluate((element) => getComputedStyle(element).color)).toBe(resting);
-  expect(await bar(page)).toEqual(restingBar);
+  await page.mouse.move(2, 2);
+  await expect.poll(() => bar(page)).toMatchObject({ border: RESTING_BORDER, transform: "none" });
   await page.locator(".victoryIcon").hover();
-  await page.waitForTimeout(250);
-  expect(await bar(page)).toEqual(restingBar);
+  await expect.poll(() => bar(page)).toMatchObject({ border: GOLD, transform: LIFT });
 });
 
 test("P9-14 keyboard use on an empty victory bar shows the ring, still without lighting up", async ({ page }) => {
@@ -218,19 +217,19 @@ test("P9-14 keyboard use on an empty victory bar shows the ring, still without l
   await expect.poll(() => bar(page)).toMatchObject({ border: RESTING_BORDER, transform: "none" });
 });
 
-test("P9-14 the empty victory bar lights up once a character is typed", async ({ page }) => {
+test("P9-14 / P95-01 an empty victory bar being edited keeps the strong frame before and after the first character", async ({ page }) => {
   await open(page, emptyVictory());
   await expect(page.locator(".victoryTextButton")).toBeFocused();
   await page.keyboard.press("Enter");
   const input = page.locator(".victoryInput");
   await expect(input).toBeFocused();
-  // Empty input: still plain.
+  // Empty input: already strong, so the first character does not switch the frame.
   await page.mouse.move(2, 2);
-  await expect.poll(() => bar(page)).toMatchObject({ border: RESTING_BORDER, transform: "none" });
+  await expect.poll(() => bar(page)).toMatchObject({ border: GOLD, transform: LIFT });
   await page.keyboard.type("a");
   await expect.poll(() => bar(page)).toMatchObject({ border: GOLD, transform: LIFT });
   await page.keyboard.press("Backspace");
-  await expect.poll(() => bar(page)).toMatchObject({ border: RESTING_BORDER, transform: "none" });
+  await expect.poll(() => bar(page)).toMatchObject({ border: GOLD, transform: LIFT });
 });
 
 test("P9-14 an empty victory bar keeps its suggestion chips unchanged and unlit on focus", async ({ page }) => {
