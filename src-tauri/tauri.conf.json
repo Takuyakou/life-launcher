@@ -39,7 +39,11 @@
         "installerIcon": "installer/nsis-installer.ico",
         "sidebarImage": "installer/nsis-sidebar.bmp",
         "uninstallerIcon": "installer/nsis-installer.ico",
-        "languages": ["English", "Japanese"]
+        "languages": ["English", "Japanese"],
+        "customLanguageFiles": {
+          "English": "installer/languages/English.nsh",
+          "Japanese": "installer/languages/Japanese.nsh"
+        }
       }
     }
   }
