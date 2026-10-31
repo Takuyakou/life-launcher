@@ -20,7 +20,7 @@ Life Launcherは、迷っているときに「今やる一手」を1つ示し、
 
 Web Demoでは合成データを使い、今日の候補選択・タイマー・「今日の3件から外す」など、Life Launcherの中心的な流れを体験できます。変更した状態はブラウザのlocalStorageに保存します。Windows版のアプリ・ファイル・URL起動は実際には行わず、演出として確認できます。
 
-※Windows製品版の完全移植ではありません。Web Demoは別公開工程であり、v1.4.0の本体更新と同時に更新されるものではありません。
+※Windows製品版の完全移植ではありません。Web Demoは別公開工程であり、v1.4.1の本体更新と同時に更新されるものではありません。
 
 ## 主な機能
 
@@ -55,6 +55,14 @@ Web Demoでは合成データを使い、今日の候補選択・タイマー・
 
 スクリーンショットは合成データから生成されています。実際のユーザー設定・アクティビティ・パス・ノートは含まれていません。
 
+## v1.4.1の変更
+
+- タイマーの開始・一時停止の通知をやめ、一時停止・再開を素早く何度も押しても時計が巻き戻らないようにしました。
+- 表示サイズ「大」「特大」で、メイン画面と記録画面の上部メニューの大きさをそろえました。記録画面の見出しの右側の余白、未入力の勝利条件にマウスを乗せたときの反応、メインの見出しの件数の位置も整えました。
+- 設定画面を十字キーとEnterで操作できるようにしました。十字キーはいつも項目の移動に使い、数字の欄はEnterで編集を始め、Enterで決め、Escで元の値に戻します。
+- インストーラーの「アンインストールできません。」に、原因と対処の案内を出すようにしました。
+- config schemaは`3`のままで、機能の追加・データ形式の変更はありません。
+
 ## v1.4.0の変更
 
 - 今やる一手は、今日の3件に入っている次の一手があれば、それを優先して示します。今やる一手と今日の3件のどちらから開始しても、両方が同じ実行中の表示になります。
@@ -72,19 +80,19 @@ Life Launcherは、[GitHub Releases](https://github.com/Takuyakou/life-launcher/
 
 通常はこちらを利用してください。
 
-v1.4.0のインストーラー: `Life-Launcher-v1.4.0-windows-x64-setup.exe`
+v1.4.1のインストーラー: `Life-Launcher-v1.4.1-windows-x64-setup.exe`
 
 ### Standalone EXE
 
 インストールせず直接起動できます。
 
-v1.4.0の単体実行版: `Life-Launcher-v1.4.0-windows-x64.exe`
+v1.4.1の単体実行版: `Life-Launcher-v1.4.1-windows-x64.exe`
 
 ### Portable ZIP
 
 ZIPを展開して利用できます。
 
-v1.4.0のZIP版: `Life-Launcher-v1.4.0-windows-x64-portable.zip`
+v1.4.1のZIP版: `Life-Launcher-v1.4.1-windows-x64-portable.zip`
 
 ZIP版もユーザーデータは`%APPDATA%\life-launcher`へ保存します。USBなどへデータごと持ち運ぶ方式ではありません。
 
@@ -98,11 +106,11 @@ ZIP版もユーザーデータは`%APPDATA%\life-launcher`へ保存します。U
 
 v1.2からv1.3への初回更新ではconfig schemaを`2`から`3`へ移行します。変換前のraw backupを作成し、移行・検証・backupに失敗した場合は元のconfigを書き換えません。Sessionの実行記録は削除しません。
 
-v1.3.4からv1.4.0への更新ではconfig schemaは`3`のままで、設定データの形式は変わりません。既存の設定と記録を引き継げます。
+v1.4.0からv1.4.1への更新ではconfig schemaは`3`のままで、設定データの形式は変わりません。既存の設定と記録を引き継げます。
 
 インストーラーで「インストールする前にアンインストールする」を選んで「以前のバージョンをアンインストールできませんでした」と出たときは、Life Launcherを終了してからやり直すか、「アンインストールしない」を選んでください。設定と記録は消えません。
 
-詳しくは [v1.4.0 Release notes](docs/releases/v1.4.0.md) と [CHANGELOG](CHANGELOG.md) を参照してください。機能の全体像は [OVERVIEW](docs/OVERVIEW.md)、詳細は [現行仕様書](docs/spec/current-spec.md) にまとめています。
+詳しくは [v1.4.1 Release notes](docs/releases/v1.4.1.md) と [CHANGELOG](CHANGELOG.md) を参照してください。機能の全体像は [OVERVIEW](docs/OVERVIEW.md)、詳細は [現行仕様書](docs/spec/current-spec.md) にまとめています。
 
 ## 動作要件
 
