@@ -1128,13 +1128,6 @@ body {
   border-color: rgba(231, 185, 77, 0.42);
 }
 
-.instructionIconButton--close:hover:not(:disabled),
-.instructionIconButton--close:focus-visible {
-  color: #fff;
-  background: #6d302c;
-  border-color: #a94a43;
-}
-
 .instructionIconButton:disabled {
   opacity: 0.36;
   cursor: not-allowed;
@@ -1274,7 +1267,6 @@ body {
   border-radius: 6px;
 }
 
-.instructionTreeCreate,
 .instructionTreeLoad {
   display: flex;
   height: 34px;
@@ -1290,8 +1282,6 @@ body {
   white-space: nowrap;
 }
 
-.instructionTreeCreate:hover:not(:disabled),
-.instructionTreeCreate:focus-visible,
 .instructionTreeLoad:hover:not(:disabled),
 .instructionTreeLoad:focus-visible {
   color: var(--accent-strong);
@@ -1299,7 +1289,6 @@ body {
   border-color: var(--accent);
 }
 
-.instructionTreeCreate:disabled,
 .instructionTreeLoad:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -2270,53 +2259,6 @@ button.instructionTreeDisclosure:hover {
   background: rgba(178, 78, 64, 0.3);
 }
 
-.miniLabel {
-  overflow: hidden;
-  color: var(--text);
-  font-size: 14px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.miniClock {
-  color: var(--accent-strong);
-  font-size: 30px;
-  font-weight: 900;
-  line-height: 1;
-}
-
-.miniProgressTrack {
-  height: 2px;
-  overflow: hidden;
-  background: var(--line);
-}
-
-.miniProgressBar {
-  height: 100%;
-  background: var(--accent);
-}
-
-.miniActions {
-  display: flex;
-  gap: 7px;
-}
-
-.miniControlButton {
-  min-height: 28px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: rgba(79, 171, 119, 0.16);
-  color: var(--text);
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 800;
-  padding: 5px 10px;
-}
-
-.miniControlButton--danger {
-  background: rgba(178, 78, 64, 0.2);
-}
-
 .miniQuietText {
   color: var(--muted);
   font-size: 12px;
@@ -2838,8 +2780,7 @@ h3 {
   outline-offset: 2px;
 }
 
-.timerMeta span,
-.timerHint {
+.timerMeta span {
   color: var(--muted);
   font-size: 12px;
 }
@@ -3482,8 +3423,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .weeklyReviewFacts span,
-.weeklyReviewBlockHeading span,
-.weeklyReviewDoneNotes > div > span {
+.weeklyReviewBlockHeading span {
   color: var(--muted);
   font-size: 12px;
 }
@@ -3510,7 +3450,6 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .weeklyReviewProjectList,
-.weeklyReviewDoneNotes,
 .weeklyFocusChecklist {
   display: grid;
   gap: 6px;
@@ -3544,21 +3483,6 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .weeklyReviewNorthStar {
   overflow-wrap: anywhere;
-}
-
-.weeklyReviewDoneNotes > div {
-  display: grid;
-  grid-template-columns: 88px minmax(0, 1fr);
-  gap: 10px;
-  padding: 7px 2px;
-  border-bottom: 1px solid var(--line-soft);
-}
-
-.weeklyReviewDoneNotes ul {
-  display: grid;
-  gap: 4px;
-  margin: 0;
-  padding-left: 18px;
 }
 
 .weeklyFocusChecklist {
@@ -3678,7 +3602,6 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .recordsStats div,
-.recordsTable,
 .notesHistoryDay {
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -3691,19 +3614,13 @@ input[type="number"]::-webkit-inner-spin-button {
   padding: 12px;
 }
 
-.recordsStats span,
-.recordsTableRow span {
+.recordsStats span {
   color: var(--muted);
   font-size: 13px;
 }
 
 .recordsStats strong {
   font-size: 24px;
-}
-
-.recordsActions {
-  display: flex;
-  justify-content: flex-end;
 }
 
 .timerStateRow {
@@ -3763,8 +3680,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .segmentRow,
-.projectFilterRow,
-.sessionRowActions {
+.projectFilterRow {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -3796,48 +3712,6 @@ input[type="number"]::-webkit-inner-spin-button {
   border-top: 1px solid var(--line-soft);
 }
 
-.recordsTable {
-  overflow: hidden;
-}
-
-.recordsTableRow {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 76px;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-}
-
-.recordsTableRow + .recordsTableRow {
-  border-top: 1px solid var(--line-soft);
-}
-
-.recordsTableRow strong {
-  text-align: right;
-}
-
-.recordsTableRow--allTime {
-  grid-template-columns: minmax(0, 1fr) minmax(120px, auto);
-}
-
-.recordsTotalMetrics {
-  display: flex;
-  align-items: baseline;
-  justify-content: flex-end;
-  gap: 12px;
-  white-space: nowrap;
-}
-
-.recordsTotalMetrics span {
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.recordsTableRow > .projectIdentity,
-.recentSessionMeta > .projectIdentity {
-  color: var(--text);
-}
-
 .recentSessionList {
   display: grid;
   gap: 8px;
@@ -3852,33 +3726,12 @@ input[type="number"]::-webkit-inner-spin-button {
   background: var(--surface-soft);
 }
 
-.recentSessionMeta {
-  display: grid;
-  grid-template-columns: 86px 54px minmax(0, 1fr) 54px;
-  align-items: center;
-  gap: 8px;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.recentSessionMeta strong {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--text);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .recentSessionRow p {
   margin: 0;
   color: var(--muted);
   font-size: 14px;
   line-height: 1.4;
   overflow-wrap: anywhere;
-}
-
-.sessionRowActions {
-  justify-content: flex-end;
 }
 
 .notesHistoryList {
@@ -4451,17 +4304,6 @@ input[type="number"]::-webkit-inner-spin-button {
   padding: 14px 0;
   border-top: 1px solid var(--line-soft);
 }
-
-.todayList {
-  display: grid;
-  gap: 0;
-}
-
-.notesBody {
-  display: grid;
-  gap: 8px;
-  padding-top: 10px;
-}
 .todayActivityBody {
   display: grid;
   gap: 8px;
@@ -4522,7 +4364,6 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayRow,
-.addRow,
 .inboxRow {
   display: grid;
   align-items: center;
@@ -4563,14 +4404,12 @@ input[type="number"]::-webkit-inner-spin-button {
   opacity: 1;
 }
 
-.todayRow--dragging,
-.projectCard--dragging {
+.todayRow--dragging {
   opacity: 0.58;
 }
 
 .todayRow .check,
-.todayRow button,
-.projectCard button {
+.todayRow button {
   cursor: pointer;
 }
 
@@ -4697,44 +4536,6 @@ input[type="number"]::-webkit-inner-spin-button {
   text-decoration: line-through;
 }
 
-.todayEditInput {
-  min-width: 0;
-  flex: 1;
-  width: 100%;
-  min-height: 42px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 8px 11px;
-  background: var(--surface);
-  color: var(--text);
-  font-size: 17px;
-  line-height: 1.25;
-  outline: none;
-}
-
-.todayEditInput:focus {
-  border-color: var(--muted);
-  box-shadow: 0 0 0 2px rgba(184, 176, 160, 0.18);
-}
-
-.todayEditInput--done {
-  color: var(--muted);
-  text-decoration: line-through;
-}
-
-.addRow {
-  grid-template-columns: minmax(0, 1fr) 82px;
-  margin-top: 10px;
-}
-
-.todayAddRow {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 82px;
-  align-items: center;
-  gap: 8px;
-  margin-top: 10px;
-}
-
 .check {
   width: 24px;
   height: 24px;
@@ -4764,17 +4565,9 @@ input[type="number"]::-webkit-inner-spin-button {
   box-shadow: 0 0 0 2px rgba(184, 176, 160, 0.18);
 }
 
-.textInput--done {
-  color: var(--muted);
-  text-decoration: line-through;
-}
-
 .primaryButton,
 .secondaryButton,
 .dangerButton,
-.startButton,
-.shortStartButton,
-.miniStartButton,
 .iconButton,
 .moveTodayButton,
 .disclosure,
@@ -4930,8 +4723,7 @@ input[type="number"]::-webkit-inner-spin-button {
   background: var(--control-danger-active-bg);
 }
 
-.iconButton,
-.miniStartButton {
+.iconButton {
   width: 36px;
   height: 36px;
   display: grid;
@@ -4942,12 +4734,6 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .iconButton {
   font-size: 23px;
-}
-
-.miniStartButton {
-  background: var(--control-positive-bg);
-  color: var(--good);
-  font-size: 16px;
 }
 
 .todayTimerActions {
@@ -5069,14 +4855,6 @@ input[type="number"]::-webkit-inner-spin-button {
   color: var(--text);
 }
 
-.sectionHeading--compact {
-  margin-bottom: 8px;
-}
-
-.sectionHeading--inlineActions {
-  justify-content: flex-start;
-}
-
 .sectionHeading h2 {
   color: var(--muted);
   font-size: 13px;
@@ -5087,12 +4865,6 @@ input[type="number"]::-webkit-inner-spin-button {
 .sectionHeading span {
   color: var(--muted);
   font-size: 13px;
-}
-
-.sectionHeadingActions {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
 }
 
 .sectionAddButton {
@@ -5131,44 +4903,11 @@ input[type="number"]::-webkit-inner-spin-button {
   cursor: not-allowed;
   opacity: 0.45;
 }
-.sectionAddButton--icon {
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  justify-content: center;
-}
 
 .projectGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(245px, 1fr));
   gap: 10px;
-}
-
-.projectCard {
-  min-height: 108px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 13px;
-  background: var(--surface);
-  cursor: grab;
-  touch-action: none;
-  user-select: none;
-}
-
-.projectCard--running {
-  border-color: var(--accent);
-  box-shadow:
-    0 0 0 1px rgba(231, 185, 77, 0.36),
-    0 0 20px rgba(231, 185, 77, 0.1);
-}
-
-.projectCard[data-project-color] {
-  border-left: 3px solid var(--project-color);
-  padding-left: 11px;
 }
 
 .todayBuilderBand {
@@ -5194,10 +4933,6 @@ input[type="number"]::-webkit-inner-spin-button {
   display: grid;
   gap: 8px;
   padding: 10px 0 2px;
-}
-
-.todayBuilderAddRow {
-  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .todayBuilderCandidate {
@@ -5264,24 +4999,9 @@ input[type="number"]::-webkit-inner-spin-button {
   white-space: nowrap;
 }
 
-.todayBuilderSource {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 760;
-}
-
 .todayBuilderActions {
   display: flex;
   gap: 6px;
-}
-
-.todayBuilderDestination {
-  min-height: 34px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 0 8px;
-  background: var(--surface-strong);
-  color: var(--text);
 }
 
 .todayBuilderAddButton {
@@ -5297,62 +5017,6 @@ input[type="number"]::-webkit-inner-spin-button {
   .todayBuilderActions {
     flex-wrap: wrap;
   }
-
-  .todayBuilderAddRow {
-    grid-template-columns: 1fr;
-  }
-}
-
-.projectCard--dragging {
-  border-color: var(--muted);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.34);
-  cursor: grabbing;
-  opacity: 0.72;
-  transform: scale(0.985);
-}
-
-.projectCopy {
-  min-width: 0;
-}
-
-.projectTitleRow {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 8px;
-}
-
-.projectTitleRow h3 {
-  min-width: 0;
-  max-width: min(100%, 240px);
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  overflow: hidden;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 850;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.projectTitleRow h3 span {
-  font-size: 10px;
-}
-
-.projectTitleRow h3 .projectIdentity {
-  width: 100%;
-  font-size: 12px;
-}
-
-.projectTitleRow h3 .projectIdentityDot {
-  width: 8px;
-  height: 8px;
-}
-
-.projectTitleRow h3 .projectIdentityName {
-  color: var(--muted);
-  font-size: inherit;
 }
 
 .runningBadge {
@@ -5375,50 +5039,6 @@ input[type="number"]::-webkit-inner-spin-button {
   color: var(--warn);
 }
 
-.projectEditButton,
-.projectInstructionButton {
-  width: 30px;
-  height: 30px;
-  flex: 0 0 auto;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius);
-  background: var(--surface-soft);
-  color: var(--muted);
-  font-size: 14px;
-}
-
-.projectEditButton:hover:not(:disabled),
-.projectInstructionButton:hover:not(:disabled),
-.projectEditButton:focus-visible,
-.projectInstructionButton:focus-visible {
-  border-color: var(--muted);
-  color: var(--text);
-}
-
-.projectEditButton:active:not(:disabled),
-.projectInstructionButton:active:not(:disabled) {
-  box-shadow: var(--control-neutral-press-shadow);
-}
-
-.projectInstructionButton {
-  color: var(--accent-strong);
-  font-size: 15px;
-}
-
-.projectCard p {
-  display: -webkit-box;
-  margin-top: 7px;
-  overflow: hidden;
-  color: var(--text);
-  font-size: 15px;
-  font-weight: 760;
-  line-height: 1.35;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
 .projectNextStepPlaceholder {
   color: var(--muted) !important;
 }
@@ -5427,40 +5047,6 @@ input[type="number"]::-webkit-inner-spin-button {
   color: var(--muted);
   font-size: 12px;
   font-weight: 700;
-}
-
-.projectActions {
-  display: grid;
-  grid-template-columns: 46px 50px;
-  align-items: center;
-  gap: 8px;
-}
-
-.projectActions--running {
-  display: flex;
-  justify-content: end;
-}
-
-.startButton {
-  width: 50px;
-  height: 50px;
-  display: grid;
-  place-items: center;
-  background: var(--control-short-bg);
-  color: #a9d0ff;
-  font-size: 22px;
-}
-
-.shortStartButton {
-  width: 46px;
-  height: 50px;
-  display: grid;
-  place-items: center;
-  background: var(--control-positive-bg);
-  color: var(--good);
-  font-size: 12px;
-  font-weight: 850;
-  line-height: 1.05;
 }
 
 .nextStepStartGlyph,
@@ -5476,20 +5062,6 @@ input[type="number"]::-webkit-inner-spin-button {
   font-weight: 850;
   line-height: 1;
   pointer-events: none;
-}
-
-.startButton:hover:not(:disabled) .nextStepStartGlyph,
-.startButton:focus-visible .nextStepStartGlyph,
-.shortStartButton:hover:not(:disabled) .nextStepStartGlyph,
-.shortStartButton:focus-visible .nextStepStartGlyph {
-  opacity: 1;
-}
-
-.startButton:hover:not(:disabled) .nextStepStartDuration,
-.startButton:focus-visible .nextStepStartDuration,
-.shortStartButton:hover:not(:disabled) .nextStepStartDuration,
-.shortStartButton:focus-visible .nextStepStartDuration {
-  opacity: 0;
 }
 
 .runningPauseButton,
@@ -5553,18 +5125,14 @@ input[type="number"]::-webkit-inner-spin-button {
   box-shadow: var(--control-neutral-press-shadow);
 }
 
-.miniStartButton:hover:not(:disabled),
 .moveTodayButton:hover:not(:disabled),
-.shortStartButton:hover:not(:disabled),
 .doNowStartPrimary:hover:not(:disabled),
 .runningPauseButton:hover:not(:disabled) {
   border-color: var(--control-positive-hover-border);
   background: var(--control-positive-hover-bg);
 }
 
-.miniStartButton:active:not(:disabled),
 .moveTodayButton:active:not(:disabled),
-.shortStartButton:active:not(:disabled),
 .doNowStartPrimary:active:not(:disabled),
 .runningPauseButton:active:not(:disabled) {
   border-color: var(--control-positive-active-border);
@@ -5572,7 +5140,6 @@ input[type="number"]::-webkit-inner-spin-button {
   box-shadow: var(--control-press-shadow);
 }
 
-.startButton:hover:not(:disabled),
 .doNowStartSecondary:hover:not(:disabled),
 .todayStartButton--normal:hover:not(:disabled) {
   border-color: var(--control-short-hover-border);
@@ -5596,7 +5163,6 @@ input[type="number"]::-webkit-inner-spin-button {
   background: var(--control-short-hover-bg);
 }
 
-.startButton:active:not(:disabled),
 .doNowStartSecondary:active:not(:disabled),
 .todayStartButton--normal:active:not(:disabled) {
   border-color: var(--control-short-active-border);
@@ -5670,10 +5236,6 @@ input[type="number"]::-webkit-inner-spin-button {
   grid-template-columns: 28px minmax(0, 1fr);
 }
 
-.disclosure--automatic {
-  grid-template-columns: 28px minmax(0, 1fr) auto 36px;
-}
-
 .todayActivityAutoBadge {
   display: inline-flex;
   align-items: center;
@@ -5729,30 +5291,6 @@ input[type="number"]::-webkit-inner-spin-button {
 .inboxRow:hover .moveTodayButton,
 .inboxRow:focus-within .moveTodayButton {
   opacity: 1;
-}
-
-.recordsFooter {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  border-top: 1px solid var(--line-soft);
-  padding-top: 12px;
-}
-
-.dataFolderButton {
-  min-height: 34px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 6px 10px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.dataFolderButton:hover:not(:disabled) {
-  border-color: var(--muted);
-  color: var(--text);
 }
 
 .quietText,
@@ -6305,30 +5843,6 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .launcherOverlayEmptyState strong {
   color: var(--text);
-}
-
-.launcherOverlayGroup {
-  display: grid;
-  gap: 9px;
-}
-
-.launcherOverlayGroupHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  border-bottom: 1px solid var(--line-soft);
-  padding-bottom: 6px;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.launcherOverlayGroupHeader strong {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--text);
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .launcherTileGrid {
@@ -7536,12 +7050,6 @@ input[type="number"]::-webkit-inner-spin-button {
   color: var(--muted);
 }
 
-.settingsButton--warning {
-  border-color: var(--accent);
-  background: rgba(231, 185, 77, 0.08);
-  color: var(--accent-strong);
-}
-
 .settingsButton--danger {
   border-color: var(--error);
   background: transparent;
@@ -7554,16 +7062,6 @@ input[type="number"]::-webkit-inner-spin-button {
   border-color: var(--muted);
   background: var(--control-neutral-hover-bg);
   color: var(--text);
-  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.22);
-  filter: brightness(1.04);
-  transform: translateY(-1px);
-}
-
-.secondaryButton.settingsButton--warning:hover:not(:disabled),
-.secondaryButton.settingsButton--warning:focus-visible {
-  border-color: var(--accent);
-  background: rgba(231, 185, 77, 0.18);
-  color: var(--accent-strong);
   box-shadow: 0 5px 14px rgba(0, 0, 0, 0.22);
   filter: brightness(1.04);
   transform: translateY(-1px);
@@ -7932,10 +7430,6 @@ input[type="number"]::-webkit-inner-spin-button {
   accent-color: var(--accent);
 }
 
-.projectInstructionSetting select {
-  width: 100%;
-}
-
 .projectInstructionStartToggle:has(input:disabled) {
   opacity: 0.55;
 }
@@ -8036,22 +7530,6 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .instructionFolderAddButton {
   width: max-content;
-}
-
-.groupPicker {
-  display: grid;
-  grid-template-columns: 150px minmax(0, 1fr);
-  gap: 8px;
-}
-
-.groupPicker select {
-  width: 100%;
-  min-height: 42px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 8px 10px;
-  background: var(--surface);
-  color: var(--text);
 }
 
 .dropGroupMode {
@@ -8183,18 +7661,7 @@ input[type="number"]::-webkit-inner-spin-button {
   font-size: 12px;
 }
 
-.overlayPagePicker {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
-}
-
-.overlayPagePicker .secondaryButton {
-  white-space: nowrap;
-}
-
-.actionEditor,
-.checkList {
+.actionEditor {
   display: grid;
   gap: 8px;
 }
@@ -8219,50 +7686,6 @@ input[type="number"]::-webkit-inner-spin-button {
   padding: 8px 10px;
   background: var(--surface);
   color: var(--text);
-}
-
-.checkList {
-  max-height: 220px;
-  overflow: auto;
-}
-
-.checkListItem {
-  min-height: 38px;
-  display: grid;
-  grid-template-columns: 26px 28px minmax(0, 1fr);
-  align-items: center;
-  gap: 8px;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius);
-  padding: 6px 8px;
-  background: var(--surface-soft);
-}
-
-.checkListItem input {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--good);
-  cursor: pointer;
-}
-
-.projectDictionaryButtons {
-  border-top: 1px solid var(--line-soft);
-  padding-top: 8px;
-}
-
-.projectDictionaryButtons summary {
-  min-height: 38px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  cursor: pointer;
-  color: var(--text);
-  font-weight: 700;
-}
-
-.projectDictionaryButtons[open] summary {
-  margin-bottom: 8px;
 }
 
 .dropSource {
@@ -8621,12 +8044,6 @@ input[type="number"]::-webkit-inner-spin-button {
   gap: 8px;
 }
 
-.todayBuilderSource {
-  font-size: 10px;
-  font-weight: 500;
-  line-height: 1.4;
-}
-
 .todayBuilderRow strong {
   font-size: var(--dashboard-font-body);
   font-weight: 600;
@@ -8651,26 +8068,11 @@ input[type="number"]::-webkit-inner-spin-button {
   line-height: 1.35;
 }
 
-.sectionHeadingActions {
-  gap: 8px;
-}
-
-.sectionHeadingActions > span,
 .disclosureCount {
   font-size: var(--dashboard-font-meta);
   font-weight: 500;
   line-height: 1.4;
   font-variant-numeric: tabular-nums;
-}
-
-.sectionHeadingActions > .todayCompletionSummary {
-  color: var(--text-muted-readable);
-  white-space: nowrap;
-}
-
-.sectionHeadingActions > .todayCompletionSummary--complete {
-  color: var(--good);
-  font-weight: 650;
 }
 
 .sectionAddButton {
@@ -8694,59 +8096,15 @@ input[type="number"]::-webkit-inner-spin-button {
   min-height: 44px;
 }
 
-.todayTextButton,
-.todayEditInput {
+.todayTextButton {
   min-height: 38px;
   font-size: var(--dashboard-font-body);
   font-weight: 500;
   line-height: 1.5;
 }
 
-.todayAddRow,
-.addRow {
-  margin-top: 8px;
-}
-
-.todayAddRow .todayEditInput,
-.inboxAddRow .textInput {
-  min-height: 36px;
-  font-size: var(--dashboard-font-body);
-}
-
-.todayAddRow .primaryButton,
-.inboxAddRow .primaryButton {
-  min-height: 36px;
-  font-size: var(--dashboard-font-meta);
-  font-weight: 650;
-}
-
 .projectGrid {
   gap: 8px;
-}
-
-.projectCard {
-  min-height: 100px;
-  gap: 10px;
-  padding: 11px;
-}
-
-.projectCard[data-project-color] {
-  padding-left: 9px;
-}
-
-.projectTitleRow h3,
-.projectTitleRow h3 .projectIdentity,
-.projectTitleRow h3 .projectIdentityName {
-  font-size: var(--dashboard-font-meta);
-  font-weight: 600;
-  line-height: 1.3;
-}
-
-.projectCard p {
-  margin-top: 6px;
-  font-size: var(--dashboard-font-project);
-  font-weight: 650;
-  line-height: 1.4;
 }
 
 .projectNextStepTrigger {
@@ -8784,17 +8142,9 @@ input[type="number"]::-webkit-inner-spin-button {
   white-space: nowrap;
 }
 
-.todayList .todayRow:last-child {
-  border-bottom: 0;
-}
-
 .disclosureCount {
   min-width: 22px;
   justify-self: end;
-}
-
-.disclosure--automatic {
-  grid-template-columns: 28px minmax(0, 1fr) auto minmax(22px, auto);
 }
 
 .todayActivityAutoBadge {
@@ -8893,8 +8243,7 @@ input[type="number"]::-webkit-inner-spin-button {
   user-select: none;
 }
 
-.inboxRow--dragging,
-.projectCard--dragging {
+.inboxRow--dragging {
   border-color: transparent;
   background: transparent;
   box-shadow: none;
@@ -8902,15 +8251,8 @@ input[type="number"]::-webkit-inner-spin-button {
   transform: none;
 }
 
-.inboxRow--dragging > *,
-.projectCard--dragging > * {
+.inboxRow--dragging > * {
   visibility: hidden;
-}
-
-.inboxItemCopy {
-  min-width: 0;
-  display: grid;
-  gap: 3px;
 }
 
 .inboxProjectIdentity {
@@ -8929,14 +8271,6 @@ input[type="number"]::-webkit-inner-spin-button {
 .inboxEditDialog {
   width: min(680px, calc(100vw - 32px));
   overflow-y: auto;
-}
-
-.inboxStartEnvironmentSection {
-  gap: 8px;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius);
-  padding: 12px;
-  background: var(--surface-soft);
 }
 
 .inboxProjectChoices {
@@ -9394,8 +8728,7 @@ input[type="number"]::-webkit-inner-spin-button {
   right: 0;
 }
 
-.todayTextButton,
-.todayEditInput {
+.todayTextButton {
   min-height: 32px;
   flex-basis: 100%;
   padding-block: 2px;
@@ -9601,31 +8934,6 @@ input[type="number"]::-webkit-inner-spin-button {
 .todayNextBatch span {
   color: var(--muted);
   font-size: var(--dashboard-font-meta);
-}
-
-.todayAddRow,
-.inboxAddRow,
-.todayBuilderAddRow {
-  grid-template-columns: minmax(0, 1fr) 82px 36px;
-}
-
-.sharedAddForm {
-  display: grid;
-  grid-template-columns: minmax(120px, 0.55fr) minmax(180px, 1fr) 82px 36px;
-  align-items: center;
-  gap: 8px;
-}
-
-.sharedAddForm .textInput,
-.sharedAddForm .primaryButton,
-.sharedAddCancel {
-  min-height: 36px;
-}
-
-.sharedAddCancel {
-  width: 36px;
-  height: 36px;
-  font-size: 0;
 }
 
 .todayBuilderPagination {
@@ -9857,7 +9165,6 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayPickerDialog {
-  --today-picker-font-action: 15px;
   --today-picker-font-body: 13px;
   --today-picker-font-meta: 11px;
   width: min(720px, 100%);
@@ -10306,8 +9613,7 @@ input[type="number"]::-webkit-inner-spin-button {
   border-bottom: 0;
 }
 
-.todayPickerEmpty,
-.todayPickerFullMessage {
+.todayPickerEmpty {
   min-height: 44px;
   display: flex;
   align-items: center;
@@ -10315,10 +9621,6 @@ input[type="number"]::-webkit-inner-spin-button {
   padding-inline: 4px;
   color: var(--text-muted-readable);
   font-size: var(--today-picker-font-meta);
-}
-
-.todayPickerFullMessage {
-  padding: 18px 0;
 }
 
 .todayPickerActions {
@@ -10495,18 +9797,6 @@ input[type="number"]::-webkit-inner-spin-button {
   cursor: grab;
   touch-action: none;
   user-select: none;
-}
-
-.nextStepRow .projectCopy {
-  display: grid;
-  grid-template-columns: minmax(110px, 180px) minmax(0, 1fr);
-  align-items: center;
-  gap: 12px;
-}
-
-.nextStepRow .projectTitleRow h3 {
-  max-width: none;
-  margin: 0;
 }
 
 .projectsBand .disclosureHeader,
@@ -11518,16 +10808,6 @@ input[type="number"]::-webkit-inner-spin-button {
   font-size: 12px;
 }
 
-.nextStepReplacementNotice {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  border: 1px solid rgba(231, 185, 77, 0.42);
-  border-radius: var(--radius);
-  padding: 8px 12px 12px;
-  background: rgba(231, 185, 77, 0.07);
-}
-
 .inboxGroups {
   display: grid;
   gap: 10px;
@@ -11737,42 +11017,10 @@ input[type="number"]::-webkit-inner-spin-button {
   box-shadow: inset 0 0 0 1px rgba(231, 185, 77, 0.16);
 }
 
-.wishlistTodayStatus,
-.wishlistRestoreButton {
+.wishlistTodayStatus {
   color: var(--good);
   font-size: var(--dashboard-font-meta);
   white-space: nowrap;
-}
-
-.wishlistRestoreButton {
-  min-height: 30px;
-  padding: 4px 8px;
-  border-color: var(--line);
-  background: transparent;
-}
-
-.nextStepReplacementNotice legend {
-  padding-inline: 4px;
-  color: var(--accent-strong);
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.nextStepReplacementNotice span {
-  color: var(--text-muted-readable);
-  line-height: 1.45;
-}
-
-.nextStepReplacementChoices {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.nextStepReplacementChoices .secondaryButton[aria-pressed="true"] {
-  border-color: var(--accent);
-  background: rgba(231, 185, 77, 0.13);
-  color: var(--accent-strong);
 }
 
 .legacyNextStepChoice {
@@ -11890,19 +11138,6 @@ input[type="number"]::-webkit-inner-spin-button {
   padding: 8px 10px;
 }
 
-.nextStepRow .projectCopy p {
-  min-width: 0;
-  display: block;
-  margin: 0;
-  overflow: hidden;
-  color: var(--text);
-  font-size: var(--dashboard-font-body);
-  font-weight: 600;
-  line-height: 1.4;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .nextStepRow .projectNextStepPlaceholder {
   color: var(--text) !important;
   font-size: var(--dashboard-font-body);
@@ -11959,23 +11194,9 @@ input[type="number"]::-webkit-inner-spin-button {
   .todayActivityBand .disclosureDescription {
     display: none;
   }
-
-  .sharedAddForm {
-    grid-template-columns: minmax(0, 1fr) 82px 36px;
-  }
-
-  .sharedAddForm input:first-child {
-    grid-column: 1 / -1;
-  }
 }
 
 @media (max-width: 620px) {
-  .todayAddRow,
-  .inboxAddRow,
-  .todayBuilderAddRow,
-  .sharedAddForm {
-    grid-template-columns: minmax(0, 1fr) 82px 36px;
-  }
 
   .sourceListRow .sourceListCopy,
   .todayBuilderRow.sourceListRow .sourceListCopy {
@@ -13374,7 +12595,7 @@ button.mainActionButton:is(
 }
 
 .mainScrollContent:is([data-main-display-size="large"], [data-main-display-size="xlarge"])
-  :is(.todayTextButton, .todayEditInput) {
+  :is(.todayTextButton) {
   font-size: var(--dashboard-font-body);
 }
 
