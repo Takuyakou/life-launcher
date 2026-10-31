@@ -4565,6 +4565,20 @@ input[type="number"]::-webkit-inner-spin-button {
   box-shadow: 0 0 0 2px rgba(184, 176, 160, 0.18);
 }
 
+/* Settings dialog: a focused field is only "navigating" (yellow ring, no caret) until Enter, a
+   click or typing starts editing (data-editing: the plain field look with a caret). */
+.settingsDialog .textInput:focus:not([data-editing]) {
+  border-color: var(--line);
+  box-shadow: none;
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+  caret-color: transparent;
+}
+
+.settingsDialog .textInput:focus:not([data-editing])::selection {
+  background: transparent;
+}
+
 .primaryButton,
 .secondaryButton,
 .dangerButton,
