@@ -2,19 +2,20 @@
 ; Copied as is from tauri-bundler 2.9.4 (the bundler inside @tauri-apps/cli 2.11.4 = tauri-cli 2.11.4),
 ; tauri-apps/tauri tag tauri-cli-v2.11.4 (commit 8909f221d1515955fc843808032bdc5d62209c96),
 ; crates/tauri-bundler/src/bundle/windows/nsis/languages/English.nsh .
-; Only the unableToUninstall string differs (P95-03). Do not change the other strings. When @tauri-apps/cli is updated,
-; copy the new English.nsh again and re-apply that one string (a missing string leaves a blank installer message).
+; Only these strings differ: unableToUninstall (P95-03) and appRunning, appRunningOkKill, failedToKillApp, where {{product_name}} was replaced
+; with ${PRODUCTNAME} (P95-03b, 3 places; Tauri does not expand {{product_name}} in language files). Do not change the other strings. When @tauri-apps/cli is updated,
+; copy the new English.nsh again and re-apply those four strings (a missing string leaves a blank installer message).
 LangString addOrReinstall ${LANG_ENGLISH} "Add/Reinstall components"
 LangString alreadyInstalled ${LANG_ENGLISH} "Already Installed"
 LangString alreadyInstalledLong ${LANG_ENGLISH} "${PRODUCTNAME} ${VERSION} is already installed. Select the operation you want to perform and click Next to continue."
-LangString appRunning ${LANG_ENGLISH} "{{product_name}} is running! Please close it first then try again."
-LangString appRunningOkKill ${LANG_ENGLISH} "{{product_name}} is running!$\nClick OK to kill it"
+LangString appRunning ${LANG_ENGLISH} "${PRODUCTNAME} is running! Please close it first then try again."
+LangString appRunningOkKill ${LANG_ENGLISH} "${PRODUCTNAME} is running!$\nClick OK to kill it"
 LangString chooseMaintenanceOption ${LANG_ENGLISH} "Choose the maintenance option to perform."
 LangString choowHowToInstall ${LANG_ENGLISH} "Choose how you want to install ${PRODUCTNAME}."
 LangString createDesktop ${LANG_ENGLISH} "Create desktop shortcut"
 LangString dontUninstall ${LANG_ENGLISH} "Do not uninstall"
 LangString dontUninstallDowngrade ${LANG_ENGLISH} "Do not uninstall (Downgrading without uninstall is disabled for this installer)"
-LangString failedToKillApp ${LANG_ENGLISH} "Failed to kill {{product_name}}. Please close it first then try again"
+LangString failedToKillApp ${LANG_ENGLISH} "Failed to kill ${PRODUCTNAME}. Please close it first then try again"
 LangString installingWebview2 ${LANG_ENGLISH} "Installing WebView2..."
 LangString newerVersionInstalled ${LANG_ENGLISH} "A newer version of ${PRODUCTNAME} is already installed! It is not recommended that you install an older version. If you really want to install this older version, it's better to uninstall the current version first. Select the operation you want to perform and click Next to continue."
 LangString older ${LANG_ENGLISH} "older"
