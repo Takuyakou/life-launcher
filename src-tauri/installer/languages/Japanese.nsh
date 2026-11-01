@@ -2,19 +2,20 @@
 ; Copied as is from tauri-bundler 2.9.4 (the bundler inside @tauri-apps/cli 2.11.4 = tauri-cli 2.11.4),
 ; tauri-apps/tauri tag tauri-cli-v2.11.4 (commit 8909f221d1515955fc843808032bdc5d62209c96),
 ; crates/tauri-bundler/src/bundle/windows/nsis/languages/Japanese.nsh .
-; Only the unableToUninstall string differs (P95-03). Do not change the other strings. When @tauri-apps/cli is updated,
-; copy the new Japanese.nsh again and re-apply that one string (a missing string leaves a blank installer message).
+; Only these strings differ: unableToUninstall (P95-03) and appRunning, appRunningOkKill, failedToKillApp, where {{product_name}} was replaced
+; with ${PRODUCTNAME} (P95-03b, 3 places; Tauri does not expand {{product_name}} in language files). Do not change the other strings. When @tauri-apps/cli is updated,
+; copy the new Japanese.nsh again and re-apply those four strings (a missing string leaves a blank installer message).
 LangString addOrReinstall ${LANG_JAPANESE} "コンポーネントの追加・再インストール"
 LangString alreadyInstalled ${LANG_JAPANESE} "既にインストールされています"
 LangString alreadyInstalledLong ${LANG_JAPANESE} "${PRODUCTNAME} ${VERSION} は既にインストールされています。実行したい操作を選択し、「次へ」をクリックして続行します。"
-LangString appRunning ${LANG_JAPANESE} "{{product_name}} は動作中です。動作中のプログラムを終了し、もう一度やり直してください。"
-LangString appRunningOkKill ${LANG_JAPANESE} "{{product_name}} は動作中です。$\n「OK」を押すと動作中のプログラムを終了します。"
+LangString appRunning ${LANG_JAPANESE} "${PRODUCTNAME} は動作中です。動作中のプログラムを終了し、もう一度やり直してください。"
+LangString appRunningOkKill ${LANG_JAPANESE} "${PRODUCTNAME} は動作中です。$\n「OK」を押すと動作中のプログラムを終了します。"
 LangString chooseMaintenanceOption ${LANG_JAPANESE} "メンテナンスオプションを選択して実行します。"
 LangString choowHowToInstall ${LANG_JAPANESE} "${PRODUCTNAME} のインストール方法を選択してください。"
 LangString createDesktop ${LANG_JAPANESE} "デスクトップショートカットを作成する"
 LangString dontUninstall ${LANG_JAPANESE} "アンインストールしない"
 LangString dontUninstallDowngrade ${LANG_JAPANESE} "アンインストールしない (このインストーラーでは、アンインストールをせずにダウングレードすることはできません)"
-LangString failedToKillApp ${LANG_JAPANESE} "{{product_name}} の終了に失敗しました。動作中のプログラムを終了し、もう一度やり直してください。"
+LangString failedToKillApp ${LANG_JAPANESE} "${PRODUCTNAME} の終了に失敗しました。動作中のプログラムを終了し、もう一度やり直してください。"
 LangString installingWebview2 ${LANG_JAPANESE} "WebView2 をインストール中です..."
 LangString newerVersionInstalled ${LANG_JAPANESE} "既に新しいバージョンの ${PRODUCTNAME} がインストールされています。古いバージョンをインストールすることは推奨されません。どうしてもこの旧バージョンをインストールしたい場合は、先に現行バージョンをアンインストールしておく方がよいでしょう。実行したい操作を選択し、「次へ」をクリックして続行します。"
 LangString older ${LANG_JAPANESE} "旧"
