@@ -1,20 +1,28 @@
-# Life Launcher v1.4.0 UI/UX・機能仕様書
+# Life Launcher v1.4.1 UI/UX・機能仕様書
 
 ## 0. 文書情報
 
 | 項目             | 内容                                                                   |
 | ---------------- | ---------------------------------------------------------------------- |
-| 文書版           | 1.4.0                                                                  |
+| 文書版           | 1.4.1                                                                  |
 | 対象             | Windowsデスクトップ版 Life Launcher                                    |
-| 実装基準         | Public repository `Takuyakou/life-launcher` のv1.4.0実装             |
-| 作業branch       | `release/v1.4.0`(PR #128統合後の`main`が起点)                          |
-| 監査基準コミット | `2a6222b`（PR #128マージ）                                             |
-| 確認日           | 2026-10-29                                                             |
+| 実装基準         | Public repository `Takuyakou/life-launcher` のv1.4.1実装             |
+| 作業branch       | `release/v1.4.1`(P95-04統合後の`main`が起点)                           |
+| 監査基準コミット | `bd9b90a`（PR #136マージ）                                             |
+| 確認日           | 2026-10-31                                                             |
 | UI実装           | Tauri 2 / React 18 / TypeScript / CSS                                  |
 
-本書は、Life Launcher v1.4.0のUI/UXと主要機能を、現在のコード、型、設定、capability、テストから整理した現行仕様書である。
+本書は、Life Launcher v1.4.1のUI/UXと主要機能を、現在のコード、型、設定、capability、テストから整理した現行仕様書である。
 
-アプリ版は`1.4.0`、config schemaは`3`である。Project / NextStep / Wishlist再構成、Dictionary / Drop Register / Instruction Viewer / Guide改善、メイン表示サイズ、拡大Timer、キーボード操作と完了表示の修正を含む。機能の入口は [Overview](../OVERVIEW.md) を参照する。
+アプリ版は`1.4.1`、config schemaは`3`である。Project / NextStep / Wishlist再構成、Dictionary / Drop Register / Instruction Viewer / Guide改善、メイン表示サイズ、拡大Timer、キーボード操作と完了表示の修正を含む。機能の入口は [Overview](../OVERVIEW.md) を参照する。
+
+## v1.4.1（Phase 9.5）での変更
+
+- タイマーの開始・一時停止の通知を出さない。一時停止・再開は押した時刻の1回の計算で行い、連打で時計が巻き戻らない（§14、P95-01）。
+- 上部メニューは、メイン画面と記録画面で同じ大きさにする（§6、P95-01）。記録画面の見出しの右の文字、未入力の勝利条件のホバー、メインの見出しの件数の位置を整えた（P95-01）。
+- 設定画面だけ、十字キーを常に移動に使い、入力欄はEnterで編集する（§19.0、P95-04）。
+- インストーラーの案内文とCSSの整理は仕様の変更を伴わない（P95-02、P95-03）。
+- config schema、データ形式、セッション記録の書き込み内容は変えていない。
 
 ## v1.4.0（Phase 9）での変更
 

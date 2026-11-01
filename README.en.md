@@ -20,7 +20,7 @@ Try the central Life Launcher flow in your browser without installing the Window
 
 The Web Demo uses synthetic data to demonstrate the central Life Launcher flow, including choosing today's items, running timers, and removing an item from Today's Three. Changes are stored in your browser's localStorage. Launching apps, files, and URLs is simulated rather than performed.
 
-Note: it is not a complete port of the Windows product. The Web Demo has a separate publishing process and is not updated alongside the v1.4.0 desktop release.
+Note: it is not a complete port of the Windows product. The Web Demo has a separate publishing process and is not updated alongside the v1.4.1 desktop release.
 
 ## Highlights
 
@@ -55,6 +55,14 @@ Note: it is not a complete port of the Windows product. The Web Demo has a separ
 
 The screenshots are generated from synthetic data. They do not contain real user configuration, activity, paths, or notes.
 
+## Changes In v1.4.1
+
+- The Timer no longer shows a toast when it starts or pauses, and pausing and resuming quickly no longer winds the clock back.
+- At the Large and Extra Large display sizes the top menu keeps the same size on the Main and Records screens. The right-hand margin of the Records headings, the hover reaction of an empty Victory bar, and the position of the counts in the Main headings are also aligned.
+- The Settings screen can be operated with the arrow keys and Enter. The arrow keys always move between items; a number field starts editing with Enter, commits with Enter, and returns to its previous value with Esc.
+- The installer's "Unable to uninstall!" message now explains the cause and what to do.
+- Config schema stays at `3`, with no new features or data-format changes.
+
 ## Changes In v1.4.0
 
 - Do Now now prefers a Next Step that is already in Today's 3. Starting from either Do Now or Today's 3 shows the same running state in both.
@@ -72,19 +80,19 @@ Download Life Launcher from [GitHub Releases](https://github.com/Takuyakou/life-
 
 Use this for the standard installation flow.
 
-v1.4.0 installer: `Life-Launcher-v1.4.0-windows-x64-setup.exe`
+v1.4.1 installer: `Life-Launcher-v1.4.1-windows-x64-setup.exe`
 
 ### Standalone EXE
 
 Run the app directly without installing it.
 
-v1.4.0 standalone: `Life-Launcher-v1.4.0-windows-x64.exe`
+v1.4.1 standalone: `Life-Launcher-v1.4.1-windows-x64.exe`
 
 ### Portable ZIP
 
 Extract the ZIP archive and run the app.
 
-v1.4.0 ZIP: `Life-Launcher-v1.4.0-windows-x64-portable.zip`
+v1.4.1 ZIP: `Life-Launcher-v1.4.1-windows-x64-portable.zip`
 
 The ZIP edition also stores user data in `%APPDATA%\life-launcher`. It does not carry your data alongside the executable on a USB drive.
 
@@ -98,11 +106,11 @@ Fully exit Life Launcher and back up the `%APPDATA%\life-launcher` folder to ano
 
 The first launch after updating from v1.2 to v1.3 migrates config schema `2` to `3`. The app creates a raw pre-migration backup and leaves the original config unchanged if migration, validation, or backup fails. Session records are not deleted.
 
-Updating from v1.3.4 to v1.4.0 keeps config schema at `3`, with no change to the configuration format. Existing settings and session records remain available.
+Updating from v1.4.0 to v1.4.1 keeps config schema at `3`, with no change to the configuration format. Existing settings and session records remain available.
 
 If you choose "Uninstall before installing" in the installer and it reports "Could not uninstall the previous version", quit Life Launcher and try again, or choose "Do not uninstall". Your settings and records are kept.
 
-See the [v1.4.0 release notes](docs/releases/v1.4.0.md) and [changelog](CHANGELOG.md) for details. The [overview](docs/OVERVIEW.md) and [current specification](docs/spec/current-spec.md) cover the wider feature set. These detailed documents are currently in Japanese.
+See the [v1.4.1 release notes](docs/releases/v1.4.1.md) and [changelog](CHANGELOG.md) for details. The [overview](docs/OVERVIEW.md) and [current specification](docs/spec/current-spec.md) cover the wider feature set. These detailed documents are currently in Japanese.
 
 ## Runtime Requirements
 
