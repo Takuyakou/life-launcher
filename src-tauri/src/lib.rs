@@ -52,6 +52,14 @@ use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}
 use tauri::{Emitter, Manager, RunEvent, WindowEvent};
 use tauri_plugin_global_shortcut::ShortcutState;
 
+/// 保存・復元の対象にタイトルバーの有無(DECORATIONS)を含めない。
+/// v1.4.1 までの保存状態は `"decorated": true` のため、これを含めると
+/// decorations: false にした初回起動で標準のタイトルバーが復元されて二重になる。
+#[cfg(desktop)]
+const WINDOW_STATE_FLAGS: tauri_plugin_window_state::StateFlags =
+    tauri_plugin_window_state::StateFlags::all()
+        .difference(tauri_plugin_window_state::StateFlags::DECORATIONS);
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let mut builder = tauri::Builder::default();
@@ -75,6 +83,7 @@ pub fn run() {
             recover_interrupted_software_reset(app.handle())?;
             app.handle().plugin(
                 tauri_plugin_window_state::Builder::default()
+                    .with_state_flags(WINDOW_STATE_FLAGS)
                     .skip_initial_state("life-launcher-instruction")
                     .skip_initial_state("dictionary")
                     .build(),
@@ -230,4 +239,76 @@ pub fn run() {
                 let _ = stop_shell_drop_poc_internal(app);
             }
         });
+}
+
+#[cfg(all(test, desktop))]
+mod window_state_flags_tests {
+    use super::WINDOW_STATE_FLAGS;
+    use serde::Deserialize;
+    use tauri_plugin_window_state::StateFlags;
+
+    /// 保存・復元の対象からタイトルバーの有無(DECORATIONS)が外れていること。
+    /// 位置・大きさ・最大化・表示・全画面は今までどおり扱う。
+    #[test]
+    fn excluded_decorations_keeps_other_flags() {
+        let kept = StateFlags::SIZE
+            | StateFlags::POSITION
+            | StateFlags::MAXIMIZED
+            | StateFlags::VISIBLE
+            | StateFlags::FULLSCREEN;
+        assert!(WINDOW_STATE_FLAGS.contains(kept));
+        assert!(!WINDOW_STATE_FLAGS.contains(StateFlags::DECORATIONS));
+    }
+
+    /// v1.4.1 が保存した状態ファイルと同じ形のテストデータ。
+    /// 項目名と形は tauri-plugin-window-state 2.4.1 の非公開構造体
+    /// `WindowState`(width, height, x, y, prev_x, prev_y, maximized, visible,
+    /// decorated, fullscreen)を写した合成値。`decorations` ではなく `decorated`
+    /// であることに注意。
+    const V141_STATE_JSON: &str = r#"{
+        "main": {
+            "width": 1080,
+            "height": 680,
+            "x": 120,
+            "y": 84,
+            "prev_x": 120,
+            "prev_y": 84,
+            "maximized": false,
+            "visible": true,
+            "decorated": true,
+            "fullscreen": false
+        }
+    }"#;
+
+    #[derive(Debug, Deserialize, PartialEq)]
+    struct WindowStateMirror {
+        width: u32,
+        height: u32,
+        x: i32,
+        y: i32,
+        prev_x: i32,
+        prev_y: i32,
+        maximized: bool,
+        visible: bool,
+        decorated: bool,
+        fullscreen: bool,
+    }
+
+    /// v1.4.1 の形の状態ファイル(`"decorated": true` を含む)が問題なく
+    /// 読み取れて、位置・大きさ・最大化の値は保持されること。
+    /// プラグインの `WindowState` は非公開のため、同じ項目のミラー構造体で
+    /// 確かめる。プラグインを更新して項目名が変わった場合、このテストが
+    /// 失敗して再確認を促す。
+    #[test]
+    fn v141_state_file_shape_still_deserializes() {
+        let states: std::collections::HashMap<String, WindowStateMirror> =
+            serde_json::from_str(V141_STATE_JSON).expect("v1.4.1 形の状態ファイルを読める");
+        let main = states.get("main").expect("main の状態がある");
+        assert_eq!(main.width, 1080);
+        assert_eq!(main.height, 680);
+        assert_eq!(main.x, 120);
+        assert_eq!(main.y, 84);
+        assert!(!main.maximized);
+        assert!(main.decorated);
+    }
 }

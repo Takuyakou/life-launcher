@@ -3244,7 +3244,7 @@ input[type="number"]::-webkit-inner-spin-button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
+  gap: 8px;
   margin-bottom: 14px;
 }
 
@@ -12952,4 +12952,202 @@ button.mainActionButton:is(
 
 .weeklyReviewBlockHeading {
   padding-inline-end: 10px;
+}
+
+/* ============================================================
+   Phase 9.6 (P96-01): 一体型タイトルバー
+   標準のタイトルバーをやめ、上部メニューの行の右端に窓のボタンを置く。
+   窓のボタンは窓の右上(右端から 8px)に固定し、上部メニューの行と
+   縦の中心をそろえる。ドラッグできる範囲と、ダイアログの幕の上端の
+   帯もここで定める。
+   ============================================================ */
+
+/* 上部メニューと窓のボタンが重なる幅のときだけ、行の右に空きを取る。
+   窓のボタンの帯は幅 127px で窓の右端から 8px に固定されるため、
+   行の右端(窓の右端 - 24px)が帯に入る分(111px)を右余白に上乗せする。
+   行が最大幅で中央寄せになる幅では、中央寄せの分だけ空きを減らし、
+   重ならなくなったら 0 に戻す(最大幅・中央寄せは変えない)。 */
+.mainPanel > .topBar {
+  min-width: 0; /* 内容の最小幅で行が膨らみ、窓のボタンが窓の外に出ないように */
+  padding-right: max(0px, 111px - max(0px, (100% - 1180px) / 2));
+}
+
+.mainPanel[data-main-display-size="large"] > .topBar {
+  padding-right: max(0px, 111px - max(0px, (100% - 1298px) / 2));
+}
+
+.mainPanel[data-main-display-size="xlarge"] > .topBar {
+  padding-right: max(0px, 111px - max(0px, (100% - 1400px) / 2));
+}
+
+/* 大・特大: 窓幅 ≤1150px で自動起動・ミニ・使い方・設定をアイコンのみにする
+   (標準は変えない。「記録」「手順書」の文字は残す)。隠したボタンの名前は
+   今までどおり title と aria-label で分かる。 */
+@media (max-width: 1150px) {
+  .mainPanel[data-main-display-size="large"] .topPillGroup--window .viewToggleButtonLabel,
+  .mainPanel[data-main-display-size="large"] .topPillGroup--support .viewToggleButtonLabel,
+  .mainPanel[data-main-display-size="xlarge"] .topPillGroup--window .viewToggleButtonLabel,
+  .mainPanel[data-main-display-size="xlarge"] .topPillGroup--support .viewToggleButtonLabel {
+    display: none;
+  }
+}
+
+/* 窓のボタン(仕切り線 + 最小化・最大化・閉じる) */
+.windowControls {
+  position: fixed;
+  right: 8px;
+  z-index: 140; /* ダイアログの暗い幕(最大 z-index 130)より手前。幕で暗くしない */
+  display: flex;
+  align-items: center;
+}
+
+.windowControls--dashboard {
+  top: 22px; /* .mainPanel の padding-top にそろえる */
+  height: 36px; /* 標準表示の上部メニューの行の高さ */
+}
+
+.windowControls--instruction {
+  top: 0;
+  height: 58px; /* .instructionHeader の行の高さ */
+}
+
+@media (min-width: 1051px) {
+  .mainPanel[data-main-display-size="large"] .windowControls--dashboard {
+    height: 39px;
+  }
+
+  .mainPanel[data-main-display-size="xlarge"] .windowControls--dashboard {
+    height: 46px;
+  }
+}
+
+@media (max-width: 760px) {
+  /* 上部メニューが縦積みになる幅。最初の行(見出し)と縦の中心をそろえる */
+  .windowControls--dashboard {
+    top: 16px;
+    height: 36px;
+  }
+}
+
+.windowControlsDivider {
+  width: 1px;
+  height: 20px;
+  margin-left: 8px;
+  margin-right: 6px;
+  background: var(--line-soft);
+}
+
+.windowControlsButtons {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  transition: opacity 120ms ease;
+}
+
+.windowControlButton {
+  display: grid;
+  width: 36px;
+  height: 32px;
+  padding: 0;
+  place-items: center;
+  color: var(--control-primary-bg);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius);
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.windowControlButton:hover,
+.windowControlButton:focus-visible {
+  color: var(--text);
+  background: var(--menu-hover-bg);
+}
+
+.windowControlButton--close:hover,
+.windowControlButton--close:focus-visible {
+  color: var(--control-primary-text);
+  background: var(--error);
+}
+
+.windowControlButton--close:hover svg path,
+.windowControlButton--close:focus-visible svg path {
+  stroke-width: 1.4px;
+}
+
+/* 押した状態は閉じるボタンの乗せた色より優先する */
+.windowControlButton:active {
+  color: var(--text);
+  background: var(--menu-active-bg);
+}
+
+/* 窓が裏にある(フォーカスを失った)ときは窓のボタン3つだけ薄くする */
+.windowControls--unfocused .windowControlsButtons {
+  opacity: 0.45;
+}
+
+/* ダイアログの右上の × が窓のボタンの帯(窓の右端から 8px・幅 127px)と
+   重なる幅では、× を帯より左へ置く(オーナー決定 2026-11-05、「今日やるもの
+   を選ぶ」の × についての決定を、同じ形の右上の × を持つダイアログに適用)。
+   重ならない幅では今の余白のまま。143px は帯の左端+8px の間隔。 */
+.modalTitleRow,
+.confirmDialogHeader {
+  padding-right: max(0px, calc(50% - 50vw + 143px));
+}
+
+/* 「今日やるものを選ぶ」の × は今の右余白 16px を下限にする。 */
+.todayPickerDialog .modalTitleRow {
+  padding-right: max(16px, calc(50% - 50vw + 143px));
+}
+
+/* 拡大タイマーの閉じるボタンも同じく窓のボタンの帯より左へ。
+   今の右余白(16〜64px の段階)を下限にする。 */
+.expandedTimerHeader {
+  padding-right: max(clamp(16px, 4vw, 64px), calc(50% - 50vw + 143px));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .windowControlsButtons,
+  .windowControlButton {
+    transition-duration: 0s;
+  }
+}
+
+/* ドラッグできる範囲: サイドバーのブランド表示と、手順書ビューアーのヘッダー */
+.brandBlock {
+  user-select: none;
+}
+
+.instructionHeader {
+  padding: 10px 143px 10px 18px; /* 右は窓のボタンの帯(127px+右8px+間8px)を避ける */
+  user-select: none;
+}
+
+/* ダイアログの幕の上端の帯(上部メニューの行と同じ高さ)。ドラッグで窓を動かす。
+   z-index: -1 で幕の背景より上・ダイアログの中身より下に置き、
+   ダイアログの押せる部品を塞がない。 */
+.modalDragBand {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 58px; /* 上部メニューの行の下端(.mainPanel の padding-top 22px + 行 36px) */
+  z-index: -1;
+}
+
+@media (max-width: 760px) {
+  .modalDragBand {
+    height: 52px; /* padding-top 16px + 行 36px */
+  }
+}
+
+@media (min-width: 1051px) {
+  .appShell--dashboard[data-main-display-size="large"] .modalDragBand {
+    height: 61px;
+  }
+
+  .appShell--dashboard[data-main-display-size="xlarge"] .modalDragBand {
+    height: 68px;
+  }
 }
