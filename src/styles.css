@@ -13155,7 +13155,7 @@ button.mainActionButton:is(
   top: 0;
   left: 0;
   right: 0;
-  height: 2px;
+  height: 3px;
   z-index: 150;
   pointer-events: none;
 }
