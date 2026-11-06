@@ -2159,13 +2159,25 @@ function DashboardApp() {
   const [todayTriggerEditingIndex, setTodayTriggerEditingIndex] = useState<number | null>(null);
   const [todayTriggerDraft, setTodayTriggerDraft] = useState("");
   // 上部メニューの文字は、幅の決まった境目ではなく実測で隠す(P96-01 追加修正)。
+  // 段階はメイン画面の見出し(「今日 N分」＋日付)の幅で決め、記録画面も同じ段階にする
+  // (オーナー決定 2026-11-06)。表示切替のボタンだけは画面で文字が変わるため、
+  // 長い方の文字で測って2つの画面の数値をそろえる。
   // config の読み込み前は行が無いので、読み込み後に測り直すため measureKey に含める。
+  const topMenuDayKey = observedDayKey || config?.today.date || "";
+  const topMenuMinutes = todaySessionDate === topMenuDayKey ? todaySessionMinutes : 0;
   const {
     barRef: topMenuBarRef,
-    summaryRef: topMenuSummaryRef,
     pillsRef: topMenuPillsRef,
     level: topMenuLabelLevel,
-  } = useTopMenuLabelLevel(config ? (config.settings.mainDisplaySize ?? "standard") : "loading");
+  } = useTopMenuLabelLevel({
+    measureKey: config ? (config.settings.mainDisplaySize ?? "standard") : "loading",
+    summaryTitle: `今日 ${topMenuMinutes}分`,
+    summaryDate: topMenuDayKey ? formatDateKeyForHeader(topMenuDayKey) : "",
+    toggleLabel:
+      TOP_MENU_LABELS.records.length >= TOP_MENU_LABELS.dashboard.length
+        ? TOP_MENU_LABELS.records
+        : TOP_MENU_LABELS.dashboard,
+  });
 
   useEffect(() => {
     const unlisten = listen<InstructionWindowOpenOptions>(
@@ -9818,8 +9830,8 @@ function DashboardApp() {
   };
   const allTodayItemsCompleted =
     config.today.items.length === TODAY_ITEM_LIMIT && config.today.items.every((item) => item.done);
-  const displayedDayKey = observedDayKey || config.today.date;
-  const displayedTodayMinutes = todaySessionDate === displayedDayKey ? todaySessionMinutes : 0;
+  const displayedDayKey = topMenuDayKey;
+  const displayedTodayMinutes = topMenuMinutes;
   const todayActivityCount =
     todayActivityDate === displayedDayKey ? todayActivityEntries.length : 0;
   const shortcutConflicts = settingsDraft
@@ -10775,7 +10787,7 @@ function DashboardApp() {
           data-top-menu-labels={topMenuLabelLevel}
           ref={topMenuBarRef}
         >
-          <div className="topSummary" data-tauri-drag-region="" ref={topMenuSummaryRef}>
+          <div className="topSummary" data-tauri-drag-region="">
             <h1
               className={activeView === "records" ? "topTitle topTitle--records" : "topTitle"}
               data-tauri-drag-region=""
@@ -10836,6 +10848,7 @@ function DashboardApp() {
             >
               <button
                 className="viewToggleButton"
+                data-view-toggle=""
                 onClick={() => setActiveView((view) => (view === "records" ? "main" : "records"))}
                 title={activeView === "records" ? "メイン画面に戻る" : "記録ビューを開く"}
                 aria-label={activeView === "records" ? "メイン画面に戻る" : "記録ビューを開く"}

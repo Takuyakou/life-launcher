@@ -213,22 +213,14 @@ test.describe("P96-01 header layout budget (30 combos)", () => {
 
 test.describe("P96-01 top menu labels follow what fits", () => {
   // 実測で決まる段階(0=すべて出す / 1=自動起動・ミニ・使い方・設定を隠す / 2=すべて隠す)。
-  // 幅と表示サイズごとの結果。1200px では標準・大・特大のすべてで6つとも出る。
-  const EXPECTED: Record<"main" | "records", Record<number, readonly [number, number, number]>> = {
-    main: {
-      860: [2, 2, 2],
-      1080: [0, 1, 1],
-      1200: [0, 0, 0],
-      1440: [0, 0, 0],
-      1920: [0, 0, 0],
-    },
-    records: {
-      860: [1, 1, 1],
-      1080: [0, 0, 0],
-      1200: [0, 0, 0],
-      1440: [0, 0, 0],
-      1920: [0, 0, 0],
-    },
+  // 段階はメイン画面の見出し(「今日 N分」＋日付)の幅で決めるので、記録画面でも同じ値になる
+  // (オーナー決定 2026-11-06)。1200px では標準・大・特大のすべてで6つとも出る。
+  const EXPECTED: Record<number, readonly [number, number, number]> = {
+    860: [2, 2, 2],
+    1080: [0, 1, 1],
+    1200: [0, 0, 0],
+    1440: [0, 0, 0],
+    1920: [0, 0, 0],
   };
 
   for (const view of ["main", "records"] as const) {
@@ -271,11 +263,57 @@ test.describe("P96-01 top menu labels follow what fits", () => {
               },
               { message: `level at w=${width} size=${size} view=${view}` },
             )
-            .toBe(EXPECTED[view][width][index]);
+            .toBe(EXPECTED[width][index]);
         }
       }
     });
   }
+
+  test("switching between main and records never changes the labels", async ({ page }) => {
+    await prepare(page, 1200);
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width, height: 680 });
+      for (const size of SIZES) {
+        await page.evaluate((next) => {
+          const control = (window as VisualQaWindow).__LIFE_LAUNCHER_VISUAL_QA__;
+          const config = control.currentConfig() as { settings: { mainDisplaySize: string } };
+          config.settings.mainDisplaySize = next;
+          control.updateConfig(config);
+        }, size);
+        const back = page.getByRole("button", { name: "メイン画面に戻る" });
+        if ((await back.count()) > 0) await back.click();
+        const openRecords = page.getByRole("button", { name: "記録ビューを開く" });
+        const readLevel = () =>
+          page
+            .locator(".mainPanel > .topBar")
+            .getAttribute("data-top-menu-labels")
+            .then((value) => Number(value ?? "0"));
+        await expect.poll(readLevel, { message: `main level at w=${width} ${size}` }).toBe(
+          EXPECTED[width][SIZES.indexOf(size)],
+        );
+        const mainLevel = await readLevel();
+        const labelsInMain = await page
+          .locator(".mainPanel > .topBar .viewToggleButtonLabel")
+          .evaluateAll((elements) =>
+            elements.map((element) => getComputedStyle(element).display !== "none"),
+          );
+        await openRecords.click();
+        await expect(page.locator(".recordsView")).toBeVisible();
+        await expect.poll(readLevel, { message: `records level at w=${width} ${size}` }).toBe(
+          mainLevel,
+        );
+        const labelsInRecords = await page
+          .locator(".mainPanel > .topBar .viewToggleButtonLabel")
+          .evaluateAll((elements) =>
+            elements.map((element) => getComputedStyle(element).display !== "none"),
+          );
+        // 表示切替のボタン(3番目)以外は、文字の出方がそのまま同じ
+        expect(labelsInRecords.filter((_, index) => index !== 2)).toEqual(
+          labelsInMain.filter((_, index) => index !== 2),
+        );
+      }
+    }
+  });
 
   test("1200px shows all six labels at every display size", async ({ page }) => {
     await prepare(page, 1200);

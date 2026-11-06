@@ -20,6 +20,17 @@ export const TOP_MENU_LABEL_HYSTERESIS_PX = 8;
 /** .topBar が縦積みになる幅(styles.css の `@media (max-width: 760px)` と同じ)。 */
 const STACKED_LAYOUT_MAX_WIDTH_PX = 760;
 
+export type TopMenuMeasureInput = {
+  /** 表示サイズ。変わると測り直す。 */
+  measureKey: string;
+  /** メイン画面の見出し(「今日 N分」)。記録画面でもこの幅で段階を決める。 */
+  summaryTitle: string;
+  /** メイン画面の日付。 */
+  summaryDate: string;
+  /** 表示切替ボタンの、2つの画面で長い方の文字。どちらの画面でも同じ幅で測る。 */
+  toggleLabel: string;
+};
+
 function hideLabelsIn(root: ParentNode, level: TopMenuLabelLevel): void {
   const hideAll = level >= 2;
   root.querySelectorAll<HTMLElement>(".viewToggleButtonLabel").forEach((label) => {
@@ -68,16 +79,63 @@ function measureAvailableWidth(bar: HTMLElement): number {
   return bar.clientWidth - paddingLeft - paddingRight;
 }
 
-function measureNeededWidth(
-  bar: HTMLElement,
-  summary: HTMLElement,
+/**
+ * 段階を決めるために使う見出しの幅。**常にメイン画面の見出し**(「今日 N分」＋日付)で測る。
+ *
+ * 記録画面の見出しは「記録」だけなので、そのまま測ると画面を切り替えたときに
+ * 隠れ方が変わってしまう。オーナー決定(2026-11-06)により、段階はメイン画面の
+ * 見出しの幅で決め、記録画面も同じ段階にする。
+ */
+function measureSummaryWidth(bar: HTMLElement, title: string, date: string): number {
+  const probe = document.createElement("div");
+  probe.className = "topSummary layoutMeasure";
+  probe.setAttribute("aria-hidden", "true");
+  const titleElement = document.createElement("h1");
+  titleElement.className = "topTitle";
+  titleElement.textContent = title;
+  const dateElement = document.createElement("span");
+  dateElement.className = "topDateLabel";
+  dateElement.textContent = date;
+  probe.append(titleElement, dateElement);
+  bar.appendChild(probe);
+  const width = probe.getBoundingClientRect().width;
+  probe.remove();
+  return width;
+}
+
+/**
+ * メニューの幅。表示切替ボタンだけは画面によって文字が変わる(記録/メイン)ため、
+ * 長い方の文字に置き換えて測る。こうすると2つの画面で同じ数値になり、
+ * 切り替えても段階が変わらない。
+ */
+function measurePillsWidth(
   pills: HTMLElement,
   level: TopMenuLabelLevel,
+  toggleLabel: string,
+): number {
+  return measureMaxContentWidth(pills, (clone) => {
+    if (toggleLabel) {
+      const label = clone.querySelector<HTMLElement>(
+        "[data-view-toggle] .viewToggleButtonLabel",
+      );
+      if (label) label.textContent = toggleLabel;
+    }
+    hideLabelsIn(clone, level);
+  });
+}
+
+function measureNeededWidth(
+  bar: HTMLElement,
+  pills: HTMLElement,
+  level: TopMenuLabelLevel,
+  input: TopMenuMeasureInput,
 ): number {
   const gap = Number.parseFloat(getComputedStyle(bar).columnGap) || 0;
-  const summaryWidth = measureMaxContentWidth(summary);
-  const pillsWidth = measureMaxContentWidth(pills, (clone) => hideLabelsIn(clone, level));
-  return summaryWidth + gap + pillsWidth;
+  return (
+    measureSummaryWidth(bar, input.summaryTitle, input.summaryDate) +
+    gap +
+    measurePillsWidth(pills, level, input.toggleLabel)
+  );
 }
 
 /**
@@ -103,9 +161,9 @@ export function pickTopMenuLabelLevel(
  * 上部メニューの文字の段階を決める。`measureKey` が変わると測り直す
  * (表示サイズの切替など、幅が変わらないが文字の大きさが変わるもの)。
  */
-export function useTopMenuLabelLevel(measureKey: string) {
+export function useTopMenuLabelLevel(input: TopMenuMeasureInput) {
+  const { measureKey, summaryTitle, summaryDate, toggleLabel } = input;
   const barRef = useRef<HTMLElement>(null);
-  const summaryRef = useRef<HTMLDivElement>(null);
   const pillsRef = useRef<HTMLDivElement>(null);
   const [level, setLevel] = useState<TopMenuLabelLevel>(0);
   const levelRef = useRef<TopMenuLabelLevel>(0);
@@ -118,9 +176,8 @@ export function useTopMenuLabelLevel(measureKey: string) {
 
   const measure = useCallback(() => {
     const bar = barRef.current;
-    const summary = summaryRef.current;
     const pills = pillsRef.current;
-    if (!bar || !summary || !pills) return;
+    if (!bar || !pills) return;
     if (window.innerWidth <= STACKED_LAYOUT_MAX_WIDTH_PX) {
       // 縦積みの幅では今までどおり文字を出さない(styles.css の同じ幅の決まりが受け持つ)
       apply(2);
@@ -128,19 +185,18 @@ export function useTopMenuLabelLevel(measureKey: string) {
     }
     const available = measureAvailableWidth(bar);
     const needed = ([0, 1, 2] as const).map((candidate) =>
-      measureNeededWidth(bar, summary, pills, candidate),
+      measureNeededWidth(bar, pills, candidate, { measureKey, summaryTitle, summaryDate, toggleLabel }),
     );
     apply(pickTopMenuLabelLevel(needed, available, levelRef.current));
-  }, [apply]);
+  }, [apply, measureKey, summaryTitle, summaryDate, toggleLabel]);
 
   // 描画の前に測り、文字が出たままの状態を1フレームも見せない。
   useLayoutEffect(() => {
     measure();
-  }, [measure, measureKey]);
+  }, [measure]);
 
   useEffect(() => {
     const bar = barRef.current;
-    const summary = summaryRef.current;
     // config の読み込み前は行が無い。行ができた時点(measureKey の変化)で
     // 観測を始め直す。表示サイズの切替でも同じ理由で付け直す。
     if (!bar) return;
@@ -157,7 +213,6 @@ export function useTopMenuLabelLevel(measureKey: string) {
     };
     const observer = new ResizeObserver(run);
     observer.observe(bar);
-    if (summary) observer.observe(summary);
     window.addEventListener("resize", run);
     void document.fonts.ready.then(run).catch(() => undefined);
     run();
@@ -167,5 +222,5 @@ export function useTopMenuLabelLevel(measureKey: string) {
     };
   }, [measure, measureKey]);
 
-  return { barRef, summaryRef, pillsRef, level };
+  return { barRef, pillsRef, level };
 }

@@ -288,8 +288,8 @@ const topMenu = (page: Page) =>
         width: rect.width,
         height: rect.height,
         fontSize: getComputedStyle(label ?? button).fontSize,
-        // P96-01 追加修正: 文字は必要な幅の実測で隠れる。境目付近では見出しの幅が
-        // メイン画面と記録画面で違うため、隠れ方が1段だけ変わることがある。
+        // P96-01 追加修正: 文字を出す段階はメイン画面の見出し幅で決めるので、
+        // メイン画面と記録画面で同じになる(下の比較で確かめる)。
         labelVisible: label ? getComputedStyle(label).display !== "none" : false,
       };
     }),
@@ -321,8 +321,9 @@ for (const [display, viewport] of [
     await expect(page.locator(".recordsView")).toBeVisible();
     const inRecords = await topMenu(page);
     const recordsLevel = await topMenuLabelLevel(page);
-    // 境目付近では見出しの幅の違いで隠れ方が1段変わることがある。2段は変わらない。
-    expect(Math.abs(recordsLevel - mainLevel), "label level difference").toBeLessThanOrEqual(1);
+    // P96-01 追加修正(オーナー決定 2026-11-06): 文字を出す段階はメイン画面の見出し幅で
+    // 決めるため、メイン画面と記録画面で同じ段階になる。メニューの大きさも位置も変わらない。
+    expect(recordsLevel, "label level").toBe(mainLevel);
     expect(inRecords).toHaveLength(main.length);
     for (const [index, before] of main.entries()) {
       const after = inRecords[index];
@@ -330,11 +331,7 @@ for (const [display, viewport] of [
       expect(after.fontSize, `${before.name} font`).toBe(before.fontSize);
       expect(Math.abs(after.height - before.height), `${before.name} height`).toBeLessThanOrEqual(0.5);
       expect(Math.abs(after.y - before.y), `${before.name} y`).toBeLessThanOrEqual(1);
-      // 文字の出方が同じボタンだけ幅を比べる。隠れ方が変わった幅では、
-      // 文字のあるなしの分だけ幅が変わる(P95-01 の「同じ大きさ」は
-      // 表示サイズの切替についての決まりで、窓の幅による文字の出し分けは
-      // P96-01 追加修正が受け持つ)。
-      if (!isViewToggle && before.labelVisible === after.labelVisible) {
+      if (!isViewToggle) {
         expect(Math.abs(after.width - before.width), `${before.name} width`).toBeLessThanOrEqual(0.5);
       }
     }
