@@ -4,7 +4,7 @@ import { installTauriMock } from "./tauriMock";
 
 // P96-01: 一体型タイトルバー(窓のボタン・ドラッグ領域・ダイアログの帯)。
 
-const WIDTHS = [860, 1080, 1440, 1920] as const;
+const WIDTHS = [860, 1080, 1200, 1440, 1920] as const;
 const SIZES = ["standard", "large", "xlarge"] as const;
 const VIEWER_DOCUMENT_PATH = "C:\\PublicDemo\\Instructions\\welcome.md";
 
@@ -73,6 +73,10 @@ type LayoutProbe = {
   summaryOverflow: boolean;
   titleLineCount: number;
   viewportWidth: number;
+  labelLevel: number;
+  visibleLabels: number;
+  clippedLabels: string[];
+  hiddenButtonsWithoutName: string[];
 };
 
 async function probeLayout(page: Page): Promise<LayoutProbe> {
@@ -89,6 +93,26 @@ async function probeLayout(page: Page): Promise<LayoutProbe> {
     const lineHeight = Number.parseFloat(getComputedStyle(title).lineHeight) || 1;
     const dockRect = dock.getBoundingClientRect();
     const rowRect = topBar.getBoundingClientRect();
+    // P96-01 追加修正: 上部メニューの文字は実測で隠れる。隠れたボタンは
+    // title と aria-label で名前が分かること、出ている文字はボタンからはみ出さないこと。
+    const labels = Array.from(topBar.querySelectorAll<HTMLElement>(".viewToggleButtonLabel"));
+    const visible = labels.filter((label) => getComputedStyle(label).display !== "none");
+    const clippedLabels = visible
+      .filter((label) => {
+        const labelRect = label.getBoundingClientRect();
+        const buttonRect = label.closest("button")!.getBoundingClientRect();
+        return labelRect.right > buttonRect.right + 0.5 || labelRect.left < buttonRect.left - 0.5;
+      })
+      .map((label) => label.textContent?.trim() ?? "");
+    const hiddenButtonsWithoutName = labels
+      .filter((label) => getComputedStyle(label).display === "none")
+      .map((label) => label.closest("button")!)
+      .filter(
+        (button) =>
+          !(button.getAttribute("title") ?? "").trim() ||
+          !(button.getAttribute("aria-label") ?? "").trim(),
+      )
+      .map((button) => button.outerHTML.slice(0, 60));
     return {
       dockLeft: dockRect.left,
       dockRight: dockRect.right,
@@ -102,11 +126,15 @@ async function probeLayout(page: Page): Promise<LayoutProbe> {
       summaryOverflow: summary.scrollWidth > summary.clientWidth + 1,
       titleLineCount: titleRect.height / lineHeight,
       viewportWidth: window.innerWidth,
+      labelLevel: Number(topBar.getAttribute("data-top-menu-labels") ?? "0"),
+      visibleLabels: visible.length,
+      clippedLabels,
+      hiddenButtonsWithoutName,
     };
   });
 }
 
-test.describe("P96-01 header layout budget (24 combos)", () => {
+test.describe("P96-01 header layout budget (30 combos)", () => {
   for (const view of ["main", "records"] as const) {
     test(`window controls fit at every width and display size (${view})`, async ({ page }) => {
       await prepare(page, WIDTHS[0]);
@@ -139,6 +167,15 @@ test.describe("P96-01 header layout budget (24 combos)", () => {
           }
           const probe = await probeLayout(page);
           const label = `w=${width} size=${size} view=${view}`;
+          // 隠す段階(0=すべて出す / 1=自動起動・ミニ・使い方・設定を隠す / 2=すべて隠す)と、
+          // 実際に出ている文字の数が合っていること。
+          const expectedVisible = probe.labelLevel === 0 ? 6 : probe.labelLevel === 1 ? 2 : 0;
+          expect(probe.visibleLabels, `visible label count (${label})`).toBe(expectedVisible);
+          expect(probe.clippedLabels, `labels stay inside their buttons (${label})`).toEqual([]);
+          expect(
+            probe.hiddenButtonsWithoutName,
+            `hidden buttons keep title and aria-label (${label})`,
+          ).toEqual([]);
           expect(probe.dockRight, `dock right edge (${label})`).toBeGreaterThanOrEqual(
             probe.viewportWidth - 9,
           );
@@ -172,6 +209,109 @@ test.describe("P96-01 header layout budget (24 combos)", () => {
       }
     });
   }
+});
+
+test.describe("P96-01 top menu labels follow what fits", () => {
+  // 実測で決まる段階(0=すべて出す / 1=自動起動・ミニ・使い方・設定を隠す / 2=すべて隠す)。
+  // 幅と表示サイズごとの結果。1200px では標準・大・特大のすべてで6つとも出る。
+  const EXPECTED: Record<"main" | "records", Record<number, readonly [number, number, number]>> = {
+    main: {
+      860: [2, 2, 2],
+      1080: [0, 1, 1],
+      1200: [0, 0, 0],
+      1440: [0, 0, 0],
+      1920: [0, 0, 0],
+    },
+    records: {
+      860: [1, 1, 1],
+      1080: [0, 0, 0],
+      1200: [0, 0, 0],
+      1440: [0, 0, 0],
+      1920: [0, 0, 0],
+    },
+  };
+
+  for (const view of ["main", "records"] as const) {
+    test(`the hiding step matches the measured width (${view})`, async ({ page }) => {
+      await prepare(page, 1200);
+      for (const width of WIDTHS) {
+        await page.setViewportSize({ width, height: 680 });
+        for (const [index, size] of SIZES.entries()) {
+          await page.evaluate((next) => {
+            const control = (window as VisualQaWindow).__LIFE_LAUNCHER_VISUAL_QA__;
+            const config = control.currentConfig() as {
+              settings: { mainDisplaySize: string };
+            };
+            config.settings.mainDisplaySize = next;
+            control.updateConfig(config);
+          }, size);
+          await expect(page.locator(".mainPanel")).toHaveAttribute(
+            "data-main-display-size",
+            size,
+          );
+          if (view === "records") {
+            const recordsActive = await page
+              .locator(".topTitle--records")
+              .isVisible()
+              .catch(() => false);
+            if (!recordsActive) {
+              await page.getByRole("button", { name: "記録ビューを開く" }).click();
+            }
+          } else {
+            const backButton = page.getByRole("button", { name: "メイン画面に戻る" });
+            if ((await backButton.count()) > 0) await backButton.click();
+          }
+          await expect
+            .poll(
+              async () => {
+                const value = await page
+                  .locator(".mainPanel > .topBar")
+                  .getAttribute("data-top-menu-labels");
+                return Number(value ?? "0");
+              },
+              { message: `level at w=${width} size=${size} view=${view}` },
+            )
+            .toBe(EXPECTED[view][width][index]);
+        }
+      }
+    });
+  }
+
+  test("1200px shows all six labels at every display size", async ({ page }) => {
+    await prepare(page, 1200);
+    for (const size of SIZES) {
+      await page.evaluate((next) => {
+        const control = (window as VisualQaWindow).__LIFE_LAUNCHER_VISUAL_QA__;
+        const config = control.currentConfig() as { settings: { mainDisplaySize: string } };
+        config.settings.mainDisplaySize = next;
+        control.updateConfig(config);
+      }, size);
+      const labels = await page
+        .locator(".mainPanel > .topBar .viewToggleButtonLabel")
+        .evaluateAll((elements) =>
+          elements.map((element) => ({
+            text: element.textContent?.trim() ?? "",
+            display: getComputedStyle(element).display,
+          })),
+        );
+      expect(labels.map((label) => label.display), `size=${size}`).toEqual([
+        "block",
+        "block",
+        "block",
+        "block",
+        "block",
+        "block",
+      ]);
+      expect(labels.map((label) => label.text)).toEqual([
+        "自動起動",
+        "ミニ",
+        "記録",
+        "手順書",
+        "使い方",
+        "設定",
+      ]);
+    }
+  });
 });
 
 test.describe("P96-01 window control buttons", () => {
@@ -230,7 +370,11 @@ test.describe("P96-01 window control buttons", () => {
     await minimize.hover();
     await expect
       .poll(() => minimize.evaluate((el) => getComputedStyle(el).backgroundColor))
-      .toBe("rgba(184, 176, 160, 0.12)");
+      .toBe("rgb(74, 70, 57)");
+    // アイコン(--text)も乗せた色に合わせる
+    await expect
+      .poll(() => minimize.evaluate((el) => getComputedStyle(el).color))
+      .toBe("rgb(244, 240, 232)");
     await close.hover();
     await expect
       .poll(() => close.evaluate((el) => getComputedStyle(el).backgroundColor))
@@ -241,7 +385,7 @@ test.describe("P96-01 window control buttons", () => {
     await page.mouse.down();
     await expect
       .poll(() => close.evaluate((el) => getComputedStyle(el).backgroundColor))
-      .toBe("rgba(184, 176, 160, 0.2)");
+      .toBe("rgb(53, 49, 38)");
     await page.mouse.up();
   });
 
@@ -257,6 +401,58 @@ test.describe("P96-01 window control buttons", () => {
       (window as VisualQaWindow).__LIFE_LAUNCHER_VISUAL_QA__.emit("tauri://focus");
     });
     await expect(buttons).toHaveCSS("opacity", "1");
+  });
+
+  test("the hover colour does not stay after the window is restored", async ({ page }) => {
+    await prepare(page, 1080);
+    const minimize = page.getByRole("button", { name: "最小化", exact: true });
+    const close = page.getByRole("button", { name: "閉じる", exact: true });
+    const background = (locator: typeof minimize) =>
+      locator.evaluate((element) => getComputedStyle(element).backgroundColor);
+    const restoreWindow = () =>
+      page.evaluate(() => {
+        const control = (window as VisualQaWindow).__LIFE_LAUNCHER_VISUAL_QA__;
+        control.emit("tauri://blur");
+        control.emit("tauri://focus");
+      });
+
+    await minimize.hover();
+    await expect.poll(() => background(minimize)).toBe("rgb(74, 70, 57)");
+    // 窓が戻ったときは、マウスが動くまで乗せた色を出さない
+    await restoreWindow();
+    await expect.poll(() => background(minimize)).toBe("rgba(0, 0, 0, 0)");
+    const minimizeBox = (await minimize.boundingBox())!;
+    await page.mouse.move(
+      minimizeBox.x + minimizeBox.width - 2,
+      minimizeBox.y + minimizeBox.height / 2,
+    );
+    await expect.poll(() => background(minimize)).toBe("rgb(74, 70, 57)");
+
+    // 閉じるの赤も残らない
+    await close.hover();
+    await expect.poll(() => background(close)).toBe("rgb(240, 111, 104)");
+    await restoreWindow();
+    await expect.poll(() => background(close)).toBe("rgba(0, 0, 0, 0)");
+    const closeBox = (await close.boundingBox())!;
+    await page.mouse.move(closeBox.x + closeBox.width - 2, closeBox.y + closeBox.height / 2);
+    await expect.poll(() => background(close)).toBe("rgb(240, 111, 104)");
+  });
+
+  test("the hover colour does not stay after the window is restored (viewer)", async ({ page }) => {
+    await prepareViewer(page, 1000);
+    const minimize = page.getByRole("button", { name: "最小化", exact: true });
+    await minimize.hover();
+    await expect
+      .poll(() => minimize.evaluate((element) => getComputedStyle(element).backgroundColor))
+      .toBe("rgb(74, 70, 57)");
+    await page.evaluate(() => {
+      const control = (window as VisualQaWindow).__LIFE_LAUNCHER_VISUAL_QA__;
+      control.emit("tauri://blur");
+      control.emit("tauri://focus");
+    });
+    await expect
+      .poll(() => minimize.evaluate((element) => getComputedStyle(element).backgroundColor))
+      .toBe("rgba(0, 0, 0, 0)");
   });
 
   test("keyboard focus shows a single yellow ring", async ({ page }) => {

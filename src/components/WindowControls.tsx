@@ -13,6 +13,8 @@ type WindowControlsProps = {
 export function WindowControls({ variant = "dashboard" }: WindowControlsProps) {
   const [maximized, setMaximized] = useState(false);
   const [focused, setFocused] = useState(true);
+  // 窓を戻した直後、マウスが動くまで「乗せた色」を出さない(P96-01 追加修正)。
+  const [hoverSuppressed, setHoverSuppressed] = useState(false);
 
   useEffect(() => {
     if (!isTauri()) return;
@@ -38,7 +40,10 @@ export function WindowControls({ variant = "dashboard" }: WindowControlsProps) {
       });
     });
     const unlistenFocus = currentWindow.onFocusChanged(({ payload }) => {
-      if (!disposed) setFocused(payload);
+      if (disposed) return;
+      setFocused(payload);
+      // 最小化・タスクトレイから戻った直後は、乗せた色が残らないようにする。
+      if (payload) setHoverSuppressed(true);
     });
     return () => {
       disposed = true;
@@ -47,6 +52,18 @@ export function WindowControls({ variant = "dashboard" }: WindowControlsProps) {
       unlistenFocus.then((unlisten) => unlisten()).catch(() => undefined);
     };
   }, []);
+
+  // 次にマウスが動いたら(または押したら)今までどおりの反応へ戻す。
+  useEffect(() => {
+    if (!hoverSuppressed) return;
+    const release = () => setHoverSuppressed(false);
+    window.addEventListener("pointermove", release);
+    window.addEventListener("pointerdown", release);
+    return () => {
+      window.removeEventListener("pointermove", release);
+      window.removeEventListener("pointerdown", release);
+    };
+  }, [hoverSuppressed]);
 
   const minimize = useCallback(() => {
     if (!isTauri()) return;
@@ -76,7 +93,9 @@ export function WindowControls({ variant = "dashboard" }: WindowControlsProps) {
 
   return (
     <div
-      className={`windowControls${variantClass}${focused ? "" : " windowControls--unfocused"}`}
+      className={`windowControls${variantClass}${focused ? "" : " windowControls--unfocused"}${
+        hoverSuppressed ? " windowControls--hover-suppressed" : ""
+      }`}
     >
       <span aria-hidden="true" className="windowControlsDivider" />
       <div className="windowControlsButtons">

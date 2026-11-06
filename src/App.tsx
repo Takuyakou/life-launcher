@@ -169,6 +169,7 @@ import { UiIcon } from "./components/UiIcon";
 import { ShortcutBadge } from "./components/ShortcutBadge";
 import { findShortcutConflicts } from "./shortcutConflicts";
 import { localDayKey } from "./localDay";
+import { useTopMenuLabelLevel } from "./topMenuLabels";
 import { installSettingsFieldEditing, navigateAppArrow } from "./keyboardNavigation";
 import {
   getButtonsForOverlayPage,
@@ -2157,6 +2158,14 @@ function DashboardApp() {
   toastsRef.current = toasts;
   const [todayTriggerEditingIndex, setTodayTriggerEditingIndex] = useState<number | null>(null);
   const [todayTriggerDraft, setTodayTriggerDraft] = useState("");
+  // 上部メニューの文字は、幅の決まった境目ではなく実測で隠す(P96-01 追加修正)。
+  // config の読み込み前は行が無いので、読み込み後に測り直すため measureKey に含める。
+  const {
+    barRef: topMenuBarRef,
+    summaryRef: topMenuSummaryRef,
+    pillsRef: topMenuPillsRef,
+    level: topMenuLabelLevel,
+  } = useTopMenuLabelLevel(config ? (config.settings.mainDisplaySize ?? "standard") : "loading");
 
   useEffect(() => {
     const unlisten = listen<InstructionWindowOpenOptions>(
@@ -10760,8 +10769,13 @@ function DashboardApp() {
         data-main-display-size={config.settings.mainDisplaySize ?? "standard"}
         data-tauri-drag-region=""
       >
-        <header className="topBar" data-tauri-drag-region="">
-          <div className="topSummary" data-tauri-drag-region="">
+        <header
+          className="topBar"
+          data-tauri-drag-region=""
+          data-top-menu-labels={topMenuLabelLevel}
+          ref={topMenuBarRef}
+        >
+          <div className="topSummary" data-tauri-drag-region="" ref={topMenuSummaryRef}>
             <h1
               className={activeView === "records" ? "topTitle topTitle--records" : "topTitle"}
               data-tauri-drag-region=""
@@ -10774,7 +10788,7 @@ function DashboardApp() {
               </span>
             )}
           </div>
-          <div className="topPills" data-tauri-drag-region="">
+          <div className="topPills" data-tauri-drag-region="" ref={topMenuPillsRef}>
             <div
               aria-label={TOP_MENU_GROUP_LABELS.window}
               className="topPillGroup topPillGroup--window"

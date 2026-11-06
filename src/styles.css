@@ -8195,17 +8195,14 @@ input[type="number"]::-webkit-inner-spin-button {
   font-weight: 500;
 }
 
-@media (max-width: 1050px) {
-  .topPillGroup--window .viewToggleButtonLabel,
-  .topPillGroup--support .viewToggleButtonLabel {
-    display: none;
-  }
-}
-
-@media (max-width: 900px) {
-  .topPillGroup--work .viewToggleButtonLabel {
-    display: none;
-  }
+/* P96-01 追加修正: 上部メニューの文字を隠すかどうかは、幅の決まった境目ではなく
+   文字を出したときに必要な幅の実測で決める(src/topMenuLabels.ts)。
+   段階は .topBar の data-top-menu-labels で受け取る。
+   1 = 自動起動・ミニ・使い方・設定の文字を隠す / 2 = 記録・手順書の文字も隠す。 */
+.topBar[data-top-menu-labels="1"] .topPillGroup--window .viewToggleButtonLabel,
+.topBar[data-top-menu-labels="1"] .topPillGroup--support .viewToggleButtonLabel,
+.topBar[data-top-menu-labels="2"] .viewToggleButtonLabel {
+  display: none;
 }
 
 @media (max-width: 760px) {
@@ -12980,16 +12977,15 @@ button.mainActionButton:is(
   padding-right: max(0px, 111px - max(0px, (100% - 1400px) / 2));
 }
 
-/* 大・特大: 窓幅 ≤1150px で自動起動・ミニ・使い方・設定をアイコンのみにする
-   (標準は変えない。「記録」「手順書」の文字は残す)。隠したボタンの名前は
-   今までどおり title と aria-label で分かる。 */
-@media (max-width: 1150px) {
-  .mainPanel[data-main-display-size="large"] .topPillGroup--window .viewToggleButtonLabel,
-  .mainPanel[data-main-display-size="large"] .topPillGroup--support .viewToggleButtonLabel,
-  .mainPanel[data-main-display-size="xlarge"] .topPillGroup--window .viewToggleButtonLabel,
-  .mainPanel[data-main-display-size="xlarge"] .topPillGroup--support .viewToggleButtonLabel {
-    display: none;
-  }
+/* 文字を出したときに必要な幅を測るための複製。行に影響を与えないよう
+   画面の外に置き、幅は内容の幅(max-content)にする。 */
+.layoutMeasure {
+  position: absolute;
+  top: 0;
+  left: -10000px;
+  width: max-content;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 /* 窓のボタン(仕切り線 + 最小化・最大化・閉じる) */
@@ -13059,10 +13055,12 @@ button.mainActionButton:is(
     color 120ms ease;
 }
 
+/* P96-01 追加修正: 乗せたとき・キーボードで移ったときは背景 --line、アイコン --text。
+   押したときは背景 --line-soft。閉じるに乗せたときの --error は今までどおり。 */
 .windowControlButton:hover,
 .windowControlButton:focus-visible {
   color: var(--text);
-  background: var(--menu-hover-bg);
+  background: var(--line);
 }
 
 .windowControlButton--close:hover,
@@ -13079,7 +13077,36 @@ button.mainActionButton:is(
 /* 押した状態は閉じるボタンの乗せた色より優先する */
 .windowControlButton:active {
   color: var(--text);
-  background: var(--menu-active-bg);
+  background: var(--line-soft);
+}
+
+/* P96-01 追加修正: 窓を最小化やタスクトレイから戻したとき、直前にマウスを乗せていた
+   ボタンの色が残る(実機確認で発見)。戻った直後は乗せた色を出さず、次にマウスが
+   動いたら元に戻す(WindowControls がこのクラスを外す)。 */
+.windowControls--hover-suppressed .windowControlButton:hover {
+  color: var(--control-primary-bg);
+  background: transparent;
+}
+
+.windowControls--hover-suppressed .windowControlButton--close:hover {
+  color: var(--control-primary-bg);
+  background: transparent;
+}
+
+/* キーボードのフォーカスと押した状態は抑止しない */
+.windowControls--hover-suppressed .windowControlButton:focus-visible {
+  color: var(--text);
+  background: var(--line);
+}
+
+.windowControls--hover-suppressed .windowControlButton--close:focus-visible {
+  color: var(--control-primary-text);
+  background: var(--error);
+}
+
+.windowControls--hover-suppressed .windowControlButton:active {
+  color: var(--text);
+  background: var(--line-soft);
 }
 
 /* 窓が裏にある(フォーカスを失った)ときは窓のボタン3つだけ薄くする */
