@@ -149,6 +149,7 @@ export function ConfirmDialog({
 
   return (
     <div className="modalBackdrop confirmBackdrop" role="presentation">
+      <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
       <section
         aria-describedby={descriptionIds}
         aria-labelledby={titleId}

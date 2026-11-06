@@ -8,6 +8,7 @@ import type {
   PointerEvent as ReactPointerEvent,
 } from "react";
 import { UiIcon } from "./UiIcon";
+import { WindowControls } from "./WindowControls";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   INSTRUCTION_ALWAYS_ON_TOP_KEY,
@@ -533,10 +534,14 @@ export function InstructionViewer() {
 
   return (
     <main className={`instructionShell${resizingSidebar ? " instructionShell--resizing" : ""}`}>
-      <header className="instructionHeader">
-        <div className="instructionHeaderTitle">
-          <span className="instructionHeaderEyebrow">手順書</span>
-          <strong title={instruction?.name}>{instruction?.name ?? "手順書ビューアー"}</strong>
+      <header className="instructionHeader" data-tauri-drag-region="">
+        <div className="instructionHeaderTitle" data-tauri-drag-region="">
+          <span className="instructionHeaderEyebrow" data-tauri-drag-region="">
+            手順書
+          </span>
+          <strong data-tauri-drag-region="" title={instruction?.name}>
+            {instruction?.name ?? "手順書ビューアー"}
+          </strong>
         </div>
         <div className="instructionHeaderActions">
           {instruction && !instruction.readOnly ? (
@@ -595,6 +600,7 @@ export function InstructionViewer() {
             </button>
           ) : null}
         </div>
+        <WindowControls variant="instruction" />
       </header>
 
       <div className="instructionWorkspace" ref={workspaceRef} style={workspaceStyle}>

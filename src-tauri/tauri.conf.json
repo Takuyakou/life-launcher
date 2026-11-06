@@ -14,10 +14,11 @@
       {
         "label": "main",
         "title": "Life Launcher",
-        "width": 1080,
+        "width": 1200,
         "height": 680,
         "minWidth": 860,
         "minHeight": 560,
+        "decorations": false,
         "resizable": true,
         "fullscreen": false,
         "visible": true

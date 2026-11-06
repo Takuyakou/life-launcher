@@ -162,7 +162,12 @@ export async function installTauriMock(
       let failSaveConfig = false;
       let failReapplyDashboardSettings = false;
       let failRecordSession = false;
-      let mainWindowState = { visible: true, minimized: false, focused: true };
+      let mainWindowState = {
+        visible: true,
+        minimized: false,
+        focused: true,
+        maximized: false,
+      };
       type InstructionRootChoice = {
         name: string;
         path: string;
@@ -729,8 +734,22 @@ export async function installTauriMock(
                 return mainWindowState.minimized;
               case "plugin:window|is_focused":
                 return mainWindowState.focused;
+              case "plugin:window|is_maximized":
+                return mainWindowState.maximized === true;
+              case "plugin:window|minimize":
+                mainWindowState = { ...mainWindowState, minimized: true };
+                return null;
+              case "plugin:window|toggle_maximize":
+              case "plugin:window|internal-toggle-maximize":
+                mainWindowState = { ...mainWindowState, maximized: !mainWindowState.maximized };
+                return null;
               case "plugin:window|close":
-                mainWindowState = { visible: false, minimized: false, focused: false };
+                mainWindowState = {
+                  visible: false,
+                  minimized: false,
+                  focused: false,
+                  maximized: false,
+                };
                 return null;
               case "plugin:window|show":
               case "plugin:window|set_focus":
@@ -744,7 +763,12 @@ export async function installTauriMock(
               case "resume_dashboard_shortcuts":
                 return null;
               case "focus_dashboard_window":
-                mainWindowState = { visible: true, minimized: false, focused: true };
+                mainWindowState = {
+                  visible: true,
+                  minimized: false,
+                  focused: true,
+                  maximized: false,
+                };
                 return null;
               case "enable_main_shell_drop":
               case "start_shell_drop_poc":

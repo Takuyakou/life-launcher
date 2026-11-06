@@ -28,11 +28,15 @@ export type UiIconName =
   | "settings"
   | "stop"
   | "unlock"
-  | "window";
+  | "window"
+  | "windowClose"
+  | "windowMaximize"
+  | "windowMinimize"
+  | "windowRestore";
 
 type UiIconProps = Omit<SVGProps<SVGSVGElement>, "children"> & {
   name: UiIconName;
-  size?: 16 | 18 | 20 | 24;
+  size?: 12 | 16 | 18 | 20 | 24;
 };
 
 export function UiIcon({ name, size = 18, className, ...props }: UiIconProps) {
@@ -154,6 +158,17 @@ export function UiIcon({ name, size = 18, className, ...props }: UiIconProps) {
       <>
         <rect {...common} height="16" rx="2" width="18" x="3" y="4" />
         <path {...common} d="M3 8h18M7 6h.01M10 6h.01" />
+      </>
+    ) : name === "windowClose" ? (
+      <path {...common} strokeWidth={1.2} d="M5 5l14 14M19 5L5 19" />
+    ) : name === "windowMaximize" ? (
+      <rect {...common} height="16" rx="3" strokeWidth={1.2} width="16" x="4" y="4" />
+    ) : name === "windowMinimize" ? (
+      <path {...common} strokeWidth={1.2} d="M4 12.5h16" />
+    ) : name === "windowRestore" ? (
+      <>
+        <rect {...common} height="11" rx="2" strokeWidth={1.2} width="11" x="9" y="4" />
+        <rect {...common} height="11" rx="2" strokeWidth={1.2} width="11" x="4" y="9" />
       </>
     ) : (
       <>

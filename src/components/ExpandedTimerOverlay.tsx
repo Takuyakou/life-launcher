@@ -65,6 +65,7 @@ export function ExpandedTimerOverlay({
 
   return (
     <div className="expandedTimerBackdrop">
+      <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
       <section
         aria-label="拡大タイマー"
         aria-modal="true"

@@ -288,9 +288,16 @@ const topMenu = (page: Page) =>
         width: rect.width,
         height: rect.height,
         fontSize: getComputedStyle(label ?? button).fontSize,
+        // P96-01 追加修正: 文字を出す段階はメイン画面の見出し幅で決めるので、
+        // メイン画面と記録画面で同じになる(下の比較で確かめる)。
+        labelVisible: label ? getComputedStyle(label).display !== "none" : false,
       };
     }),
   );
+
+/** 上部メニューの文字を隠している段階(0=すべて出す / 1=一部 / 2=すべて)。 */
+const topMenuLabelLevel = async (page: Page) =>
+  Number((await page.locator(".mainPanel > .topBar").getAttribute("data-top-menu-labels")) ?? "0");
 
 // Records body text (the statistics numbers) at every display size; the display size only enlarges Main.
 const RECORDS_BODY_FONT_SIZE = "24px";
@@ -308,10 +315,15 @@ for (const [display, viewport] of [
   test(`P95-01 the top menu has the same size and place in Main and Records (${display}, ${viewport.width}px)`, async ({ page }) => {
     await open(page, createFullTodayFixture(), display, viewport);
     const main = await topMenu(page);
+    const mainLevel = await topMenuLabelLevel(page);
     expect(main.length).toBeGreaterThan(3);
     await openRecords(page);
     await expect(page.locator(".recordsView")).toBeVisible();
     const inRecords = await topMenu(page);
+    const recordsLevel = await topMenuLabelLevel(page);
+    // P96-01 追加修正(オーナー決定 2026-11-06): 文字を出す段階はメイン画面の見出し幅で
+    // 決めるため、メイン画面と記録画面で同じ段階になる。メニューの大きさも位置も変わらない。
+    expect(recordsLevel, "label level").toBe(mainLevel);
     expect(inRecords).toHaveLength(main.length);
     for (const [index, before] of main.entries()) {
       const after = inRecords[index];

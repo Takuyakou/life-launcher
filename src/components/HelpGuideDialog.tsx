@@ -256,6 +256,7 @@ export function HelpGuideDialog({ onClose, onCopyResult }: HelpGuideDialogProps)
 
   return (
     <div className="modalBackdrop helpGuideBackdrop" role="presentation">
+      <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
       <section
         aria-labelledby="help-guide-title"
         aria-modal="true"

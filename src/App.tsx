@@ -106,6 +106,7 @@ import {
 } from "./types";
 import { ConfirmDialog, type ConfirmDialogRequest } from "./components/ConfirmDialog";
 import { earlyCompletionItem } from "./earlyCompletion";
+import { WindowControls } from "./components/WindowControls";
 import {
   findTodayEntryForTimer,
   timerMatchesProjectNextStep,
@@ -168,6 +169,7 @@ import { UiIcon } from "./components/UiIcon";
 import { ShortcutBadge } from "./components/ShortcutBadge";
 import { findShortcutConflicts } from "./shortcutConflicts";
 import { localDayKey } from "./localDay";
+import { useTopMenuLabelLevel } from "./topMenuLabels";
 import { installSettingsFieldEditing, navigateAppArrow } from "./keyboardNavigation";
 import {
   getButtonsForOverlayPage,
@@ -2156,6 +2158,26 @@ function DashboardApp() {
   toastsRef.current = toasts;
   const [todayTriggerEditingIndex, setTodayTriggerEditingIndex] = useState<number | null>(null);
   const [todayTriggerDraft, setTodayTriggerDraft] = useState("");
+  // 上部メニューの文字は、幅の決まった境目ではなく実測で隠す(P96-01 追加修正)。
+  // 段階はメイン画面の見出し(「今日 N分」＋日付)の幅で決め、記録画面も同じ段階にする
+  // (オーナー決定 2026-11-06)。表示切替のボタンだけは画面で文字が変わるため、
+  // 長い方の文字で測って2つの画面の数値をそろえる。
+  // config の読み込み前は行が無いので、読み込み後に測り直すため measureKey に含める。
+  const topMenuDayKey = observedDayKey || config?.today.date || "";
+  const topMenuMinutes = todaySessionDate === topMenuDayKey ? todaySessionMinutes : 0;
+  const {
+    barRef: topMenuBarRef,
+    pillsRef: topMenuPillsRef,
+    level: topMenuLabelLevel,
+  } = useTopMenuLabelLevel({
+    measureKey: config ? (config.settings.mainDisplaySize ?? "standard") : "loading",
+    summaryTitle: `今日 ${topMenuMinutes}分`,
+    summaryDate: topMenuDayKey ? formatDateKeyForHeader(topMenuDayKey) : "",
+    toggleLabel:
+      TOP_MENU_LABELS.records.length >= TOP_MENU_LABELS.dashboard.length
+        ? TOP_MENU_LABELS.records
+        : TOP_MENU_LABELS.dashboard,
+  });
 
   useEffect(() => {
     const unlisten = listen<InstructionWindowOpenOptions>(
@@ -2678,7 +2700,9 @@ function DashboardApp() {
   const currentTimerMetrics = activeTimer ? timerMetrics(activeTimer, now) : null;
   useEffect(() => {
     if (!expandedTimerOpen) return;
-    const background = document.querySelectorAll<HTMLElement>(".sidebar, .mainPanel");
+    // 背景を操作できないようにする。窓のボタンがあるヘッダーは含めない
+    // (拡大タイマーの表示中も窓のボタンを押せるようにするため)。
+    const background = document.querySelectorAll<HTMLElement>(".sidebar, .mainScrollArea");
     background.forEach((element) => { element.inert = true; });
     return () => background.forEach((element) => { element.inert = false; });
   }, [expandedTimerOpen]);
@@ -9806,8 +9830,8 @@ function DashboardApp() {
   };
   const allTodayItemsCompleted =
     config.today.items.length === TODAY_ITEM_LIMIT && config.today.items.every((item) => item.done);
-  const displayedDayKey = observedDayKey || config.today.date;
-  const displayedTodayMinutes = todaySessionDate === displayedDayKey ? todaySessionMinutes : 0;
+  const displayedDayKey = topMenuDayKey;
+  const displayedTodayMinutes = topMenuMinutes;
   const todayActivityCount =
     todayActivityDate === displayedDayKey ? todayActivityEntries.length : 0;
   const shortcutConflicts = settingsDraft
@@ -10076,6 +10100,7 @@ function DashboardApp() {
           ? "appShell appShell--dashboard appShell--dragging"
           : "appShell appShell--dashboard"
       }
+      data-main-display-size={config.settings.mainDisplaySize ?? "standard"}
       onDragOver={handleDomDragOver}
       onDrop={handleDomDrop}
     >
@@ -10096,6 +10121,7 @@ function DashboardApp() {
       )}
       <aside
         className="sidebar"
+        data-tauri-drag-region=""
         onContextMenu={(event) => {
           event.preventDefault();
           openContextMenu(
@@ -10108,17 +10134,20 @@ function DashboardApp() {
         onKeyDown={(event) => openContextMenuFromKeyboard(event, { kind: "sidebar" })}
         tabIndex={-1}
       >
-        <div className="brandBlock">
+        <div className="brandBlock" data-tauri-drag-region="">
           <img
             alt=""
             aria-hidden="true"
             className="brandIcon"
+            data-tauri-drag-region=""
             draggable={false}
             src="/life-launcher-icon.svg"
           />
-          <div className="brandCopy">
-            <p className="eyebrow">Life Launcher</p>
-            <strong>Quick</strong>
+          <div className="brandCopy" data-tauri-drag-region="">
+            <p className="eyebrow" data-tauri-drag-region="">
+              Life Launcher
+            </p>
+            <strong data-tauri-drag-region="">Quick</strong>
             {shortcutRegistration && (
               <ShortcutBadge
                 label="Life Launcherを表示/隠す"
@@ -10750,17 +10779,28 @@ function DashboardApp() {
       <section
         className="mainPanel"
         data-main-display-size={config.settings.mainDisplaySize ?? "standard"}
+        data-tauri-drag-region=""
       >
-        <header className="topBar">
-          <div className="topSummary">
-            <h1 className={activeView === "records" ? "topTitle topTitle--records" : "topTitle"}>
+        <header
+          className="topBar"
+          data-tauri-drag-region=""
+          data-top-menu-labels={topMenuLabelLevel}
+          ref={topMenuBarRef}
+        >
+          <div className="topSummary" data-tauri-drag-region="">
+            <h1
+              className={activeView === "records" ? "topTitle topTitle--records" : "topTitle"}
+              data-tauri-drag-region=""
+            >
               {activeView === "records" ? "記録" : `今日 ${displayedTodayMinutes}分`}
             </h1>
             {activeView === "main" && (
-              <span className="topDateLabel">{formatDateKeyForHeader(displayedDayKey)}</span>
+              <span className="topDateLabel" data-tauri-drag-region="">
+                {formatDateKeyForHeader(displayedDayKey)}
+              </span>
             )}
           </div>
-          <div className="topPills">
+          <div className="topPills" data-tauri-drag-region="" ref={topMenuPillsRef}>
             <div
               aria-label={TOP_MENU_GROUP_LABELS.window}
               className="topPillGroup topPillGroup--window"
@@ -10808,6 +10848,7 @@ function DashboardApp() {
             >
               <button
                 className="viewToggleButton"
+                data-view-toggle=""
                 onClick={() => setActiveView((view) => (view === "records" ? "main" : "records"))}
                 title={activeView === "records" ? "メイン画面に戻る" : "記録ビューを開く"}
                 aria-label={activeView === "records" ? "メイン画面に戻る" : "記録ビューを開く"}
@@ -10856,6 +10897,7 @@ function DashboardApp() {
               </button>
             </div>
           </div>
+          <WindowControls />
         </header>
 
         <div className="mainScrollArea app-scrollbar" id="main-content" ref={mainScrollAreaRef}>
@@ -13794,6 +13836,7 @@ function DashboardApp() {
 
       {inboxEditingIndex !== null && config.inbox[inboxEditingIndex] && (
         <div className="modalBackdrop" role="presentation">
+          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
           <section
             aria-label="やりたいこと編集"
             aria-modal="true"
@@ -13906,6 +13949,7 @@ function DashboardApp() {
 
       {todayPickerOpen && (
         <div className="modalBackdrop" role="presentation">
+          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
           <section
             aria-label="今日やるものを選ぶ"
             aria-modal="true"
@@ -14135,6 +14179,7 @@ function DashboardApp() {
 
       {overlayPageDraft && (
         <div className="modalBackdrop" role="presentation">
+          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
           <section
             aria-label={overlayPageDraft.mode === "add" ? "辞書ページ追加" : "辞書ページ名変更"}
             aria-modal="true"
@@ -14197,6 +14242,7 @@ function DashboardApp() {
 
       {groupDraft !== null && (
         <div className="modalBackdrop" role="presentation">
+          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
           <section
             aria-label="グループ追加"
             aria-modal="true"
@@ -14252,6 +14298,7 @@ function DashboardApp() {
 
       {groupRenameDraft && (
         <div className="modalBackdrop" role="presentation">
+          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
           <section
             aria-label="グループ名変更"
             aria-modal="true"
@@ -14308,6 +14355,7 @@ function DashboardApp() {
 
       {settingsDraft && (
         <div className="modalBackdrop" role="presentation">
+          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
           <section
             aria-label="設定"
             aria-modal="true"
@@ -14907,6 +14955,7 @@ function DashboardApp() {
 
       {manualSessionDraft && (
         <div className="modalBackdrop" role="presentation">
+          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
           <section
             aria-label="実行記録を追加"
             aria-modal="true"
@@ -15025,6 +15074,7 @@ function DashboardApp() {
 
       {sessionEditDraft && (
         <div className="modalBackdrop" role="presentation">
+          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
           <section
             aria-label="実行記録を編集"
             aria-modal="true"
@@ -15155,6 +15205,7 @@ function DashboardApp() {
 
       {buttonEditDraft && (
         <div className="modalBackdrop" role="presentation">
+          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
           <section
             aria-label="ボタン編集"
             aria-modal="true"
@@ -15457,6 +15508,7 @@ function DashboardApp() {
 
       {inboxAddOpen && (
         <div className="modalBackdrop" role="presentation">
+          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
           <section
             aria-label="やりたいことを追加"
             aria-modal="true"
@@ -15561,6 +15613,7 @@ function DashboardApp() {
 
       {completionFollowup?.source.kind === "nextStep" && (
         <div className="modalBackdrop" role="presentation">
+          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
           <section
             aria-label="次の一手を決めますか？"
             aria-modal="true"
@@ -15680,6 +15733,7 @@ function DashboardApp() {
 
           return (
             <div className="modalBackdrop" role="presentation">
+              <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
               <section
                 aria-label={dialogTitle}
                 aria-modal="true"
@@ -16169,6 +16223,7 @@ function DashboardApp() {
 
       {projectEditDraft && (
         <div className="modalBackdrop" role="presentation">
+          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
           <section
             aria-label={projectEditDraft.isNew ? "プロジェクトを追加" : "プロジェクトを編集"}
             aria-modal="true"
@@ -16340,6 +16395,7 @@ function DashboardApp() {
 
       {completionPrompt && (
         <div className="modalBackdrop" role="presentation">
+          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
           <section
             aria-label="タイマー満了"
             aria-modal="true"
@@ -16380,6 +16436,7 @@ function DashboardApp() {
 
       {dropDraft && (
         <div className="modalBackdrop" role="presentation">
+          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
           <section
             aria-label={builderKind ? "Button Builder" : "ボタン登録"}
             aria-modal="true"

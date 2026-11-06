@@ -315,6 +315,7 @@ export async function openInstructionWindow({
     height: INITIAL_HEIGHT,
     minWidth: MIN_WIDTH,
     minHeight: MIN_HEIGHT,
+    decorations: false,
     resizable: true,
     alwaysOnTop: readInstructionAlwaysOnTop(),
     focus: false,
