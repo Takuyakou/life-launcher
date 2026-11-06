@@ -71,6 +71,32 @@ test("Guide traps focus, ignores backdrop clicks, and returns focus after explic
   await expect(opener).toBeFocused();
 });
 
+test("Guide close button uses the red cancel style (P96-03)", async ({ page }) => {
+  await prepare(page);
+  const dialog = await openGuide(page);
+  const close = dialog.getByRole("button", { name: "閉じる", exact: true });
+  // ほかの赤いボタン(終わる)と同じ見た目であること
+  const reference = await page.evaluate(() => {
+    const probe = document.createElement("button");
+    probe.className = "secondaryButton secondaryButton--finish";
+    probe.textContent = "終わる";
+    document.body.appendChild(probe);
+    const style = getComputedStyle(probe);
+    const value = {
+      background: style.backgroundColor,
+      color: style.color,
+      border: style.borderTopColor,
+    };
+    probe.remove();
+    return value;
+  });
+  await expect(close).toHaveCSS("background-color", reference.background);
+  await expect(close).toHaveCSS("color", reference.color);
+  await expect(close).toHaveCSS("border-top-color", reference.border);
+  expect(reference.background).toBe("rgb(59, 40, 35)");
+  expect(reference.color).toBe("rgb(255, 180, 173)");
+});
+
 test("Guide remains bounded at 860px and exposes the collapsed contents below 760px", async ({
   page,
 }) => {

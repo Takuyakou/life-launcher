@@ -67,10 +67,14 @@ export function InstructionViewer() {
   );
   const contentRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
+  const htmlFrameRef = useRef<HTMLIFrameElement>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
   const splitDragRef = useRef<{ pointerId: number; startX: number; startWidth: number } | null>(null);
   const dirtyRef = useRef(false);
   const allowCloseRef = useRef(false);
+  // P96-03: 一覧から → で本文へ移るとき、読み込み中で欄がまだ無ければ読み終わってから移る。
+  const focusBodyAfterLoadRef = useRef(false);
   const externalCheckErrorRef = useRef<string | null>(null);
   const [instruction, setInstruction] = useState<InstructionDocument | null>(null);
   const [selectedPath, setSelectedPath] = useState<string | null>(initialInstructionPath);
@@ -85,6 +89,8 @@ export function InstructionViewer() {
   const [saving, setSaving] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
   const [resizingSidebar, setResizingSidebar] = useState(false);
+  // P96-03: 開いたとき・窓が前に出たときに、一覧の行へフォーカスを置く合図。
+  const [treeFocusToken, setTreeFocusToken] = useState(0);
   const dirty = Boolean(editing && instruction && draft !== instruction.content);
   dirtyRef.current = dirty;
 
@@ -503,6 +509,116 @@ export function InstructionViewer() {
     }
   };
 
+  // P96-03: 開いた直後と、窓が前に出たときに、どこにもフォーカスが無ければ一覧へ置く。
+  useEffect(() => {
+    const requestTreeFocus = () => {
+      const active = document.activeElement;
+      if (active && active !== document.body) return;
+      setTreeFocusToken((current) => current + 1);
+    };
+    requestTreeFocus();
+    window.addEventListener("focus", requestTreeFocus);
+    return () => window.removeEventListener("focus", requestTreeFocus);
+  }, []);
+
+  /** 一覧の、開いているファイルの行(なければ先頭の行)へフォーカスを戻す。 */
+  const focusTreeRow = () => {
+    const row =
+      document.querySelector<HTMLElement>('.instructionTreeRow[aria-selected="true"]') ??
+      document.querySelector<HTMLElement>('.instructionTreeRow[tabindex="0"]') ??
+      document.querySelector<HTMLElement>(".instructionTreeRow");
+    row?.focus();
+  };
+
+  /**
+   * 一覧から → で本文の欄へ移る。その場でファイルを開く場合は、読み込み中に欄が
+   * 作り直されてフォーカスが外れるため、読み終わってから移す。
+   */
+  const focusDocumentBody = (opening: boolean) => {
+    if (opening) {
+      focusBodyAfterLoadRef.current = true;
+      return;
+    }
+    contentRef.current?.focus();
+  };
+
+  useEffect(() => {
+    if (!focusBodyAfterLoadRef.current || loading) return;
+    focusBodyAfterLoadRef.current = false;
+    contentRef.current?.focus();
+  }, [instruction, loading]);
+
+  /**
+   * P96-03: 本文の欄の十字キー。↑↓ 40px、PageUp/PageDown 1画面、Home/End 先頭と最後、
+   * ← で一覧へ戻る。HTML の手順書は iframe の中の文書をスクロールする。
+   */
+  const handleDocumentKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    const htmlWindow = isHtmlInstruction ? htmlFrameRef.current?.contentWindow : null;
+    const content = contentRef.current;
+    if (!htmlWindow && !content) return;
+    const current = () => (htmlWindow ? htmlWindow.scrollY : (content?.scrollTop ?? 0));
+    const max = () =>
+      htmlWindow
+        ? Math.max(
+            0,
+            (htmlWindow.document.scrollingElement ?? htmlWindow.document.documentElement).scrollHeight -
+              htmlWindow.innerHeight,
+          )
+        : Math.max(0, (content?.scrollHeight ?? 0) - (content?.clientHeight ?? 0));
+    const viewport = () => (htmlWindow ? htmlWindow.innerHeight : (content?.clientHeight ?? 0));
+    const scrollTo = (top: number) => {
+      const next = Math.max(0, Math.min(top, max()));
+      if (htmlWindow) htmlWindow.scrollTo(0, next);
+      else if (content) content.scrollTop = next;
+    };
+    switch (event.key) {
+      case "ArrowLeft":
+        event.preventDefault();
+        focusTreeRow();
+        return;
+      case "ArrowDown":
+        event.preventDefault();
+        scrollTo(current() + 40);
+        return;
+      case "ArrowUp":
+        event.preventDefault();
+        scrollTo(current() - 40);
+        return;
+      case "PageDown":
+        event.preventDefault();
+        scrollTo(current() + Math.round(viewport() * 0.9));
+        return;
+      case "PageUp":
+        event.preventDefault();
+        scrollTo(current() - Math.round(viewport() * 0.9));
+        return;
+      case "Home":
+        event.preventDefault();
+        scrollTo(0);
+        return;
+      case "End":
+        event.preventDefault();
+        scrollTo(max());
+        return;
+      default:
+        return;
+    }
+  };
+
+  /** P96-03: ヘッダーのボタンの間を ←→ で移る(端では止まる)。 */
+  const moveHeaderFocus = (event: ReactKeyboardEvent<HTMLElement>) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    const header = headerRef.current;
+    if (!header) return;
+    const buttons = Array.from(header.querySelectorAll<HTMLElement>("button:not([disabled])"));
+    const active = document.activeElement as HTMLElement | null;
+    const index = active ? buttons.indexOf(active) : -1;
+    if (index < 0) return;
+    event.preventDefault();
+    buttons[index + (event.key === "ArrowRight" ? 1 : -1)]?.focus();
+  };
+
   const resizeSidebarFromKeyboard = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
@@ -534,7 +650,12 @@ export function InstructionViewer() {
 
   return (
     <main className={`instructionShell${resizingSidebar ? " instructionShell--resizing" : ""}`}>
-      <header className="instructionHeader" data-tauri-drag-region="">
+      <header
+        className="instructionHeader"
+        data-tauri-drag-region=""
+        onKeyDown={moveHeaderFocus}
+        ref={headerRef}
+      >
         <div className="instructionHeaderTitle" data-tauri-drag-region="">
           <span className="instructionHeaderEyebrow" data-tauri-drag-region="">
             手順書
@@ -607,8 +728,10 @@ export function InstructionViewer() {
         <aside className="instructionSidebar" aria-label="手順書一覧">
           <div className="instructionSidebarHeading">手順書</div>
           <InstructionTree
+            focusToken={treeFocusToken}
             onChooseInstructionRoot={chooseInstructionRootForViewer}
             onEditFile={requestEditDocument}
+            onEnterDocument={focusDocumentBody}
             onPathChanged={handlePathChanged}
             onPathRemoved={handlePathRemoved}
             onSelectFile={requestDocument}
@@ -688,14 +811,18 @@ export function InstructionViewer() {
               </div>
             ) : instruction ? (
               <div
+                aria-label="手順書本文"
                 className={`instructionDocument app-scrollbar${isHtmlInstruction ? " instructionDocument--html" : ""}`}
                 onClick={(event) => void openExternalLink(event)}
+                onKeyDown={handleDocumentKeyDown}
                 ref={contentRef}
+                tabIndex={0}
               >
                 {isHtmlInstruction && renderedRichText !== null ? (
                   <iframe
                     className="instructionHtmlFrame"
                     onLoad={(event) => prepareHtmlFrame(event.currentTarget)}
+                    ref={htmlFrameRef}
                     sandbox="allow-same-origin"
                     srcDoc={renderedRichText}
                     title={`${instruction.name}のHTMLプレビュー`}

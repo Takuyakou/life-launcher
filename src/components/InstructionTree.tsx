@@ -46,6 +46,10 @@ type InstructionTreeProps = {
   onEditFile: (path: string) => void;
   onPathChanged: (oldPath: string, newPath: string) => void;
   onPathRemoved: (path: string) => void;
+  // P96-03: ビューアーを開いたとき・窓が前に出たときに、一覧の行へフォーカスを置く合図。
+  focusToken?: number;
+  // P96-03: ファイルの行で → を押したとき、本文の欄へ移る(開く場合は true)。
+  onEnterDocument?: (opening: boolean) => void;
 };
 
 type ContextTarget = VisibleTreeNode | { kind: "blank"; path: ""; name: "" };
@@ -244,6 +248,8 @@ export function InstructionTree({
   onEditFile,
   onPathChanged,
   onPathRemoved,
+  focusToken = 0,
+  onEnterDocument,
 }: InstructionTreeProps) {
   const [roots, setRoots] = useState<InstructionRoot[]>([]);
   const [expanded, setExpanded] = useState<Record<string, string>>(readExpandedFolders);
@@ -274,6 +280,10 @@ export function InstructionTree({
   const [projectLinkError, setProjectLinkError] = useState<string | null>(null);
   const [operationStatus, setOperationStatus] = useState<string | null>(null);
   const rowRefs = useRef(new Map<string, HTMLElement>());
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  // P96-03: ビューアーを開いたとき・窓が前に出たときに一覧へフォーカスを置く。
+  // 行がまだ読めていないときは、行ができた時点で置く。
+  const autoFocusPendingRef = useRef(false);
   const contextMenuOpenerRef = useRef<HTMLElement | null>(null);
   const operationDialogRef = useRef<HTMLElement>(null);
   const operationNameRef = useRef<HTMLInputElement>(null);
@@ -613,6 +623,12 @@ export function InstructionTree({
       setQuery("");
       return;
     }
+    // P96-03: 何も入力していないときの ↓ は、一覧の行へ移る(入力中は今までどおり検索結果の選択)。
+    if (event.key === "ArrowDown" && !query.trim()) {
+      event.preventDefault();
+      focusOpenFileOrFirstRow();
+      return;
+    }
     if (!searchResults.length) return;
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
@@ -632,6 +648,41 @@ export function InstructionTree({
     setActivePath(path);
     rowRefs.current.get(pathKey(path))?.focus();
   };
+
+  const focusSearchField = () => {
+    searchInputRef.current?.focus();
+  };
+
+  /** 開いているファイルの行、なければ一覧の先頭の行へフォーカスを置く。 */
+  const focusOpenFileOrFirstRow = () => {
+    const target =
+      (selectedPath && rowRefs.current.has(pathKey(selectedPath)) ? selectedPath : null) ??
+      visibleNodes[0]?.path ??
+      null;
+    if (!target) return false;
+    focusNode(target);
+    return true;
+  };
+
+  useEffect(() => {
+    if (focusToken) autoFocusPendingRef.current = true;
+  }, [focusToken]);
+
+  // 行ができた時点で、どこにもフォーカスが無ければ一覧へ置く(開いた直後・窓が前に出たとき)。
+  useEffect(() => {
+    if (!autoFocusPendingRef.current || visibleNodes.length === 0) return;
+    const active = document.activeElement;
+    if (active && active !== document.body) {
+      autoFocusPendingRef.current = false;
+      return;
+    }
+    autoFocusPendingRef.current = false;
+    const target =
+      (selectedPath && rowRefs.current.has(pathKey(selectedPath)) ? selectedPath : null) ??
+      visibleNodes[0].path;
+    setActivePath(target);
+    rowRefs.current.get(pathKey(target))?.focus();
+  }, [focusToken, selectedPath, visibleNodes]);
 
   const handleTreeKeyDown = async (event: KeyboardEvent<HTMLElement>, node: VisibleTreeNode) => {
     if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
@@ -657,12 +708,26 @@ export function InstructionTree({
       focusNode(visibleNodes[index + 1].path);
       return;
     }
+    if (event.key === "ArrowUp" && index === 0) {
+      // P96-03: 一覧の先頭の行で ↑ を押すと検索欄へ戻る。
+      event.preventDefault();
+      focusSearchField();
+      return;
+    }
     if (event.key === "ArrowUp" && visibleNodes[index - 1]) {
       event.preventDefault();
       focusNode(visibleNodes[index - 1].path);
       return;
     }
     if (node.kind === "file") {
+      if (event.key === "ArrowRight") {
+        // P96-03: ファイルの行で → を押すと本文へ移る(開いていなければ先に開く)。
+        event.preventDefault();
+        const opening = pathKey(selectedPath ?? "") !== pathKey(node.path);
+        if (opening) onSelectFile(node.path);
+        onEnterDocument?.(opening);
+        return;
+      }
       if (event.key === "Enter") {
         event.preventDefault();
         onSelectFile(node.path);
@@ -1051,6 +1116,7 @@ export function InstructionTree({
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={handleSearchKeyDown}
             placeholder="検索"
+            ref={searchInputRef}
             role="combobox"
             type="search"
             value={query}

@@ -1956,6 +1956,12 @@ button.instructionTreeDisclosure:hover {
   padding: 30px clamp(28px, 5vw, 72px) 52px;
 }
 
+/* P96-03: 本文の欄にキーボードで移ったときの黄色い輪(内側に出す) */
+.instructionDocument:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
 .instructionMarkdown,
 .instructionPlainText {
   width: min(100%, 860px);
