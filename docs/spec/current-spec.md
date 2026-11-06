@@ -1,20 +1,28 @@
-# Life Launcher v1.4.1 UI/UX・機能仕様書
+# Life Launcher v1.4.2 UI/UX・機能仕様書
 
 ## 0. 文書情報
 
 | 項目             | 内容                                                                   |
 | ---------------- | ---------------------------------------------------------------------- |
-| 文書版           | 1.4.1                                                                  |
+| 文書版           | 1.4.2                                                                  |
 | 対象             | Windowsデスクトップ版 Life Launcher                                    |
-| 実装基準         | Public repository `Takuyakou/life-launcher` のv1.4.1実装             |
-| 作業branch       | `release/v1.4.1`(P95-04統合後の`main`が起点)                           |
-| 監査基準コミット | `bd9b90a`（PR #136マージ）                                             |
-| 確認日           | 2026-10-31                                                             |
+| 実装基準         | Public repository `Takuyakou/life-launcher` のv1.4.2実装             |
+| 作業branch       | `release/v1.4.2`(P96-03統合後の`main`が起点)                           |
+| 監査基準コミット | `2025088`（PR #143マージ）                                             |
+| 確認日           | 2026-11-06                                                             |
 | UI実装           | Tauri 2 / React 18 / TypeScript / CSS                                  |
 
-本書は、Life Launcher v1.4.1のUI/UXと主要機能を、現在のコード、型、設定、capability、テストから整理した現行仕様書である。
+本書は、Life Launcher v1.4.2のUI/UXと主要機能を、現在のコード、型、設定、capability、テストから整理した現行仕様書である。
 
-アプリ版は`1.4.1`、config schemaは`3`である。Project / NextStep / Wishlist再構成、Dictionary / Drop Register / Instruction Viewer / Guide改善、メイン表示サイズ、拡大Timer、キーボード操作と完了表示の修正を含む。機能の入口は [Overview](../OVERVIEW.md) を参照する。
+アプリ版は`1.4.2`、config schemaは`3`である。Project / NextStep / Wishlist再構成、Dictionary / Drop Register / Instruction Viewer / Guide改善、メイン表示サイズ、拡大Timer、キーボード操作と完了表示の修正、一体型タイトルバー、窓の上端のタイマーの線、手順書ビューアーの十字キー操作を含む。機能の入口は [Overview](../OVERVIEW.md) を参照する。
+
+## v1.4.2（Phase 9.6）での変更
+
+- メイン画面と手順書ビューアーの標準のタイトルバーをやめ、一体型ヘッダーにする（§2、§6.1、§17.1、P96-01）。窓の状態の保存は`decorated`を復元しない。
+- メイン画面の窓の上端に、タイマーの進み具合を示す線を出す（§6.2、P96-02）。
+- 手順書ビューアーを十字キーで操作できるようにする（§17.4、P96-03）。
+- 「使い方」の「閉じる」を赤にし、文章を分かりやすくする（§20、P96-03）。
+- config schema、データ形式、セッション記録の書き込み内容は変えていない。
 
 ## v1.4.1（Phase 9.5）での変更
 
