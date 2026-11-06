@@ -12,7 +12,13 @@ export async function installTauriMock(
   fixture: VisualQaFixture,
   currentWindowLabel = "main",
   softwareResetRecovery: unknown = null,
-  options: { cleanStartReset?: boolean; cleanStartNow?: string; rolloverOnLoadConfig?: boolean } = {},
+  options: {
+    cleanStartReset?: boolean;
+    cleanStartNow?: string;
+    rolloverOnLoadConfig?: boolean;
+    /** テスト用の起動（普段のデータから切り離した起動）として動かす。 */
+    testProfile?: boolean;
+  } = {},
 ): Promise<void> {
   await page.addInitScript(
     ({ fixture, paths, currentWindowLabel, softwareResetRecovery, options }) => {
@@ -29,6 +35,13 @@ export async function installTauriMock(
           return fixture.config;
         }
       })();
+      let testProfileInfo = options.testProfile
+        ? {
+            testProfile: true,
+            profilePath: "C:\\PublicDemo\\TestProfile",
+            webviewDataDir: "C:\\PublicDemo\\TestProfile\\webview",
+          }
+        : { testProfile: false, profilePath: null, webviewDataDir: null };
       const persistCurrentConfig = () => {
         window.sessionStorage.setItem(configStorageKey, JSON.stringify(currentConfig));
       };
@@ -196,6 +209,15 @@ export async function installTauriMock(
       };
       const visualQaControl = {
         invokeCalls,
+        setTestProfile: (enabled: boolean) => {
+          testProfileInfo = enabled
+            ? {
+                testProfile: true,
+                profilePath: "C:\\PublicDemo\\TestProfile",
+                webviewDataDir: "C:\\PublicDemo\\TestProfile\\webview",
+              }
+            : { testProfile: false, profilePath: null, webviewDataDir: null };
+        },
         setExecuteMode: (mode: "success" | "failure" | "delayed") => {
           executeMode = mode;
         },
@@ -281,7 +303,9 @@ export async function installTauriMock(
             switch (command) {
               case "set_display_awake":
                 return null;
-              case "load_config":
+              case "test_profile_info":
+          return testProfileInfo;
+        case "load_config":
                 if (options.rolloverOnLoadConfig) {
                   const date = new Date();
                   if (date.getHours() < currentConfig.settings.dayStartHour) {

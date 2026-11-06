@@ -152,6 +152,18 @@ npm.cmd run tauri -- dev
 npm.cmd run package:windows
 ```
 
+普段のデータ（設定・記録・窓の状態・WebView2・自動起動の登録）から切り離して起動する「テスト用の起動」があります。実機確認はこれを使います（普段のアプリを終了する必要はありません）。
+
+```powershell
+# 空の状態から（初回起動と同じ）
+powershell -ExecutionPolicy Bypass -File scripts/start-test-profile.ps1 -Exe release-candidate/v1.4.3/Life-Launcher-v1.4.3-windows-x64.exe
+
+# 今の設定をコピーしてから（元のファイルは変更しません）
+powershell -ExecutionPolicy Bypass -File scripts/start-test-profile.ps1 -Exe <EXE のパス> -CopyCurrentData
+```
+
+`LIFE_LAUNCHER_TEST_PROFILE` に絶対パスを入れて `npm.cmd run tauri -- dev` しても同じ切り替えになります。テスト用のフォルダを省くと `release-candidate/native-check/profiles/<日時>` を使います。
+
 公開する前に、React / TypeScriptのlintとbuild、PlaywrightのVisual QA、Rustのcheck・test・clippy、公開前の安全チェック（public safety scan）で品質を確かめています。
 
 ## 技術スタック

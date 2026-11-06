@@ -216,6 +216,9 @@ fn register_shortcuts(
     mini_hotkey: Option<&str>,
     instruction_hotkey: Option<&str>,
 ) -> Result<(), String> {
+    if !should_register_shortcuts(crate::app_paths::is_test_profile()) {
+        return Ok(());
+    }
     let state = app.state::<AppState>();
     let mut registered = state
         .registered_shortcuts
@@ -291,7 +294,22 @@ fn register_shortcuts(
     Ok(())
 }
 
+/// 自動起動の登録を触ってよいか。テスト用の起動では、普段のアプリの登録を書き換えないよう、
+/// 一切触らない（設定の値はテスト用の config.json に保存するだけ）。
+fn should_sync_autostart(test_profile: bool) -> bool {
+    !test_profile
+}
+
+/// グローバルショートカットを OS に登録してよいか。テスト用の起動では、普段のアプリの
+/// ショートカットを奪わないよう登録しない（設定の値は保存できる）。
+fn should_register_shortcuts(test_profile: bool) -> bool {
+    !test_profile
+}
+
 fn sync_autostart(app: &AppHandle, enabled: bool) {
+    if !should_sync_autostart(crate::app_paths::is_test_profile()) {
+        return;
+    }
     #[cfg(desktop)]
     {
         let manager = app.autolaunch();
@@ -310,5 +328,24 @@ fn sync_autostart(app: &AppHandle, enabled: bool) {
     #[cfg(not(desktop))]
     {
         let _ = (app, enabled);
+    }
+}
+
+#[cfg(test)]
+mod test_profile_tests {
+    use super::{should_register_shortcuts, should_sync_autostart};
+
+    /// テスト用の起動では、自動起動の登録とショートカットの登録をしない。
+    #[test]
+    fn the_test_profile_does_not_touch_autostart_or_shortcuts() {
+        assert!(!should_sync_autostart(true));
+        assert!(!should_register_shortcuts(true));
+    }
+
+    /// 普段の起動では、今までどおり登録する。
+    #[test]
+    fn the_normal_profile_keeps_autostart_and_shortcuts() {
+        assert!(should_sync_autostart(false));
+        assert!(should_register_shortcuts(false));
     }
 }

@@ -79,7 +79,9 @@ import {
   updateSessionEntry,
   updateInstructionReferences,
   undoTodaySelection,
+  loadTestProfileInfo,
   type ShortcutRegistrationStatus,
+  type TestProfileInfo,
 } from "./tauri";
 import {
   ActionResult,
@@ -2158,6 +2160,14 @@ function DashboardApp() {
   toastsRef.current = toasts;
   const [todayTriggerEditingIndex, setTodayTriggerEditingIndex] = useState<number | null>(null);
   const [todayTriggerDraft, setTodayTriggerDraft] = useState("");
+  // テスト用の起動（普段のデータから切り離した起動）かどうか。
+  // 自動起動の登録を呼ばないことと、「テスト」の表示に使う。
+  const [testProfile, setTestProfile] = useState<TestProfileInfo | null>(null);
+  useEffect(() => {
+    void loadTestProfileInfo()
+      .then(setTestProfile)
+      .catch(() => undefined);
+  }, []);
   // 上部メニューの文字は、幅の決まった境目ではなく実測で隠す(P96-01 追加修正)。
   // 段階はメイン画面の見出し(「今日 N分」＋日付)の幅で決め、記録画面も同じ段階にする
   // (オーナー決定 2026-11-06)。表示切替のボタンだけは画面で文字が変わるため、
@@ -3458,6 +3468,8 @@ function DashboardApp() {
         focus: false,
         focusable: false,
         visible: false,
+        // テスト用の起動では、WebView2 のデータもテスト用のフォルダに置く。
+        ...(testProfile?.webviewDataDir ? { dataDirectory: testProfile.webviewDataDir } : {}),
       });
       try {
         await Promise.all([waitForMiniWindowCreated(miniWindow), readyWaiter.promise]);
@@ -3475,7 +3487,7 @@ function DashboardApp() {
       }
       return miniWindow;
     },
-    [configuredMiniPosition],
+    [configuredMiniPosition, testProfile?.webviewDataDir],
   );
 
   const openMiniMode = useCallback(async () => {
@@ -4702,7 +4714,8 @@ function DashboardApp() {
     const alwaysOnTopChanged = settingsDraft.alwaysOnTop !== config.settings.alwaysOnTop;
 
     try {
-      if (settingsDraft.autoStart !== config.settings.autoStart) {
+      // テスト用の起動では、普段のアプリの自動起動の登録を書き換えない。
+      if (!testProfile?.testProfile && settingsDraft.autoStart !== config.settings.autoStart) {
         if (settingsDraft.autoStart) {
           await enableAutostart();
         } else {
@@ -7701,10 +7714,13 @@ function DashboardApp() {
     if (!config) return;
     const nextAutoStart = !config.settings.autoStart;
     try {
-      if (nextAutoStart) {
-        await enableAutostart();
-      } else {
-        await disableAutostart();
+      // テスト用の起動では、普段のアプリの自動起動の登録を書き換えない。
+      if (!testProfile?.testProfile) {
+        if (nextAutoStart) {
+          await enableAutostart();
+        } else {
+          await disableAutostart();
+        }
       }
       await persistConfig({
         ...config,
@@ -10178,6 +10194,14 @@ function DashboardApp() {
               Life Launcher
             </p>
             <strong data-tauri-drag-region="">Quick</strong>
+            {testProfile?.testProfile && (
+              <span
+                className="testProfileBadge"
+                title="テスト用の起動（普段のデータとは別）"
+              >
+                テスト
+              </span>
+            )}
             {shortcutRegistration && (
               <ShortcutBadge
                 label="Life Launcherを表示/隠す"
@@ -14575,6 +14599,11 @@ function DashboardApp() {
                     type="checkbox"
                   />
                   <span>Windows自動起動</span>
+                  {testProfile?.testProfile && (
+                    <small className="settingsNote">
+                      テスト用の起動では、自動起動に登録しません（設定の値だけ保存します）
+                    </small>
+                  )}
                 </label>
                 <label className="settingsToggle">
                   <input
