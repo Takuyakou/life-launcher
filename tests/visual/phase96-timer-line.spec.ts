@@ -72,7 +72,7 @@ test.describe("P96-02 window timer line", () => {
     await expect(page.locator(".windowTimerLine")).toHaveCount(1);
     const started = (await lineState(page))!;
     expect(started.running, "running class").toBe(true);
-    expect(started.height, "height").toBe(2);
+    expect(started.height, "height").toBe(3);
     expect(started.top, "sits on the top edge").toBe(0);
     expect(started.ariaHidden, "hidden from screen readers").toBe("true");
     expect(started.pointerEvents, "does not take clicks").toBe("none");

@@ -20,7 +20,7 @@ Try the central Life Launcher flow in your browser without installing the Window
 
 The Web Demo uses synthetic data to demonstrate the central Life Launcher flow, including choosing today's items, running timers, and removing an item from Today's Three. Changes are stored in your browser's localStorage. Launching apps, files, and URLs is simulated rather than performed.
 
-Note: it is not a complete port of the Windows product. The Web Demo has a separate publishing process and is not updated alongside the v1.4.1 desktop release.
+Note: it is not a complete port of the Windows product. The Web Demo has a separate publishing process and is not updated alongside the v1.4.2 desktop release.
 
 ## Highlights
 
@@ -55,6 +55,14 @@ Note: it is not a complete port of the Windows product. The Web Demo has a separ
 
 The screenshots are generated from synthetic data. They do not contain real user configuration, activity, paths, or notes.
 
+## Changes In v1.4.2
+
+- The Main window and the instruction viewer no longer use the Windows title bar. The window buttons (minimize, maximize, close) sit at the right end of the top menu row, dragging an empty part of that row moves the window, and double-clicking it toggles maximize.
+- A thin line along the top edge of the Main window shows Timer progress. It is yellow while running, orange while paused, and does not appear while idle or while measuring.
+- The instruction viewer can be operated with the arrow keys. On open, the list has focus: Up/Down move, Enter opens, Right moves into the document (Up/Down, PageUp, PageDown, Home and End scroll it), and Left returns to the list. The same applies to HTML instructions.
+- The in-app guide uses clearer wording, and its Close button is red.
+- Config schema stays at `3`, with no data-format changes.
+
 ## Changes In v1.4.1
 
 - The Timer no longer shows a toast when it starts or pauses, and pausing and resuming quickly no longer winds the clock back.
@@ -80,19 +88,19 @@ Download Life Launcher from [GitHub Releases](https://github.com/Takuyakou/life-
 
 Use this for the standard installation flow.
 
-v1.4.1 installer: `Life-Launcher-v1.4.1-windows-x64-setup.exe`
+v1.4.2 installer: `Life-Launcher-v1.4.2-windows-x64-setup.exe`
 
 ### Standalone EXE
 
 Run the app directly without installing it.
 
-v1.4.1 standalone: `Life-Launcher-v1.4.1-windows-x64.exe`
+v1.4.2 standalone: `Life-Launcher-v1.4.2-windows-x64.exe`
 
 ### Portable ZIP
 
 Extract the ZIP archive and run the app.
 
-v1.4.1 ZIP: `Life-Launcher-v1.4.1-windows-x64-portable.zip`
+v1.4.2 ZIP: `Life-Launcher-v1.4.2-windows-x64-portable.zip`
 
 The ZIP edition also stores user data in `%APPDATA%\life-launcher`. It does not carry your data alongside the executable on a USB drive.
 
@@ -106,11 +114,11 @@ Fully exit Life Launcher and back up the `%APPDATA%\life-launcher` folder to ano
 
 The first launch after updating from v1.2 to v1.3 migrates config schema `2` to `3`. The app creates a raw pre-migration backup and leaves the original config unchanged if migration, validation, or backup fails. Session records are not deleted.
 
-Updating from v1.4.0 to v1.4.1 keeps config schema at `3`, with no change to the configuration format. Existing settings and session records remain available.
+Updating from v1.4.1 to v1.4.2 keeps config schema at `3`, with no change to the configuration format. Existing settings and session records remain available, and the saved window position and size are kept (the standard title bar does not come back).
 
 If you choose "Uninstall before installing" in the installer and it reports "Could not uninstall the previous version", quit Life Launcher and try again, or choose "Do not uninstall". Your settings and records are kept.
 
-See the [v1.4.1 release notes](docs/releases/v1.4.1.md) and [changelog](CHANGELOG.md) for details. The [overview](docs/OVERVIEW.md) and [current specification](docs/spec/current-spec.md) cover the wider feature set. These detailed documents are currently in Japanese.
+See the [v1.4.2 release notes](docs/releases/v1.4.2.md) and [changelog](CHANGELOG.md) for details. The [overview](docs/OVERVIEW.md) and [current specification](docs/spec/current-spec.md) cover the wider feature set. These detailed documents are currently in Japanese.
 
 ## Runtime Requirements
 
