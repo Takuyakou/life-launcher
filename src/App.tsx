@@ -10167,7 +10167,6 @@ function DashboardApp() {
       )}
       <aside
         className="sidebar"
-        data-tauri-drag-region=""
         onContextMenu={(event) => {
           event.preventDefault();
           openContextMenu(
@@ -10180,6 +10179,8 @@ function DashboardApp() {
         onKeyDown={(event) => openContextMenuFromKeyboard(event, { kind: "sidebar" })}
         tabIndex={-1}
       >
+        {/* 上端の余白だけをドラッグできるようにする（要素そのものには付けない） */}
+        <div aria-hidden="true" className="panelDragStrip panelDragStrip--sidebar" data-tauri-drag-region="" />
         <div className="brandBlock" data-tauri-drag-region="">
           <img
             alt=""
@@ -10833,8 +10834,9 @@ function DashboardApp() {
       <section
         className="mainPanel"
         data-main-display-size={config.settings.mainDisplaySize ?? "standard"}
-        data-tauri-drag-region=""
       >
+        {/* 上端の余白だけをドラッグできるようにする（要素そのものには付けない） */}
+        <div aria-hidden="true" className="panelDragStrip panelDragStrip--main" data-tauri-drag-region="" />
         <header
           className="topBar"
           data-tauri-drag-region=""
