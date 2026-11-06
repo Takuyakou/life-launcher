@@ -343,7 +343,7 @@ export function HelpGuideDialog({ onClose, onCopyResult }: HelpGuideDialogProps)
 
         <footer className="helpGuideFooter">
           <span>このガイドはオフラインで読めます。</span>
-          <button className="secondaryButton" onClick={onClose} type="button">
+          <button className="secondaryButton secondaryButton--finish" onClick={onClose} type="button">
             閉じる
           </button>
         </footer>
