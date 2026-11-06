@@ -31,6 +31,7 @@ import {
 import type { InstructionDocument } from "../types";
 import { InstructionTree } from "./InstructionTree";
 import { InstructionUnsavedDialog } from "./InstructionUnsavedDialog";
+import { useHoverSuppressionAfterResize } from "../hoverSuppression";
 
 type ViewerStatus = {
   tone: "neutral" | "error";
@@ -91,6 +92,8 @@ export function InstructionViewer() {
   const [resizingSidebar, setResizingSidebar] = useState(false);
   // P96-03: 開いたとき・窓が前に出たときに、一覧の行へフォーカスを置く合図。
   const [treeFocusToken, setTreeFocusToken] = useState(0);
+  // P97-02 F: 窓の大きさが変わった直後は、マウスが動くまで乗せた色を出さない。
+  useHoverSuppressionAfterResize();
   const dirty = Boolean(editing && instruction && draft !== instruction.content);
   dirtyRef.current = dirty;
 
