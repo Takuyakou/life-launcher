@@ -160,11 +160,16 @@ export function pickTopMenuLabelLevel(
 /**
  * 上部メニューの文字の段階を決める。`measureKey` が変わると測り直す
  * (表示サイズの切替など、幅が変わらないが文字の大きさが変わるもの)。
+ *
+ * 行と見出しの要素は **コールバック ref** で受け取る。config の読み込み前は
+ * 要素が無く、読み込み後や画面の入れ替えで要素が新しくなるため、
+ * `useRef` のままにすると「effect が最初に走ったときの null」のまま取り残され、
+ * 幅を変えても測り直されない(実機で起きた不具合)。
  */
 export function useTopMenuLabelLevel(input: TopMenuMeasureInput) {
   const { measureKey, summaryTitle, summaryDate, toggleLabel } = input;
-  const barRef = useRef<HTMLElement>(null);
-  const pillsRef = useRef<HTMLDivElement>(null);
+  const [bar, setBar] = useState<HTMLElement | null>(null);
+  const [pills, setPills] = useState<HTMLDivElement | null>(null);
   const [level, setLevel] = useState<TopMenuLabelLevel>(0);
   const levelRef = useRef<TopMenuLabelLevel>(0);
 
@@ -175,8 +180,6 @@ export function useTopMenuLabelLevel(input: TopMenuMeasureInput) {
   }, []);
 
   const measure = useCallback(() => {
-    const bar = barRef.current;
-    const pills = pillsRef.current;
     if (!bar || !pills) return;
     if (window.innerWidth <= STACKED_LAYOUT_MAX_WIDTH_PX) {
       // 縦積みの幅では今までどおり文字を出さない(styles.css の同じ幅の決まりが受け持つ)
@@ -185,10 +188,15 @@ export function useTopMenuLabelLevel(input: TopMenuMeasureInput) {
     }
     const available = measureAvailableWidth(bar);
     const needed = ([0, 1, 2] as const).map((candidate) =>
-      measureNeededWidth(bar, pills, candidate, { measureKey, summaryTitle, summaryDate, toggleLabel }),
+      measureNeededWidth(bar, pills, candidate, {
+        measureKey,
+        summaryTitle,
+        summaryDate,
+        toggleLabel,
+      }),
     );
     apply(pickTopMenuLabelLevel(needed, available, levelRef.current));
-  }, [apply, measureKey, summaryTitle, summaryDate, toggleLabel]);
+  }, [apply, bar, pills, measureKey, summaryTitle, summaryDate, toggleLabel]);
 
   // 描画の前に測り、文字が出たままの状態を1フレームも見せない。
   useLayoutEffect(() => {
@@ -196,9 +204,7 @@ export function useTopMenuLabelLevel(input: TopMenuMeasureInput) {
   }, [measure]);
 
   useEffect(() => {
-    const bar = barRef.current;
-    // config の読み込み前は行が無い。行ができた時点(measureKey の変化)で
-    // 観測を始め直す。表示サイズの切替でも同じ理由で付け直す。
+    // 要素が付いてから観測する。要素が差し替わったら付け直す。
     if (!bar) return;
     let measuring = false;
     // 幅が変わったその場で測り直す(次のフレームまで文字が出たままにならないように)。
@@ -220,7 +226,7 @@ export function useTopMenuLabelLevel(input: TopMenuMeasureInput) {
       observer.disconnect();
       window.removeEventListener("resize", run);
     };
-  }, [measure, measureKey]);
+  }, [bar, measure, measureKey]);
 
-  return { barRef, pillsRef, level };
+  return { barRef: setBar, pillsRef: setPills, level };
 }

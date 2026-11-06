@@ -315,6 +315,91 @@ test.describe("P96-01 top menu labels follow what fits", () => {
     }
   });
 
+  test("resizing after load re-measures at every step (main and records)", async ({ page }) => {
+    // 読み込んだ後に窓の幅を変えても段階が追従すること(実機で「起動時の段階のまま」に
+    // なる不具合が出たため)。幅は 1200 → 1070 → 930 → 860 → 1200 と動かし、戻るときも戻る。
+    const EXPECTED: Record<"standard" | "large" | "xlarge", readonly number[]> = {
+      standard: [0, 0, 1, 2, 0],
+      large: [0, 1, 1, 2, 0],
+      xlarge: [0, 1, 1, 2, 0],
+    };
+    const STEPS = [1200, 1070, 930, 860, 1200] as const;
+
+    for (const view of ["main", "records"] as const) {
+      for (const size of SIZES) {
+        await prepare(page, 1200);
+        await page.evaluate((next) => {
+          const control = (window as VisualQaWindow).__LIFE_LAUNCHER_VISUAL_QA__;
+          const config = control.currentConfig() as { settings: { mainDisplaySize: string } };
+          config.settings.mainDisplaySize = next;
+          control.updateConfig(config);
+        }, size);
+        await expect(page.locator(".mainPanel")).toHaveAttribute("data-main-display-size", size);
+        if (view === "records") {
+          await page.getByRole("button", { name: "記録ビューを開く" }).click();
+          await expect(page.locator(".recordsView")).toBeVisible();
+        }
+        for (const [index, width] of STEPS.entries()) {
+          await page.setViewportSize({ width, height: 680 });
+          const label = `w=${width} size=${size} view=${view}`;
+          await expect
+            .poll(
+              () =>
+                page
+                  .locator(".mainPanel > .topBar")
+                  .getAttribute("data-top-menu-labels")
+                  .then((value) => Number(value ?? "0")),
+              { message: `level (${label})` },
+            )
+            .toBe(EXPECTED[size][index]);
+          const probe = await probeLayout(page);
+          expect(probe.visibleLabels, `labels shown (${label})`).toBe(
+            probe.labelLevel === 0 ? 6 : probe.labelLevel === 1 ? 2 : 0,
+          );
+          expect(probe.titleLineCount, `title stays on one line (${label})`).toBeLessThan(1.2);
+          expect(probe.topBarOverflow, `top bar does not overflow (${label})`).toBe(false);
+          expect(probe.pillsOverflow, `menu does not wrap (${label})`).toBe(false);
+          expect(probe.summaryOverflow, `title and date not squeezed (${label})`).toBe(false);
+          expect(probe.clippedLabels, `labels stay inside their buttons (${label})`).toEqual([]);
+          expect(probe.pillsRight, `menu does not overlap dock (${label})`).toBeLessThanOrEqual(
+            probe.dockLeft + 1,
+          );
+        }
+      }
+    }
+  });
+
+  test("changing the display size in settings re-measures at once", async ({ page }) => {
+    // 幅はそのままで表示サイズだけ変えた場合も測り直すこと。
+    await prepare(page, 1070);
+    const level = () =>
+      page
+        .locator(".mainPanel > .topBar")
+        .getAttribute("data-top-menu-labels")
+        .then((value) => Number(value ?? "0"));
+    const setSize = async (next: "standard" | "large" | "xlarge") => {
+      await page.evaluate((value) => {
+        const control = (window as VisualQaWindow).__LIFE_LAUNCHER_VISUAL_QA__;
+        const config = control.currentConfig() as { settings: { mainDisplaySize: string } };
+        config.settings.mainDisplaySize = value;
+        control.updateConfig(config);
+      }, next);
+      await expect(page.locator(".mainPanel")).toHaveAttribute("data-main-display-size", next);
+    };
+    await expect.poll(level, { message: "standard at 1070" }).toBe(0);
+    await setSize("large");
+    await expect.poll(level, { message: "large at 1070" }).toBe(1);
+    await setSize("xlarge");
+    await expect.poll(level, { message: "xlarge at 1070" }).toBe(1);
+    await setSize("standard");
+    await expect.poll(level, { message: "standard again at 1070" }).toBe(0);
+    // 切替のあとも、幅の変化に追従し続けること。
+    await page.setViewportSize({ width: 860, height: 680 });
+    await expect.poll(level, { message: "860 after size changes" }).toBe(2);
+    await page.setViewportSize({ width: 1200, height: 680 });
+    await expect.poll(level, { message: "back to 1200" }).toBe(0);
+  });
+
   test("1200px shows all six labels at every display size", async ({ page }) => {
     await prepare(page, 1200);
     for (const size of SIZES) {
