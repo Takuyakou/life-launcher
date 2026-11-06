@@ -1,4 +1,4 @@
-# テスト用の起動（普段のデータから切り離した起動）を始めるスクリプト。
+﻿# テスト用の起動（普段のデータから切り離した起動）を始めるスクリプト。
 #
 #   powershell -ExecutionPolicy Bypass -File scripts/start-test-profile.ps1 -Exe <EXE のパス> [-Profile <フォルダ>] [-CopyCurrentData]
 #
