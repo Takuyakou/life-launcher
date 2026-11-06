@@ -3,11 +3,18 @@
 **READY FOR USER APPROVAL**(自動で確かめられるゲートはすべて通った、の意味。画面の項目のネイティブ確認〔9.〕は**オーナー確認待ち**で、PASS とは書いていない。公開は、オーナーの明示承認があるまで行わない)
 
 - 日付: 2026-11-06(JST)
-- 候補のソース: ブランチ `release/v1.4.2`、コミット `eaaf2d8bad2e8b908a0d186ca788138aedce38eb`(`main` = `2025088`〔PR #143、P96-03 のマージ〕+ バージョン・公開文書・公開スクリーンショット)。**ビルドした時点の作業ツリーはきれい**(`git status --porcelain` は、無関係の未追跡ファイル `.commandcode/` と `voicing-loop-current-chord-panel-mock.html` だけ。ビルド直前に記録)。ビルドの途中で `tauri build` が `src-tauri/Cargo.toml` の改行だけを書き換えたため、ビルド後に `git checkout --` で戻した(内容は同一。`git diff --numstat --ignore-cr-at-eol` が空)。この後に足すコミットは、この判定書と `native-checklist.md` だけで、成果物には含まれない(`git diff --name-only eaaf2d8 HEAD` で確認する)。
+- 候補のソース: ブランチ `release/v1.4.2`、コミット `282a67e95d801ae403711bc3b5c46703dc3e94e5`(`main` = `2025088`〔PR #143、P96-03 のマージ〕+ バージョン・公開文書・公開スクリーンショット + オーナー判断の「上端の線を 3px」)。**ビルドした時点の作業ツリーはきれい**(`git status --porcelain` は、無関係の未追跡ファイル `.commandcode/` と `voicing-loop-current-chord-panel-mock.html` だけ。ビルド直前に記録)。ビルドの途中で `tauri build` が `src-tauri/Cargo.toml` の改行だけを書き換えたため、ビルド後に `git checkout --` で戻した(内容は同一。`git diff --numstat --ignore-cr-at-eol` が空)。この後に足すコミットは、この判定書・`native-checklist.md`・リリースノートの「3px」の修正だけで、成果物には含まれない(`git diff --name-only 282a67e HEAD` で確認する)。
+- 前の候補(コミット `eaaf2d8`、線が 2px)は**使わない**。オーナー判断(2026-11-06)で線を 3px にしたため、作り直した。
 - PR: #144(`release/v1.4.2` → `main`)。マージしていない。
 - config schema: 3(v1.4.1 から変更なし)
 - 公開(tag、GitHub Release、アセットのアップロード、Web Demo の deploy)は**行っていない**。オーナーの明示承認を待つ。
 - ビルドの環境: Node v24.14.1、npm 11.11.0、Windows 11 Home 10.0.26200(x64)、`@tauri-apps/cli` 2.11.4、`@tauri-apps/api` 2.11.1。Rust は `rustc 1.96.1 (31fca3adb 2026-06-26)`、`cargo 1.96.1 (356927216 2026-06-26)`。
+
+## オーナーの判断(2026-11-06)の反映
+
+| 項目 | 判断 | この判定書での扱い |
+| --- | --- | --- |
+| 上端のタイマーの線の高さ | 2px では細すぎるので **3px** にする(色・溝の不透明度 12%・動き・`z-index`・`pointer-events: none`・`aria-hidden` は変えない) | 実装を 3px に直し、仕様書(§6.2)・テスト・基準画像を合わせた。成果物を作り直した(4.、5.) |
 
 ## 1. 判定の要約
 
@@ -39,7 +46,7 @@
 | Stage | 内容 | 報告 |
 | --- | --- | --- |
 | P96-01(PR #141) | メイン画面と手順書ビューアーの標準のタイトルバーをやめ、上部メニューの右端に窓のボタン(最小化・最大化・閉じる)を置く一体型ヘッダーにした。ドラッグできる範囲、窓の状態の保存(`decorated` を復元しない)、上部メニューの文字を幅の実測で隠す段階、窓のボタンの色、窓を戻した直後の乗せた色の残留の修正。初期幅 1080 → 1200 | `01-integrated-titlebar.md` |
-| P96-02(PR #142) | メイン画面の窓の上端(高さ 2px)に、タイマーの進み具合を示す線を出す。実行中は `--accent`、一時停止中は `--warn`。計測と待機中は出さない | `02-timer-line.md` |
+| P96-02(PR #142) | メイン画面の窓の上端(高さ 3px。オーナー判断 2026-11-06 で 2px から変更)に、タイマーの進み具合を示す線を出す。実行中は `--accent`、一時停止中は `--warn`。計測と待機中は出さない | `02-timer-line.md` |
 | P96-03(PR #143) | 手順書ビューアーを十字キーで操作できるようにした(開いたときの一覧フォーカス、→で本文、本文のスクロール、←で一覧、検索欄との行き来、ヘッダーのボタン間の移動)。「使い方」の「閉じる」を赤にし、文章を差し替えた | `03-viewer-keyboard-guide.md` |
 
 データ形式、config schema、`sessions.jsonl` の書き込み内容は変わらない。公開文書(CHANGELOG、リリースノート、README 2種、OVERVIEW、仕様書)に反映した。
@@ -50,13 +57,23 @@
 
 | ファイル | サイズ(バイト) | SHA-256 |
 | --- | --- | --- |
-| `Life-Launcher-v1.4.2-windows-x64-setup.exe` | 3,729,805 | `4F8098CAB0A3817668A17D0594F87A7BEF7FEBF072B36D2B529A87BA8EA70907` |
-| `Life-Launcher-v1.4.2-windows-x64.exe` | 16,066,048 | `FCC14FA393BCD6075D0160B434A07FC7DE1E0052F172F15AB584FB6497CB2F18` |
-| `Life-Launcher-v1.4.2-windows-x64-portable.zip` | 5,069,101 | `7671958CD5D1B9F90EC5A0A0BE77874F334CCE6F9865BB18F17D5350CA5ABCFE` |
+| `Life-Launcher-v1.4.2-windows-x64-setup.exe` | 3,732,777 | `1DDB3A037BCACBA0DA6EB9F1F3AA522C48D779A0C719E3D9E2A8B36760268518` |
+| `Life-Launcher-v1.4.2-windows-x64.exe` | 16,066,048 | `6938852FEDF36EBB23092B73AEAE83FE989A373D043E491A62136524F5F44AD7` |
+| `Life-Launcher-v1.4.2-windows-x64-portable.zip` | 5,069,117 | `D180A97EDF59E22757E9C685D9E06E7E9A63C49E7BE7936AC7B3467C3B880407` |
 | `SHA256SUMS.txt` | 327 | (上の3行。大文字で書かれている) |
-| `release-notes.md` | 7,124 | `docs/releases/v1.4.2.md`、`docs/release/v1.4.2/release-notes.md` と同一(SHA-256 `d572f233…7cdfd` で3つ一致) |
+| `release-notes.md` | 7,124 | `docs/releases/v1.4.2.md`、`docs/release/v1.4.2/release-notes.md` と同一(SHA-256 `5dc6a7ff…3cdf3` で3つ一致) |
 
 作り方: 既存の正式スクリプト `scripts/prepare-release-candidate.ps1`(終了コード 0。`scripts/package-windows-installer.ps1` → `scripts/package-windows.ps1`、パスの置換つきの release ビルド)。ビルドのログ: インストーラー `Life Launcher_1.4.2_x64-setup.exe` を作成 → `release-candidate/v1.4.2/` へコピー、単体 EXE、ポータブル ZIP、`release-notes.md`、`SHA256SUMS.txt` の順。
+
+**置き換えた前の候補(コミット `eaaf2d8`、線が 2px)のハッシュ**(参考。もう使わない。公開には使わない):
+
+| ファイル | SHA-256(前回) |
+| --- | --- |
+| `Life-Launcher-v1.4.2-windows-x64-setup.exe` | `4F8098CAB0A3817668A17D0594F87A7BEF7FEBF072B36D2B529A87BA8EA70907`(3,729,805 バイト) |
+| `Life-Launcher-v1.4.2-windows-x64.exe` | `FCC14FA393BCD6075D0160B434A07FC7DE1E0052F172F15AB584FB6497CB2F18` |
+| `Life-Launcher-v1.4.2-windows-x64-portable.zip` | `7671958CD5D1B9F90EC5A0A0BE77874F334CCE6F9865BB18F17D5350CA5ABCFE` |
+
+前回から変わったファイル(`git diff --name-only eaaf2d8 282a67e`): `src/styles.css`(線の高さ 2px → 3px)、`docs/spec/current-spec.md`(§6.2)、`docs/phase9.6/02-timer-line.md`(判断メモ1行)、`tests/visual/phase96-timer-line.spec.ts`(高さの期待値)、基準画像 `main-running` `timer-expanded`(実行中・一時停止中の画面だけ)。待機中の画面の基準画像は変わっていない。**前回のハッシュでの確認は無効**なので、オーナーの実機確認は、この判定書のハッシュのビルドで行う。
 
 ## 5. リリースゲートの証跡(前回の結果は流用していない。確かめた人: 実装担当)
 
@@ -66,7 +83,7 @@
 | 2 | 依存関係(Rust) | **通過**(脆弱性 0 件、情報警告 12 件は据え置き) | `cargo audit` 終了コード 0、`allowed warnings` 12 件。内訳は v1.4.1 と同じ ID 11 個(RUSTSEC-2024-0370 / 0429、2025-0075 / 0080 / 0081 / 0098 / 0100、2026-0370 / 0371 / 0372 / 0386)と、**ID のない `async-executor 1.14.0` の yanked の警告 1 件**。`Cargo.lock` の依存は `life-launcher` の version 以外変わっていないので、yanked は今回の依存更新によるものではなく、助言データベース側の追加 |
 | 3 | 公開安全 | **通過** | `npm.cmd run public:check`: 3598 ファイル、blocker 0 |
 | 4 | 公開文書の横断確認 | **通過** | README、README.en.md、CHANGELOG、`docs/releases/v1.4.2.md`、仕様書、OVERVIEW のバージョンが 1.4.2 で一致(残る 1.4.1 は履歴・更新の説明だけ)。P96-01〜03 の内容が CHANGELOG、リリースノート(2つの控えは同一)にある。配布ファイル名、config schema `3`、Web Demo が別公開工程であることは、すべての文書で同じ。`readme-contract` のテスト(4件)も通っている |
-| 5 | ポータブル ZIP | **通過** | 中身は `Life-Launcher-v1.4.2-windows-x64.exe` と `README.txt` の2つだけ。ZIP 内の EXE の SHA-256 が単体 EXE と一致(`fcc14fa3…b2f18`)。`README.txt` の版表記も 1.4.2 |
+| 5 | ポータブル ZIP | **通過** | 中身は `Life-Launcher-v1.4.2-windows-x64.exe` と `README.txt` の2つだけ。ZIP 内の EXE の SHA-256 が単体 EXE と一致(`6938852f…5f44ad7`)。`README.txt` の版表記も 1.4.2 |
 | 6 | 秘密情報・パスの走査 | **通過** | 単体 EXE、ZIP 内 EXE(展開したもの)、インストーラー、ZIP を ASCII と UTF-16LE で走査。`C:\Users\`、`D:\dev\`、`D:/dev/`、`Life Launcher-dev`、開発者のユーザー名、`Takuyakou\`、秘密鍵ヘッダー(RSA、OPENSSH、PRIVATE KEY、EC)、トークン接頭辞(`ghp_`、`github_pat_`、`gho_`、`AKIA`、`xoxb-`、`xoxp-`、`sk-ant-`)、`sourceMappingURL`、`.js.map` のいずれも 0 件。単体 EXE には `password` と `secret` の語が出るが、**同梱の英単語の一覧(uniq 用のデータ)と `glib` のパニックメッセージ(`has_authority means set_password shouldn't fail`)の中だけ**で、認証情報ではない(前後の文字列を確認)。インストーラーは圧縮されているため、中身の走査には限りがある(EXE 本体は圧縮されていない) |
 | 7 | SHA-256 | **通過** | PowerShell の `Get-FileHash`(ビルドのスクリプトとは別の手段)で3ファイルを再計算し、`SHA256SUMS.txt` と全件一致。全文が 64 文字であることも確認 |
 | 8 | バージョン情報 | **通過** | 2.(実ファイルの FileVersion / ProductVersion を読んで確認) |
@@ -74,10 +91,10 @@
 | 10 | 必須ゲート | **通過** | 下の表 |
 | 11 | 画面の資産の走査 | **通過** | ビルドに使ったコミットから作り直した `dist/` の製品ファイル(6ファイル、`.map` 0 件)を走査(6. と同じパターン)。0 件。限界は v1.4.0・v1.4.1 と同じ(作り直した出力の確認で、EXE の中から取り出した資産そのものの照合ではない) |
 | 12 | 権限の確認 | **通過** | `git diff v1.4.1..HEAD -- src-tauri/capabilities src-tauri/gen/schemas`: `default.json` に `core:window:allow-minimize`・`allow-toggle-maximize`・`allow-start-dragging` の3行、`instruction.json` に `core:window:allow-close`・`allow-minimize`・`allow-toggle-maximize`・`allow-start-dragging` の4行、生成物 `gen/schemas/capabilities.json` が1行。**P96-01 で足した窓の操作の権限だけ**で、ほかの権限は変わっていない |
-| 13 | 公開スクリーンショット | **通過(3枚が変化)** | `npm.cmd run screenshot:public`(4件通過)。`main-dashboard.png`、`instruction-viewer.png`、`contact-sheet.png` が変化(一体型ヘッダーで窓のボタンが増えたため)。`dictionary.png` は変化なし。**どの画像にもタイマーの線は写っていない**(画像の上端 2 行の色が、その下と同じであることを画素で確認。公開用の画像はタイマーが動いていない状態)。合成データだけで、個人データ、パス、ノートは写っていない |
-| 14 | CI(`windows-latest`) | **通過**(下の「CI」) | ビルドに使ったコミット `eaaf2d8` の `CI` |
+| 13 | 公開スクリーンショット | **通過(3枚が変化)** | `npm.cmd run screenshot:public`(4件通過)。`main-dashboard.png`、`instruction-viewer.png`、`contact-sheet.png` が変化(一体型ヘッダーで窓のボタンが増えたため)。`dictionary.png` は変化なし。**どの画像にもタイマーの線は写っていない**(画像の上端の色が、その下と同じであることを画素で確認。公開用の画像はタイマーが動いていない状態)。3px に変えた後も、公開用の画像はタイマーが動いていないため作り直していない。合成データだけで、個人データ、パス、ノートは写っていない |
+| 14 | CI(`windows-latest`) | **通過**(下の「CI」) | ビルドに使ったコミット `282a67e` の `CI` |
 
-### 必須ゲート(`release/v1.4.2`、ビルドに使ったコミット `eaaf2d8`)
+### 必須ゲート(`release/v1.4.2`、ビルドに使ったコミット `282a67e`)
 
 | ゲート | 結果 |
 | --- | --- |
@@ -93,10 +110,10 @@
 
 ### CI
 
-- ビルドに使ったコミット `eaaf2d8` の `CI`(PR #144): **成功**(下の「CI の結果」)。
-- この後に足すコミット(この判定書と `native-checklist.md`)は文書だけなので、CI を待たない(規約どおり)。
+- ビルドに使ったコミット `282a67e` の `CI`(PR #144): **成功**。
+- この後に足すコミット(この判定書・`native-checklist.md`・リリースノートの「3px」の修正)は文書だけなので、CI を待たない(規約どおり)。
 
-**CI の結果**: 実行 ID `42215310405`、ブランチ `release/v1.4.2`、コミット `eaaf2d8`、`CI` = success(2026-11-06)。
+**CI の結果**: 実行 ID `42219639302`、ブランチ `release/v1.4.2`、コミット `282a67e`、`CI` = success(2026-11-06)。
 
 ## 6. 依存関係の情報警告(据え置き)
 
@@ -107,10 +124,10 @@ Rust の情報警告 12 件は、11 件が v1.4.0・v1.4.1 と同じ ID・同じ
 | 条件 | 結果 |
 | --- | --- |
 | バージョン情報がすべて 1.4.2 で一致する | 一致(2.) |
-| 成果物とハッシュがそろい、リリースゲートがすべて通る。ビルドしたコミットで CI が通った | そろった。ゲートはすべて通った(`npm audit` はオーナー判断で受け入れ、5. #1)。CI も `eaaf2d8` で成功(5.) |
+| 成果物とハッシュがそろい、リリースゲートがすべて通る。ビルドしたコミットで CI が通った | そろった。ゲートはすべて通った(`npm audit` はオーナー判断で受け入れ、5. #1)。CI も `282a67e` で成功(5.) |
 | ネイティブ確認の結果が項目ごとに記録されている(画面の項目は「オーナー確認待ち」) | コマンドで確かめた範囲を 9. に記録。画面の項目は `native-checklist.md` に整理し、**オーナー確認待ち** |
 | `native-checklist.md` がある | `docs/release/v1.4.2/native-checklist.md` |
-| 公開手順が、承認後にそのまま実行できる形で書かれている | 8.(新しいハッシュ、ビルドコミット `eaaf2d8`、PR #144) |
+| 公開手順が、承認後にそのまま実行できる形で書かれている | 8.(新しいハッシュ、ビルドコミット `282a67e`、PR #144) |
 
 ## 8. 承認後の公開手順
 
@@ -142,18 +159,18 @@ gh pr merge 144 --merge --match-head-commit $head
 
 ### 8.3 マージの後の確認
 
-1. マージ後の `main` と、ビルドに使ったコミット `eaaf2d8` の差分が**文書だけ**であること(製品のファイルの差分が1つでもあれば停止する)。
+1. マージ後の `main` と、ビルドに使ったコミット `282a67e` の差分が**文書だけ**であること(製品のファイルの差分が1つでもあれば停止する)。
 2. **マージ後の `main` の CI は待たない**(オーナー判断 2026-11-02)。代わりに、マージ後の `main` の tree が、CI が通ったコミットの tree と同じであること、または差分が文書だけであることで代える。
 
 ```powershell
 git fetch origin
-$unexpected = @(git diff --name-only eaaf2d8 origin/main |
+$unexpected = @(git diff --name-only 282a67e origin/main |
   Where-Object { $_ -notmatch '^docs/|^README(?:\.en)?\.md$|^CHANGELOG\.md$' })
 if ($unexpected.Count) { throw "main の製品差分を確認するまで停止: $unexpected" }
 $releaseCommit = (git rev-parse origin/main).Trim()
 # 置き換えの確認: マージ後の main の tree が、CI の通ったコミットの tree と同じか
 git rev-parse "$releaseCommit^{tree}"
-git rev-parse "eaaf2d8^{tree}"   # 文書だけのコミットを挟んだ場合は一致しないので、上の差分が文書だけであることを根拠にする
+git rev-parse "282a67e^{tree}"   # 文書だけのコミットを挟んだ場合は一致しないので、上の差分が文書だけであることを根拠にする
 ```
 
 ### 8.4 タグ
@@ -197,7 +214,7 @@ gh release view v1.4.2 --json tagName,url,isDraft
 
 ### 8.8 公開後の確認(必須)
 
-- もう一度、**新しい空のフォルダー**へダウンロードし、8.6 と同じ照合(公開した `SHA256SUMS.txt` と、4. の `4f8098ca…a70907`、`fcc14fa3…97cb2f18`、`7671958c…ca5abcfe`)をする。
+- もう一度、**新しい空のフォルダー**へダウンロードし、8.6 と同じ照合(公開した `SHA256SUMS.txt` と、4. の `1ddb3a03…268518`、`6938852f…5f44ad7`、`d180a97e…b880407`)をする。
 - ダウンロードした単体 EXE と、ポータブル ZIP を展開した EXE が起動し、メイン画面が出ること(オーナーの PC で起動してよい。起動中の Life Launcher があれば、先に完全に終了する。自動起動の登録・ウィンドウの位置・WebView2 のデータは普段の場所に触れる)。
 - `releases/latest` が v1.4.2 を指すこと。README のダウンロードの説明と、実際のファイル名が合っていること。
 - `gh release view` だけで、起動やリンクの確認を済ませたことにしない。
@@ -223,9 +240,10 @@ v1.4.2 の変更(一体型タイトルバー、窓の上端のタイマーの線
 | A-1 | 成果物が起動する | **通過** | `release-candidate/v1.4.2/Life-Launcher-v1.4.2-windows-x64.exe` を起動。プロセスが生きており、窓のタイトルが `Life Launcher`、クライアント領域 **1200×680**(保存された main 窓の状態が無いため既定の大きさ) |
 | A-2 | 一体型ヘッダーが動く | **通過** | 起動直後に `.appShell` が描画され、窓のボタンが3つある。表示サイズは設定の「大」、上部メニューの文字は段階 0、待機中なのでタイマーの線は 0 本。コンソールエラーなし |
 | A-3 | 既存プロファイルのデータを読む | **通過** | 起動したアプリが、オーナーの `%APPDATA%\life-launcher\config.json` を読んで、表示サイズ「大」でメイン画面(「今や一手」)を表示した。設定の読み込みに失敗していない |
-| A-4 | 確認の後始末 | **通過** | アプリを終了し、`config.json`・`notes.json`・`sessions.jsonl`・`config.schema.json`・`.window-state.json` を控えたものへ戻して SHA-256 の一致を確認。`HKCU\...\Run` に Life Launcher の項目は無い(確認前と同じ)。プロセスは残っていない |
+| A-4 | 上端のタイマーの線が 3px | **通過** | 短時間タイマーを開始 → 線が出て **高さ 3px・窓の上端(top=0)**、実行中は `rgb(231, 185, 77)`(`--accent`)、溝は同じ色で不透明度 0.12。一時停止すると `rgb(242, 166, 90)`(`--warn`)に変わり、その位置で止まった。待機中は線が無い |
+| A-5 | 確認の後始末 | **確認中** | A-1〜A-4 の確認に使ったプロセスは終了し、残っていない。控えたデータ(`config.json`・`notes.json`・`sessions.jsonl`・`config.schema.json`・`.window-state.json`・レジストリ)は、**オーナーの実機確認が終わってから**戻す(確認中に起動したアプリの設定変更〔短時間タイマー 1 分〕も、そのときに戻す) |
 
-注: `APPDATA` の切り替えだけでは隔離にならない(自動起動の登録、窓の位置、WebView2 のデータは普段の場所に触れる)。確認の前に、`release-candidate/v1.4.2/native-backup/20261106-211020/` へ控え、確認の後に戻した。
+注: `APPDATA` の切り替えだけでは隔離にならない(自動起動の登録、窓の位置、WebView2 のデータは普段の場所に触れる)。確認の前に `release-candidate/v1.4.2/native-backup/20261106-215342/` へ控えた。`HKCU\...\Run` に Life Launcher の項目は無い(確認前と同じ)。A-4 の確認では、短時間タイマーを 1 分にして試した。
 
 ### B. オーナー確認待ち(画面の項目)
 
