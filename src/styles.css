@@ -13141,6 +13141,51 @@ button.mainActionButton:is(
   }
 }
 
+/* P96-02: 窓の上端のタイマーの線。窓のボタン(z-index 140)・ダイアログの幕より手前に重ね、
+   クリックやドラッグを受けない(下の窓のボタン・ドラッグできる範囲を邪魔しない)。
+   色は今ある変数だけを使い、溝は同じ色を 12% にする。 */
+.windowTimerLine {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 150;
+  pointer-events: none;
+}
+
+.windowTimerLineGroove {
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  opacity: 0.12;
+}
+
+.windowTimerLineFill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background: var(--accent);
+  transition: width 1s linear;
+}
+
+/* 一時停止はその位置で止める(長さの変化を動きでつながない) */
+.windowTimerLine--paused .windowTimerLineGroove {
+  background: var(--warn);
+}
+
+.windowTimerLine--paused .windowTimerLineFill {
+  background: var(--warn);
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .windowTimerLineFill {
+    transition: none;
+  }
+}
+
 /* ドラッグできる範囲: サイドバーのブランド表示と、手順書ビューアーのヘッダー */
 .brandBlock {
   user-select: none;

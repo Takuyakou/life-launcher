@@ -2812,6 +2812,19 @@ function DashboardApp() {
           ),
         )
       : null;
+  // P96-02: 窓の上端のタイマーの線。予定時間のあるタイマー(countdown)が実行中か一時停止中の間だけ出す。
+  // 長さは上の timerProgressPercent をそのまま使い、線のためだけの時計は持たない。
+  // 予定時間が変わったとき(開始・「続ける(+15分)」)は resetKey が変わり、動きなしで今の値になる。
+  const windowTimerLine =
+    activeTimer?.mode === "countdown" &&
+    activeTimer.targetMinutes !== null &&
+    timerProgressPercent !== null
+      ? {
+          percent: timerProgressPercent,
+          paused: activeTimer.paused,
+          resetKey: `${activeTimer.instanceId}:${activeTimer.targetMinutes}`,
+        }
+      : null;
   const miniSnapshot = useMemo<MiniTimerSnapshot>(() => {
     if (!activeTimer) return inactiveMiniSnapshot();
     const project = activeTimer.projectId
@@ -10104,6 +10117,23 @@ function DashboardApp() {
       onDragOver={handleDomDragOver}
       onDrop={handleDomDrop}
     >
+      {windowTimerLine && (
+        <div
+          aria-hidden="true"
+          className={
+            windowTimerLine.paused
+              ? "windowTimerLine windowTimerLine--paused"
+              : "windowTimerLine windowTimerLine--running"
+          }
+        >
+          <div className="windowTimerLineGroove" />
+          <div
+            className="windowTimerLineFill"
+            key={windowTimerLine.resetKey}
+            style={{ width: `${windowTimerLine.percent}%` }}
+          />
+        </div>
+      )}
       {!skipLinkBlocked && (
         <a
           className="skipLink"
