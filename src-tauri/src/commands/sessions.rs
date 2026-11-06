@@ -16,7 +16,6 @@ use crate::models::{
 };
 use crate::state::AppState;
 
-const CONFIG_DIR_NAME: &str = "life-launcher";
 const SESSIONS_FILE_NAME: &str = "sessions.jsonl";
 
 #[tauri::command]
@@ -542,10 +541,8 @@ fn append_session_entry(path: &PathBuf, entry: &SessionLogEntry) -> Result<(), S
 }
 
 fn sessions_path() -> Result<PathBuf, String> {
-    let app_data = std::env::var_os("APPDATA")
-        .map(PathBuf::from)
-        .ok_or_else(|| "%APPDATA% is not available".to_string())?;
-    Ok(app_data.join(CONFIG_DIR_NAME).join(SESSIONS_FILE_NAME))
+    // 保存先は起動の最初に1回だけ決める（app_paths）。ここで %APPDATA% を直接読まない。
+    Ok(crate::app_paths::data_dir()?.join(SESSIONS_FILE_NAME))
 }
 
 fn total_for_date(path: &PathBuf, date: &str) -> Result<u32, String> {

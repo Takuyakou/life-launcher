@@ -8,6 +8,7 @@ import {
   primaryMonitor,
   type Monitor,
 } from "@tauri-apps/api/window";
+import { testProfileWebviewDataDir } from "./tauri";
 
 export const DICTIONARY_WINDOW_LABEL = "dictionary";
 export const DICTIONARY_READY_EVENT = "dictionary-ready";
@@ -193,6 +194,8 @@ async function openDictionaryWindowInternal(): Promise<WebviewWindow> {
   }
 
   const readyWaiter = await createDictionaryReadyWaiter();
+  // テスト用の起動では、WebView2 のデータもテスト用のフォルダに置く。
+  const testProfileDataDir = await testProfileWebviewDataDir();
   const dictionaryWindow = new WebviewWindow(DICTIONARY_WINDOW_LABEL, {
     url: dictionaryUrl(),
     title: "Life Launcher - Dictionary",
@@ -206,6 +209,7 @@ async function openDictionaryWindowInternal(): Promise<WebviewWindow> {
     parent: "main",
     focus: false,
     visible: false,
+    ...(testProfileDataDir ? { dataDirectory: testProfileDataDir } : {}),
   });
 
   try {

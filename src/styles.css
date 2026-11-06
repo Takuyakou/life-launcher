@@ -2414,6 +2414,28 @@ h3 {
   gap: 4px;
 }
 
+/* テスト用の起動のときだけ出る、小さな見分けの印（新しい色は作らない） */
+.testProfileBadge {
+  justify-self: start;
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.settingsNote {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+
 .brandCopy .eyebrow {
   grid-column: 1 / -1;
 }

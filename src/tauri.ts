@@ -376,3 +376,28 @@ export async function chooseInstructionRoot(): Promise<InstructionRoot | null> {
 export function listenForConfigChanges(onChange: () => void): Promise<() => void> {
   return listen("config-changed", () => onChange());
 }
+
+/// テスト用の起動かどうか（保存先を普段のデータから切り離しているか）。
+export type TestProfileInfo = {
+  testProfile: boolean;
+  profilePath: string | null;
+  webviewDataDir: string | null;
+};
+
+let testProfileInfoPromise: Promise<TestProfileInfo> | null = null;
+
+/// テスト用の起動かどうかを、1回だけ Rust に聞いて覚えておく。
+export function loadTestProfileInfo(): Promise<TestProfileInfo> {
+  testProfileInfoPromise ??= invoke<TestProfileInfo>("test_profile_info").catch(() => ({
+    testProfile: false,
+    profilePath: null,
+    webviewDataDir: null,
+  }));
+  return testProfileInfoPromise;
+}
+
+/// 窓を作るときに渡す WebView2 のデータのフォルダ（テスト用の起動のときだけ）。
+export async function testProfileWebviewDataDir(): Promise<string | undefined> {
+  const info = await loadTestProfileInfo();
+  return info.testProfile && info.webviewDataDir ? info.webviewDataDir : undefined;
+}

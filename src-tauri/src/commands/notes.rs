@@ -12,7 +12,6 @@ use crate::models::{
 };
 use crate::state::AppState;
 
-const CONFIG_DIR_NAME: &str = "life-launcher";
 const NOTES_FILE_NAME: &str = "notes.json";
 const NOTE_ITEM_LIMIT: usize = 3;
 
@@ -117,10 +116,8 @@ pub fn save_notes_for_date(
 }
 
 fn notes_path() -> Result<PathBuf, String> {
-    let app_data = std::env::var_os("APPDATA")
-        .map(PathBuf::from)
-        .ok_or_else(|| "%APPDATA% is not available".to_string())?;
-    Ok(app_data.join(CONFIG_DIR_NAME).join(NOTES_FILE_NAME))
+    // 保存先は起動の最初に1回だけ決める（app_paths）。ここで %APPDATA% を直接読まない。
+    Ok(crate::app_paths::data_dir()?.join(NOTES_FILE_NAME))
 }
 
 fn read_notes_file(path: &PathBuf) -> Result<BTreeMap<String, NotesDay>, String> {

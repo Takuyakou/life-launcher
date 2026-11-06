@@ -30,7 +30,6 @@ use crate::models::{
 };
 use crate::state::AppState;
 
-const CONFIG_DIR_NAME: &str = "life-launcher";
 const CONFIG_FILE_NAME: &str = "config.json";
 const CONFIG_SCHEMA_FILE_NAME: &str = "config.schema.json";
 const CONFIG_SCHEMA_REF: &str = "./config.schema.json";
@@ -823,17 +822,12 @@ pub fn config_path() -> Result<PathBuf, String> {
 }
 
 pub fn config_dir_path() -> Result<PathBuf, String> {
-    let app_data = std::env::var_os("APPDATA")
-        .map(PathBuf::from)
-        .ok_or_else(|| "%APPDATA% is not available".to_string())?;
-    Ok(app_data.join(CONFIG_DIR_NAME))
+    // 保存先は起動の最初に1回だけ決める（app_paths）。ここで %APPDATA% を直接読まない。
+    crate::app_paths::data_dir()
 }
 
 pub fn schema_path() -> Result<PathBuf, String> {
-    let app_data = std::env::var_os("APPDATA")
-        .map(PathBuf::from)
-        .ok_or_else(|| "%APPDATA% is not available".to_string())?;
-    Ok(app_data.join(CONFIG_DIR_NAME).join(CONFIG_SCHEMA_FILE_NAME))
+    Ok(config_dir_path()?.join(CONFIG_SCHEMA_FILE_NAME))
 }
 
 pub fn configured_day_start_hour() -> u8 {
@@ -4751,5 +4745,26 @@ mod migration_tests {
         let error =
             decode_config_for_v3(&serde_json::json!([])).expect_err("array root must be rejected");
         assert!(error.contains("version") || error.contains("root"));
+    }
+}
+
+/// テスト用の起動かどうかを画面へ伝える。画面は、自動起動の登録を呼ばないことと、
+/// 「テスト」の表示に使う。
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TestProfileInfo {
+    test_profile: bool,
+    profile_path: Option<String>,
+    webview_data_dir: Option<String>,
+}
+
+#[tauri::command]
+pub fn test_profile_info() -> TestProfileInfo {
+    TestProfileInfo {
+        test_profile: crate::app_paths::is_test_profile(),
+        profile_path: crate::app_paths::test_profile_path()
+            .map(|path| path.to_string_lossy().to_string()),
+        webview_data_dir: crate::app_paths::webview_data_dir()
+            .map(|path| path.to_string_lossy().to_string()),
     }
 }

@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { emitTo, listen } from "@tauri-apps/api/event";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { availableMonitors, primaryMonitor, type Monitor } from "@tauri-apps/api/window";
+import { testProfileWebviewDataDir } from "./tauri";
 
 export const INSTRUCTION_WINDOW_LABEL = "life-launcher-instruction";
 export const INSTRUCTION_OPEN_EVENT = "instruction-open-requested";
@@ -308,6 +309,8 @@ export async function openInstructionWindow({
   }
 
   const readyWaiter = await createReadyWaiter();
+  // テスト用の起動では、WebView2 のデータもテスト用のフォルダに置く。
+  const testProfileDataDir = await testProfileWebviewDataDir();
   const instructionWindow = new WebviewWindow(INSTRUCTION_WINDOW_LABEL, {
     url: instructionUrl(path),
     title: "Life Launcher 手順書ビューアー",
@@ -321,6 +324,7 @@ export async function openInstructionWindow({
     focus: false,
     focusable: false,
     visible: false,
+    ...(testProfileDataDir ? { dataDirectory: testProfileDataDir } : {}),
   });
   try {
     await Promise.all([waitForWindowCreated(instructionWindow), readyWaiter.promise]);

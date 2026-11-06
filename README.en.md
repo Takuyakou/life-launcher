@@ -152,6 +152,18 @@ Build local Windows packages:
 npm.cmd run package:windows
 ```
 
+A "test profile" start runs the app apart from your normal data (settings, records, window state, WebView2 data, and the autostart entry), so you do not have to close your everyday app to check a build.
+
+```powershell
+# Start from an empty profile (like a first launch)
+powershell -ExecutionPolicy Bypass -File scripts/start-test-profile.ps1 -Exe release-candidate/v1.4.3/Life-Launcher-v1.4.3-windows-x64.exe
+
+# Start with a copy of the current settings (the originals are not modified)
+powershell -ExecutionPolicy Bypass -File scripts/start-test-profile.ps1 -Exe <path to the EXE> -CopyCurrentData
+```
+
+Setting `LIFE_LAUNCHER_TEST_PROFILE` to an absolute folder and running `npm.cmd run tauri -- dev` switches the same way. Without `-Profile`, the script uses `release-candidate/native-check/profiles/<timestamp>`.
+
 Public quality checks cover React / TypeScript lint and build, Playwright Visual QA, Rust check / test / clippy, and the public safety scan.
 
 ## Tech Stack

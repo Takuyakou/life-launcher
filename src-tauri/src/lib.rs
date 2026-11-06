@@ -1,3 +1,4 @@
+mod app_paths;
 mod commands;
 mod display_awake;
 mod models;
@@ -8,7 +9,7 @@ use commands::actions::execute_actions;
 use commands::config::{
     backup_config_before_instruction_change, load_config, load_next_step_freshness,
     open_config_backups, open_data_folder, restore_backup, save_config, select_backup_folder,
-    select_backup_zip, undo_today_selection, update_instruction_references,
+    select_backup_zip, test_profile_info, undo_today_selection, update_instruction_references,
 };
 use commands::drop::{choose_launcher_target, resolve_drop_item};
 use commands::explorer::reveal_launcher_item;
@@ -60,15 +61,75 @@ const WINDOW_STATE_FLAGS: tauri_plugin_window_state::StateFlags =
     tauri_plugin_window_state::StateFlags::all()
         .difference(tauri_plugin_window_state::StateFlags::DECORATIONS);
 
+/// 起動をやめるときに、理由をダイアログで出す。
+/// release ビルドはコンソールを持たないため、`eprintln!` だけでは理由が伝わらない。
+fn show_startup_error(message: &str) {
+    #[cfg(windows)]
+    {
+        use std::os::windows::ffi::OsStrExt;
+        let text: Vec<u16> = std::ffi::OsStr::new(message)
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect();
+        let title: Vec<u16> = std::ffi::OsStr::new("Life Launcher")
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect();
+        // MB_OK | MB_ICONERROR | MB_SETFOREGROUND
+        unsafe {
+            MessageBoxW(
+                std::ptr::null_mut(),
+                text.as_ptr(),
+                title.as_ptr(),
+                0x0000_0010 | 0x0001_0000,
+            );
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = message;
+    }
+}
+
+#[cfg(windows)]
+extern "system" {
+    fn MessageBoxW(
+        hwnd: *mut std::ffi::c_void,
+        text: *const u16,
+        caption: *const u16,
+        message_type: u32,
+    ) -> i32;
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // 保存先（普段の起動かテスト用の起動か）は、ここで1回だけ決める。
+    // 決められないときは、普段のデータに黙って戻らずに理由を出して終了する。
+    let paths = match app_paths::AppPaths::bootstrap() {
+        Ok(paths) => paths,
+        Err(message) => {
+            eprintln!("Life Launcher を起動できません: {message}");
+            show_startup_error(&message);
+            std::process::exit(2);
+        }
+    };
+    let test_profile = paths.is_test_profile();
+    if let Err(message) = app_paths::init(paths) {
+        eprintln!("保存先を決められません: {message}");
+        show_startup_error(&format!("保存先を決められません: {message}"));
+        std::process::exit(2);
+    }
+
     let mut builder = tauri::Builder::default();
 
     #[cfg(desktop)]
     {
-        builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            focus_main_window(app);
-        }));
+        // テスト用の起動は、普段のアプリと別に起動できるようにする（1つしか起動しない仕組みを付けない）。
+        if !test_profile {
+            builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+                focus_main_window(app);
+            }));
+        }
         builder = builder.plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
@@ -79,15 +140,51 @@ pub fn run() {
         .manage(AppState::default())
         .manage(DisplayAwakeState::default())
         .plugin(tauri_plugin_opener::init())
-        .setup(|app| {
+        .setup(move |app| {
+            // メインの窓は tauri.conf.json で `create: false` にして、ここで作る。
+            // テスト用の起動のときだけ、WebView2 のデータをテスト用のフォルダへ向ける
+            // （tauri.conf.json の data_directory は絶対パスを受け付けないため）。
+            if let Some(window_config) = app
+                .config()
+                .app
+                .windows
+                .iter()
+                .find(|window| window.label == "main")
+                .cloned()
+            {
+                let mut window_config = window_config;
+                if test_profile {
+                    window_config.title = format!("{} (テスト)", window_config.title);
+                }
+                let mut window_builder =
+                    tauri::WebviewWindowBuilder::from_config(app.handle(), &window_config)?;
+                if let Some(data_dir) = app_paths::webview_data_dir() {
+                    window_builder = window_builder.data_directory(data_dir);
+                }
+                window_builder.build()?;
+            }
+
+            // テスト用の起動ではアイコンのキャッシュもテスト用のフォルダにあるため、
+            // asset プロトコルの範囲にそのフォルダを足す。
+            if let Some(profile) = app_paths::test_profile_path() {
+                if let Err(error) = app
+                    .asset_protocol_scope()
+                    .allow_directory(profile.join(app_paths::CONFIG_DIR_NAME), true)
+                {
+                    eprintln!("failed to allow the test profile for the asset protocol: {error}");
+                }
+            }
+
             recover_interrupted_software_reset(app.handle())?;
-            app.handle().plugin(
-                tauri_plugin_window_state::Builder::default()
-                    .with_state_flags(WINDOW_STATE_FLAGS)
-                    .skip_initial_state("life-launcher-instruction")
-                    .skip_initial_state("dictionary")
-                    .build(),
-            )?;
+            let mut window_state = tauri_plugin_window_state::Builder::default()
+                .with_state_flags(WINDOW_STATE_FLAGS)
+                .skip_initial_state("life-launcher-instruction")
+                .skip_initial_state("dictionary");
+            if let Some(file) = app_paths::window_state_file() {
+                // テスト用の起動では、窓の状態もテスト用のフォルダに保存する。
+                window_state = window_state.with_filename(file.to_string_lossy().to_string());
+            }
+            app.handle().plugin(window_state.build())?;
             #[cfg(desktop)]
             {
                 app.handle().plugin(
@@ -117,9 +214,29 @@ pub fn run() {
                 let open_item =
                     MenuItem::with_id(app, "open", "Life Launcherを開く", true, None::<&str>)?;
                 let quit_item = MenuItem::with_id(app, "quit", "終了", true, None::<&str>)?;
-                let menu = Menu::with_items(app, &[&open_item, &quit_item])?;
+                // テスト用の起動は、トレイのメニューの一番上で見分けられるようにする。
+                let test_item = if test_profile {
+                    Some(MenuItem::with_id(
+                        app,
+                        "test-profile",
+                        "テスト用の起動",
+                        false,
+                        None::<&str>,
+                    )?)
+                } else {
+                    None
+                };
+                let menu = match &test_item {
+                    Some(item) => Menu::with_items(app, &[item, &open_item, &quit_item])?,
+                    None => Menu::with_items(app, &[&open_item, &quit_item])?,
+                };
+                let tray_tooltip = if test_profile {
+                    "Life Launcher (テスト)"
+                } else {
+                    "Life Launcher"
+                };
                 let mut tray = TrayIconBuilder::with_id("life-launcher-tray")
-                    .tooltip("Life Launcher")
+                    .tooltip(tray_tooltip)
                     .menu(&menu)
                     .show_menu_on_left_click(false)
                     .on_menu_event(|app, event| match event.id.as_ref() {
@@ -228,7 +345,8 @@ pub fn run() {
             enable_main_shell_drop,
             start_shell_drop_poc,
             stop_shell_drop_poc,
-            set_display_awake
+            set_display_awake,
+            test_profile_info
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
