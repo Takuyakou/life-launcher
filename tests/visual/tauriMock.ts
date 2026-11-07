@@ -26,6 +26,22 @@ export async function installTauriMock(
       const cleanStartStorageKey = "life-launcher-visual-qa-clean-start";
       const resetBackupPath = "C:\\PublicDemo\\Backups\\lifelauncher-clean-start.zip";
       const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+      const decodeBase64 = (value: string): ArrayBuffer => {
+        const binary = atob(value);
+        const bytes = new Uint8Array(binary.length);
+        for (let index = 0; index < binary.length; index += 1) {
+          bytes[index] = binary.charCodeAt(index);
+        }
+        return bytes.buffer;
+      };
+      const parentDirectory = (value: string): string => {
+        const separator = Math.max(value.lastIndexOf("\\"), value.lastIndexOf("/"));
+        return separator > 0 ? value.slice(0, separator) : value;
+      };
+      const extensionOf = (value: string): string => {
+        const dot = value.lastIndexOf(".");
+        return dot >= 0 ? value.slice(dot + 1).toLocaleLowerCase() : "";
+      };
       let doNowCandidates = fixture.doNowCandidates;
       let currentConfig = (() => {
         try {
@@ -579,6 +595,10 @@ export async function installTauriMock(
                 ) {
                   return [];
                 }
+                const extraEntries = (fixture.instructionExtraEntries ?? []).filter(
+                  (entry) =>
+                    parentDirectory(entry.path).toLocaleLowerCase() === path.toLocaleLowerCase(),
+                );
                 return [
                   {
                     name: "guide.md",
@@ -607,13 +627,14 @@ export async function installTauriMock(
                     modifiedAt: 3,
                     readOnly: true,
                   },
+                  ...clone(extraEntries),
                 ];
               }
               case "search_instruction_files": {
                 const query = String(args.query ?? "").toLocaleLowerCase();
                 const root = (currentConfig.settings.instructionFolders ?? [])[0];
                 if (!root) return [];
-                return ["guide.md", "notes.txt", "reference.html"]
+                const base = ["guide.md", "notes.txt", "reference.html"]
                   .filter((name) => name.toLocaleLowerCase().includes(query))
                   .map((name) => ({
                     name,
@@ -624,9 +645,18 @@ export async function installTauriMock(
                     modifiedAt: 1,
                     readOnly: name.endsWith(".html"),
                   }));
+                const extra = (fixture.instructionExtraEntries ?? []).filter(
+                  (entry) =>
+                    entry.kind === "file" &&
+                    entry.name.toLocaleLowerCase().includes(query),
+                );
+                return [...base, ...clone(extra)];
               }
               case "read_instruction": {
                 const path = String(args.path ?? "");
+                if (fixture.instructionBytes?.[path]) {
+                  throw new Error("MHTML instruction files must be read as bytes");
+                }
                 const name = path.split(/[\\/]/).filter(Boolean).at(-1) ?? path;
                 const html = name.endsWith(".html");
                 const content =
@@ -645,6 +675,33 @@ export async function installTauriMock(
                   extension: name.split(".").at(-1),
                   readOnly: html,
                 };
+              }
+              case "read_instruction_info": {
+                const path = String(args.path ?? "");
+                const name = path.split(/[\\/]/).filter(Boolean).at(-1) ?? path;
+                const entry = (fixture.instructionExtraEntries ?? []).find(
+                  (item) => item.path.toLocaleLowerCase() === path.toLocaleLowerCase(),
+                );
+                const encoded = fixture.instructionBytes?.[path];
+                const extension = extensionOf(name);
+                return {
+                  name: entry?.name ?? name,
+                  path,
+                  modifiedAt: entry?.modifiedAt ?? 1,
+                  size: entry?.size ?? (encoded ? decodeBase64(encoded).byteLength : 0),
+                  readOnly:
+                    entry?.readOnly ??
+                    (extension === "html" || extension === "mhtml" || extension === "mht"),
+                };
+              }
+              case "read_instruction_bytes": {
+                const path = String(args.path ?? "");
+                if ((fixture.instructionTooLargePaths ?? []).includes(path)) {
+                  throw new Error("instruction file exceeds the 20 MiB limit");
+                }
+                const encoded = fixture.instructionBytes?.[path];
+                if (!encoded) throw new Error("MHTML fixture is missing");
+                return decodeBase64(encoded);
               }
               case "ensure_button_icon_cache":
               case "select_backup_folder":

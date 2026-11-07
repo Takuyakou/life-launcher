@@ -1,0 +1,48 @@
+From: <Saved by Blink>
+Snapshot-Content-Location: https://example.invalid/page.html
+Subject: P97-03 MHTML fixture
+Date: Thu, 13 Aug 2026 09:30:00 +0900
+MIME-Version: 1.0
+Content-Type: multipart/related; type="text/html"; boundary="----MultipartBoundary--p9703basic"
+
+------MultipartBoundary--p9703basic
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+Content-Location: https://example.invalid/page.html
+
+<!doctype html>
+<html><head><meta charset=3D"utf-8"><title>MHTML basic</title>
+<link rel=3D"stylesheet" href=3D"style.css">
+</head><body>
+<h1>MHTML=E3=81=AE=E8=A6=8B=E5=87=BA=E3=81=97</h1>
+<p class=3D"accent">=E6=9C=AC=E6=96=87=E3=81=AE=E6=AE=B5=E8=90=BD=E3=81=A7=
+=E3=81=99=E3=80=82</p>
+<img id=3D"cid-image" src=3D"cid:hero-image@example" alt=3D"cid image">
+<img id=3D"location-image" src=3D"https://example.invalid/hero.png" alt=3D"=
+location image">
+<div id=3D"hero-bg" class=3D"hero">=E8=83=8C=E6=99=AF</div>
+<div id=3D"remote-bg" class=3D"remote">=E5=A4=96=E9=83=A8</div>
+<script>window.__mhtmlUnsafe =3D true;</script>
+<p id=3D"click-target" onclick=3D"window.__mhtmlUnsafe =3D true;">=E3=82=AF=
+=E3=83=AA=E3=83=83=E3=82=AF</p>
+<a id=3D"js-link" href=3D"javascript:window.__mhtmlUnsafe=3Dtrue">=E5=8D=B1=
+=E9=99=BA=E3=81=AA=E3=83=AA=E3=83=B3=E3=82=AF</a>
+</body></html>
+------MultipartBoundary--p9703basic
+Content-Type: text/css; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+Content-Location: https://example.invalid/style.css
+
+.accent { color: rgb(200, 30, 40); }
+.hero { background-image: url(hero.png); background-size: 4px 4px; }
+.remote { background-image: url(https://example.invalid/remote.png); }
+------MultipartBoundary--p9703basic
+Content-Type: image/png
+Content-Transfer-Encoding: base64
+Content-Location: https://example.invalid/hero.png
+Content-ID: <hero-image@example>
+
+iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAE0lEQVR4nGO8I6fBAANMcBZeDgA6
+XAEqGTG4XwAAAABJRU5ErkJggg==
+
+------MultipartBoundary--p9703basic--

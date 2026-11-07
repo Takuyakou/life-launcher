@@ -1,0 +1,22 @@
+From: <Saved by Blink>
+Snapshot-Content-Location: https://example.invalid/broken.html
+Subject: P97-03 MHTML fixture
+Date: Thu, 13 Aug 2026 09:30:00 +0900
+MIME-Version: 1.0
+Content-Type: multipart/related; type="text/html"; boundary="----MultipartBoundary--p9703brokenb64"
+
+------MultipartBoundary--p9703brokenb64
+Content-Type: text/html
+Content-Location: https://example.invalid/broken.html
+
+<!doctype html><html><body>
+<h1>壊れた画像の横の本文</h1>
+<img id="broken" src="cid:broken">
+</body></html>
+------MultipartBoundary--p9703brokenb64
+Content-Type: image/png
+Content-Transfer-Encoding: base64
+Content-ID: <broken>
+
+!!!not-base64!!!
+------MultipartBoundary--p9703brokenb64--

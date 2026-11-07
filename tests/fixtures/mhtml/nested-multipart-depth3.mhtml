@@ -1,0 +1,22 @@
+From: <Saved by Blink>
+Snapshot-Content-Location: https://example.invalid/deep.html
+Subject: P97-03 MHTML fixture
+Date: Thu, 13 Aug 2026 09:30:00 +0900
+MIME-Version: 1.0
+Content-Type: multipart/related; type="text/html"; boundary="----MultipartBoundary--p9703depth3"
+
+------MultipartBoundary--p9703depth3
+Content-Type: multipart/related; boundary="B"
+
+--B
+Content-Type: multipart/related; boundary="C"
+
+--C
+Content-Type: text/html
+
+<!doctype html><html><body><h1>深い本文</h1></body></html>
+--C--
+
+--B--
+
+------MultipartBoundary--p9703depth3--

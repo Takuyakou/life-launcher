@@ -1,0 +1,7 @@
+MIME-Version: 1.0
+Content-Type: multipart/related; boundary="----broken"
+
+------broken
+Content-Type: text/html
+
+<html><body><h1>切れている本文</h1></body></html>

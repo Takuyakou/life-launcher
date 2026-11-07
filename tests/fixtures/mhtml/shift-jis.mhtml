@@ -1,0 +1,17 @@
+From: <Saved by Blink>
+Snapshot-Content-Location: https://example.invalid/sjis.html
+Subject: P97-03 MHTML fixture
+Date: Thu, 13 Aug 2026 09:30:00 +0900
+MIME-Version: 1.0
+Content-Type: multipart/related; type="text/html"; boundary="----MultipartBoundary--p9703sjis"
+
+------MultipartBoundary--p9703sjis
+Content-Type: text/html; charset="shift_jis"
+Content-Transfer-Encoding: base64
+Content-Location: https://example.invalid/sjis.html
+
+PCFkb2N0eXBlIGh0bWw+PGh0bWw+PGhlYWQ+PG1ldGEgY2hhcnNldD0ic2hpZnRfamlzIj48L2hl
+YWQ+PGJvZHk+PGgxPpP6lnuM6oLMjKmPb4K1PC9oMT48cD6DVoN0g2dKSVOCzJZ7lbaCxYK3gUI8
+L3A+PC9ib2R5PjwvaHRtbD4=
+
+------MultipartBoundary--p9703sjis--

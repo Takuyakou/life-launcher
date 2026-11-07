@@ -1,0 +1,15 @@
+From: <Saved by Blink>
+Snapshot-Content-Location: https://example.invalid/nohtml.html
+Subject: P97-03 MHTML fixture
+Date: Thu, 13 Aug 2026 09:30:00 +0900
+MIME-Version: 1.0
+Content-Type: multipart/related; type="text/html"; boundary="----MultipartBoundary--p9703nohtml"
+
+------MultipartBoundary--p9703nohtml
+Content-Type: image/png
+Content-Transfer-Encoding: base64
+
+iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAE0lEQVR4nGO8I6fBAANMcBZeDgA6
+XAEqGTG4XwAAAABJRU5ErkJggg==
+
+------MultipartBoundary--p9703nohtml--

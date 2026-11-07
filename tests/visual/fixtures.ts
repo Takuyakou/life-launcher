@@ -1,5 +1,6 @@
 import type {
   AppConfig,
+  InstructionEntry,
   RecentSessionEntry,
   SessionEntriesResponse,
   SessionSummaryResponse,
@@ -25,6 +26,11 @@ export type VisualQaFixture = {
   }>;
   staleProjectIds?: string[];
   instructionDocuments?: Record<string, string>;
+  /** MHTML fixtures, base64-encoded so the mock can return raw bytes. */
+  instructionBytes?: Record<string, string>;
+  instructionExtraEntries?: InstructionEntry[];
+  /** Paths whose byte read reports the 20 MiB limit, for the UI message test. */
+  instructionTooLargePaths?: string[];
 };
 
 const INSTRUCTION_ROOT = "C:\\PublicDemo\\Instructions";
