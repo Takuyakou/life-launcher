@@ -90,6 +90,21 @@ test("unsetting a next step uses a neutral toast for both choices", async ({ pag
   await expectNeutral(page, "次の一手を未設定にしました");
 });
 
+test("deleting a project uses a danger toast", async ({ page }) => {
+  await prepare(page);
+
+  await page
+    .locator('.nextStepCard[data-project-id="sample-writing"]')
+    .click({ button: "right" });
+  await page.getByRole("menuitem", { name: "プロジェクトを削除…" }).click();
+  const confirm = page.getByRole("dialog", { name: "プロジェクトを削除しますか？" });
+  await confirm.getByRole("button", { name: "関連項目も削除" }).click();
+
+  const deleted = await toast(page, "プロジェクト「文章づくり」を削除しました");
+  await expect(deleted).toHaveClass(/toast--danger/);
+  await expect(deleted).not.toHaveClass(/toast--ok/);
+});
+
 test("undoing a removal uses a neutral toast", async ({ page }) => {
   await prepare(page, createPublicFixture());
 
