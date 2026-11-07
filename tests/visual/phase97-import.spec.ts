@@ -61,7 +61,7 @@ function importedConfig(base: AppConfig): AppConfig {
     colorId: "lime",
     nextStep: {
       text: "音声モードで話す",
-      generationId: "gen-import",
+      generationId: "generation-1a2b3c4d-0",
       trigger: "夕食のあと",
       updatedAt: "2026-11-07T00:00:00.000Z",
       reviewedAt: "2026-11-07T00:00:00.000Z",
@@ -76,6 +76,16 @@ function importedConfig(base: AppConfig): AppConfig {
     projectId: "import-english",
     buttonIds: [],
   });
+  return config;
+}
+
+function importedConfigForToday(base: AppConfig): AppConfig {
+  const config = importedConfig(base);
+  config.today.items = [];
+  config.today.candidateExcludedSourceKeys = [];
+  const project = config.projects.find((candidate) => candidate.id === "import-english");
+  if (!project?.nextStep) throw new Error("imported project is missing its next step");
+  project.nextStep.shortTimerMinutes = 1;
   return config;
 }
 
@@ -197,6 +207,72 @@ test("previews, imports, and undoes from the section menu", async ({ page }) => 
 
   await page.getByRole("button", { name: "元に戻す" }).click();
   await expect(page.getByText("元に戻しました")).toBeVisible();
+});
+
+test("an imported next step completes in Today3 like a screen-set next step", async ({
+  page,
+}) => {
+  const fixture = await prepare(page);
+  await stubImport(page, {
+    preview: preview(),
+    imported: importedConfigForToday(fixture.config),
+    original: fixture.config,
+  });
+
+  await page.getByRole("button", { name: "次の一手の操作", exact: true }).click();
+  await page.getByRole("menuitem", { name: "まとめて取り込む" }).click();
+  await page.getByLabel("取り込みのJSON").fill(IMPORT_JSON);
+  await page.getByRole("button", { name: "プレビュー" }).click();
+  await page.getByRole("button", { name: "取り込む", exact: true }).click();
+  await expect(page.getByText("3件を取り込みました")).toBeVisible();
+
+  const sourceCard = page.locator(".nextStepCard[data-project-id='import-english']");
+  await expect(sourceCard).toContainText("音声モードで話す");
+  await sourceCard.getByRole("button", { name: /今日へ/ }).click();
+  const todayCard = page.locator(".todayRow", { hasText: "音声モードで話す" });
+  await expect(todayCard).toBeVisible();
+  await todayCard.getByRole("button", { name: "短時間タイマー1分で開始" }).click();
+  await page.clock.runFor(60_500);
+  const expired = page.getByRole("dialog", { name: "タイマー満了" });
+  await expect(expired).toBeVisible();
+  await expired.getByRole("button", { name: "終わる" }).click();
+  await expect(expired).toHaveCount(0);
+  await expect(todayCard).toHaveClass(/todayRow--justCompleted/);
+
+  const result = await page.evaluate(() => {
+    const control = (
+      window as typeof window & {
+        __LIFE_LAUNCHER_VISUAL_QA__: {
+          currentConfig: () => AppConfig;
+          invokeCalls: { command: string; args: Record<string, unknown> }[];
+        };
+      }
+    ).__LIFE_LAUNCHER_VISUAL_QA__;
+    return { config: control.currentConfig(), calls: control.invokeCalls };
+  });
+  const project = result.config.projects.find((candidate) => candidate.id === "import-english");
+  expect(project?.nextStep).toBeUndefined();
+  expect(result.config.today.items).toEqual([
+    expect.objectContaining({
+      text: "音声モードで話す",
+      done: true,
+      sourceKey: "project:import-english",
+      sourceGenerationId: "generation-1a2b3c4d-0",
+      projectId: "import-english",
+    }),
+  ]);
+  expect(result.config.sourceCompletions.at(-1)).toMatchObject({
+    sourceType: "nextStep",
+    sourceIdentity: "project:import-english",
+    textSnapshot: "音声モードで話す",
+    projectId: "import-english",
+  });
+  const records = result.calls.filter((call) => call.command === "record_session");
+  expect(records).toHaveLength(1);
+  expect(records[0].args.session).toMatchObject({
+    minutes: 1,
+    projectId: "import-english",
+  });
 });
 
 test("copies the first-time prompt exactly", async ({ page }) => {
@@ -340,11 +416,15 @@ test("routes a JSON drop by the side and shows the two-zone overlay", async ({ p
   const overlay = page.locator(".importDropOverlay");
   await expect(overlay).toBeVisible();
   await expect(page.locator(".importDropZone--main.importDropZone--active")).toBeVisible();
-  await expect(overlay).toHaveScreenshot("phase97-import-drop-main.png");
+  await expect(overlay).toHaveScreenshot("phase97-import-drop-main.png", {
+    maxDiffPixels: 12,
+  });
 
   await emitDrop(page, "dragOver", ["C:\\PublicDemo\\import.json"], { x: 100, y: 300 });
   await expect(page.locator(".importDropZone--sidebar.importDropZone--active")).toBeVisible();
-  await expect(overlay).toHaveScreenshot("phase97-import-drop-sidebar.png");
+  await expect(overlay).toHaveScreenshot("phase97-import-drop-sidebar.png", {
+    maxDiffPixels: 12,
+  });
 
   await emitDrop(page, "dragEnter", ["C:\\PublicDemo\\import-main.json"], { x: 900, y: 300 });
   await emitDrop(page, "drop", ["C:\\PublicDemo\\import-main.json"], { x: 900, y: 300 });

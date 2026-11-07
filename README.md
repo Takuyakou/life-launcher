@@ -133,7 +133,7 @@ npm.cmd run package:windows
 
 ```powershell
 # 空の状態から（初回起動と同じ）
-powershell -ExecutionPolicy Bypass -File scripts/start-test-profile.ps1 -Exe release-candidate/v1.4.3/Life-Launcher-v1.4.3-windows-x64.exe
+powershell -ExecutionPolicy Bypass -File scripts/start-test-profile.ps1 -Exe release-candidate/v<バージョン>/Life-Launcher-v<バージョン>-windows-x64.exe
 
 # 今の設定をコピーしてから（元のファイルは変更しません）
 powershell -ExecutionPolicy Bypass -File scripts/start-test-profile.ps1 -Exe <EXE のパス> -CopyCurrentData

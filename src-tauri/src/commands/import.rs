@@ -8,11 +8,12 @@ use serde_json::{Map, Value};
 use tauri::{AppHandle, State};
 
 use crate::commands::config::{
-    config_dir_path, config_path, ensure_config_schema_file, load_config_internal, read_zip,
-    reconcile_config_instruction_roots, sanitize_config, validate_project_v3_invariants,
-    write_config, write_zip, ZipEntry, RUNTIME_BACKUP_FILES,
+    backup_existing_config, config_dir_path, config_path, ensure_config_schema_file,
+    load_config_internal, read_zip, reconcile_config_instruction_roots, sanitize_config,
+    validate_existing_config_before_save, validate_project_v3_invariants, write_config, write_zip,
+    ZipEntry, RUNTIME_BACKUP_FILES,
 };
-use crate::models::{AppConfig, InboxItem, NextStepV3, Project};
+use crate::models::{AppConfig, InboxItem, LoadConfigResponse, NextStepV3, Project};
 use crate::state::AppState;
 
 const IMPORT_VERSION: u64 = 1;
@@ -53,6 +54,27 @@ fn suppress_reload_for_own_write(state: &AppState) -> Result<(), String> {
         .map_err(|_| "failed to lock reload state".to_string())? =
         Some(Instant::now() + Duration::from_millis(900));
     Ok(())
+}
+
+const IMPORT_SAVE_BLOCKED: &str = "設定が読めない状態のため取り込めません";
+const UNDO_SAVE_BLOCKED: &str = "設定が読めない状態のため戻せません";
+
+fn ensure_import_preview_allowed(response: &LoadConfigResponse) -> Result<(), String> {
+    if response.save_blocked {
+        return Err(IMPORT_SAVE_BLOCKED.to_string());
+    }
+    Ok(())
+}
+
+fn ensure_import_write_allowed(
+    response: &LoadConfigResponse,
+    path: &Path,
+    blocked_message: &str,
+) -> Result<(), String> {
+    if response.save_blocked {
+        return Err(blocked_message.to_string());
+    }
+    validate_existing_config_before_save(path)
 }
 
 fn char_len(value: &str) -> usize {
@@ -723,12 +745,13 @@ fn build_import_plan(current: &AppConfig, parsed: ParsedImport) -> Result<Import
 
 #[tauri::command]
 pub fn preview_import(app: AppHandle, json: String) -> Result<ImportPreviewResponse, String> {
+    let current_response = load_config_internal(&app)?;
+    ensure_import_preview_allowed(&current_response)?;
     let parsed = parse_import(&json)?;
-    let current = load_config_internal(&app)?.config;
-    let plan = build_import_plan(&current, parsed)?;
+    let plan = build_import_plan(&current_response.config, parsed)?;
     Ok(ImportPreviewResponse {
         preview: plan.preview,
-        fingerprint: config_fingerprint(&current),
+        fingerprint: config_fingerprint(&current_response.config),
     })
 }
 
@@ -744,22 +767,25 @@ pub fn commit_import(
         .config_write_lock
         .lock()
         .map_err(|_| "failed to lock config writes".to_string())?;
-    let current = load_config_internal(&app)?.config;
-    if config_fingerprint(&current) != fingerprint {
+    let current_response = load_config_internal(&app)?;
+    ensure_import_preview_allowed(&current_response)?;
+    if config_fingerprint(&current_response.config) != fingerprint {
         return Err("stale:設定が変わったため、もう一度確かめてください".to_string());
     }
     let parsed = parse_import(&json)?;
-    let plan = build_import_plan(&current, parsed)?;
+    let plan = build_import_plan(&current_response.config, parsed)?;
     let ImportPlan { config, preview } = plan;
     validate_project_v3_invariants(&config)?;
     let (mut config, _changed, _warnings) = sanitize_config(config);
     reconcile_config_instruction_roots(&mut config);
 
-    let data_dir = config_dir_path()?;
+    let path = config_path()?;
+    ensure_import_write_allowed(&current_response, &path, IMPORT_SAVE_BLOCKED)?;
     ensure_config_schema_file()?;
+    backup_existing_config(&path)?;
+    let data_dir = config_dir_path()?;
     let import_id = new_id("import");
     create_import_backup_in(&data_dir, &import_id)?;
-    let path = config_path()?;
     suppress_reload_for_own_write(&state)?;
     write_config(&path, &config)?;
 
@@ -784,10 +810,12 @@ pub fn undo_import(
         .config_write_lock
         .lock()
         .map_err(|_| "failed to lock config writes".to_string())?;
-    let current = load_config_internal(&app)?.config;
+    let current_response = load_config_internal(&app)?;
+    let path = config_path()?;
+    ensure_import_write_allowed(&current_response, &path, UNDO_SAVE_BLOCKED)?;
     let data_dir = config_dir_path()?;
     let backup_path = import_backup_path(&data_dir, &import_id)?;
-    if config_fingerprint(&current) != fingerprint {
+    if config_fingerprint(&current_response.config) != fingerprint {
         return Err(format!(
             "changed:取り込んだあとに変更があるため戻せません。バックアップ: {}",
             backup_path.display()
@@ -797,8 +825,8 @@ pub fn undo_import(
     validate_project_v3_invariants(&restored)?;
     let (mut config, _changed, _warnings) = sanitize_config(restored);
     reconcile_config_instruction_roots(&mut config);
-    let path = config_path()?;
     ensure_config_schema_file()?;
+    backup_existing_config(&path)?;
     suppress_reload_for_own_write(&state)?;
     write_config(&path, &config)?;
     Ok(ImportUndoResponse {
@@ -1133,6 +1161,34 @@ mod tests {
         suppress_reload_for_own_write(&state).expect("suppress reload");
         let until = *state.suppress_reload_until.lock().expect("lock");
         assert!(until.is_some_and(|value| value > std::time::Instant::now()));
+    }
+
+    #[test]
+    fn broken_config_blocks_import_preview_commit_and_undo_without_writing() {
+        let dir = temp_dir("broken-config");
+        let path = dir.join("config.json");
+        let broken = b"{ this is not json".to_vec();
+        fs::write(&path, &broken).expect("write broken config");
+        let response = LoadConfigResponse {
+            config: sample_config(),
+            path: path.to_string_lossy().to_string(),
+            backup_path: dir.join("backups").to_string_lossy().to_string(),
+            error: Some("config.json is not valid JSON".to_string()),
+            backup_error: None,
+            changed: false,
+            save_blocked: true,
+            morning_victory_suggestion: None,
+        };
+
+        assert!(ensure_import_preview_allowed(&response).is_err());
+        assert!(ensure_import_write_allowed(&response, &path, IMPORT_SAVE_BLOCKED).is_err());
+        assert_eq!(fs::read(&path).expect("read broken config"), broken);
+
+        let mut writable = response.clone();
+        writable.save_blocked = false;
+        assert!(ensure_import_write_allowed(&writable, &path, UNDO_SAVE_BLOCKED).is_err());
+        assert_eq!(fs::read(&path).expect("read broken config"), broken);
+        let _ = fs::remove_dir_all(&dir);
     }
 
     fn temp_dir(label: &str) -> PathBuf {
