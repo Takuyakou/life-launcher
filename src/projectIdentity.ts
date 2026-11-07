@@ -1,6 +1,10 @@
 import type { ProjectColorId } from "./types";
 
-export const PROJECT_COLOR_IDS: ProjectColorId[] = [
+/**
+ * The eight colors that existed before v1.4.3. Projects without an explicit color keep
+ * using only these, so adding colors does not change their automatic color.
+ */
+export const AUTO_PROJECT_COLOR_IDS: ProjectColorId[] = [
   "amber",
   "blue",
   "green",
@@ -9,6 +13,14 @@ export const PROJECT_COLOR_IDS: ProjectColorId[] = [
   "cyan",
   "orange",
   "slate",
+];
+
+export const PROJECT_COLOR_IDS: ProjectColorId[] = [
+  ...AUTO_PROJECT_COLOR_IDS,
+  "lime",
+  "magenta",
+  "sand",
+  "coral",
 ];
 
 export const PROJECT_COLOR_LABELS: Record<ProjectColorId, string> = {
@@ -20,6 +32,10 @@ export const PROJECT_COLOR_LABELS: Record<ProjectColorId, string> = {
   cyan: "シアン",
   orange: "オレンジ",
   slate: "スレート",
+  lime: "ライム",
+  magenta: "マゼンタ",
+  sand: "サンド",
+  coral: "コーラル",
 };
 
 export function resolveProjectColorId(
@@ -31,5 +47,5 @@ export function resolveProjectColorId(
   for (const character of projectId) {
     hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
   }
-  return PROJECT_COLOR_IDS[hash % PROJECT_COLOR_IDS.length];
+  return AUTO_PROJECT_COLOR_IDS[hash % AUTO_PROJECT_COLOR_IDS.length];
 }
