@@ -133,7 +133,7 @@ A "test profile" start runs the app apart from your normal data (settings, recor
 
 ```powershell
 # Start from an empty profile (like a first launch)
-powershell -ExecutionPolicy Bypass -File scripts/start-test-profile.ps1 -Exe release-candidate/v1.4.3/Life-Launcher-v1.4.3-windows-x64.exe
+powershell -ExecutionPolicy Bypass -File scripts/start-test-profile.ps1 -Exe release-candidate/v<version>/Life-Launcher-v<version>-windows-x64.exe
 
 # Start with a copy of the current settings (the originals are not modified)
 powershell -ExecutionPolicy Bypass -File scripts/start-test-profile.ps1 -Exe <path to the EXE> -CopyCurrentData

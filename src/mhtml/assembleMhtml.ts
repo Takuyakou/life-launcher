@@ -77,6 +77,7 @@ function rewriteCss(
   source: string,
   base: string | null,
   index: Map<string, IndexedResource>,
+  addAssembledBytes: (bytes: number) => void,
 ): string {
   // MHTML stylesheets are inlined; @import is not followed (remote or embedded).
   const withoutImports = source.replace(
@@ -87,17 +88,24 @@ function rewriteCss(
     /url\(\s*(["']?)(.*?)\1\s*\)/gi,
     (match: string, _quote: string, reference: string) => {
       const resource = lookupResource(index, reference, base);
-      return resource?.kind === "image" ? `url("${resource.dataUrl}")` : match;
+      if (resource?.kind !== "image") return match;
+      const replacement = `url("${resource.dataUrl}")`;
+      addAssembledBytes(Math.max(0, textBytes(replacement) - textBytes(match)));
+      return replacement;
     },
   );
+}
+
+const TEXT_ENCODER = new TextEncoder();
+
+function textBytes(value: string): number {
+  return TEXT_ENCODER.encode(value).length;
 }
 
 export function assembleMhtml(result: MhtmlParseResult, limits: MhtmlLimits): string {
   const index = buildIndex(result);
   const document = new DOMParser().parseFromString(result.html, "text/html");
   const base = result.baseUrl;
-  const encoder = new TextEncoder();
-  const textBytes = (value: string) => encoder.encode(value).length;
   // Count what the replacements add while they happen. A file can reference one large
   // image thousands of times; waiting for outerHTML would build gigabytes first.
   let assembledBytes = textBytes(result.html);
@@ -127,8 +135,8 @@ export function assembleMhtml(result: MhtmlParseResult, limits: MhtmlLimits): st
     if (!rel.includes("stylesheet")) return;
     const resource = lookupResource(index, link.getAttribute("href") ?? "", base);
     if (resource?.kind === "css") {
-      const css = rewriteCss(resource.text, resource.baseUrl ?? base, index);
-      addAssembledBytes(textBytes(css));
+      addAssembledBytes(textBytes(resource.text));
+      const css = rewriteCss(resource.text, resource.baseUrl ?? base, index, addAssembledBytes);
       const style = document.createElement("style");
       style.textContent = css;
       link.replaceWith(style);
@@ -139,15 +147,13 @@ export function assembleMhtml(result: MhtmlParseResult, limits: MhtmlLimits): st
 
   document.querySelectorAll("style").forEach((style) => {
     const original = style.textContent ?? "";
-    const css = rewriteCss(original, base, index);
-    addAssembledBytes(Math.max(0, textBytes(css) - textBytes(original)));
+    const css = rewriteCss(original, base, index, addAssembledBytes);
     style.textContent = css;
   });
   document.querySelectorAll<HTMLElement>("[style]").forEach((element) => {
     const value = element.getAttribute("style");
     if (value) {
-      const css = rewriteCss(value, base, index);
-      addAssembledBytes(Math.max(0, textBytes(css) - textBytes(value)));
+      const css = rewriteCss(value, base, index, addAssembledBytes);
       element.setAttribute("style", css);
     }
   });
