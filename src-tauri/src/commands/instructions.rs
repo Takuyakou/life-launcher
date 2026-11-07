@@ -10,10 +10,10 @@ use tauri::{AppHandle, Manager};
 use tauri_plugin_opener::OpenerExt;
 
 use crate::models::{
-    InstructionEntry, InstructionFolderIdentity, InstructionFolderSummary, InstructionReadResponse,
-    InstructionRecycleResponse, InstructionRenameResponse, InstructionRoot,
-    InstructionWriteResponse, INSTRUCTION_FILE_MAX_BYTES, INSTRUCTION_FOLDER_LIMIT,
-    INSTRUCTION_NAME_MAX_CHARS,
+    InstructionEntry, InstructionFileInfo, InstructionFolderIdentity, InstructionFolderSummary,
+    InstructionReadResponse, InstructionRecycleResponse, InstructionRenameResponse,
+    InstructionRoot, InstructionWriteResponse, INSTRUCTION_FILE_MAX_BYTES,
+    INSTRUCTION_FOLDER_LIMIT, INSTRUCTION_MHTML_MAX_BYTES, INSTRUCTION_NAME_MAX_CHARS,
 };
 
 use super::config::{config_path, load_config_internal};
@@ -332,6 +332,28 @@ pub fn read_instruction(app: AppHandle, path: String) -> Result<InstructionReadR
     read_instruction_for_roots(&target.path, &roots)
 }
 
+/// Metadata only. MHTML is read as bytes, so its content is not part of this response.
+#[tauri::command]
+pub fn read_instruction_info(path: String) -> Result<InstructionFileInfo, String> {
+    let roots = read_configured_root_strings()?;
+    instruction_file_info_for_roots(Path::new(&path), &roots)
+}
+
+/// MHTML is returned as raw bytes so the webview can decode the declared charsets.
+#[tauri::command]
+pub fn read_instruction_bytes(
+    app: AppHandle,
+    path: String,
+) -> Result<tauri::ipc::Response, String> {
+    let roots = read_configured_root_strings()?;
+    let target = validate_instruction_file(Path::new(&path), &roots)?;
+    app.asset_protocol_scope()
+        .allow_directory(&target.root, true)
+        .map_err(|error| format!("failed to allow instruction assets: {error}"))?;
+    let bytes = read_mhtml_bytes_for_roots(&target.path, &roots)?;
+    Ok(tauri::ipc::Response::new(bytes))
+}
+
 #[tauri::command]
 pub fn write_instruction(
     path: String,
@@ -420,7 +442,9 @@ pub fn move_instruction_to_recycle_bin(path: String) -> Result<InstructionRecycl
         return Err("registered instruction roots cannot be moved to the recycle bin".to_string());
     }
     if target.metadata.is_file() && !is_instruction_file(&target.path) {
-        return Err("only .md, .txt, and .html instruction files are supported".to_string());
+        return Err(
+            "only .md, .txt, .html, .mhtml, and .mht instruction files are supported".to_string(),
+        );
     }
     if !target.metadata.is_file() && !target.metadata.is_dir() {
         return Err("instruction path is neither a file nor a directory".to_string());
@@ -525,7 +549,9 @@ pub fn reveal_instruction_in_explorer(path: String) -> Result<String, String> {
     let roots = read_configured_root_strings()?;
     let target = validate_existing_target(Path::new(&path), &roots)?;
     if target.metadata.is_file() && !is_instruction_file(&target.path) {
-        return Err("only .md, .txt, and .html instruction files are supported".to_string());
+        return Err(
+            "only .md, .txt, .html, .mhtml, and .mht instruction files are supported".to_string(),
+        );
     }
     validate_existing_target(&target.path, &roots)?;
     let folder = instruction_explorer_folder(&target)?;
@@ -912,7 +938,9 @@ fn validate_instruction_file(path: &Path, roots: &[String]) -> Result<ValidatedT
         return Err("instruction path is not a file".to_string());
     }
     if !is_instruction_file(&target.path) {
-        return Err("only .md, .txt, and .html instruction files are supported".to_string());
+        return Err(
+            "only .md, .txt, .html, .mhtml, and .mht instruction files are supported".to_string(),
+        );
     }
     Ok(target)
 }
@@ -922,6 +950,9 @@ fn read_instruction_for_roots(
     roots: &[String],
 ) -> Result<InstructionReadResponse, String> {
     let mut target = validate_instruction_file(path, roots)?;
+    if is_mhtml_instruction(&target.path) {
+        return Err("MHTML instruction files must be read as bytes".to_string());
+    }
     if target.metadata.len() > INSTRUCTION_FILE_MAX_BYTES {
         return Err("instruction file exceeds the 2 MiB limit".to_string());
     }
@@ -948,9 +979,54 @@ fn read_instruction_for_roots(
         content,
         modified_at: modified_at_millis(&target.metadata)?,
         size: target.metadata.len(),
-        read_only: target.metadata.permissions().readonly()
-            || instruction_extension(&target.path).as_deref() == Some("html"),
+        read_only: instruction_read_only(&target.path, &target.metadata),
     })
+}
+
+fn instruction_file_info_for_roots(
+    path: &Path,
+    roots: &[String],
+) -> Result<InstructionFileInfo, String> {
+    let target = validate_instruction_file(path, roots)?;
+    Ok(InstructionFileInfo {
+        name: file_name_text(&target.path)?,
+        path: path_for_response(&target.path),
+        modified_at: modified_at_millis(&target.metadata)?,
+        size: target.metadata.len(),
+        read_only: instruction_read_only(&target.path, &target.metadata),
+    })
+}
+
+/// Read MHTML as raw bytes. It is decoded on the webview side because each MIME part
+/// declares its own charset (Shift_JIS, EUC-JP, ...), which UTF-8-only reading would lose.
+fn read_mhtml_bytes_for_roots(path: &Path, roots: &[String]) -> Result<Vec<u8>, String> {
+    let mut target = validate_instruction_file(path, roots)?;
+    if !is_mhtml_instruction(&target.path) {
+        return Err("only .mhtml and .mht files can be read as MHTML".to_string());
+    }
+    if target.metadata.len() > INSTRUCTION_MHTML_MAX_BYTES {
+        return Err("instruction file exceeds the 20 MiB limit".to_string());
+    }
+    let mut bytes = Vec::with_capacity(target.metadata.len() as usize);
+    target
+        .file
+        .as_mut()
+        .ok_or_else(|| "instruction file handle is unavailable".to_string())?
+        .take(INSTRUCTION_MHTML_MAX_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|error| format!("failed to read {}: {error}", target.path.display()))?;
+    if bytes.len() as u64 > INSTRUCTION_MHTML_MAX_BYTES {
+        return Err("instruction file exceeds the 20 MiB limit".to_string());
+    }
+    Ok(bytes)
+}
+
+fn instruction_read_only(path: &Path, metadata: &Metadata) -> bool {
+    metadata.permissions().readonly()
+        || matches!(
+            instruction_extension(path).as_deref(),
+            Some("html" | "mhtml" | "mht")
+        )
 }
 
 fn write_instruction_for_roots(
@@ -967,7 +1043,7 @@ fn write_instruction_for_roots(
     }
     let target = validate_instruction_file(path, roots)?;
     if !is_editable_instruction_file(&target.path) {
-        return Err("HTML instruction files are read-only in Life Launcher".to_string());
+        return Err("HTML and MHTML instruction files are read-only in Life Launcher".to_string());
     }
     let locked_metadata = target
         .file
@@ -1037,7 +1113,9 @@ fn rename_instruction(
         });
     }
     if !expect_directory && !is_instruction_file(&target.path) {
-        return Err("only .md, .txt, and .html instruction files are supported".to_string());
+        return Err(
+            "only .md, .txt, .html, .mhtml, and .mht instruction files are supported".to_string(),
+        );
     }
 
     let parent = target
@@ -1136,7 +1214,14 @@ fn is_editable_instruction_file(path: &Path) -> bool {
 
 fn instruction_extension(path: &Path) -> Option<String> {
     let extension = path.extension()?.to_string_lossy().to_ascii_lowercase();
-    matches!(extension.as_str(), "md" | "txt" | "html").then_some(extension)
+    matches!(extension.as_str(), "md" | "txt" | "html" | "mhtml" | "mht").then_some(extension)
+}
+
+fn is_mhtml_instruction(path: &Path) -> bool {
+    matches!(
+        instruction_extension(path).as_deref(),
+        Some("mhtml" | "mht")
+    )
 }
 
 fn entry_from_metadata(path: &Path, metadata: &Metadata) -> Result<InstructionEntry, String> {
@@ -1780,6 +1865,131 @@ mod tests {
         let root_text = path_for_response(&root);
         assert!(validate_existing_target(
             &link.join("escape.md"),
+            std::slice::from_ref(&root_text)
+        )
+        .is_err());
+        fs::remove_dir(&link).expect("remove link");
+        fs::remove_dir_all(root).expect("remove root");
+        fs::remove_dir_all(outside).expect("remove outside");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn reads_mhtml_as_bytes_and_rejects_writes() {
+        let root = temp_root("mhtml");
+        let root_text = path_for_response(&root);
+        let path = root.join("page.mhtml");
+        let content =
+            b"From: <Saved by Blink>\r\nContent-Type: multipart/related; boundary=\"b\"\r\n\r\n--b--\r\n";
+        fs::write(&path, content).expect("write mhtml");
+
+        let info = instruction_file_info_for_roots(&path, std::slice::from_ref(&root_text))
+            .expect("mhtml info");
+        assert_eq!(info.name, "page.mhtml");
+        assert!(info.read_only);
+        assert_eq!(info.size, content.len() as u64);
+
+        let bytes = read_mhtml_bytes_for_roots(&path, std::slice::from_ref(&root_text))
+            .expect("read mhtml bytes");
+        assert_eq!(bytes, content);
+        assert!(read_instruction_for_roots(&path, std::slice::from_ref(&root_text)).is_err());
+
+        // MHTML is not required to be UTF-8 or NUL-free; it is decoded by the webview.
+        let binary = root.join("binary.mhtml");
+        let binary_content = [0x00_u8, 0xff, 0xfe, b'a'];
+        fs::write(&binary, binary_content).expect("write binary mhtml");
+        assert_eq!(
+            read_mhtml_bytes_for_roots(&binary, std::slice::from_ref(&root_text))
+                .expect("read binary mhtml"),
+            binary_content
+        );
+
+        let error = write_instruction_for_roots(
+            &path,
+            "replacement",
+            info.modified_at,
+            std::slice::from_ref(&root_text),
+        )
+        .expect_err("MHTML writes must be rejected");
+        assert!(error.contains("read-only"));
+        assert_eq!(fs::read(&path).expect("read original"), content);
+
+        let entry = entry_from_metadata(&path, &fs::symlink_metadata(&path).expect("metadata"))
+            .expect("mhtml entry");
+        assert_eq!(entry.extension.as_deref(), Some("mhtml"));
+
+        for name in ["PAGE.MHTML", "page.mht"] {
+            let variant = root.join(name);
+            fs::write(&variant, content).expect("write mhtml variant");
+            assert!(
+                instruction_file_info_for_roots(&variant, std::slice::from_ref(&root_text))
+                    .expect("variant info")
+                    .read_only
+            );
+        }
+
+        fs::remove_dir_all(root).expect("remove temp root");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn mhtml_read_uses_the_20_mib_limit() {
+        let root = temp_root("mhtml-large");
+        let root_text = path_for_response(&root);
+        let path = root.join("large.mhtml");
+        let file = File::create(&path).expect("create large mhtml");
+        file.set_len(INSTRUCTION_MHTML_MAX_BYTES + 1)
+            .expect("size large mhtml");
+        drop(file);
+        let error = read_mhtml_bytes_for_roots(&path, std::slice::from_ref(&root_text))
+            .expect_err("over the 20 MiB limit");
+        assert!(error.contains("20 MiB"));
+
+        // The normal 2 MiB limit does not apply to MHTML.
+        let above_normal_limit = root.join("above-normal.mhtml");
+        fs::write(
+            &above_normal_limit,
+            vec![b'a'; (INSTRUCTION_FILE_MAX_BYTES + 16) as usize],
+        )
+        .expect("write above the normal limit");
+        assert!(
+            read_mhtml_bytes_for_roots(&above_normal_limit, std::slice::from_ref(&root_text))
+                .is_ok()
+        );
+
+        fs::remove_dir_all(root).expect("remove temp root");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn rejects_mhtml_outside_registered_roots_and_through_links() {
+        use std::os::windows::fs::symlink_dir;
+
+        let root = temp_root("mhtml-scope");
+        let outside = temp_root("mhtml-scope-outside");
+        let root_text = path_for_response(&root);
+        let outside_file = outside.join("escape.mhtml");
+        fs::write(&outside_file, "outside").expect("write outside mhtml");
+        assert!(
+            read_mhtml_bytes_for_roots(&outside_file, std::slice::from_ref(&root_text)).is_err()
+        );
+
+        let link = root.join("linked");
+        if symlink_dir(&outside, &link).is_err() {
+            let status = std::process::Command::new("cmd.exe")
+                .args(["/C", "mklink", "/J"])
+                .arg(&link)
+                .arg(&outside)
+                .creation_flags(CREATE_NO_WINDOW)
+                .status()
+                .expect("start junction creation");
+            assert!(
+                status.success(),
+                "create symlink or junction for security test"
+            );
+        }
+        assert!(read_mhtml_bytes_for_roots(
+            &link.join("escape.mhtml"),
             std::slice::from_ref(&root_text)
         )
         .is_err());

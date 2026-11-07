@@ -18,9 +18,9 @@ use commands::instructions::{
     choose_instruction_root, create_instruction_file, create_instruction_folder,
     inspect_instruction_folder, list_instruction_directory, list_instruction_roots,
     move_instruction_to_recycle_bin, open_instruction_folder, open_instruction_in_default_editor,
-    read_instruction, rename_instruction_file, rename_instruction_folder,
-    reveal_instruction_in_explorer, search_instruction_files, validate_instruction_root,
-    write_instruction,
+    read_instruction, read_instruction_bytes, read_instruction_info, rename_instruction_file,
+    rename_instruction_folder, reveal_instruction_in_explorer, search_instruction_files,
+    validate_instruction_root, write_instruction,
 };
 use commands::main_shell_drop::{enable_main_shell_drop, remove_main_shell_drop_target};
 use commands::notes::{
@@ -313,6 +313,8 @@ pub fn run() {
             list_instruction_directory,
             search_instruction_files,
             read_instruction,
+            read_instruction_info,
+            read_instruction_bytes,
             write_instruction,
             create_instruction_file,
             create_instruction_folder,
