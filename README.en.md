@@ -20,7 +20,7 @@ Try the central Life Launcher flow in your browser without installing the Window
 
 The Web Demo uses synthetic data to demonstrate the central Life Launcher flow, including choosing today's items, running timers, and removing an item from Today's Three. Changes are stored in your browser's localStorage. Launching apps, files, and URLs is simulated rather than performed.
 
-Note: it is not a complete port of the Windows product. The Web Demo has a separate publishing process and is not updated alongside the v1.4.2 desktop release.
+Note: it is not a complete port of the Windows product. The Web Demo has a separate publishing process and is not updated alongside the Windows desktop release.
 
 ## Highlights
 
@@ -55,52 +55,29 @@ Note: it is not a complete port of the Windows product. The Web Demo has a separ
 
 The screenshots are generated from synthetic data. They do not contain real user configuration, activity, paths, or notes.
 
-## Changes In v1.4.2
-
-- The Main window and the instruction viewer no longer use the Windows title bar. The window buttons (minimize, maximize, close) sit at the right end of the top menu row, dragging an empty part of that row moves the window, and double-clicking it toggles maximize.
-- A thin line along the top edge of the Main window shows Timer progress. It is yellow while running, orange while paused, and does not appear while idle or while measuring.
-- The instruction viewer can be operated with the arrow keys. On open, the list has focus: Up/Down move, Enter opens, Right moves into the document (Up/Down, PageUp, PageDown, Home and End scroll it), and Left returns to the list. The same applies to HTML instructions.
-- The in-app guide uses clearer wording, and its Close button is red.
-- Config schema stays at `3`, with no data-format changes.
-
-## Changes In v1.4.1
-
-- The Timer no longer shows a toast when it starts or pauses, and pausing and resuming quickly no longer winds the clock back.
-- At the Large and Extra Large display sizes the top menu keeps the same size on the Main and Records screens. The right-hand margin of the Records headings, the hover reaction of an empty Victory bar, and the position of the counts in the Main headings are also aligned.
-- The Settings screen can be operated with the arrow keys and Enter. The arrow keys always move between items; a number field starts editing with Enter, commits with Enter, and returns to its previous value with Esc.
-- The installer's "Unable to uninstall!" message now explains the cause and what to do.
-- Config schema stays at `3`, with no new features or data-format changes.
-
-## Changes In v1.4.0
-
-- Do Now now prefers a Next Step that is already in Today's 3. Starting from either Do Now or Today's 3 shows the same running state in both.
-- The Timer (sidebar, expanded Timer, mini timer) now shows the action you are working on. The overlap in the idle mini timer is fixed.
-- Fixed the Victory text becoming smaller, and the Today's 3 heading description being pushed to the right edge, at the Large and Extra Large display sizes. The Victory bar now reacts to hover like the other cards (it stays plain while empty). The section heading frames and text are aligned, and keyboard focus on a heading or the Victory bar no longer shows a doubled yellow square.
-- Button colors follow a consistent role, and borders that carry no role were removed. The "choose today's items" screen shows more candidates.
-- Details were polished across the Main screen, dialogs, Settings, and Records (a duplicated count, "Edit" versus "Swap for another action", a guide for empty sidebar groups, "Mini mode" renamed to "mini timer", and more).
-- Includes dependency vulnerability fixes. Config schema stays at `3`, with no new features or data-format changes.
-
 ## Download
 
 Download Life Launcher from [GitHub Releases](https://github.com/Takuyakou/life-launcher/releases/latest). Check that page for the latest published version and filenames.
+
+Release notes for every version are in [GitHub Releases](https://github.com/Takuyakou/life-launcher/releases) and the [changelog](CHANGELOG.md).
 
 ### Installer - Recommended
 
 Use this for the standard installation flow.
 
-v1.4.2 installer: `Life-Launcher-v1.4.2-windows-x64-setup.exe`
+Installer: `Life-Launcher-v<version>-windows-x64-setup.exe`
 
 ### Standalone EXE
 
 Run the app directly without installing it.
 
-v1.4.2 standalone: `Life-Launcher-v1.4.2-windows-x64.exe`
+Standalone EXE: `Life-Launcher-v<version>-windows-x64.exe`
 
 ### Portable ZIP
 
 Extract the ZIP archive and run the app.
 
-v1.4.2 ZIP: `Life-Launcher-v1.4.2-windows-x64-portable.zip`
+Portable ZIP: `Life-Launcher-v<version>-windows-x64-portable.zip`
 
 The ZIP edition also stores user data in `%APPDATA%\life-launcher`. It does not carry your data alongside the executable on a USB drive.
 
@@ -114,11 +91,11 @@ Fully exit Life Launcher and back up the `%APPDATA%\life-launcher` folder to ano
 
 The first launch after updating from v1.2 to v1.3 migrates config schema `2` to `3`. The app creates a raw pre-migration backup and leaves the original config unchanged if migration, validation, or backup fails. Session records are not deleted.
 
-Updating from v1.4.1 to v1.4.2 keeps config schema at `3`, with no change to the configuration format. Existing settings and session records remain available, and the saved window position and size are kept (the standard title bar does not come back).
+Updating to a new version keeps your current settings and records. If you go back to an older version, settings added by the newer version (for example, a new color) may be lost, so back up before updating. When a release changes the data format, the release notes will say so. The saved window position and size are also kept.
 
 If you choose "Uninstall before installing" in the installer and it reports "Could not uninstall the previous version", quit Life Launcher and try again, or choose "Do not uninstall". Your settings and records are kept.
 
-See the [v1.4.2 release notes](docs/releases/v1.4.2.md) and [changelog](CHANGELOG.md) for details. The [overview](docs/OVERVIEW.md) and [current specification](docs/spec/current-spec.md) cover the wider feature set. These detailed documents are currently in Japanese.
+See [GitHub Releases](https://github.com/Takuyakou/life-launcher/releases) and the [changelog](CHANGELOG.md) for details. The [overview](docs/OVERVIEW.md) and [current specification](docs/spec/current-spec.md) cover the wider feature set. These detailed documents are currently in Japanese.
 
 ## Runtime Requirements
 
