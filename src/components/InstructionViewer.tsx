@@ -21,11 +21,17 @@ import {
   writeInstructionAlwaysOnTop,
 } from "../instructionWindow";
 import { renderSafeHtml, renderSafeMarkdown } from "../markdown";
+import { currentMhtmlLimits } from "../mhtml/limits";
+import { MhtmlError, type MhtmlErrorCode } from "../mhtml/parseMhtml";
+import { renderMhtmlDocument } from "../mhtml/renderMhtml";
 import {
   chooseInstructionRoot,
   executeActions,
+  instructionAssetBaseUrl,
   openInstructionInDefaultEditor,
   readInstruction,
+  readInstructionBytes,
+  readInstructionInfo,
   writeInstruction,
 } from "../tauri";
 import type { InstructionDocument } from "../types";
@@ -60,6 +66,34 @@ function pathWithin(path: string, parent: string): boolean {
   return normalizedPath === normalizedParent || normalizedPath.startsWith(`${normalizedParent}\\`);
 }
 
+function instructionExtensionOf(name: string): string {
+  const dot = name.lastIndexOf(".");
+  return dot >= 0 ? name.slice(dot + 1).toLocaleLowerCase() : "";
+}
+
+function isMhtmlInstructionName(name: string): boolean {
+  const extension = instructionExtensionOf(name);
+  return extension === "mhtml" || extension === "mht";
+}
+
+async function loadMhtmlInstructionDocument(path: string): Promise<InstructionDocument> {
+  const [bytes, info] = await Promise.all([
+    readInstructionBytes(path),
+    readInstructionInfo(path),
+  ]);
+  return {
+    name: info.name,
+    path: info.path,
+    content: "",
+    assetBaseUrl: instructionAssetBaseUrl(info.path),
+    size: info.size,
+    modifiedAt: info.modifiedAt,
+    extension: instructionExtensionOf(info.name),
+    readOnly: true,
+    mhtmlBytes: bytes,
+  };
+}
+
 export function InstructionViewer() {
   const tauriRuntime = isTauri();
   const instructionWindow = useMemo(
@@ -92,6 +126,13 @@ export function InstructionViewer() {
   const [resizingSidebar, setResizingSidebar] = useState(false);
   // P96-03: 開いたとき・窓が前に出たときに、一覧の行へフォーカスを置く合図。
   const [treeFocusToken, setTreeFocusToken] = useState(0);
+  // P97-03: MHTML is decoded in a worker before it reaches the existing HTML sanitizer.
+  const [mhtmlState, setMhtmlState] = useState<{
+    status: "idle" | "loading" | "ready" | "error";
+    html: string | null;
+    error: string | null;
+    code: MhtmlErrorCode | null;
+  }>({ status: "idle", html: null, error: null, code: null });
   // P97-02 F: 窓の大きさが変わった直後は、マウスが動くまで乗せた色を出さない。
   useHoverSuppressionAfterResize();
   const dirty = Boolean(editing && instruction && draft !== instruction.content);
@@ -105,7 +146,9 @@ export function InstructionViewer() {
     setLoading(true);
     setStatus(null);
     try {
-      const nextDocument = await readInstruction(path);
+      const nextDocument = isMhtmlInstructionName(path)
+        ? await loadMhtmlInstructionDocument(path)
+        : await readInstruction(path);
       setInstruction(nextDocument);
       setSelectedPath(nextDocument.path);
       writeLastInstructionPath(nextDocument.path);
@@ -119,9 +162,13 @@ export function InstructionViewer() {
     } catch (error) {
       setInstruction(null);
       setSelectedPath(path);
+      const message = error instanceof Error ? error.message : String(error);
       setStatus({
         tone: "error",
-        message: error instanceof Error ? error.message : String(error),
+        message:
+          isMhtmlInstructionName(path) && message.includes("20 MiB")
+            ? "このMHTMLファイルは大きすぎるため表示できません（上限は20 MiBです）"
+            : message,
       });
     } finally {
       setLoading(false);
@@ -282,6 +329,29 @@ export function InstructionViewer() {
       if (checking) return;
       checking = true;
       try {
+        if (isMhtmlInstructionName(selectedPath)) {
+          const info = await readInstructionInfo(selectedPath);
+          externalCheckErrorRef.current = null;
+          if (!disposed && info.modifiedAt !== instruction.modifiedAt) {
+            setExternalDocument((existing) =>
+              existing?.modifiedAt === info.modifiedAt
+                ? existing
+                : {
+                    name: info.name,
+                    path: info.path,
+                    content: "",
+                    assetBaseUrl: instruction.assetBaseUrl,
+                    size: info.size,
+                    modifiedAt: info.modifiedAt,
+                    extension: instructionExtensionOf(info.name),
+                    readOnly: true,
+                  },
+            );
+          } else if (!disposed) {
+            setExternalDocument(null);
+          }
+          return;
+        }
         const current = await readInstruction(selectedPath);
         externalCheckErrorRef.current = null;
         if (!disposed && current.modifiedAt !== instruction.modifiedAt) {
@@ -311,17 +381,56 @@ export function InstructionViewer() {
     };
   }, [instruction, loading, selectedPath]);
 
-  const isHtmlInstruction = Boolean(
-    instruction?.name.toLocaleLowerCase().endsWith(".html"),
+  const isMhtmlInstruction = Boolean(
+    instruction && isMhtmlInstructionName(instruction.name),
   );
+  const isRichDocument = Boolean(
+    instruction &&
+      (instruction.name.toLocaleLowerCase().endsWith(".html") || isMhtmlInstruction),
+  );
+
+  useEffect(() => {
+    if (!instruction || !isMhtmlInstructionName(instruction.name) || !instruction.mhtmlBytes) {
+      setMhtmlState({ status: "idle", html: null, error: null, code: null });
+      return;
+    }
+    let disposed = false;
+    setMhtmlState({ status: "loading", html: null, error: null, code: null });
+    void renderMhtmlDocument(
+      instruction.mhtmlBytes,
+      currentMhtmlLimits(),
+      instruction.assetBaseUrl,
+    )
+      .then((html) => {
+        if (!disposed) {
+          setMhtmlState({ status: "ready", html, error: null, code: null });
+        }
+      })
+      .catch((error) => {
+        if (!disposed) {
+          setMhtmlState({
+            status: "error",
+            html: null,
+            error: error instanceof Error ? error.message : String(error),
+            code: error instanceof MhtmlError ? error.code : "invalid",
+          });
+        }
+      });
+    return () => {
+      disposed = true;
+    };
+  }, [instruction]);
 
   const renderedRichText = useMemo(() => {
     if (!instruction) return null;
     const name = instruction.name.toLocaleLowerCase();
     if (name.endsWith(".md")) return renderSafeMarkdown(instruction.content);
     if (name.endsWith(".html")) return renderSafeHtml(instruction.content, instruction.assetBaseUrl);
+    if (isMhtmlInstructionName(name)) {
+      return mhtmlState.status === "ready" ? mhtmlState.html : null;
+    }
     return null;
-  }, [instruction]);
+  }, [instruction, mhtmlState]);
 
   const openExternalHref = async (href: string) => {
     try {
@@ -379,13 +488,13 @@ export function InstructionViewer() {
     });
   };
 
-  const externalOpenLabel = isHtmlInstruction ? "ブラウザで開く" : "既定のアプリで開く";
+  const externalOpenLabel = isRichDocument ? "ブラウザで開く" : "既定のアプリで開く";
 
   const openInDefaultApplication = async () => {
     if (!selectedPath) return;
     try {
       await openInstructionInDefaultEditor(selectedPath);
-      if (!isHtmlInstruction) {
+      if (!isRichDocument) {
         setStatus({ tone: "neutral", message: "既定のアプリで開きました" });
       }
     } catch (error) {
@@ -415,6 +524,11 @@ export function InstructionViewer() {
 
   const reloadExternalDocument = () => {
     if (!externalDocument) return;
+    if (isMhtmlInstructionName(externalDocument.name)) {
+      setExternalDocument(null);
+      void loadDocument(externalDocument.path);
+      return;
+    }
     setInstruction(externalDocument);
     setDraft(externalDocument.content);
     setExternalDocument(null);
@@ -574,7 +688,7 @@ export function InstructionViewer() {
    */
   const handleDocumentKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
     if (event.altKey || event.ctrlKey || event.metaKey) return;
-    const htmlWindow = isHtmlInstruction ? htmlFrameRef.current?.contentWindow : null;
+    const htmlWindow = isRichDocument ? htmlFrameRef.current?.contentWindow : null;
     const content = contentRef.current;
     if (!htmlWindow && !content) return;
     const current = () => (htmlWindow ? htmlWindow.scrollY : (content?.scrollTop ?? 0));
@@ -776,7 +890,11 @@ export function InstructionViewer() {
           title="ドラッグして一覧の幅を調整"
         />
 
-        <section aria-busy={loading} aria-label="手順書本文" className="instructionContentPane">
+        <section
+          aria-busy={loading || (isMhtmlInstruction && mhtmlState.status === "loading")}
+          aria-label="手順書本文"
+          className="instructionContentPane"
+        >
           {externalDocument ? (
             <div className="instructionExternalBanner" role="status">
               <strong>{editing ? "外部で変更されています" : "外部で更新されています"}</strong>
@@ -832,20 +950,33 @@ export function InstructionViewer() {
             ) : instruction ? (
               <div
                 aria-label="手順書本文"
-                className={`instructionDocument app-scrollbar${isHtmlInstruction ? " instructionDocument--html" : ""}`}
+                className={`instructionDocument app-scrollbar${isRichDocument ? " instructionDocument--html" : ""}`}
                 onClick={(event) => void openExternalLink(event)}
                 onKeyDown={handleDocumentKeyDown}
                 ref={contentRef}
                 tabIndex={0}
               >
-                {isHtmlInstruction && renderedRichText !== null ? (
+                {isMhtmlInstruction && mhtmlState.status === "error" ? (
+                  <div className="instructionEmptyState instructionEmptyState--error" role="alert">
+                    <strong>
+                      {mhtmlState.code === "too-large"
+                        ? "このMHTMLファイルは大きすぎるため表示できません"
+                        : "このMHTMLファイルは表示できません"}
+                    </strong>
+                    <span>{mhtmlState.error}</span>
+                  </div>
+                ) : isMhtmlInstruction && mhtmlState.status === "loading" ? (
+                  <div className="instructionEmptyState" role="status">
+                    MHTMLを読み込んでいます
+                  </div>
+                ) : isRichDocument && renderedRichText !== null ? (
                   <iframe
                     className="instructionHtmlFrame"
                     onLoad={(event) => prepareHtmlFrame(event.currentTarget)}
                     ref={htmlFrameRef}
                     sandbox="allow-same-origin"
                     srcDoc={renderedRichText}
-                    title={`${instruction.name}のHTMLプレビュー`}
+                    title={`${instruction.name}のプレビュー`}
                   />
                 ) : renderedRichText !== null ? (
                   <article

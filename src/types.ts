@@ -325,6 +325,16 @@ export type InstructionDocument = {
   modifiedAt: number;
   extension?: string;
   readOnly: boolean;
+  /** MHTML is decoded from raw bytes on the webview side; it has no editable text content. */
+  mhtmlBytes?: ArrayBuffer;
+};
+
+export type InstructionFileInfo = {
+  name: string;
+  path: string;
+  modifiedAt: number;
+  size: number;
+  readOnly: boolean;
 };
 
 export type InstructionWriteResult = {
