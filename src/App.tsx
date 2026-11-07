@@ -8711,7 +8711,7 @@ function DashboardApp() {
 
     if (projectEditDraft?.id === projectId) closeProjectEditDialog(true);
     showToast(
-      "ok",
+      "danger",
       mode === "complete"
         ? `残っている項目を完了扱いにして、プロジェクト「${summary.project.name}」を削除しました`
         : `プロジェクト「${summary.project.name}」を削除しました`,
