@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import {
   groupWishlist,
+  groupWishlistForDisplay,
   prepareNextStepRemoval,
   prepareNextStepReplacement,
   prepareWishlistPromotion,
@@ -286,7 +287,7 @@ test("P82-01 Wishlist renders Project groups, collapse, Today and excluded state
 
   const groups = page.locator(".wishlistGroup");
   await expect(groups).toHaveCount(3);
-  const expectedGroupNames = groupWishlist(fixture.config).map(({ name }) => name);
+  const expectedGroupNames = groupWishlistForDisplay(fixture.config).map(({ name }) => name);
   for (const [index, name] of expectedGroupNames.entries()) {
     await expect(groups.nth(index).locator(".wishlistGroupHeader")).toContainText(name);
   }

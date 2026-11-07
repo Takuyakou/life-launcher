@@ -148,6 +148,7 @@ import { PROJECT_COLOR_IDS, PROJECT_COLOR_LABELS, resolveProjectColorId } from "
 import { canRevealLauncherButton } from "./launcherReveal";
 import {
   groupWishlist,
+  groupWishlistForDisplay,
   prepareNextStepRemoval,
   prepareWishlistPromotion,
   reorderWishlistGroups,
@@ -5412,8 +5413,13 @@ function DashboardApp() {
     placement: "before" | "after",
   ) => {
     const current = configRef.current;
-    if (!current || draggedKey === targetKey) return;
-    const nextConfig = reorderWishlistGroups(current, draggedKey, targetKey, placement);
+    if (!current || draggedKey === targetKey || draggedKey === "unassigned") return;
+    const nextConfig = reorderWishlistGroups(
+      current,
+      draggedKey,
+      targetKey,
+      targetKey === "unassigned" ? "before" : placement,
+    );
     if (nextConfig === current) return;
     void persistConfig(nextConfig);
   };
@@ -6184,7 +6190,7 @@ function DashboardApp() {
     key: string,
     name: string,
   ) => {
-    if (event.button !== 0) return;
+    if (event.button !== 0 || key === "unassigned") return;
     const header = (event.target as Element).closest<HTMLElement>(".wishlistGroupHeader");
     if (!header || !event.currentTarget.contains(header)) return;
     event.preventDefault();
@@ -9264,7 +9270,7 @@ function DashboardApp() {
   const visibleProjects = projectsListExpanded
     ? config.projects
     : config.projects.slice(0, PROJECT_CARD_COMPACT_LIMIT);
-  const wishlistGroups = groupWishlist(config);
+  const wishlistGroups = groupWishlistForDisplay(config);
   const inboxNeighborIndex = (index: number, offset: -1 | 1) => {
     const item = config.inbox[index];
     if (!item) return undefined;
@@ -12053,10 +12059,19 @@ function DashboardApp() {
                             : undefined;
                           return (
                             <section
-                              className={
+                              className={[
+                                "wishlistGroup",
+                                group.key === "unassigned" ? "wishlistGroup--unassigned" : "",
                                 wishlistGroupPointerDrag?.key === group.key
-                                  ? "wishlistGroup wishlistGroup--dragging"
-                                  : "wishlistGroup"
+                                  ? "wishlistGroup--dragging"
+                                  : "",
+                              ]
+                                .filter(Boolean)
+                                .join(" ")}
+                              data-project-color={
+                                groupProject
+                                  ? resolveProjectColorId(groupProject.id, groupProject.colorId)
+                                  : undefined
                               }
                               data-wishlist-group={group.key}
                               key={group.key}
@@ -12069,9 +12084,15 @@ function DashboardApp() {
                             >
                               <button
                                 aria-expanded={!collapsed}
-                                className="wishlistGroupHeader"
+                                className={
+                                  group.key === "unassigned"
+                                    ? "wishlistGroupHeader wishlistGroupHeader--fixed"
+                                    : "wishlistGroupHeader"
+                                }
                                 onClick={(event) => {
-                                  if (event.detail === 0) toggleWishlistGroup(group.key);
+                                  if (event.detail === 0 || group.key === "unassigned") {
+                                    toggleWishlistGroup(group.key);
+                                  }
                                 }}
                                 onContextMenu={(event) => {
                                   if (!groupProject) return;
@@ -12093,9 +12114,11 @@ function DashboardApp() {
                                   }
                                 }}
                                 title={
-                                  groupProject
-                                    ? `${group.name}（ドラッグでグループを並べ替え、右クリックで編集）`
-                                    : "ドラッグでグループを並べ替え"
+                                  group.key === "unassigned"
+                                    ? "未分類は並べ替えできません"
+                                    : groupProject
+                                      ? `${group.name}（ドラッグでグループを並べ替え、右クリックで編集）`
+                                      : "ドラッグでグループを並べ替え"
                                 }
                                 type="button"
                               >

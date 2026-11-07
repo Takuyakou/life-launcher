@@ -45,19 +45,28 @@ export function groupWishlist(config: AppConfig): WishlistGroup[] {
   });
 }
 
+export function groupWishlistForDisplay(config: AppConfig): WishlistGroup[] {
+  const groups = groupWishlist(config);
+  return [
+    ...groups.filter((group) => group.key !== "unassigned"),
+    ...groups.filter((group) => group.key === "unassigned"),
+  ];
+}
+
 export function reorderWishlistGroups(
   config: AppConfig,
   draggedKey: string,
   targetKey: string,
   placement: "before" | "after",
 ): AppConfig {
-  if (draggedKey === targetKey) return config;
+  if (draggedKey === targetKey || draggedKey === "unassigned") return config;
   const keys = groupWishlist(config).map((group) => group.key);
   if (!keys.includes(draggedKey) || !keys.includes(targetKey)) return config;
 
+  const effectivePlacement = targetKey === "unassigned" ? "before" : placement;
   const nextKeys = keys.filter((key) => key !== draggedKey);
   const targetIndex = nextKeys.indexOf(targetKey);
-  nextKeys.splice(targetIndex + (placement === "after" ? 1 : 0), 0, draggedKey);
+  nextKeys.splice(targetIndex + (effectivePlacement === "after" ? 1 : 0), 0, draggedKey);
 
   const projectIds = new Set(config.projects.map((project) => project.id));
   const itemsByGroup = new Map<string, InboxItem[]>();

@@ -10511,7 +10511,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .inboxGroups {
   display: grid;
-  gap: 10px;
+  gap: 18px;
   min-width: 0;
 }
 
@@ -10524,24 +10524,33 @@ input[type="number"]::-webkit-inner-spin-button {
   min-width: 0;
 }
 
+.wishlistGroup .inboxList {
+  margin-left: 0;
+  padding-left: 10px;
+  border-left: 0;
+}
+
 .wishlistGroupHeader {
   display: flex;
   align-items: center;
   gap: 8px;
   width: 100%;
-  min-height: 36px;
-  padding: 5px 10px;
+  min-height: 30px;
+  padding: 3px 8px;
   border: 0;
-  border-bottom: 1px solid var(--line-soft);
-  border-radius: 0;
+  border-radius: var(--radius);
   background: transparent;
-  color: var(--text-muted-readable);
+  color: var(--muted);
   font-size: var(--dashboard-font-meta);
-  font-weight: 650;
+  font-weight: 600;
   text-align: left;
   cursor: grab;
   touch-action: none;
   user-select: none;
+}
+
+.wishlistGroupHeader--fixed {
+  cursor: default;
 }
 
 .wishlistGroupHeader:hover {
@@ -10550,15 +10559,15 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .wishlistGroupHeader .projectIdentity {
   min-width: 0;
-  color: var(--text-muted-readable);
+  color: var(--muted);
   font-size: var(--dashboard-font-meta);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .wishlistGroupHeader > strong {
-  color: var(--text-muted-readable);
+  color: var(--muted);
   font-size: var(--dashboard-font-meta);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .wishlistGroupHeader > span:last-child {
@@ -10569,6 +10578,13 @@ input[type="number"]::-webkit-inner-spin-button {
 .wishlistGroup .inboxRow.sourceListRow {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
+  border-left: 3px solid var(--project-color, var(--line));
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding-left: 12px;
+}
+
+.wishlistGroup--unassigned .inboxRow.sourceListRow {
+  border-left-color: var(--line);
 }
 
 .wishlistGroup .inboxItemText {
@@ -10577,7 +10593,7 @@ input[type="number"]::-webkit-inner-spin-button {
   gap: 5px;
   color: var(--text);
   font-size: var(--dashboard-font-meta);
-  font-weight: 600;
+  font-weight: 650;
 }
 
 .sourceLockBadge--wishlist {
