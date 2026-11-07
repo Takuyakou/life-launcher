@@ -10,7 +10,7 @@ async function prepare(page: Page, fixture: VisualQaFixture) {
   await expect(page.locator(".doNowBand")).toBeVisible();
 }
 
-test("populated Today, NextStep, and Wishlist content share the same horizontal bounds", async ({
+test("populated Today and NextStep share bounds, and Wishlist content is indented inside them", async ({
   page,
 }) => {
   const fixture = createPublicFixture();
@@ -39,14 +39,17 @@ test("populated Today, NextStep, and Wishlist content share the same horizontal 
     page.locator(".inboxRow").first().boundingBox(),
   ]);
   expect(todayFirst && todayLast && projectFirst && projectLast && wishlistRow).toBeTruthy();
+  const todayRight = todayLast!.x + todayLast!.width;
   const wishlistRight = wishlistRow!.x + wishlistRow!.width;
   for (const [first, last] of [
     [todayFirst!, todayLast!],
     [projectFirst!, projectLast!],
   ]) {
-    expect(Math.abs(first.x - wishlistRow!.x)).toBeLessThanOrEqual(1);
-    expect(Math.abs(last.x + last.width - wishlistRight)).toBeLessThanOrEqual(1);
+    expect(Math.abs(first.x - todayFirst!.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(last.x + last.width - todayRight)).toBeLessThanOrEqual(1);
   }
+  expect(Math.abs(wishlistRow!.x - (todayFirst!.x + 10))).toBeLessThanOrEqual(1);
+  expect(Math.abs(wishlistRight - todayRight)).toBeLessThanOrEqual(1);
 });
 
 test("empty NextStep and Wishlist sections offer direct setup actions", async ({ page }) => {
