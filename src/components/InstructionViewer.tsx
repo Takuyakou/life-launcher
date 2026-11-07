@@ -513,15 +513,32 @@ export function InstructionViewer() {
   };
 
   // P96-03: 開いた直後と、窓が前に出たときに、どこにもフォーカスが無ければ一覧へ置く。
+  // P97-02 A: 初めて開いたときは、一覧の読み込みと窓が前に出る順番の都合で
+  // 置いたフォーカスが効かないことがあるため、少し遅らせてもう一度確かめる。
   useEffect(() => {
-    const requestTreeFocus = () => {
+    const placeTreeFocus = () => {
       const active = document.activeElement;
       if (active && active !== document.body) return;
       setTreeFocusToken((current) => current + 1);
+      // 窓が前に出る前に置くと効かないことがあるので、フレームを跨いで確かめ直す。
+      window.setTimeout(() => {
+        if (document.activeElement === document.body) {
+          const row =
+            document.querySelector<HTMLElement>('.instructionTreeRow[aria-selected="true"]') ??
+            document.querySelector<HTMLElement>('.instructionTreeRow[tabindex="0"]') ??
+            document.querySelector<HTMLElement>(".instructionTreeRow");
+          row?.focus();
+        }
+      }, 180);
     };
-    requestTreeFocus();
-    window.addEventListener("focus", requestTreeFocus);
-    return () => window.removeEventListener("focus", requestTreeFocus);
+    placeTreeFocus();
+    window.addEventListener("focus", placeTreeFocus);
+    // 窓が表示されたとき（非表示で作ってから出す）にもう一度確かめる。
+    document.addEventListener("visibilitychange", placeTreeFocus);
+    return () => {
+      window.removeEventListener("focus", placeTreeFocus);
+      document.removeEventListener("visibilitychange", placeTreeFocus);
+    };
   }, []);
 
   /** 一覧の、開いているファイルの行(なければ先頭の行)へフォーカスを戻す。 */
