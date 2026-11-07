@@ -551,13 +551,6 @@ type ContextMenuTarget =
       itemText: string;
     }
   | {
-      kind: "todayBuilder";
-      index: number;
-    }
-  | {
-      kind: "todayBuilderBar";
-    }
-  | {
       kind: "doNow";
     }
   | {
@@ -692,8 +685,6 @@ type ProjectDragPreview = {
     width: number;
     height?: number;
   };
-  restoreTarget: boolean;
-  restoreEligible: boolean;
   wishlistTarget: boolean;
   wishlistEligible: boolean;
   todayTargetIndex?: number;
@@ -736,8 +727,6 @@ type InboxDragPreview = {
     top: number;
     width: number;
   };
-  restoreTarget: boolean;
-  restoreEligible: boolean;
   nextStepEligible: boolean;
   nextStepTargetProjectId?: string;
   todayTargetIndex?: number;
@@ -778,48 +767,6 @@ type WishlistGroupDragPreview = {
     top: number;
     width: number;
   };
-};
-
-type TodayBuilderPointerDrag = {
-  index: number;
-  sourceKey: string;
-  origin: "todayBuilder";
-  dayKey: string;
-  startX: number;
-  startY: number;
-  hasMoved: boolean;
-  offsetX: number;
-  offsetY: number;
-  width: number;
-  height: number;
-};
-
-type TodayBuilderDragPreview = {
-  index: number;
-  sourceKey: string;
-  pointerX: number;
-  pointerY: number;
-  offsetX: number;
-  offsetY: number;
-  width: number;
-  height: number;
-  targetIndex?: number;
-  placement?: "before" | "after";
-  targetIndicator?: {
-    left: number;
-    top: number;
-    width: number;
-  };
-  todayTargetIndex?: number;
-  todayTargetIndicator?: {
-    left: number;
-    top: number;
-    width: number;
-    height: number;
-  };
-  todayGuidanceActive: boolean;
-  sourceTarget: "project" | "wishlist";
-  sourceTargetActive: boolean;
 };
 
 type NumberInputDragField =
@@ -869,7 +816,6 @@ const MINI_WINDOW_HEIGHT_PX = 136;
 const MINI_WINDOW_SAFE_MARGIN_PX = 16;
 const NUMBER_INPUT_DRAG_THRESHOLD_PX = 4;
 const NUMBER_INPUT_DRAG_PIXELS_PER_STEP = 8;
-const TODAY_BUILDER_PAGE_SIZE = 5;
 const PROJECT_CARD_COMPACT_LIMIT = 6;
 const SOURCE_LIST_COMPACT_LIMIT = 5;
 const SOURCE_LIST_PAGINATION_THRESHOLD = 20;
@@ -888,22 +834,6 @@ function sourceListRange(total: number, expanded: boolean, page: number) {
   const safePage = Math.min(Math.max(1, page), pageCount);
   const start = (safePage - 1) * SOURCE_LIST_PAGE_SIZE;
   return { start, end: Math.min(total, start + SOURCE_LIST_PAGE_SIZE), page: safePage, pageCount };
-}
-const TODAY_BUILDER_ORDER_STORAGE_KEY = "life-launcher-today-builder-order";
-
-function readStoredStringArray(key: string): string[] {
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(key) ?? "[]");
-    return Array.isArray(parsed)
-      ? parsed.filter((value): value is string => typeof value === "string")
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeStoredStringArray(key: string, values: string[]) {
-  window.localStorage.setItem(key, JSON.stringify(values));
 }
 
 function createStableId(): string {
@@ -930,9 +860,6 @@ function toggleDisclosureFromBar(event: ReactMouseEvent<HTMLElement>, toggle: ()
   toggle();
 }
 
-function legacyTodayBuilderVisible(): boolean {
-  return false;
-}
 
 function formatActionSummary(results: ActionResult[]): { tone: ToastTone; message: string } {
   const failed = results.filter((result) => !result.ok);
@@ -1750,13 +1677,6 @@ function todayAdoptionDropTargetFromPoint(
   };
 }
 
-function builderRestoreTargetFromPoint(x: number, y: number): boolean {
-  const band = document.querySelector<HTMLElement>(".todayBuilderBand");
-  if (!band) return false;
-  const rect = band.getBoundingClientRect();
-  return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
-}
-
 function pointWithinSelector(x: number, y: number, selector: string): boolean {
   const element = document.querySelector<HTMLElement>(selector);
   if (!element) return false;
@@ -1916,37 +1836,6 @@ function inboxDropTargetFromPoint(
   if (!row) return null;
 
   const index = Number(row.dataset.inboxIndex);
-  if (Number.isNaN(index)) return null;
-  const rect = row.getBoundingClientRect();
-  const placement = y < rect.top + rect.height / 2 ? "before" : "after";
-  return {
-    index,
-    placement,
-    indicator: {
-      left: rect.left + 6,
-      top: placement === "before" ? rect.top - 2 : rect.bottom + 1,
-      width: Math.max(0, rect.width - 12),
-    },
-  };
-}
-
-function todayBuilderDropTargetFromPoint(
-  x: number,
-  y: number,
-): {
-  index: number;
-  placement: "before" | "after";
-  indicator: { left: number; top: number; width: number };
-} | null {
-  const row = Array.from(document.querySelectorAll<HTMLElement>("[data-today-builder-index]")).find(
-    (candidate) => {
-      const rect = candidate.getBoundingClientRect();
-      return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
-    },
-  );
-  if (!row) return null;
-
-  const index = Number(row.dataset.todayBuilderIndex);
   if (Number.isNaN(index)) return null;
   const rect = row.getBoundingClientRect();
   const placement = y < rect.top + rect.height / 2 ? "before" : "after";
@@ -2258,15 +2147,6 @@ function DashboardApp() {
   const [wishlistGroupViews, setWishlistGroupViews] = useState<Record<string, WishlistGroupView>>(
     {},
   );
-  const [todayBuilderOpen, setTodayBuilderOpen] = useState(false);
-  const [todayBuilderPage, setTodayBuilderPage] = useState(1);
-  const [todayBuilderWishlistCollapsed, setTodayBuilderWishlistCollapsed] = useState<
-    Record<string, boolean>
-  >({});
-  const [, setTodayBuilderOrderRevision] = useState(0);
-  const [todayBuilderPointerDrag, setTodayBuilderPointerDrag] =
-    useState<TodayBuilderDragPreview | null>(null);
-  const [builderRestoreTargetActive, setBuilderRestoreTargetActive] = useState(false);
   const [todayPickerOpen, setTodayPickerOpen] = useState(false);
   const [todayPickerWishlistCollapsed, setTodayPickerWishlistCollapsed] = useState<
     Record<string, boolean>
@@ -2386,9 +2266,6 @@ function DashboardApp() {
   const [inboxPointerDrag, setInboxPointerDrag] = useState<InboxDragPreview | null>(null);
   const [wishlistGroupPointerDrag, setWishlistGroupPointerDrag] =
     useState<WishlistGroupDragPreview | null>(null);
-  const builderRestoreGuidanceActive = Boolean(
-    projectPointerDrag?.restoreEligible || inboxPointerDrag?.restoreEligible,
-  );
   const [miniTransitioning, setMiniTransitioning] = useState(false);
   const [numberInputDragging, setNumberInputDragging] = useState<NumberInputDragField | null>(null);
   const [actionDragId, setActionDragId] = useState<string | null>(null);
@@ -2401,11 +2278,6 @@ function DashboardApp() {
   const projectPointerDragRef = useRef<ProjectPointerDrag | null>(null);
   const inboxPointerDragRef = useRef<InboxPointerDrag | null>(null);
   const wishlistGroupPointerDragRef = useRef<WishlistGroupPointerDrag | null>(null);
-  const todayBuilderPointerDragRef = useRef<TodayBuilderPointerDrag | null>(null);
-  const builderAutoOpenTimerRef = useRef<number | null>(null);
-  const builderTemporarilyOpenedRef = useRef(false);
-  const todayBuilderOpenRef = useRef(todayBuilderOpen);
-  todayBuilderOpenRef.current = todayBuilderOpen;
   const inboxAddSavingRef = useRef(false);
   const projectEditSavingRef = useRef(false);
   const configSaveBlockedRef = useRef(false);
@@ -5808,73 +5680,6 @@ function DashboardApp() {
     return draggedIndex < targetIndex ? "after" : "before";
   };
 
-  const clearBuilderRestoreHover = (keepTemporaryOpen = false) => {
-    if (builderAutoOpenTimerRef.current !== null) {
-      window.clearTimeout(builderAutoOpenTimerRef.current);
-      builderAutoOpenTimerRef.current = null;
-    }
-    setBuilderRestoreTargetActive(false);
-    if (builderTemporarilyOpenedRef.current) {
-      if (!keepTemporaryOpen) setTodayBuilderOpen(false);
-      builderTemporarilyOpenedRef.current = false;
-    }
-  };
-
-  const updateBuilderRestoreHover = (x: number, y: number, eligible: boolean) => {
-    const overBuilder = eligible && builderRestoreTargetFromPoint(x, y);
-    setBuilderRestoreTargetActive(overBuilder);
-    if (!overBuilder) {
-      clearBuilderRestoreHover();
-      return false;
-    }
-    if (!todayBuilderOpenRef.current && builderAutoOpenTimerRef.current === null) {
-      builderAutoOpenTimerRef.current = window.setTimeout(() => {
-        builderAutoOpenTimerRef.current = null;
-        builderTemporarilyOpenedRef.current = true;
-        setTodayBuilderOpen(true);
-      }, 500);
-    }
-    return true;
-  };
-
-  const sourceCanReturnToBuilder = (sourceKey: string, dayKey: string) => {
-    const current = configRef.current;
-    if (!current || current.today.date !== dayKey) return false;
-    if (!current.today.candidateExcludedSourceKeys.includes(sourceKey)) return false;
-    if (sourceKey.startsWith("project:")) {
-      const id = sourceKey.slice("project:".length);
-      return current.projects.some((project) => project.id === id && project.nextStep?.text.trim());
-    }
-    if (sourceKey.startsWith("wishlist:")) {
-      const id = sourceKey.slice("wishlist:".length);
-      return current.inbox.some((item) => item.id === id && item.text.trim());
-    }
-    return false;
-  };
-
-  const finishBuilderRestoreDrop = (sourceKey: string, dayKey: string, x: number, y: number) => {
-    const valid =
-      builderRestoreTargetFromPoint(x, y) && sourceCanReturnToBuilder(sourceKey, dayKey);
-    if (!valid) {
-      clearBuilderRestoreHover();
-      return false;
-    }
-    setBuilderRestoreTargetActive(false);
-    if (builderAutoOpenTimerRef.current !== null) {
-      window.clearTimeout(builderAutoOpenTimerRef.current);
-      builderAutoOpenTimerRef.current = null;
-    }
-    void restoreTodayBuilderCandidate(sourceKey).then((result) => {
-      if (result) {
-        setTodayBuilderOpen(true);
-        builderTemporarilyOpenedRef.current = false;
-      } else {
-        clearBuilderRestoreHover();
-      }
-    });
-    return true;
-  };
-
   const startProjectPointerDrag = (event: PointerEvent<HTMLElement>, projectId: string) => {
     if (event.button !== 0 || isReorderBlockedTarget(event.target)) return;
     const current = configRef.current;
@@ -5907,10 +5712,8 @@ function DashboardApp() {
       drag.hasMoved = true;
     }
     if (drag.hasMoved) {
-      const overBuilder = builderRestoreTargetFromPoint(event.clientX, event.clientY);
       const overWishlist = pointWithinSelector(event.clientX, event.clientY, ".inboxBand");
       const overToday = pointWithinSelector(event.clientX, event.clientY, ".todayGrid");
-      const restoreEligible = sourceCanReturnToBuilder(drag.sourceKey, drag.dayKey);
       const current = configRef.current;
       const project = current?.projects.find((candidate) => candidate.id === drag.id);
       const candidate = current ? todayCandidateFromConfig(current, drag.sourceKey) : undefined;
@@ -5936,13 +5739,8 @@ function DashboardApp() {
       const wishlistEligible = Boolean(
         project?.nextStep?.text.trim() && !sourceEditBlocked(drag.sourceKey),
       );
-      const restoreTarget = updateBuilderRestoreHover(
-        event.clientX,
-        event.clientY,
-        restoreEligible,
-      );
       const target =
-        overBuilder || overWishlist || overToday
+        overWishlist || overToday
           ? null
           : projectDropTargetFromPoint(event.clientX, event.clientY);
       const placement = target ? resolveProjectDropPlacement(drag.id, target) : undefined;
@@ -5954,14 +5752,12 @@ function DashboardApp() {
         offsetY: drag.offsetY,
         width: drag.width,
         height: drag.height,
-        targetId: restoreTarget || todayTarget ? undefined : target?.id,
-        placement: restoreTarget || todayTarget ? undefined : placement,
+        targetId: todayTarget ? undefined : target?.id,
+        placement: todayTarget ? undefined : placement,
         targetIndicator:
-          !restoreTarget && !todayTarget && target && target.id !== drag.id && placement
+          !todayTarget && target && target.id !== drag.id && placement
             ? projectDropIndicator(target.id, placement)
             : undefined,
-        restoreTarget,
-        restoreEligible,
         wishlistTarget: overWishlist && wishlistEligible,
         wishlistEligible,
         todayTargetIndex: todayTarget?.insertionIndex,
@@ -5982,12 +5778,6 @@ function DashboardApp() {
     event.preventDefault();
     event.stopPropagation();
     if (!drag.hasMoved) return;
-
-    if (finishBuilderRestoreDrop(drag.sourceKey, drag.dayKey, event.clientX, event.clientY)) {
-      return;
-    }
-    clearBuilderRestoreHover();
-    if (builderRestoreTargetFromPoint(event.clientX, event.clientY)) return;
 
     const current = configRef.current;
     const candidate = current ? todayCandidateFromConfig(current, drag.sourceKey) : undefined;
@@ -6034,7 +5824,6 @@ function DashboardApp() {
     projectPointerDragRef.current = null;
     setProjectPointerDrag(null);
     stopProjectAutoScroll();
-    clearBuilderRestoreHover();
   };
 
   const startInboxPointerDrag = (event: PointerEvent<HTMLDivElement>, index: number) => {
@@ -6075,8 +5864,6 @@ function DashboardApp() {
     if (!drag.hasMoved && distance >= SIDEBAR_DRAG_THRESHOLD_PX) drag.hasMoved = true;
     if (!drag.hasMoved) return;
 
-    const restoreEligible = sourceCanReturnToBuilder(drag.sourceKey, drag.dayKey);
-    const restoreTarget = updateBuilderRestoreHover(event.clientX, event.clientY, restoreEligible);
     const sourceItem = current?.inbox[sourceIndex];
     const sourceEditable = Boolean(
       sourceItem?.id && !sourceEditBlocked(`wishlist:${sourceItem.id}`),
@@ -6112,9 +5899,7 @@ function DashboardApp() {
         ? sourceProject?.id
         : undefined;
     const candidateTarget =
-      builderRestoreTargetFromPoint(event.clientX, event.clientY) ||
-      nextStepTargetProjectId ||
-      todayTarget
+      nextStepTargetProjectId || todayTarget
         ? null
         : inboxDropTargetFromPoint(event.clientX, event.clientY);
     const projectIds = new Set((current?.projects ?? []).map((project) => project.id));
@@ -6134,14 +5919,10 @@ function DashboardApp() {
       offsetY: drag.offsetY,
       width: drag.width,
       height: drag.height,
-      targetIndex: restoreTarget || todayTarget ? undefined : target?.index,
-      placement: restoreTarget || todayTarget ? undefined : target?.placement,
+      targetIndex: todayTarget ? undefined : target?.index,
+      placement: todayTarget ? undefined : target?.placement,
       targetIndicator:
-        !restoreTarget && !todayTarget && target && target.index !== drag.index
-          ? target.indicator
-          : undefined,
-      restoreTarget,
-      restoreEligible,
+        !todayTarget && target && target.index !== drag.index ? target.indicator : undefined,
       nextStepEligible,
       nextStepTargetProjectId,
       todayTargetIndex: todayTarget?.insertionIndex,
@@ -6160,12 +5941,7 @@ function DashboardApp() {
     event.stopPropagation();
     if (!drag.hasMoved) return;
 
-    if (finishBuilderRestoreDrop(drag.sourceKey, drag.dayKey, event.clientX, event.clientY)) {
-      return;
-    }
-    clearBuilderRestoreHover();
     stopProjectAutoScroll();
-    if (builderRestoreTargetFromPoint(event.clientX, event.clientY)) return;
 
     const current = configRef.current;
     const sourceIndex =
@@ -6234,7 +6010,6 @@ function DashboardApp() {
     inboxPointerDragRef.current = null;
     setInboxPointerDrag(null);
     stopProjectAutoScroll();
-    clearBuilderRestoreHover();
   };
 
   const toggleWishlistGroup = (key: string) => {
@@ -6316,149 +6091,6 @@ function DashboardApp() {
   const cancelWishlistGroupPointerDrag = () => {
     wishlistGroupPointerDragRef.current = null;
     setWishlistGroupPointerDrag(null);
-    stopProjectAutoScroll();
-  };
-
-  const startTodayBuilderPointerDrag = (event: PointerEvent<HTMLDivElement>, index: number) => {
-    if (event.button !== 0 || isReorderBlockedTarget(event.target)) return;
-    const candidate = todayBuilderCandidates[index];
-    const current = configRef.current;
-    if (!candidate || !current) return;
-    event.preventDefault();
-    event.stopPropagation();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    const rect = event.currentTarget.getBoundingClientRect();
-    todayBuilderPointerDragRef.current = {
-      index,
-      sourceKey: candidate.sourceKey,
-      origin: "todayBuilder",
-      dayKey: current.today.date,
-      startX: event.clientX,
-      startY: event.clientY,
-      hasMoved: false,
-      offsetX: event.clientX - rect.left,
-      offsetY: event.clientY - rect.top,
-      width: rect.width,
-      height: rect.height,
-    };
-  };
-
-  const updateTodayBuilderPointerDrag = (event: PointerEvent<HTMLDivElement>) => {
-    const drag = todayBuilderPointerDragRef.current;
-    if (!drag) return;
-    const distance = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
-    if (!drag.hasMoved && distance >= SIDEBAR_DRAG_THRESHOLD_PX) drag.hasMoved = true;
-    if (!drag.hasMoved) return;
-
-    const sourceIndex = todayBuilderCandidates.findIndex(
-      (candidate) =>
-        candidate.sourceKey === drag.sourceKey || candidate.sourceAliases?.includes(drag.sourceKey),
-    );
-    const candidate = sourceIndex >= 0 ? todayBuilderCandidates[sourceIndex] : undefined;
-    const current = configRef.current;
-    const matchingKeys = candidate
-      ? new Set([candidate.sourceKey, ...(candidate.sourceAliases ?? [])])
-      : new Set<string>();
-    const canAdopt = Boolean(
-      candidate &&
-      current &&
-      current.today.date === drag.dayKey &&
-      current.today.items.length < TODAY_ITEM_LIMIT &&
-      !current.today.items.some((item, index) => matchingKeys.has(todaySourceKey(item, index))) &&
-      !isTodayBuilderCandidateActive(candidate),
-    );
-    const todayTarget = canAdopt
-      ? todayAdoptionDropTargetFromPoint(event.clientX, event.clientY)
-      : null;
-    const sourceTarget =
-      candidate?.source === "やりたいこと" || drag.sourceKey.startsWith("wishlist:")
-        ? "wishlist"
-        : "project";
-    const sourceTargetActive = pointWithinSelector(
-      event.clientX,
-      event.clientY,
-      sourceTarget === "wishlist" ? ".inboxBand" : ".projectsBand",
-    );
-    const target = todayBuilderDropTargetFromPoint(event.clientX, event.clientY);
-    setTodayBuilderPointerDrag({
-      index: sourceIndex >= 0 ? sourceIndex : drag.index,
-      sourceKey: drag.sourceKey,
-      pointerX: event.clientX,
-      pointerY: event.clientY,
-      offsetX: drag.offsetX,
-      offsetY: drag.offsetY,
-      width: drag.width,
-      height: drag.height,
-      targetIndex: todayTarget ? undefined : target?.index,
-      placement: todayTarget ? undefined : target?.placement,
-      targetIndicator:
-        !todayTarget && target && target.index !== drag.index ? target.indicator : undefined,
-      todayTargetIndex: todayTarget?.insertionIndex,
-      todayTargetIndicator: todayTarget?.indicator,
-      todayGuidanceActive: canAdopt,
-      sourceTarget,
-      sourceTargetActive,
-    });
-    updateProjectAutoScroll(event.clientY);
-  };
-
-  const finishTodayBuilderPointerDrag = (event: PointerEvent<HTMLDivElement>) => {
-    const drag = todayBuilderPointerDragRef.current;
-    const preview = todayBuilderPointerDrag;
-    todayBuilderPointerDragRef.current = null;
-    setTodayBuilderPointerDrag(null);
-    if (!drag) return;
-    event.preventDefault();
-    event.stopPropagation();
-    if (!drag.hasMoved) return;
-
-    const sourceIndex = todayBuilderCandidates.findIndex(
-      (candidate) =>
-        candidate.sourceKey === drag.sourceKey || candidate.sourceAliases?.includes(drag.sourceKey),
-    );
-    const candidate = sourceIndex >= 0 ? todayBuilderCandidates[sourceIndex] : undefined;
-    const current = configRef.current;
-    const sourceTarget =
-      candidate?.source === "やりたいこと" || drag.sourceKey.startsWith("wishlist:")
-        ? ".inboxBand"
-        : ".projectsBand";
-    if (candidate && pointWithinSelector(event.clientX, event.clientY, sourceTarget)) {
-      void excludeTodayBuilderCandidate(sourceIndex);
-      stopProjectAutoScroll();
-      return;
-    }
-    const todayTarget = todayAdoptionDropTargetFromPoint(event.clientX, event.clientY);
-    if (
-      candidate &&
-      current &&
-      current.today.date === drag.dayKey &&
-      todayTarget &&
-      current.today.items.length < TODAY_ITEM_LIMIT &&
-      !isTodayBuilderCandidateActive(candidate)
-    ) {
-      void addCandidateToToday(candidate, todayTarget.insertionIndex);
-      stopProjectAutoScroll();
-      return;
-    }
-    stopProjectAutoScroll();
-    if (pointWithinSelector(event.clientX, event.clientY, ".todayGrid")) return;
-    const target =
-      todayBuilderDropTargetFromPoint(event.clientX, event.clientY) ??
-      (pointWithinSelector(event.clientX, event.clientY, ".todayBuilderBand") &&
-      preview?.targetIndex !== undefined &&
-      preview.placement
-        ? { index: preview.targetIndex, placement: preview.placement }
-        : null);
-    if (!target) return;
-    if (sourceIndex >= 0) {
-      moveTodayBuilderCandidate(sourceIndex, target.index, target.placement);
-    }
-  };
-
-  const cancelTodayBuilderPointerDrag = () => {
-    if (!todayBuilderPointerDragRef.current) return;
-    todayBuilderPointerDragRef.current = null;
-    setTodayBuilderPointerDrag(null);
     stopProjectAutoScroll();
   };
 
@@ -9203,33 +8835,6 @@ function DashboardApp() {
     });
   };
 
-  const saveTodayBuilderOrder = (keys: string[]) => {
-    writeStoredStringArray(TODAY_BUILDER_ORDER_STORAGE_KEY, keys);
-    setTodayBuilderOrderRevision((revision) => revision + 1);
-  };
-
-  function moveTodayBuilderCandidate(
-    fromIndex: number,
-    toIndex: number,
-    placement?: "before" | "after",
-  ) {
-    if (fromIndex === toIndex) return;
-    const keys = todayBuilderCandidates.map((candidate) => candidate.key);
-    const [key] = keys.splice(fromIndex, 1);
-    const adjustedTargetIndex = placement
-      ? toIndex - (fromIndex < toIndex ? 1 : 0) + (placement === "after" ? 1 : 0)
-      : toIndex;
-    keys.splice(adjustedTargetIndex, 0, key);
-    saveTodayBuilderOrder(keys);
-  }
-
-  const moveTodayBuilderCandidateByOffset = (index: number, offset: -1 | 1) => {
-    const targetIndex = index + offset;
-    if (targetIndex < 0 || targetIndex >= todayBuilderCandidates.length) return;
-    moveTodayBuilderCandidate(index, targetIndex);
-    setContextMenu(null);
-  };
-
   const openManualSessionDialog = () => {
     if (!config) return;
     setManualSessionDraft({
@@ -9241,47 +8846,6 @@ function DashboardApp() {
     });
   };
 
-  const toggleTodayBuilder = () => {
-    setTodayBuilderOpen((open) => !open);
-  };
-
-  const focusTodayBuilder = () => {
-    setTodayBuilderOpen(true);
-    setTodayBuilderPage(1);
-    window.requestAnimationFrame(() => {
-      const target =
-        document.querySelector<HTMLElement>(".todayBuilderRow") ??
-        document.querySelector<HTMLElement>(".todayBuilderDisclosure");
-      target?.scrollIntoView({ block: "nearest" });
-      target?.focus();
-    });
-  };
-
-  const focusCandidateSource = (source: "project" | "wishlist") => {
-    if (source === "project") setProjectsOpen(true);
-    if (source === "wishlist") setInboxOpen(true);
-    window.requestAnimationFrame(() => {
-      const label = source === "project" ? "次の一手を追加" : "やりたいことを追加";
-      document.querySelector<HTMLElement>(`button[aria-label="${label}"]`)?.focus();
-    });
-  };
-
-  const navigateToCandidateSource = (source: "project" | "wishlist") => {
-    setContextMenu(null);
-    if (source === "project") setProjectsOpen(true);
-    else setInboxOpen(true);
-    window.requestAnimationFrame(() => {
-      const band = document.querySelector<HTMLElement>(
-        source === "project" ? ".projectsBand" : ".inboxBand",
-      );
-      band?.querySelector<HTMLElement>(".disclosure")?.focus({ preventScroll: true });
-      band?.scrollIntoView({
-        block: "start",
-        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
-      });
-    });
-  };
-
   const startNextTodayBatch = async () => {
     if (!config || !allTodayItemsCompleted) return;
     const saved = await persistConfig({
@@ -9290,7 +8854,6 @@ function DashboardApp() {
     });
     if (!saved) return;
     showToast("ok", "次の3件を選べます");
-    focusTodayBuilder();
   };
 
   const saveManualSession = async () => {
@@ -9499,30 +9062,16 @@ function DashboardApp() {
         todayPointerDragRef.current ||
         projectPointerDragRef.current ||
         inboxPointerDragRef.current ||
-        wishlistGroupPointerDragRef.current ||
-        todayBuilderPointerDragRef.current,
+        wishlistGroupPointerDragRef.current,
       );
       if (!hadDrag) return;
       event?.preventDefault();
       todayPointerDragRef.current = null;
       projectPointerDragRef.current = null;
       inboxPointerDragRef.current = null;
-      wishlistGroupPointerDragRef.current = null;
-      todayBuilderPointerDragRef.current = null;
       setTodayPointerDrag(null);
       setProjectPointerDrag(null);
       setInboxPointerDrag(null);
-      setWishlistGroupPointerDrag(null);
-      setTodayBuilderPointerDrag(null);
-      setBuilderRestoreTargetActive(false);
-      if (builderAutoOpenTimerRef.current !== null) {
-        window.clearTimeout(builderAutoOpenTimerRef.current);
-        builderAutoOpenTimerRef.current = null;
-      }
-      if (builderTemporarilyOpenedRef.current) {
-        builderTemporarilyOpenedRef.current = false;
-        setTodayBuilderOpen(false);
-      }
       projectAutoScrollSpeedRef.current = 0;
       if (projectAutoScrollFrameRef.current !== null) {
         window.cancelAnimationFrame(projectAutoScrollFrameRef.current);
@@ -9704,180 +9253,6 @@ function DashboardApp() {
         </button>
       </div>
     );
-  };
-  const candidateFromConfig = todayCandidateFromConfig;
-  const explicitlyExcludedCandidate = (sourceKey: string, current = config) => {
-    const candidate = candidateFromConfig(current, sourceKey);
-    if (!candidate) return undefined;
-    const excludedSourceKeys = new Set(current.today.candidateExcludedSourceKeys);
-    return [candidate.sourceKey, ...(candidate.sourceAliases ?? [])].some((key) =>
-      excludedSourceKeys.has(key),
-    )
-      ? candidate
-      : undefined;
-  };
-  const restoreTodayBuilderCandidate = async (sourceKey: string) => {
-    const current = configRef.current;
-    if (!current) return null;
-    const candidate = explicitlyExcludedCandidate(sourceKey, current);
-    if (!candidate || current.today.date !== config.today.date) return null;
-    const matchingSourceKeys = new Set([candidate.sourceKey, ...(candidate.sourceAliases ?? [])]);
-    const selectionMutationTokens = { ...current.today.selectionMutationTokens };
-    delete selectionMutationTokens[candidate.sourceKey];
-    const saved = await persistConfig({
-      ...current,
-      today: {
-        ...current.today,
-        candidateExcludedSourceKeys: current.today.candidateExcludedSourceKeys.filter(
-          (key) => !matchingSourceKeys.has(key),
-        ),
-        selectionMutationTokens,
-      },
-    });
-    if (!saved) return null;
-    setContextMenu(null);
-    showToast("ok", "今日の候補に戻しました");
-    return {
-      operationId: createStableId(),
-      sourceKey: candidate.sourceKey,
-      syncedTargets: ["todayBuilder"] as const,
-    };
-  };
-  const editTodayBuilderCandidate = (candidate?: TodayCandidate) => {
-    if (!candidate) return;
-    const key = canonicalSourceKey(config, candidate.sourceKey);
-    if (!key || sourceEditBlocked(key)) {
-      if (key) warnSourceEditBlocked(key);
-      return;
-    }
-    const project = config.projects.find((item) => `project:${item.id}` === key);
-    if (project) {
-      openNextStepEditor(project);
-      return;
-    }
-    const inboxIndex = config.inbox.findIndex((item) => `wishlist:${item.id}` === key);
-    if (inboxIndex >= 0) beginInboxEdit(inboxIndex, "builder");
-  };
-  const todayBuilderWishlistGroupKey = (candidate: TodayCandidate) =>
-    candidate.projectId && projectsById.has(candidate.projectId)
-      ? `project:${candidate.projectId}`
-      : "unassigned";
-  const todayBuilderCandidates = (() => {
-    const excludedSourceKeys = new Set(config.today.candidateExcludedSourceKeys);
-    const activeCandidates = rawTodayBuilderCandidates.filter(
-      (candidate) =>
-        ![candidate.sourceKey, ...(candidate.sourceAliases ?? [])].some((key) =>
-          excludedSourceKeys.has(key),
-        ),
-    );
-    const savedOrder = readStoredStringArray(TODAY_BUILDER_ORDER_STORAGE_KEY);
-    const order = new Map(savedOrder.map((key, index) => [key, index]));
-    const orderIndex = (candidate: TodayCandidate) =>
-      [candidate.key, ...(candidate.legacyOrderKeys ?? [])]
-        .map((key) => order.get(key))
-        .find((index) => index !== undefined);
-    const orderedCandidates = [...activeCandidates].sort((left, right) => {
-      const sourceOrder = (candidate: TodayCandidate) => (candidate.source === "次の一手" ? 0 : 1);
-      const sourceDifference = sourceOrder(left) - sourceOrder(right);
-      if (sourceDifference !== 0) return sourceDifference;
-      const leftIndex = orderIndex(left);
-      const rightIndex = orderIndex(right);
-      if (leftIndex === undefined && rightIndex === undefined) return 0;
-      if (leftIndex === undefined) return 1;
-      if (rightIndex === undefined) return -1;
-      return leftIndex - rightIndex;
-    });
-    const wishlistGroups = new Map<string, TodayCandidate[]>();
-    orderedCandidates
-      .filter((candidate) => candidate.source === "やりたいこと")
-      .forEach((candidate) => {
-        const key = todayBuilderWishlistGroupKey(candidate);
-        wishlistGroups.set(key, [...(wishlistGroups.get(key) ?? []), candidate]);
-      });
-    return [
-      ...orderedCandidates.filter((candidate) => candidate.source !== "やりたいこと"),
-      ...Array.from(wishlistGroups.values()).flat(),
-    ];
-  })();
-  const todayBuilderWishlistGroupCounts = todayBuilderCandidates.reduce<Map<string, number>>(
-    (counts, candidate) => {
-      if (candidate.source !== "やりたいこと") return counts;
-      const key = todayBuilderWishlistGroupKey(candidate);
-      counts.set(key, (counts.get(key) ?? 0) + 1);
-      return counts;
-    },
-    new Map(),
-  );
-  const todayBuilderPageCount = Math.max(
-    1,
-    Math.ceil(todayBuilderCandidates.length / TODAY_BUILDER_PAGE_SIZE),
-  );
-  const visibleTodayBuilderPage = Math.min(todayBuilderPage, todayBuilderPageCount);
-  const visibleTodayBuilderCandidates = todayBuilderCandidates.slice(
-    (visibleTodayBuilderPage - 1) * TODAY_BUILDER_PAGE_SIZE,
-    visibleTodayBuilderPage * TODAY_BUILDER_PAGE_SIZE,
-  );
-  const isTodayBuilderCandidateActive = (candidate?: TodayCandidate) =>
-    candidate
-      ? isTimerActiveForSource(
-          [candidate.sourceKey, ...(candidate.sourceAliases ?? [])],
-          candidate.sourceKey.startsWith("project:") ? candidate.projectId : undefined,
-        )
-      : false;
-  const excludeTodayBuilderCandidate = async (index: number) => {
-    const candidate = todayBuilderCandidates[index];
-    const current = configRef.current;
-    if (!candidate || !current) return;
-    if (isTodayBuilderCandidateActive(candidate)) {
-      setContextMenu(null);
-      showToast("warn", "タイマーを停止してから外してください");
-      return;
-    }
-    const matchingSourceKeys = new Set([candidate.sourceKey, ...(candidate.sourceAliases ?? [])]);
-    const stableItems = current.today.items.map((item, itemIndex) =>
-      item.sourceKey?.trim() ? item : { ...item, sourceKey: todaySourceKey(item, itemIndex) },
-    );
-    const removedIndex = stableItems.findIndex((item) =>
-      matchingSourceKeys.has(item.sourceKey ?? ""),
-    );
-    const removedItem = removedIndex >= 0 ? stableItems[removedIndex] : null;
-    const previousSourceKey =
-      removedIndex > 0 ? (stableItems[removedIndex - 1]?.sourceKey ?? null) : null;
-    const nextSourceKey =
-      removedIndex >= 0 ? (stableItems[removedIndex + 1]?.sourceKey ?? null) : null;
-    const operationId = createStableId();
-    const saved = await persistConfig({
-      ...current,
-      today: {
-        ...current.today,
-        items: stableItems.filter((item) => !matchingSourceKeys.has(item.sourceKey ?? "")),
-        candidateExcludedSourceKeys: Array.from(
-          new Set([...current.today.candidateExcludedSourceKeys, candidate.sourceKey]),
-        ),
-        selectionMutationTokens: {
-          ...current.today.selectionMutationTokens,
-          [candidate.sourceKey]: operationId,
-        },
-      },
-    });
-    if (saved) {
-      setContextMenu(null);
-      showToast("ok", "今日の候補から外しました", {
-        detail: "元の次の一手・やりたいことは残ります",
-        actionLabel: "元に戻す",
-        onAction: () =>
-          undoTodaySelectionOperation({
-            operationId,
-            dayKey: current.today.date,
-            sourceKey: candidate.sourceKey,
-            item: removedItem,
-            previousSourceKey,
-            nextSourceKey,
-            sourceSnapshot: sourceSnapshotForUndo(current, candidate.sourceKey),
-            restoreExclusion: true,
-          }),
-      });
-    }
   };
   const allTodayItemsCompleted =
     config.today.items.length === TODAY_ITEM_LIMIT && config.today.items.every((item) => item.done);
@@ -11432,12 +10807,10 @@ function DashboardApp() {
                             completionFeedback?.kind === "todayAll"
                               ? "todayGrid--allCompleteReward"
                               : "",
-                            todayBuilderPointerDrag?.todayGuidanceActive ||
                             projectPointerDrag?.todayGuidanceActive ||
                             inboxPointerDrag?.todayGuidanceActive
                               ? "todayGrid--dropGuidance"
                               : "",
-                            todayBuilderPointerDrag?.todayTargetIndicator ||
                             projectPointerDrag?.todayTargetIndicator ||
                             inboxPointerDrag?.todayTargetIndicator
                               ? "todayGrid--dropTarget"
@@ -11446,8 +10819,7 @@ function DashboardApp() {
                             .filter(Boolean)
                             .join(" ")}
                         >
-                          {(todayBuilderPointerDrag?.todayGuidanceActive ||
-                            projectPointerDrag?.todayGuidanceActive ||
+                          {(projectPointerDrag?.todayGuidanceActive ||
                             inboxPointerDrag?.todayGuidanceActive) && (
                             <div aria-hidden="true" className="todayDropGuidanceOverlay">
                               ↓ ここにドロップして「今日の3件」に追加
@@ -11966,419 +11338,12 @@ function DashboardApp() {
                   )}
                 </section>
 
-                {legacyTodayBuilderVisible() && (
-                  <section
-                    className={[
-                      "todayBuilderBand",
-                      builderRestoreGuidanceActive ? "todayBuilderBand--restoreTarget" : "",
-                      builderRestoreTargetActive ? "todayBuilderBand--restoreHover" : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                    data-today-builder-drop-target
-                  >
-                    <div
-                      className="disclosureHeader todayBuilderHeader"
-                      onContextMenu={(event) => {
-                        event.preventDefault();
-                        openContextMenu(
-                          { kind: "todayBuilderBar" },
-                          event.clientX,
-                          event.clientY,
-                          event.currentTarget,
-                        );
-                      }}
-                      onKeyDown={(event) =>
-                        openContextMenuFromKeyboard(event, { kind: "todayBuilderBar" })
-                      }
-                      onClick={(event) => toggleDisclosureFromBar(event, toggleTodayBuilder)}
-                      tabIndex={0}
-                    >
-                      <button
-                        aria-expanded={todayBuilderOpen}
-                        className="disclosure todayBuilderDisclosure"
-                        onClick={toggleTodayBuilder}
-                        type="button"
-                      >
-                        <UiIcon
-                          name={todayBuilderOpen ? "chevronDown" : "chevronRight"}
-                          size={16}
-                        />
-                        <span className="disclosureLabel">
-                          <strong>今日を組み立てる</strong>
-                        </span>
-                      </button>
-                      <span className="disclosureCount">{todayBuilderCandidates.length}件</span>
-                      <span className="disclosureDescription">
-                        次の一手・やりたいことから、今日やるものを選ぶ
-                      </span>
-                    </div>
-
-                    {builderRestoreGuidanceActive && (
-                      <div
-                        className={
-                          builderRestoreTargetActive
-                            ? "todayBuilderRestoreDropZone todayBuilderRestoreDropZone--active"
-                            : "todayBuilderRestoreDropZone"
-                        }
-                      >
-                        <span aria-hidden="true">↓</span>
-                        <span>
-                          {todayPointerDrag?.removeEligible
-                            ? "ここにドロップして今日の3件から外す"
-                            : "ここにドロップして今日を組み立てるに入れる"}
-                        </span>
-                      </div>
-                    )}
-                    {todayBuilderOpen && (
-                      <div className="todayBuilderBody">
-                        {todayBuilderCandidates.length === 0 ? (
-                          <div className="sectionEmptyActions sectionEmptyActions--sources">
-                            <span>
-                              候補はまだありません。次の一手か、やりたいことを登録できます。
-                            </span>
-                            <div>
-                              <button
-                                className="mainActionButton mainActionButton--neutral"
-                                onClick={() => focusCandidateSource("project")}
-                                type="button"
-                              >
-                                次の一手へ
-                              </button>
-                              <button
-                                className="mainActionButton mainActionButton--neutral"
-                                onClick={() => focusCandidateSource("wishlist")}
-                                type="button"
-                              >
-                                やりたいことへ
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          visibleTodayBuilderCandidates.map((candidate, pageIndex) => {
-                            const index =
-                              (visibleTodayBuilderPage - 1) * TODAY_BUILDER_PAGE_SIZE + pageIndex;
-                            const wishlistGroupKey =
-                              candidate.source === "やりたいこと"
-                                ? todayBuilderWishlistGroupKey(candidate)
-                                : null;
-                            const previousVisibleCandidate =
-                              visibleTodayBuilderCandidates[pageIndex - 1];
-                            const showWishlistGroupHeading = Boolean(
-                              wishlistGroupKey &&
-                              (pageIndex === 0 ||
-                                previousVisibleCandidate?.source !== "やりたいこと" ||
-                                todayBuilderWishlistGroupKey(previousVisibleCandidate) !==
-                                  wishlistGroupKey),
-                            );
-                            const wishlistGroupCollapsed = Boolean(
-                              wishlistGroupKey && todayBuilderWishlistCollapsed[wishlistGroupKey],
-                            );
-                            const wishlistGroupProject =
-                              candidate.projectId && projectsById.has(candidate.projectId)
-                                ? projectsById.get(candidate.projectId)
-                                : undefined;
-                            const matchingSourceKeys = new Set([
-                              candidate.sourceKey,
-                              ...(candidate.sourceAliases ?? []),
-                            ]);
-                            const selectedIndex = config.today.items.findIndex((item, todayIndex) =>
-                              matchingSourceKeys.has(todaySourceKey(item, todayIndex)),
-                            );
-                            const isSelected = selectedIndex >= 0;
-                            const selectedTimerRunning =
-                              isSelected &&
-                              isTimerOnTodayItem(config.today.items[selectedIndex], selectedIndex);
-                            const isFull = config.today.items.length >= TODAY_ITEM_LIMIT;
-                            return (
-                              <div
-                                className="todayBuilderCandidate"
-                                data-today-builder-wishlist-group={wishlistGroupKey ?? undefined}
-                                key={candidate.key}
-                              >
-                                {(index === 0 ||
-                                  todayBuilderCandidates[index - 1]?.source !==
-                                    candidate.source) && (
-                                  <div className="todayBuilderGroupHeading">
-                                    <strong>{candidate.source}</strong>
-                                    <span>
-                                      {
-                                        todayBuilderCandidates.filter(
-                                          (item) => item.source === candidate.source,
-                                        ).length
-                                      }
-                                      件
-                                    </span>
-                                  </div>
-                                )}
-                                {showWishlistGroupHeading && wishlistGroupKey && (
-                                  <button
-                                    aria-expanded={!wishlistGroupCollapsed}
-                                    className="todayBuilderProjectGroupHeader"
-                                    data-today-builder-project-group={wishlistGroupKey}
-                                    onClick={() =>
-                                      setTodayBuilderWishlistCollapsed((current) => ({
-                                        ...current,
-                                        [wishlistGroupKey]: !current[wishlistGroupKey],
-                                      }))
-                                    }
-                                    type="button"
-                                  >
-                                    <UiIcon
-                                      name={wishlistGroupCollapsed ? "chevronRight" : "chevronDown"}
-                                      size={16}
-                                    />
-                                    {wishlistGroupProject ? (
-                                      <ProjectIdentity
-                                        colorId={wishlistGroupProject.colorId}
-                                        compact
-                                        name={wishlistGroupProject.name}
-                                        projectId={wishlistGroupProject.id}
-                                      />
-                                    ) : (
-                                      <strong>未分類</strong>
-                                    )}
-                                    <span>
-                                      {todayBuilderWishlistGroupCounts.get(wishlistGroupKey) ?? 0}件
-                                    </span>
-                                  </button>
-                                )}
-                                {!wishlistGroupCollapsed && (
-                                  <div
-                                    className={[
-                                      "todayBuilderRow sourceListRow",
-                                      wishlistGroupKey ? "todayBuilderRow--groupedWishlist" : "",
-                                      isSelected ? "todayBuilderRow--selected" : "",
-                                      todayBuilderPointerDrag?.index === index
-                                        ? "todayBuilderRow--dragging"
-                                        : "",
-                                    ]
-                                      .filter(Boolean)
-                                      .join(" ")}
-                                    data-today-builder-index={index}
-                                    onContextMenu={(event) => {
-                                      event.preventDefault();
-                                      event.stopPropagation();
-                                      openContextMenu(
-                                        { kind: "todayBuilder", index },
-                                        event.clientX,
-                                        event.clientY,
-                                        event.currentTarget,
-                                      );
-                                    }}
-                                    onKeyDown={(event) =>
-                                      openContextMenuFromKeyboard(event, {
-                                        kind: "todayBuilder",
-                                        index,
-                                      })
-                                    }
-                                    onPointerCancel={cancelTodayBuilderPointerDrag}
-                                    onPointerDown={(event) =>
-                                      startTodayBuilderPointerDrag(event, index)
-                                    }
-                                    onPointerMove={updateTodayBuilderPointerDrag}
-                                    onPointerUp={finishTodayBuilderPointerDrag}
-                                    tabIndex={0}
-                                  >
-                                    <div
-                                      className={
-                                        wishlistGroupKey
-                                          ? "sourceListCopy sourceListCopy--groupedWishlist"
-                                          : "sourceListCopy"
-                                      }
-                                    >
-                                      {!wishlistGroupKey && (
-                                        <span className="inboxProjectIdentity">
-                                          {candidate.projectId &&
-                                          projectsById.has(candidate.projectId) ? (
-                                            <ProjectIdentity
-                                              colorId={
-                                                projectsById.get(candidate.projectId)?.colorId
-                                              }
-                                              compact
-                                              name={
-                                                projectsById.get(candidate.projectId)?.name ?? ""
-                                              }
-                                              projectId={candidate.projectId}
-                                            />
-                                          ) : (
-                                            <span className="sourceProjectNone">
-                                              プロジェクトなし
-                                            </span>
-                                          )}
-                                        </span>
-                                      )}
-                                      <strong title={candidate.text}>{candidate.text}</strong>
-                                    </div>
-                                    <div className="todayBuilderActions">
-                                      {isSelected ? (
-                                        <button
-                                          className="todayBuilderSelectedStatus"
-                                          disabled={selectedTimerRunning}
-                                          onClick={(event) => {
-                                            event.stopPropagation();
-                                            void removeTodayItem(
-                                              todaySourceKey(
-                                                config.today.items[selectedIndex],
-                                                selectedIndex,
-                                              ),
-                                            );
-                                          }}
-                                          onPointerDown={(event) => event.stopPropagation()}
-                                          title={
-                                            selectedTimerRunning
-                                              ? "タイマーを停止してから外してください"
-                                              : "今日の3件から外す"
-                                          }
-                                          type="button"
-                                        >
-                                          ✓ 選択済み
-                                        </button>
-                                      ) : (
-                                        <button
-                                          className="moveTodayButton todayBuilderAddButton mainActionButton mainActionButton--neutral"
-                                          disabled={isFull}
-                                          onClick={() => void addCandidateToToday(candidate)}
-                                          title={isFull ? "いま選べるのは3件までです" : "今日へ"}
-                                          type="button"
-                                        >
-                                          今日へ
-                                        </button>
-                                      )}
-                                      <button
-                                        aria-label={`${candidate.text}の操作`}
-                                        aria-haspopup="menu"
-                                        className="sourceRowMenu"
-                                        onClick={(event) => {
-                                          const rect = event.currentTarget.getBoundingClientRect();
-                                          openContextMenu(
-                                            { kind: "todayBuilder", index },
-                                            rect.left,
-                                            rect.bottom,
-                                            event.currentTarget,
-                                          );
-                                        }}
-                                        onPointerDown={(event) => event.stopPropagation()}
-                                        title="操作メニュー"
-                                        type="button"
-                                      >
-                                        <span aria-hidden="true">…</span>
-                                      </button>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })
-                        )}
-                        {todayBuilderPageCount > 1 && (
-                          <nav
-                            aria-label="今日を組み立てるのページ"
-                            className="todayBuilderPagination"
-                          >
-                            <button
-                              aria-label="前のページ"
-                              className="mainActionButton mainActionButton--neutral"
-                              disabled={visibleTodayBuilderPage <= 1}
-                              onClick={() => setTodayBuilderPage(visibleTodayBuilderPage - 1)}
-                              type="button"
-                            >
-                              <UiIcon name="chevronLeft" size={16} />
-                              前へ
-                            </button>
-                            <span>
-                              {visibleTodayBuilderPage} / {todayBuilderPageCount}
-                            </span>
-                            <button
-                              aria-label="次のページ"
-                              className="mainActionButton mainActionButton--neutral"
-                              disabled={visibleTodayBuilderPage >= todayBuilderPageCount}
-                              onClick={() => setTodayBuilderPage(visibleTodayBuilderPage + 1)}
-                              type="button"
-                            >
-                              次へ
-                              <UiIcon name="chevronRight" size={16} />
-                            </button>
-                          </nav>
-                        )}
-                        {todayBuilderPointerDrag?.targetIndicator && (
-                          <div
-                            aria-hidden="true"
-                            className="todayBuilderDropIndicator"
-                            style={todayBuilderPointerDrag.targetIndicator}
-                          />
-                        )}
-                        {todayBuilderPointerDrag?.todayTargetIndicator && (
-                          <div
-                            aria-hidden="true"
-                            className="todayDropIndicator"
-                            style={todayBuilderPointerDrag.todayTargetIndicator}
-                          />
-                        )}
-                        {todayBuilderPointerDrag &&
-                          (() => {
-                            const candidate = todayBuilderCandidates.find(
-                              (item) =>
-                                item.sourceKey === todayBuilderPointerDrag.sourceKey ||
-                                item.sourceAliases?.includes(todayBuilderPointerDrag.sourceKey),
-                            );
-                            const project = candidate?.projectId
-                              ? projectsById.get(candidate.projectId)
-                              : undefined;
-                            return (
-                              <div
-                                aria-hidden="true"
-                                className={
-                                  todayBuilderPointerDrag.todayTargetIndex === undefined
-                                    ? "todayBuilderDragGhost"
-                                    : "todayBuilderDragGhost todayBuilderDragGhost--today"
-                                }
-                                data-project-color={
-                                  project
-                                    ? resolveProjectColorId(project.id, project.colorId)
-                                    : undefined
-                                }
-                                style={{
-                                  left:
-                                    todayBuilderPointerDrag.pointerX -
-                                    todayBuilderPointerDrag.offsetX,
-                                  top:
-                                    todayBuilderPointerDrag.pointerY -
-                                    todayBuilderPointerDrag.offsetY,
-                                  width: Math.min(300, todayBuilderPointerDrag.width),
-                                }}
-                              >
-                                {project ? (
-                                  <ProjectIdentity
-                                    colorId={project.colorId}
-                                    compact
-                                    name={project.name}
-                                    projectId={project.id}
-                                  />
-                                ) : (
-                                  <span className="sourceProjectNone">プロジェクトなし</span>
-                                )}
-                                <strong>{candidate?.text}</strong>
-                              </div>
-                            );
-                          })()}
-                      </div>
-                    )}
-                  </section>
-                )}
 
                 <section
                   className={[
                     "projectsBand",
                     inboxPointerDrag?.nextStepEligible ? "sourceReturnBand--target" : "",
                     inboxPointerDrag?.nextStepTargetProjectId ? "sourceReturnBand--active" : "",
-                    todayBuilderPointerDrag?.sourceTarget === "project"
-                      ? "sourceReturnBand--target"
-                      : "",
-                    todayBuilderPointerDrag?.sourceTarget === "project" &&
-                    todayBuilderPointerDrag.sourceTargetActive
-                      ? "sourceReturnBand--active"
-                      : "",
                   ]
                     .filter(Boolean)
                     .join(" ")}
@@ -12460,18 +11425,6 @@ function DashboardApp() {
                       </button>
                     </div>
                   </div>
-                  {todayBuilderPointerDrag?.sourceTarget === "project" && (
-                    <div
-                      className={
-                        todayBuilderPointerDrag.sourceTargetActive
-                          ? "sourceReturnDropZone sourceReturnDropZone--active"
-                          : "sourceReturnDropZone"
-                      }
-                    >
-                      <span aria-hidden="true">↓</span>
-                      <span>ここにドロップして今日の候補から外す</span>
-                    </div>
-                  )}
                   {inboxPointerDrag?.nextStepEligible && (
                     <div
                       className={
@@ -12762,9 +11715,7 @@ function DashboardApp() {
                           className={
                             projectPointerDrag.todayTargetIndex !== undefined
                               ? "projectDragGhost projectDragGhost--today"
-                              : projectPointerDrag.restoreTarget
-                                ? "projectDragGhost projectDragGhost--restore"
-                                : "projectDragGhost"
+                              : "projectDragGhost"
                           }
                           style={{
                             left: projectPointerDrag.pointerX - projectPointerDrag.offsetX,
@@ -12797,15 +11748,8 @@ function DashboardApp() {
                 <section
                   className={[
                     "inboxBand",
-                    projectPointerDrag?.wishlistEligible ||
-                    todayBuilderPointerDrag?.sourceTarget === "wishlist"
-                      ? "sourceReturnBand--target"
-                      : "",
-                    projectPointerDrag?.wishlistTarget ||
-                    (todayBuilderPointerDrag?.sourceTarget === "wishlist" &&
-                      todayBuilderPointerDrag.sourceTargetActive)
-                      ? "sourceReturnBand--active"
-                      : "",
+                    projectPointerDrag?.wishlistEligible ? "sourceReturnBand--target" : "",
+                    projectPointerDrag?.wishlistTarget ? "sourceReturnBand--active" : "",
                   ]
                     .filter(Boolean)
                     .join(" ")}
@@ -12881,22 +11825,16 @@ function DashboardApp() {
                     </div>
                   </div>
 
-                  {(projectPointerDrag?.wishlistEligible ||
-                    todayBuilderPointerDrag?.sourceTarget === "wishlist") && (
+                  {projectPointerDrag?.wishlistEligible && (
                     <div
                       className={
-                        projectPointerDrag?.wishlistTarget ||
-                        todayBuilderPointerDrag?.sourceTargetActive
+                        projectPointerDrag?.wishlistTarget
                           ? "sourceReturnDropZone sourceReturnDropZone--active"
                           : "sourceReturnDropZone"
                       }
                     >
                       <span aria-hidden="true">↓</span>
-                      <span>
-                        {projectPointerDrag?.wishlistEligible
-                          ? "ここにドロップしてやりたいことへ戻す"
-                          : "ここにドロップして今日の候補から外す"}
-                      </span>
+                      <span>ここにドロップしてやりたいことへ戻す</span>
                     </div>
                   )}
 
@@ -13259,11 +12197,7 @@ function DashboardApp() {
                           return item ? (
                             <div
                               aria-hidden="true"
-                              className={
-                                inboxPointerDrag.restoreTarget
-                                  ? "inboxDragGhost inboxDragGhost--restore"
-                                  : "inboxDragGhost"
-                              }
+                              className="inboxDragGhost"
                               style={{
                                 left: inboxPointerDrag.pointerX - inboxPointerDrag.offsetX,
                                 top: inboxPointerDrag.pointerY - inboxPointerDrag.offsetY,
@@ -13615,59 +12549,6 @@ function DashboardApp() {
                 type="button"
               >
                 今日の3件から外す
-              </ContextMenuItem>
-            </>
-          ) : contextMenu.kind === "todayBuilderBar" ? (
-            <>
-              <ContextMenuItem onClick={() => navigateToCandidateSource("project")} type="button">
-                次の一手から追加
-              </ContextMenuItem>
-              <ContextMenuItem onClick={() => navigateToCandidateSource("wishlist")} type="button">
-                やりたいことから追加
-              </ContextMenuItem>
-            </>
-          ) : contextMenu.kind === "todayBuilder" ? (
-            <>
-              <ContextMenuItem
-                disabled={
-                  !todayBuilderCandidates[contextMenu.index] ||
-                  sourceEditBlocked(todayBuilderCandidates[contextMenu.index]?.sourceKey ?? "")
-                }
-                onClick={() => editTodayBuilderCandidate(todayBuilderCandidates[contextMenu.index])}
-                title={
-                  sourceEditBlockReason(
-                    todayBuilderCandidates[contextMenu.index]?.sourceKey ?? "",
-                  ) ?? undefined
-                }
-                type="button"
-              >
-                編集
-              </ContextMenuItem>
-              <ContextMenuItem
-                disabled={contextMenu.index <= 0}
-                onClick={() => moveTodayBuilderCandidateByOffset(contextMenu.index, -1)}
-                type="button"
-              >
-                上へ移動
-              </ContextMenuItem>
-              <ContextMenuItem
-                disabled={contextMenu.index >= todayBuilderCandidates.length - 1}
-                onClick={() => moveTodayBuilderCandidateByOffset(contextMenu.index, 1)}
-                type="button"
-              >
-                下へ移動
-              </ContextMenuItem>
-              <ContextMenuItem
-                disabled={isTodayBuilderCandidateActive(todayBuilderCandidates[contextMenu.index])}
-                onClick={() => void excludeTodayBuilderCandidate(contextMenu.index)}
-                title={
-                  isTodayBuilderCandidateActive(todayBuilderCandidates[contextMenu.index])
-                    ? "タイマーを停止してから外してください"
-                    : undefined
-                }
-                type="button"
-              >
-                今日の候補から外す
               </ContextMenuItem>
             </>
           ) : contextMenu.kind === "inbox" ? (
