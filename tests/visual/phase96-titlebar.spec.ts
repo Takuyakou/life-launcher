@@ -625,8 +625,10 @@ test.describe("P96-01 drag regions", () => {
         Boolean(document.querySelector(selector)?.hasAttribute("data-tauri-drag-region"));
       return {
         present: {
-          mainPanel: has(".mainPanel"),
-          sidebar: has(".sidebar"),
+          // P97-02 B: 窓を動かせるのは上端の余白とブランド表示だけ。
+          // パネル・サイドバーの要素そのものには付けない（内側の余白まで動いてしまうため）。
+          mainPanelDragStrip: has(".panelDragStrip--main"),
+          sidebarDragStrip: has(".panelDragStrip--sidebar"),
           topBar: has(".mainPanel > .topBar"),
           topSummary: has(".topSummary"),
           topTitle: has(".topTitle"),
@@ -639,6 +641,8 @@ test.describe("P96-01 drag regions", () => {
           brandStrong: has(".brandCopy strong"),
         },
         absent: {
+          mainPanel: has(".mainPanel"),
+          sidebar: has(".sidebar"),
           menuButton: document
             .querySelector(".topPills .viewToggleButton")
             ?.hasAttribute("data-tauri-drag-region"),

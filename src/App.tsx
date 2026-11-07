@@ -172,6 +172,7 @@ import { ShortcutBadge } from "./components/ShortcutBadge";
 import { findShortcutConflicts } from "./shortcutConflicts";
 import { localDayKey } from "./localDay";
 import { useTopMenuLabelLevel } from "./topMenuLabels";
+import { useHoverSuppressionAfterResize } from "./hoverSuppression";
 import { installSettingsFieldEditing, navigateAppArrow } from "./keyboardNavigation";
 import {
   getButtonsForOverlayPage,
@@ -2048,8 +2049,22 @@ function MiniModeApp() {
     void emit(MINI_RETURN_EVENT).catch(() => undefined);
   };
 
+  // P97-02 D: ボタンや入力欄の上のダブルクリックではメイン画面に戻らない
+  // （一時停止・再開を素早く2回押すと戻ってしまっていた）。
+  const requestMainFromMiniOnDoubleClick = (event: ReactMouseEvent<HTMLElement>) => {
+    const target = event.target;
+    if (target instanceof Element && target.closest("button, input, textarea, select, a, label, [role='button']")) {
+      return;
+    }
+    requestMainFromMini();
+  };
+
   return (
-    <main className="miniShell" onDoubleClick={requestMainFromMini} onPointerDown={startMiniDrag}>
+    <main
+      className="miniShell"
+      onDoubleClick={requestMainFromMiniOnDoubleClick}
+      onPointerDown={startMiniDrag}
+    >
       <div className="miniTopline">
         <span>ミニタイマー</span>
         <div className="miniToplineActions">
@@ -2168,6 +2183,8 @@ function DashboardApp() {
       .then(setTestProfile)
       .catch(() => undefined);
   }, []);
+  // P97-02 F: 窓の大きさが変わった直後は、マウスが動くまで乗せた色を出さない。
+  useHoverSuppressionAfterResize();
   // 上部メニューの文字は、幅の決まった境目ではなく実測で隠す(P96-01 追加修正)。
   // 段階はメイン画面の見出し(「今日 N分」＋日付)の幅で決め、記録画面も同じ段階にする
   // (オーナー決定 2026-11-06)。表示切替のボタンだけは画面で文字が変わるため、
@@ -7191,13 +7208,16 @@ function DashboardApp() {
       try {
         if (!timer.doNowSnapshot || reason !== "complete") await refreshDoNow();
         await refreshTodayActivity();
+        // P97-02 C: 記録画面を開いたままでも集計がすぐ新しくなるように、
+        // 記録に成功したあとだけ記録画面のデータを読み直す（記録の処理は増やさない）。
+        await refreshRecords();
       } catch {
         showToast("warn", "記録は保存しましたが、表示を更新できませんでした");
       }
       showToast("ok", `${timer.label} ${minutes}分を記録しました`);
       return true;
     },
-    [refreshDoNow, refreshTodayActivity, showToast],
+    [refreshDoNow, refreshTodayActivity, refreshRecords, showToast],
   );
 
   const finishTimer = useCallback(
@@ -10167,7 +10187,6 @@ function DashboardApp() {
       )}
       <aside
         className="sidebar"
-        data-tauri-drag-region=""
         onContextMenu={(event) => {
           event.preventDefault();
           openContextMenu(
@@ -10180,6 +10199,8 @@ function DashboardApp() {
         onKeyDown={(event) => openContextMenuFromKeyboard(event, { kind: "sidebar" })}
         tabIndex={-1}
       >
+        {/* 上端の余白だけをドラッグできるようにする（要素そのものには付けない） */}
+        <div aria-hidden="true" className="panelDragStrip panelDragStrip--sidebar" data-tauri-drag-region="" />
         <div className="brandBlock" data-tauri-drag-region="">
           <img
             alt=""
@@ -10833,8 +10854,9 @@ function DashboardApp() {
       <section
         className="mainPanel"
         data-main-display-size={config.settings.mainDisplaySize ?? "standard"}
-        data-tauri-drag-region=""
       >
+        {/* 上端の余白だけをドラッグできるようにする（要素そのものには付けない） */}
+        <div aria-hidden="true" className="panelDragStrip panelDragStrip--main" data-tauri-drag-region="" />
         <header
           className="topBar"
           data-tauri-drag-region=""

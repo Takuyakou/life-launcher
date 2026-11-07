@@ -141,6 +141,21 @@ export function navigateAppArrow(event: KeyboardEvent, captureActive: boolean): 
       return;
     }
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      // P97-02 E: 節の一番上の項目で ↑ を押したら、画面の中の一つ前の部品ではなく、
+      // いま選んでいるタブへ戻す（タブで ↓ を押すと節の一番上へ移るのと対にする）。
+      if (event.key === "ArrowUp") {
+        const section = current.closest<HTMLElement>(".settingsSection:not(.settingsSection--hidden)");
+        const selectedTab = surface.querySelector<HTMLElement>(
+          '.settingsTabs [role="tab"][aria-selected="true"]',
+        );
+        if (section && selectedTab) {
+          const items = available(section);
+          if (items.indexOf(current) <= 0) {
+            focus(selectedTab, event);
+            return;
+          }
+        }
+      }
       step(surface, current, event.key === "ArrowDown" ? 1 : -1, event);
     } else {
       const group = current.closest(

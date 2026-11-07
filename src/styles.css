@@ -3216,7 +3216,45 @@ input[type="number"]::-webkit-inner-spin-button {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   padding: 22px 24px 0;
+  position: relative;
 }
+
+/* P97-02 F: 最大化・元に戻す・大きさの変更の直後は、マウスが動くまで
+   （または押すまで）乗せた色を出さない。マウスを動かすと今までどおりになる。 */
+.hover-suppressed .topPills .viewToggleButton:hover:not(:disabled) {
+  background: transparent;
+}
+
+.hover-suppressed .windowControlButton:hover,
+.hover-suppressed .windowControlButton--close:hover {
+  color: var(--control-primary-bg);
+  background: transparent;
+}
+
+/* キーボードの輪と押した状態は抑止しない */
+.hover-suppressed .topPills .viewToggleButton:focus-visible {
+  background: var(--line);
+}
+/* P97-02: 窓を動かせるのは「上端の余白」とブランド表示だけにする。
+   .mainPanel / .sidebar そのものに data-tauri-drag-region を付けると、内側の
+   下端・右端の余白や一覧のすき間までドラッグの範囲になってしまうため、
+   上端の余白だけを覆う要素を置く。 */
+.panelDragStrip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+}
+
+.panelDragStrip--main {
+  height: 22px;
+}
+
+.panelDragStrip--sidebar {
+  height: 18px;
+}
+
 
 .mainPanel > .topBar {
   -webkit-user-select: none;
