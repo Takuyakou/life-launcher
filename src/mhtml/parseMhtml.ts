@@ -389,7 +389,7 @@ function parsePart(bytes: Uint8Array, depth: number, state: ParseState): void {
   const mediaType = contentType.mediaType;
   const isText = mediaType === "text/html" || mediaType === "text/css";
 
-  let decodedBytes: Uint8Array | null = null;
+  let decodedBytes: Uint8Array | null;
   let base64: string | null = null;
   if (transferEncoding === "base64") {
     base64 = normalizeBase64(body);

@@ -232,7 +232,7 @@ export function useDictionaryFeatureParity({
       } catch (cause) {
         const failure = `保存できません: ${cause instanceof Error ? cause.message : String(cause)}`;
         setError(failure);
-        if (throwOnFailure) throw new Error(failure);
+        if (throwOnFailure) throw new Error(failure, { cause });
         return false;
       } finally {
         saving.current = false;

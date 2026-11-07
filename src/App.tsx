@@ -4463,6 +4463,7 @@ function DashboardApp() {
         } catch (error) {
           throw new Error(
             `登録を解除できません: ${error instanceof Error ? error.message : String(error)}`,
+            { cause: error },
           );
         } finally {
           setInstructionSettingsBusy(false);
@@ -5269,7 +5270,7 @@ function DashboardApp() {
       ? config.buttons.findIndex((button) => button.id === targetButtonId)
       : -1;
 
-    let insertIndex = withoutDragged.length;
+    let insertIndex: number;
     if (targetIndex >= 0) {
       insertIndex = draggedIndex < originalTargetIndex ? targetIndex + 1 : targetIndex;
     } else {
@@ -10542,6 +10543,7 @@ function DashboardApp() {
         />
       </aside>
 
+      {/* eslint-disable-next-line no-constant-binary-expression -- 旧起動辞書のオーバーレイは今は使わない（P97-06 の削除対象ではない） */}
       {false && launcherOverlayOpen && (
         <div
           className="launcherOverlayBackdrop"
