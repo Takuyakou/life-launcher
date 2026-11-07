@@ -96,6 +96,13 @@ impl DropKind {
     }
 }
 
+#[derive(Clone, Copy, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DropPosition {
+    pub x: f64,
+    pub y: f64,
+}
+
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MainShellDropEvent {
@@ -105,6 +112,7 @@ pub struct MainShellDropEvent {
     pub url: Option<String>,
     pub label: Option<String>,
     pub shell_special: Option<String>,
+    pub position: Option<DropPosition>,
     pub message: String,
 }
 
@@ -199,6 +207,7 @@ pub fn enable_main_shell_drop(app: AppHandle, window: WebviewWindow) -> Result<(
                     url: None,
                     label: None,
                     shell_special: None,
+                    position: None,
                     message: error,
                 },
             );
@@ -291,21 +300,44 @@ fn install_windows_target_inner(app: &AppHandle) -> Result<(), String> {
     use windows::Win32::UI::Shell::{DragFinish, DragQueryFileW, HDROP};
     use windows::Win32::UI::WindowsAndMessaging::EnumChildWindows;
 
+    fn client_position(hwnd: isize, point: &POINTL) -> Option<DropPosition> {
+        use std::ffi::c_void;
+
+        use windows::Win32::Foundation::{HWND, POINT};
+        use windows::Win32::Graphics::Gdi::ScreenToClient;
+
+        let mut client = POINT {
+            x: point.x,
+            y: point.y,
+        };
+        let ok = unsafe { ScreenToClient(HWND(hwnd as *mut c_void), &mut client) };
+        ok.as_bool().then_some(DropPosition {
+            x: client.x as f64,
+            y: client.y as f64,
+        })
+    }
+
     #[implement(IDropTarget)]
     struct MainShellDropTarget {
         app: AppHandle,
         window_label: String,
+        hwnd: isize,
         active_kind: Cell<DropKind>,
         active_effect: Cell<DROPEFFECT>,
+        active_paths: std::cell::RefCell<Vec<String>>,
+        last_over: Cell<Option<std::time::Instant>>,
     }
 
     impl MainShellDropTarget {
-        fn new(app: AppHandle, window_label: String) -> Self {
+        fn new(app: AppHandle, window_label: String, hwnd: isize) -> Self {
             Self {
                 app,
                 window_label,
+                hwnd,
                 active_kind: Cell::new(DropKind::None),
                 active_effect: Cell::new(DROPEFFECT_NONE),
+                active_paths: std::cell::RefCell::new(Vec::new()),
+                last_over: Cell::new(None),
             }
         }
     }
@@ -315,7 +347,7 @@ fn install_windows_target_inner(app: &AppHandle) -> Result<(), String> {
             &self,
             data: windows_core::Ref<'_, IDataObject>,
             _key_state: MODIFIERKEYS_FLAGS,
-            _point: &POINTL,
+            point: &POINTL,
             effect: *mut DROPEFFECT,
         ) -> windows::core::Result<()> {
             let (mut kind, paths, url, label) =
@@ -328,6 +360,8 @@ fn install_windows_target_inner(app: &AppHandle) -> Result<(), String> {
             let selected_effect = unsafe { kind.effect(*effect) };
             self.active_kind.set(kind);
             self.active_effect.set(selected_effect);
+            self.active_paths.replace(paths.clone());
+            self.last_over.set(None);
             unsafe {
                 *effect = selected_effect;
             }
@@ -342,6 +376,7 @@ fn install_windows_target_inner(app: &AppHandle) -> Result<(), String> {
                         label,
                         shell_special: (kind == DropKind::RecycleBin)
                             .then(|| "recycle_bin".to_string()),
+                        position: client_position(self.hwnd, point),
                         message: "登録できる項目を受信しています".to_string(),
                     },
                 );
@@ -352,17 +387,41 @@ fn install_windows_target_inner(app: &AppHandle) -> Result<(), String> {
         fn DragOver(
             &self,
             _key_state: MODIFIERKEYS_FLAGS,
-            _point: &POINTL,
+            point: &POINTL,
             effect: *mut DROPEFFECT,
         ) -> windows::core::Result<()> {
             unsafe {
                 *effect = self.active_effect.get();
+            }
+            if self.active_kind.get() != DropKind::None {
+                let now = std::time::Instant::now();
+                let should_emit = self.last_over.get().is_none_or(|last| {
+                    now.duration_since(last) >= std::time::Duration::from_millis(33)
+                });
+                if should_emit {
+                    self.last_over.set(Some(now));
+                    emit_event(
+                        &self.app,
+                        MainShellDropEvent {
+                            window_label: self.window_label.clone(),
+                            stage: "dragOver".to_string(),
+                            paths: self.active_paths.borrow().clone(),
+                            url: None,
+                            label: None,
+                            shell_special: None,
+                            position: client_position(self.hwnd, point),
+                            message: String::new(),
+                        },
+                    );
+                }
             }
             Ok(())
         }
 
         fn DragLeave(&self) -> windows::core::Result<()> {
             self.active_effect.set(DROPEFFECT_NONE);
+            self.active_paths.replace(Vec::new());
+            self.last_over.set(None);
             if self.active_kind.replace(DropKind::None) != DropKind::None {
                 emit_event(
                     &self.app,
@@ -373,6 +432,7 @@ fn install_windows_target_inner(app: &AppHandle) -> Result<(), String> {
                         url: None,
                         label: None,
                         shell_special: None,
+                        position: None,
                         message: "Dropをキャンセルしました".to_string(),
                     },
                 );
@@ -384,7 +444,7 @@ fn install_windows_target_inner(app: &AppHandle) -> Result<(), String> {
             &self,
             data: windows_core::Ref<'_, IDataObject>,
             _key_state: MODIFIERKEYS_FLAGS,
-            _point: &POINTL,
+            point: &POINTL,
             effect: *mut DROPEFFECT,
         ) -> windows::core::Result<()> {
             let (kind, paths, url, label) =
@@ -392,6 +452,8 @@ fn install_windows_target_inner(app: &AppHandle) -> Result<(), String> {
             let selected_effect = unsafe { kind.effect(*effect) };
             self.active_kind.set(DropKind::None);
             self.active_effect.set(DROPEFFECT_NONE);
+            self.active_paths.replace(Vec::new());
+            self.last_over.set(None);
             unsafe {
                 *effect = selected_effect;
             }
@@ -406,6 +468,7 @@ fn install_windows_target_inner(app: &AppHandle) -> Result<(), String> {
                         label,
                         shell_special: (kind == DropKind::RecycleBin)
                             .then(|| "recycle_bin".to_string()),
+                        position: client_position(self.hwnd, point),
                         message: if kind == DropKind::RecycleBin {
                             "ごみ箱を識別しました。登録内容を確認してください".to_string()
                         } else {
@@ -617,7 +680,7 @@ fn install_windows_target_inner(app: &AppHandle) -> Result<(), String> {
         let label = window_label.to_string();
         let mut callback = |hwnd: HWND| {
             let target: IDropTarget =
-                MainShellDropTarget::new(app_handle.clone(), label.clone()).into();
+                MainShellDropTarget::new(app_handle.clone(), label.clone(), hwnd.0 as isize).into();
             if unsafe { RevokeDragDrop(hwnd) } != Err(DRAGDROP_E_INVALIDHWND.into())
                 && unsafe { RegisterDragDrop(hwnd, &target) }.is_ok()
             {

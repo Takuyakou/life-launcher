@@ -14,6 +14,7 @@ use commands::config::{
 use commands::drop::{choose_launcher_target, resolve_drop_item};
 use commands::explorer::reveal_launcher_item;
 use commands::icons::{delete_button_icon_cache, ensure_button_icon_cache};
+use commands::import::{commit_import, preview_import, read_import_json, undo_import};
 use commands::instructions::{
     choose_instruction_root, create_instruction_file, create_instruction_folder,
     inspect_instruction_folder, list_instruction_directory, list_instruction_roots,
@@ -294,6 +295,10 @@ pub fn run() {
             load_config,
             load_next_step_freshness,
             save_config,
+            preview_import,
+            commit_import,
+            undo_import,
+            read_import_json,
             undo_today_selection,
             backup_config_before_instruction_change,
             update_instruction_references,

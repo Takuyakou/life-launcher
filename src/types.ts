@@ -527,3 +527,74 @@ export type NotesForDateInput = {
   date: string;
   items: string[];
 };
+
+export type ImportRejectedItem = {
+  path: string;
+  reason: string;
+};
+
+export type ImportPreviewProject = {
+  name: string;
+  color: string | null;
+  goal: string | null;
+  nextStep: string | null;
+};
+
+export type ImportPreviewExistingProject = {
+  name: string;
+  fillColor: string | null;
+  fillGoal: string | null;
+  nextStepAction: "insert" | "wishlist";
+  nextStepReason: string | null;
+  nextStepText: string | null;
+};
+
+export type ImportPreviewNextStep = {
+  project: string;
+  text: string;
+  action: "insert" | "wishlist";
+  reason: string | null;
+};
+
+export type ImportPreviewWish = {
+  text: string;
+  project: string | null;
+};
+
+export type ImportPreviewCounts = {
+  newProjects: number;
+  existingProjects: number;
+  nextSteps: number;
+  wishes: number;
+  rejected: number;
+};
+
+export type ImportPreview = {
+  newProjects: ImportPreviewProject[];
+  existingProjects: ImportPreviewExistingProject[];
+  nextSteps: ImportPreviewNextStep[];
+  wishes: ImportPreviewWish[];
+  rejected: ImportRejectedItem[];
+  ignored: string[];
+  merged: string[];
+  skipped: string[];
+  counts: ImportPreviewCounts;
+};
+
+export type ImportPreviewResponse = {
+  preview: ImportPreview;
+  fingerprint: string;
+};
+
+export type ImportCommitResponse = {
+  config: AppConfig;
+  path: string;
+  importId: string;
+  fingerprint: string;
+  preview: ImportPreview;
+};
+
+export type ImportUndoResponse = {
+  config: AppConfig;
+  path: string;
+};

@@ -12833,3 +12833,147 @@ button.mainActionButton:is(
     height: 68px;
   }
 }
+
+.importDialog {
+  width: min(760px, calc(100vw - 32px));
+  max-height: min(86vh, 820px);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--dialog-surface);
+  box-shadow: var(--dialog-shadow);
+  overflow: hidden;
+}
+
+.importDialogHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.importDialogHeader h2 {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+
+.importDialogBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 20px;
+  overflow: auto;
+}
+
+.importTextarea {
+  min-height: 150px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.importDialogActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.importPreview {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px solid var(--line-soft);
+  padding-top: 12px;
+}
+
+.importSummary {
+  margin: 0;
+  color: var(--text-muted-readable);
+  font-size: 13px;
+}
+
+.importPreviewSection {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.importPreviewSection h3,
+.importPreviewSection summary {
+  margin: 0;
+  font-size: 13px;
+}
+
+.importPreviewSection summary {
+  cursor: pointer;
+}
+
+.importPreviewSection--rejected {
+  color: var(--warn);
+}
+
+.importPreviewList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.importDialogFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.importDropOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 12px;
+  padding: 18px;
+  background: color-mix(in srgb, var(--app-background) 55%, transparent);
+  pointer-events: none;
+}
+
+.importDropZone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted-readable);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.importDropZone--main {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.importDropZone--active {
+  border-width: 2px;
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--text);
+}
+
+.importDropZone small {
+  color: var(--text-muted-readable);
+  font-size: 11px;
+  font-weight: 400;
+}

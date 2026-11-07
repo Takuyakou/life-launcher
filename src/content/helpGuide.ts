@@ -4,6 +4,7 @@ export type HelpSectionId =
   | "today-builder"
   | "today-three"
   | "timer-completion"
+  | "bulk-import"
   | "start-environment"
   | "launcher-dictionary"
   | "records-review"
@@ -186,6 +187,36 @@ export const HELP_GUIDE_SECTIONS: HelpGuideSection[] = [
       {
         type: "paragraph",
         text: "今やる一手だけを完了したときは、「一手進みました」の表示が残ります。「次の一手を見る」を押すと、次の候補に進みます。",
+      },
+    ],
+  },
+  {
+    id: "bulk-import",
+    title: "まとめて取り込む",
+    summary: "ChatGPTやClaudeに作ってもらったJSONから、プロジェクト・次の一手・やりたいことをまとめて足します。",
+    blocks: [
+      {
+        type: "paragraph",
+        text: "「次の一手」の「…」メニューから「まとめて取り込む」を開きます。画面の「プロンプトをコピー」で文章をコピーし、ChatGPTやClaudeに「私の状況」を足して送ります。返ってきたJSONを貼り付けるか、.jsonで保存してメイン画面に落とすと、プレビューが出ます。",
+      },
+      {
+        type: "steps",
+        items: [
+          "「次の一手」の「…」→「まとめて取り込む」を開きます。",
+          "「プロンプトをコピー」を押し、ChatGPTやClaudeに「私の状況」を足して送ります。",
+          "返ってきたJSONを貼り付けるか、.jsonで保存してメイン画面に落とします。",
+          "プレビューで、新しく足すもの・すでにあるもの・取り込めないものを確かめます。",
+          "「取り込む」を押すと、プロジェクト・次の一手・やりたいことが入ります。",
+        ],
+      },
+      {
+        type: "note",
+        tone: "normal",
+        text: "アプリのボタン・リンク・手順書は取り込めません。画面で設定してください。今あるプロジェクトは上書きせず、足りない色や目標だけを補います。すでに次の一手があるプロジェクトの次の一手は、やりたいことに入ります。",
+      },
+      {
+        type: "paragraph",
+        text: "取り込んだあとのトーストの「元に戻す」で、取り込む前に戻せます。取り込んだあとに設定を変えたときは、戻せません。そのときは取り込み前のバックアップを使ってください。",
       },
     ],
   },
