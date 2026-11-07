@@ -8,13 +8,12 @@ const changelog = readFileSync("CHANGELOG.md", "utf8");
 const publishedVersion = changelog.match(/^## (\d+\.\d+\.\d+) - /m)?.[1];
 const readmes = ["README.md", "README.en.md"];
 const releasesUrl = "https://github.com/Takuyakou/life-launcher/releases";
-const publishedAssets = [
-  ...["-setup.exe", ".exe", "-portable.zip"].map(
-    (suffix) => `Life-Launcher-v${publishedVersion}-windows-x64${suffix}`,
-  ),
-  "SHA256SUMS.txt",
-];
+const publishedBinaries = ["-setup.exe", ".exe", "-portable.zip"].map(
+  (suffix) => `Life-Launcher-v${publishedVersion}-windows-x64${suffix}`,
+);
+const publishedAssets = [...publishedBinaries, "SHA256SUMS.txt"];
 const downloadTargets = [
+  releasesUrl,
   `${releasesUrl}/latest`,
   `${releasesUrl}/tag/v${publishedVersion}`,
   ...publishedAssets.flatMap((asset) => [
@@ -54,12 +53,23 @@ for (const file of readmes) {
         expect(downloadTargets, `${file}: incorrect download target ${link.href}`).toContain(link.href);
       }
     }
-    for (const asset of publishedAssets) {
-      expect(text).toContain(asset);
+    const placeholder = file === "README.md" ? "<バージョン>" : "<version>";
+    for (const suffix of ["-setup.exe", ".exe", "-portable.zip"]) {
+      expect(text).toContain(`Life-Launcher-v${placeholder}-windows-x64${suffix}`);
     }
+    const downloadSection =
+      text.match(/## (?:ダウンロード|Download)\r?\n([\s\S]*?)(?=\r?\n## )/)?.[1] ?? "";
+    expect(downloadSection).not.toMatch(/Life-Launcher-v\d+\.\d+\.\d+/);
+    expect(downloadSection).toContain("GitHub Releases");
+    expect(downloadSection).toContain("CHANGELOG.md");
     for (const path of paths.filter((path) => !/^https?:/.test(path))) {
       expect(existsSync(resolve(path)), `${file}: missing ${path}`).toBe(true);
     }
+  });
+
+  test(`${file} has no per-version change section`, () => {
+    const text = readFileSync(file, "utf8");
+    expect(text).not.toMatch(/^##\s+(?:Changes In\s+)?v\d+\.\d+\.\d+(?:の変更)?\s*$/m);
   });
 }
 
