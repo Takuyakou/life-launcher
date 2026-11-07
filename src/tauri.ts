@@ -19,6 +19,9 @@ import {
   InstructionRoot,
   InstructionReferenceUpdateResult,
   InstructionWriteResult,
+  ImportCommitResponse,
+  ImportPreviewResponse,
+  ImportUndoResponse,
   LauncherAction,
   LauncherButton,
   LoadConfigResponse,
@@ -59,6 +62,36 @@ export async function saveConfig(config: AppConfig): Promise<SaveConfigResponse>
     ...response,
     config: AppConfigSchema.parse(response.config),
   };
+}
+
+export async function previewImport(json: string): Promise<ImportPreviewResponse> {
+  return invoke("preview_import", { json });
+}
+
+export async function commitImport(
+  json: string,
+  fingerprint: string,
+): Promise<ImportCommitResponse> {
+  const response = await invoke<ImportCommitResponse>("commit_import", { json, fingerprint });
+  return {
+    ...response,
+    config: AppConfigSchema.parse(response.config),
+  };
+}
+
+export async function undoImport(
+  importId: string,
+  fingerprint: string,
+): Promise<ImportUndoResponse> {
+  const response = await invoke<ImportUndoResponse>("undo_import", { importId, fingerprint });
+  return {
+    ...response,
+    config: AppConfigSchema.parse(response.config),
+  };
+}
+
+export async function readImportJson(path: string): Promise<string> {
+  return invoke("read_import_json", { path });
 }
 
 export async function undoTodaySelection(

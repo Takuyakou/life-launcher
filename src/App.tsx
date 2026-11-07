@@ -61,6 +61,7 @@ import {
   openConfigBackups,
   openDataFolder,
   prepareSoftwareReset,
+  readImportJson,
   reapplyDashboardSettings,
   revealLauncherItem,
   resumeDashboardShortcuts,
@@ -78,6 +79,7 @@ import {
   loadSoftwareResetRecovery,
   updateSessionEntry,
   updateInstructionReferences,
+  undoImport,
   undoTodaySelection,
   loadTestProfileInfo,
   type ShortcutRegistrationStatus,
@@ -89,6 +91,7 @@ import {
   DropButtonDraft,
   DropResolveInput,
   DoNowResponse,
+  ImportCommitResponse,
   LauncherAction,
   LauncherButton,
   LauncherNextStep,
@@ -107,6 +110,7 @@ import {
   TodayItem,
 } from "./types";
 import { ConfirmDialog, type ConfirmDialogRequest } from "./components/ConfirmDialog";
+import { ImportDialog } from "./components/ImportDialog";
 import { earlyCompletionItem } from "./earlyCompletion";
 import { WindowControls } from "./components/WindowControls";
 import {
@@ -472,12 +476,13 @@ const TOP_MENU_GROUP_LABELS = {
 };
 type MainShellDropEvent = {
   windowLabel: string;
-  stage: "dragEnter" | "dragLeave" | "drop" | "error";
+  stage: "dragEnter" | "dragOver" | "dragLeave" | "drop" | "error";
   message: string;
   paths: string[];
   url?: string | null;
   label?: string | null;
   shellSpecial?: "recycle_bin" | null;
+  position?: { x: number; y: number } | null;
 };
 
 type ManualSessionDraft = {
@@ -1426,6 +1431,12 @@ function firstDroppedUrl(text: string): string | null {
   );
 }
 
+/** The custom and Tauri drop paths report physical pixels; convert them to CSS pixels. */
+function dropPositionToCss(position: { x: number; y: number }): { x: number; y: number } {
+  const ratio = window.devicePixelRatio || 1;
+  return { x: position.x / ratio, y: position.y / ratio };
+}
+
 const SHORTCUT_PATTERN =
   /^(?:(?:Ctrl|Alt|Shift|Super|Command)\+)*(?:[A-Za-z0-9]|F(?:[1-9]|1[0-2])|Space)$/i;
 const WINDOWS_RESERVED_SHORTCUTS = ["alt+space", "ctrl+esc", "ctrl+alt+delete"];
@@ -2270,6 +2281,10 @@ function DashboardApp() {
   const [numberInputDragging, setNumberInputDragging] = useState<NumberInputDragField | null>(null);
   const [actionDragId, setActionDragId] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [jsonDrop, setJsonDrop] = useState<"main" | "sidebar" | null>(null);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importInitialText, setImportInitialText] = useState("");
+  const [importInitialError, setImportInitialError] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [reorderAnnouncement, setReorderAnnouncement] = useState("");
   const sidebarPointerDragRef = useRef<SidebarPointerDrag | null>(null);
@@ -2286,6 +2301,9 @@ function DashboardApp() {
   const softwareResetChoiceOpenerRef = useRef<HTMLElement | null>(null);
   const softwareResetProgressRef = useRef<HTMLElement | null>(null);
   const confirmDialogRef = useRef<ConfirmDialogRequest | null>(null);
+  const importOpenerRef = useRef<HTMLElement | null>(null);
+  const lastDropRef = useRef<{ signature: string; at: number } | null>(null);
+  const dragPathsRef = useRef<string[]>([]);
   const inboxAddOpenerRef = useRef<HTMLButtonElement | null>(null);
   const inboxAddInitialProjectIdRef = useRef("");
   const todayPickerOpenerRef = useRef<HTMLElement | null>(null);
@@ -4877,6 +4895,107 @@ function DashboardApp() {
     [openDropDialog, showToast],
   );
 
+  const dropSideFromPosition = useCallback(
+    (position: { x: number; y: number }): "main" | "sidebar" | null => {
+      const element = document.elementFromPoint(position.x, position.y);
+      if (element?.closest(".sidebar")) return "sidebar";
+      if (element?.closest(".mainPanel")) return "main";
+      return null;
+    },
+    [],
+  );
+
+  const dropModalOpen = useCallback(
+    () => Boolean(document.querySelector(".modalBackdrop, .launcherOverlayBackdrop")),
+    [],
+  );
+
+  const openImportDialog = useCallback(
+    (text: string, error: string | null = null, opener?: HTMLElement | null) => {
+      importOpenerRef.current =
+        opener ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+      setImportInitialText(text);
+      setImportInitialError(error);
+      setImportDialogOpen(true);
+    },
+    [],
+  );
+
+  const closeImportDialog = useCallback(() => {
+    setImportDialogOpen(false);
+    const opener = importOpenerRef.current;
+    importOpenerRef.current = null;
+    window.requestAnimationFrame(() => opener?.focus({ preventScroll: true }));
+  }, []);
+
+  const handleImported = useCallback(
+    (response: ImportCommitResponse) => {
+      setConfig(response.config);
+      closeImportDialog();
+      const counts = response.preview.counts;
+      const total =
+        counts.newProjects + counts.existingProjects + counts.nextSteps + counts.wishes;
+      showToast("ok", `${total}件を取り込みました`, {
+        detail: counts.rejected > 0 ? `${counts.rejected}件は取り込めませんでした` : undefined,
+        actionLabel: "元に戻す",
+        onAction: async () => {
+          try {
+            const undone = await undoImport(response.importId, response.fingerprint);
+            setConfig(undone.config);
+            return true;
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            showToast("warn", message.replace(/^changed:/, ""));
+            return false;
+          }
+        },
+      });
+    },
+    [closeImportDialog, showToast],
+  );
+
+  const claimDrop = useCallback((paths: string[]) => {
+    const signature = paths.join("\u0000");
+    const now = Date.now();
+    if (
+      lastDropRef.current &&
+      lastDropRef.current.signature === signature &&
+      now - lastDropRef.current.at < 1000
+    ) {
+      return false;
+    }
+    lastDropRef.current = { signature, at: now };
+    return true;
+  }, []);
+
+  const handleDropAt = useCallback(
+    async (paths: string[], cssPosition: { x: number; y: number } | null) => {
+      setDragActive(false);
+      setJsonDrop(null);
+      if (paths.length === 0) return;
+      if (!claimDrop(paths)) return;
+      const modalOpen = dropModalOpen();
+      const side = cssPosition ? dropSideFromPosition(cssPosition) : null;
+      if (
+        paths.length === 1 &&
+        /\.json$/i.test(paths[0]) &&
+        side === "main" &&
+        !modalOpen
+      ) {
+        try {
+          const text = await readImportJson(paths[0]);
+          openImportDialog(text);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          openImportDialog("", message);
+        }
+        return;
+      }
+      await handleDroppedPaths(paths);
+    },
+    [claimDrop, dropModalOpen, dropSideFromPosition, handleDroppedPaths, openImportDialog],
+  );
+
   const openRecycleBinDropDialog = useCallback(() => {
     const state = mainDropStateRef.current;
     setDropDraft({
@@ -4908,18 +5027,31 @@ function DashboardApp() {
         showToast("error", `D&Dを初期化できません: ${event.payload.message}`);
         return;
       }
-      if (event.payload.stage === "dragEnter") {
-        setDragActive(true);
+      if (event.payload.stage === "dragEnter" || event.payload.stage === "dragOver") {
+        const isJson =
+          event.payload.paths.length === 1 && /\.json$/i.test(event.payload.paths[0]);
+        if (isJson && event.payload.position && !dropModalOpen()) {
+          setDragActive(false);
+          setJsonDrop(dropSideFromPosition(dropPositionToCss(event.payload.position)));
+        } else {
+          setJsonDrop(null);
+          setDragActive(true);
+        }
         return;
       }
       if (event.payload.stage === "dragLeave") {
         setDragActive(false);
+        setJsonDrop(null);
         return;
       }
 
       setDragActive(false);
+      setJsonDrop(null);
       if (event.payload.paths.length > 0) {
-        void handleDroppedPaths(event.payload.paths);
+        void handleDropAt(
+          event.payload.paths,
+          event.payload.position ? dropPositionToCss(event.payload.position) : null,
+        );
         return;
       }
       if (event.payload.url) {
@@ -4947,7 +5079,7 @@ function DashboardApp() {
       mounted = false;
       unlisten?.();
     };
-  }, [handleDroppedPaths, openDropDialog, openRecycleBinDropDialog, showToast]);
+  }, [dropModalOpen, dropSideFromPosition, handleDropAt, openDropDialog, openRecycleBinDropDialog, showToast]);
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;
@@ -4955,12 +5087,35 @@ function DashboardApp() {
 
     getCurrentWebview()
       .onDragDropEvent((event) => {
-        if (event.payload.type === "enter" || event.payload.type === "over") {
-          setDragActive(true);
-        } else if (event.payload.type === "leave") {
+        const payload = event.payload;
+        if (payload.type === "enter") {
+          dragPathsRef.current = payload.paths;
+          const isJson =
+            payload.paths.length === 1 && /\.json$/i.test(payload.paths[0]);
+          if (isJson && !dropModalOpen()) {
+            setDragActive(false);
+            setJsonDrop(dropSideFromPosition(dropPositionToCss(payload.position)));
+          } else {
+            setJsonDrop(null);
+            setDragActive(true);
+          }
+        } else if (payload.type === "over") {
+          const paths = dragPathsRef.current;
+          const isJson = paths.length === 1 && /\.json$/i.test(paths[0]);
+          if (isJson && !dropModalOpen()) {
+            setDragActive(false);
+            setJsonDrop(dropSideFromPosition(dropPositionToCss(payload.position)));
+          } else {
+            setJsonDrop(null);
+            setDragActive(true);
+          }
+        } else if (payload.type === "leave") {
+          dragPathsRef.current = [];
           setDragActive(false);
-        } else if (event.payload.type === "drop") {
-          void handleDroppedPaths(event.payload.paths);
+          setJsonDrop(null);
+        } else if (payload.type === "drop") {
+          dragPathsRef.current = [];
+          void handleDropAt(payload.paths, dropPositionToCss(payload.position));
         }
       })
       .then((dispose) => {
@@ -4979,7 +5134,7 @@ function DashboardApp() {
       mounted = false;
       unlisten?.();
     };
-  }, [handleDroppedPaths, showToast]);
+  }, [dropModalOpen, dropSideFromPosition, handleDropAt, showToast]);
 
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
@@ -5084,6 +5239,7 @@ function DashboardApp() {
       return;
     }
     event.preventDefault();
+    setJsonDrop(null);
     setDragActive(true);
   };
 
@@ -5091,6 +5247,7 @@ function DashboardApp() {
     event.preventDefault();
     event.stopPropagation();
     setDragActive(false);
+    setJsonDrop(null);
 
     if (event.dataTransfer.types.includes(ACTION_DRAG_TYPE)) {
       setActionDragId(null);
@@ -9498,6 +9655,7 @@ function DashboardApp() {
     buttonEditDraft ||
     projectEditDraft ||
     dropDraft ||
+    importDialogOpen ||
     groupDraft !== null ||
     groupRenameDraft ||
     overlayPageDraft ||
@@ -9545,6 +9703,29 @@ function DashboardApp() {
             key={windowTimerLine.resetKey}
             style={{ width: `${windowTimerLine.percent}%` }}
           />
+        </div>
+      )}
+      {jsonDrop && (
+        <div aria-hidden="true" className="importDropOverlay">
+          <div
+            className={
+              jsonDrop === "sidebar"
+                ? "importDropZone importDropZone--sidebar importDropZone--active"
+                : "importDropZone importDropZone--sidebar"
+            }
+          >
+            <span>ボタンとして登録</span>
+          </div>
+          <div
+            className={
+              jsonDrop === "main"
+                ? "importDropZone importDropZone--main importDropZone--active"
+                : "importDropZone importDropZone--main"
+            }
+          >
+            <strong>まとめて取り込む</strong>
+            <small>プロジェクト・次の一手・やりたいこと</small>
+          </div>
         </div>
       )}
       {!skipLinkBlocked && (
@@ -12711,9 +12892,14 @@ function DashboardApp() {
               </ContextMenuItem>
             </>
           ) : contextMenu.kind === "projects" ? (
-            <ContextMenuItem onClick={openProjectAddDialog} type="button">
-              プロジェクトを追加
-            </ContextMenuItem>
+            <>
+              <ContextMenuItem onClick={openProjectAddDialog} type="button">
+                プロジェクトを追加
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => openImportDialog("")} type="button">
+                まとめて取り込む
+              </ContextMenuItem>
+            </>
           ) : contextMenu.kind === "inboxes" ? (
             <ContextMenuItem onClick={() => openInboxAddDialog()} type="button">
               やりたいことを追加
@@ -15738,6 +15924,14 @@ function DashboardApp() {
           }}
         />
       )}
+      <ImportDialog
+        initialError={importInitialError}
+        initialText={importInitialText}
+        onClose={closeImportDialog}
+        onImported={handleImported}
+        onNotify={showToast}
+        open={importDialogOpen}
+      />
     </main>
   );
 }

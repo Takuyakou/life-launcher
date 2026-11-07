@@ -45,7 +45,7 @@ const DAILY_BACKUP_PREFIX: &str = "lifelauncher-backup-";
 const DAILY_BACKUP_SUFFIX: &str = ".zip";
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-const RUNTIME_BACKUP_FILES: [&str; 4] = [
+pub(crate) const RUNTIME_BACKUP_FILES: [&str; 4] = [
     CONFIG_FILE_NAME,
     "sessions.jsonl",
     "notes.json",
@@ -752,7 +752,7 @@ fn decode_config_for_v3(parsed: &Value) -> Result<(AppConfig, bool), String> {
     Ok((config, changed))
 }
 
-fn validate_project_v3_invariants(config: &AppConfig) -> Result<(), String> {
+pub(crate) fn validate_project_v3_invariants(config: &AppConfig) -> Result<(), String> {
     if let Some(project) = config
         .projects
         .iter()
@@ -780,7 +780,7 @@ fn validate_existing_config_before_save(path: &Path) -> Result<(), String> {
         .map_err(|error| format!("config.json could not be validated; save was blocked: {error}"))
 }
 
-fn reconcile_config_instruction_roots(config: &mut AppConfig) -> bool {
+pub(crate) fn reconcile_config_instruction_roots(config: &mut AppConfig) -> bool {
     let had_instruction_folders = config.settings.instruction_folders.is_some();
     let folders = config
         .settings
@@ -1062,7 +1062,7 @@ pub(crate) fn create_forced_user_backup(config: &AppConfig) -> Result<PathBuf, S
     Ok(backup_path)
 }
 
-fn daily_backup_entries() -> Result<Vec<ZipEntry>, String> {
+pub(crate) fn daily_backup_entries() -> Result<Vec<ZipEntry>, String> {
     let data_dir = config_dir_path()?;
 
     let mut entries = Vec::new();
@@ -1278,9 +1278,9 @@ fn prune_config_backups(backup_dir: &PathBuf) -> Result<(), String> {
     Ok(())
 }
 
-struct ZipEntry {
-    name: String,
-    data: Vec<u8>,
+pub(crate) struct ZipEntry {
+    pub(crate) name: String,
+    pub(crate) data: Vec<u8>,
 }
 
 struct CentralDirectoryEntry {
@@ -1290,7 +1290,7 @@ struct CentralDirectoryEntry {
     offset: u32,
 }
 
-fn write_zip(path: &Path, entries: &[ZipEntry]) -> Result<(), String> {
+pub(crate) fn write_zip(path: &Path, entries: &[ZipEntry]) -> Result<(), String> {
     let mut bytes = Vec::new();
     let mut central_entries = Vec::new();
     for entry in entries {
@@ -1369,7 +1369,7 @@ fn write_zip(path: &Path, entries: &[ZipEntry]) -> Result<(), String> {
     write_bytes_atomically(path, &bytes, "backup")
 }
 
-fn read_zip(bytes: &[u8]) -> Result<Vec<ZipEntry>, String> {
+pub(crate) fn read_zip(bytes: &[u8]) -> Result<Vec<ZipEntry>, String> {
     let eocd_offset = bytes
         .windows(4)
         .rposition(|window| window == [0x50, 0x4b, 0x05, 0x06])
@@ -1596,7 +1596,7 @@ fn migrate_overlay_pages_from_groups(config: &mut AppConfig) -> bool {
     true
 }
 
-fn sanitize_config(mut config: AppConfig) -> (AppConfig, bool, Vec<String>) {
+pub(crate) fn sanitize_config(mut config: AppConfig) -> (AppConfig, bool, Vec<String>) {
     let mut changed = false;
     let mut warnings = Vec::new();
 

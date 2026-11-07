@@ -3,6 +3,7 @@ pub mod config;
 pub mod drop;
 pub mod explorer;
 pub mod icons;
+pub mod import;
 pub mod instructions;
 pub mod main_shell_drop;
 pub mod notes;
