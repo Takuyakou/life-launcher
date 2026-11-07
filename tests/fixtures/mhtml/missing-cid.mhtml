@@ -1,0 +1,16 @@
+From: <Saved by Blink>
+Snapshot-Content-Location: https://example.invalid/missing.html
+Subject: P97-03 MHTML fixture
+Date: Thu, 13 Aug 2026 09:30:00 +0900
+MIME-Version: 1.0
+Content-Type: multipart/related; type="text/html"; boundary="----MultipartBoundary--p9703missing"
+
+------MultipartBoundary--p9703missing
+Content-Type: text/html
+Content-Location: https://example.invalid/missing.html
+
+<!doctype html><html><body>
+<h1>参照先がない本文</h1>
+<img id="missing" src="cid:missing">
+</body></html>
+------MultipartBoundary--p9703missing--

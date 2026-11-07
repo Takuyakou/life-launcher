@@ -200,7 +200,7 @@ export const HELP_GUIDE_SECTIONS: HelpGuideSection[] = [
       },
       {
         type: "paragraph",
-        text: "手順書ビューアーには、Markdown・テキスト・HTMLのファイルを入れたPC内のフォルダを登録できます。Markdownとテキストは編集でき、HTMLは見るだけです。次の一手で「開始時に手順書を開く」をオンにすると、タイマーを始めたときに手順書も開きます。",
+        text: "手順書ビューアーには、Markdown・テキスト・HTML・MHTMLのファイルを入れたPC内のフォルダを登録できます。Markdownとテキストは編集でき、HTMLとMHTMLは見るだけです。次の一手で「開始時に手順書を開く」をオンにすると、タイマーを始めたときに手順書も開きます。",
       },
     ],
   },

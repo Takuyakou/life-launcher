@@ -1,0 +1,19 @@
+From: <Saved by Blink>
+Snapshot-Content-Location: https://example.invalid/page.html
+Subject: P97-03 MHTML fixture
+Date: Thu, 13 Aug 2026 09:30:00 +0900
+MIME-Version: 1.0
+Content-Type: multipart/related; type="text/html"; boundary="----MultipartBoundary--p9703frame"
+
+------MultipartBoundary--p9703frame
+Content-Type: text/html
+Content-Location: cid:frame-1
+Content-ID: <frame-1>
+
+<!doctype html><html><body><p>入れ子のフレーム</p></body></html>
+------MultipartBoundary--p9703frame
+Content-Type: text/html
+Content-Location: https://example.invalid/page.html
+
+<!doctype html><html><body><h1>本文のページ</h1><iframe src="cid:frame-1"></iframe></body></html>
+------MultipartBoundary--p9703frame--

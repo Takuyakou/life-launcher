@@ -65,7 +65,7 @@ type OperationDialogState = {
   targetPath?: string;
   parentPath?: string;
   initialName?: string;
-  extension?: "md" | "txt" | "html";
+  extension?: "md" | "txt" | "html" | "mhtml" | "mht";
 };
 
 type ConfirmState = {
@@ -148,17 +148,33 @@ function fileStem(name: string): string {
 }
 
 function instructionFileIcon(name: string): UiIconName {
-  const lowerName = name.toLocaleLowerCase();
-  if (lowerName.endsWith(".html")) return "fileCode";
-  if (lowerName.endsWith(".txt")) return "fileText";
+  if (isHtmlLikeInstruction(name)) return "fileCode";
+  if (name.toLocaleLowerCase().endsWith(".txt")) return "fileText";
   return "book";
 }
 
 function instructionFileTone(name: string): "html" | "markdown" | "text" {
-  const lowerName = name.toLocaleLowerCase();
-  if (lowerName.endsWith(".html")) return "html";
-  if (lowerName.endsWith(".txt")) return "text";
+  if (isHtmlLikeInstruction(name)) return "html";
+  if (name.toLocaleLowerCase().endsWith(".txt")) return "text";
   return "markdown";
+}
+
+function isHtmlLikeInstruction(name: string): boolean {
+  const lowerName = name.toLocaleLowerCase();
+  return (
+    lowerName.endsWith(".html") ||
+    lowerName.endsWith(".mhtml") ||
+    lowerName.endsWith(".mht")
+  );
+}
+
+function instructionExtension(name: string): "md" | "txt" | "html" | "mhtml" | "mht" {
+  const lowerName = name.toLocaleLowerCase();
+  if (lowerName.endsWith(".mhtml")) return "mhtml";
+  if (lowerName.endsWith(".mht")) return "mht";
+  if (lowerName.endsWith(".html")) return "html";
+  if (lowerName.endsWith(".txt")) return "txt";
+  return "md";
 }
 
 function readInstructionOrder(): Record<string, string[]> {
@@ -1059,19 +1075,12 @@ export function InstructionTree({
           kind: target.kind === "file" ? "rename-file" : "rename-folder",
           targetPath: target.path,
           initialName: target.kind === "file" ? fileStem(target.name) : target.name,
-          extension:
-            target.kind === "file"
-              ? target.name.toLocaleLowerCase().endsWith(".html")
-                ? "html"
-                : target.name.toLocaleLowerCase().endsWith(".txt")
-                  ? "txt"
-                  : "md"
-              : undefined,
+          extension: target.kind === "file" ? instructionExtension(target.name) : undefined,
         });
       } else if (action === "external" && target.kind === "file") {
         await openInstructionInDefaultEditor(target.path);
         setOperationStatus(
-          target.name.toLocaleLowerCase().endsWith(".html")
+          isHtmlLikeInstruction(target.name)
             ? "ブラウザで開きました"
             : "既定のアプリで開きました",
         );
@@ -1211,7 +1220,7 @@ export function InstructionTree({
         ) : roots.length === 0 ? (
           <div className="instructionTreeMessage">
             <strong>手順書フォルダが未登録です</strong>
-            <span>Markdown・Text・HTMLをまとめたフォルダを読み込めます。</span>
+            <span>Markdown・Text・HTML・MHTMLをまとめたフォルダを読み込めます。</span>
           </div>
         ) : (
           <div aria-label="手順書フォルダ" role="tree">
@@ -1414,7 +1423,7 @@ export function InstructionTree({
                 role="menuitem"
                 type="button"
               >
-                {contextMenu.target.name.toLocaleLowerCase().endsWith(".html")
+                {isHtmlLikeInstruction(contextMenu.target.name)
                   ? "ブラウザで開く"
                   : "既定のアプリで開く"}
               </button>

@@ -12,6 +12,8 @@ pub const DEFAULT_BACKUP_KEEP: u16 = 30;
 pub const INSTRUCTION_FOLDER_LIMIT: usize = 5;
 pub const INSTRUCTION_NAME_MAX_CHARS: usize = 48;
 pub const INSTRUCTION_FILE_MAX_BYTES: u64 = 2 * 1024 * 1024;
+/// MHTML (single-file web page) is mostly images, so it gets its own, larger limit.
+pub const INSTRUCTION_MHTML_MAX_BYTES: u64 = 20 * 1024 * 1024;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -414,6 +416,16 @@ pub struct InstructionReadResponse {
     pub name: String,
     pub path: String,
     pub content: String,
+    pub modified_at: u64,
+    pub size: u64,
+    pub read_only: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InstructionFileInfo {
+    pub name: String,
+    pub path: String,
     pub modified_at: u64,
     pub size: u64,
     pub read_only: bool,

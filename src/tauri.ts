@@ -12,6 +12,7 @@ import {
   DropResolveInput,
   InstructionDocument,
   InstructionEntry,
+  InstructionFileInfo,
   InstructionFolderSummary,
   InstructionPathChange,
   InstructionRecycleResult,
@@ -282,8 +283,27 @@ export async function readInstruction(path: string): Promise<InstructionDocument
   );
   return {
     ...document,
-    assetBaseUrl: convertFileSrc(instructionDirectoryPath(document.path)),
+    assetBaseUrl: instructionAssetBaseUrl(document.path),
   };
+}
+
+/** The asset URL of the folder that contains the instruction file. */
+export function instructionAssetBaseUrl(path: string): string {
+  return convertFileSrc(instructionDirectoryPath(path));
+}
+
+export async function readInstructionInfo(path: string): Promise<InstructionFileInfo> {
+  return invoke<InstructionFileInfo>("read_instruction_info", { path });
+}
+
+/** MHTML is read as raw bytes so its per-part charsets (Shift_JIS, EUC-JP, ...) survive. */
+export async function readInstructionBytes(path: string): Promise<ArrayBuffer> {
+  const result = await invoke<ArrayBuffer | Uint8Array>("read_instruction_bytes", { path });
+  if (result instanceof ArrayBuffer) return result;
+  return result.buffer.slice(
+    result.byteOffset,
+    result.byteOffset + result.byteLength,
+  ) as ArrayBuffer;
 }
 
 export async function writeInstruction(
