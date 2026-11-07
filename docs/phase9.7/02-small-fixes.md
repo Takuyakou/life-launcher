@@ -66,7 +66,7 @@ v1.4.1 も同じだった。`git show v1.4.1:src/App.tsx` の `recordTimerSessio
 | `cargo test --manifest-path src-tauri/Cargo.toml` | **142 PASS**（141 unit + 1 capability、56.6秒） |
 | `git diff --check` | PASS |
 
-`public:check`・`lint`・`build` の3つは続けて実行し、合計 24.9秒。visual は `PLAYWRIGHT_BROWSERS_PATH=D:\dev\life-launcher-work\ms-playwright` を設定して実行した。
+`public:check`・`lint`・`build` の3つは続けて実行し、合計 24.9秒。visual は `PLAYWRIGHT_BROWSERS_PATH` にローカルの Playwright ブラウザーの置き場所を設定して実行した。
 
 ## 更新した基準画像
 
