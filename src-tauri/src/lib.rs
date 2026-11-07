@@ -101,6 +101,15 @@ extern "system" {
     ) -> i32;
 }
 
+/// P97-04: the tray tooltip carries the app version, and the test profile stays distinguishable.
+fn tray_tooltip_text(test_profile: bool, version: &str) -> String {
+    if test_profile {
+        format!("Life Launcher (テスト) {version}")
+    } else {
+        format!("Life Launcher {version}")
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // 保存先（普段の起動かテスト用の起動か）は、ここで1回だけ決める。
@@ -230,11 +239,8 @@ pub fn run() {
                     Some(item) => Menu::with_items(app, &[item, &open_item, &quit_item])?,
                     None => Menu::with_items(app, &[&open_item, &quit_item])?,
                 };
-                let tray_tooltip = if test_profile {
-                    "Life Launcher (テスト)"
-                } else {
-                    "Life Launcher"
-                };
+                let tray_tooltip =
+                    tray_tooltip_text(test_profile, &app.package_info().version.to_string());
                 let mut tray = TrayIconBuilder::with_id("life-launcher-tray")
                     .tooltip(tray_tooltip)
                     .menu(&menu)
@@ -430,5 +436,19 @@ mod window_state_flags_tests {
         assert_eq!(main.y, 84);
         assert!(!main.maximized);
         assert!(main.decorated);
+    }
+}
+
+#[cfg(test)]
+mod tray_tooltip_tests {
+    use super::tray_tooltip_text;
+
+    #[test]
+    fn tray_tooltip_carries_the_version_for_both_profiles() {
+        assert_eq!(tray_tooltip_text(false, "1.4.3"), "Life Launcher 1.4.3");
+        assert_eq!(
+            tray_tooltip_text(true, "1.4.3"),
+            "Life Launcher (テスト) 1.4.3"
+        );
     }
 }

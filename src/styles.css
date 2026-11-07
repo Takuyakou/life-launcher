@@ -7182,6 +7182,13 @@ input[type="number"]::-webkit-inner-spin-button {
   font-size: 12px;
 }
 
+/* P97-04: the version is the last line of the Maintenance tab, with no controls. */
+.settingsVersion {
+  margin: 16px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+}
+
 .softwareResetButton {
   width: fit-content;
   min-width: 172px;

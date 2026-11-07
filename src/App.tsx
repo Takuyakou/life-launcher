@@ -172,6 +172,7 @@ import { ShortcutBadge } from "./components/ShortcutBadge";
 import { findShortcutConflicts } from "./shortcutConflicts";
 import { localDayKey } from "./localDay";
 import { useTopMenuLabelLevel } from "./topMenuLabels";
+import { APP_VERSION } from "./version";
 import { useHoverSuppressionAfterResize } from "./hoverSuppression";
 import { installSettingsFieldEditing, navigateAppArrow } from "./keyboardNavigation";
 import {
@@ -15011,6 +15012,9 @@ function DashboardApp() {
                   </button>
                 </section>
               </div>
+              <p className="quietText quietText--small settingsVersion">
+                バージョン {APP_VERSION}
+              </p>
             </div>
 
             <div className="dialogActions settingsDialogActions">
