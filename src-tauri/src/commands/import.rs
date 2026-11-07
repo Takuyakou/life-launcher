@@ -46,6 +46,15 @@ fn now_iso() -> String {
     chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
 }
 
+fn suppress_reload_for_own_write(state: &AppState) -> Result<(), String> {
+    *state
+        .suppress_reload_until
+        .lock()
+        .map_err(|_| "failed to lock reload state".to_string())? =
+        Some(Instant::now() + Duration::from_millis(900));
+    Ok(())
+}
+
 fn char_len(value: &str) -> usize {
     value.chars().count()
 }
@@ -751,11 +760,7 @@ pub fn commit_import(
     let import_id = new_id("import");
     create_import_backup_in(&data_dir, &import_id)?;
     let path = config_path()?;
-    *state
-        .suppress_reload_until
-        .lock()
-        .map_err(|_| "failed to lock reload state".to_string())? =
-        Some(Instant::now() + Duration::from_millis(900));
+    suppress_reload_for_own_write(&state)?;
     write_config(&path, &config)?;
 
     Ok(ImportCommitResponse {
@@ -794,6 +799,7 @@ pub fn undo_import(
     reconcile_config_instruction_roots(&mut config);
     let path = config_path()?;
     ensure_config_schema_file()?;
+    suppress_reload_for_own_write(&state)?;
     write_config(&path, &config)?;
     Ok(ImportUndoResponse {
         config,
@@ -1119,6 +1125,14 @@ mod tests {
             legacy_next_step_settings: None,
         });
         assert_ne!(before, config_fingerprint(&next));
+    }
+
+    #[test]
+    fn own_import_write_suppresses_reload() {
+        let state = AppState::default();
+        suppress_reload_for_own_write(&state).expect("suppress reload");
+        let until = *state.suppress_reload_until.lock().expect("lock");
+        assert!(until.is_some_and(|value| value > std::time::Instant::now()));
     }
 
     fn temp_dir(label: &str) -> PathBuf {
