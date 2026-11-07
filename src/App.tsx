@@ -2893,7 +2893,7 @@ function DashboardApp() {
     const succeeded = await toast.onAction();
     if (succeeded) {
       dismissToast(id);
-      showToast("ok", "元に戻しました");
+      showToast("neutral", "元に戻しました");
       return;
     }
     toastActionLocksRef.current.delete(id);
@@ -4330,7 +4330,7 @@ function DashboardApp() {
               : current,
           );
           await emit(INSTRUCTION_RELOAD_TREE_EVENT);
-          showToast("ok", "手順書フォルダの登録を解除しました");
+          showToast("neutral", "手順書フォルダの登録を解除しました");
           return true;
         } catch (error) {
           throw new Error(
@@ -6548,7 +6548,7 @@ function DashboardApp() {
           launcherPageTabRefs.current.get(
             deletedPageWasSelected ? OVERLAY_UNCLASSIFIED_PAGE_KEY : selectedOverlayPageKey,
           ) ?? launcherSearchRef.current;
-        showToast("ok", `${page.name} を削除しました`);
+        showToast("neutral", `${page.name} を削除しました`);
         return true;
       },
     });
@@ -7381,7 +7381,7 @@ function DashboardApp() {
         settings: { ...config.settings, autoStart: nextAutoStart },
       });
       showToast(
-        "ok",
+        nextAutoStart ? "ok" : "neutral",
         nextAutoStart ? "PC起動時に開くようにしました" : "PC起動時の起動を止めました",
       );
     } catch (error) {
@@ -8648,7 +8648,7 @@ function DashboardApp() {
     if (saved) {
       setContextMenu(null);
       showToast(
-        "ok",
+        "neutral",
         choice === "return" ? "やりたいことへ戻しました" : "次の一手を未設定にしました",
       );
     }
@@ -8964,7 +8964,7 @@ function DashboardApp() {
       }
       await refreshSessions();
       await refreshRecords();
-      showToast("ok", "実行記録を削除しました");
+      showToast("neutral", "実行記録を削除しました");
       return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

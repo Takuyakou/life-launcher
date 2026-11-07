@@ -1997,7 +1997,20 @@ pub(crate) fn config_schema_json() -> &'static str {
         "legacyNextStepSettings": { "$ref": "#/$defs/nextStepExecutionSettings" },
         "colorId": {
           "type": "string",
-          "enum": ["amber", "blue", "green", "violet", "rose", "cyan", "orange", "slate"]
+          "enum": [
+            "amber",
+            "blue",
+            "green",
+            "violet",
+            "rose",
+            "cyan",
+            "orange",
+            "slate",
+            "lime",
+            "magenta",
+            "sand",
+            "coral"
+          ]
         }
       }
     },
@@ -2356,7 +2369,18 @@ fn trim_empty_projects(
         if project.color_id.as_deref().is_some_and(|color_id| {
             !matches!(
                 color_id,
-                "amber" | "blue" | "green" | "violet" | "rose" | "cyan" | "orange" | "slate"
+                "amber"
+                    | "blue"
+                    | "green"
+                    | "violet"
+                    | "rose"
+                    | "cyan"
+                    | "orange"
+                    | "slate"
+                    | "lime"
+                    | "magenta"
+                    | "sand"
+                    | "coral"
             )
         }) {
             project.color_id = None;
@@ -2737,7 +2761,7 @@ fn normalize_settings(settings: &mut Settings, changed: &mut bool) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{sample_config, TodayItem};
+    use crate::models::{sample_config, Project, TodayItem};
     use std::sync::Mutex;
     use std::time::Duration;
 
@@ -2758,13 +2782,66 @@ mod tests {
     }
 
     #[test]
+    fn project_colors_accept_the_twelve_known_ids_and_repair_unknown_ones() {
+        const COLORS: [&str; 12] = [
+            "amber", "blue", "green", "violet", "rose", "cyan", "orange", "slate", "lime",
+            "magenta", "sand", "coral",
+        ];
+        let mut projects = COLORS
+            .iter()
+            .enumerate()
+            .map(|(index, color)| Project {
+                id: format!("p{index}"),
+                name: format!("P{index}"),
+                north_star: None,
+                weekly_focus: None,
+                color_id: Some((*color).to_string()),
+                next_step: None,
+                legacy_next_step_settings: None,
+            })
+            .collect::<Vec<_>>();
+        let mut changed = false;
+        let mut warnings = Vec::new();
+        trim_empty_projects(&mut projects, &mut changed, &mut warnings);
+        assert!(!changed);
+        assert!(warnings.is_empty());
+        for (project, color) in projects.iter().zip(COLORS) {
+            assert_eq!(project.color_id.as_deref(), Some(color));
+        }
+
+        let mut projects = vec![Project {
+            id: "p".to_string(),
+            name: "P".to_string(),
+            north_star: None,
+            weekly_focus: None,
+            color_id: Some("unknown".to_string()),
+            next_step: None,
+            legacy_next_step_settings: None,
+        }];
+        let mut changed = false;
+        let mut warnings = Vec::new();
+        trim_empty_projects(&mut projects, &mut changed, &mut warnings);
+        assert!(changed);
+        assert_eq!(projects[0].color_id, None);
+        assert!(warnings
+            .iter()
+            .any(|warning| warning == "projects: removed an invalid colorId"));
+    }
+
+    #[test]
     fn generated_config_schema_is_valid_json_with_project_fields() {
         let schema: serde_json::Value =
             serde_json::from_str(config_schema_json()).expect("config schema must be valid JSON");
         let colors = schema["$defs"]["project"]["properties"]["colorId"]["enum"]
             .as_array()
             .expect("project color enum");
-        assert_eq!(colors.len(), 8);
+        assert_eq!(colors.len(), 12);
+        for color in ["lime", "magenta", "sand", "coral"] {
+            assert!(
+                colors.iter().any(|value| value == color),
+                "missing project color {color}"
+            );
+        }
         assert_eq!(
             schema["$defs"]["project"]["properties"]["northStar"]["maxLength"],
             60

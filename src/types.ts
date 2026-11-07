@@ -64,6 +64,10 @@ export const ProjectColorIdSchema = z.enum([
   "cyan",
   "orange",
   "slate",
+  "lime",
+  "magenta",
+  "sand",
+  "coral",
 ]);
 
 const InstructionPathSchema = z

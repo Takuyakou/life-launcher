@@ -103,6 +103,18 @@
 [data-project-color="slate"] {
   --project-color: #a8b2c1;
 }
+[data-project-color="lime"] {
+  --project-color: #b5d35c;
+}
+[data-project-color="magenta"] {
+  --project-color: #e07ad6;
+}
+[data-project-color="sand"] {
+  --project-color: #c9ab82;
+}
+[data-project-color="coral"] {
+  --project-color: #ff8b78;
+}
 
 .app-scrollbar,
 .modalBackdrop {
