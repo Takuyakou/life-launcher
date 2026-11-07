@@ -96,11 +96,26 @@ export function assembleMhtml(result: MhtmlParseResult, limits: MhtmlLimits): st
   const index = buildIndex(result);
   const document = new DOMParser().parseFromString(result.html, "text/html");
   const base = result.baseUrl;
+  const encoder = new TextEncoder();
+  const textBytes = (value: string) => encoder.encode(value).length;
+  // Count what the replacements add while they happen. A file can reference one large
+  // image thousands of times; waiting for outerHTML would build gigabytes first.
+  let assembledBytes = textBytes(result.html);
+  const addAssembledBytes = (bytes: number) => {
+    assembledBytes += bytes;
+    if (assembledBytes > limits.maxAssembledBytes) {
+      throw new MhtmlError("too-large", "MHTMLを展開すると大きすぎます");
+    }
+  };
 
   document.querySelectorAll<HTMLImageElement>("img[src]").forEach((image) => {
     const resource = lookupResource(index, image.getAttribute("src") ?? "", base);
-    if (resource?.kind === "image") image.setAttribute("src", resource.dataUrl);
-    else image.removeAttribute("src");
+    if (resource?.kind === "image") {
+      addAssembledBytes(textBytes(resource.dataUrl));
+      image.setAttribute("src", resource.dataUrl);
+    } else {
+      image.removeAttribute("src");
+    }
     image.removeAttribute("srcset");
   });
 
@@ -112,8 +127,10 @@ export function assembleMhtml(result: MhtmlParseResult, limits: MhtmlLimits): st
     if (!rel.includes("stylesheet")) return;
     const resource = lookupResource(index, link.getAttribute("href") ?? "", base);
     if (resource?.kind === "css") {
+      const css = rewriteCss(resource.text, resource.baseUrl ?? base, index);
+      addAssembledBytes(textBytes(css));
       const style = document.createElement("style");
-      style.textContent = rewriteCss(resource.text, resource.baseUrl ?? base, index);
+      style.textContent = css;
       link.replaceWith(style);
     } else {
       link.remove();
@@ -121,15 +138,22 @@ export function assembleMhtml(result: MhtmlParseResult, limits: MhtmlLimits): st
   });
 
   document.querySelectorAll("style").forEach((style) => {
-    style.textContent = rewriteCss(style.textContent ?? "", base, index);
+    const original = style.textContent ?? "";
+    const css = rewriteCss(original, base, index);
+    addAssembledBytes(Math.max(0, textBytes(css) - textBytes(original)));
+    style.textContent = css;
   });
   document.querySelectorAll<HTMLElement>("[style]").forEach((element) => {
     const value = element.getAttribute("style");
-    if (value) element.setAttribute("style", rewriteCss(value, base, index));
+    if (value) {
+      const css = rewriteCss(value, base, index);
+      addAssembledBytes(Math.max(0, textBytes(css) - textBytes(value)));
+      element.setAttribute("style", css);
+    }
   });
 
   const html = `<!doctype html>\n${document.documentElement.outerHTML}`;
-  if (new TextEncoder().encode(html).length > limits.maxAssembledBytes) {
+  if (textBytes(html) > limits.maxAssembledBytes) {
     throw new MhtmlError("too-large", "MHTMLを展開すると大きすぎます");
   }
   return html;

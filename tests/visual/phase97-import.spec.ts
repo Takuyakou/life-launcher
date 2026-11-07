@@ -167,6 +167,10 @@ test("extracts one import JSON from prose, code fences, and strings", () => {
   expect(extractImportJson('{"a":{"b":1}}')).toMatchObject({ ok: false });
   expect(extractImportJson(`${IMPORT_JSON}\n${IMPORT_JSON}`)).toMatchObject({ ok: false });
   expect(extractImportJson("JSONはありません")).toMatchObject({ ok: false });
+  expect(extractImportJson(`説明に " が1つだけあります。\n${IMPORT_JSON}`)).toEqual({
+    ok: true,
+    json: IMPORT_JSON,
+  });
 });
 
 test("previews, imports, and undoes from the section menu", async ({ page }) => {
