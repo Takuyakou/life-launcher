@@ -766,7 +766,7 @@ pub(crate) fn validate_project_v3_invariants(config: &AppConfig) -> Result<(), S
     Ok(())
 }
 
-fn validate_existing_config_before_save(path: &Path) -> Result<(), String> {
+pub(crate) fn validate_existing_config_before_save(path: &Path) -> Result<(), String> {
     if !path.exists() {
         return Ok(());
     }
@@ -957,7 +957,7 @@ pub fn write_config(path: &Path, config: &AppConfig) -> Result<(), String> {
     write_bytes_atomically(path, json.as_bytes(), "config")
 }
 
-fn backup_existing_config(path: &PathBuf) -> Result<(), String> {
+pub(crate) fn backup_existing_config(path: &PathBuf) -> Result<(), String> {
     if !path.exists() {
         return Ok(());
     }
