@@ -109,7 +109,7 @@ CI だけで落ちていた `app_paths` のテストを、比較するパスを�
 | `cargo test` | 160 unit + 1 capability = 161件成功 |
 | `npm run test:visual` | 644件成功（2.4分） |
 | `git diff --check` | 成功 |
-| PR #156 の CI | TBD（実行 ID と結果をここに書く） |
+| PR #156 の CI | run `42361334611`: **success**（15分49秒、job `128370182720`、head `df56ed2`）。public:check / lint / build / test:visual / cargo fmt / check / clippy / test / audit がすべて成功 |
 
 ## 更新した基準画像の一覧と理由
 
@@ -131,4 +131,4 @@ CI だけで落ちていた `app_paths` のテストを、比較するパスを�
 
 - 8.3 の短い名前のテストは、8.3 が無効な環境では確認を省略する。CI の Windows では有効なので、短い名前の経路を確認できる。
 - B の壊れた設定のテストは、コマンド全体ではなく、コマンドが使う確かめの関数を直接確認している。実機で壊れた `config.json` を置いたときの画面の理由表示は、P97-11 の実機確認で一度見るとよい。
-- A〜D の CI 実行 ID と結果は、PR #156 の CI が完了した時点でこの報告に追記する。
+- A〜D・E2 の CI は run `42361334611` で success（15分49秒）。
