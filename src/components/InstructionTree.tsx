@@ -919,6 +919,7 @@ export function InstructionTree({
           } catch (rollbackError) {
             throw new Error(
               `config保存と名前の復元に失敗しました: ${String(saveError)} / ${String(rollbackError)}`,
+              { cause: rollbackError },
             );
           }
           throw saveError;
