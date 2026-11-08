@@ -15976,6 +15976,7 @@ function DashboardApp() {
         />
       )}
       <ImportDialog
+        config={config}
         initialError={importInitialError}
         initialText={importInitialText}
         onClose={closeImportDialog}

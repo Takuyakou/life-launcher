@@ -1,3 +1,5 @@
+import { IMPORT_PROMPT_FIRST, IMPORT_PROMPT_REPEAT } from "./importPrompt";
+
 export type HelpSectionId =
   | "getting-started"
   | "daily-basics"
@@ -197,17 +199,60 @@ export const HELP_GUIDE_SECTIONS: HelpGuideSection[] = [
     blocks: [
       {
         type: "paragraph",
-        text: "「次の一手」の「…」メニューから「まとめて取り込む」を開きます。画面の「プロンプトをコピー」で文章をコピーし、ChatGPTやClaudeに「私の状況」を足して送ります。返ってきたJSONを貼り付けるか、.jsonで保存してメイン画面に落とすと、プレビューが出ます。",
+        text: "「次の一手」の「…」メニューから「まとめて取り込む」を開きます。取り込むときは、はじめてか、2回目以降かでプロンプトを選びます。",
+      },
+      {
+        type: "paragraph",
+        text: "はじめてのとき",
       },
       {
         type: "steps",
         items: [
           "「次の一手」の「…」→「まとめて取り込む」を開きます。",
-          "「プロンプトをコピー」を押し、ChatGPTやClaudeに「私の状況」を足して送ります。",
+          "「はじめて用をコピー」を押し、ChatGPTやClaudeに「私の状況」を足して送ります。",
           "返ってきたJSONを貼り付けるか、.jsonで保存してメイン画面に落とします。",
           "プレビューで、新しく足すもの・すでにあるもの・取り込めないものを確かめます。",
           "「取り込む」を押すと、プロジェクト・次の一手・やりたいことが入ります。",
         ],
+      },
+      {
+        type: "paragraph",
+        text: "2回目以降のとき",
+      },
+      {
+        type: "steps",
+        items: [
+          "「今の内容を付けてコピー」を押すと、今のプロジェクト名・目標・次の一手・やりたいことが入った文をコピーできます。",
+          "ChatGPTやClaudeに「最近の状況」を足して送ります。",
+          "返ってきたJSONを貼り付けるか、.jsonで保存してメイン画面に落とします。",
+          "プレビューで、今あるプロジェクトに足されるものと、新しく増えるものを確かめます。",
+          "「取り込む」を押すと、今の内容に足されます。",
+        ],
+      },
+      {
+        type: "code",
+        id: "import-prompt-first",
+        label: "はじめて用のプロンプト",
+        content: IMPORT_PROMPT_FIRST,
+        copyable: true,
+      },
+      {
+        type: "code",
+        id: "import-prompt-repeat",
+        label: "2回目以降用のプロンプト",
+        content: IMPORT_PROMPT_REPEAT.replace(
+          "{CURRENT_STATE}",
+          "(「今の内容を付けてコピー」で、ここに今のアプリの内容が自動で入ります)",
+        ),
+        copyable: true,
+      },
+      {
+        type: "code",
+        id: "import-prompt-example",
+        label: "「私の状況」の例",
+        content:
+          "英語を話せるようになりたい。平日の夜に30分くらい使える。ベースで好きな曲を1曲弾けるようになりたい。部屋の片付けもしたいが、何から手を付けるか決まっていない。",
+        copyable: false,
       },
       {
         type: "note",
