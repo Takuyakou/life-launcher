@@ -15,3 +15,7 @@ Please include the affected version, a concise reproduction, impact, and any sug
 ## Scope Notes
 
 Life Launcher is a local-first Windows desktop application. Registered apps, files, folders, URLs, instruction folders, session records, and notes are user-controlled local inputs. URL favicon retrieval is network-facing and is intentionally bounded by destination validation, redirect limits, timeouts, response-size limits, content-type checks, and image decoding checks.
+
+## Development Secrets
+
+AIツールの設定ファイルは Git に入れない。秘密の情報を含むコマンドは、常に許可しない。

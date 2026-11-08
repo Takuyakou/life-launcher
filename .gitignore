@@ -36,5 +36,12 @@ logs/
 Thumbs.db
 .idea/
 .vscode/
+.claude/settings.local.json
+.claude/settings*.json
+.claude/*.local.*
+.commandcode/
+.cursor/
+.codex/
+.tmp/
 *.tmp
 *.temp
