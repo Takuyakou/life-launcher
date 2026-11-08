@@ -16,6 +16,7 @@ type Options = {
   limits?: Partial<MhtmlLimits>;
   tooLarge?: boolean;
   withTreeEntry?: boolean;
+  entries?: InstructionEntry[];
   path?: string;
 };
 
@@ -43,6 +44,7 @@ async function openViewer(page: Page, name: string, options: Options = {}): Prom
   fixture.instructionBytes = { [path]: fixtureBytes(name) };
   if (options.tooLarge) fixture.instructionTooLargePaths = [path];
   if (options.withTreeEntry) fixture.instructionExtraEntries = [extraEntry(name)];
+  if (options.entries) fixture.instructionExtraEntries = options.entries;
   await page.setViewportSize({ width: 1200, height: 800 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   if (options.limits) {
@@ -103,6 +105,25 @@ test("Chrome-style MHTML renders its text, cid and Content-Location images, and 
   await expect(page.getByRole("button", { name: "手順書を編集" })).toHaveCount(0);
 });
 
+test("a Chrome body with a frame Content-ID is still the body, not an iframe part", async ({
+  page,
+}) => {
+  await openViewer(page, "frame-body-with-frame-id.mhtml");
+  const frame = await expectFrame(page);
+  await expect(frame.locator("#frame-body")).toHaveText("Chrome frame body");
+  await expect(frame.locator(".accent")).toHaveText("Body text");
+  await expect(frame.locator(".accent")).toHaveCSS("color", "rgb(10, 20, 30)");
+
+  const image = frame.locator("#frame-image");
+  await expect(image).toHaveAttribute("src", /^data:image\/png;base64,/);
+  await expect
+    .poll(() => image.evaluate((element) => (element as HTMLImageElement).naturalWidth))
+    .toBeGreaterThan(0);
+
+  // The second text/html part (referenced by an iframe as cid:frame-...) is not the body.
+  await expect(frame.locator("#frame-only")).toHaveCount(0);
+});
+
 test("Shift_JIS MHTML text is decoded without mojibake", async ({ page }) => {
   await openViewer(page, "shift-jis.mhtml");
   const frame = await expectFrame(page);
@@ -128,6 +149,8 @@ test("the tree lists MHTML with the HTML action and opens it from the row", asyn
   await page.locator(".instructionTreeRow").first().focus();
   await page.keyboard.press("ArrowRight");
   await expect(row).toBeVisible();
+  await expect(row.locator("svg[data-icon='fileWeb']")).toHaveCount(1);
+  await expect(row.locator(".instructionFileIcon")).toHaveCSS("color", "rgb(86, 201, 216)");
   await row.click();
   const frame = await expectFrame(page);
   await expect(frame.locator("h1")).toHaveText("MHTMLの見出し");
@@ -136,6 +159,42 @@ test("the tree lists MHTML with the HTML action and opens it from the row", asyn
   const menu = page.getByRole("menu", { name: "手順書操作" });
   await expect(menu.getByRole("menuitem", { name: "ブラウザで開く" })).toBeVisible();
   await expect(menu.getByRole("menuitem", { name: "手順書を編集" })).toHaveCount(0);
+});
+
+test("MHTML tree icons use the web-file icon and cyan; HTML keeps the code icon", async ({
+  page,
+}) => {
+  const htmlEntry: InstructionEntry = {
+    name: "sample.html",
+    path: `${ROOT}\\sample.html`,
+    kind: "file",
+    extension: "html",
+    size: 10,
+    modifiedAt: 1,
+    readOnly: false,
+  };
+  await openViewer(page, "chrome-basic.mhtml", {
+    path: "/?view=instruction",
+    entries: [extraEntry("chrome-basic.mhtml"), extraEntry("chrome-basic.mht"), htmlEntry],
+  });
+  await page.locator(".instructionTreeRow").first().focus();
+  await page.keyboard.press("ArrowRight");
+
+  const mhtmlRow = page.locator(".instructionTreeRow", {
+    has: page.locator(".instructionTreeName", { hasText: /^chrome-basic\.mhtml$/ }),
+  });
+  const mhtRow = page.locator(".instructionTreeRow", {
+    has: page.locator(".instructionTreeName", { hasText: /^chrome-basic\.mht$/ }),
+  });
+  const htmlRow = page.locator(".instructionTreeRow", {
+    has: page.locator(".instructionTreeName", { hasText: /^sample\.html$/ }),
+  });
+  for (const row of [mhtmlRow, mhtRow]) {
+    await expect(row.locator("svg[data-icon='fileWeb']")).toHaveCount(1);
+    await expect(row.locator(".instructionFileIcon")).toHaveCSS("color", "rgb(86, 201, 216)");
+  }
+  await expect(htmlRow.locator("svg[data-icon='fileCode']")).toHaveCount(1);
+  await expect(htmlRow.locator(".instructionFileIcon")).toHaveCSS("color", "rgb(232, 134, 88)");
 });
 
 test("a missing cid removes only that reference", async ({ page }) => {

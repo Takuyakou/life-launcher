@@ -47,7 +47,7 @@ async function expectActionTextEverywhere(page: Page, expected: string) {
   const overlay = page.getByRole("dialog", { name: "拡大タイマー" });
   await expect(overlay.locator(".expandedTimerTask")).toHaveText(expected);
   await expect(overlay.getByText(PROJECT, { exact: true })).toHaveCount(1);
-  await overlay.getByRole("button", { name: "拡大表示を閉じる" }).click();
+  await overlay.getByRole("button", { name: "メイン画面に戻る（タイマーは続きます）" }).click();
 
   expect((await lastMiniSnapshot(page)).actionText).toBe(expected);
 }

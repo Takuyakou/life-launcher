@@ -69,12 +69,28 @@ test("P8.10 TX-01 manual expand shares timer state and Esc keeps it running", as
   await expect(page.locator(".timerDock .timerStateBadge")).toHaveText("実行中");
 });
 
+test("expanded timer back button returns to the main screen and keeps the timer running", async ({
+  page,
+}) => {
+  await prepare(page);
+  await page.locator(".doNowStartPrimary").click();
+  await page.getByRole("button", { name: "タイマーを大きく表示" }).click();
+  const overlay = page.getByRole("dialog", { name: "拡大タイマー" });
+  const back = overlay.getByRole("button", { name: "メイン画面に戻る（タイマーは続きます）" });
+  await expect(back).toContainText("戻る");
+  await expect(back.locator("svg[data-icon='close']")).toHaveCount(0);
+  await expect(back.locator("svg[data-icon='collapse']")).toHaveCount(1);
+  await back.click();
+  await expect(overlay).toHaveCount(0);
+  await expect(page.locator(".timerDock .timerStateBadge")).toHaveText("実行中");
+});
+
 test("P8.10 TX-01 overlay traps Tab, closes without backdrop click, and can end timer", async ({ page }) => {
   await prepare(page);
   await page.locator(".doNowStartPrimary").click();
   await page.getByRole("button", { name: "タイマーを大きく表示" }).click();
   const overlay = page.getByRole("dialog", { name: "拡大タイマー" });
-  const close = overlay.getByRole("button", { name: "拡大表示を閉じる" });
+  const close = overlay.getByRole("button", { name: "メイン画面に戻る（タイマーは続きます）" });
   await expect(close).toBeFocused();
   await expect(overlay.locator(".expandedTimerClock")).toHaveCSS("user-select", "none");
   await page.keyboard.press("ArrowDown");
@@ -249,7 +265,7 @@ test("P8.10 TX-04 display request follows expanded timer and releases on close",
   await page.getByRole("button", { name: "タイマーを大きく表示" }).click();
   await expect.poll(async () => (await calls()).filter((call) => call.args.active).length).toBe(1);
   const acquired = (await calls())[0].args.leaseId;
-  await page.getByRole("dialog", { name: "拡大タイマー" }).getByRole("button", { name: "拡大表示を閉じる" }).click();
+  await page.getByRole("dialog", { name: "拡大タイマー" }).getByRole("button", { name: "メイン画面に戻る（タイマーは続きます）" }).click();
   await expect.poll(async () => (await calls()).filter((call) => !call.args.active).length).toBe(1);
   expect((await calls())[1].args.leaseId).toBe(acquired);
   await page.getByRole("button", { name: "タイマーを大きく表示" }).click();

@@ -148,15 +148,22 @@ function fileStem(name: string): string {
 }
 
 function instructionFileIcon(name: string): UiIconName {
+  if (isMhtmlInstruction(name)) return "fileWeb";
   if (isHtmlLikeInstruction(name)) return "fileCode";
   if (name.toLocaleLowerCase().endsWith(".txt")) return "fileText";
   return "book";
 }
 
-function instructionFileTone(name: string): "html" | "markdown" | "text" {
+function instructionFileTone(name: string): "html" | "mhtml" | "markdown" | "text" {
+  if (isMhtmlInstruction(name)) return "mhtml";
   if (isHtmlLikeInstruction(name)) return "html";
   if (name.toLocaleLowerCase().endsWith(".txt")) return "text";
   return "markdown";
+}
+
+function isMhtmlInstruction(name: string): boolean {
+  const lowerName = name.toLocaleLowerCase();
+  return lowerName.endsWith(".mhtml") || lowerName.endsWith(".mht");
 }
 
 function isHtmlLikeInstruction(name: string): boolean {
