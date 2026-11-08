@@ -222,6 +222,131 @@ test("the assembled HTML limit reports a too-large MHTML", async ({ page }) => {
   await expect(alert).toContainText("このMHTMLファイルは大きすぎるため表示できません");
 });
 
+test("assembly stops before outerHTML when the running size exceeds the limit", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const result = await page.evaluate(async () => {
+    const { assembleMhtml } = await import("/src/mhtml/assembleMhtml.ts");
+    const descriptor = Object.getOwnPropertyDescriptor(Element.prototype, "outerHTML");
+    let outerHtmlRead = false;
+    Object.defineProperty(Element.prototype, "outerHTML", {
+      configurable: true,
+      get() {
+        outerHtmlRead = true;
+        return descriptor?.get?.call(this);
+      },
+    });
+    try {
+      const references = Array.from(
+        { length: 500 },
+        (_, index) => `<img src="cid:big" id="i${index}">`,
+      ).join("");
+      const parsed = {
+        html: `<html><body>${references}</body></html>`,
+        baseUrl: null,
+        resources: [
+          {
+            kind: "image" as const,
+            mime: "image/png",
+            contentId: "big",
+            location: null,
+            base64: "A".repeat(100_000),
+          },
+        ],
+      };
+      let code: string | null = null;
+      try {
+        assembleMhtml(parsed, {
+          maxPartCount: 1_000,
+          maxDepth: 3,
+          maxDecodedBytes: 64 * 1024 * 1024,
+          maxAssembledBytes: 150_000,
+          timeoutMs: 10_000,
+        });
+      } catch (error) {
+        code = (error as { code?: string }).code ?? String(error);
+      }
+      return { code, outerHtmlRead };
+    } finally {
+      if (descriptor) Object.defineProperty(Element.prototype, "outerHTML", descriptor);
+    }
+  });
+  expect(result.code).toBe("too-large");
+  expect(result.outerHtmlRead).toBe(false);
+});
+
+test("CSS url rewriting stops before building the whole string", async ({ page }) => {
+  await page.goto("/");
+  const result = await page.evaluate(async () => {
+    const { assembleMhtml } = await import("/src/mhtml/assembleMhtml.ts");
+    const originalReplace = String.prototype.replace;
+    let urlReplacements = 0;
+    Object.defineProperty(String.prototype, "replace", {
+      configurable: true,
+      writable: true,
+      value: function (
+        this: string,
+        search: string | RegExp,
+        replacement: string | ((...args: string[]) => string),
+      ) {
+        if (
+          typeof replacement === "function" &&
+          search instanceof RegExp &&
+          search.source.includes("url")
+        ) {
+          const wrapped = (...args: string[]) => {
+            urlReplacements += 1;
+            return replacement(...args);
+          };
+          return originalReplace.call(this, search, wrapped);
+        }
+        return originalReplace.call(this, search, replacement);
+      },
+    });
+    try {
+      const references = Array.from(
+        { length: 500 },
+        () => "background-image:url(cid:big);",
+      ).join("");
+      const parsed = {
+        html: `<html><head><style>${references}</style></head><body></body></html>`,
+        baseUrl: null,
+        resources: [
+          {
+            kind: "image" as const,
+            mime: "image/png",
+            contentId: "big",
+            location: null,
+            base64: "A".repeat(100_000),
+          },
+        ],
+      };
+      let code: string | null = null;
+      try {
+        assembleMhtml(parsed, {
+          maxPartCount: 1_000,
+          maxDepth: 3,
+          maxDecodedBytes: 64 * 1024 * 1024,
+          maxAssembledBytes: 150_000,
+          timeoutMs: 10_000,
+        });
+      } catch (error) {
+        code = (error as { code?: string }).code ?? String(error);
+      }
+      return { code, urlReplacements };
+    } finally {
+      Object.defineProperty(String.prototype, "replace", {
+        configurable: true,
+        writable: true,
+        value: originalReplace,
+      });
+    }
+  });
+  expect(result.code).toBe("too-large");
+  expect(result.urlReplacements).toBeLessThan(500);
+});
+
 test("the 20 MiB file limit reports the limit", async ({ page }) => {
   await openViewer(page, "chrome-basic.mhtml", { tooLarge: true });
   await expect(

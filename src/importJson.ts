@@ -19,6 +19,15 @@ export function extractImportJson(text: string): ExtractImportJsonResult {
   let escaped = false;
   for (let index = 0; index < text.length; index += 1) {
     const character = text[index];
+    if (depth === 0) {
+      // Quotes in the prose before the JSON must not open a string. Only braces that
+      // start a candidate matter until we are inside one.
+      if (character === "{") {
+        start = index;
+        depth = 1;
+      }
+      continue;
+    }
     if (inString) {
       if (escaped) {
         escaped = false;
@@ -34,15 +43,12 @@ export function extractImportJson(text: string): ExtractImportJsonResult {
       continue;
     }
     if (character === "{") {
-      if (depth === 0) start = index;
       depth += 1;
     } else if (character === "}") {
-      if (depth > 0) {
-        depth -= 1;
-        if (depth === 0 && start >= 0) {
-          candidates.push(text.slice(start, index + 1));
-          start = -1;
-        }
+      depth -= 1;
+      if (depth === 0 && start >= 0) {
+        candidates.push(text.slice(start, index + 1));
+        start = -1;
       }
     }
   }
