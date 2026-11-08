@@ -131,7 +131,7 @@ test("Guide shows both import prompts and copies exactly what importPrompt.ts ha
     ),
   );
   await expect(example.locator("pre")).toHaveText(
-    "英語を話せるようになりたい。平日の夜に30分くらい使える。ベースで好きな曲を1曲弾けるようになりたい。部屋の片付けもしたいが、何から手を付けるか決まっていない。",
+    "英語を話せるようになりたい。平日の夜に30分くらい使える。運動の習慣もつけたい。部屋の片付けもしたいが、何から手を付けるか決まっていない。",
   );
   await expect(example.getByRole("button")).toHaveCount(0);
 

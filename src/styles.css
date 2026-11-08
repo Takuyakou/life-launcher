@@ -1458,6 +1458,11 @@ button.instructionTreeDisclosure:hover {
   color: #e88658;
 }
 
+.instructionFileIcon--mhtml,
+.instructionTreeFileIcon--mhtml {
+  color: #56c9d8;
+}
+
 .instructionTreeName {
   min-width: 0;
   overflow: hidden;
@@ -2922,16 +2927,23 @@ h3 {
 }
 
 .expandedTimerClose {
-  display: grid;
-  width: 40px;
+  display: inline-flex;
+  width: auto;
+  min-width: 40px;
   height: 40px;
   flex: 0 0 auto;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: var(--surface);
   color: var(--text);
   cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .expandedTimerClose:hover,

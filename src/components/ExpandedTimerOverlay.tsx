@@ -77,14 +77,15 @@ export function ExpandedTimerOverlay({
         <header className="expandedTimerHeader">
           <span className="expandedTimerEyebrow">Timer</span>
           <button
-            aria-label="拡大表示を閉じる"
+            aria-label="メイン画面に戻る（タイマーは続きます）"
             className="expandedTimerClose"
             onClick={onClose}
             ref={closeRef}
-            title="拡大表示を閉じる"
+            title="メイン画面に戻る（タイマーは続きます）"
             type="button"
           >
-            <UiIcon name="close" size={24} />
+            <UiIcon name="collapse" size={20} />
+            <span>戻る</span>
           </button>
         </header>
         <div className="expandedTimerBody">

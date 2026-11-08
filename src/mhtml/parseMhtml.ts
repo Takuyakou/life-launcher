@@ -344,16 +344,6 @@ function contentLocationValue(headers: Map<string, string>): string | null {
   return headers.get("content-location")?.trim() || null;
 }
 
-function isFramePart(contentId: string | null, contentLocation: string | null): boolean {
-  const id = (contentId ?? "").toLowerCase();
-  const location = (contentLocation ?? "").toLowerCase();
-  return (
-    id.startsWith("frame-") ||
-    location.startsWith("cid:frame-") ||
-    location.includes("cid:frame-")
-  );
-}
-
 function parsePart(bytes: Uint8Array, depth: number, state: ParseState): void {
   const split = findHeaderEnd(bytes);
   if (!split) throw invalid("MHTMLの部分のヘッダーが途中で切れています");
@@ -457,19 +447,28 @@ export function parseMhtml(bytes: Uint8Array, limits: MhtmlLimits): MhtmlParseRe
     parsePart(part, 1, state);
   }
 
-  const snapshotLocation =
-    headers.get("snapshot-content-location") ?? headers.get("content-location") ?? null;
-  const htmlLeaf = state.leaves.find(
-    (leaf) =>
-      leaf.contentType === "text/html" &&
-      leaf.text !== null &&
-      !isFramePart(leaf.contentId, leaf.contentLocation),
+  const snapshotLocation = headers.get("snapshot-content-location")?.trim() ?? null;
+  const outerLocation =
+    snapshotLocation ?? headers.get("content-location")?.trim() ?? null;
+  const normalizedSnapshot = normalizeUrl(snapshotLocation);
+  const htmlLeaves = state.leaves.filter(
+    (leaf) => leaf.contentType === "text/html" && leaf.text !== null,
   );
+  // Chrome puts a Content-ID with a frame- prefix on the page body too. The body is
+  // the HTML part whose Content-Location matches Snapshot-Content-Location; a frame
+  // part is only the fallback when no such part exists.
+  const htmlLeaf =
+    (normalizedSnapshot
+      ? htmlLeaves.find((leaf) => {
+          const location = normalizeUrl(leaf.contentLocation);
+          return location !== null && location === normalizedSnapshot;
+        })
+      : undefined) ?? htmlLeaves[0];
   if (!htmlLeaf || htmlLeaf.text === null) {
     throw new MhtmlError("no-html", "MHTMLに本文のHTMLがありません");
   }
 
-  const pageBase = normalizeUrl(snapshotLocation);
+  const pageBase = normalizeUrl(outerLocation);
   const baseUrl =
     normalizeUrl(htmlLeaf.contentLocation, pageBase) ??
     normalizeUrl(htmlLeaf.contentLocation) ??

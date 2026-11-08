@@ -9,10 +9,12 @@ export type UiIconName =
   | "chevronLeft"
   | "chevronRight"
   | "close"
+  | "collapse"
   | "edit"
   | "external"
   | "fileCode"
   | "fileText"
+  | "fileWeb"
   | "folder"
   | "help"
   | "lock"
@@ -90,6 +92,18 @@ export function UiIcon({ name, size = 18, className, ...props }: UiIconProps) {
       <>
         <path {...common} d="M6 3.5h8l4 4V21H6V3.5Z" />
         <path {...common} d="M14 3.5V8h4M9 12h6M9 15h6M9 18h4" />
+      </>
+    ) : name === "fileWeb" ? (
+      <>
+        <path {...common} d="M6 3.5h8l4 4V21H6V3.5Z" />
+        <path {...common} d="M14 3.5V8h4" />
+        <circle {...common} cx="15" cy="16" r="4" />
+        <path {...common} d="M11 16h8M15 12c1.1 1.2 1.1 6.8 0 8M15 12c-1.1 1.2-1.1 6.8 0 8" />
+      </>
+    ) : name === "collapse" ? (
+      <>
+        <path {...common} d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" />
+        <path {...common} d="m4 9 5-5M20 9l-5-5M4 15l5 5M20 15l-5 5" />
       </>
     ) : name === "folder" ? (
       <path
@@ -184,6 +198,7 @@ export function UiIcon({ name, size = 18, className, ...props }: UiIconProps) {
     <svg
       aria-hidden="true"
       className={className ? `uiIcon ${className}` : "uiIcon"}
+      data-icon={name}
       focusable="false"
       height={size}
       viewBox="0 0 24 24"

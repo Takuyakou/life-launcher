@@ -251,7 +251,7 @@ export const HELP_GUIDE_SECTIONS: HelpGuideSection[] = [
         id: "import-prompt-example",
         label: "「私の状況」の例",
         content:
-          "英語を話せるようになりたい。平日の夜に30分くらい使える。ベースで好きな曲を1曲弾けるようになりたい。部屋の片付けもしたいが、何から手を付けるか決まっていない。",
+          "英語を話せるようになりたい。平日の夜に30分くらい使える。運動の習慣もつけたい。部屋の片付けもしたいが、何から手を付けるか決まっていない。",
         copyable: false,
       },
       {

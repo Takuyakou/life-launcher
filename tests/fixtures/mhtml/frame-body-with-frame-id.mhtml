@@ -1,0 +1,37 @@
+From: <Saved by Blink>
+Snapshot-Content-Location: https://example.invalid/frame-body.html
+Subject: P97-03 MHTML fixture with a frame Content-ID on the body
+Date: Thu, 13 Aug 2026 09:30:00 +0900
+MIME-Version: 1.0
+Content-Type: multipart/related; type="text/html"; boundary="----MultipartBoundary--p9703frame"
+
+------MultipartBoundary--p9703frame
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: base64
+Content-Location: https://example.invalid/frame-body.html
+Content-ID: <frame-body@mhtml.blink>
+
+PCFkb2N0eXBlIGh0bWw+PGh0bWw+PGhlYWQ+PG1ldGEgY2hhcnNldD0idXRmLTgiPjxsaW5rIHJlbD0ic3R5bGVzaGVldCIgaHJlZj0iY2lkOmNzcy1tYWluQG1odG1sLmJsaW5rIj48L2hlYWQ+PGJvZHk+PGgxIGlkPSJmcmFtZS1ib2R5Ij5DaHJvbWUgZnJhbWUgYm9keTwvaDE+PHAgY2xhc3M9ImFjY2VudCI+Qm9keSB0ZXh0PC9wPjxpbWcgaWQ9ImZyYW1lLWltYWdlIiBzcmM9ImNpZDppbWFnZS1oZXJvQG1odG1sLmJsaW5rIiBhbHQ9ImZyYW1lIGltYWdlIj48L2JvZHk+PC9odG1sPg==
+------MultipartBoundary--p9703frame
+Content-Type: text/css; charset="utf-8"
+Content-Transfer-Encoding: base64
+Content-Location: https://example.invalid/frame-body.css
+Content-ID: <css-main@mhtml.blink>
+
+LmFjY2VudCB7IGNvbG9yOiByZ2IoMTAsIDIwLCAzMCk7IH0=
+------MultipartBoundary--p9703frame
+Content-Type: image/png
+Content-Transfer-Encoding: base64
+Content-Location: https://example.invalid/frame-hero.png
+Content-ID: <image-hero@mhtml.blink>
+
+iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAE0lEQVR4nGO8I6fBAANMcBZeDgA6
+XAEqGTG4XwAAAABJRU5ErkJggg==
+------MultipartBoundary--p9703frame
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: base64
+Content-Location: cid:frame-second@mhtml.blink
+Content-ID: <frame-second@mhtml.blink>
+
+PCFkb2N0eXBlIGh0bWw+PGh0bWw+PGJvZHk+PHAgaWQ9ImZyYW1lLW9ubHkiPklGUkFNRSBPTkxZPC9wPjwvYm9keT48L2h0bWw+
+------MultipartBoundary--p9703frame--
