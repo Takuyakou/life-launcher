@@ -98,3 +98,59 @@
 
 - P97-11 の実機確認で、最大化したときの画面右上の角、最大化していないときの右上の角（窓の大きさを変えられること）、メイン画面と手順書ビューアーの両方、表示サイズ「特大」を確かめる。
 - 右端の透明な範囲に乗せたとき、赤が8px手前で止まるのが気になる場合は、`::before` にも `--error` を塗る選択肢がある。今回は「見た目を変えずに押せる範囲だけ広げる」を優先した。
+
+## 追記（2026-11-08）— Ctrl+W で閉じる
+
+オーナー判断 2026-11-08。`fix/p97-close-button` に、閉じるボタンと同じ処理を呼ぶ Ctrl+W を足した。
+
+### 実装
+
+- `WindowControls` の `close()`（`getCurrentWindow().close()`）を、閉じるボタンと Ctrl+W の両方から呼ぶ。別の閉じ方や `hide()` / `destroy()` は作っていない。- `window` の `keydown` を capture で受け、`Ctrl+W`（Shift・Alt・Meta なし、`event.key` が `w` または `event.code` が `KeyW`）で発火する。ダイアログや入力欄にフォーカスがあっても届く。
+- 発火時に `preventDefault()` して WebView の既定の Ctrl+W を止める。`event.repeat` では閉じない。閉じる処理は1回だけ。
+- メイン画面では今の CloseRequested（トレイへ格納）をそのまま通り、手順書ビューアーでは今の `onCloseRequested`（dirty なら確認）をそのまま通る。ミニタイマーの表示中も同じ。
+- Esc でダイアログを閉じる動きは変えていない。
+
+### 設定のショートカットとのぶつかり
+
+- 設定で変えられる4つ（メイン呼び出し・辞書・ミニタイマー切替・手順書）のどれかに Ctrl+W を入れようとすると、保存時に「Ctrl+W はアプリの『閉じる』で使っています」と出して保存しない。入力中の案内も同じ文にした。
+- すでに config の4つのどれかに Ctrl+W が設定されている場合は、その設定を優先し、Ctrl+W では閉じない。`closeShortcutDisabled` を `WindowControls` に渡して切り替える。4つすべてをテストした。
+- ショートカットの登録待ちの間だけは、Ctrl+W を閉じる処理より登録に渡す（Ctrl+W を押して「ぶつかる」と案内を出すため）。登録待ち以外のダイアログ・入力欄では閉じる。
+- WebView の既定の Ctrl+W は、閉じる処理が有効なときも、config 優先で閉じないときも `preventDefault()` で止める。二重に閉じない。
+
+### 使い方と仕様
+
+- `src/content/helpGuide.ts` の「困ったとき」に「窓を閉じるには？」を追加し、右上の×または Ctrl+W、メインはトレイ、ビューアーは確認つきで閉じることを書いた。
+- `docs/spec/current-spec.md` §6.1 に、Ctrl+W の動作、ダイアログ・入力欄での扱い、設定とのぶつかり、config 優先、WebView の既定を止めることを書いた。
+
+### テスト（追記分）
+
+- `tests/visual/phase97-close-button.spec.ts` を7件から18件に増やした。
+  - メイン画面の Ctrl+W で `plugin:window|close` が1回だけ呼ばれる。
+  - WebView の既定の動きを `preventDefault()` で止めている。
+  - 設定ダイアログの入力欄にフォーカスがある状態でも閉じる。
+  - 手順書ビューアーが clean のときは閉じ、編集中は確認が出る。
+  - 辞書のショートカットに Ctrl+W を登録すると、入力中の案内と保存時のトーストが出て、config が変わらない。
+  - config の `focusHotkey` / `launcherHotkey` / `miniHotkey` / `instructionHotkey` のそれぞれに Ctrl+W があるとき、Ctrl+W で閉じない。
+  - 既存の config に Ctrl+W があるまま、ほかの設定（短時間タイマー分数）を保存できる。
+
+### 実行したゲート（追記分）
+
+| ゲート | 結果 |
+| --- | --- |
+| `npm run public:check` | 成功（3,654ファイル、0 blockers） |
+| `npm run lint` | 成功（0エラー、0警告） |
+| `npm run build` | 成功 |
+| `npm run test:visual` | 669件成功（2.5分） |
+| `cargo fmt --check` | 成功 |
+| `cargo check` | 成功 |
+| `cargo clippy --all-targets -- -D warnings` | 成功 |
+| `cargo test` | 157 unit + 1 capability = 158件成功 |
+| `git diff --check` | 成功 |
+
+### 判断メモ（追記）
+
+- Ctrl+W の処理は `WindowControls` に置いた。閉じるボタンと同じコンポーネント・同じ `close()` を使うため、メイン画面と手順書ビューアーで閉じ方の違いが出ない。
+- 設定の登録待ちだけは、Ctrl+W を登録に渡す例外にした。そうしないと「Ctrl+W を設定しようとしたら窓が閉じる」となり、ぶつかりの案内を出せない。
+- config に Ctrl+W があるときは、閉じる処理を止めるだけでなく WebView の既定も止める。設定したショートカット（グローバル側）を壊さないため。
+- 既存の `matchesHotkey()` は辞書の入力欄では無効になるが、config 優先の確認は閉じる側の `closeShortcutDisabled` で行う。入力欄にフォーカスがあっても、config に Ctrl+W があれば閉じない。
+- 手順書ビューアーには設定のショートカットがないため、config の Ctrl+W 優先はメイン画面の設定に対する扱い。ビューアーは常に Ctrl+W で閉じる（dirty なら確認）。

@@ -5,12 +5,16 @@ import { UiIcon } from "./UiIcon";
 
 type WindowControlsProps = {
   variant?: "dashboard" | "instruction";
+  closeShortcutDisabled?: boolean;
 };
 
 // 窓の右上に固定する最小化・最大化・閉じるの3ボタン。
 // 標準のタイトルバーの代わり。ブラウザ(画像比較・Webプレビュー)では
 // 押しても何もしない。
-export function WindowControls({ variant = "dashboard" }: WindowControlsProps) {
+export function WindowControls({
+  variant = "dashboard",
+  closeShortcutDisabled = false,
+}: WindowControlsProps) {
   const [maximized, setMaximized] = useState(false);
   const [focused, setFocused] = useState(true);
   // 窓を戻した直後、マウスが動くまで「乗せた色」を出さない(P96-01 追加修正)。
@@ -87,6 +91,30 @@ export function WindowControls({ variant = "dashboard" }: WindowControlsProps) {
       .close()
       .catch(() => undefined);
   }, []);
+
+  // Ctrl+W は閉じるボタンと同じ close() を呼ぶ。ダイアログや入力欄に
+  // フォーカスがあっても窓を閉じられるよう、window の capture で受ける。
+  // 設定で Ctrl+W を使っているときは、その設定を優先して閉じない。
+  useEffect(() => {
+    const handleCloseShortcut = (event: globalThis.KeyboardEvent) => {
+      if (
+        !event.ctrlKey ||
+        event.altKey ||
+        event.shiftKey ||
+        event.metaKey ||
+        (event.key.toLowerCase() !== "w" && event.code !== "KeyW")
+      ) {
+        return;
+      }
+      // WebView の既定の Ctrl+W と二重にならないようにする。
+      event.preventDefault();
+      if (closeShortcutDisabled || event.repeat) return;
+      event.stopPropagation();
+      close();
+    };
+    window.addEventListener("keydown", handleCloseShortcut, true);
+    return () => window.removeEventListener("keydown", handleCloseShortcut, true);
+  }, [close, closeShortcutDisabled]);
 
   const variantClass =
     variant === "instruction" ? " windowControls--instruction" : " windowControls--dashboard";
