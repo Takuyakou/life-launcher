@@ -584,6 +584,7 @@ Main Window
 - Mainの内部でSidebarと本文を覆う。独立ウィンドウやOS全画面モードにはしない。表示中も既存のアクティブTimerを共有し、別のカウントは作らない。
 - 実行中・一時停止中のSidebarから手動で開ける。次の一手の「開始時にタイマーを大きく表示」は初期値OFFで、明示的な今やる一手・今日の3件の開始時だけ適用する。やりたいこと由来、復元時、Sidebar単独Timerでは自動表示しない。
 - 一時停止・再開・終了ができる。Escまたは閉じる操作は表示だけを閉じてTimerを継続し、背景クリックでは閉じない。背景は操作不可とし、キーボードフォーカスを拡大表示内に保つ。
+- 右上のボタンは、内向きの2つの矢印と「戻る」の文字。`aria-label` と `title` は「メイン画面に戻る（タイマーは続きます）」。窓の閉じるボタンとは別の見た目で、押すとメイン画面に戻りTimerは続く。
 - 満了時は「時間になりました」を表示したまま既存の延長・終了ダイアログを前面へ出す。拡大表示中はMiniを開かず、閉じた後はMini設定に従う。
 - Windowsのdisplay idleだけを抑止し、system sleepは抑止しない。拡大表示を閉じる、Timer終了、アプリ終了時に解除し、異常終了後は期限切れで解除する。APIが失敗してもTimerは継続する。
 
@@ -718,13 +719,14 @@ URLはWindowsの既定ブラウザで開き、登録ごとのブラウザ指定�
 | Markdown | サニタイズ済みHTML   | プレーンテキスト | 黄系Book     |
 | Text     | 改行保持テキスト     | プレーンテキスト | 青系FileText |
 | HTML     | サンドボックスiframe | 読み取り専用     | 橙系FileCode |
-| MHTML    | サンドボックスiframe | 読み取り専用     | 橙系FileCode |
+| MHTML    | サンドボックスiframe | 読み取り専用     | 水色FileWeb  |
 | Folder   | ツリー階層           | 管理操作         | フォルダー色 |
 
 - HTMLは元の文書構造、インラインCSS、相対stylesheet・画像・fontを保持したサニタイズ済み `srcDoc` を使う。
 - 相対assetは検証済みの登録ルート内だけを元HTMLの親フォルダー基準で解決する。
 - iframeは `sandbox="allow-same-origin"` と専用CSPで分離する。`allow-scripts`、`allow-forms`、`allow-popups`は付与しない。
 - script、event handler、form controls、入れ子iframe、object、embedを除去し、リモートCSS・画像・font・通信を拒否する。
+- data- の属性は残す(スクリプトが動かないため、CSS の目印にだけ使われる)。
 - HTML iframeは本文領域の全幅をviewportとして使い、元HTMLのresponsive layoutを反映する。
 - HTTP/HTTPSリンクは外部ブラウザで開く。
 
@@ -757,10 +759,10 @@ URLはWindowsの既定ブラウザで開き、登録ごとのブラウザ指定�
 
 ### 17.5 MHTML(P97-03)
 
-- `.mhtml` / `.mht`(大文字小文字を区別しない)を、HTMLと同じ「見るだけ」で開く。一覧・検索・名前の変更・ごみ箱・「開始時に手順書を開く」・プロジェクトとの紐づけ・一覧のアイコンと色はHTMLと同じ。編集ボタンは出さず、保存の命令(`write_instruction`)は断る。
+- `.mhtml` / `.mht`(大文字小文字を区別しない)を、HTMLと同じ「見るだけ」で開く。一覧・検索・名前の変更・ごみ箱・「開始時に手順書を開く」・プロジェクトとの紐づけはHTMLと同じ。一覧のアイコンは fileWeb、色はプロジェクトの cyan(`#56c9d8`)。編集ボタンは出さず、保存の命令(`write_instruction`)は断る。
 - ファイルはRustがバイトのまま読み、画面側のWeb WorkerでMIMEを読み解く。上限は20 MiB(ほかの形式の2 MiBは変えない)。超えたら「このMHTMLファイルは大きすぎるため表示できません（上限は20 MiBです）」と出す。
 - 読み取る形は、一番外が `multipart/related`(または `multipart/mixed`)。入れ子のmultipartは深さ3まで、部分は1,000まで。部分のエンコードは7bit・8bit・binary・quoted-printable・base64だけを使い、それ以外の部分は使わない。境界が無い・途中で切れている・入れ子が深すぎる・部分が多すぎる・本文のHTMLが無いときは、本文の欄に「このMHTMLファイルは表示できません」と理由を出す。
-- 本文は先頭の `text/html` の部分。入れ子のframeの部分(`cid:frame-…` など)は使わない。各部分の `charset`(UTF-8・Shift_JIS・EUC-JP・ISO-2022-JPなど、ブラウザの `TextDecoder` が読めるもの)で読み、無ければUTF-8。
+- 本文は、`Content-Location` が全体の `Snapshot-Content-Location` と一致する `text/html` の部分。無ければ最初の `text/html` の部分。Chrome が本文に付ける `frame-` の `Content-ID` では本文を外さない。本文以外の `text/html`(本文の iframe などから `cid:frame-…` で参照される部分)は本文にしない。各部分の `charset`(UTF-8・Shift_JIS・EUC-JP・ISO-2022-JPなど、ブラウザの `TextDecoder` が読めるもの)で読み、無ければUTF-8。
 - 画像は `image/png`・`image/jpeg`・`image/gif`・`image/webp` を `data:` で埋め込む。SVGなどのほかの画像は出さない。CSSは `text/css` の部分を `<style>` として埋め込み、`<link rel="stylesheet">` をそれで置き換える。CSSの `url()` はファイル内の画像なら `data:`、それ以外は今の決まりどおり消す。`@import` は追わない。フォントは埋め込まれていても使わない(標準のフォントで出す)。
 - 参照は `cid:` と `Content-Location`(本文の場所を基準にした相対URLの解決を含む)だけを解決する。見つからない参照は消す。外へ取りに行かない。
 - 安全の決まりはHTMLと同じ。埋め込んだHTMLを今の `renderSafeHtml` に通し、同じ `sandbox="allow-same-origin"` のiframeとCSPで表示する。スクリプト・フォーム・入れ子frame・リモートの読み込みを動かさない決まりは緩めない。
@@ -1074,3 +1076,4 @@ URLはWindowsの既定ブラウザで開き、登録ごとのブラウザ指定�
 - `.json` 1つを窓の上に持ってきたときは、サイドバーに「ボタンとして登録」、メイン画面に「まとめて取り込む」の2つの場所を点線で出し、マウスがある方を強調する。`.json` 以外・2つ以上では今までどおり窓全体の表示にする。
 - ドロップは、TauriのドラッグイベントとWindowsの独自ドロップ先の両方から届くことがあるため、同じパスのドロップは1秒以内なら1回だけ処理する。座標は物理ピクセルを `devicePixelRatio` でCSSピクセルに直し、`elementFromPoint` で `.mainPanel` か `.sidebar` かを決める。
 - 「使い方」に章「まとめて取り込む」を置き、はじめてと2回目以降の手順、2つのプロンプトの全文、`{CURRENT_STATE}` の説明、「私の状況」の例、貼り付け・ファイル、プレビュー、取り込む、元に戻すを説明する。
+- 取り込み画面の一番下は、左が「取り込む」（緑）、右が「キャンセル」（赤）。Tab で移る順もこの見た目の順に合わせる。

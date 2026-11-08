@@ -345,9 +345,6 @@ export function ImportDialog({
         </div>
 
         <footer className="importDialogFooter">
-          <button className="dangerButton importDialogCancelButton" disabled={busy} onClick={onClose} type="button">
-            キャンセル
-          </button>
           <button
             className="secondaryButton importDialogCommitButton"
             disabled={busy || !preview || importable === 0}
@@ -355,6 +352,9 @@ export function ImportDialog({
             type="button"
           >
             {busy ? "取り込んでいます…" : "取り込む"}
+          </button>
+          <button className="dangerButton importDialogCancelButton" disabled={busy} onClick={onClose} type="button">
+            キャンセル
           </button>
         </footer>
       </section>

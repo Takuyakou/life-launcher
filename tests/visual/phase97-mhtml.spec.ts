@@ -17,6 +17,7 @@ type Options = {
   tooLarge?: boolean;
   withTreeEntry?: boolean;
   entries?: InstructionEntry[];
+  document?: string;
   path?: string;
 };
 
@@ -41,7 +42,10 @@ function extraEntry(name: string): InstructionEntry {
 async function openViewer(page: Page, name: string, options: Options = {}): Promise<string> {
   const fixture: VisualQaFixture = createPublicFixture();
   const path = `${ROOT}\\${name}`;
-  fixture.instructionBytes = { [path]: fixtureBytes(name) };
+  if (/\.(mhtml|mht)$/i.test(name)) {
+    fixture.instructionBytes = { [path]: fixtureBytes(name) };
+  }
+  if (options.document) fixture.instructionDocuments = { [path]: options.document };
   if (options.tooLarge) fixture.instructionTooLargePaths = [path];
   if (options.withTreeEntry) fixture.instructionExtraEntries = [extraEntry(name)];
   if (options.entries) fixture.instructionExtraEntries = options.entries;
@@ -123,6 +127,32 @@ test("a Chrome body with a frame Content-ID is still the body, not an iframe par
   // The second text/html part (referenced by an iframe as cid:frame-...) is not the body.
   await expect(frame.locator("#frame-only")).toHaveCount(0);
 });
+
+for (const name of ["data-attr.html", "data-attr.mhtml"]) {
+  test(`${name} keeps data- attributes for CSS and still removes scripts`, async ({ page }) => {
+    const document =
+      name.endsWith(".html")
+        ? readFileSync(resolve("tests/fixtures/instruction-html/data-attr.html"), "utf8")
+        : undefined;
+    await openViewer(page, name, { document });
+    const frame = await expectFrame(page);
+    const target = frame.locator("#data-target");
+    await expect(target).toHaveAttribute("data-v-abc", "");
+    await expect(target).toHaveCSS("color", "rgb(12, 34, 56)");
+
+    expect(
+      await frame.locator("#click-target").evaluate((element) => element.hasAttribute("onclick")),
+    ).toBe(false);
+    expect(
+      await frame.locator("#js-link").evaluate((element) => element.hasAttribute("href")),
+    ).toBe(false);
+    expect(
+      await frame.locator("body").evaluate(
+        () => (window as unknown as { __unsafe?: boolean }).__unsafe,
+      ),
+    ).toBeUndefined();
+  });
+}
 
 test("Shift_JIS MHTML text is decoded without mojibake", async ({ page }) => {
   await openViewer(page, "shift-jis.mhtml");

@@ -100,7 +100,7 @@ function sanitizeHtmlDocument(source: string, assetBaseUrl: string): string {
   if (!DOMPurify.isSupported || !isTrustedAssetBaseUrl(assetBaseUrl)) return "";
 
   const sanitized = DOMPurify.sanitize(source, {
-    ALLOW_DATA_ATTR: false,
+    ALLOW_DATA_ATTR: true,
     ADD_TAGS: ["link", "meta"],
     ADD_ATTR: ["charset", "content", "http-equiv", "name", "rel"],
     ALLOWED_URI_REGEXP: SAFE_URI_PATTERN,
