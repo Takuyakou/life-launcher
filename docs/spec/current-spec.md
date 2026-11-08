@@ -1,20 +1,34 @@
-# Life Launcher v1.4.2 UI/UX・機能仕様書
+# Life Launcher v1.4.3 UI/UX・機能仕様書
 
 ## 0. 文書情報
 
 | 項目             | 内容                                                                   |
 | ---------------- | ---------------------------------------------------------------------- |
-| 文書版           | 1.4.2                                                                  |
+| 文書版           | 1.4.3                                                                  |
 | 対象             | Windowsデスクトップ版 Life Launcher                                    |
-| 実装基準         | Public repository `Takuyakou/life-launcher` のv1.4.2実装             |
-| 作業branch       | `release/v1.4.2`(P96-03統合後の`main`が起点)                           |
-| 監査基準コミット | `2025088`（PR #143マージ）                                             |
-| 確認日           | 2026-11-06                                                             |
+| 実装基準         | Public repository `Takuyakou/life-launcher` のv1.4.3実装             |
+| 作業branch       | `release/v1.4.3`(P97-10・P97-10c・P97-10d・secret-guard統合後の`main`が起点) |
+| 監査基準コミット | `3a18308`（PR #161マージ）                                             |
+| 確認日           | 2026-11-08                                                             |
 | UI実装           | Tauri 2 / React 18 / TypeScript / CSS                                  |
 
-本書は、Life Launcher v1.4.2のUI/UXと主要機能を、現在のコード、型、設定、capability、テストから整理した現行仕様書である。
+本書は、Life Launcher v1.4.3のUI/UXと主要機能を、現在のコード、型、設定、capability、テストから整理した現行仕様書である。
 
-アプリ版は`1.4.2`、config schemaは`3`である。Project / NextStep / Wishlist再構成、Dictionary / Drop Register / Instruction Viewer / Guide改善、メイン表示サイズ、拡大Timer、キーボード操作と完了表示の修正、一体型タイトルバー、窓の上端のタイマーの線、手順書ビューアーの十字キー操作を含む。機能の入口は [Overview](../OVERVIEW.md) を参照する。
+アプリ版は`1.4.3`、config schemaは`3`である。Project / NextStep / Wishlist再構成、Dictionary / Drop Register / Instruction Viewer / Guide改善、メイン表示サイズ、拡大Timer、キーボード操作と完了表示の修正、一体型タイトルバー、窓の上端のタイマーの線、手順書ビューアーの十字キー操作、MHTML表示、JSON取り込み、プロジェクト色12色、窓の閉じるボタンとCtrl+Wを含む。機能の入口は [Overview](../OVERVIEW.md) を参照する。
+
+## v1.4.3（Phase 9.7）での変更
+
+- テスト用の起動(`LIFE_LAUNCHER_TEST_PROFILE`、`scripts/start-test-profile.ps1`)を追加し、普段のデータと分けて確認できるようにした（P97-01）。
+- 窓の内側の余白のドラッグ、記録画面の「今日」、ミニタイマーのダブルクリック、設定画面の↑、窓を戻した直後の乗せた色を直した（P97-02）。
+- 手順書ビューアーでMHTML(`.mhtml` / `.mht`)を表示できるようにした。HTMLと同じく読み取り専用で、上限は20 MB（P97-03、§17.4）。
+- 設定の「メンテナンス」とタスクトレイの説明にバージョンを出すようにした（P97-04）。
+- 開発用のESLintを更新し、使っていない古いコードを削除し、READMEを整理した（P97-05〜07）。
+- プロジェクトの色を4色（lime・magenta・sand・coral）増やし、12色にした（P97-08）。
+- プロジェクト・次の一手・やりたいことをJSONでまとめて取り込めるようにした（P97-09、§30）。
+- 「やりたいこと」の節を、プロジェクトごとのまとまりと色の線で見やすくし、「未分類」を最後にした（P97-10、§12）。
+- 窓の閉じるボタンを44pxにし、押せる範囲を右端・最大化時の上端まで広げた。Ctrl+Wでも閉じられる（P97-10c）。
+- 取り込みのプロンプトを、はじめて用と2回目以降用の2つにし、使い方に全文を出した（P97-10d、§30）。
+- config schema、データ形式、セッション記録の書き込み内容は変えていない。
 
 ## v1.4.2（Phase 9.6）での変更
 
