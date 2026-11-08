@@ -132,3 +132,19 @@ CI だけで落ちていた `app_paths` のテストを、比較するパスを�
 - 8.3 の短い名前のテストは、8.3 が無効な環境では確認を省略する。CI の Windows では有効なので、短い名前の経路を確認できる。
 - B の壊れた設定のテストは、コマンド全体ではなく、コマンドが使う確かめの関数を直接確認している。実機で壊れた `config.json` を置いたときの画面の理由表示は、P97-11 の実機確認で一度見るとよい。
 - A〜D・E2 の CI は run `42361334611` で success（15分49秒）。
+
+## main `3a18308` への合わせ直し（2026-11-08）
+
+- `fix/p97-pre-release` を、PR #161（secret-guard）まで入った `main` = `3a18308` の上に rebase した。rebase 前の head は `e8a8ef9`、rebase 後のコミット列の先頭（この追記の直前）は `db9728e`。
+- 競合したのは `tests/visual/phase97-import.spec.ts` だけ。次の両方を残した。
+  - #156 側: `importedConfigForToday()`、`an imported next step completes in Today3 like a screen-set next step`、`extracts one import JSON from prose, code fences, and strings`。
+  - main 側: 閉じるボタンの幅を反映した基準画像、`maxDiffPixels: 12`、`prepare(page, fixture = createFullTodayFixture())` の fixture 引数。
+  - 解消では、#156 の `prepare(page)` 呼び出しがそのまま使えるよう、main 側の fixture 引数を残した。画像比較の許容（12px）と #156 の Today3 完了テストは両方そのまま。
+- 競合しなかった変更（`app_paths.rs`、`commands/config.rs`、`commands/import.rs`、`importJson.ts`、`assembleMhtml.ts`、`phase97-mhtml.spec.ts`、README の版の例）は rebase で自動的に取り込んだ。main の P97-10c / P97-10d / secret-guard の変更は残っている。
+- rebase 後のローカルゲート:
+  - `npm run lint` / `npm run build` / `npm run public:check`（3,659ファイル、0 blockers）: 成功
+  - `cargo fmt --check` / `cargo check` / `cargo clippy --all-targets -- -D warnings` / `cargo test`（160 unit + 1 capability = 161件）: 成功
+  - `npm run test:visual -- tests/visual/phase97-import.spec.ts tests/visual/phase97-mhtml.spec.ts`: 31件成功
+  - `npm run test:visual`: **676件成功**（2.8分）
+  - `git diff --check`: 成功
+- この追記を push した。PR #156 の CI は待たない（オーナーの指示）。
