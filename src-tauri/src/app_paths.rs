@@ -246,6 +246,7 @@ fn validate_test_profile(raw: &Path, normal: &NormalPaths) -> Result<PathBuf, St
         ));
     }
     for protected in normal.protected() {
+        let protected = normalize(&protected);
         if is_same_or_within(&profile, &protected) {
             return Err(format!(
                 "テスト用のフォルダが普段の保存先の中にあります: {} (普段の保存先: {})",
@@ -363,18 +364,18 @@ mod tests {
     fn with_the_variable_every_location_moves_into_the_profile() {
         let root = temp_root("test");
         let profile = root.join("profile");
-        let expected_profile = normalize(&profile);
         let paths =
             AppPaths::resolve(Some(profile.as_os_str()), normal_at(&root)).expect("resolve");
         assert!(paths.is_test_profile());
-        assert_eq!(paths.data_dir(), expected_profile.join(TEST_DATA_DIR_NAME));
+        let profile = normalize(&profile);
+        assert_eq!(paths.data_dir(), profile.join(TEST_DATA_DIR_NAME));
         assert_eq!(
             paths.window_state_file(),
-            Some(expected_profile.join(TEST_WINDOW_STATE_FILE_NAME)).as_deref()
+            Some(profile.join(TEST_WINDOW_STATE_FILE_NAME)).as_deref()
         );
         assert_eq!(
             paths.webview_data_dir(),
-            Some(expected_profile.join(TEST_WEBVIEW_DIR_NAME)).as_deref()
+            Some(profile.join(TEST_WEBVIEW_DIR_NAME)).as_deref()
         );
     }
 
@@ -422,6 +423,47 @@ mod tests {
                 raw.display()
             );
         }
+    }
+
+    #[test]
+    fn short_names_that_reach_the_normal_location_are_rejected() {
+        let root = temp_root("short-name");
+        let mut normal = normal_at(&root);
+        normal.data_dir = root
+            .join("a-very-long-directory-name-for-8-3")
+            .join(CONFIG_DIR_NAME);
+        std::fs::create_dir_all(&normal.data_dir).expect("data dir");
+        let Some(short_data) = short_path(&normal.data_dir) else {
+            return;
+        };
+        if short_data == normal.data_dir {
+            return;
+        }
+        let candidate = short_data.join("inner");
+        assert!(
+            AppPaths::resolve(Some(candidate.as_os_str()), normal).is_err(),
+            "{}",
+            candidate.display()
+        );
+    }
+
+    #[cfg(windows)]
+    fn short_path(path: &Path) -> Option<PathBuf> {
+        let command = format!("for %I in (\"{}\") do @echo %~sI", path.display());
+        let output = std::process::Command::new("cmd")
+            .args(["/C", &command])
+            .output()
+            .ok()?;
+        if !output.status.success() {
+            return None;
+        }
+        let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        (!text.is_empty()).then(|| PathBuf::from(text))
+    }
+
+    #[cfg(not(windows))]
+    fn short_path(_path: &Path) -> Option<PathBuf> {
+        None
     }
 
     #[test]
