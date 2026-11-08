@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { IMPORT_PROMPT_FIRST, IMPORT_PROMPT_REPEAT } from "../../src/content/importPrompt";
 import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 
@@ -95,6 +96,65 @@ test("Guide close button uses the red cancel style (P96-03)", async ({ page }) =
   await expect(close).toHaveCSS("border-top-color", reference.border);
   expect(reference.background).toBe("rgb(59, 40, 35)");
   expect(reference.color).toBe("rgb(255, 180, 173)");
+});
+
+test("Guide shows both import prompts and copies exactly what importPrompt.ts has", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (text: string) => {
+          (window as typeof window & { __copiedGuidePrompt?: string }).__copiedGuidePrompt = text;
+        },
+      },
+    });
+  });
+  await prepare(page);
+  const dialog = await openGuide(page);
+  const navigation = dialog.getByRole("navigation", { name: "使い方の目次" });
+  await navigation.getByRole("button", { name: /まとめて取り込む/ }).click();
+  const section = dialog.locator('[data-help-section-id="bulk-import"]');
+  await expect(section).toBeVisible();
+
+  const blocks = section.locator(".helpGuideCodeBlock");
+  await expect(blocks).toHaveCount(3);
+  const first = blocks.filter({ hasText: "はじめて用のプロンプト" });
+  const repeat = blocks.filter({ hasText: "2回目以降用のプロンプト" });
+  const example = blocks.filter({ hasText: "「私の状況」の例" });
+  await expect(first.locator("pre")).toHaveText(IMPORT_PROMPT_FIRST);
+  await expect(repeat.locator("pre")).toHaveText(
+    IMPORT_PROMPT_REPEAT.replace(
+      "{CURRENT_STATE}",
+      "(「今の内容を付けてコピー」で、ここに今のアプリの内容が自動で入ります)",
+    ),
+  );
+  await expect(example.locator("pre")).toHaveText(
+    "英語を話せるようになりたい。平日の夜に30分くらい使える。ベースで好きな曲を1曲弾けるようになりたい。部屋の片付けもしたいが、何から手を付けるか決まっていない。",
+  );
+  await expect(example.getByRole("button")).toHaveCount(0);
+
+  await first.getByRole("button", { name: "はじめて用のプロンプトをコピー" }).click();
+  expect(
+    await page.evaluate(
+      () =>
+        (window as typeof window & { __copiedGuidePrompt?: string }).__copiedGuidePrompt ?? "",
+    ),
+  ).toBe(IMPORT_PROMPT_FIRST);
+
+  await repeat.getByRole("button", { name: "2回目以降用のプロンプトをコピー" }).click();
+  expect(
+    await page.evaluate(
+      () =>
+        (window as typeof window & { __copiedGuidePrompt?: string }).__copiedGuidePrompt ?? "",
+    ),
+  ).toBe(
+    IMPORT_PROMPT_REPEAT.replace(
+      "{CURRENT_STATE}",
+      "(「今の内容を付けてコピー」で、ここに今のアプリの内容が自動で入ります)",
+    ),
+  );
 });
 
 test("Guide remains bounded at 860px and exposes the collapsed contents below 760px", async ({

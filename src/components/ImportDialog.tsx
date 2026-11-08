@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { IMPORT_PROMPT } from "../content/importPrompt";
+import { IMPORT_PROMPT_FIRST, IMPORT_PROMPT_REPEAT } from "../content/importPrompt";
+import { buildImportCurrentState } from "../importCurrentState";
 import { extractImportJson } from "../importJson";
 import { commitImport, previewImport } from "../tauri";
-import type { ImportCommitResponse, ImportPreviewResponse } from "../types";
+import type { AppConfig, ImportCommitResponse, ImportPreviewResponse } from "../types";
 
 type ImportDialogProps = {
   open: boolean;
   initialText: string;
   initialError?: string | null;
+  config: AppConfig | null;
   onClose: () => void;
   onImported: (response: ImportCommitResponse) => void;
   onNotify: (tone: "ok" | "warn" | "error", message: string) => void;
@@ -21,6 +23,7 @@ export function ImportDialog({
   open,
   initialText,
   initialError,
+  config,
   onClose,
   onImported,
   onNotify,
@@ -74,15 +77,25 @@ export function ImportDialog({
   const importable = counts
     ? counts.newProjects + counts.existingProjects + counts.nextSteps + counts.wishes
     : 0;
+  const currentState = buildImportCurrentState(config);
 
-  const copyPrompt = async () => {
+  const copyPrompt = async (prompt: string, message: string) => {
     try {
-      await navigator.clipboard.writeText(IMPORT_PROMPT);
-      onNotify("ok", "プロンプトをコピーしました");
+      await navigator.clipboard.writeText(prompt);
+      onNotify("ok", message);
     } catch {
       onNotify("warn", "プロンプトをコピーできませんでした");
     }
   };
+
+  const copyFirstPrompt = () =>
+    copyPrompt(IMPORT_PROMPT_FIRST, "はじめて用のプロンプトをコピーしました");
+
+  const copyRepeatPrompt = () =>
+    copyPrompt(
+      IMPORT_PROMPT_REPEAT.replace("{CURRENT_STATE}", currentState),
+      "今の内容を付けてコピーしました",
+    );
 
   const commit = async () => {
     if (!preview || !json || busy) return;
@@ -164,10 +177,31 @@ export function ImportDialog({
             />
           </label>
 
-          <div className="importDialogActions">
-            <button className="secondaryButton" disabled={busy} onClick={() => void copyPrompt()} type="button">
-              プロンプトをコピー
+          <div className="importPromptActions">
+            <button
+              className="secondaryButton"
+              disabled={busy}
+              onClick={() => void copyFirstPrompt()}
+              type="button"
+            >
+              はじめて用をコピー
             </button>
+            <div className="importPromptRepeat">
+              <button
+                className="secondaryButton"
+                disabled={busy}
+                onClick={() => void copyRepeatPrompt()}
+                type="button"
+              >
+                今の内容を付けてコピー
+              </button>
+              <small className="quietText quietText--small">
+                コピーする文には、今のプロジェクト名・目標・次の一手・やりたいことが入ります。
+              </small>
+            </div>
+          </div>
+
+          <div className="importDialogActions">
             <button
               className="secondaryButton"
               disabled={busy || !text.trim()}

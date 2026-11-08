@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { AppConfig, ImportPreviewResponse } from "../../src/types";
+import { IMPORT_PROMPT_FIRST, IMPORT_PROMPT_REPEAT } from "../../src/content/importPrompt";
+import { buildImportCurrentState } from "../../src/importCurrentState";
 import { extractImportJson } from "../../src/importJson";
 import { createFullTodayFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
@@ -77,8 +79,7 @@ function importedConfig(base: AppConfig): AppConfig {
   return config;
 }
 
-async function prepare(page: Page) {
-  const fixture = createFullTodayFixture();
+async function prepare(page: Page, fixture = createFullTodayFixture()) {
   await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
   await page.setViewportSize({ width: 1440, height: 900 });
   await installTauriMock(page, fixture, "main");
@@ -194,7 +195,7 @@ test("previews, imports, and undoes from the section menu", async ({ page }) => 
   await expect(page.getByText("元に戻しました")).toBeVisible();
 });
 
-test("copies the prompt from the import dialog", async ({ page }) => {
+test("copies the first-time prompt exactly", async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
@@ -210,13 +211,116 @@ test("copies the prompt from the import dialog", async ({ page }) => {
 
   await page.getByRole("button", { name: "次の一手の操作", exact: true }).click();
   await page.getByRole("menuitem", { name: "まとめて取り込む" }).click();
-  await page.getByRole("button", { name: "プロンプトをコピー" }).click();
-  await expect(page.getByText("プロンプトをコピーしました")).toBeVisible();
+  await page.getByRole("button", { name: "はじめて用をコピー" }).click();
+  await expect(page.getByText("はじめて用のプロンプトをコピーしました")).toBeVisible();
   const copied = await page.evaluate(
     () => (window as typeof window & { __copiedPrompt?: string }).__copiedPrompt ?? "",
   );
-  expect(copied).toContain("Life Launcher に取り込める JSON");
-  expect(copied).toContain("lifeLauncherImport");
+  expect(copied).toBe(IMPORT_PROMPT_FIRST);
+});
+
+test("copies the current app state with the 2nd-and-later prompt", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (text: string) => {
+          (window as typeof window & { __copiedPrompt?: string }).__copiedPrompt = text;
+        },
+      },
+    });
+  });
+  const fixture = await prepare(page);
+  await stubImport(page, { preview: preview(), original: fixture.config });
+
+  await page.getByRole("button", { name: "次の一手の操作", exact: true }).click();
+  await page.getByRole("menuitem", { name: "まとめて取り込む" }).click();
+  const dialog = page.getByRole("dialog", { name: "まとめて取り込む" });
+  await expect(
+    dialog.getByText(
+      "コピーする文には、今のプロジェクト名・目標・次の一手・やりたいことが入ります。",
+    ),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "今の内容を付けてコピー" }).click();
+
+  const copied = await page.evaluate(
+    () => (window as typeof window & { __copiedPrompt?: string }).__copiedPrompt ?? "",
+  );
+  const expectedState = buildImportCurrentState(fixture.config);
+  expect(copied).toBe(IMPORT_PROMPT_REPEAT.replace("{CURRENT_STATE}", expectedState));
+  expect(copied).toContain("サンプル学習(色: blue)");
+  expect(copied).toContain("目標: 小さな一手から理解を深める");
+  expect(copied).toContain("次の一手: 資料を1ページ読む");
+  expect(copied).toContain("やりたいこと: 週末に試すアイデア");
+  expect(copied).toContain("プロジェクトなしのやりたいこと: あとで確認するサンプル");
+  expect(copied).not.toContain("sample-documents");
+  expect(copied).not.toContain("C:\\");
+  expect(copied).not.toContain("完了");
+  expect(copied).not.toContain("今日の3件");
+});
+
+test("builds the current state without empty lines or a missing color", () => {
+  const fixture = createFullTodayFixture();
+  const config = structuredClone(fixture.config);
+  config.projects = [
+    { id: "plain", name: "色なし" },
+    {
+      id: "full",
+      name: "全部あり",
+      colorId: "blue",
+      northStar: "目指すこと",
+      nextStep: {
+        text: "次にやる",
+        buttonIds: [],
+        defaultTimerMinutes: 25,
+        shortTimerMinutes: 5,
+      },
+    },
+  ];
+  config.inbox = [
+    { id: "wish-full", text: "やりたい1", projectId: "full" },
+    { id: "wish-plain", text: "やりたい2", projectId: "plain" },
+    { id: "wish-none", text: "プロジェクトなし" },
+  ];
+  expect(buildImportCurrentState(config)).toBe(
+    [
+      "色なし",
+      "やりたいこと: やりたい2",
+      "全部あり(色: blue)",
+      "目標: 目指すこと",
+      "次の一手: 次にやる",
+      "やりたいこと: やりたい1",
+      "プロジェクトなしのやりたいこと: プロジェクトなし",
+    ].join("\n"),
+  );
+});
+
+test("uses (まだ何もありません) when the app has no projects or wishes", async ({ page }) => {  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (text: string) => {
+          (window as typeof window & { __copiedPrompt?: string }).__copiedPrompt = text;
+        },
+      },
+    });
+  });
+  const fixture = createFullTodayFixture();
+  fixture.config.projects = [];
+  fixture.config.inbox = [];
+  await prepare(page, fixture);
+  await stubImport(page, { preview: preview(), original: fixture.config });
+
+  await page.getByRole("button", { name: "次の一手の操作", exact: true }).click();
+  await page.getByRole("menuitem", { name: "まとめて取り込む" }).click();
+  await page.getByRole("button", { name: "今の内容を付けてコピー" }).click();
+
+  const copied = await page.evaluate(
+    () => (window as typeof window & { __copiedPrompt?: string }).__copiedPrompt ?? "",
+  );
+  expect(copied).toBe(
+    IMPORT_PROMPT_REPEAT.replace("{CURRENT_STATE}", "(まだ何もありません)"),
+  );
 });
 
 test("routes a JSON drop by the side and shows the two-zone overlay", async ({ page }) => {
