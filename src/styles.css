@@ -10541,7 +10541,7 @@ input[type="number"]::-webkit-inner-spin-button {
   border-radius: var(--radius);
   background: transparent;
   color: var(--muted);
-  font-size: var(--dashboard-font-meta);
+  font-size: var(--dashboard-font-body);
   font-weight: 600;
   text-align: left;
   cursor: grab;
@@ -10559,27 +10559,29 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .wishlistGroupHeader .projectIdentity {
   min-width: 0;
-  color: var(--muted);
-  font-size: var(--dashboard-font-meta);
+  color: var(--text);
+  font-size: var(--dashboard-font-body);
   font-weight: 600;
 }
 
 .wishlistGroupHeader > strong {
-  color: var(--muted);
-  font-size: var(--dashboard-font-meta);
+  color: var(--text);
+  font-size: var(--dashboard-font-body);
   font-weight: 600;
 }
 
 .wishlistGroupHeader > span:last-child {
   flex: 0 0 auto;
+  color: var(--muted);
   font-size: var(--dashboard-font-meta);
 }
 
 .wishlistGroup .inboxRow.sourceListRow {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
+  min-height: 40px;
   border-left: 3px solid var(--project-color, var(--line));
-  border-radius: 0 var(--radius) var(--radius) 0;
+  border-radius: 0;
   padding-left: 12px;
 }
 
@@ -10592,8 +10594,8 @@ input[type="number"]::-webkit-inner-spin-button {
   align-items: center;
   gap: 5px;
   color: var(--text);
-  font-size: var(--dashboard-font-meta);
-  font-weight: 650;
+  font-size: var(--dashboard-font-body);
+  font-weight: 500;
 }
 
 .sourceLockBadge--wishlist {
@@ -12222,6 +12224,11 @@ button.mainActionButton:is(
 .mainScrollContent:is([data-main-display-size="large"], [data-main-display-size="xlarge"])
   :is(.todayRow, .nextStepRow.sourceListRow, .inboxRow.sourceListRow, .todayActivityRow) {
   min-height: var(--main-row-height);
+}
+
+.mainScrollContent:is([data-main-display-size="large"], [data-main-display-size="xlarge"])
+  .wishlistGroup .inboxRow.sourceListRow {
+  min-height: 40px;
 }
 
 .mainScrollContent:is([data-main-display-size="large"], [data-main-display-size="xlarge"])

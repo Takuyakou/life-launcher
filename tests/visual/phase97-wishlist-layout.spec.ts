@@ -12,7 +12,12 @@ type Control = {
   currentConfig: () => AppConfig;
 };
 
-async function prepare(page: Page, fixture = createFullTodayFixture()) {
+async function prepare(
+  page: Page,
+  fixture = createFullTodayFixture(),
+  size: "standard" | "large" | "xlarge" = "standard",
+) {
+  fixture.config.settings.mainDisplaySize = size;
   await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
   await page.setViewportSize({ width: 1440, height: 900 });
   await installTauriMock(page, fixture, "main");
@@ -95,11 +100,48 @@ test("the wishlist section shows the new hierarchy and color lines", async ({ pa
 
   const learningItem = page.locator('[data-inbox-id="sample-weekend"]');
   await expect(learningItem).toHaveCSS("border-left-color", "rgb(112, 167, 255)");
-  await expect(learningItem.locator(".inboxItemText")).toHaveCSS("font-weight", "650");
+  await expect(learningItem).toHaveCSS("border-radius", "0px");
+  await expect(learningItem).toHaveCSS("min-height", "40px");
+  await expect(learningItem.locator(".inboxItemText")).toHaveCSS("font-weight", "500");
 
   const unassignedItem = page.locator('[data-inbox-id="sample-later"]');
   await expect(unassignedItem).toHaveCSS("border-left-color", "rgb(74, 70, 57)");
 });
+
+for (const size of ["standard", "large", "xlarge"] as const) {
+  test(`header names and item text share the body size (${size})`, async ({ page }) => {
+    await prepare(page, createFullTodayFixture(), size);
+    const headerName = page.locator(
+      '[data-wishlist-group="project:sample-learning"] .wishlistGroupHeader .projectIdentityName',
+    );
+    const unassignedName = page.locator(
+      '[data-wishlist-group="unassigned"] .wishlistGroupHeader > strong',
+    );
+    const itemText = page.locator('[data-inbox-id="sample-weekend"] .inboxItemText');
+    const headerRow = page.locator('[data-inbox-id="sample-weekend"]');
+
+    const metrics = async (locator: typeof headerName) =>
+      locator.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return {
+          fontSize: style.fontSize,
+          fontWeight: Number(style.fontWeight),
+          color: style.color,
+        };
+      });
+    const header = await metrics(headerName);
+    const unassigned = await metrics(unassignedName);
+    const item = await metrics(itemText);
+
+    expect(header.fontSize, size).toBe(item.fontSize);
+    expect(unassigned.fontSize, size).toBe(header.fontSize);
+    expect(unassigned.fontWeight, size).toBe(header.fontWeight);
+    expect(unassigned.color, size).toBe(header.color);
+    expect(header.fontWeight, size).toBeGreaterThan(item.fontWeight);
+    await expect(headerRow).toHaveCSS("border-radius", "0px");
+    await expect(headerRow).toHaveCSS("min-height", "40px");
+  });
+}
 
 test("the wishlist section keeps the new layout", async ({ page }) => {
   await prepare(page);
