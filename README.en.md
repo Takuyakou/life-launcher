@@ -43,7 +43,7 @@ Note: it is not a complete port of the Windows product. The Web Demo has a separ
   Start a short or normal timer, or use Measure to count up from 0:00, and store sessions of at least one minute locally. Stopping early does not automatically complete today's item. Session completion is also separate from completing or deleting the source entry itself.
 
 - **View instructions**
-  Read Markdown, text, and sanitized HTML files from registered folders in a separate window.
+  Read Markdown, text, sanitized HTML, and MHTML (`.mhtml` / `.mht`) files from registered folders in a separate window.
 
 ## Screenshots
 

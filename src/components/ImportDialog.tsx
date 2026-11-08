@@ -345,11 +345,11 @@ export function ImportDialog({
         </div>
 
         <footer className="importDialogFooter">
-          <button className="secondaryButton" disabled={busy} onClick={onClose} type="button">
+          <button className="dangerButton importDialogCancelButton" disabled={busy} onClick={onClose} type="button">
             キャンセル
           </button>
           <button
-            className="mainActionButton mainActionButton--gold"
+            className="secondaryButton importDialogCommitButton"
             disabled={busy || !preview || importable === 0}
             onClick={() => void commit()}
             type="button"

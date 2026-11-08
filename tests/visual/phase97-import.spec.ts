@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import type { AppConfig, ImportPreviewResponse } from "../../src/types";
 import { IMPORT_PROMPT_FIRST, IMPORT_PROMPT_REPEAT } from "../../src/content/importPrompt";
 import { buildImportCurrentState } from "../../src/importCurrentState";
@@ -207,6 +207,49 @@ test("previews, imports, and undoes from the section menu", async ({ page }) => 
 
   await page.getByRole("button", { name: "元に戻す" }).click();
   await expect(page.getByText("元に戻しました")).toBeVisible();
+});
+
+test("import dialog footer uses the same cancel and save colors as settings", async ({
+  page,
+}) => {
+  await prepare(page);
+  const readColors = (locator: Locator) =>
+    locator.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        backgroundColor: style.backgroundColor,
+        color: style.color,
+        borderColor: style.borderColor,
+      };
+    });
+
+  await page.getByRole("button", { name: "設定を開く" }).click();
+  const settings = page.getByRole("dialog", { name: "設定" });
+  const settingsCancel = settings.getByRole("button", { name: "キャンセル" });
+  const settingsSave = settings.getByRole("button", { name: "保存", exact: true });
+  const cancelColors = await readColors(settingsCancel);
+  const saveColors = await readColors(settingsSave);
+  await settingsCancel.click();
+  await expect(settings).not.toBeVisible();
+
+  await page.getByRole("button", { name: "次の一手の操作", exact: true }).click();
+  await page.getByRole("menuitem", { name: "まとめて取り込む" }).click();
+  const dialog = page.getByRole("dialog", { name: "まとめて取り込む" });
+  const importCancel = dialog.getByRole("button", { name: "キャンセル" });
+  const importCommit = dialog.getByRole("button", { name: "取り込む", exact: true });
+
+  for (const [property, value] of Object.entries(cancelColors)) {
+    await expect(importCancel).toHaveCSS(
+      property.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`),
+      value,
+    );
+  }
+  for (const [property, value] of Object.entries(saveColors)) {
+    await expect(importCommit).toHaveCSS(
+      property.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`),
+      value,
+    );
+  }
 });
 
 test("an imported next step completes in Today3 like a screen-set next step", async ({

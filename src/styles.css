@@ -6714,24 +6714,28 @@ input[type="number"]::-webkit-inner-spin-button {
   min-height: 42px;
 }
 
-.settingsSaveButton {
+.settingsSaveButton,
+.importDialogCommitButton {
   border-color: color-mix(in srgb, var(--good) 48%, var(--line));
   background: var(--control-positive-bg);
   color: var(--good);
 }
 
-.settingsSaveButton:hover:not(:disabled) {
+.settingsSaveButton:hover:not(:disabled),
+.importDialogCommitButton:hover:not(:disabled) {
   border-color: var(--control-positive-hover-border);
   background: var(--control-positive-hover-bg);
 }
 
-.settingsCancelButton {
+.settingsCancelButton,
+.importDialogCancelButton {
   border-color: color-mix(in srgb, var(--error) 48%, var(--line));
   background: color-mix(in srgb, var(--control-danger-bg) 62%, transparent);
   color: color-mix(in srgb, #ffb4ad 78%, var(--muted));
 }
 
-.settingsCancelButton:hover:not(:disabled) {
+.settingsCancelButton:hover:not(:disabled),
+.importDialogCancelButton:hover:not(:disabled) {
   border-color: var(--control-danger-hover-border);
   background: var(--control-danger-hover-bg);
   color: #ffb4ad;
