@@ -12631,21 +12631,25 @@ button.mainActionButton:is(
 }
 
 .windowControls--dashboard {
+  --window-controls-close-top-offset: 24px;
   top: 22px; /* .mainPanel の padding-top にそろえる */
   height: 36px; /* 標準表示の上部メニューの行の高さ */
 }
 
 .windowControls--instruction {
+  --window-controls-close-top-offset: 13px;
   top: 0;
   height: 58px; /* .instructionHeader の行の高さ */
 }
 
 @media (min-width: 1051px) {
   .mainPanel[data-main-display-size="large"] .windowControls--dashboard {
+    --window-controls-close-top-offset: 25.5px;
     height: 39px;
   }
 
   .mainPanel[data-main-display-size="xlarge"] .windowControls--dashboard {
+    --window-controls-close-top-offset: 29px;
     height: 46px;
   }
 }
@@ -12653,6 +12657,7 @@ button.mainActionButton:is(
 @media (max-width: 760px) {
   /* 上部メニューが縦積みになる幅。最初の行(見出し)と縦の中心をそろえる */
   .windowControls--dashboard {
+    --window-controls-close-top-offset: 18px;
     top: 16px;
     height: 36px;
   }
@@ -12661,8 +12666,8 @@ button.mainActionButton:is(
 .windowControlsDivider {
   width: 1px;
   height: 20px;
-  margin-left: 8px;
-  margin-right: 6px;
+  margin-left: 4px;
+  margin-right: 2px;
   background: var(--line-soft);
 }
 
@@ -12686,6 +12691,26 @@ button.mainActionButton:is(
   transition:
     background-color 120ms ease,
     color 120ms ease;
+}
+
+.windowControlButton--close {
+  position: relative;
+  width: 44px;
+}
+
+/* 閉じるボタンの押せる範囲を、見た目を変えずに窓の右端まで広げる。
+   最大化しているときだけ、上端まで広げる(右上の角でも閉じられる)。 */
+.windowControlButton--close::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: -8px;
+  bottom: 0;
+  width: 8px;
+}
+
+.windowControls--maximized .windowControlButton--close::before {
+  top: calc(-1 * var(--window-controls-close-top-offset, 24px));
 }
 
 /* P96-01 追加修正: 乗せたとき・キーボードで移ったときは背景 --line、アイコン --text。

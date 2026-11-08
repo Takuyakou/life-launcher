@@ -93,9 +93,9 @@ export function WindowControls({ variant = "dashboard" }: WindowControlsProps) {
 
   return (
     <div
-      className={`windowControls${variantClass}${focused ? "" : " windowControls--unfocused"}${
-        hoverSuppressed ? " windowControls--hover-suppressed" : ""
-      }`}
+      className={`windowControls${variantClass}${maximized ? " windowControls--maximized" : ""}${
+        focused ? "" : " windowControls--unfocused"
+      }${hoverSuppressed ? " windowControls--hover-suppressed" : ""}`}
     >
       <span aria-hidden="true" className="windowControlsDivider" />
       <div className="windowControlsButtons">
