@@ -3,7 +3,7 @@
 **READY FOR USER APPROVAL**（自動で確かめられるゲートはすべて通った、の意味。公開は、オーナーの明示承認があるまで行わない）
 
 - 日付: 2026-11-08(JST)
-- 候補のソース: ブランチ `release/v1.4.3`、ビルドしたコミット `7ec24b3`（`main` = `f004791` + E の残り修正）。**成果物をビルドした時点の作業ツリーはきれい**（`git status --porcelain` が空。ビルド中に `tauri build` が `src-tauri/Cargo.toml` の改行だけを書き換えたため、ビルド後に戻した。内容は同一）。
+- 候補のソース: ブランチ `release/v1.4.3`、ビルドしたコミット `9567528`（`main` = `f004791` + E の残り・F・G）。**成果物をビルドした時点の作業ツリーはきれい**（`git status --porcelain` が空。ビルド中に `tauri build` が `src-tauri/Cargo.toml` の改行だけを書き換えたため、ビルド後に戻した。内容は同一）。
 - PR: #164(`release/v1.4.3` → `main`)。マージしていない。
 - PR #156 と #162 はオーナーが `main` にマージ済み（main = `5dbed53`）。#163 の内容も `main` にマージ済み（`f004791`）。この候補はその main から作った。
 - config schema: 3(v1.4.2 から変更なし)
@@ -14,7 +14,7 @@
 
 - バージョン情報は、すべて 1.4.3 で一致している(2.)。
 - 成果物3つと `SHA256SUMS.txt` を正式スクリプトで作り、ハッシュは独立した再計算と一致した(4.、5.)。
-- 必須ゲートはローカルで通った(5.)。`test:visual` は 680 件すべて通過。CI もビルドしたコミットで成功した。
+- 必須ゲートはローカルで通った(5.)。`test:visual` は 682 件すべて通過。CI もビルドしたコミットで成功した。
 - `npm audit` は、P97-05 で理由を書いた GHSA-g3hv-75wg-m249 の 10 件 moderate だけ。**新しい助言はない**。`--omit=dev` は 0 件。
 - Rust は脆弱性 0 件。情報警告は 12 件（v1.4.2 と同じ ID と yanked の `async-executor`）。新しい脆弱性はない。
 - Windows Defender のスキャンは、成果物のコピーで新しい検出 0 件(5. #9)。
@@ -66,6 +66,8 @@ A〜E のリリース前修正を入れた。
 - C: 取り込みのフッターの「キャンセル」を赤、「取り込む」を緑にし、設定画面のキャンセル・保存と同じ見た目にそろえた。新しい色は作っていない。
 - D: 拡大タイマーの閉じるボタンを、✖ から「縮小」の印 + 「戻る」に変えた。位置・枠・押したときの動き・Esc はそのまま。
 - E: 使い方の「私の状況」の例を、一般的な文（英語・運動・片付け）に置き換えた。取り込みプロンプトの「(例: 英語、ベース、部屋の片付け)」も「(例: 英語、運動、部屋の片付け)」にそろえた。
+- F: `sanitizeHtmlDocument()` だけ `ALLOW_DATA_ATTR: true` にし、HTML・MHTML の `data-` 属性を残す。`sanitizeMarkdown()` は false のまま。スクリプト・イベント属性・フォーム・入れ子 frame・リモート読み込みの禁止、CSP、sandbox は変えない。data-v の CSS が効くことと、onclick・script・javascript: が消えることを HTML と MHTML の両方で確認した。
+- G: 取り込み画面の一番下を、左が「取り込む」（緑）、右が「キャンセル」（赤）に並べ替えた。Tab の順も見た目に合わせた。
 
 ## 4. 成果物とハッシュ
 
@@ -73,9 +75,9 @@ A〜E のリリース前修正を入れた。
 
 | ファイル | サイズ(バイト) | SHA-256 |
 | --- | --- | --- |
-| `Life-Launcher-v1.4.3-windows-x64-setup.exe` | 3,771,789 | `ADABA3D20D8337AF0064789ECAF24EAD6989522FE2E7B606D1CF6C0ED54B4E33` |
-| `Life-Launcher-v1.4.3-windows-x64.exe` | 16,179,712 | `65CDA242A9EDBCE8397CD4114EB2CF8A57E060740A16054C45604EE122997A7F` |
-| `Life-Launcher-v1.4.3-windows-x64-portable.zip` | 5,143,897 | `7713836C38EF77C494898AB224A0D4470E66693CEF48B78DF85B224DD3CF25A0` |
+| `Life-Launcher-v1.4.3-windows-x64-setup.exe` | 3,771,887 | `511CBB397E1D13B69B16EAEA55F893651162BED6EB93C330253980241F1CC4B7` |
+| `Life-Launcher-v1.4.3-windows-x64.exe` | 16,179,712 | `EEB261909FE0ED84957A574335F5B300A0CFE5C4EF308A43F026C2F0F0BD947B` |
+| `Life-Launcher-v1.4.3-windows-x64-portable.zip` | 5,143,775 | `6ACBE6D6D1A8E73936BD7CCC14D40B5561954B0E82DE4D5A606B14ABBE594784` |
 | `release-notes.md` | 8,790 | `9D6D4BFC5344EC79B907222C8FC5511336AFC05DF5576C8EF698C8372601BDB4`（`docs/releases/v1.4.3.md` と同じ） |
 | `SHA256SUMS.txt` | 327 | 上の3つのハッシュを記載 |
 
@@ -86,7 +88,7 @@ A〜E のリリース前修正を入れた。
 1. **必須ゲート**: `public:check`、`lint`、`build`、`test:visual` 680件、`cargo fmt --check`、`cargo check`、`cargo clippy --all-targets -- -D warnings`、`cargo test` 160 unit + 1 capability、`git diff --check` はすべてローカルで成功。
 2. **npm audit**: 10件 moderate。すべて P97-05 で理由を書いた GHSA-g3hv-75wg-m249（`minimatch`、開発用の依存だけ）。`npm audit --omit=dev` は0件。新しい助言はない。
 3. **cargo audit**: 脆弱性0件。情報警告12件（v1.4.2 と同じ ID と yanked の `async-executor`）。新しい脆弱性はない。
-4. **公開安全**: `public:check` は 3,661ファイル、0 blockers。
+4. **公開安全**: `public:check` は 3,663ファイル、0 blockers。
 5. **ポータブル ZIP**: 展開すると `Life-Launcher-v1.4.3-windows-x64.exe` と `README.txt`。ZIP 内 EXE のハッシュは単体 EXE と一致。
 6. **秘密情報の走査**: 単体 EXE、インストーラー、ZIP、ZIP 内 EXE、`dist/` を ASCII と UTF-16LE で走査し、0件（ユーザーパス、リポジトリ名、ローカルユーザー名、トークン接頭辞、秘密鍵、source map）。インストーラーと ZIP は圧縮されているため、生のバイト列の走査である。
 7. **バージョン情報**: 単体 EXE・インストーラー・ZIP 内 EXE の FileVersion / ProductVersion は 1.4.3。ProductName は Life Launcher。
@@ -99,14 +101,14 @@ A〜E のリリース前修正を入れた。
     - `tests/visual/phase97-import.spec.ts` に、取り込んだ次の一手を Today3 で完了するテストと、JSON より前の `"` を取り出すテストがある。
 12. **環境変数なしの起動**: 成果物の単体 EXE を、`APPDATA` を一時フォルダへ向け、`LIFE_LAUNCHER_TEST_PROFILE` を渡さずに起動した。窓のタイトルは「Life Launcher」で、「テスト」は出なかった。
 13. **公開スクリーンショット**: `npm run screenshot:public` で再生成。`main-dashboard.png` と `contact-sheet.png` に 14px の描画差が出たが、意図した変更ではなく、文字の描画のわずかな差だったため、基準画像は更新していない。`instruction-viewer.png` と `dictionary.png` は変わっていない。D の拡大タイマーの基準画像は更新した。B の MHTML 一覧と E の使い方には基準画像が無い（MHTML の既存画像はドロップ表示、使い方は文章のテストのみ）。
-14. **CI**: ビルドしたコミット `7ec24b3` で CI（run `42481134657`、job `128733094275`）が **success**（15分35秒）。`test:visual` 680件、`cargo test` 160 unit + 1 capability、`npm audit`、`npm audit --omit=dev` を含む全ステップが成功した。この後に足すのは判定書などの文書だけのコミットにする。
+14. **CI**: ビルドしたコミット `9567528` で CI（run `42485158604`、job `128745331003`）が **success**（15分55秒）。`test:visual` 682件、`cargo test` 160 unit + 1 capability、`npm audit`、`npm audit --omit=dev` を含む全ステップが成功した。この後に足すのは判定書などの文書だけのコミットにする。
 
 ## 6. ネイティブ確認
 
 `docs/release/v1.4.3/native-checklist.md` に、確認する項目を手順と期待結果つきで書いた。画面の項目は「オーナー確認待ち」で、PASS とは書いていない。
 
 - 実装担当がコマンドで確かめたこと: 成果物の起動、テスト用のタイトル、環境変数なしのタイトル、普段のアプリを終了させていないこと。
-- テスト用の起動: 成果物の単体 EXE を `LIFE_LAUNCHER_TEST_PROFILE` 付きで起動し、タイトル「Life Launcher (テスト)」を確認した（PID 73336、プロファイル `release-candidate/native-check/profiles/20261108-215414`）。起動したまま、オーナーの確認を待つ。
+- テスト用の起動: 成果物の単体 EXE を `LIFE_LAUNCHER_TEST_PROFILE` 付きで起動し、タイトル「Life Launcher (テスト)」を確認した（PID 35092、プロファイル `release-candidate/native-check/profiles/20261108-224549`）。起動したまま、オーナーの確認を待つ。
 - オーナーが行うこと: インストーラーでの v1.4.2 → v1.4.3 更新（普段のアプリ）、および画面の確認（テスト用の起動）。
 - 自動で行える範囲: Windows Sandbox は権限が足りず使えなかった。仮想マシンもこの環境では用意していない。
 
