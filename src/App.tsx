@@ -1114,6 +1114,12 @@ function matchesHotkey(
   );
 }
 
+const CLOSE_SHORTCUT = "Ctrl+W";
+
+function isCloseShortcutValue(value: string | null | undefined): boolean {
+  return value?.trim().toLowerCase() === CLOSE_SHORTCUT.toLowerCase();
+}
+
 function formatStartedAt(date: Date): string {
   return `${date.getHours().toString().padStart(2, "0")}:${date
     .getMinutes()
@@ -1470,6 +1476,7 @@ function shortcutValidationMessage(value: string, conflictingActions: string[]):
   const clean = value.trim();
   if (!clean) return "未設定";
   if (!SHORTCUT_PATTERN.test(clean)) return "Ctrl+Kのような形式で入力してください";
+  if (isCloseShortcutValue(clean)) return "Ctrl+W はアプリの『閉じる』で使っています";
   if (conflictingActions.length > 0) {
     return `${conflictingActions.map((label) => `「${label}」`).join("・")}と競合。どちらかを変更してください`;
   }
@@ -1479,16 +1486,26 @@ function shortcutValidationMessage(value: string, conflictingActions: string[]):
   return "登録済み（保存時に再登録）";
 }
 
-function validateShortcutSettings(draft: SettingsCenterDraft): string | null {
+function validateShortcutSettings(
+  draft: SettingsCenterDraft,
+  currentSettings?: AppConfig["settings"],
+): string | null {
+  const values = SHORTCUT_DRAFT_FIELDS.map(({ field }) => draft[field])
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const closeAssignment = SHORTCUT_DRAFT_FIELDS.some(
+    ({ field }) =>
+      isCloseShortcutValue(draft[field]) && !isCloseShortcutValue(currentSettings?.[field]),
+  );
+  if (closeAssignment) {
+    return "Ctrl+W はアプリの『閉じる』で使っています";
+  }
   const conflict = findShortcutConflicts(
     SHORTCUT_DRAFT_FIELDS.map(({ field, label }) => ({ field, label, value: draft[field] })),
   )[0];
   if (conflict) {
     return `${conflict.chord} は ${conflict.bindings.map(({ label }) => `「${label}」`).join("・")} に設定されています。いずれかを変更してください`;
   }
-  const values = SHORTCUT_DRAFT_FIELDS.map(({ field }) => draft[field])
-    .map((value) => value.trim())
-    .filter(Boolean);
   const invalid = values.find((value) => !SHORTCUT_PATTERN.test(value));
   if (invalid) return `ショートカットの形式を確認してください: ${invalid}`;
   const reserved = values.find((value) => WINDOWS_RESERVED_SHORTCUTS.includes(value.toLowerCase()));
@@ -2238,6 +2255,17 @@ function DashboardApp() {
   const [shortcutRecordingField, setShortcutRecordingField] = useState<ShortcutDraftField | null>(
     null,
   );
+  const closeShortcutDisabled = useMemo(() => {
+    if (shortcutRecordingField) return true;
+    const settings = config?.settings;
+    if (!settings) return false;
+    return [
+      settings.focusHotkey,
+      settings.launcherHotkey,
+      settings.miniHotkey,
+      settings.instructionHotkey,
+    ].some(isCloseShortcutValue);
+  }, [config, shortcutRecordingField]);
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) =>
       navigateAppArrow(event, shortcutCaptureActiveRef.current);
@@ -4597,7 +4625,7 @@ function DashboardApp() {
 
   const saveSettingsCenter = async () => {
     if (!config || !settingsDraft) return;
-    const shortcutError = validateShortcutSettings(settingsDraft);
+    const shortcutError = validateShortcutSettings(settingsDraft, config.settings);
     if (shortcutError) {
       showToast("warn", shortcutError);
       setSettingsSection("shortcuts");
@@ -10538,7 +10566,7 @@ function DashboardApp() {
               </button>
             </div>
           </div>
-          <WindowControls />
+          <WindowControls closeShortcutDisabled={closeShortcutDisabled} />
         </header>
 
         <div className="mainScrollArea app-scrollbar" id="main-content" ref={mainScrollAreaRef}>

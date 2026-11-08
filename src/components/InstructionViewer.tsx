@@ -28,6 +28,7 @@ import {
   chooseInstructionRoot,
   executeActions,
   instructionAssetBaseUrl,
+  loadConfig,
   openInstructionInDefaultEditor,
   readInstruction,
   readInstructionBytes,
@@ -53,6 +54,10 @@ const MIN_SIDEBAR_WIDTH = 180;
 const MAX_SIDEBAR_WIDTH = 440;
 const MIN_CONTENT_WIDTH = 320;
 const DIVIDER_WIDTH = 7;
+
+function usesCloseShortcut(value: string | null | undefined): boolean {
+  return value?.trim().toLowerCase() === "ctrl+w";
+}
 
 function initialInstructionPath(): string | null {
   return new URLSearchParams(window.location.search).get("path");
@@ -122,6 +127,7 @@ export function InstructionViewer() {
   const [pendingTransition, setPendingTransition] = useState<PendingTransition | null>(null);
   const [pendingTransitionError, setPendingTransitionError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [closeShortcutDisabled, setCloseShortcutDisabled] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
   const [resizingSidebar, setResizingSidebar] = useState(false);
   // P96-03: 開いたとき・窓が前に出たときに、一覧の行へフォーカスを置く合図。
@@ -137,6 +143,28 @@ export function InstructionViewer() {
   useHoverSuppressionAfterResize();
   const dirty = Boolean(editing && instruction && draft !== instruction.content);
   dirtyRef.current = dirty;
+
+  useEffect(() => {
+    if (!tauriRuntime) return;
+    let disposed = false;
+    void loadConfig()
+      .then(({ config }) => {
+        if (disposed) return;
+        const settings = config.settings;
+        setCloseShortcutDisabled(
+          [
+            settings.focusHotkey,
+            settings.launcherHotkey,
+            settings.miniHotkey,
+            settings.instructionHotkey,
+          ].some(usesCloseShortcut),
+        );
+      })
+      .catch(() => undefined);
+    return () => {
+      disposed = true;
+    };
+  }, [tauriRuntime]);
 
   useEffect(() => {
     if (!instruction) document.title = "Life Launcher 手順書ビューアー";
@@ -855,7 +883,7 @@ export function InstructionViewer() {
             </button>
           ) : null}
         </div>
-        <WindowControls variant="instruction" />
+        <WindowControls variant="instruction" closeShortcutDisabled={closeShortcutDisabled} />
       </header>
 
       <div className="instructionWorkspace" ref={workspaceRef} style={workspaceStyle}>
