@@ -1,5 +1,7 @@
+import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { relative, resolve } from "node:path";
+import { findSecretFindings, forbiddenAiToolFinding } from "./public-safety-rules.mjs";
 
 const ROOT = process.cwd();
 const SELF = "scripts/check-public-safety.mjs";
@@ -71,6 +73,26 @@ function walk(directory) {
   return files;
 }
 
+function gitPaths(args) {
+  try {
+    return new Set(
+      execFileSync("git", args, {
+        cwd: ROOT,
+        encoding: "utf8",
+        maxBuffer: 64 * 1024 * 1024,
+      })
+        .split("\0")
+        .filter(Boolean)
+        .map((path) => slash(path).toLowerCase()),
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+const trackedPaths = gitPaths(["ls-files", "-z"]);
+const ignoredPaths = gitPaths(["ls-files", "--others", "--ignored", "--exclude-standard", "-z"]);
+
 const findings = [];
 const files = walk(ROOT);
 
@@ -79,6 +101,16 @@ for (const { absolute, rel } of files) {
   const ext = extension(rel);
   const segments = lower.split("/");
   const basename = segments.at(-1) ?? lower;
+
+  const forbiddenAiTool = forbiddenAiToolFinding(rel, trackedPaths, ignoredPaths);
+  if (forbiddenAiTool) {
+    findings.push(
+      forbiddenAiTool === "tracked"
+        ? `${rel}: AI tool configuration file is tracked`
+        : `${rel}: AI tool configuration file is prohibited`,
+    );
+    continue;
+  }
 
   if (segments.includes(".git")) findings.push(`${rel}: Git metadata is prohibited`);
   if (blockedArtifactExtensions.has(ext)) findings.push(`${rel}: packaged artifact is prohibited`);
@@ -110,16 +142,13 @@ for (const { absolute, rel } of files) {
     [/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i, "email address"],
     [/(?:^|[^A-Za-z0-9])D:\\/im, "absolute D drive path"],
     [/(?:^|[^A-Za-z0-9])fdfff(?:[^A-Za-z0-9]|$)/i, "known local username"],
-    [/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/, "private key"],
-    [/(?:ghp_[A-Za-z0-9_-]{16,}|github_pat_[A-Za-z0-9_-]{16,}|sk-[A-Za-z0-9_-]{16,}|xox[baprs]-[A-Za-z0-9_-]{16,})/i, "token-like value"],
-    [/AIza[A-Za-z0-9_-]{30,}/, "Google API key"],
-    [/Bearer\s+[A-Za-z0-9._~-]{16,}/i, "Bearer credential"],
-    [/AKIA[0-9A-Z]{16}/, "AWS access key"],
-    [/(?:api[_-]?key|password|client[_-]?secret)\s*[:=]\s*["'][^"']{8,}["']/i, "credential assignment"],
     [/https?:\/\/pianowithjonny\.com/i, "prior-use external URL"],
   ];
   for (const [pattern, label] of checks) {
     if (pattern.test(body)) findings.push(`${rel}: ${label}`);
+  }
+  for (const label of findSecretFindings(body)) {
+    findings.push(`${rel}: ${label}`);
   }
 }
 

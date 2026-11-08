@@ -10,6 +10,7 @@ test("exact artifact permissions retain content and unknown-path checks", () => 
   try {
     mkdirSync(join(root, "scripts"));
     copyFileSync("scripts/check-public-safety.mjs", join(root, "scripts/check-public-safety.mjs"));
+    copyFileSync("scripts/public-safety-rules.mjs", join(root, "scripts/public-safety-rules.mjs"));
     const directory = join(root, "docs/phase7.2/screenshots/baseline");
     mkdirSync(directory, { recursive: true });
     const allowed = join(directory, "timer-1440.json");
