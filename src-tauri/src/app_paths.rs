@@ -363,17 +363,18 @@ mod tests {
     fn with_the_variable_every_location_moves_into_the_profile() {
         let root = temp_root("test");
         let profile = root.join("profile");
+        let expected_profile = normalize(&profile);
         let paths =
             AppPaths::resolve(Some(profile.as_os_str()), normal_at(&root)).expect("resolve");
         assert!(paths.is_test_profile());
-        assert_eq!(paths.data_dir(), profile.join(TEST_DATA_DIR_NAME));
+        assert_eq!(paths.data_dir(), expected_profile.join(TEST_DATA_DIR_NAME));
         assert_eq!(
             paths.window_state_file(),
-            Some(profile.join(TEST_WINDOW_STATE_FILE_NAME)).as_deref()
+            Some(expected_profile.join(TEST_WINDOW_STATE_FILE_NAME)).as_deref()
         );
         assert_eq!(
             paths.webview_data_dir(),
-            Some(profile.join(TEST_WEBVIEW_DIR_NAME)).as_deref()
+            Some(expected_profile.join(TEST_WEBVIEW_DIR_NAME)).as_deref()
         );
     }
 
