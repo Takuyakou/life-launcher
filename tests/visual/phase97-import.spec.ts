@@ -212,7 +212,8 @@ test("previews, imports, and undoes from the section menu", async ({ page }) => 
 test("import dialog footer uses the same cancel and save colors as settings", async ({
   page,
 }) => {
-  await prepare(page);
+  const fixture = await prepare(page);
+  await stubImport(page, { preview: preview(), original: fixture.config });
   const readColors = (locator: Locator) =>
     locator.evaluate((element) => {
       const style = getComputedStyle(element);
@@ -250,6 +251,18 @@ test("import dialog footer uses the same cancel and save colors as settings", as
       value,
     );
   }
+
+  await page.getByLabel("取り込みのJSON").fill(IMPORT_JSON);
+  await page.getByRole("button", { name: "プレビュー" }).click();
+  await expect(importCommit).toBeEnabled();
+  const commitBox = await importCommit.boundingBox();
+  const cancelBox = await importCancel.boundingBox();
+  expect(commitBox).not.toBeNull();
+  expect(cancelBox).not.toBeNull();
+  expect(commitBox!.x).toBeLessThan(cancelBox!.x);
+  await importCommit.focus();
+  await page.keyboard.press("Tab");
+  await expect(importCancel).toBeFocused();
 });
 
 test("an imported next step completes in Today3 like a screen-set next step", async ({

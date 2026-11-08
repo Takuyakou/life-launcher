@@ -1,0 +1,14 @@
+From: <Saved by Blink>
+Snapshot-Content-Location: https://example.invalid/data-attr.html
+Subject: P97-03 MHTML fixture with data attributes
+Date: Thu, 13 Aug 2026 09:30:00 +0900
+MIME-Version: 1.0
+Content-Type: multipart/related; type="text/html"; boundary="----MultipartBoundary--p9703data"
+
+------MultipartBoundary--p9703data
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: base64
+Content-Location: https://example.invalid/data-attr.html
+
+PCFkb2N0eXBlIGh0bWw+PGh0bWw+PGhlYWQ+PG1ldGEgY2hhcnNldD0idXRmLTgiPjxzdHlsZT5bZGF0YS12LWFiY10geyBjb2xvcjogcmdiKDEyLCAzNCwgNTYpOyB9PC9zdHlsZT48L2hlYWQ+PGJvZHk+PHAgaWQ9ImRhdGEtdGFyZ2V0IiBkYXRhLXYtYWJjPSIiPmRhdGEgYXR0cmlidXRlIHRleHQ8L3A+PHAgaWQ9ImNsaWNrLXRhcmdldCIgb25jbGljaz0id2luZG93Ll9fdW5zYWZlPXRydWUiPmNsaWNrPC9wPjxzY3JpcHQ+d2luZG93Ll9fdW5zYWZlPXRydWU8L3NjcmlwdD48YSBpZD0ianMtbGluayIgaHJlZj0iamF2YXNjcmlwdDp3aW5kb3cuX191bnNhZmU9dHJ1ZSI+anM8L2E+PC9ib2R5PjwvaHRtbD4=
+------MultipartBoundary--p9703data--
