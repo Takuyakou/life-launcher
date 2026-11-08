@@ -14,7 +14,7 @@
 | --- | --- |
 | `src/nextStepWishlist.ts` | `groupWishlistForDisplay()` を追加（「未分類」を最後に並べるだけ。`config.inbox` は変えない）。`reorderWishlistGroups()` で「未分類」をつかめないようにし、後ろへ落としても前に挿入する |
 | `src/App.tsx` | 表示に `groupWishlistForDisplay()` を使う。グループに `data-project-color` と `wishlistGroup--unassigned` を付与。未分類の見出しはドラッグを開始せず、クリックで開閉。未分類へのドロップは前に補正 |
-| `src/styles.css` | 見出しを最小30px・横線なし・`--muted`・600に。項目を10px字下げし、左に3pxのプロジェクト色線（未分類は `--line`）。本文を650に。グループ間を18pxに |
+| `src/styles.css` | 見出しを最小30px・横線なし、名前を `--dashboard-font-body`・600・`--text`、件数を `--dashboard-font-meta`・`--muted` に。項目を10px字下げし、左に3pxのプロジェクト色線（未分類は `--line`）。本文を `--dashboard-font-body`・500、行を40px・角0に。グループ間を18pxに |
 | `docs/spec/current-spec.md` | §12 の「やりたいこと」の見せ方、項目の左線、未分類の最後、グループ間の間隔、D&Dの扱いを更新 |
 | `tests/visual/phase97-wishlist-layout.spec.ts` | 表示順・未分類のD&D・見た目（色線・太さ・横線なし）・十字キーの順・画像の7件 |
 | `tests/visual/phase97-wishlist-layout.spec.ts-snapshots/phase97-wishlist-layout-win32.png` | 変更後の「やりたいこと」の節の基準画像（新規） |
@@ -37,8 +37,8 @@
 
 ### 1. 表のとおりに見た目が変わった。「未分類」が最後に出る
 
-- 見出し: `border-bottom` を外して最小30px、色を `--muted`、太さ600にした。折りたたみ矢印・色の点・名前・件数は残す。
-- 項目: `.inboxList` を10px字下げし、`.inboxRow` の左に3pxの `--project-color` の線を付けた。未分類は `--line`。本文は次の一手のカードと同じ650にした（太字はやめず、次の一手と並べて自然な太さにそろえた）。
+- 見出し: `border-bottom` を外して最小30px、行の色を `--muted` にした。名前（「未分類」も）は `--dashboard-font-body`・600・`--text`、件数は `--dashboard-font-meta`・`--muted` にした。折りたたみ矢印・色の点・名前・件数は残す。
+- 項目: `.inboxList` を10px字下げし、`.inboxRow` の左に3pxの `--project-color` の線を付けた。未分類は `--line`。本文は `--dashboard-font-body`・500 にした。行の最小の高さは40px、角の丸みは0にした。
 - 区切り: 同じグループ内は6pxの間隔と薄い下線、グループ間は18pxの間隔にして線を外した。
 - 「未分類」: `groupWishlistForDisplay()` で常に最後。`config.inbox` の並びは表示では変えない。
 - 状態・操作（「次の一手に設定」「✓ 次の一手に設定済み」「今日の3件」、ロック、「…」）は今までどおり右端。
@@ -63,7 +63,8 @@
 
 - 表示順: `groupWishlistForDisplay()` が未分類を最後にし、`config.inbox` を変えないこと。
 - グループD&D: 未分類をドラッグしても `config` が変わらないこと。未分類より後ろへ落としても、表示で未分類が最後のままであること。
-- 見た目: 見出しの下線が0px、色が `rgb(184, 176, 160)`、太さ600。プロジェクト項目の左線が `rgb(112, 167, 255)`（青）、未分類が `rgb(74, 70, 57)`（`--line`）、本文が650。
+- 見た目: 見出しの下線が0px、名前の色が `rgb(244, 240, 232)`、太さ600。プロジェクト項目の左線が `rgb(112, 167, 255)`（青）、未分類が `rgb(74, 70, 57)`（`--line`）、本文が500。行の `border-radius` が0px、`min-height` が40px。
+- 表示サイズ: 「標準・大・特大」のそれぞれで、見出しの名前と未分類の名前の font-size・font-weight・color が同じで、見出しの font-weight が本文より大きいことを確認した。
 - 画面: 未分類の見出しからドラッグを始めてもゴーストが出ないこと。学習グループを未分類の後ろへ落とすと、表示で未分類が最後のままであること。
 - 十字キー: 未分類の見出しにフォーカスし、Shift+Tab で前のグループへ移り、Tab で未分類へ戻ることを確認した。未分類より後ろにグループが無いことの確認になる。
 - 既存: `phase82-nextstep-wishlist.spec.ts` の18件がすべて成功。DOMのグループ順の期待値だけを表示順に更新した。
@@ -76,7 +77,7 @@
 | `npm run public:check` | 成功（3,652ファイル、0 blockers） |
 | `npm run lint` | 成功（0エラー、0警告） |
 | `npm run build` | 成功 |
-| `npm run test:visual` | 648件成功（2.3分） |
+| `npm run test:visual` | 651件成功（2.4分） |
 | `cargo fmt --check` | 成功 |
 | `cargo check` | 成功 |
 | `cargo clippy --all-targets -- -D warnings` | 成功 |
@@ -87,7 +88,7 @@
 
 | 画像 | 理由 |
 | --- | --- |
-| `tests/visual/phase97-wishlist-layout.spec.ts-snapshots/phase97-wishlist-layout-win32.png` | 「やりたいこと」の節の見た目を変えたため。新規（1,148×544、32,353バイト） |
+| `tests/visual/phase97-wishlist-layout.spec.ts-snapshots/phase97-wishlist-layout-win32.png` | 「やりたいこと」の節の見た目を変えたため。新規（1,148×519、35,259バイト） |
 
 ほかの画面の基準画像は変えていない。`maxDiffPixels: 12` は、CI のわずかな描画差を吸収するため（P97 pre-release と同じ扱い）。
 
@@ -96,7 +97,7 @@
 - 「未分類」を最後にするのは表示だけ。`groupWishlist()` は保存順のまま残し、表示用の `groupWishlistForDisplay()` を別にした。グループD&Dの保存処理は保存順の関数を使うので、表示の並べ替えで `config.inbox` は変わらない。
 - 未分類をドラッグの対象にしないため、未分類の見出しは `pointerdown` でドラッグを開始しない。マウスのクリックで開閉できるように、未分類だけ `click` でも開閉する。
 - 未分類より後ろへ落としたときは、`reorderWishlistGroups()` と `moveWishlistGroup()` の両方で「前に挿入」に補正した。
-- 項目の本文は、次の一手のカードの本文と同じ650にした。見出しは600にして、項目より一段弱くした。
+- 項目の本文は `--dashboard-font-body`・500、見出しの名前は `--dashboard-font-body`・600にして、見出しの方を太くした。
 - プロジェクト色は `resolveProjectColorId(project.id, project.colorId)` で決め、色を指定していないプロジェクトも次の一手のカードと同じ自動色の線になるようにした。
 - グループ間の間隔は18px、グループ内の項目は6pxの間隔と薄い下線にした。1件だけのグループが並んでも、見出しと項目のまとまりが分かる。
 - `phase82-nextstep-wishlist.spec.ts` のDOM順の期待値は、表示順が変わったための更新。折りたたみ・D&D・メニューなどの期待値は変えていない。
@@ -105,3 +106,43 @@
 
 - P97-11 の実機確認で、P97-01 のテスト用の起動を使い、やりたいことが何件かある状態（P97-09 の取り込みで足してもよい）で、見出しと項目のまとまり、未分類が最後、折りたたみ・D&D・メニュー・「次の一手に設定」、表示サイズ「特大」と最小幅を確かめる。
 - プロジェクトの色の線は、次の一手のカードの3px線と同じ太さにした。実機で並べて強すぎる場合は、2pxに落とすことを検討する。
+
+## 追記（2026-11-08）— 見出しと項目の大きさをそろえる
+
+オーナー判断 2026-11-08。P97-10 のマージ後に `main`（`b4142cf`）から `fix/p97-10-wishlist-size` を作り、やりたいことの節の中だけを直した。次の一手の一覧などは変えていない。
+
+### 直したこと
+
+- グループ見出しのプロジェクト名（`ProjectIdentity` の `.projectIdentityName`）と「未分類」の `<strong>` を、`--dashboard-font-body`・600・`--text` にそろえた。件数（「1件」）は今までどおり `--dashboard-font-meta`・`--muted`。
+- 項目の本文を `--dashboard-font-body`・500 にした。見出しの600より弱く見える。
+- 項目の行の `min-height` を40pxにした。「次の一手に設定」と「…」が入り、表示サイズ「大・特大」でもこの行だけ40pxの最小を保つ。
+- 項目の行の `border-radius` を0にした。左の色線と下の線だけの四角い形にした。
+- キーボードの輪は、共通の `:focus-visible`（2px `--accent-strong`、offset 2px）のまま。行の角を四角にしたことで、輪が角で切れない。
+- 表示サイズ「標準・大・特大」で、見出しの名前（プロジェクトと未分類）の font-size・font-weight・color が同じで、本文と同じ font-size、見出しの font-weight が本文より大きいことを `toHaveCSS` / `getComputedStyle` で確認した。
+
+### 追加・更新したテスト
+
+- `tests/visual/phase97-wishlist-layout.spec.ts` に、表示サイズごとの「header names and item text share the body size (standard / large / xlarge)」を追加した。
+- 同じファイルの見た目のテストを、名前の色 `rgb(244, 240, 232)`、本文500、`border-radius: 0px`、`min-height: 40px` に更新した。
+- 基準画像 `phase97-wishlist-layout` を更新した（1,148×519、35,259バイト）。変更前の画像はそのまま（1,148×542、32,534バイト）。
+
+### 実行したゲート（追記分）
+
+| ゲート | 結果 |
+| --- | --- |
+| `npm run public:check` | 成功（3,652ファイル、0 blockers） |
+| `npm run lint` | 成功（0エラー、0警告） |
+| `npm run build` | 成功 |
+| `npm run test:visual` | 651件成功（2.4分） |
+| `cargo fmt --check` | 成功 |
+| `cargo check` | 成功 |
+| `cargo clippy --all-targets -- -D warnings` | 成功 |
+| `cargo test` | 157 unit + 1 capability = 158件成功 |
+| `git diff --check` | 成功 |
+
+### 判断メモ（追記）
+
+- 見出しの名前を `--text` にしたのは、`--muted` より一段明るい今ある文字の色が `--text` だけだったため。件数は `--muted` のままにして、名前と件数の強弱を付けた。
+- 見出しの font-weight 600 と本文の500で、同じ大きさでも見出しが強く見えるようにした。項目を400にすると細く見えすぎたため500にした。
+- 行の最小40pxは、表示サイズ「大・特大」の共通行の最小（53px・57px）より優先する。特大では中のボタンが大きくなるため、実際の高さは内容に合わせて40pxより高くなることがある。
+- 基準画像は「やりたいこと」の節だけを更新した。ほかの画面の基準画像は変えていない。
