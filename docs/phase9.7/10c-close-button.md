@@ -69,7 +69,7 @@
 | `npm run public:check` | 成功（3,654ファイル、0 blockers） |
 | `npm run lint` | 成功（0エラー、0警告） |
 | `npm run build` | 成功 |
-| `npm run test:visual` | 658件成功（2.6分） |
+| `npm run test:visual` | 669件成功（2.5分） |
 | `cargo fmt --check` | 成功 |
 | `cargo check` | 成功 |
 | `cargo clippy --all-targets -- -D warnings` | 成功 |
@@ -147,10 +147,20 @@
 | `cargo test` | 157 unit + 1 capability = 158件成功 |
 | `git diff --check` | 成功 |
 
+### 追記の変更ファイル
+
+- `src/components/WindowControls.tsx`: Ctrl+W の capture ハンドラ、`closeShortcutDisabled`。
+- `src/App.tsx`: 4つの設定の Ctrl+W 判定、保存時の案内、`closeShortcutDisabled` の受け渡し。
+- `src/components/InstructionViewer.tsx`: 開いたときの config 読み込みと `closeShortcutDisabled` の受け渡し。
+- `src/content/helpGuide.ts`: 「窓を閉じるには？」。
+- `docs/spec/current-spec.md` §6.1: Ctrl+W と設定のぶつかり。
+- `tests/visual/phase97-close-button.spec.ts`: 18件。
+- `docs/phase9.7/10c-close-button.md`: この追記。
+
 ### 判断メモ（追記）
 
 - Ctrl+W の処理は `WindowControls` に置いた。閉じるボタンと同じコンポーネント・同じ `close()` を使うため、メイン画面と手順書ビューアーで閉じ方の違いが出ない。
 - 設定の登録待ちだけは、Ctrl+W を登録に渡す例外にした。そうしないと「Ctrl+W を設定しようとしたら窓が閉じる」となり、ぶつかりの案内を出せない。
 - config に Ctrl+W があるときは、閉じる処理を止めるだけでなく WebView の既定も止める。設定したショートカット（グローバル側）を壊さないため。
 - 既存の `matchesHotkey()` は辞書の入力欄では無効になるが、config 優先の確認は閉じる側の `closeShortcutDisabled` で行う。入力欄にフォーカスがあっても、config に Ctrl+W があれば閉じない。
-- 手順書ビューアーには設定のショートカットがないため、config の Ctrl+W 優先はメイン画面の設定に対する扱い。ビューアーは常に Ctrl+W で閉じる（dirty なら確認）。
+- 手順書ビューアーも、開いたときに `loadConfig()` で config を読み、4つのどれかに Ctrl+W があれば閉じない（開いた時点の設定）。設定の読み込みに失敗したときは、今までどおり Ctrl+W で閉じる。
