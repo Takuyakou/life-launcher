@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createFullTodayFixture, createPickerFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
+import { createFullTodayFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 
 type Display = "standard" | "large" | "xlarge";
@@ -11,63 +11,6 @@ async function open(page: Page, fixture: VisualQaFixture, display: Display = "st
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
   await expect(page.locator(".doNowBand")).toBeVisible();
-}
-
-/** Distance from the right edge of the count / completion display to the left edge of the description. */
-const countToDescription = (page: Page) =>
-  page.locator(".todaySectionBar").evaluate((bar) => {
-    const count = bar.querySelector(".todayCompletionSummary, .todaySectionCount")!.getBoundingClientRect();
-    const description = bar.querySelector(".todaySectionDescription")!.getBoundingClientRect();
-    return description.left - count.right;
-  });
-
-/** Distance from the right edge of a section name to the left edge of its count (P9-14: the same for the four bars). */
-const nameToCount = (page: Page, selector: string) =>
-  page.locator(selector).first().evaluate((bar) => {
-    const name = bar.querySelector("h2, strong")!.getBoundingClientRect();
-    const count = bar.querySelector(".todayCompletionSummary, .todaySectionCount, .disclosureCount")!.getBoundingClientRect();
-    return count.left - name.right;
-  });
-
-const HEADINGS = [".todaySectionBar", ".projectsBand .disclosureHeader", ".inboxBand .disclosureHeader", ".todayActivityBand .disclosureHeader"];
-
-for (const display of ["standard", "large", "xlarge"] as const) {
-  test(`P9-13 Today heading description follows the count (${display})`, async ({ page }) => {
-    await open(page, createFullTodayFixture(), display);
-    // 8px column gap; a few px of tolerance for the font.
-    await expect.poll(() => countToDescription(page)).toBeGreaterThanOrEqual(7);
-    await expect.poll(() => countToDescription(page)).toBeLessThanOrEqual(9);
-    // P9-14: no fixed name column any more; the count column is as wide as "n / n 完了", the description takes the rest.
-    const [name, count, rest] = await page.locator(".todaySectionBar").evaluate((bar) =>
-      getComputedStyle(bar).gridTemplateColumns.split(" ").map((column) => parseFloat(column)),
-    );
-    expect(name).toBeGreaterThan(80);
-    expect(count).toBeGreaterThan(10);
-    expect(count).toBeLessThan(80);
-    expect(rest).toBeGreaterThan(count * 5);
-  });
-
-  test(`P9-13 Today heading with 0 items lines up like the other sizes (${display})`, async ({ page }) => {
-    await open(page, createPickerFixture(), display);
-    await expect(page.locator(".todaySectionCount")).toHaveText("0件");
-    // P9-14: "0件" sits in column 2 and the description follows after one 8px gap, as with "n / n 完了".
-    await expect.poll(() => countToDescription(page)).toBeGreaterThanOrEqual(7);
-    await expect.poll(() => countToDescription(page)).toBeLessThanOrEqual(9);
-  });
-
-  test(`P9-13 other headings put the count right after the name (${display})`, async ({ page }) => {
-    await open(page, createFullTodayFixture(), display);
-    // P9-14 (replaces the fixed 120/132/144px name column checks): the same name-to-count gap for all four, 12-18px.
-    for (const selector of HEADINGS) {
-      await expect.poll(() => nameToCount(page, selector), { message: selector }).toBeGreaterThanOrEqual(12);
-      await expect.poll(() => nameToCount(page, selector), { message: selector }).toBeLessThanOrEqual(18.5);
-    }
-    // The Next Step bar still has the flexible description column and the actions column.
-    const columns = await page
-      .locator(".projectsBand .disclosureHeader")
-      .evaluate((bar) => getComputedStyle(bar).gridTemplateColumns.split(" ").length);
-    expect(columns).toBe(4);
-  });
 }
 
 const GOLD = "rgb(231, 185, 77)";

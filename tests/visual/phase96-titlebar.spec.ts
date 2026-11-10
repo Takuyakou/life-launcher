@@ -134,13 +134,25 @@ async function probeLayout(page: Page): Promise<LayoutProbe> {
   });
 }
 
+// 実測で決まる段階(0=すべて出す / 1=自動起動・ミニ・使い方・設定を隠す / 2=すべて隠す)。
+// 段階はメイン画面の見出し(「今日 N分」＋日付)の幅で決めるので、記録画面でも同じ値になる
+// (オーナー決定 2026-11-06)。1200px では標準・大・特大のすべてで6つとも出る。
+const EXPECTED_LABEL_LEVEL: Record<number, readonly [number, number, number]> = {
+  860: [2, 2, 2],
+  1080: [0, 1, 1],
+  1200: [0, 0, 0],
+  1440: [0, 0, 0],
+  1920: [0, 0, 0],
+};
+
 test.describe("P96-01 header layout budget (30 combos)", () => {
+  // 同じ30通りを、段階の値と配置の両方で確かめる(以前は2つのテストで同じ30通りを回していた)。
   for (const view of ["main", "records"] as const) {
-    test(`window controls fit at every width and display size (${view})`, async ({ page }) => {
+    test(`window controls fit and the hiding step matches at every width and display size (${view})`, async ({ page }) => {
       await prepare(page, WIDTHS[0]);
       for (const width of WIDTHS) {
         await page.setViewportSize({ width, height: 680 });
-        for (const size of SIZES) {
+        for (const [index, size] of SIZES.entries()) {
           await page.evaluate((next) => {
             const control = (window as VisualQaWindow).__LIFE_LAUNCHER_VISUAL_QA__;
             const config = control.currentConfig() as {
@@ -165,8 +177,18 @@ test.describe("P96-01 header layout budget (30 combos)", () => {
             const backButton = page.getByRole("button", { name: "メイン画面に戻る" });
             if ((await backButton.count()) > 0) await backButton.click();
           }
-          const probe = await probeLayout(page);
           const label = `w=${width} size=${size} view=${view}`;
+          await expect
+            .poll(
+              async () =>
+                Number(
+                  (await page.locator(".mainPanel > .topBar").getAttribute("data-top-menu-labels")) ??
+                    "0",
+                ),
+              { message: `level (${label})` },
+            )
+            .toBe(EXPECTED_LABEL_LEVEL[width][index]);
+          const probe = await probeLayout(page);
           // 隠す段階(0=すべて出す / 1=自動起動・ミニ・使い方・設定を隠す / 2=すべて隠す)と、
           // 実際に出ている文字の数が合っていること。
           const expectedVisible = probe.labelLevel === 0 ? 6 : probe.labelLevel === 1 ? 2 : 0;
@@ -212,63 +234,6 @@ test.describe("P96-01 header layout budget (30 combos)", () => {
 });
 
 test.describe("P96-01 top menu labels follow what fits", () => {
-  // 実測で決まる段階(0=すべて出す / 1=自動起動・ミニ・使い方・設定を隠す / 2=すべて隠す)。
-  // 段階はメイン画面の見出し(「今日 N分」＋日付)の幅で決めるので、記録画面でも同じ値になる
-  // (オーナー決定 2026-11-06)。1200px では標準・大・特大のすべてで6つとも出る。
-  const EXPECTED: Record<number, readonly [number, number, number]> = {
-    860: [2, 2, 2],
-    1080: [0, 1, 1],
-    1200: [0, 0, 0],
-    1440: [0, 0, 0],
-    1920: [0, 0, 0],
-  };
-
-  for (const view of ["main", "records"] as const) {
-    test(`the hiding step matches the measured width (${view})`, async ({ page }) => {
-      await prepare(page, 1200);
-      for (const width of WIDTHS) {
-        await page.setViewportSize({ width, height: 680 });
-        for (const [index, size] of SIZES.entries()) {
-          await page.evaluate((next) => {
-            const control = (window as VisualQaWindow).__LIFE_LAUNCHER_VISUAL_QA__;
-            const config = control.currentConfig() as {
-              settings: { mainDisplaySize: string };
-            };
-            config.settings.mainDisplaySize = next;
-            control.updateConfig(config);
-          }, size);
-          await expect(page.locator(".mainPanel")).toHaveAttribute(
-            "data-main-display-size",
-            size,
-          );
-          if (view === "records") {
-            const recordsActive = await page
-              .locator(".topTitle--records")
-              .isVisible()
-              .catch(() => false);
-            if (!recordsActive) {
-              await page.getByRole("button", { name: "記録ビューを開く" }).click();
-            }
-          } else {
-            const backButton = page.getByRole("button", { name: "メイン画面に戻る" });
-            if ((await backButton.count()) > 0) await backButton.click();
-          }
-          await expect
-            .poll(
-              async () => {
-                const value = await page
-                  .locator(".mainPanel > .topBar")
-                  .getAttribute("data-top-menu-labels");
-                return Number(value ?? "0");
-              },
-              { message: `level at w=${width} size=${size} view=${view}` },
-            )
-            .toBe(EXPECTED[width][index]);
-        }
-      }
-    });
-  }
-
   test("switching between main and records never changes the labels", async ({ page }) => {
     await prepare(page, 1200);
     for (const width of WIDTHS) {
@@ -289,7 +254,7 @@ test.describe("P96-01 top menu labels follow what fits", () => {
             .getAttribute("data-top-menu-labels")
             .then((value) => Number(value ?? "0"));
         await expect.poll(readLevel, { message: `main level at w=${width} ${size}` }).toBe(
-          EXPECTED[width][SIZES.indexOf(size)],
+          EXPECTED_LABEL_LEVEL[width][SIZES.indexOf(size)],
         );
         const mainLevel = await readLevel();
         const labelsInMain = await page
