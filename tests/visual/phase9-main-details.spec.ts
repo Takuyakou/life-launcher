@@ -222,7 +222,7 @@ test("P9-09 an open sidebar group without buttons shows a guide, and a button ca
 // 6. Timer complete dialog ------------------------------------------------------------------
 
 async function expectCompleteHeading(page: Page) {
-  await page.clock.runFor(60_500);
+  await page.clock.fastForward(60_500);
   const dialog = page.getByRole("dialog", { name: "タイマー満了" });
   await expect(dialog).toBeVisible();
   // The heading is the action text; the Project is the small coloured label above it.
@@ -281,7 +281,7 @@ test("P9-09 a long action text wraps in the completion heading without leaving t
     .first()
     .getByRole("button", { name: "短時間タイマー1分で開始" })
     .click();
-  await page.clock.runFor(60_500);
+  await page.clock.fastForward(60_500);
   const dialog = page.getByRole("dialog", { name: "タイマー満了" });
   const heading = dialog.getByRole("heading", { level: 2 });
   const dialogBox = (await dialog.boundingBox())!;

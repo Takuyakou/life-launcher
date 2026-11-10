@@ -89,7 +89,7 @@ test("switching from a sub-minute timer warns without recording or resizing manu
   await first.getByRole("button", { name: "短時間タイマー2分で開始" }).click();
   await expect(first.getByText("実行中", { exact: true })).toBeVisible();
   expect((await first.boundingBox())?.height).toBe(firstIdleHeight);
-  await page.clock.runFor(30_000);
+  await page.clock.fastForward(30_000);
   await second.getByRole("button", { name: "短時間タイマー2分で開始" }).click();
 
   await expect(page.getByText("1分未満なので記録しませんでした", { exact: true })).toBeVisible();
@@ -107,7 +107,7 @@ test("starting another timer ends a paused timer before the new timer runs", asy
   await prepare(page, fixture);
   const cards = page.locator(".todayRow");
   await cards.nth(0).getByRole("button", { name: "短時間タイマー2分で開始" }).click();
-  await page.clock.runFor(70_000);
+  await page.clock.fastForward(70_000);
   await cards.nth(0).getByRole("button", { name: "このセッションを一時停止" }).click();
   await expect(cards.nth(0).getByText("一時停止", { exact: true })).toBeVisible();
   await cards.nth(1).getByRole("button", { name: "短時間タイマー2分で開始" }).click();

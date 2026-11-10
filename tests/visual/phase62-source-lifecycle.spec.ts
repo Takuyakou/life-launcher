@@ -196,7 +196,7 @@ test("Today3 planned completion clears its NextStep source and records history",
     .locator(".todayRow")
     .getByRole("button", { name: /短時間タイマー1分で開始/ })
     .click();
-  await page.clock.runFor(60_500);
+  await page.clock.fastForward(60_500);
   await page
     .getByRole("dialog", { name: "タイマー満了" })
     .getByRole("button", { name: "終わる" })

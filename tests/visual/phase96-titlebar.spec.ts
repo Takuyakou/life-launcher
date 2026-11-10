@@ -753,7 +753,7 @@ test.describe("P96-01 dialogs and the window controls", () => {
     for (const width of [860, 1080] as const) {
       await prepare(page, width, "standard", "main", createFullTodayFixture());
       await page.getByRole("button", { name: "短時間タイマー1分で開始" }).first().click();
-      await page.clock.runFor(60_500);
+      await page.clock.fastForward(60_500);
       const expired = page.getByRole("dialog", { name: "タイマー満了" });
       await expect(expired).toBeVisible();
       await expectControlsReachable(page, ".modalBackdrop");

@@ -62,7 +62,7 @@ test.describe("P96-02 window timer line", () => {
     await expect(page.locator(".windowTimerLine")).toHaveCount(0);
     await startMeasureTimer(page);
     await expect(page.locator(".timerDock .timerStateBadge")).toHaveText("計測中");
-    await page.clock.runFor(61_000);
+    await page.clock.fastForward(61_000);
     await expect(page.locator(".windowTimerLine")).toHaveCount(0);
   });
 
@@ -84,7 +84,7 @@ test.describe("P96-02 window timer line", () => {
     expect(started.groove, "groove uses --accent").toBe("rgb(231, 185, 77)");
     expect(started.grooveOpacity, "groove is 12%").toBeCloseTo(0.12, 2);
 
-    await page.clock.runFor(60_000);
+    await page.clock.fastForward(60_000);
     const expected = await progressFromClock(page, SHORT_SECONDS);
     await expect
       .poll(async () => (await lineState(page))!.renderedPercent, { timeout: 4000 })
@@ -95,7 +95,7 @@ test.describe("P96-02 window timer line", () => {
   test("pausing stops the line and turns it orange; resuming keeps going", async ({ page }) => {
     await open(page);
     await startShortTimer(page);
-    await page.clock.runFor(60_000);
+    await page.clock.fastForward(60_000);
     await page.locator(".timerDock").getByRole("button", { name: "一時停止" }).click();
     const paused = (await lineState(page))!;
     expect(paused.paused, "paused class").toBe(true);
@@ -105,14 +105,14 @@ test.describe("P96-02 window timer line", () => {
     expect(paused.groove, "groove uses --warn").toBe("rgb(242, 166, 90)");
     const frozen = paused.renderedPercent;
     // 一時停止中は時間が進んでも長さが変わらない
-    await page.clock.runFor(30_000);
+    await page.clock.fastForward(30_000);
     expect((await lineState(page))!.renderedPercent).toBeCloseTo(frozen, 1);
     // 再開すると黄色に戻って続きから伸びる
     await page.locator(".timerDock").getByRole("button", { name: "再開" }).click();
     await expect
       .poll(() => page.locator(".windowTimerLineFill").evaluate((el) => getComputedStyle(el).backgroundColor))
       .toBe("rgb(231, 185, 77)");
-    await page.clock.runFor(60_000);
+    await page.clock.fastForward(60_000);
     const expected = await progressFromClock(page, SHORT_SECONDS);
     await expect
       .poll(async () => (await lineState(page))!.renderedPercent, { timeout: 4000 })
@@ -124,7 +124,7 @@ test.describe("P96-02 window timer line", () => {
     await startShortTimer(page);
     let previous = 0;
     for (let index = 0; index < 4; index += 1) {
-      await page.clock.runFor(20_000);
+      await page.clock.fastForward(20_000);
       await page.locator(".timerDock").getByRole("button", { name: "一時停止" }).click();
       const paused = (await lineState(page))!.renderedPercent;
       expect(paused, `pause ${index}`).toBeGreaterThanOrEqual(previous - 0.5);
@@ -139,7 +139,7 @@ test.describe("P96-02 window timer line", () => {
   test("the line stays at 100% while the completion prompt waits, then disappears", async ({ page }) => {
     await open(page);
     await startShortTimer(page);
-    await page.clock.runFor(SHORT_SECONDS * 1000 + 2_000);
+    await page.clock.fastForward(SHORT_SECONDS * 1000 + 2_000);
     const dialog = page.getByRole("dialog", { name: "タイマー満了" });
     await expect(dialog).toBeVisible();
     expect((await lineState(page))!.stylePercent).toBe(100);
@@ -153,7 +153,7 @@ test.describe("P96-02 window timer line", () => {
   test("continuing with +15 minutes recalculates the length", async ({ page }) => {
     await open(page);
     await startShortTimer(page);
-    await page.clock.runFor(SHORT_SECONDS * 1000 + 2_000);
+    await page.clock.fastForward(SHORT_SECONDS * 1000 + 2_000);
     const dialog = page.getByRole("dialog", { name: "タイマー満了" });
     await dialog.getByRole("button", { name: "続ける(+15分)" }).click();
     await expect(dialog).toHaveCount(0);
@@ -170,7 +170,7 @@ test.describe("P96-02 window timer line", () => {
   test("records keeps the line; the viewer and the mini timer have none", async ({ page }) => {
     await open(page);
     await startShortTimer(page);
-    await page.clock.runFor(60_000);
+    await page.clock.fastForward(60_000);
     await page.locator(".timerDock").getByRole("button", { name: "一時停止" }).click();
     const before = (await lineState(page))!.renderedPercent;
     await page.getByRole("button", { name: "記録ビューを開く" }).click();
@@ -240,7 +240,7 @@ test.describe("P96-02 window timer line", () => {
   test("the length does not change with the display size or the view", async ({ page }) => {
     await open(page);
     await startShortTimer(page);
-    await page.clock.runFor(90_000);
+    await page.clock.fastForward(90_000);
     await page.locator(".timerDock").getByRole("button", { name: "一時停止" }).click();
     const base = (await lineState(page))!.renderedPercent;
     await page.evaluate(() => {

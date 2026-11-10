@@ -125,7 +125,7 @@ test("P8.10 TX-02 expiry keeps overlay and existing continue/finish flow", async
   await page.locator(".doNowStartPrimary").click();
   await page.getByRole("button", { name: "タイマーを大きく表示" }).click();
   const overlay = page.getByRole("dialog", { name: "拡大タイマー" });
-  await page.clock.runFor(60_500);
+  await page.clock.fastForward(60_500);
   await expect(overlay).toBeVisible();
   await expect(overlay.getByText("時間になりました")).toBeVisible();
   const prompt = page.getByRole("dialog", { name: "タイマー満了" });
@@ -134,7 +134,7 @@ test("P8.10 TX-02 expiry keeps overlay and existing continue/finish flow", async
   await expect(prompt).toHaveCount(0);
   await expect(overlay).toBeVisible();
   await expect(overlay.getByText("実行中")).toBeVisible();
-  await page.clock.runFor(15 * 60_000);
+  await page.clock.fastForward(15 * 60_000);
   await expect(prompt).toBeVisible();
   await prompt.getByRole("button", { name: "終わる" }).click();
   await expect(overlay).toHaveCount(0);
