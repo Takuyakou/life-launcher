@@ -5303,6 +5303,18 @@ input[type="number"]::-webkit-inner-spin-button {
   pointer-events: none;
 }
 
+/* ダイアログを開いている間は、通知を上端の中央に出す。右下のままだと、狭い窓でダイアログの
+   下のボタン(保存・キャンセルなど)に重なり、通知が消えるまで約8秒押せなかった
+   (オーナー決定 2026-11-10)。 */
+body:has([aria-modal="true"]) .toastStack {
+  top: 12px;
+  right: auto;
+  bottom: auto;
+  left: 50%;
+  transform: translateX(-50%);
+  align-items: center;
+}
+
 .toast {
   position: relative;
   width: 100%;
