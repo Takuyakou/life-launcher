@@ -69,7 +69,7 @@ function plannedFixture(completedBefore = 0) {
 async function finishPlannedToday(page: Page, rowIndex = 2) {
   const row = page.locator(".todayRow").nth(rowIndex);
   await row.getByRole("button", { name: "短時間タイマー1分で開始" }).click();
-  await page.clock.runFor(60_500);
+  await page.clock.fastForward(60_500);
   await expect(page.getByRole("dialog", { name: "タイマー満了" })).toBeVisible();
   const finish = page.getByRole("button", { name: "終わる" });
   await expect(finish).toHaveClass(/secondaryButton--finish/);
@@ -249,7 +249,7 @@ test("P8.10 Do Now-only completion holds its snapshot until acknowledged", async
   fixture.config.today.items = [{ text: "別の項目", done: false, sourceKey: "manual:other" }];
   await prepare(page, fixture);
   await page.locator(".doNowStartPrimary").click();
-  await page.clock.runFor(60_500);
+  await page.clock.fastForward(60_500);
   await page.getByRole("button", { name: "終わる" }).click();
   const hold = page.locator(".doNowContent--hold");
   await expect(hold).toContainText("✓ 一手進みました");
@@ -293,7 +293,7 @@ async function finishDoNowOnly(page: Page, fixture: VisualQaFixture) {
   fixture.config.today.items = [{ text: "別の項目", done: false, sourceKey: "manual:other" }];
   await prepare(page, fixture);
   await page.locator(".doNowStartPrimary").click();
-  await page.clock.runFor(60_500);
+  await page.clock.fastForward(60_500);
   await page.getByRole("button", { name: "終わる" }).click();
   await expect(page.locator(".doNowContent--hold")).toBeVisible();
 }
@@ -319,7 +319,7 @@ test("P8.10 Do Now hold is transient across reload and date rollover", async ({ 
   await page.reload();
   await expect(page.locator(".doNowContent--hold")).toHaveCount(0);
   await page.locator(".doNowStartPrimary").click();
-  await page.clock.runFor(60_500);
+  await page.clock.fastForward(60_500);
   await page.getByRole("button", { name: "終わる" }).click();
   await expect(page.locator(".doNowContent--hold")).toBeVisible();
   await page.evaluate(() => {
@@ -353,7 +353,7 @@ test("P72-05 a Do Now session linked to Today emits only the Today feedback", as
   }];
   await prepare(page, fixture);
   await page.locator(".doNowStartPrimary").click();
-  await page.clock.runFor(60_500);
+  await page.clock.fastForward(60_500);
   await page.getByRole("button", { name: "終わる" }).click();
   await expect(page.locator(".todayRow--justCompleted")).toHaveCount(1);
   await expect(page.locator(".todayRow").getByRole("status", { name: "今日の分は完了", exact: true })).toBeVisible();

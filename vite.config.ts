@@ -17,5 +17,15 @@ export default defineConfig({
     watch: {
       ignored: ["**/src-tauri/**"],
     },
+    // Transform the entry and the two lazily loaded windows when the server starts. Without this,
+    // the first Visual QA test that opens the dictionary or the viewer pays for the transform and
+    // can miss its 5 s expect timeout on a busy machine.
+    warmup: {
+      clientFiles: [
+        "./src/main.tsx",
+        "./src/components/DictionaryWindow.tsx",
+        "./src/components/InstructionViewer.tsx",
+      ],
+    },
   },
 });

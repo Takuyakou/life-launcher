@@ -222,7 +222,7 @@ test("P95-01 resume then finish at once: under a minute records nothing and asks
   await freezeClock(page);
   const card = page.locator(".todayRow").first();
   await card.getByRole("button", { name: "通常タイマー25分で開始" }).click();
-  await page.clock.runFor(30_000);
+  await page.clock.fastForward(30_000);
   await card.getByRole("button", { name: "一時停止" }).click();
   await page.clock.runFor(5_000);
   await card.getByRole("button", { name: "再開" }).click();
@@ -237,11 +237,11 @@ test("P95-01 resume then finish at once: at the early-completion threshold asks 
   await freezeClock(page);
   const card = page.locator(".todayRow").first();
   await card.getByRole("button", { name: "通常タイマー25分で開始" }).click();
-  await page.clock.runFor(100_000);
+  await page.clock.fastForward(100_000);
   await card.getByRole("button", { name: "一時停止" }).click();
   await page.clock.runFor(1_000);
   await card.getByRole("button", { name: "再開" }).click();
-  await page.clock.runFor(80_500);
+  await page.clock.fastForward(80_500);
   await card.getByRole("button", { name: "一時停止" }).click();
   await card.getByRole("button", { name: "再開" }).click();
   await card.getByRole("button", { name: "終了", exact: true }).click();
@@ -259,12 +259,12 @@ test("P95-01 resume right before the planned time still shows the time-up dialog
   await freezeClock(page);
   const card = page.locator(".todayRow").first();
   await card.getByRole("button", { name: "通常タイマー25分で開始" }).click();
-  await page.clock.runFor(1_400_000);
+  await page.clock.fastForward(1_400_000);
   await card.getByRole("button", { name: "一時停止" }).click();
   await page.clock.runFor(2_000);
   await card.getByRole("button", { name: "再開" }).click();
   await expect(page.getByRole("dialog", { name: "タイマー満了" })).toHaveCount(0);
-  await page.clock.runFor(100_500);
+  await page.clock.fastForward(100_500);
   const dialog = page.getByRole("dialog", { name: "タイマー満了" });
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "終わる" }).click();

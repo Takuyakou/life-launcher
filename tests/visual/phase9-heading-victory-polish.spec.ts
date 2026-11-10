@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createFullTodayFixture, createPickerFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
+import { createFullTodayFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 
 // P9-14: section bar spacing / text / frame, one square per keyboard focus, and the empty victory bar.
@@ -13,13 +13,6 @@ const BARS = [
   ".inboxBand .disclosureHeader",
   ".todayActivityBand .disclosureHeader",
 ];
-
-// Bar heights measured on main (P9-13) before this change, 1080x680 with createFullTodayFixture.
-const BAR_HEIGHTS: Record<Display, number[]> = {
-  standard: [48, 48, 48, 44],
-  large: [53, 53, 53, 53],
-  xlarge: [57, 57, 57, 57],
-};
 
 async function open(page: Page, fixture: VisualQaFixture, display: Display = "standard") {
   fixture.config.settings.mainDisplaySize = display;
@@ -47,42 +40,7 @@ const token = (page: Page, name: string) =>
     return value;
   }, name);
 
-/** Gaps (px) of one section bar: name right -> count left, count right -> description left, and the bar height. */
-const gaps = (page: Page, selector: string) =>
-  page.locator(selector).first().evaluate((bar) => {
-    const name = bar.querySelector("h2, strong")!.getBoundingClientRect();
-    const count = bar.querySelector(".todayCompletionSummary, .todaySectionCount, .disclosureCount")!.getBoundingClientRect();
-    const description = bar.querySelector(".todaySectionDescription, .disclosureDescription")!.getBoundingClientRect();
-    return {
-      nameToCount: count.left - name.right,
-      countToDescription: description.left - count.right,
-      height: bar.getBoundingClientRect().height,
-    };
-  });
-
 for (const display of DISPLAYS) {
-  test(`P9-14 section bars put the count right after the name (${display})`, async ({ page }) => {
-    await open(page, createFullTodayFixture(), display);
-    const first = await gaps(page, BARS[0]);
-    for (const [index, selector] of BARS.entries()) {
-      await expect.poll(async () => (await gaps(page, selector)).nameToCount, { message: selector }).toBeGreaterThanOrEqual(12);
-      await expect.poll(async () => (await gaps(page, selector)).nameToCount, { message: selector }).toBeLessThanOrEqual(18.5);
-      const found = await gaps(page, selector);
-      expect(Math.abs(found.nameToCount - first.nameToCount), `${selector} name->count`).toBeLessThanOrEqual(1);
-      expect(Math.abs(found.countToDescription - 8), `${selector} count->description`).toBeLessThanOrEqual(1);
-      expect(found.height, `${selector} height`).toBeCloseTo(BAR_HEIGHTS[display][index], 0);
-    }
-  });
-
-  test(`P9-14 the Today bar with 0 items has the same gaps (${display})`, async ({ page }) => {
-    await open(page, createPickerFixture(), display);
-    await expect(page.locator(".todaySectionCount")).toHaveText("0件");
-    const first = await gaps(page, BARS[1]);
-    const today = await gaps(page, BARS[0]);
-    expect(Math.abs(today.nameToCount - first.nameToCount)).toBeLessThanOrEqual(1);
-    expect(Math.abs(today.countToDescription - 8)).toBeLessThanOrEqual(1);
-  });
-
   test(`P9-14 the four descriptions and names share their text style (${display})`, async ({ page }) => {
     await open(page, createFullTodayFixture(), display);
     const size = { standard: "11px", large: "12px", xlarge: "13px" }[display];

@@ -5,10 +5,11 @@ const localWorkers = Math.max(1, Math.min(4, Math.floor(availableParallelism() /
 
 export default defineConfig({
   testDir: "./tests/visual",
+  globalSetup: "./tests/visual/global-setup.ts",
   outputDir: "dist/visual-qa/test-results",
   fullyParallel: false,
-  // Keep CI serial until its runner is benchmarked independently.
-  workers: process.env.CI ? 1 : localWorkers,
+  // CI (windows-latest, 4 vCPU) runs two workers. Measured on that runner: see PR #166.
+  workers: process.env.CI ? 2 : localWorkers,
   // An explicit project keeps --workers from inheriting a per-project cap.
   projects: [{}],
   use: {

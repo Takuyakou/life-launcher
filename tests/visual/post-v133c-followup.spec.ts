@@ -173,7 +173,7 @@ for (const [name, todayLinked, pauseAfterContinue] of [
     await prepare(page, fixture);
     await expect(page.locator(".doNowBand")).toContainText("資料を1ページ読む");
     await page.locator(".doNowStartPrimary").click();
-    await page.clock.runFor(60_500);
+    await page.clock.fastForward(60_500);
     const prompt = page.getByRole("dialog", { name: "タイマー満了" });
     await expect(prompt).toBeVisible();
     await prompt.getByRole("button", { name: /続ける/ }).click();

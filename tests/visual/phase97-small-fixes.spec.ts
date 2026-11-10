@@ -206,7 +206,7 @@ test("a finished timer updates the open Records view immediately and records exa
   await prepareRecords(page);
   await openRecordsWhileTimerRuns(page);
 
-  await page.clock.runFor(60_500);
+  await page.clock.fastForward(60_500);
   const dialog = page.getByRole("dialog", { name: "タイマー満了" });
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "終わる" }).click();
@@ -234,7 +234,7 @@ test("a failed recording leaves the open Records view values unchanged", async (
     (window as VisualQaWindow).__LIFE_LAUNCHER_VISUAL_QA__.setRecordSessionFailure(true),
   );
 
-  await page.clock.runFor(60_500);
+  await page.clock.fastForward(60_500);
   const dialog = page.getByRole("dialog", { name: "タイマー満了" });
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "終わる" }).click();

@@ -60,7 +60,7 @@ async function currentConfig(page: Page): Promise<AppConfig> {
 }
 
 async function finishExpiredTimer(page: Page) {
-  await page.clock.runFor(60_500);
+  await page.clock.fastForward(60_500);
   await page
     .getByRole("dialog", { name: "タイマー満了" })
     .getByRole("button", { name: "終わる" })

@@ -94,7 +94,7 @@ test("P9-05 every Today3 change asks for the candidates again", async ({ page })
   await refreshed(async () => {
     const row = page.locator(".todayRow").filter({ hasText: "資料を1ページ読む" });
     await row.getByRole("button", { name: "短時間タイマー1分で開始" }).click();
-    await page.clock.runFor(60_500);
+    await page.clock.fastForward(60_500);
     await page
       .getByRole("dialog", { name: "タイマー満了" })
       .getByRole("button", { name: /続ける/ })
@@ -113,7 +113,7 @@ test("P9-05 refreshing the candidates keeps the completed Do Now hold until it i
 }) => {
   await prepare(page, [candidate(LEARNING, "today3"), candidate(STRETCH, "noToday")]);
   await page.locator(".doNowStartPrimary").click();
-  await page.clock.runFor(60_500);
+  await page.clock.fastForward(60_500);
   await page
     .getByRole("dialog", { name: "タイマー満了" })
     .getByRole("button", { name: /続ける/ })

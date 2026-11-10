@@ -288,7 +288,7 @@ test("an imported next step completes in Today3 like a screen-set next step", as
   const todayCard = page.locator(".todayRow", { hasText: "音声モードで話す" });
   await expect(todayCard).toBeVisible();
   await todayCard.getByRole("button", { name: "短時間タイマー1分で開始" }).click();
-  await page.clock.runFor(60_500);
+  await page.clock.fastForward(60_500);
   const expired = page.getByRole("dialog", { name: "タイマー満了" });
   await expect(expired).toBeVisible();
   await expired.getByRole("button", { name: "終わる" }).click();

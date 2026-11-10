@@ -32,7 +32,7 @@ test("P9-00 flow: Today3 short Timer expires, continues, pauses, resumes, ends a
   await row.getByRole("button", { name: "短時間タイマー1分で開始" }).click();
   await expect(row).toHaveClass(/todayRow--running/);
 
-  await page.clock.runFor(60_500);
+  await page.clock.fastForward(60_500);
   const expired = page.getByRole("dialog", { name: "タイマー満了" });
   await expect(expired).toBeVisible();
   await expired.getByRole("button", { name: /続ける/ }).click();
@@ -118,7 +118,7 @@ test("P9-04 flow: started from Do Now, Today3 follows to completion", async ({ p
   await firstRow(page).getByRole("button", { name: "このセッションを再開" }).click();
   await expectBothCards(page, "running");
 
-  await page.clock.runFor(60_500);
+  await page.clock.fastForward(60_500);
   const expired = page.getByRole("dialog", { name: "タイマー満了" });
   await expired.getByRole("button", { name: /続ける/ }).click();
   await expectBothCards(page, "running");
@@ -141,7 +141,7 @@ test("P9-04 flow: started from Today3, Do Now follows to completion", async ({ p
   await doNowCard(page).getByRole("button", { name: "このセッションを再開" }).click();
   await expectBothCards(page, "running");
 
-  await page.clock.runFor(60_500);
+  await page.clock.fastForward(60_500);
   await page
     .getByRole("dialog", { name: "タイマー満了" })
     .getByRole("button", { name: /続ける/ })
@@ -164,7 +164,7 @@ test("P9-04 Measure says 計測中 in Do Now and shows the elapsed time only bes
 }) => {
   await prepare(page);
   await doNowCard(page).locator(".doNowMeasureButton").click();
-  await page.clock.runFor(65_000);
+  await page.clock.fastForward(65_000);
   const meta = doNowCard(page).locator(".doNowMetaTimer");
   await expect(meta).toContainText("計測中");
   await expect(meta).not.toContainText(/\d{2}:\d{2}/);

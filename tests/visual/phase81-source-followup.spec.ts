@@ -42,7 +42,7 @@ async function setSaveFailure(page: Page, failed: boolean) {
 
 async function finishPlannedTimer(page: Page) {
   await page.locator(".todayRow").getByRole("button", { name: "短時間タイマー1分で開始" }).click();
-  await page.clock.runFor(60_500);
+  await page.clock.fastForward(60_500);
   await page
     .getByRole("dialog", { name: "タイマー満了" })
     .getByRole("button", { name: "終わる" })
@@ -266,7 +266,7 @@ test("Phase 8.1 direct Wishlist timer completion cannot select same-project Next
   await prepareUi(page, fixture, 2);
   const wishlistCard = page.locator(".todayRow").nth(1);
   await wishlistCard.getByRole("button", { name: "短時間タイマー1分で開始" }).click();
-  await page.clock.runFor(60_500);
+  await page.clock.fastForward(60_500);
   await page
     .getByRole("dialog", { name: "タイマー満了" })
     .getByRole("button", { name: "終わる" })

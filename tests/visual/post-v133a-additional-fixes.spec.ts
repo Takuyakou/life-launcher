@@ -138,7 +138,7 @@ test("Do Now excludes by project identity even when candidate labels match", asy
   fixture.config.today.items = [{ text: "別の項目", done: false, sourceKey: "manual:other" }];
   await prepare(page, fixture);
   await page.locator(".doNowStartPrimary").click();
-  await page.clock.runFor(60_500);
+  await page.clock.fastForward(60_500);
   await page.getByRole("button", { name: "終わる" }).click();
   const hold = page.locator(".doNowContent--hold");
   await expect(hold).toBeVisible();
