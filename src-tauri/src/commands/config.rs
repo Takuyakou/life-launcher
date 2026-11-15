@@ -2474,11 +2474,20 @@ fn project_is_stale_at(project: &Project, now: chrono::DateTime<chrono::FixedOff
     let Some(next_step) = project.next_step.as_ref() else {
         return false;
     };
-    let Some(basis) = next_step
+    // P10-05 (D11): the basis is the newer of "reviewed" and "updated". An unreadable side is
+    // ignored; when neither can be read the Project is not stale (same as before).
+    let reviewed = next_step
         .reviewed_at
         .as_ref()
-        .or(next_step.updated_at.as_ref())
-        .and_then(|value| chrono::DateTime::parse_from_rfc3339(value).ok())
+        .and_then(|value| chrono::DateTime::parse_from_rfc3339(value).ok());
+    let updated = next_step
+        .updated_at
+        .as_ref()
+        .and_then(|value| chrono::DateTime::parse_from_rfc3339(value).ok());
+    let Some(basis) = reviewed
+        .into_iter()
+        .chain(updated)
+        .max_by_key(|value| value.timestamp())
     else {
         return false;
     };
@@ -3338,6 +3347,57 @@ mod tests {
         project.next_step.as_mut().expect("next step").reviewed_at =
             Some("2026-07-10T12:00:00Z".to_string());
         assert!(!project_is_stale_at(&project, fourteen_days));
+    }
+
+    #[test]
+    fn p10_05_next_step_freshness_uses_the_newer_of_reviewed_and_updated() {
+        let now = chrono::DateTime::parse_from_rfc3339("2026-07-16T12:00:00Z").expect("datetime");
+        let stale_before = chrono::DateTime::parse_from_rfc3339("2026-07-02T12:00:00Z")
+            .expect("datetime")
+            .to_rfc3339();
+        let recent = chrono::DateTime::parse_from_rfc3339("2026-07-15T12:00:00Z")
+            .expect("datetime")
+            .to_rfc3339();
+
+        let mut project = sample_config().projects.remove(0);
+
+        // Reviewed 14 days ago, updated yesterday: the newer date wins, so not stale.
+        {
+            let step = project.next_step.as_mut().expect("next step");
+            step.reviewed_at = Some(stale_before.clone());
+            step.updated_at = Some(recent.clone());
+        }
+        assert!(!project_is_stale_at(&project, now));
+
+        // Updated 14 days ago, reviewed yesterday: same answer the other way round.
+        {
+            let step = project.next_step.as_mut().expect("next step");
+            step.reviewed_at = Some(recent.clone());
+            step.updated_at = Some(stale_before.clone());
+        }
+        assert!(!project_is_stale_at(&project, now));
+
+        // Both 14 days old: stale.
+        {
+            let step = project.next_step.as_mut().expect("next step");
+            step.reviewed_at = Some(stale_before.clone());
+            step.updated_at = Some(stale_before.clone());
+        }
+        assert!(project_is_stale_at(&project, now));
+
+        // Only one side readable: that side decides.
+        {
+            let step = project.next_step.as_mut().expect("next step");
+            step.reviewed_at = Some("not a date".to_string());
+            step.updated_at = Some(recent.clone());
+        }
+        assert!(!project_is_stale_at(&project, now));
+        {
+            let step = project.next_step.as_mut().expect("next step");
+            step.reviewed_at = Some(stale_before.clone());
+            step.updated_at = Some("not a date".to_string());
+        }
+        assert!(project_is_stale_at(&project, now));
     }
 
     #[test]
