@@ -209,3 +209,23 @@ test("P10-03 an action runs from the palette", async ({ page }) => {
   await expect(palette(page)).toHaveCount(0);
   await expect(page.locator(".recordsView")).toBeVisible();
 });
+
+test("P10-03 Ctrl+F is swallowed even when the search window cannot open", async ({ page }) => {
+  await open(page);
+  await page.getByRole("button", { name: "設定を開く" }).click();
+  await expect(page.getByRole("dialog", { name: "設定" })).toBeVisible();
+  // A listener added after the app's own capture handler sees whether it was cancelled.
+  await page.evaluate(() => {
+    (window as Window & { __ctrlF?: boolean }).__ctrlF = false;
+    window.addEventListener("keydown", (event) => {
+      if (event.key.toLowerCase() === "f" && event.ctrlKey) {
+        (window as Window & { __ctrlF?: boolean }).__ctrlF = event.defaultPrevented;
+      }
+    });
+  });
+  await page.keyboard.press("Control+f");
+  await expect(palette(page)).toHaveCount(0);
+  expect(
+    await page.evaluate(() => (window as Window & { __ctrlF?: boolean }).__ctrlF),
+  ).toBe(true);
+});

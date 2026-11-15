@@ -4152,11 +4152,14 @@ function DashboardApp() {
       if (event.altKey || event.metaKey || event.shiftKey) return;
       if (event.repeat) return;
       if (event.isComposing || event.keyCode === 229) return;
+      // The main window always swallows Ctrl+F, even when the search window cannot open
+      // (a dialog or a menu is up): WebView2's own find bar must never come up. Only the
+      // Japanese conversion case above is left alone.
+      event.preventDefault();
       if (activeView !== "main") return;
       if (completionPrompt || confirmDialog || earlyStop) return;
       if (contextMenu) return;
       if (hasDismissibleModal && !searchOpen) return;
-      event.preventDefault();
       openSearchRef.current();
     };
     window.addEventListener("keydown", openOnCtrlF, true);
