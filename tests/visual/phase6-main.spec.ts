@@ -75,6 +75,25 @@ for (const width of [860, 1440]) {
   test(`victory suggestion preserves the main scroll position at ${width}px`, async ({ page }) => {
     const fixture = createPublicFixture();
     fixture.config.today.victory = { text: "", done: false };
+    // P10-14d: the compact header leaves a short page with only two Projects. Add
+    // rows so the scroll position under test stays reachable after the suggestion
+    // dropdown closes (it is absolutely positioned and does not reserve height).
+    for (let index = 0; index < 5; index += 1) {
+      const template = fixture.config.projects[0];
+      fixture.config.projects.push({
+        ...template,
+        id: `scroll-check-${index}`,
+        name: `スクロール確認 ${index + 1}`,
+        weeklyFocus: false,
+        nextStep: template.nextStep
+          ? {
+              ...template.nextStep,
+              text: `スクロール確認の一手 ${index + 1}`,
+              buttonIds: [],
+            }
+          : undefined,
+      });
+    }
     await page.setViewportSize({ width, height: 700 });
     await prepare(page, fixture);
     await page.setViewportSize({ width, height: 700 });
@@ -89,7 +108,9 @@ for (const width of [860, 1440]) {
       node.scrollTop = 24;
     });
     const before = await scrollArea.evaluate((node) => node.scrollTop);
-    await suggestion.click();
+    // Click without Playwright's scroll-into-view: the point is the app's own
+    // scroll restore, not the harness moving the page before the click.
+    await suggestion.evaluate((node) => (node as HTMLElement).click());
     await expect(page.getByRole("textbox", { name: "今日の勝利条件" })).not.toHaveValue("");
     await expect
       .poll(() => scrollArea.evaluate((node) => node.scrollTop))
@@ -186,7 +207,6 @@ test("NextStep and Wishlist use compact non-destructive Today actions", async ({
   const nextRows = picker.locator('[data-today-picker-section="next-step"] .todayPickerRow');
   await nextRows.nth(0).getByRole("button", { name: "今日へ" }).click();
   await nextRows.nth(0).getByRole("button", { name: "今日へ" }).click();
-  await page.getByRole("tab", { name: /やりたいこと/ }).click();
   await picker
     .locator('[data-today-picker-section="wishlist"] .todayPickerRow')
     .nth(0)
@@ -214,7 +234,6 @@ test("same-text Wishlist items keep separate stable identities", async ({ page }
   await prepare(page, fixture);
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
-  await page.getByRole("tab", { name: /やりたいこと/ }).click();
   const panelRows = page.locator('[data-today-picker-section="wishlist"] .todayPickerRow');
   await expect(panelRows).toHaveCount(2);
   await panelRows.nth(0).getByRole("button", { name: "今日へ" }).click();
@@ -253,7 +272,6 @@ test("legacy same-text Wishlist selection maps to only the first stable item", a
   await prepare(page, fixture);
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
-  await page.getByRole("tab", { name: /やりたいこと/ }).click();
   const slots = page.locator(".todayPickerSlot--selected");
   await expect(slots).toHaveCount(1);
   await expect(slots.locator(".todayPickerSelectedStatus")).toHaveText("✓ 選択済み");

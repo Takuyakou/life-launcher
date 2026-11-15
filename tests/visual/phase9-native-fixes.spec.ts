@@ -34,7 +34,7 @@ const away = (page: Page) => page.mouse.move(2, 2);
 
 test("P9-13 victory bar reacts to hover like the cards (not achieved)", async ({ page }) => {
   await open(page, createFullTodayFixture());
-  await expect.poll(() => bar(page)).toMatchObject({ border: "rgba(231, 185, 77, 0.42)", transform: "none" });
+  await expect.poll(() => bar(page)).toMatchObject({ border: "rgba(231, 185, 77, 0.5)", transform: "none" });
   const before = await bar(page);
   await page.locator(".victoryIcon").hover();
   await expect
@@ -51,7 +51,7 @@ test("P9-13 victory bar reacts to hover like the cards (achieved)", async ({ pag
   fixture.config.today.victory.done = true;
   await open(page, fixture);
   // The Main-view override of .victoryBar (P8.9) outranks .victoryBar--done, so the resting border is 0.42 here too.
-  await expect.poll(() => bar(page)).toMatchObject({ border: "rgba(231, 185, 77, 0.42)", transform: "none" });
+  await expect.poll(() => bar(page)).toMatchObject({ border: "rgba(231, 185, 77, 0.5)", transform: "none" });
   const before = await bar(page);
   await page.locator(".victoryIcon").hover();
   await expect.poll(() => bar(page)).toMatchObject({ border: GOLD, transform: LIFT });
@@ -72,7 +72,7 @@ test("P9-13 victory bar keeps the keyboard focus ring; the frame stays as it is 
   await expect(text).toHaveCSS("outline-style", "solid");
   await expect(text).toHaveCSS("outline-color", GOLD);
   await expect(text).toHaveCSS("outline-width", "2px");
-  await expect.poll(() => bar(page)).toMatchObject({ border: "rgba(231, 185, 77, 0.42)", transform: "none" });
+  await expect.poll(() => bar(page)).toMatchObject({ border: "rgba(231, 185, 77, 0.5)", transform: "none" });
 });
 
 test("P9-13 victory bar stays strong while editing, and an empty spot does not start editing", async ({ page }) => {

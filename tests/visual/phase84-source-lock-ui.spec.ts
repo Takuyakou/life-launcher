@@ -86,7 +86,7 @@ test("unfinished Today3 locks only the matching Wishlist identity", async ({ pag
   await expect(lockedRow.locator(".wishlistNextStepAction")).toHaveCount(1);
 });
 
-test("Do Now, Today3, and NextStep use their Project hover color", async ({
+test("Today3 and NextStep use their Project hover color; Do Now stays neutral", async ({
   page,
 }) => {
   const fixture = createPublicFixture();
@@ -108,6 +108,14 @@ test("Do Now, Today3, and NextStep use their Project hover color", async ({
       width: (node as HTMLElement).offsetWidth,
       height: (node as HTMLElement).offsetHeight,
     }))).toEqual({ width: initial.width, height: initial.height });
+    if (selector === ".doNowContent") {
+      // P10-14d (M2): no side of the neutral Do Now card carries the Project colour.
+      await expect.poll(() => target.evaluate((node) => {
+        const style = getComputedStyle(node);
+        return style.borderRightColor === style.borderLeftColor;
+      })).toBe(true);
+      continue;
+    }
     await expect.poll(() => target.evaluate((node) => {
       const style = getComputedStyle(node);
       const probe = document.createElement("span");

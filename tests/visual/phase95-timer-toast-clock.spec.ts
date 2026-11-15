@@ -508,7 +508,7 @@ const BARS = [
   ".todayActivityBand .disclosureHeader",
 ];
 const BAR_HEIGHTS: Record<Display, number[]> = {
-  standard: [48, 48, 48, 44],
+  standard: [48, 48, 48, 42],
   large: [53, 53, 53, 53],
   xlarge: [57, 57, 57, 57],
 };

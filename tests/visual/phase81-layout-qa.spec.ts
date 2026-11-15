@@ -382,14 +382,12 @@ for (const width of [620] as const) {
     const nextStep = page.getByRole("dialog", { name: "次の一手を編集", exact: true });
     await expect(nextStep).toBeVisible();
     await expect(nextStep.getByRole("textbox", { name: "行動" })).toBeFocused();
-    await expect(nextStep.getByRole("heading", { level: 3 })).toHaveText([
-      "プロジェクト",
-      "次の一手の決め方",
-      "タイマー",
-      "始めると一緒に開く",
-    ]);
+    // P10-14d (E1): rewriting an existing Next Step is the compact form: no Project field,
+    // no decision tabs, and no third-level section headings.
+    await expect(nextStep.getByRole("combobox", { name: "プロジェクト" })).toHaveCount(0);
+    await expect(nextStep.getByRole("heading", { level: 3 })).toHaveCount(0);
     await expectInsideViewport(page, nextStep, "NextStep dialog");
-    expect(await nextStep.evaluate((node) => node.scrollHeight > node.clientHeight)).toBe(true);
+    expect(await nextStep.evaluate((node) => node.scrollHeight <= node.clientHeight)).toBe(true);
 
     const nextStepActions = nextStep.locator(".formDialogActions");
     const nextStepSave = nextStepActions.getByRole("button", { name: "保存", exact: true });

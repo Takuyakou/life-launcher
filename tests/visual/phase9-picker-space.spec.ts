@@ -23,13 +23,13 @@ async function openPicker(
   await expect(page.getByRole("dialog", { name: "今日やるものを選ぶ" })).toBeVisible();
 }
 
-const rows = (page: Page) => page.locator(".todayPickerSourcePanel .todayPickerRow");
+const rows = (page: Page) => page.locator(".todayPickerSource .todayPickerRow");
 
 /** Rows that sit completely inside the scrolling candidate panel, without scrolling. */
 const fullyVisibleRows = (page: Page) =>
   page.evaluate(() => {
-    const panel = document.querySelector(".todayPickerSourcePanel")!.getBoundingClientRect();
-    return [...document.querySelectorAll(".todayPickerSourcePanel .todayPickerRow")].filter((row) => {
+    const panel = document.querySelector(".todayPickerSource")!.getBoundingClientRect();
+    return [...document.querySelectorAll(".todayPickerSource .todayPickerRow")].filter((row) => {
       const box = row.getBoundingClientRect();
       return box.top >= panel.top - 0.5 && box.bottom <= panel.bottom + 0.5;
     }).length;
@@ -76,7 +76,7 @@ test("P9-08 at 860x560 the last candidate is reachable by scrolling and the foot
 }) => {
   await openPicker(page, MINIMUM);
   await snapshot(page, "picker-860x560");
-  const panel = page.locator(".todayPickerSourcePanel");
+  const panel = page.locator(".todayPickerSource");
   await expect
     .poll(() => panel.evaluate((element) => element.scrollHeight > element.clientHeight))
     .toBe(true);
@@ -101,7 +101,7 @@ for (const display of ["standard", "large", "xlarge"] as const) {
     expect(box.y).toBeGreaterThanOrEqual(0);
     expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
     expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
-    const panel = page.locator(".todayPickerSourcePanel");
+    const panel = page.locator(".todayPickerSource");
     await panel.evaluate((element) => element.scrollTo(0, element.scrollHeight));
     await expect(rows(page).last()).toBeInViewport({ ratio: 1 });
     for (const name of ["決定", "キャンセル"]) {

@@ -36,6 +36,7 @@ async function prepare(
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
   await expect(page.locator(".doNowBand")).toBeVisible();
+  await page.evaluate(async () => document.fonts.ready);
 }
 
 async function readStyle(locator: Locator): Promise<ActionStyle> {

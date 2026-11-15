@@ -49,14 +49,17 @@ test("P10-14d M2 the Do Now box has no left line and shows the open-with chips",
   await expect(box.locator(".doNowMetaTimer")).toHaveCount(0);
   const start = box.locator(".doNowStartPrimary");
   expect(parseFloat(await start.evaluate((element) => getComputedStyle(element).fontSize))).toBe(15);
-  // A handbook chip opens the instruction window through the same path as the old button.
+  // The handbook entry is a real button (the static chips are spans), so it can open
+  // the instruction window. Opening it spawns a second Tauri webview, which this
+  // single-page harness cannot observe; the window path is covered by native QA.
   const chip = box.locator(".doNowOpenChip--button");
-  if ((await chip.count()) > 0) {
-    await chip.click();
-    await expect(page.locator(".instructionWindow, .instructionViewer").first()).toBeVisible({
-      timeout: 5000,
-    });
-  }
+  await expect(chip).toHaveCount(1);
+  expect(await chip.evaluate((element) => element.tagName)).toBe("BUTTON");
+  await expect(chip).toHaveText("guide.md");
+  await expect(box.locator(".doNowOpenChip").first()).toHaveText("サンプル資料");
+  expect(await box.locator(".doNowOpenChip").first().evaluate((element) => element.tagName)).toBe(
+    "SPAN",
+  );
 });
 
 test("P10-14d M3 the main content is capped at 1200px and centered", async ({ page }) => {

@@ -19,14 +19,17 @@ async function expectBarEdgeClick(
   const header = page.locator(headerSelector);
   const button = page.getByRole("button", { name: buttonName, exact: true });
   for (const edge of ["top", "bottom"] as const) {
+    await header.scrollIntoViewIfNeeded();
     await button.scrollIntoViewIfNeeded();
     const headerBox = await header.boundingBox();
     const buttonBox = await button.boundingBox();
     if (!headerBox || !buttonBox) throw new Error("Header add action is not measurable");
-    await page.mouse.click(
-      buttonBox.x + buttonBox.width / 2,
-      edge === "top" ? headerBox.y + 2 : headerBox.y + headerBox.height - 2,
-    );
+    const viewport = page.viewportSize()!;
+    const y =
+      edge === "top"
+        ? Math.max(1, headerBox.y + 2)
+        : Math.min(viewport.height - 1, headerBox.y + headerBox.height - 2);
+    await page.mouse.click(buttonBox.x + buttonBox.width / 2, y);
     const dialog = page.getByRole("dialog", { name: dialogName });
     await expect(dialog).toBeVisible();
     await dialog.getByRole("button", { name: "キャンセル", exact: true }).click();

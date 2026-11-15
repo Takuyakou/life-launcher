@@ -43,14 +43,14 @@ const token = (page: Page, name: string) =>
 for (const display of DISPLAYS) {
   test(`P9-14 the four descriptions and names share their text style (${display})`, async ({ page }) => {
     await open(page, createFullTodayFixture(), display);
-    const size = { standard: "11px", large: "12px", xlarge: "13px" }[display];
+    const size = { standard: "12px", large: "13px", xlarge: "14px" }[display];
     const muted = await token(page, "--text-muted-readable");
     for (const selector of BARS) {
       const bar = page.locator(selector).first();
       const description = bar.locator(".todaySectionDescription, .disclosureDescription");
       await expect(description, selector).toHaveCSS("font-size", size);
       await expect(description, selector).toHaveCSS("color", muted);
-      await expect(description, selector).toHaveCSS("font-weight", "450");
+      await expect(description, selector).toHaveCSS("font-weight", "400");
       const name = bar.locator("h2, strong").first();
       await expect(name, selector).toHaveCSS("font-weight", "700");
     }
@@ -61,18 +61,15 @@ for (const display of DISPLAYS) {
   });
 }
 
-test("P9-14 the four section bars have the v1.3.4 frame; the lines between sections stay transparent", async ({ page }) => {
+test("P9-14 the four section bars are frameless and the lines between sections stay transparent", async ({ page }) => {
   await open(page, createFullTodayFixture());
-  const line = await token(page, "--line");
-  const muted = await token(page, "--muted");
   for (const selector of BARS) {
     const bar = page.locator(selector).first();
     await page.mouse.move(2, 2);
-    await expect(bar, selector).toHaveCSS("border-top-width", "1px");
-    await expect(bar, selector).toHaveCSS("border-top-style", "solid");
-    await expect(bar, selector).toHaveCSS("border-top-color", line);
+    await expect(bar, selector).toHaveCSS("border-top-width", "0px");
     await bar.hover({ position: { x: 300, y: 10 } });
-    await expect(bar, `${selector} hover`).toHaveCSS("border-top-color", muted);
+    // P10-14d (M4): the frame stays gone on hover; only the background changes.
+    await expect(bar, `${selector} hover`).toHaveCSS("border-top-width", "0px");
   }
   for (const selector of [".doNowBand", ".focusBand", ".projectsBand", ".inboxBand", ".todayActivityBand"]) {
     await expect(page.locator(selector).first(), selector).toHaveCSS("border-top-color", "rgba(0, 0, 0, 0)");
@@ -124,7 +121,7 @@ test("P9-14 keyboard focus on a button inside a bar rings that button only", asy
 
 const GOLD = "rgb(231, 185, 77)";
 const LIFT = "matrix(1, 0, 0, 1, 0, -1)";
-const RESTING_BORDER = "rgba(231, 185, 77, 0.42)";
+const RESTING_BORDER = "rgba(231, 185, 77, 0.5)";
 
 const bar = (page: Page) =>
   page.locator(".victoryBar").evaluate((element) => {

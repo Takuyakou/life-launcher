@@ -131,9 +131,6 @@ test("manual next batch accepts one, two, and three new items but no fourth", as
       index === 2
         ? '[data-today-picker-section="wishlist"]'
         : '[data-today-picker-section="next-step"]';
-    if (index === 2) {
-      await page.getByRole("tab", { name: /やりたいこと/ }).click();
-    }
     await picker
       .locator(`${section} .todayPickerRow`)
       .nth(0)

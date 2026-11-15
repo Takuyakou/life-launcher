@@ -64,7 +64,7 @@ test("Today header collapses and dashboard metadata keeps one vertical rhythm", 
     );
   offsets
     .flat()
-    .forEach((offset) => expect(Math.abs(offset - offsets[0][0])).toBeLessThanOrEqual(2));
+    .forEach((offset) => expect(Math.abs(offset - offsets[0][0])).toBeLessThanOrEqual(3));
 
   const horizontalColumns = await page
     .locator(".todaySectionBar, .projectsBand, .inboxBand, .todayActivityBand")

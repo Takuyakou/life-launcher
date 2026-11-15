@@ -229,11 +229,23 @@ for (const size of ["large", "xlarge"] as const) {
       const mainLabelSize = await button.locator(".viewToggleButtonLabel")
         .evaluate((element) => parseFloat(getComputedStyle(element).fontSize));
       const topBox = await toolbar.boundingBox();
+      const panelBox = await page.locator(".mainPanel").boundingBox();
       const contentBox = await page.locator(".mainScrollContent").boundingBox();
       expect(topBox).not.toBeNull();
+      expect(panelBox).not.toBeNull();
       expect(contentBox).not.toBeNull();
-      expect(Math.abs(topBox!.x - contentBox!.x)).toBeLessThan(1);
-      expect(Math.abs(topBox!.width - contentBox!.width)).toBeLessThan(1);
+      // P10-14d (M3): the content is capped at 1200px inside the panel, while the
+      // top menu keeps its own centred width (1180 / 1298 / 1400).
+      const topCenter = topBox!.x + topBox!.width / 2;
+      const panelCenter = panelBox!.x + panelBox!.width / 2;
+      const contentCenter = contentBox!.x + contentBox!.width / 2;
+      expect(Math.abs(topCenter - panelCenter)).toBeLessThan(1);
+      expect(Math.abs(contentCenter - panelCenter)).toBeLessThan(1);
+      expect(topBox!.width).toBeCloseTo(
+        Math.min(panelBox!.width, size === "large" ? 1298 : 1400),
+        0,
+      );
+      expect(contentBox!.width).toBeLessThanOrEqual(1200);
 
       await page.getByRole("button", { name: "記録ビューを開く" }).click();
       await expect(page.locator(".mainScrollContent")).not.toHaveAttribute("data-main-display-size", /large|xlarge/);

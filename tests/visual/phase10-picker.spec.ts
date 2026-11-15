@@ -80,7 +80,7 @@ test("P10-10 adding, removing and reordering only changes the draft", async ({ p
   await expect(dialog.locator(".todayPickerSlot--selected")).toHaveCount(2);
   expect(await saveConfigCount(page)).toBe(before);
 
-  await dialog.getByRole("tab", { name: /やりたいこと/ }).click();
+  // P10-14d (P1): the picker stacks both groups; there are no tabs to switch.
   await dialog
     .locator('[data-today-picker-section="wishlist"] .todayPickerRow', {
       hasText: "あとで確認するサンプル",

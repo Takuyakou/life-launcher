@@ -64,7 +64,6 @@ test("removes only Today adoption, preserves both sources, candidates and sessio
       .locator(".todayPickerRow", { hasText: fixture.config.projects[0].nextStep!.text })
       .getByRole("button", { name: "＋ 今日へ", exact: true }),
   ).toBeEnabled();
-  await page.getByRole("tab", { name: /やりたいこと/ }).click();
   await expect(
     page
       .locator(".todayPickerRow", { hasText: fixture.config.inbox[0].text })

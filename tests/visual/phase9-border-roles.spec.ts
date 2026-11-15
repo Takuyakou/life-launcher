@@ -76,7 +76,7 @@ const BORDERLESS_BUTTONS: Array<{ name: string; selector: string; minWidth: numb
     minHeight: 32,
   },
   { name: "Do Now other step", selector: ".doNowAlternateButton", minWidth: 76.2, minHeight: 26 },
-  { name: "Do Now instruction", selector: ".doNowContent .doNowInstructionButton", minWidth: 76, minHeight: 36 },
+  { name: "Do Now instruction", selector: ".doNowContent .doNowOpenChip--button", minWidth: 76, minHeight: 26 },
   { name: "Today instruction", selector: ".todayRow .todayInstructionButton", minWidth: 70, minHeight: 34 },
   { name: "Today remove", selector: ".todayRow .todayRemoveButton", minWidth: 101.1, minHeight: 34 },
 ];
@@ -98,13 +98,10 @@ test("P9-07 frames that carry no role are gone", async ({ page }) => {
   }
   // The top menu frame and the section bars are plain too (no tinted background).
   expect((await look(page, ".topPills")).background).toBe("rgba(0, 0, 0, 0)");
-  // P9-14: the four section bars have their v1.3.4 frame back (1px var(--line)); the background stays plain.
-  const line = await token(page, "--line");
+  // P10-14d (M4): the four section headers lost their frame and stay plain until hover.
   for (const selector of [".todaySectionBar", ".projectsBand .disclosureHeader", ".inboxBand .disclosureHeader", ".todayActivityBand .disclosureHeader"]) {
     const found = await look(page, selector);
-    expect(found.visibleBorder, `${selector} border`).toBe(true);
-    await expect(page.locator(selector).first(), selector).toHaveCSS("border-top-color", line);
-    await expect(page.locator(selector).first(), selector).toHaveCSS("border-top-width", "1px");
+    expect(found.visibleBorder, `${selector} border`).toBe(false);
     expect(found.background, selector).toBe("rgba(0, 0, 0, 0)");
   }
 });
@@ -141,12 +138,15 @@ test("P9-07 the roles that keep a frame still have one", async ({ page }) => {
       nextStepLine: { width: parseFloat(nextStepLine.width), background: nextStepLine.backgroundColor },
     };
   });
-  for (const name of ["doNow", "today"] as const) {
+  for (const name of ["today"] as const) {
     const accent = accents[name];
     expect(accent.width, `${name} accent width`).toBeGreaterThanOrEqual(1);
     expect(accent.accent, `${name} accent colour`).not.toBe(accent.plain);
     expect(accent.accent, `${name} accent colour`).not.toBe("rgba(0, 0, 0, 0)");
   }
+  // P10-14d (M2): the Do Now card is a neutral card now; no side carries the Project colour.
+  expect(accents.doNow.width).toBe(1);
+  expect(accents.doNow.accent).toBe(accents.doNow.plain);
   // Next Step cards draw the left line as a 3px Project-colour strip.
   expect(accents.nextStepLine.width).toBe(3);
   expect(accents.nextStepLine.background).not.toBe("rgba(0, 0, 0, 0)");
@@ -230,7 +230,7 @@ test("P9-07 hit areas never get smaller than before", async ({ page }) => {
   }
   expect((await look(page, ".todaySectionBar")).height).toBeGreaterThanOrEqual(47.5);
   expect((await look(page, ".projectsBand .disclosureHeader")).height).toBeGreaterThanOrEqual(47.5);
-  expect((await look(page, ".todayActivityBand .disclosureHeader")).height).toBeGreaterThanOrEqual(43.5);
+  expect((await look(page, ".todayActivityBand .disclosureHeader")).height).toBeGreaterThanOrEqual(41.5);
 });
 
 for (const [name, options] of [

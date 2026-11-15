@@ -83,7 +83,6 @@ async function expectBothCards(page: Page, state: "idle" | "running" | "paused")
     await expect(doNowCard(page).locator(".runningBadge")).toHaveCount(0);
     await expect(doNowCard(page).locator(".doNowStartPrimary")).toBeVisible();
     await expect(row.getByRole("button", { name: "短時間タイマー1分で開始" })).toBeVisible();
-    await expect(doNowCard(page).locator(".doNowMetaTimer")).toContainText("通常");
     return;
   }
   const badge = state === "running" ? "実行中" : "一時停止";
@@ -96,9 +95,6 @@ async function expectBothCards(page: Page, state: "idle" | "running" | "paused")
     await expect(card.locator(".runningStopButton")).toBeVisible();
     await expect(card.locator(".todayStartButton, .doNowStartPrimary")).toHaveCount(0);
   }
-  // The remaining time replaces "通常 N分" while the Timer runs.
-  await expect(doNowCard(page).locator(".doNowMetaTimer")).toContainText("残り");
-  await expect(doNowCard(page).locator(".doNowMetaTimer")).not.toContainText("通常");
 }
 
 async function expectNotRunning(card: Locator) {
@@ -159,15 +155,13 @@ test("P9-04 flow: started from Today3, Do Now follows to completion", async ({ p
   expect(await recordSessionCount(page)).toBe(1);
 });
 
-test("P9-04 Measure says 計測中 in Do Now and shows the elapsed time only beside the buttons", async ({
+test("P9-04 Measure shows 計測中 and the elapsed time only beside the buttons", async ({
   page,
 }) => {
   await prepare(page);
   await doNowCard(page).locator(".doNowMeasureButton").click();
   await page.clock.fastForward(65_000);
-  const meta = doNowCard(page).locator(".doNowMetaTimer");
-  await expect(meta).toContainText("計測中");
-  await expect(meta).not.toContainText(/\d{2}:\d{2}/);
+  await expect(doNowCard(page).locator(".runningBadge")).toHaveText("計測中");
   await expect(doNowCard(page).locator(".doNowActions .measureElapsedClock")).toHaveText("01:05");
   await expect(firstRow(page)).toHaveClass(/todayRow--running/);
 });
