@@ -1,4 +1,6 @@
 import type { PointerEventHandler, ReactNode, Ref } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { springSnappy } from "../motion";
 import { UiIcon } from "./UiIcon";
 
 export type TimerPanelVariant = "sidebar" | "mini";
@@ -17,6 +19,11 @@ type TimerPanelProps = {
   onPause: () => void;
   onFinish: () => void;
   onExpand?: () => void;
+  /** P10-07: the idle row above the action text ("今日 N分・N回"). */
+  todaySummary?: string;
+  /** P10-07: idle only — the mini-window button in the expand slot. */
+  onMini?: () => void;
+  miniDisabled?: boolean;
   expandButtonRef?: Ref<HTMLButtonElement>;
   waitingContent?: ReactNode;
   identity?: ReactNode;
@@ -27,6 +34,36 @@ type TimerPanelProps = {
   onClockPointerMove?: PointerEventHandler<HTMLDivElement>;
   onClockPointerUp?: PointerEventHandler<HTMLDivElement>;
 };
+
+/**
+ * P10-07 (D37): the idle minutes roll digit by digit when the value changes.
+ * Only the idle, adjustable clock uses this; running clocks (mm:ss) stay plain text.
+ */
+function RollingClock({ clock }: { clock: string }) {
+  const match = clock.match(/^(\d+)(.*)$/);
+  if (!match) return <>{clock}</>;
+  const [, digits, suffix] = match;
+  return (
+    <span className="timerClockRolling">
+      {Array.from(digits).map((digit, index) => (
+        <span className="timerClockDigit" key={`${index}-${digits.length}`}>
+          <AnimatePresence initial={false} mode="popLayout">
+            <motion.span
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: "-100%", opacity: 0 }}
+              initial={{ y: "100%", opacity: 0 }}
+              key={digit + "-" + index}
+              transition={springSnappy}
+            >
+              {digit}
+            </motion.span>
+          </AnimatePresence>
+        </span>
+      ))}
+      <span className="timerClockUnit">{suffix}</span>
+    </span>
+  );
+}
 
 export function TimerPanel({
   variant,
@@ -41,6 +78,9 @@ export function TimerPanel({
   onPause,
   onFinish,
   onExpand,
+  todaySummary,
+  onMini,
+  miniDisabled = false,
   expandButtonRef,
   waitingContent,
   identity,
@@ -85,7 +125,7 @@ export function TimerPanel({
         {variant === "sidebar" ? (
           <div className="timerMetaTop">
             <span>Timer</span>
-            {active && onExpand && (
+            {active && onExpand ? (
               <button
                 aria-label="タイマーを大きく表示"
                 className="timerExpandButton"
@@ -96,12 +136,29 @@ export function TimerPanel({
               >
                 <UiIcon name="maximize" size={16} />
               </button>
-            )}
+            ) : !active && onMini ? (
+              <button
+                aria-label="ミニタイマーにする"
+                className="timerExpandButton"
+                disabled={miniDisabled}
+                onClick={onMini}
+                title="ミニタイマーにする"
+                type="button"
+              >
+                <UiIcon name="miniMode" size={16} />
+              </button>
+            ) : null}
           </div>
         ) : (
           <span>タイマー</span>
         )}
-        {identity}
+        {todaySummary ? (
+          <span aria-label={todaySummary.replace("・", "、")} className="timerTodaySummary">
+            {todaySummary}
+          </span>
+        ) : (
+          identity
+        )}
         {!idleMini && (actionText ?? (identity ? undefined : label)) !== undefined && (
           <strong className="timerActionText" title={actionText ?? label}>
             {actionText ?? label}
@@ -126,13 +183,20 @@ export function TimerPanel({
           onPointerMove={onClockPointerMove}
           onPointerUp={onClockPointerUp}
           title={clockAdjustable ? "上下にドラッグして分数を変更" : undefined}
+          aria-label={clockAdjustable ? clock : undefined}
         >
-          {clock}
+          {clockAdjustable ? (
+            <span aria-hidden="true">
+              <RollingClock clock={clock} />
+            </span>
+          ) : (
+            clock
+          )}
         </div>
       )}
-      {!idleMini && progressPercent !== null && (
+      {!idleMini && (progressPercent !== null || variant === "sidebar") && (
         <div className="timerProgress" aria-hidden="true">
-          <span style={{ width: `${progressPercent}%` }} />
+          <span style={{ width: `${progressPercent ?? 0}%` }} />
         </div>
       )}
       {active ? (

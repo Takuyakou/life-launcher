@@ -124,12 +124,12 @@ test("Today total, execution list and selection roll over together at local midn
   await page.clock.install({ time: new Date("2026-08-13T23:59:59+09:00").getTime() });
   await installTauriMock(page, fixture, "main", null, { rolloverOnLoadConfig: true });
   await page.goto("/");
-  await expect(page.locator(".topTitle")).toContainText("今日 25分");
+  await expect(page.locator(".timerTodaySummary")).toContainText("今日 25分");
   await page.locator(".todayActivityBand .disclosure").click();
   await expect(page.locator(".todayActivityRow")).toHaveCount(1);
   await page.clock.runFor(2_000);
-  await expect(page.locator(".topTitle")).toContainText("今日 0分");
-  await expect(page.locator(".topDateLabel")).toContainText("8月14日");
+  await expect(page.locator(".timerTodaySummary")).toContainText("今日 0分");
+  await expect(page.locator(".topTitle")).toContainText("8月14日");
   await expect(page.locator(".todayActivityRow")).toHaveCount(0);
   await expect(page.locator(".todayActivityBody")).toContainText("今日はまだ実行記録がありません");
   const saved = await currentConfig(page);
@@ -143,11 +143,11 @@ test("Today refreshes on focus after a suspended configured-day boundary", async
   await page.clock.install({ time: new Date("2026-08-14T03:59:59+09:00").getTime() });
   await installTauriMock(page, fixture, "main", null, { rolloverOnLoadConfig: true });
   await page.goto("/");
-  await expect(page.locator(".topTitle")).toContainText("今日 25分");
+  await expect(page.locator(".timerTodaySummary")).toContainText("今日 25分");
   await page.clock.setFixedTime(new Date("2026-08-14T04:15:00+09:00"));
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-  await expect(page.locator(".topDateLabel")).toContainText("8月14日");
-  await expect(page.locator(".topTitle")).toContainText("今日 0分");
+  await expect(page.locator(".topTitle")).toContainText("8月14日");
+  await expect(page.locator(".timerTodaySummary")).toContainText("今日 0分");
   expect((await currentConfig(page)).today.date).toBe("2026-08-14");
 });
 

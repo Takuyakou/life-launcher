@@ -2308,6 +2308,7 @@ function DashboardApp() {
   const [inboxPointerDrag, setInboxPointerDrag] = useState<InboxDragPreview | null>(null);
   const [wishlistGroupPointerDrag, setWishlistGroupPointerDrag] =
     useState<WishlistGroupDragPreview | null>(null);
+  const [miniTransitioning, setMiniTransitioning] = useState(false);
   const [numberInputDragging, setNumberInputDragging] = useState<NumberInputDragField | null>(null);
   const [actionDragId, setActionDragId] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
@@ -3509,6 +3510,7 @@ function DashboardApp() {
   const toggleMiniMode = useCallback(async () => {
     if (miniTransitioningRef.current) return;
     miniTransitioningRef.current = true;
+    setMiniTransitioning(true);
     try {
       if (miniModeOpenRef.current) {
         await returnToMain();
@@ -3517,6 +3519,7 @@ function DashboardApp() {
       }
     } finally {
       miniTransitioningRef.current = false;
+      setMiniTransitioning(false);
     }
   }, [openMiniMode, returnToMain]);
 
@@ -10129,6 +10132,13 @@ function DashboardApp() {
           }
           status={timerStatus}
           variant="sidebar"
+          onMini={() => void toggleMiniMode()}
+          miniDisabled={!config.settings.miniMode || miniTransitioning}
+          todaySummary={
+            activeTimer
+              ? undefined
+              : `今日 ${displayedTodayMinutes}分・${todayActivityCount}回`
+          }
           waitingContent={
             <div className="timerPresetControls" aria-label="通常タイマーの分数">
               <div className="timerPresetRow">
@@ -10514,13 +10524,9 @@ function DashboardApp() {
               className={activeView === "records" ? "topTitle topTitle--records" : "topTitle"}
               data-tauri-drag-region=""
             >
-              {activeView === "records" ? "記録" : `今日 ${displayedTodayMinutes}分`}
+              {/* P10-07: the minutes moved to the timer dock, so Main shows the date here. */}
+              {activeView === "records" ? "記録" : formatDateKeyForHeader(displayedDayKey)}
             </h1>
-            {activeView === "main" && (
-              <span className="topDateLabel" data-tauri-drag-region="">
-                {formatDateKeyForHeader(displayedDayKey)}
-              </span>
-            )}
           </div>
           <div className="topPills" data-tauri-drag-region="" ref={topMenuPillsRef}>
             <div

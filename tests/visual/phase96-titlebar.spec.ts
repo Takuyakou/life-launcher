@@ -594,7 +594,6 @@ test.describe("P96-01 drag regions", () => {
           topBar: has(".mainPanel > .topBar"),
           topSummary: has(".topSummary"),
           topTitle: has(".topTitle"),
-          topDateLabel: has(".topDateLabel"),
           topPills: has(".topPills"),
           brandBlock: has(".brandBlock"),
           brandIcon: has(".brandIcon"),

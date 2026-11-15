@@ -13172,3 +13172,92 @@ button.mainActionButton:is(
   font-size: 11px;
   font-weight: 400;
 }
+
+/* P10-01 helper for text that only screen readers should read. */
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* P10-07: the four timer states share one row grid, so the dock keeps one height. */
+.timerDock {
+  grid-auto-rows: min-content;
+}
+
+.timerDock .timerMetaTop {
+  min-height: 26px;
+}
+
+.timerTodaySummary {
+  display: inline-flex;
+  min-height: 18px;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted-strong, #b8b0a0);
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.timerDock .timerActionText {
+  min-height: 18px;
+}
+
+.timerDock .timerStateRow {
+  min-height: 22px;
+}
+
+.timerDock .timerProgress {
+  margin-top: 0;
+}
+
+/* The bottom row (controls or - / input / +) is always 34px tall. */
+.timerDock .timerControls,
+.timerDock .timerPresetRow {
+  min-height: 34px;
+  align-items: center;
+}
+
+.timerDock .timerControls .secondaryButton {
+  height: 34px;
+}
+
+.timerDock .timerPresetButton,
+.timerDock .timerPresetButton:hover {
+  width: 32px;
+  height: 34px;
+}
+
+.timerDock .timerPresetInputWrap {
+  height: 34px;
+  align-items: center;
+}
+
+/* P10-07 (D37): rolling digits in the idle clock. */
+.timerClockRolling {
+  display: inline-flex;
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+}
+
+.timerClockDigit {
+  position: relative;
+  display: inline-block;
+  width: 1ch;
+  overflow: hidden;
+  text-align: center;
+}
+
+.timerClockDigit > span {
+  display: block;
+}
+
+.timerClockUnit {
+  margin-left: 2px;
+}
