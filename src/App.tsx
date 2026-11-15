@@ -2198,6 +2198,8 @@ function DashboardApp() {
   const [todayPickerSource, setTodayPickerSource] = useState<"nextStep" | "wishlist">("nextStep");
   const [todayPickerDraftItems, setTodayPickerDraftItems] = useState<TodayItem[]>([]);
   const [todayPickerSaving, setTodayPickerSaving] = useState(false);
+  // P10-10 (§6.1): which draft slot is being dragged (HTML5 drag keeps it inside the Picker).
+  const [todayPickerDragIndex, setTodayPickerDragIndex] = useState<number | null>(null);
   const [todayActivityOpen, setTodayActivityOpen] = useState(false);
   const [, setNotesSaveStatus] = useState<NotesSaveStatus>("saved");
   const [launcherOverlayOpen, setLauncherOverlayOpen] = useState(false);
@@ -2311,6 +2313,11 @@ function DashboardApp() {
   const [projectEditDraft, setProjectEditDraft] = useState<ProjectEditDraft | null>(null);
   const [projectEditSaving, setProjectEditSaving] = useState(false);
   const [nextStepEditDraft, setNextStepEditDraft] = useState<NextStepEditDraft | null>(null);
+  // P10-10 (§6.2): the "＋ ボタン・手順書を足す" choice and which picker dialog is open.
+  const [nextStepOpenMenuOpen, setNextStepOpenMenuOpen] = useState(false);
+  const [nextStepOpenPicker, setNextStepOpenPicker] = useState<"buttons" | "instructions" | null>(
+    null,
+  );
   const [instructionChoices, setInstructionChoices] = useState<InstructionChoice[]>([]);
   const [instructionChoicesLoading, setInstructionChoicesLoading] = useState(false);
   const [instructionChoicesError, setInstructionChoicesError] = useState<string | null>(null);
@@ -2544,6 +2551,8 @@ function DashboardApp() {
       if (dirty) {
         requestDiscardConfirmation(() => {
           nextStepEditInitialDraftRef.current = null;
+          setNextStepOpenMenuOpen(false);
+          setNextStepOpenPicker(null);
           setNextStepEditDraft(null);
           restoreDialogFocus(nextStepEditReturnFocusRef);
         });
@@ -2552,6 +2561,8 @@ function DashboardApp() {
       const fallbackSelector = nextStepEditDraft.projectId
         ? `[data-project-id="${CSS.escape(nextStepEditDraft.projectId)}"] .nextStepActionRegion`
         : undefined;
+      setNextStepOpenMenuOpen(false);
+      setNextStepOpenPicker(null);
       setNextStepEditDraft(null);
       nextStepEditInitialDraftRef.current = null;
       restoreDialogFocus(nextStepEditReturnFocusRef, fallbackSelector);
@@ -3987,31 +3998,22 @@ function DashboardApp() {
     setTodayPickerOpen(false);
     setTodayPickerDraftItems([]);
     setTodayPickerSaving(false);
+    setTodayPickerDragIndex(null);
     window.requestAnimationFrame(() => {
+      // Never steal focus from a dialog that opened while the Picker was closing.
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && active !== document.body) return;
       if (opener?.isConnected) opener.focus();
     });
   }, []);
 
+  // P10-10 (§6.1): closing never saves; a changed draft only asks before discarding it.
   const requestCloseTodayPicker = useCallback(() => {
     if (todayPickerSaving) return;
     const dirty =
       JSON.stringify(todayPickerDraftItems) !== JSON.stringify(todayPickerInitialItemsRef.current);
     if (dirty) {
-      requestDiscardConfirmation(async () => {
-        const current = configRef.current;
-        if (!current) return false;
-        setTodayPickerSaving(true);
-        const restored = await persistConfig({
-          ...current,
-          today: {
-            ...current.today,
-            items: todayPickerInitialItemsRef.current,
-          },
-        });
-        if (!restored) {
-          setTodayPickerSaving(false);
-          return false;
-        }
+      requestDiscardConfirmation(() => {
         closeTodayPicker();
         return true;
       });
@@ -4020,7 +4022,6 @@ function DashboardApp() {
     closeTodayPicker();
   }, [
     closeTodayPicker,
-    persistConfig,
     requestDiscardConfirmation,
     todayPickerDraftItems,
     todayPickerSaving,
@@ -4037,6 +4038,7 @@ function DashboardApp() {
     setTodayPickerDraftItems(initialItems);
     setTodayPickerWishlistCollapsed({});
     setTodayPickerSource("nextStep");
+    setTodayPickerDragIndex(null);
     setTodayPickerOpen(true);
   }, []);
 
@@ -8338,9 +8340,23 @@ function DashboardApp() {
     shortTimerMinutes: candidate.shortTimerMinutes,
   });
 
+  // P10-10 (§6.1): the Picker only edits a draft. "決定" is the single save point.
   const saveTodayPickerDraft = async (items = todayPickerDraftItems) => {
     const current = configRef.current;
     if (!current || todayPickerSaving) return false;
+    if (
+      JSON.stringify(current.today.items) !== JSON.stringify(todayPickerInitialItemsRef.current)
+    ) {
+      // Something else (a finishing Timer, another window) changed Today3 while the Picker was open.
+      const rebuilt = current.today.items.map((item) => ({
+        ...item,
+        ...(item.buttonIds ? { buttonIds: [...item.buttonIds] } : {}),
+      }));
+      todayPickerInitialItemsRef.current = rebuilt;
+      setTodayPickerDraftItems(rebuilt);
+      showToast("warn", "今日の3件がほかの所で変わりました。もう一度選んでください");
+      return false;
+    }
     if (JSON.stringify(items) === JSON.stringify(current.today.items)) {
       closeTodayPicker();
       return true;
@@ -8362,7 +8378,7 @@ function DashboardApp() {
     return false;
   };
 
-  const chooseTodayCandidate = async (candidate: TodayCandidate) => {
+  const chooseTodayCandidate = (candidate: TodayCandidate) => {
     if (todayPickerSaving || todayPickerDraftItems.length >= TODAY_ITEM_LIMIT) return;
     const matchingSourceKeys = new Set([candidate.sourceKey, ...(candidate.sourceAliases ?? [])]);
     if (
@@ -8372,29 +8388,11 @@ function DashboardApp() {
     ) {
       return;
     }
-    const nextItems = [...todayPickerDraftItems, todayItemFromCandidate(candidate)];
-    const current = configRef.current;
-    if (!current) return;
-    setTodayPickerSaving(true);
-    const saved = await persistConfig({
-      ...current,
-      today: { ...current.today, items: nextItems },
-    });
-    if (!saved) {
-      setTodayPickerSaving(false);
-      return;
-    }
-    setTodayPickerDraftItems(nextItems);
-    if (nextItems.length >= TODAY_ITEM_LIMIT) {
-      closeTodayPicker();
-      showToast("ok", "今日の3件を選択しました");
-    } else setTodayPickerSaving(false);
+    setTodayPickerDraftItems([...todayPickerDraftItems, todayItemFromCandidate(candidate)]);
   };
 
-  const removeTodayPickerDraftItem = async (index: number) => {
+  const removeTodayPickerDraftItem = (index: number) => {
     if (todayPickerSaving) return;
-    const current = configRef.current;
-    if (!current) return;
     const draftItem = todayPickerDraftItems[index];
     if (
       draftItem &&
@@ -8408,14 +8406,39 @@ function DashboardApp() {
       showToast("warn", "タイマーを停止してから外してください");
       return;
     }
-    const nextItems = todayPickerDraftItems.filter((_, itemIndex) => itemIndex !== index);
-    setTodayPickerSaving(true);
-    if (!(await persistConfig({ ...current, today: { ...current.today, items: nextItems } }))) {
-      setTodayPickerSaving(false);
+    setTodayPickerDraftItems(todayPickerDraftItems.filter((_, itemIndex) => itemIndex !== index));
+  };
+
+  const moveTodayPickerItem = (fromIndex: number, toIndex: number) => {
+    if (todayPickerSaving) return;
+    if (fromIndex === toIndex) return;
+    if (
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= todayPickerDraftItems.length ||
+      toIndex >= todayPickerDraftItems.length
+    ) {
       return;
     }
+    const nextItems = [...todayPickerDraftItems];
+    const [moved] = nextItems.splice(fromIndex, 1);
+    nextItems.splice(toIndex, 0, moved);
     setTodayPickerDraftItems(nextItems);
-    setTodayPickerSaving(false);
+    setTodayPickerDragIndex(null);
+    announceReorder(moved.text || "未入力", toIndex + 1);
+    window.requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLElement>(`[data-today-picker-slot-index="${toIndex}"]`)
+        ?.focus();
+    });
+  };
+
+  const moveTodayPickerItemToIndex = (index: number) => {
+    if (todayPickerDragIndex === null) return;
+    moveTodayPickerItem(
+      todayPickerDragIndex,
+      Math.min(index, Math.max(0, todayPickerDraftItems.length - 1)),
+    );
   };
 
   const refreshInstructionChoices = async () => {
@@ -8592,6 +8615,8 @@ function DashboardApp() {
       ...(options?.prefill ?? {}),
     };
     nextStepEditInitialDraftRef.current = draft;
+    setNextStepOpenMenuOpen(false);
+    setNextStepOpenPicker(null);
     setNextStepEditDraft(draft);
     void refreshNextStepSuggestions(project.id);
     void refreshInstructionChoices();
@@ -8644,6 +8669,8 @@ function DashboardApp() {
       promotedWishlistId: item.id,
     };
     nextStepEditInitialDraftRef.current = draft;
+    setNextStepOpenMenuOpen(false);
+    setNextStepOpenPicker(null);
     setNextStepEditDraft(draft);
     setProjectNextStepSuggestions([]);
     void refreshInstructionChoices();
@@ -9526,36 +9553,67 @@ function DashboardApp() {
     );
     return (
       <div
-        className="todayPickerSlot todayPickerSlot--selected todayPickerRow todayPickerRow--selected"
+        className={[
+          "todayPickerSlot todayPickerSlot--selected todayPickerRow todayPickerRow--selected",
+          todayPickerDragIndex === index ? "todayPickerSlot--dragging" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        data-today-picker-slot-index={index}
+        draggable={!todayPickerSaving}
         key={`today-selected:${todaySourceKey(item, index)}`}
+        onDragEnd={() => setTodayPickerDragIndex(null)}
+        onDragOver={(event) => {
+          if (todayPickerDragIndex === null) return;
+          event.preventDefault();
+        }}
+        onDragStart={(event) => {
+          event.dataTransfer.effectAllowed = "move";
+          event.dataTransfer.setData("text/plain", String(index));
+          setTodayPickerDragIndex(index);
+        }}
+        onDrop={(event) => {
+          event.preventDefault();
+          moveTodayPickerItemToIndex(index);
+        }}
+        onKeyDown={(event) => {
+          if (!event.altKey || (event.key !== "ArrowUp" && event.key !== "ArrowDown")) return;
+          event.preventDefault();
+          moveTodayPickerItem(index, event.key === "ArrowUp" ? index - 1 : index + 1);
+        }}
+        tabIndex={0}
       >
-        <div className="todayPickerSlotProject">
-          {project ? (
-            <ProjectIdentity
-              colorId={project.colorId}
-              compact
-              name={project.name}
-              projectId={project.id}
-            />
-          ) : (
-            <span className="sourceProjectNone">プロジェクトなし</span>
-          )}
-          <span className="todayPickerSelectedStatus">✓ 選択済み</span>
+        <span aria-hidden="true" className="todayPickerSlotIndex">
+          {index + 1}
+        </span>
+        <div className="todayPickerSlotCopy">
+          <div className="todayPickerSlotProject">
+            {project ? (
+              <ProjectIdentity
+                colorId={project.colorId}
+                compact
+                name={project.name}
+                projectId={project.id}
+              />
+            ) : (
+              <span className="sourceProjectNone">プロジェクトなし</span>
+            )}
+            <span className="todayPickerSelectedStatus">✓ 選択済み</span>
+          </div>
+          <strong className="todayPickerSlotTask" title={item.text}>
+            {item.text}
+          </strong>
         </div>
-        <strong className="todayPickerSlotTask" title={item.text}>
-          {item.text}
-        </strong>
         <button
           aria-label="今日から外す"
-          className="todayPickerRemoveButton todayRemoveButton mainActionButton mainActionButton--neutral"
+          className="todayPickerRemoveButton"
           disabled={todayPickerSaving || pickerItemRunning}
           onClick={() => removeTodayPickerDraftItem(index)}
           onPointerDown={(event) => event.stopPropagation()}
           title={pickerItemRunning ? "タイマーを停止してから外してください" : undefined}
           type="button"
         >
-          <span aria-hidden="true">↩</span>
-          今日から外す
+          <UiIcon name="close" size={16} />
         </button>
       </div>
     );
@@ -13596,7 +13654,7 @@ function DashboardApp() {
               <div>
                 <p className="eyebrow">Today</p>
                 <h2>今日やるものを選ぶ</h2>
-                <p className="todayPickerIntro">上の「今日の3件」に、下の候補から追加します。</p>
+                <p className="todayPickerIntro">3件まで。決めたら、あとは始めるだけです</p>
               </div>
               <button
                 aria-label="今日やるものを選ぶを閉じる"
@@ -13611,186 +13669,204 @@ function DashboardApp() {
               </button>
             </div>
 
-            <section className="todayPickerDestination" data-today-picker-section="selected">
-              <div className="todayPickerDestinationHeader">
-                <h3>追加先：今日の3件</h3>
-                <div
-                  aria-label={`今日の3件の選択状況 ${todayPickerDraftItems.length}/3`}
-                  aria-valuemax={TODAY_ITEM_LIMIT}
-                  aria-valuemin={0}
-                  aria-valuenow={todayPickerDraftItems.length}
-                  className="todayPickerProgress"
-                  role="progressbar"
-                >
-                  <span
-                    style={{
-                      transform: `scaleX(${todayPickerDraftItems.length / TODAY_ITEM_LIMIT})`,
-                    }}
-                  />
+            <div className="todayPickerBody">
+              <section className="todayPickerSource">
+                <div className="todayPickerSourceHeading">
+                  <span>候補</span>
+                  <h3>どこから選びますか？</h3>
                 </div>
-                <div
-                  aria-label={`今日の3件 ${todayPickerDraftItems.length}件`}
-                  className="todayPickerCounter"
-                >
-                  <strong>{todayPickerDraftItems.length} / 3</strong>
-                  {todayPickerDraftItems.length < TODAY_ITEM_LIMIT && (
-                    <span>あと{TODAY_ITEM_LIMIT - todayPickerDraftItems.length}件</span>
-                  )}
+                <div aria-label="追加元を選ぶ" className="todayPickerSourceTabs" role="tablist">
+                  <button
+                    aria-controls="today-picker-next-step-panel"
+                    aria-selected={todayPickerSource === "nextStep"}
+                    className="todayPickerSourceTab"
+                    data-today-picker-tab="nextStep"
+                    id="today-picker-next-step-tab"
+                    onClick={() => setTodayPickerSource("nextStep")}
+                    onKeyDown={(event) => handleTodayPickerTabKeyDown(event, "nextStep")}
+                    role="tab"
+                    tabIndex={todayPickerSource === "nextStep" ? 0 : -1}
+                    type="button"
+                  >
+                    <strong>次の一手 {todayPickerNextStepCandidates.length}件</strong>
+                    <span>各プロジェクトの「迷ったら戻る一手」</span>
+                  </button>
+                  <button
+                    aria-controls="today-picker-wishlist-panel"
+                    aria-selected={todayPickerSource === "wishlist"}
+                    className="todayPickerSourceTab"
+                    data-today-picker-tab="wishlist"
+                    id="today-picker-wishlist-tab"
+                    onClick={() => setTodayPickerSource("wishlist")}
+                    onKeyDown={(event) => handleTodayPickerTabKeyDown(event, "wishlist")}
+                    role="tab"
+                    tabIndex={todayPickerSource === "wishlist" ? 0 : -1}
+                    type="button"
+                  >
+                    <strong>やりたいこと {todayPickerWishlistCandidates.length}件</strong>
+                    <span>その他の候補・あとでやりたいこと</span>
+                  </button>
                 </div>
-              </div>
-              <p className="todayPickerDestinationHelp">今日やると決めたもの。最大3件まで。</p>
-              <div className="todayPickerSlots">
-                {Array.from({ length: TODAY_ITEM_LIMIT }, (_, index) => {
-                  const item = todayPickerDraftItems[index];
-                  return item ? (
-                    renderTodayPickerSelectedItem(item, index)
-                  ) : (
-                    <div className="todayPickerSlot todayPickerSlot--empty" key={`empty:${index}`}>
-                      空き {index + 1}
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
 
-            <section className="todayPickerSource">
-              <div className="todayPickerSourceHeading">
-                <span>追加元</span>
-                <h3>どこから選びますか？</h3>
-              </div>
-              <div aria-label="追加元を選ぶ" className="todayPickerSourceTabs" role="tablist">
-                <button
-                  aria-controls="today-picker-next-step-panel"
-                  aria-selected={todayPickerSource === "nextStep"}
-                  className="todayPickerSourceTab"
-                  data-today-picker-tab="nextStep"
-                  id="today-picker-next-step-tab"
-                  onClick={() => setTodayPickerSource("nextStep")}
-                  onKeyDown={(event) => handleTodayPickerTabKeyDown(event, "nextStep")}
-                  role="tab"
-                  tabIndex={todayPickerSource === "nextStep" ? 0 : -1}
-                  type="button"
-                >
-                  <strong>次の一手 {todayPickerNextStepCandidates.length}件</strong>
-                  <span>各プロジェクトの「迷ったら戻る一手」</span>
-                </button>
-                <button
-                  aria-controls="today-picker-wishlist-panel"
-                  aria-selected={todayPickerSource === "wishlist"}
-                  className="todayPickerSourceTab"
-                  data-today-picker-tab="wishlist"
-                  id="today-picker-wishlist-tab"
-                  onClick={() => setTodayPickerSource("wishlist")}
-                  onKeyDown={(event) => handleTodayPickerTabKeyDown(event, "wishlist")}
-                  role="tab"
-                  tabIndex={todayPickerSource === "wishlist" ? 0 : -1}
-                  type="button"
-                >
-                  <strong>やりたいこと {todayPickerWishlistCandidates.length}件</strong>
-                  <span>その他の候補・あとでやりたいこと</span>
-                </button>
-              </div>
-
-              {todayPickerSource === "nextStep" ? (
-                <section
-                  aria-labelledby="today-picker-next-step-tab"
-                  className="todayPickerSourcePanel app-scrollbar"
-                  data-today-picker-section="next-step"
-                  id="today-picker-next-step-panel"
-                  role="tabpanel"
-                >
-                  <div className="todayPickerPanelHeading">
-                    <strong>次の一手</strong>
-                    <span>今日やるなら「＋ 今日へ」</span>
-                  </div>
-                  {todayPickerNextStepCandidates.length === 0 ? (
-                    <p className="todayPickerEmpty">追加できる次の一手はありません</p>
-                  ) : (
-                    <div className="todayPickerList">
-                      {todayPickerNextStepCandidates.map((candidate) =>
-                        renderTodayPickerCandidate(candidate),
-                      )}
+                {todayPickerSource === "nextStep" ? (
+                  <section
+                    aria-labelledby="today-picker-next-step-tab"
+                    className="todayPickerSourcePanel app-scrollbar"
+                    data-today-picker-section="next-step"
+                    id="today-picker-next-step-panel"
+                    role="tabpanel"
+                  >
+                    <div className="todayPickerPanelHeading">
+                      <strong>次の一手</strong>
+                      <span>今日やるなら「＋ 今日へ」</span>
                     </div>
-                  )}
-                </section>
-              ) : (
-                <section
-                  aria-labelledby="today-picker-wishlist-tab"
-                  className="todayPickerSourcePanel app-scrollbar"
-                  data-today-picker-section="wishlist"
-                  id="today-picker-wishlist-panel"
-                  role="tabpanel"
-                >
-                  <div className="todayPickerPanelHeading">
-                    <strong>やりたいこと</strong>
-                    <span>プロジェクトごとに表示</span>
-                  </div>
-                  {todayPickerWishlistGroups.length === 0 ? (
-                    <p className="todayPickerEmpty">追加できるやりたいことはありません</p>
-                  ) : (
-                    <div className="todayPickerWishlistGroups">
-                      {todayPickerWishlistGroups.map((group) => {
-                        const collapsed = Boolean(todayPickerWishlistCollapsed[group.key]);
-                        const project = group.projectId
-                          ? projectsById.get(group.projectId)
-                          : undefined;
-                        return (
-                          <section
-                            className={
-                              collapsed
-                                ? "todayPickerWishlistGroup todayPickerWishlistGroup--collapsed"
-                                : "todayPickerWishlistGroup"
-                            }
-                            data-today-picker-wishlist-group={group.key}
-                            key={group.key}
-                          >
-                            <button
-                              aria-expanded={!collapsed}
-                              className="todayPickerWishlistGroupHeader"
-                              onClick={() =>
-                                setTodayPickerWishlistCollapsed((current) => ({
-                                  ...current,
-                                  [group.key]: !current[group.key],
-                                }))
+                    {todayPickerNextStepCandidates.length === 0 ? (
+                      <p className="todayPickerEmpty">追加できる次の一手はありません</p>
+                    ) : (
+                      <div className="todayPickerList">
+                        {todayPickerNextStepCandidates.map((candidate) =>
+                          renderTodayPickerCandidate(candidate),
+                        )}
+                      </div>
+                    )}
+                  </section>
+                ) : (
+                  <section
+                    aria-labelledby="today-picker-wishlist-tab"
+                    className="todayPickerSourcePanel app-scrollbar"
+                    data-today-picker-section="wishlist"
+                    id="today-picker-wishlist-panel"
+                    role="tabpanel"
+                  >
+                    <div className="todayPickerPanelHeading">
+                      <strong>やりたいこと</strong>
+                      <span>プロジェクトごとに表示</span>
+                    </div>
+                    {todayPickerWishlistGroups.length === 0 ? (
+                      <p className="todayPickerEmpty">追加できるやりたいことはありません</p>
+                    ) : (
+                      <div className="todayPickerWishlistGroups">
+                        {todayPickerWishlistGroups.map((group) => {
+                          const collapsed = Boolean(todayPickerWishlistCollapsed[group.key]);
+                          const project = group.projectId
+                            ? projectsById.get(group.projectId)
+                            : undefined;
+                          return (
+                            <section
+                              className={
+                                collapsed
+                                  ? "todayPickerWishlistGroup todayPickerWishlistGroup--collapsed"
+                                  : "todayPickerWishlistGroup"
                               }
-                              type="button"
+                              data-today-picker-wishlist-group={group.key}
+                              key={group.key}
                             >
-                              <UiIcon name={collapsed ? "chevronRight" : "chevronDown"} size={16} />
-                              {project ? (
-                                <ProjectIdentity
-                                  colorId={project.colorId}
-                                  compact
-                                  name={project.name}
-                                  projectId={project.id}
+                              <button
+                                aria-expanded={!collapsed}
+                                className="todayPickerWishlistGroupHeader"
+                                onClick={() =>
+                                  setTodayPickerWishlistCollapsed((current) => ({
+                                    ...current,
+                                    [group.key]: !current[group.key],
+                                  }))
+                                }
+                                type="button"
+                              >
+                                <UiIcon
+                                  name={collapsed ? "chevronRight" : "chevronDown"}
+                                  size={16}
                                 />
-                              ) : (
-                                <span className="sourceProjectNone">未分類</span>
-                              )}
-                              <span className="todayPickerWishlistGroupCount">
-                                {group.candidates.length}件
-                              </span>
-                            </button>
-                            {!collapsed && (
-                              <div className="todayPickerList todayPickerWishlistGroupBody">
-                                {group.candidates.map((candidate) =>
-                                  renderTodayPickerCandidate(candidate, true),
+                                {project ? (
+                                  <ProjectIdentity
+                                    colorId={project.colorId}
+                                    compact
+                                    name={project.name}
+                                    projectId={project.id}
+                                  />
+                                ) : (
+                                  <span className="sourceProjectNone">未分類</span>
                                 )}
-                              </div>
-                            )}
-                          </section>
-                        );
-                      })}
-                    </div>
-                  )}
-                </section>
-              )}
-            </section>
+                                <span className="todayPickerWishlistGroupCount">
+                                  {group.candidates.length}件
+                                </span>
+                              </button>
+                              {!collapsed && (
+                                <div className="todayPickerList todayPickerWishlistGroupBody">
+                                  {group.candidates.map((candidate) =>
+                                    renderTodayPickerCandidate(candidate, true),
+                                  )}
+                                </div>
+                              )}
+                            </section>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </section>
+                )}
+              </section>
+
+              <section className="todayPickerDestination" data-today-picker-section="selected">
+                <div className="todayPickerDestinationHeader">
+                  <h3>今日の3件</h3>
+                  <div
+                    aria-label={`今日の3件の選択状況 ${todayPickerDraftItems.length}/3`}
+                    aria-valuemax={TODAY_ITEM_LIMIT}
+                    aria-valuemin={0}
+                    aria-valuenow={todayPickerDraftItems.length}
+                    className="todayPickerProgress"
+                    role="progressbar"
+                  >
+                    <span
+                      style={{
+                        transform: `scaleX(${todayPickerDraftItems.length / TODAY_ITEM_LIMIT})`,
+                      }}
+                    />
+                  </div>
+                  <div
+                    aria-label={`今日の3件 ${todayPickerDraftItems.length}件`}
+                    className="todayPickerCounter"
+                  >
+                    <strong>{todayPickerDraftItems.length} / 3</strong>
+                    {todayPickerDraftItems.length < TODAY_ITEM_LIMIT && (
+                      <span>あと{TODAY_ITEM_LIMIT - todayPickerDraftItems.length}件</span>
+                    )}
+                  </div>
+                </div>
+                <p className="todayPickerDestinationHelp">ドラッグで順番を変えられます</p>
+                <div className="todayPickerSlots">
+                  {Array.from({ length: TODAY_ITEM_LIMIT }, (_, index) => {
+                    const item = todayPickerDraftItems[index];
+                    return item ? (
+                      renderTodayPickerSelectedItem(item, index)
+                    ) : (
+                      <div
+                        className="todayPickerSlot todayPickerSlot--empty"
+                        data-today-picker-slot-index={index}
+                        key={`empty:${index}`}
+                        onDragOver={(event) => {
+                          if (todayPickerDragIndex === null) return;
+                          event.preventDefault();
+                        }}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          moveTodayPickerItemToIndex(index);
+                        }}
+                      >
+                        <span className="todayPickerSlotIndex">{index + 1}</span>
+                        <span className="todayPickerSlotEmptyLabel">
+                          {index === TODAY_ITEM_LIMIT - 1
+                            ? "空けておいてもかまいません"
+                            : `空き ${index + 1}`}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            </div>
+
             <div className="dialogActions todayPickerActions">
-              <span>
-                {todayPickerSource === "wishlist"
-                  ? "プロジェクト見出しで開閉できます。"
-                  : "選ぶと上の今日の3件へ追加されます。"}
-              </span>
               <button
                 className="primaryButton todayPickerConfirmButton"
                 disabled={todayPickerSaving}
@@ -15448,6 +15524,11 @@ function DashboardApp() {
           const nextStepProject = config.projects.find(
             (project) => project.id === nextStepEditDraft.projectId,
           );
+          const nextStepInstructionLabel = nextStepEditDraft.instructionPath
+            ? (instructionChoices.find(
+                (choice) => choice.path === nextStepEditDraft.instructionPath,
+              )?.label ?? "現在の設定")
+            : "";
           const wishlistMode = nextStepEditDraft.decisionMode === "wishlist";
           const wishlistCandidates = nextStepProject
             ? config.inbox.filter(
@@ -15794,52 +15875,6 @@ function DashboardApp() {
                   />
                 </label>
 
-                <h3 className="formSectionHeading">開始環境</h3>
-                <p className="formSectionDescription">タイマー開始時に一緒に開きます。</p>
-                <StartEnvironmentPicker
-                  buttons={projectSelectableButtons}
-                  onChange={(buttonIds) =>
-                    setNextStepEditDraft({ ...nextStepEditDraft, buttonIds })
-                  }
-                  overlayPages={overlayPages}
-                  renderIcon={renderButtonIcon}
-                  selectedIds={nextStepEditDraft.buttonIds}
-                />
-
-                <h3 className="formSectionHeading">手順書</h3>
-                <InstructionPicker
-                  choices={instructionChoices}
-                  error={instructionChoicesError}
-                  loading={instructionChoicesLoading}
-                  onChange={(instructionPath) =>
-                    setNextStepEditDraft({
-                      ...nextStepEditDraft,
-                      instructionPath,
-                      instructionOpenOnStart: instructionPath
-                        ? nextStepEditDraft.instructionPath
-                          ? nextStepEditDraft.instructionOpenOnStart
-                          : true
-                        : false,
-                    })
-                  }
-                  onRetry={() => void refreshInstructionChoices()}
-                  selectedPath={nextStepEditDraft.instructionPath}
-                />
-                <label className="projectWeeklyFocusToggle projectInstructionStartToggle">
-                  <input
-                    checked={nextStepEditDraft.instructionOpenOnStart}
-                    disabled={!nextStepEditDraft.instructionPath}
-                    onChange={(event) =>
-                      setNextStepEditDraft({
-                        ...nextStepEditDraft,
-                        instructionOpenOnStart: event.target.checked,
-                      })
-                    }
-                    type="checkbox"
-                  />
-                  <span>開始時に手順書を開く</span>
-                </label>
-
                 <h3 className="formSectionHeading">タイマー</h3>
                 <div className="projectTimerGrid">
                   {(
@@ -15859,7 +15894,10 @@ function DashboardApp() {
                     ] as const
                   ).map(([field, dragField, label, fallback]) => (
                     <div className="projectTimerSetting" key={field}>
-                      <span>{label}</span>
+                      <span className="projectTimerSettingLabel">
+                        <span aria-hidden="true" className="projectTimerDot" />
+                        {label}
+                      </span>
                       <div className="projectTimerControl">
                         <button
                           aria-label={`${label}タイマーを1分減らす`}
@@ -15935,6 +15973,164 @@ function DashboardApp() {
                     </div>
                   ))}
                 </div>
+
+                <section className="nextStepOpenTogether">
+                  <h3 className="formSectionHeading">始めると一緒に開く</h3>
+                  <div className="nextStepOpenChips">
+                    {nextStepEditDraft.buttonIds.map((buttonId) => {
+                      const button = buttonsById.get(buttonId);
+                      const label = button?.label ?? "登録が見つかりません";
+                      return (
+                        <span className="nextStepOpenChip" key={`button:${buttonId}`}>
+                          {button ? (
+                            renderButtonIcon(button, "nextStepOpenChipIcon")
+                          ) : (
+                            <span aria-hidden="true" className="nextStepOpenChipIcon">
+                              ?
+                            </span>
+                          )}
+                          <span className="nextStepOpenChipLabel" title={label}>
+                            {label}
+                          </span>
+                          <button
+                            aria-label={`${label}を外す`}
+                            className="nextStepOpenChipRemove"
+                            onClick={() =>
+                              setNextStepEditDraft({
+                                ...nextStepEditDraft,
+                                buttonIds: nextStepEditDraft.buttonIds.filter(
+                                  (candidate) => candidate !== buttonId,
+                                ),
+                              })
+                            }
+                            type="button"
+                          >
+                            <UiIcon name="close" size={12} />
+                          </button>
+                        </span>
+                      );
+                    })}
+                    {nextStepEditDraft.instructionPath ? (
+                      <span className="nextStepOpenChip">
+                        <UiIcon name="fileText" size={16} />
+                        <span className="nextStepOpenChipLabel" title={nextStepInstructionLabel}>
+                          {nextStepInstructionLabel}
+                        </span>
+                        <button
+                          aria-label={`${nextStepInstructionLabel}を外す`}
+                          className="nextStepOpenChipRemove"
+                          onClick={() =>
+                            setNextStepEditDraft({
+                              ...nextStepEditDraft,
+                              instructionPath: "",
+                              instructionOpenOnStart: false,
+                            })
+                          }
+                          type="button"
+                        >
+                          <UiIcon name="close" size={12} />
+                        </button>
+                      </span>
+                    ) : null}
+                    <button
+                      aria-expanded={nextStepOpenMenuOpen}
+                      className="nextStepOpenChipAdd"
+                      onClick={() => setNextStepOpenMenuOpen((current) => !current)}
+                      type="button"
+                    >
+                      ＋ ボタン・手順書を足す
+                    </button>
+                  </div>
+                  {nextStepOpenMenuOpen ? (
+                    <div aria-label="足す物" className="nextStepOpenMenu" role="menu">
+                      <button
+                        onClick={() => {
+                          setNextStepOpenMenuOpen(false);
+                          setNextStepOpenPicker("buttons");
+                        }}
+                        role="menuitem"
+                        type="button"
+                      >
+                        ボタンを選ぶ
+                      </button>
+                      <button
+                        onClick={() => {
+                          setNextStepOpenMenuOpen(false);
+                          setNextStepOpenPicker("instructions");
+                        }}
+                        role="menuitem"
+                        type="button"
+                      >
+                        手順書を選ぶ
+                      </button>
+                    </div>
+                  ) : null}
+                  <label className="projectWeeklyFocusToggle projectInstructionStartToggle">
+                    <input
+                      checked={nextStepEditDraft.instructionOpenOnStart}
+                      disabled={!nextStepEditDraft.instructionPath}
+                      onChange={(event) =>
+                        setNextStepEditDraft({
+                          ...nextStepEditDraft,
+                          instructionOpenOnStart: event.target.checked,
+                        })
+                      }
+                      type="checkbox"
+                    />
+                    <span>開始時に手順書を開く</span>
+                  </label>
+                  <StartEnvironmentPicker
+                    buttons={projectSelectableButtons}
+                    chrome="chips"
+                    onChange={(buttonIds) =>
+                      setNextStepEditDraft({ ...nextStepEditDraft, buttonIds })
+                    }
+                    onOpenChange={(open) => {
+                      setNextStepOpenPicker(open ? "buttons" : null);
+                      if (!open) {
+                        window.requestAnimationFrame(() =>
+                          document
+                            .querySelector<HTMLButtonElement>(".nextStepOpenChipAdd")
+                            ?.focus(),
+                        );
+                      }
+                    }}
+                    open={nextStepOpenPicker === "buttons"}
+                    overlayPages={overlayPages}
+                    renderIcon={renderButtonIcon}
+                    selectedIds={nextStepEditDraft.buttonIds}
+                  />
+                  <InstructionPicker
+                    choices={instructionChoices}
+                    chrome="chips"
+                    error={instructionChoicesError}
+                    loading={instructionChoicesLoading}
+                    onChange={(instructionPath) =>
+                      setNextStepEditDraft({
+                        ...nextStepEditDraft,
+                        instructionPath,
+                        instructionOpenOnStart: instructionPath
+                          ? nextStepEditDraft.instructionPath
+                            ? nextStepEditDraft.instructionOpenOnStart
+                            : true
+                          : false,
+                      })
+                    }
+                    onOpenChange={(open) => {
+                      setNextStepOpenPicker(open ? "instructions" : null);
+                      if (!open) {
+                        window.requestAnimationFrame(() =>
+                          document
+                            .querySelector<HTMLButtonElement>(".nextStepOpenChipAdd")
+                            ?.focus(),
+                        );
+                      }
+                    }}
+                    onRetry={() => void refreshInstructionChoices()}
+                    open={nextStepOpenPicker === "instructions"}
+                    selectedPath={nextStepEditDraft.instructionPath}
+                  />
+                </section>
 
                 <label className="projectWeeklyFocusToggle projectInstructionStartToggle">
                   <input

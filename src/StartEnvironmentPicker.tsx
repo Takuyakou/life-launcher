@@ -12,6 +12,11 @@ type StartEnvironmentPickerProps = {
   onChange: (buttonIds: string[]) => void;
   renderIcon: (button: LauncherButton, className: string) => ReactNode;
   maxSelected?: number;
+  /** "chips" hides the built-in header/selection/opener; the caller draws the chips and opens the dialog. */
+  chrome?: "full" | "chips";
+  /** Controlled dialog visibility (used with chrome="chips"). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 const TAB_LABELS: Record<PickerTab, string> = {
@@ -33,14 +38,21 @@ export function StartEnvironmentPicker({
   onChange,
   renderIcon,
   maxSelected = 2,
+  chrome = "full",
+  open: controlledOpen,
+  onOpenChange,
 }: StartEnvironmentPickerProps) {
-  const [open, setOpen] = useState(false);
+  const [localOpen, setLocalOpen] = useState(false);
+  const dialogOpen = controlledOpen ?? localOpen;
   const [draftIds, setDraftIds] = useState<string[]>([]);
   const [tab, setTab] = useState<PickerTab>("all");
   const [query, setQuery] = useState("");
   const openerRef = useRef<HTMLButtonElement | null>(null);
   const searchRef = useRef<HTMLInputElement | null>(null);
   const cancelRef = useRef<HTMLButtonElement | null>(null);
+  const selectedIdsRef = useRef(selectedIds);
+  selectedIdsRef.current = selectedIds;
+  const wasDialogOpenRef = useRef(false);
   const buttonById = useMemo(
     () => new Map(buttons.map((button) => [button.id, button])),
     [buttons],
@@ -72,26 +84,34 @@ export function StartEnvironmentPicker({
     return sidebarCategory;
   };
 
+  const setDialogOpen = (next: boolean) => {
+    if (controlledOpen === undefined) setLocalOpen(next);
+    onOpenChange?.(next);
+  };
+
   const returnFocus = () => {
     window.requestAnimationFrame(() => openerRef.current?.focus());
   };
 
   const closePicker = () => {
-    setOpen(false);
+    setDialogOpen(false);
     returnFocus();
   };
 
   const openPicker = () => {
-    setDraftIds([...selectedIds]);
-    setTab("all");
-    setQuery("");
-    setOpen(true);
+    setDialogOpen(true);
   };
 
+  // Reset the draft whenever the dialog opens (also for the controlled chips variant).
   useEffect(() => {
-    if (!open) return;
+    if (dialogOpen === wasDialogOpenRef.current) return;
+    wasDialogOpenRef.current = dialogOpen;
+    if (!dialogOpen) return;
+    setDraftIds([...selectedIdsRef.current]);
+    setTab("all");
+    setQuery("");
     window.requestAnimationFrame(() => cancelRef.current?.focus());
-  }, [open]);
+  }, [dialogOpen]);
 
   const toggleDraft = (buttonId: string) => {
     setDraftIds((current) => {
@@ -102,65 +122,73 @@ export function StartEnvironmentPicker({
   };
 
   return (
-    <div className="startEnvironmentPicker">
-      <div className="startEnvironmentHeader">
-        <div>
-          <strong>道具・アプリ</strong>
-          <span>アプリ、フォルダ、ファイル、URLなど</span>
-        </div>
-        <span
-          className={
-            selectedIds.length > maxSelected
-              ? "startEnvironmentCount startEnvironmentCount--over"
-              : "startEnvironmentCount"
-          }
-        >
-          {selectedIds.length} / {maxSelected}
-        </span>
-      </div>
-
-      {selectedRows.length > 0 ? (
-        <div aria-label="選択済みの開始環境" className="startEnvironmentSelected">
-          {selectedRows.map(({ id, button }) => (
-            <div className="startEnvironmentSelectedItem" key={id}>
-              {button ? (
-                renderIcon(button, "startEnvironmentIcon")
-              ) : (
-                <span className="startEnvironmentIcon">?</span>
-              )}
-              <span title={button?.label ?? id}>{button?.label ?? "登録が見つかりません"}</span>
-              <button
-                aria-label={`${button?.label ?? id}を開始環境から外す`}
-                className="startEnvironmentRemove"
-                onClick={() => onChange(selectedIds.filter((selectedId) => selectedId !== id))}
-                title="選択解除"
-                type="button"
-              >
-                <UiIcon name="close" size={16} />
-              </button>
+    <div
+      className={
+        chrome === "chips" ? "startEnvironmentPicker startEnvironmentPicker--chips" : "startEnvironmentPicker"
+      }
+    >
+      {chrome === "full" ? (
+        <>
+          <div className="startEnvironmentHeader">
+            <div>
+              <strong>道具・アプリ</strong>
+              <span>アプリ、フォルダ、ファイル、URLなど</span>
             </div>
-          ))}
-        </div>
-      ) : (
-        <p className="startEnvironmentEmpty">開始環境は選択されていません</p>
-      )}
+            <span
+              className={
+                selectedIds.length > maxSelected
+                  ? "startEnvironmentCount startEnvironmentCount--over"
+                  : "startEnvironmentCount"
+              }
+            >
+              {selectedIds.length} / {maxSelected}
+            </span>
+          </div>
 
-      {selectedIds.length > maxSelected ? (
-        <p className="startEnvironmentWarning" role="status">
-          保存済みの選択は保持しています。新しく追加するには{maxSelected}件以下まで外してください。
-        </p>
+          {selectedRows.length > 0 ? (
+            <div aria-label="選択済みの開始環境" className="startEnvironmentSelected">
+              {selectedRows.map(({ id, button }) => (
+                <div className="startEnvironmentSelectedItem" key={id}>
+                  {button ? (
+                    renderIcon(button, "startEnvironmentIcon")
+                  ) : (
+                    <span className="startEnvironmentIcon">?</span>
+                  )}
+                  <span title={button?.label ?? id}>{button?.label ?? "登録が見つかりません"}</span>
+                  <button
+                    aria-label={`${button?.label ?? id}を開始環境から外す`}
+                    className="startEnvironmentRemove"
+                    onClick={() => onChange(selectedIds.filter((selectedId) => selectedId !== id))}
+                    title="選択解除"
+                    type="button"
+                  >
+                    <UiIcon name="close" size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="startEnvironmentEmpty">開始環境は選択されていません</p>
+          )}
+
+          {selectedIds.length > maxSelected ? (
+            <p className="startEnvironmentWarning" role="status">
+              保存済みの選択は保持しています。新しく追加するには{maxSelected}件以下まで外してください。
+            </p>
+          ) : null}
+
+          <button
+            className="secondaryButton startEnvironmentOpen"
+            onClick={openPicker}
+            ref={openerRef}
+            type="button"
+          >
+            開始環境を選ぶ
+          </button>
+        </>
       ) : null}
 
-      <button
-        className="secondaryButton startEnvironmentOpen"
-        onClick={openPicker}
-        ref={openerRef}
-        type="button"
-      >
-        開始環境を選ぶ
-      </button>
-
-      {open ? (
+      {dialogOpen ? (
         <div className="modalBackdrop startEnvironmentBackdrop" role="presentation">
           <section
             aria-label="開始環境を選ぶ"
@@ -266,7 +294,7 @@ export function StartEnvironmentPicker({
                 className="primaryButton"
                 onClick={() => {
                   onChange(draftIds);
-                  setOpen(false);
+                  setDialogOpen(false);
                   returnFocus();
                 }}
                 type="button"
