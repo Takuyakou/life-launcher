@@ -25,26 +25,34 @@ Note: it is not a complete port of the Windows product. The Web Demo has a separ
 ## Highlights
 
 - **One thing to do now**
-  Suggests one next step based on this week's focus and your recent activity. Suggestions remain available even without a selected focus.
+  Suggests one next step: the Next Step already in Today's Three first, then this week's focus, then items you have not touched today, then the oldest session. Start it right away with 5 minutes, 25 minutes, or Measure from the idle timer.
 
-- **Daily Victory / Today's Three**
-  Define one condition for a successful day and limit today's work to at most three items. Start from project-colored cards; an item is completed after its planned timer expires and you confirm the session. Once all three are complete, choose the next three yourself.
+- **Today's Three**
+  Limit the day to at most three items. Start from project-colored cards; an item is completed after its planned timer expires and you confirm the session. Once all three are complete, choose the next three from “Choose today's work”. Use the card's “…” menu, its context menu, or Delete on a focused card to remove only its adoption into today (the original entry and session records remain).
 
-- **Choose today's work / Other ideas**
-  Open the selection dialog from an empty Today's Three slot, then use “+ Add to Today” for next steps and other ideas. The third item confirms automatically, while Cancel restores the opening selection. The app keeps the chosen text, instructions, launch environment, and timer duration while leaving the original item available. Drag an item to the removal area or use its menu to remove it from today.
+- **Choose today's work**
+  Candidates (Next Steps and Other ideas) on the left, numbered Today slots on the right. Reorder with drag or Alt+↑/↓; the decision is saved once when you press Decide. Closing with changes asks whether to discard them. Picking a third item does not confirm automatically.
 
-- **Remove from Today's Three**
-  Use the card's lower-left button or context menu to remove only its adoption into today, without a confirmation dialog. The original item, other choices, and session records remain. Removal is blocked while that item's timer is running, paused, or awaiting expiry confirmation.
+- **Other ideas**
+  Grouped per project with colored lines. “▷ Make it the Next Step” promotes a row; a group whose project has no Next Step shows a “No Next Step yet” badge.
+
+- **Search (Ctrl+F)**
+  Find Next Steps, buttons, and instructions regardless of hiragana/katakana, full/half width, or letter case. Press Enter to start 5 minutes, or Shift+Enter for the normal duration.
+
+- **First run**
+  When there are no projects and no Today items, the main screen shows “Let's start just one thing”. Enter a theme and a first step, press “Start with 5 minutes”, and the app creates one project and one Next Step and starts a 5-minute timer. “Start later” leaves the empty dashboard.
 
 - **Quick Launcher / Dictionary**
   Register apps, folders, files, and URLs, then open them from the sidebar or `Ctrl+K` search. The button builder retains drafts when switching registration modes. Navigate the dictionary with arrow keys; on multiple monitors, it opens on the same screen as the main app.
 
 - **Timer / Session Records**
-  Start a short or normal timer, or use Measure to count up from 0:00, and store sessions of at least one minute locally. Stopping early does not automatically complete today's item. Session completion is also separate from completing or deleting the source entry itself.
+  Start a short or normal timer, or use Measure to count up from 0:00, and store sessions of at least one minute locally. Stopping early does not automatically complete today's item. When the planned time is up you can finish as is, add 5 minutes, take another step for 5 minutes, pick from Today's Three, or stop.
 
 - **View instructions**
   Read Markdown, text, sanitized HTML, and MHTML (`.mhtml` / `.mht`) files from registered folders in a separate window.
 
+- **Keys**
+  `Ctrl+K` dictionary / `Ctrl+F` search / `F1` guide / `Ctrl+W` close / on a row `Enter` start (Other ideas: make it the Next Step), `F2` edit, `Delete` remove (Today's Three: remove from today) / while a menu is open `T` add to Today's Three / `Ctrl+Z` undo / `Menu` or `Shift+F10` menu. Configure the show/hide, mini, and instructions keys in Settings.
 ## Screenshots
 
 ### Dictionary / Instructions
@@ -150,6 +158,8 @@ Public quality checks cover React / TypeScript lint and build, Playwright Visual
 - Vite 8
 - Playwright for deterministic Visual QA
 - Zod for frontend data validation
+- Motion for UI animation
+- Inter and Noto Sans JP, bundled with the app (SIL Open Font License 1.1)
 
 ## Security
 
