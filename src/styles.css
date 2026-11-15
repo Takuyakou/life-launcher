@@ -13538,3 +13538,41 @@ button.mainActionButton:is(
 .projectsBand .projectGrid {
   grid-template-columns: minmax(0, 1fr);
 }
+
+/* P10-06 (D25): the dashed "no Next Step yet" badge on a wishlist group. */
+.wishlistNextStepMissing {
+  padding: 1px 8px;
+  border: 1px dashed color-mix(in srgb, var(--project-color, var(--muted)) 55%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--project-color, var(--muted)) 12%, transparent);
+  color: color-mix(in srgb, var(--project-color, var(--muted)) 60%, var(--text));
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* P10-06 (D26): the closed header lists the groups. */
+.inboxGroupSummary {
+  display: flex;
+  min-width: 0;
+  gap: 10px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.inboxGroupSummaryItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inboxGroupSummaryDot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--project-color, var(--muted));
+}

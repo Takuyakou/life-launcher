@@ -12318,6 +12318,7 @@ function DashboardApp() {
                     }
                   >
                     <button
+                      aria-describedby="wishlist-group-summary"
                       aria-expanded={inboxOpen}
                       className="disclosure"
                       onClick={() => setInboxOpen((open) => !open)}
@@ -12329,8 +12330,39 @@ function DashboardApp() {
                       </span>
                     </button>
                     <span className="disclosureCount">{config.inbox.length}件</span>
-                    <span className="disclosureDescription">
-                      他にやりたいこと。今日やるものは「今日の3件」から選べます。
+                    {inboxOpen ? (
+                      <span className="disclosureDescription">
+                        他にやりたいこと。今日やるものは「今日の3件」から選べます。
+                      </span>
+                    ) : (
+                      // P10-06 (D26): closed, the header shows the groups as dots and counts.
+                      <span
+                        aria-hidden="true"
+                        className="disclosureDescription inboxGroupSummary"
+                      >
+                        {wishlistGroups.map((group) => (
+                          <span className="inboxGroupSummaryItem" key={group.key}>
+                            <span
+                              aria-hidden="true"
+                              className="inboxGroupSummaryDot"
+                              data-project-color={
+                                group.projectId
+                                  ? resolveProjectColorId(
+                                      group.projectId,
+                                      projectsById.get(group.projectId)?.colorId ?? null,
+                                    )
+                                  : undefined
+                              }
+                            />
+                            {group.name} {group.items.length}件
+                          </span>
+                        ))}
+                      </span>
+                    )}
+                    <span className="visuallyHidden" id="wishlist-group-summary">
+                      {`やりたいこと ${config.inbox.length}件。${wishlistGroups
+                        .map((group) => `${group.name} ${group.items.length}件`)
+                        .join("、")}`}
                     </span>
                     <div className="disclosureHeaderActions">
                       <button
@@ -12415,6 +12447,10 @@ function DashboardApp() {
                           const groupProject = group.projectId
                             ? projectsById.get(group.projectId)
                             : undefined;
+                          // P10-06 (D25): a Project group with no Next Step asks for one.
+                          const groupNeedsNextStep = Boolean(
+                            group.key !== "unassigned" && groupProject && !groupProject.nextStep?.text.trim(),
+                          );
                           return (
                             <section
                               className={[
@@ -12493,6 +12529,9 @@ function DashboardApp() {
                                   />
                                 ) : (
                                   <strong>未分類</strong>
+                                )}
+                                {groupNeedsNextStep && (
+                                  <span className="wishlistNextStepMissing">次の一手が未設定</span>
                                 )}
                                 <span>{group.items.length}件</span>
                               </button>
@@ -12583,8 +12622,12 @@ function DashboardApp() {
                                             <span className="wishlistNextStepSlot">
                                               {!nextStepSelected && !sourceLocked ? (
                                                 <button
-                                                  aria-label={`${item.text}の次の一手を設定`}
-                                                  className="wishlistNextStepAction nextStepRowAction nextStepRowAction--set mainActionButton mainActionButton--neutral"
+                                                  aria-label={`${item.text}の次の一手にする`}
+                                                  className={
+  groupNeedsNextStep
+    ? "wishlistNextStepAction nextStepRowAction nextStepRowAction--set mainActionButton mainActionButton--gold"
+    : "wishlistNextStepAction nextStepRowAction nextStepRowAction--set mainActionButton mainActionButton--neutral"
+}
                                                   disabled={
                                                     !item.id ||
                                                     sourceEditBlocked(`wishlist:${item.id}`)
@@ -12598,12 +12641,12 @@ function DashboardApp() {
                                                     item.id
                                                       ? (sourceEditBlockReason(
                                                           `wishlist:${item.id}`,
-                                                        ) ?? "次の一手を設定")
-                                                      : "次の一手を設定"
+                                                        ) ?? "次の一手にする")
+                                                      : "次の一手にする"
                                                   }
                                                   type="button"
                                                 >
-                                                  ▷ 次の一手を設定
+                                                  ▷ 次の一手にする
                                                 </button>
                                               ) : null}
                                             </span>
@@ -15383,7 +15426,7 @@ function DashboardApp() {
                         </div>
                         {wishlistCandidates.length ? (
                           <div
-                            aria-label="次の一手にするやりたいこと"
+                            aria-label="次の一手を設定するやりたいこと"
                             className="nextStepWishlistPickerList"
                             role="radiogroup"
                           >
