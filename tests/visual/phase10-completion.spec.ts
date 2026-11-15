@@ -381,3 +381,30 @@ test("P10-09 a manually added Today card completion never opens the dialog", asy
   expect(saved.today.items[0].done).toBe(true);
   expect(saved.projects[0].nextStep?.text).toBe("資料を1ページ読む");
 });
+
+test("P10-14 a chosen Wishlist item removed while open warns and keeps the dialog", async ({
+  page,
+}) => {
+  const fixture = completionFixture();
+  await prepare(page, fixture);
+  const followup = await openFollowup(page);
+  await expect(followup.getByRole("radio", { name: "週末に試すアイデア" })).toBeChecked();
+
+  await page.evaluate(() => {
+    const control = (window as QaWindow).__LIFE_LAUNCHER_VISUAL_QA__;
+    const config = control.currentConfig();
+    config.inbox = config.inbox.filter((item) => item.text !== "週末に試すアイデア");
+    control.updateConfig(config);
+  });
+  await page.clock.fastForward(400);
+  await expect(followup.getByRole("radio", { name: "週末に試すアイデア" })).toHaveCount(0);
+
+  await followup.getByRole("button", { name: "決定" }).click();
+  await expect(
+    page.locator(".toast", { hasText: "選んだやりたいことが見つかりません" }),
+  ).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "一手進みました" })).toBeVisible();
+  await expect(
+    page.getByRole("dialog", { name: "一手進みました" }).getByRole("radio", { name: /同じ一手をもう一度/ }),
+  ).toBeChecked();
+});

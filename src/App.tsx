@@ -2200,6 +2200,8 @@ function DashboardApp() {
   const [todayPickerSource, setTodayPickerSource] = useState<"nextStep" | "wishlist">("nextStep");
   const [todayPickerDraftItems, setTodayPickerDraftItems] = useState<TodayItem[]>([]);
   const [todayPickerSaving, setTodayPickerSaving] = useState(false);
+  // P10-14 (§6.1): guard the single save with a ref too, so two calls in one tick cannot pass.
+  const todayPickerSavingRef = useRef(false);
   // P10-10 (§6.1): which draft slot is being dragged (HTML5 drag keeps it inside the Picker).
   const [todayPickerDragIndex, setTodayPickerDragIndex] = useState<number | null>(null);
   const [todayActivityOpen, setTodayActivityOpen] = useState(false);
@@ -8392,7 +8394,7 @@ function DashboardApp() {
   // P10-10 (§6.1): the Picker only edits a draft. "決定" is the single save point.
   const saveTodayPickerDraft = async (items = todayPickerDraftItems) => {
     const current = configRef.current;
-    if (!current || todayPickerSaving) return false;
+    if (!current || todayPickerSavingRef.current) return false;
     if (
       JSON.stringify(current.today.items) !== JSON.stringify(todayPickerInitialItemsRef.current)
     ) {
@@ -8410,6 +8412,7 @@ function DashboardApp() {
       closeTodayPicker();
       return true;
     }
+    todayPickerSavingRef.current = true;
     setTodayPickerSaving(true);
     const saved = await persistConfig({
       ...current,
@@ -8419,10 +8422,12 @@ function DashboardApp() {
       },
     });
     if (saved) {
+      todayPickerSavingRef.current = false;
       closeTodayPicker();
       showToast("ok", "今日の3件を選択しました");
       return true;
     }
+    todayPickerSavingRef.current = false;
     setTodayPickerSaving(false);
     return false;
   };
@@ -10001,11 +10006,18 @@ function DashboardApp() {
     if (!project.nextStep?.text.trim()) return;
     startDoNowProject(project, "short");
   };
-  const startTodayRowShort = (item: TodayItem, index: number, minutes: number) => {
+  // P10-14 (§4.3): the card's 5分 button and the row's Enter share this one path.
+  const startTodayItemShort = (
+    item: TodayItem,
+    index: number,
+    timerSourceId: string,
+    minutes: number,
+  ) => {
     if (item.done || !item.text.trim()) return;
+    if (isTimerOnTodayItem(item, index)) return;
     const project = item.projectId ? projectsById.get(item.projectId) : undefined;
     void startTimer(
-      todayTimerSourceId(item, index),
+      timerSourceId,
       item.projectId && project ? project.name : item.text,
       item.projectId && project ? item.projectId : null,
       (item.buttonIds ?? []).flatMap((buttonId) => buttonsById.get(buttonId)?.actions ?? []),
@@ -10015,7 +10027,7 @@ function DashboardApp() {
       item.instructionOpenOnStart,
       "countdown",
       undefined,
-      project?.nextStep?.expandTimerOnStart === true,
+      item.sourceKey?.startsWith("project:") && item.expandTimerOnStart === true,
     );
   };
   const editTodayRowItem = (index: number) => {
@@ -11430,7 +11442,7 @@ function DashboardApp() {
                     </div>
                   ) : doNowSelection ? (
                     <div
-                      className="doNowContent"
+                      className="doNowContent doNowContent--active"
                       data-project-color={resolveProjectColorId(
                         doNowSelection.project.id,
                         doNowSelection.project.colorId,
@@ -11506,16 +11518,6 @@ function DashboardApp() {
                           )}
                           <span className="doNowReason">{doNowReason}</span>
                         </div>
-                        {doNowCandidates.length > 1 && (
-                          <button
-                            className="doNowAlternateButton"
-                            onClick={showNextDoNowCandidate}
-                            type="button"
-                          >
-                            <UiIcon name="refresh" size={16} />
-                            他の一手
-                          </button>
-                        )}
                       </div>
                       <div className="doNowFooter">
                         <div className="doNowActions">
@@ -11585,6 +11587,8 @@ function DashboardApp() {
                               </button>
                             </>
                           )}
+                        </div>
+                        <div className="doNowSecondaryActions">
                           {doNowInstructionPath && (
                             <button
                               aria-label={`${doNowSelection.project.name}の手順書を開く`}
@@ -11603,6 +11607,16 @@ function DashboardApp() {
                               type="button"
                             >
                               <UiIcon name="book" size={16} /> 手順書
+                            </button>
+                          )}
+                          {doNowCandidates.length > 1 && (
+                            <button
+                              className="doNowAlternateButton"
+                              onClick={showNextDoNowCandidate}
+                              type="button"
+                            >
+                              <UiIcon name="refresh" size={16} />
+                              他の一手
                             </button>
                           )}
                         </div>
@@ -11803,7 +11817,12 @@ function DashboardApp() {
                                   if (
                                     handleRowShortcutKey(event, {
                                       activate: () =>
-                                        startTodayRowShort(item, index, shortMinutes),
+                                        startTodayItemShort(
+                                          item,
+                                          index,
+                                          timerSourceId,
+                                          shortMinutes,
+                                        ),
                                       edit: () => editTodayRowItem(index),
                                       remove: () =>
                                         void removeTodayItem(todaySourceKey(item, index)),
@@ -12033,30 +12052,7 @@ function DashboardApp() {
                                           aria-label={`短時間タイマー${shortMinutes}分で開始`}
                                           className="todayStartButton todayStartButton--short"
                                           disabled={!item.text.trim()}
-                                          onClick={() =>
-                                            void startTimer(
-                                              timerSourceId,
-                                              item.projectId && projectsById.has(item.projectId)
-                                                ? (projectsById.get(item.projectId)?.name ??
-                                                    item.text)
-                                                : item.text,
-                                              item.projectId && projectsById.has(item.projectId)
-                                                ? item.projectId
-                                                : null,
-                                              (item.buttonIds ?? []).flatMap(
-                                                (buttonId) =>
-                                                  buttonsById.get(buttonId)?.actions ?? [],
-                                              ),
-                                              shortMinutes,
-                                              item.text,
-                                              item.instructionPath,
-                                              item.instructionOpenOnStart,
-                                              "countdown",
-                                              undefined,
-                                              item.sourceKey?.startsWith("project:") &&
-                                                item.expandTimerOnStart === true,
-                                            )
-                                          }
+                                          onClick={() => void startTodayItemShort(item, index, timerSourceId, shortMinutes)}
                                           title={`短時間タイマー: ${shortMinutes}分`}
                                           type="button"
                                         >
@@ -12437,7 +12433,7 @@ function DashboardApp() {
                                   handleRowShortcutKey(event, {
                                     activate: () => startProjectShort(project),
                                     edit: () => openNextStepEditor(project),
-                                    remove: () => requestProjectDeletion(project),
+                                    remove: () => clearProjectNextStep(project),
                                   })
                                 )
                                   return;
@@ -12452,6 +12448,7 @@ function DashboardApp() {
                               <span aria-hidden="true" className="rowKeyHint">
                                 Enter
                               </span>
+                              {/* P10-14 (§4.4): one horizontal row: Project / action text / actions. */}
                               <div
                                 className="nextStepProjectRegion"
                                 onContextMenu={(event) => {
@@ -12476,19 +12473,6 @@ function DashboardApp() {
                                     name={project.name}
                                     projectId={project.id}
                                   />
-                                  {sourceLocked && (
-                                    <span
-                                      aria-label="今日の3件で使用中のためロック中"
-                                      className="sourceLockBadge"
-                                      tabIndex={0}
-                                      title={SOURCE_LOCK_REASON}
-                                    >
-                                      <UiIcon name="lock" size={16} />
-                                    </span>
-                                  )}
-                                  {alreadySelected && (
-                                    <span className="nextStepTodayStatus">✓ 今日の3件</span>
-                                  )}
                                 </h3>
                               </div>
                               <div
@@ -12508,106 +12492,123 @@ function DashboardApp() {
                                 }
                                 tabIndex={0}
                               >
-                                <p
-                                  className={
-                                    project.nextStep?.text.trim()
-                                      ? ""
-                                      : "projectNextStepPlaceholder"
-                                  }
-                                  title={
-                                    project.nextStep?.text.trim() || "まだ次の一手がありません"
-                                  }
-                                >
-                                  {project.nextStep?.trigger?.trim() && (
-                                    <span className="projectNextStepTrigger">
-                                      {project.nextStep.trigger.trim()} ▸{" "}
+                                <div className="nextStepTextRegion">
+                                  <p
+                                    className={
+                                      project.nextStep?.text.trim()
+                                        ? ""
+                                        : "projectNextStepPlaceholder"
+                                    }
+                                    title={
+                                      project.nextStep?.text.trim() || "まだ次の一手がありません"
+                                    }
+                                  >
+                                    {project.nextStep?.trigger?.trim() && (
+                                      <span className="projectNextStepTrigger">
+                                        {project.nextStep.trigger.trim()} ▸{" "}
+                                      </span>
+                                    )}
+                                    {project.nextStep?.text.trim() || "まだ次の一手がありません"}
+                                  </p>
+                                  {staleNextStepMap.has(project.id) && (
+                                    <div className="nextStepFreshness">
+                                      <span>
+                                        {staleNextStepMap.get(project.id)}日同じ一手です。大きすぎるかもしれません
+                                      </span>
+                                      <span className="nextStepFreshnessActions">
+                                        <button
+                                          className="nextStepFreshnessButton"
+                                          onClick={() => openNextStepEditor(project, { mode: "edit" })}
+                                          onPointerDown={(event) => event.stopPropagation()}
+                                          type="button"
+                                        >
+                                          小さくする
+                                        </button>
+                                        <button
+                                          className="nextStepFreshnessButton"
+                                          disabled={nextStepReviewBusy === project.id}
+                                          onClick={() => void markNextStepReviewed(project.id)}
+                                          onPointerDown={(event) => event.stopPropagation()}
+                                          type="button"
+                                        >
+                                          このまま
+                                        </button>
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="nextStepRowMeta">
+                                  {sourceLocked && (
+                                    <span
+                                      aria-label="今日の3件で使用中のためロック中"
+                                      className="sourceLockBadge"
+                                      tabIndex={0}
+                                      title={SOURCE_LOCK_REASON}
+                                    >
+                                      <UiIcon name="lock" size={16} />
                                     </span>
                                   )}
-                                  {project.nextStep?.text.trim() || "まだ次の一手がありません"}
-                                </p>
-                                {staleNextStepMap.has(project.id) && (
-                                  <div className="nextStepFreshness">
-                                    <span>
-                                      {staleNextStepMap.get(project.id)}日同じ一手です。大きすぎるかもしれません
-                                    </span>
-                                    <span className="nextStepFreshnessActions">
-                                      <button
-                                        className="nextStepFreshnessButton"
-                                        onClick={() => openNextStepEditor(project, { mode: "edit" })}
-                                        onPointerDown={(event) => event.stopPropagation()}
-                                        type="button"
-                                      >
-                                        小さくする
-                                      </button>
-                                      <button
-                                        className="nextStepFreshnessButton"
-                                        disabled={nextStepReviewBusy === project.id}
-                                        onClick={() => void markNextStepReviewed(project.id)}
-                                        onPointerDown={(event) => event.stopPropagation()}
-                                        type="button"
-                                      >
-                                        このまま
-                                      </button>
-                                    </span>
-                                  </div>
-                                )}
-                                {project.nextStep?.text.trim() ? (
-                                  !sourceLocked && (
-                                    <div className="nextStepCardActions">
-                                      <button
-                                        className="nextStepTodayAdd mainActionButton mainActionButton--neutral"
-                                        disabled={
-                                          !todayCandidate ||
-                                          alreadySelected ||
-                                          config.today.items.length >= TODAY_ITEM_LIMIT
-                                        }
-                                        onClick={(event) => {
-                                          event.stopPropagation();
-                                          if (todayCandidate)
-                                            void addCandidateToToday(todayCandidate);
-                                        }}
-                                        onPointerDown={(event) => event.stopPropagation()}
-                                        title={
-                                          alreadySelected
-                                            ? "今日の3件にあります"
-                                            : config.today.items.length >= TODAY_ITEM_LIMIT
-                                              ? "今日の3件は3件埋まっています"
-                                              : "今日の3件に追加"
-                                        }
-                                        type="button"
-                                      >
-                                        ＋ 今日へ
-                                      </button>
-                                      <button
-                                        className="nextStepRowAction nextStepRowAction--change mainActionButton mainActionButton--neutral"
-                                        disabled={sourceEditBlocked(projectSourceKey)}
-                                        onClick={(event) => {
-                                          event.stopPropagation();
-                                          openNextStepEditor(project);
-                                        }}
-                                        onPointerDown={(event) => event.stopPropagation()}
-                                        title={sourceEditBlockReason(projectSourceKey) ?? undefined}
-                                        type="button"
-                                      >
-                                        編集
-                                      </button>
-                                    </div>
-                                  )
-                                ) : (
-                                  <button
-                                    className="nextStepRowAction nextStepRowAction--set mainActionButton mainActionButton--neutral"
-                                    disabled={sourceEditBlocked(projectSourceKey)}
-                                    onClick={(event) => {
-                                      event.stopPropagation();
-                                      openNextStepEditor(project);
-                                    }}
-                                    onPointerDown={(event) => event.stopPropagation()}
-                                    title={sourceEditBlockReason(projectSourceKey) ?? undefined}
-                                    type="button"
-                                  >
-                                    次の一手を設定
-                                  </button>
-                                )}
+                                  {alreadySelected && (
+                                    <span className="nextStepTodayStatus">✓ 今日の3件</span>
+                                  )}
+                                  {project.nextStep?.text.trim() ? (
+                                    !sourceLocked && (
+                                      <div className="nextStepCardActions">
+                                        <button
+                                          className="nextStepTodayAdd mainActionButton mainActionButton--neutral"
+                                          disabled={
+                                            !todayCandidate ||
+                                            alreadySelected ||
+                                            config.today.items.length >= TODAY_ITEM_LIMIT
+                                          }
+                                          onClick={(event) => {
+                                            event.stopPropagation();
+                                            if (todayCandidate)
+                                              void addCandidateToToday(todayCandidate);
+                                          }}
+                                          onPointerDown={(event) => event.stopPropagation()}
+                                          title={
+                                            alreadySelected
+                                              ? "今日の3件にあります"
+                                              : config.today.items.length >= TODAY_ITEM_LIMIT
+                                                ? "今日の3件は3件埋まっています"
+                                                : "今日の3件に追加"
+                                          }
+                                          type="button"
+                                        >
+                                          ＋ 今日へ
+                                        </button>
+                                        <button
+                                          className="nextStepRowAction nextStepRowAction--change mainActionButton mainActionButton--neutral"
+                                          disabled={sourceEditBlocked(projectSourceKey)}
+                                          onClick={(event) => {
+                                            event.stopPropagation();
+                                            openNextStepEditor(project);
+                                          }}
+                                          onPointerDown={(event) => event.stopPropagation()}
+                                          title={sourceEditBlockReason(projectSourceKey) ?? undefined}
+                                          type="button"
+                                        >
+                                          編集
+                                        </button>
+                                      </div>
+                                    )
+                                  ) : (
+                                    <button
+                                      className="nextStepRowAction nextStepRowAction--set mainActionButton mainActionButton--neutral"
+                                      disabled={sourceEditBlocked(projectSourceKey)}
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        openNextStepEditor(project);
+                                      }}
+                                      onPointerDown={(event) => event.stopPropagation()}
+                                      title={sourceEditBlockReason(projectSourceKey) ?? undefined}
+                                      type="button"
+                                    >
+                                      次の一手を設定
+                                    </button>
+                                  )}
+                                </div>
                                 <button
                                   aria-label={`${project.name}の次の一手の操作`}
                                   aria-haspopup="menu"
@@ -13709,6 +13710,7 @@ function DashboardApp() {
                   <ContextMenuItem
                     disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
                     onClick={() => clearProjectNextStep(contextMenu.project)}
+                    shortcut="Delete"
                     title={sourceEditBlockReason(`project:${contextMenu.project.id}`) ?? undefined}
                     type="button"
                   >
@@ -13743,7 +13745,6 @@ function DashboardApp() {
               <ContextMenuItem
                 className="contextMenuDanger contextMenuSeparatorBefore"
                 onClick={() => requestProjectDeletion(contextMenu.project)}
-                shortcut="Delete"
                 type="button"
               >
                 プロジェクトを削除…
@@ -15706,7 +15707,21 @@ function DashboardApp() {
             if (completionFollowupChoice.startsWith("wishlist:")) {
               const wishlistId = completionFollowupChoice.slice("wishlist:".length);
               const index = live?.inbox.findIndex((item) => item.id === wishlistId) ?? -1;
-              if (index < 0) return;
+              if (index < 0) {
+                // P10-14 (§8.1): the chosen wishlist item vanished while the dialog was open.
+                const firstWishlist = live?.inbox.find(
+                  (item) => item.projectId === projectId && Boolean(item.id),
+                );
+                setCompletionFollowupChoice(
+                  firstWishlist?.id
+                    ? `wishlist:${firstWishlist.id}`
+                    : previous
+                      ? "repeat"
+                      : "write",
+                );
+                showToast("warn", "選んだやりたいことが見つかりません");
+                return;
+              }
               setCompletionFollowup(null);
               promoteInboxToNextStep(index);
               return;

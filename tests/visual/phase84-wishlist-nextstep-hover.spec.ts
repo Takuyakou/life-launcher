@@ -63,9 +63,9 @@ test("P84 Wishlist promote action is status-aware, stable, keyboard reachable, a
 
   const plain = page.locator('[data-inbox-id="sample-later"]');
   const selected = page.locator('[data-inbox-id="sample-weekend"]');
-  const plainAction = plain.getByRole("button", { name: "あとで確認するサンプルの次の一手を設定" });
+  const plainAction = plain.getByRole("button", { name: "あとで確認するサンプルの次の一手にする" });
   const selectedAction = selected.getByRole("button", {
-    name: "週末に試すアイデアの次の一手を設定",
+    name: "週末に試すアイデアの次の一手にする",
   });
   const plainMenu = plain.locator(".sourceRowMenu");
   const selectedMenu = selected.locator(".sourceRowMenu");

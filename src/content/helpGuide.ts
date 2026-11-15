@@ -130,7 +130,7 @@ export const HELP_GUIDE_SECTIONS: HelpGuideSection[] = [
           { keys: "Shift + Enter", action: "検索の窓で、通常の分数で始める" },
           { keys: "Enter", action: "行で: 短時間で始める(やりたいことの行は次の一手にする)" },
           { keys: "F2", action: "行で: その行を編集する" },
-          { keys: "Delete", action: "行で: その行を削除する(今日の3件は今日から外す)" },
+          { keys: "Delete", action: "行で: 削除する(次の一手の行は未設定にする。今日の3件は今日から外す)" },
           { keys: "T", action: "メニューを開いている間だけ: その項目を今日の3件に入れる" },
           { keys: "Ctrl + Z", action: "元に戻す(出ている「元に戻す」のうち、一番新しい物)" },
           { keys: "メニューキー / Shift + F10", action: "選んでいる行のメニューを開く" },

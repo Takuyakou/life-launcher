@@ -154,21 +154,21 @@ for (const width of VIEWPORTS) {
       "Project identity must remain inside its region",
     ).toBeLessThanOrEqual(projectBox.x + projectBox.width + 0.5);
     expect(
-      projectBox.y + projectBox.height,
-      "Project must stack before NextStep",
-    ).toBeLessThanOrEqual(actionBox.y + 0.5);
+      projectBox.x + projectBox.width,
+      "Project must sit left of the NextStep region",
+    ).toBeLessThanOrEqual(actionBox.x + 0.5);
 
     await expect(actionRegion.locator("p")).toHaveAttribute("title", LONG_NEXT_STEP);
-    await expect(actionRegion.locator("p")).toHaveCSS("text-overflow", "ellipsis");
+    await expect(actionRegion.locator("p")).toHaveCSS("white-space", "normal");
     const actionTextBox = await measurable(actionRegion.locator("p"), "NextStep text");
     const actionButtonBox = await measurable(
       actionRegion.locator(".nextStepRowAction"),
       "NextStep action",
     );
     expect(
-      actionTextBox.y + actionTextBox.height,
-      "NextStep text must stack before its action",
-    ).toBeLessThanOrEqual(actionButtonBox.y + 0.5);
+      actionTextBox.x + actionTextBox.width,
+      "NextStep text must sit left of its action",
+    ).toBeLessThanOrEqual(actionButtonBox.x + 0.5);
     await expect(emptyProject.getByText("まだ次の一手がありません", { exact: true })).toBeVisible();
     await expect(emptyProject.getByRole("button", { name: "次の一手を設定" })).toBeVisible();
 
@@ -270,13 +270,13 @@ test("Phase 8.1 NextStep cards expose one combined keyboard context menu", async
   await projectRegion.focus();
   await projectRegion.press("Shift+F10");
   let menu = page.getByRole("menu");
-  await expect(menu.getByRole("menuitem")).toHaveText([
-    "プロジェクトを編集",
-    "次の一手を編集",
-    "別の行動に入れ替える",
-    "次の一手を未設定にする",
-    "プロジェクトを削除…",
-  ]);
+  await expect(menu.getByRole("menuitem")).toHaveCount(6);
+  await expect(menu.getByRole("menuitem", { name: /プロジェクトを編集/ })).toBeVisible();
+  await expect(menu.getByRole("menuitem", { name: /次の一手を編集/ })).toBeVisible();
+  await expect(menu.getByRole("menuitem", { name: /別の行動に入れ替える/ })).toBeVisible();
+  await expect(menu.getByRole("menuitem", { name: /次の一手を未設定にする/ })).toBeVisible();
+  await expect(menu.getByRole("menuitem", { name: /今日の3件に入れる/ })).toBeVisible();
+  await expect(menu.getByRole("menuitem", { name: /プロジェクトを削除/ })).toBeVisible();
   await expect(menu.getByRole("menuitem", { name: "やりたいことを追加" })).toHaveCount(0);
   await expectInsideViewport(page, menu, "Combined NextStep context menu");
   await page.keyboard.press("Escape");
@@ -285,13 +285,13 @@ test("Phase 8.1 NextStep cards expose one combined keyboard context menu", async
   await actionRegion.focus();
   await actionRegion.press("Shift+F10");
   menu = page.getByRole("menu");
-  await expect(menu.getByRole("menuitem")).toHaveText([
-    "プロジェクトを編集",
-    "次の一手を編集",
-    "別の行動に入れ替える",
-    "次の一手を未設定にする",
-    "プロジェクトを削除…",
-  ]);
+  await expect(menu.getByRole("menuitem")).toHaveCount(6);
+  await expect(menu.getByRole("menuitem", { name: /プロジェクトを編集/ })).toBeVisible();
+  await expect(menu.getByRole("menuitem", { name: /次の一手を編集/ })).toBeVisible();
+  await expect(menu.getByRole("menuitem", { name: /別の行動に入れ替える/ })).toBeVisible();
+  await expect(menu.getByRole("menuitem", { name: /次の一手を未設定にする/ })).toBeVisible();
+  await expect(menu.getByRole("menuitem", { name: /今日の3件に入れる/ })).toBeVisible();
+  await expect(menu.getByRole("menuitem", { name: /プロジェクトを削除/ })).toBeVisible();
   await expectInsideViewport(page, menu, "Combined NextStep action context menu");
   await page.keyboard.press("Escape");
   await expect(actionRegion).toBeFocused();
@@ -385,9 +385,8 @@ for (const width of [620] as const) {
     await expect(nextStep.getByRole("heading", { level: 3 })).toHaveText([
       "プロジェクト",
       "次の一手の決め方",
-      "開始環境",
-      "手順書",
       "タイマー",
+      "始めると一緒に開く",
     ]);
     await expectInsideViewport(page, nextStep, "NextStep dialog");
     expect(await nextStep.evaluate((node) => node.scrollHeight > node.clientHeight)).toBe(true);

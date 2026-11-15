@@ -87,10 +87,10 @@ test("Project deletion is blocked before confirmation while unfinished Today3 us
   await prepare(page, fixture);
   const card = page.locator('.nextStepCard[data-project-id="sample-learning"]');
   const badge = card.locator(".sourceLockBadge");
-  const projectIdentity = card.locator(".projectIdentity");
   const badgeBox = await badge.boundingBox();
-  const identityBox = await projectIdentity.boundingBox();
-  expect(Math.abs(badgeBox!.y + badgeBox!.height / 2 - (identityBox!.y + identityBox!.height / 2))).toBeLessThan(2);
+  // P10-14 (§4.4): the lock badge moved to the row's action side; compare it with the action text.
+  const identityBox = await card.locator(".nextStepActionRegion p").boundingBox();
+  expect(Math.abs(badgeBox!.y + badgeBox!.height / 2 - (identityBox!.y + identityBox!.height / 2))).toBeLessThanOrEqual(2);
 
   await card.click({ button: "right" });
   await page.getByRole("menuitem", { name: "プロジェクトを削除…" }).click();

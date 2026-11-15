@@ -84,7 +84,7 @@ test("v1.3 Do Now switches candidates from the copy area and context menu", asyn
   await prepare(page, fixture);
   const band = page.locator(".doNowContent");
   const actions = band.locator(".doNowActions");
-  const alternate = band.locator(".doNowCopy").getByRole("button", {
+  const alternate = band.locator(".doNowSecondaryActions").getByRole("button", {
     name: "他の一手",
     exact: true,
   });

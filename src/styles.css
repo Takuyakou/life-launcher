@@ -10104,14 +10104,14 @@ body:has([aria-modal="true"]) .toastStack {
   padding-left: 0;
 }
 
+/* P10-14 (§4.4): one horizontal row; the height follows the text. */
 .nextStepCard.nextStepRow.sourceListRow {
   position: relative;
-  height: 112px;
-  min-height: 112px;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0;
+  min-height: 56px;
+  display: grid;
+  grid-template-columns: minmax(110px, 150px) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -10155,7 +10155,7 @@ body:has([aria-modal="true"]) .toastStack {
   min-height: 20px;
   display: block;
   border: 0;
-  padding: 0 30px 0 0;
+  padding: 0;
   text-align: left;
 }
 
@@ -10167,7 +10167,7 @@ body:has([aria-modal="true"]) .toastStack {
 
 .nextStepCard .nextStepProjectRegion h3 .projectIdentity {
   width: auto;
-  max-width: min(180px, 55%);
+  max-width: 100%;
   flex: 0 1 auto;
   color: var(--muted);
   font-size: var(--dashboard-font-meta);
@@ -10203,11 +10203,10 @@ body:has([aria-modal="true"]) .toastStack {
 }
 
 .nextStepCardActions {
-  align-self: flex-end;
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-top: auto;
+  margin-top: 0;
 }
 
 .nextStepCard .nextStepTodayAdd {
@@ -10236,13 +10235,26 @@ body:has([aria-modal="true"]) .toastStack {
 
 .nextStepCard .nextStepActionRegion {
   min-height: 0;
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content 28px;
+  align-items: center;
+  gap: 10px;
   border: 0;
-  padding: 0 0 0 3px;
+  padding: 0;
+}
+
+.nextStepTextRegion {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 3px;
+}
+
+.nextStepRowMeta {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .nextStepCard .nextStepActionRegion:hover,
@@ -10252,17 +10264,13 @@ body:has([aria-modal="true"]) .toastStack {
 }
 
 .nextStepCard .nextStepActionRegion p {
-  min-height: 31px;
-  display: -webkit-box;
-  margin: 9px 0 0;
-  overflow: hidden;
+  margin: 0;
+  overflow-wrap: anywhere;
   color: var(--text);
   font-size: var(--dashboard-font-body);
   font-weight: 650;
   line-height: 1.45;
   white-space: normal;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
 }
 
 .nextStepCard .nextStepActionRegion .projectNextStepPlaceholder {
@@ -10285,9 +10293,8 @@ body:has([aria-modal="true"]) .toastStack {
   --main-action-hover-bg: var(--surface-strong);
   --main-action-hover-border: rgba(231, 185, 77, 0.48);
   --main-action-hover-color: var(--accent-strong);
-  align-self: flex-end;
   min-height: 28px;
-  margin-top: auto;
+  margin-top: 0;
   padding-inline: 8px;
   border-color: var(--line-strong);
   background: rgba(255, 255, 255, 0.018);
@@ -10303,9 +10310,7 @@ body:has([aria-modal="true"]) .toastStack {
 }
 
 .nextStepCard .nextStepRegionMenu {
-  position: absolute;
-  top: 4px;
-  right: 4px;
+  position: static;
   width: 28px;
   height: 28px;
   border-color: transparent;
@@ -14246,20 +14251,23 @@ button.mainActionButton:is(
   color: var(--good);
 }
 
+/* P10-14: both labels share one cell and sit on the button's vertical center. */
 .copyButtonLabel {
   position: relative;
   display: inline-grid;
-  align-items: center;
+  place-items: center;
+  line-height: 1;
+}
+
+.copyButtonSizer,
+.copyButtonText {
+  grid-area: 1 / 1;
+  align-self: center;
+  white-space: nowrap;
 }
 
 .copyButtonSizer {
   visibility: hidden;
-  white-space: nowrap;
-}
-
-.copyButtonText {
-  grid-area: 1 / 1;
-  white-space: nowrap;
 }
 
 /* P10-12 (D15): key badges in the context menu and the row focus hint. */
@@ -14407,4 +14415,32 @@ button.mainActionButton:is(
 
 .segmentButton--active {
   background: transparent;
+}
+
+/* P10-14 (§4.1): the Do Now start buttons sit under the action text; 手順書 and 他の一手 at the right end. */
+.doNowContent--active {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 12px;
+}
+
+.doNowContent--active .doNowFooter {
+  justify-content: space-between;
+}
+
+.doNowContent--active .doNowActions {
+  justify-content: flex-start;
+}
+
+.doNowSecondaryActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+/* P10-14: keep the Do Now secondary buttons (手順書・他の一手) at the previous 38px height. */
+.doNowSecondaryActions .mainActionButton {
+  min-height: 38px;
 }

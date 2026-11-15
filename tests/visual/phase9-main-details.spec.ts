@@ -159,13 +159,17 @@ test("P9-09 the Next Step card menu has no 'manage Projects'; the Project menu s
   await card.getByRole("button", { name: `${PROJECT}の次の一手の操作` }).click();
   const menu = page.getByRole("menu");
   await expect(menu.getByRole("menuitem", { name: "プロジェクトを管理" })).toHaveCount(0);
-  await expect(menu.getByRole("menuitem")).toHaveText([
-    "プロジェクトを編集",
-    "次の一手を編集",
-    "別の行動に入れ替える",
-    "次の一手を未設定にする",
-    "プロジェクトを削除…",
-  ]);
+  await expect(menu.getByRole("menuitem")).toHaveCount(6);
+  for (const name of [
+    /プロジェクトを編集/,
+    /次の一手を編集/,
+    /別の行動に入れ替える/,
+    /次の一手を未設定にする/,
+    /今日の3件に入れる/,
+    /プロジェクトを削除/,
+  ]) {
+    await expect(menu.getByRole("menuitem", { name })).toBeVisible();
+  }
   await page.keyboard.press("Escape");
 
   await openWishlistSection(page);

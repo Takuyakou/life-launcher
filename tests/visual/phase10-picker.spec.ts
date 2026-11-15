@@ -257,3 +257,25 @@ test("P10-10 the Picker cannot be opened when Today3 is full", async ({ page }) 
   await expect(page.locator(".todayRow")).toHaveCount(3);
   await expect(page.getByRole("button", { name: "今日やるものを選ぶ", exact: true })).toHaveCount(0);
 });
+
+test("P10-10 決定 pressed twice in one task still saves once (P10-14)", async ({ page }) => {
+  const fixture = createPublicFixture();
+  fixture.config.today.items = fixture.config.today.items.slice(0, 1);
+  await prepare(page, fixture);
+  const dialog = await openPicker(page);
+  await addNextStepCandidate(dialog, "5分だけ体を動かす");
+  const before = await saveConfigCount(page);
+
+  await page.evaluate(() => {
+    const buttons = Array.from(document.querySelectorAll("button"));
+    const decide = buttons.find((button) => button.textContent?.trim() === "決定");
+    if (!decide) throw new Error("決定 was not found");
+    decide.click();
+    decide.click();
+  });
+
+  await expect(dialog).toHaveCount(0);
+  await expect.poll(() => saveConfigCount(page)).toBe(before + 1);
+  await page.waitForTimeout(300);
+  expect(await saveConfigCount(page)).toBe(before + 1);
+});

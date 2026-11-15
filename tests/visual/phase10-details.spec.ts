@@ -1,6 +1,6 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import type { AppConfig } from "../../src/types";
-import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
+import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 
 type QaControl = {
@@ -14,15 +14,19 @@ type QaWindow = Window & { __LIFE_LAUNCHER_VISUAL_QA__: QaControl };
 
 test.use({ reducedMotion: "no-preference" });
 
-async function prepare(page: Page) {
+async function prepare(page: Page, fixture: VisualQaFixture = createPublicFixture()) {
   await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
   await page.setViewportSize({ width: 1280, height: 900 });
-  await installTauriMock(page, createPublicFixture(), "main");
+  await installTauriMock(page, fixture, "main");
   await page.goto("/");
-  await expect(page.locator(".todayRow").first()).toBeVisible();
+  await expect(page.locator(".mainScrollContent")).toBeVisible();
   const disclosure = page.locator(".inboxBand .disclosure");
-  if ((await disclosure.getAttribute("aria-expanded")) !== "true") await disclosure.click();
-  await expect(page.locator(".inboxRow").first()).toBeVisible();
+  if (
+    (await disclosure.count()) > 0 &&
+    (await disclosure.getAttribute("aria-expanded")) !== "true"
+  ) {
+    await disclosure.click();
+  }
 }
 
 async function config(page: Page): Promise<AppConfig> {
@@ -157,7 +161,12 @@ test("P10-12 the context menu shows only the key badges that work, and T adds to
   await expect(menu).toBeVisible();
   await expect(menu.getByRole("menuitem", { name: /次の一手を編集/ })).toContainText("F2");
   await expect(menu.getByRole("menuitem", { name: /今日の3件に入れる/ })).toContainText("T");
-  await expect(menu.getByRole("menuitem", { name: /プロジェクトを削除/ })).toContainText("Delete");
+  await expect(menu.getByRole("menuitem", { name: /次の一手を未設定にする/ })).toContainText(
+    "Delete",
+  );
+  await expect(menu.getByRole("menuitem", { name: /プロジェクトを削除/ })).not.toContainText(
+    "Delete",
+  );
   await expect(menu.getByRole("menuitem", { name: "別の行動に入れ替える" })).not.toContainText(
     "F2",
   );
@@ -293,4 +302,96 @@ test("P10-12 the records faces follow the chosen tab and scope", async ({ page }
   await expect(
     view.getByRole("tab", { name: "ふりかえり" }).locator(".recordsTabFace"),
   ).toHaveCount(0);
+});
+
+test("P10-14 Delete on a Next Step row clears the step, not the Project", async ({ page }) => {
+  await prepare(page);
+  const row = page.locator(".nextStepRow").filter({ hasText: "ストレッチ" });
+  await row.focus();
+  await page.keyboard.press("Delete");
+
+  const confirm = page.getByRole("dialog").filter({ hasText: "次の一手を未設定にしますか？" });
+  await expect(confirm).toBeVisible();
+  await expect(page.getByRole("dialog").filter({ hasText: "プロジェクトを削除" })).toHaveCount(0);
+
+  await confirm.getByRole("button", { name: "やりたいことへ戻す" }).click();
+  await expect(confirm).toHaveCount(0);
+  await expect
+    .poll(async () => {
+      const saved = await config(page);
+      return (saved.projects.find((project) => project.name === "ストレッチ")?.nextStep?.text ?? "").trim();
+    })
+    .toBe("");
+});
+
+test("P10-14 Enter and the 5分 button use the card's expandTimerOnStart", async ({ page }) => {
+  const fixture = createPublicFixture();
+  const item = fixture.config.today.items.find((entry) => !entry.done)!;
+  item.expandTimerOnStart = true;
+  fixture.config.projects = fixture.config.projects.map((project) =>
+    project.nextStep
+      ? { ...project, nextStep: { ...project.nextStep, expandTimerOnStart: false } }
+      : project,
+  );
+  await prepare(page, fixture);
+  const expanded = page.getByRole("dialog", { name: "拡大タイマー" });
+
+  const card = page.locator(".todayRow").filter({ hasText: item.text });
+  await card.focus();
+  await page.keyboard.press("Enter");
+  await expect(expanded).toBeVisible();
+  await page.reload();
+  await expect(page.locator(".todayRow").filter({ hasText: item.text })).toBeVisible();
+
+  await page
+    .locator(".todayRow")
+    .filter({ hasText: item.text })
+    .getByRole("button", { name: /短時間タイマー.+分で開始/ })
+    .click();
+  await expect(expanded).toBeVisible();
+});
+
+test("P10-14 the copy button label sits on the button's vertical center", async ({ page }) => {
+  const fixture = createPublicFixture();
+  fixture.config.projects = [];
+  fixture.config.inbox = [];
+  fixture.config.today.items = [];
+  delete fixture.config.settings.firstRunDoneAt;
+  await prepare(page, fixture);
+  const firstRunButton = page.locator(".firstRunImport .copyButton");
+  await expect(firstRunButton).toBeVisible();
+  const offset = await firstRunButton.evaluate((button) => {
+    const label = button.querySelector<HTMLElement>(".copyButtonText");
+    if (!label) throw new Error("label not found");
+    const box = button.getBoundingClientRect();
+    const labelBox = label.getBoundingClientRect();
+    return Math.abs(box.y + box.height / 2 - (labelBox.y + labelBox.height / 2));
+  });
+  expect(offset).toBeLessThanOrEqual(2);
+});
+
+test("P10-14 the import and guide copy buttons are centered too", async ({ page }) => {
+  await prepare(page);
+  const check = async (button: Locator) => {
+    await expect(button).toBeVisible();
+    const offset = await button.evaluate((element) => {
+      const label = element.querySelector<HTMLElement>(".copyButtonText");
+      if (!label) throw new Error("label not found");
+      const box = element.getBoundingClientRect();
+      const labelBox = label.getBoundingClientRect();
+      return Math.abs(box.y + box.height / 2 - (labelBox.y + labelBox.height / 2));
+    });
+    expect(offset).toBeLessThanOrEqual(2);
+  };
+
+  await page.getByRole("button", { name: "次の一手の操作" }).first().click();
+  await page.getByRole("menuitem", { name: "まとめて取り込む" }).click();
+  const importDialog = page.getByRole("dialog", { name: "まとめて取り込む" });
+  await check(importDialog.locator(".importPromptActions .copyButton").first());
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "設定を開く" }).click();
+  await page.getByRole("button", { name: "使い方を開く" }).click();
+  const help = page.getByRole("dialog", { name: "使い方" });
+  await check(help.locator(".helpGuideCodeBlock .copyButton").first());
 });

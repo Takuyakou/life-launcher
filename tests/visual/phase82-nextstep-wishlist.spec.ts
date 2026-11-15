@@ -464,13 +464,17 @@ test("Phase 8.4 NextStep menu offers edit, change and unset without legacy regis
 
   await row.getByRole("button", { name: "サンプル学習の次の一手の操作" }).click();
   const menu = page.getByRole("menu");
-  await expect(menu.getByRole("menuitem")).toHaveText([
-    "プロジェクトを編集",
-    "次の一手を編集",
-    "別の行動に入れ替える",
-    "次の一手を未設定にする",
-    "プロジェクトを削除…",
-  ]);
+  await expect(menu.getByRole("menuitem")).toHaveCount(6);
+  for (const name of [
+    /プロジェクトを編集/,
+    /次の一手を編集/,
+    /別の行動に入れ替える/,
+    /次の一手を未設定にする/,
+    /今日の3件に入れる/,
+    /プロジェクトを削除/,
+  ]) {
+    await expect(menu.getByRole("menuitem", { name })).toBeVisible();
+  }
   await menu.getByRole("menuitem", { name: "次の一手を未設定にする" }).click();
   const dialog = page.getByRole("dialog", { name: "次の一手を未設定にしますか？" });
   await expect(dialog.getByRole("button")).toHaveText([
@@ -578,7 +582,8 @@ test("v1.3 NextStep uses a compact 3x2 grid with aligned actions and six-item ex
   await expect(unsetPlaceholder).toBeVisible();
   const placeholderBox = await unsetPlaceholder.boundingBox();
   expect(placeholderBox).not.toBeNull();
-  expect(placeholderBox!.y + placeholderBox!.height).toBeLessThanOrEqual(unsetBox.y + 1);
+  // P10-14 (§4.4): the placeholder and the set button sit on one horizontal line.
+  expect(placeholderBox!.x + placeholderBox!.width).toBeLessThanOrEqual(unsetBox.x + 1);
   // P10-05 (§4.4): rows are one per Project and grow with their own text, so the bottoms no
   // longer line up across cards. The placeholder still sits inside its own card.
   expect(configuredBox.height).toBeGreaterThan(0);

@@ -268,3 +268,34 @@ test("P10-05 the freshness notice follows the 14 day rule and the clock", async 
   });
   await expect(page.locator(".nextStepFreshness")).toHaveCount(0);
 });
+
+test("P10-14 Next Step rows are one horizontal line and grow with the text", async ({ page }) => {
+  const fixture = createFullTodayFixture();
+  await open(page, fixture);
+
+  const shortRow = page.locator(".projectGrid .nextStepCard").filter({ hasText: "資料を1ページ読む" });
+  const shortBox = (await shortRow.boundingBox())!;
+  expect(shortBox.height).toBeLessThanOrEqual(72);
+
+  const nameBox = (await shortRow.locator(".nextStepProjectRegion h3").boundingBox())!;
+  const textBox = (await shortRow.locator(".nextStepActionRegion p").boundingBox())!;
+  expect(Math.abs(nameBox.y - textBox.y)).toBeLessThanOrEqual(8);
+
+  const longFixture = createFullTodayFixture();
+  const longText = "とても長い次の一手の文がここに入ります。".repeat(6);
+  longFixture.config.projects = longFixture.config.projects.map((project) =>
+    project.nextStep ? { ...project, nextStep: { ...project.nextStep, text: longText } } : project,
+  );
+  await open(page, longFixture);
+  const longRow = page
+    .locator(".projectGrid .nextStepCard")
+    .filter({ hasText: "とても長い次の一手の文" })
+    .first();
+  const longBox = (await longRow.boundingBox())!;
+  expect(longBox.height).toBeGreaterThan(72);
+  const clipped = await longRow.evaluate((element) => {
+    const text = element.querySelector("p");
+    return text ? text.scrollHeight > text.clientHeight + 1 : false;
+  });
+  expect(clipped).toBe(false);
+});

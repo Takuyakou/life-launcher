@@ -145,6 +145,9 @@ for (const size of ["standard", "large", "xlarge"] as const) {
 
 test("the wishlist section keeps the new layout", async ({ page }) => {
   await prepare(page);
+  // Keep hover and focus away from the rows so the shot does not depend on the previous test.
+  await page.mouse.move(0, 0);
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   await expect(page.locator(".inboxBand")).toHaveScreenshot("phase97-wishlist-layout.png", {
     maxDiffPixels: 12,
   });
@@ -193,6 +196,8 @@ test("dragging a group after 未分類 keeps 未分類 last on screen", async ({
   const unassignedHeader = page.locator(
     '[data-wishlist-group="unassigned"] .wishlistGroupHeader',
   );
+  await learningHeader.scrollIntoViewIfNeeded();
+  await unassignedHeader.scrollIntoViewIfNeeded();
   await learningHeader.scrollIntoViewIfNeeded();
   const from = (await learningHeader.boundingBox())!;
   const to = (await unassignedHeader.boundingBox())!;
