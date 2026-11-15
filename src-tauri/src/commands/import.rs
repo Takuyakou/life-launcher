@@ -548,6 +548,7 @@ fn build_next_step(parsed: ParsedNextStep) -> NextStepV3 {
     NextStepV3 {
         text: parsed.text,
         generation_id: Some(new_id("generation")),
+        source_wishlist_id: None,
         trigger: parsed.trigger,
         updated_at: Some(now_iso()),
         reviewed_at: Some(now_iso()),
@@ -1014,6 +1015,7 @@ mod tests {
             next_step: Some(NextStepV3 {
                 text: "今の一手".to_string(),
                 generation_id: None,
+                source_wishlist_id: None,
                 trigger: None,
                 updated_at: None,
                 reviewed_at: None,

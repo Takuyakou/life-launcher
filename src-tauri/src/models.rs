@@ -109,6 +109,8 @@ pub struct NextStepV3 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub generation_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_wishlist_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub trigger: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub updated_at: Option<String>,
@@ -219,6 +221,7 @@ impl From<LegacyProjectV2> for ProjectV3 {
         let next_step = has_step.then(|| NextStepV3 {
             text: next_step,
             generation_id: None,
+            source_wishlist_id: None,
             trigger: next_step_trigger,
             updated_at: next_step_updated_at,
             reviewed_at: next_step_reviewed_at,
@@ -917,6 +920,7 @@ pub fn sample_config() -> AppConfig {
                 next_step: Some(NextStepV3 {
                     text: "資料を1ページ読む".to_string(),
                     generation_id: None,
+                    source_wishlist_id: None,
                     trigger: None,
                     updated_at: None,
                     reviewed_at: None,
@@ -939,6 +943,7 @@ pub fn sample_config() -> AppConfig {
                 next_step: Some(NextStepV3 {
                     text: "サンプルフォルダを開く".to_string(),
                     generation_id: None,
+                    source_wishlist_id: None,
                     trigger: None,
                     updated_at: None,
                     reviewed_at: None,

@@ -2021,6 +2021,7 @@ pub(crate) fn config_schema_json() -> &'static str {
       "properties": {
         "text": { "type": "string" },
         "generationId": { "type": "string", "minLength": 1 },
+        "sourceWishlistId": { "type": "string", "minLength": 1 },
         "trigger": { "type": "string", "minLength": 1, "maxLength": 40 },
         "updatedAt": { "type": "string", "format": "date-time" },
         "reviewedAt": { "type": "string", "format": "date-time" },
@@ -2030,6 +2031,7 @@ pub(crate) fn config_schema_json() -> &'static str {
         },
         "defaultTimerMinutes": { "type": "integer", "minimum": 1, "maximum": 240 },
         "shortTimerMinutes": { "type": "integer", "minimum": 1, "maximum": 240 },
+        "expandTimerOnStart": { "type": "boolean" },
         "startNoteTemplate": { "type": "string" },
         "instructionPath": {
           "type": "string",
@@ -2049,6 +2051,7 @@ pub(crate) fn config_schema_json() -> &'static str {
         },
         "defaultTimerMinutes": { "type": "integer", "minimum": 1, "maximum": 240 },
         "shortTimerMinutes": { "type": "integer", "minimum": 1, "maximum": 240 },
+        "expandTimerOnStart": { "type": "boolean" },
         "startNoteTemplate": { "type": "string" },
         "instructionPath": {
           "type": "string",
@@ -2330,6 +2333,14 @@ fn trim_empty_projects(
                 changed,
                 warnings,
             );
+            if next_step
+                .source_wishlist_id
+                .as_deref()
+                .is_some_and(|value| value.trim().is_empty())
+            {
+                next_step.source_wishlist_id = None;
+                *changed = true;
+            }
             normalize_project_timestamp(&mut next_step.updated_at, changed);
             normalize_project_timestamp(&mut next_step.reviewed_at, changed);
             if next_step.updated_at.is_none() && next_step.reviewed_at.is_none() {
@@ -2963,6 +2974,140 @@ mod tests {
             .expect("project required fields")
             .iter()
             .all(|field| field != "northStar" && field != "weeklyFocus" && field != "nextStep"));
+    }
+
+    #[test]
+    fn generated_config_schema_has_source_wishlist_id_and_expand_timer_on_start() {
+        let schema: serde_json::Value =
+            serde_json::from_str(config_schema_json()).expect("config schema must be valid JSON");
+        let next_step = &schema["$defs"]["nextStep"]["properties"];
+        assert_eq!(
+            next_step["sourceWishlistId"],
+            serde_json::json!({ "type": "string", "minLength": 1 })
+        );
+        assert_eq!(
+            next_step["expandTimerOnStart"],
+            serde_json::json!({ "type": "boolean" })
+        );
+        assert_eq!(
+            schema["$defs"]["nextStepExecutionSettings"]["properties"]["expandTimerOnStart"],
+            serde_json::json!({ "type": "boolean" })
+        );
+        assert_eq!(
+            schema["$defs"]["nextStep"]["additionalProperties"], false,
+            "nextStep must keep rejecting unknown keys"
+        );
+        assert_eq!(
+            schema["$defs"]["nextStepExecutionSettings"]["additionalProperties"], false,
+            "nextStepExecutionSettings must keep rejecting unknown keys"
+        );
+    }
+
+    fn config_json_with_source_wishlist_id(value: Option<&str>) -> serde_json::Value {
+        let mut json =
+            serde_json::to_value(sample_config()).expect("sample config must serialize to JSON");
+        let next_step = json["projects"][0]["nextStep"]
+            .as_object_mut()
+            .expect("sample project must have a next step");
+        match value {
+            Some(value) => {
+                next_step.insert(
+                    "sourceWishlistId".to_string(),
+                    serde_json::Value::String(value.to_string()),
+                );
+            }
+            None => {
+                next_step.remove("sourceWishlistId");
+            }
+        }
+        json
+    }
+
+    #[test]
+    fn source_wishlist_id_survives_a_read_sanitize_and_write_round_trip() {
+        let json = config_json_with_source_wishlist_id(Some("wish-list-1"));
+        let config: AppConfig =
+            serde_json::from_value(json).expect("config with sourceWishlistId must deserialize");
+        assert_eq!(
+            config.projects[0]
+                .next_step
+                .as_ref()
+                .and_then(|step| step.source_wishlist_id.as_deref()),
+            Some("wish-list-1")
+        );
+
+        let (config, _changed, _warnings) = sanitize_config(config);
+        let written = serde_json::to_value(&config).expect("config must serialize");
+        assert_eq!(
+            written["projects"][0]["nextStep"]["sourceWishlistId"],
+            serde_json::json!("wish-list-1")
+        );
+    }
+
+    #[test]
+    fn source_wishlist_id_is_omitted_when_absent() {
+        let json = config_json_with_source_wishlist_id(None);
+        let config: AppConfig =
+            serde_json::from_value(json).expect("config without sourceWishlistId must deserialize");
+        assert_eq!(
+            config.projects[0]
+                .next_step
+                .as_ref()
+                .and_then(|step| step.source_wishlist_id.clone()),
+            None
+        );
+
+        let (config, _changed, _warnings) = sanitize_config(config);
+        let written = serde_json::to_value(&config).expect("config must serialize");
+        assert!(
+            written["projects"][0]["nextStep"]
+                .get("sourceWishlistId")
+                .is_none(),
+            "sourceWishlistId must not be written when it is absent"
+        );
+    }
+
+    #[test]
+    fn source_wishlist_id_is_removed_when_empty() {
+        for value in ["", "   "] {
+            let json = config_json_with_source_wishlist_id(Some(value));
+            let config: AppConfig =
+                serde_json::from_value(json).expect("config with empty sourceWishlistId");
+            let (config, changed, _warnings) = sanitize_config(config);
+            assert!(changed, "empty sourceWishlistId must count as a change");
+            assert_eq!(
+                config.projects[0]
+                    .next_step
+                    .as_ref()
+                    .and_then(|step| step.source_wishlist_id.clone()),
+                None
+            );
+            let written = serde_json::to_value(&config).expect("config must serialize");
+            assert!(
+                written["projects"][0]["nextStep"]
+                    .get("sourceWishlistId")
+                    .is_none(),
+                "empty sourceWishlistId must not be written"
+            );
+        }
+    }
+
+    #[test]
+    fn source_wishlist_id_stays_when_the_wishlist_item_is_gone() {
+        let json = config_json_with_source_wishlist_id(Some("missing-wish"));
+        let config: AppConfig = serde_json::from_value(json).expect("config must deserialize");
+        assert!(config
+            .inbox
+            .iter()
+            .all(|item| item.id.as_deref() != Some("missing-wish")));
+
+        let (config, _changed, _warnings) = sanitize_config(config);
+        let written = serde_json::to_value(&config).expect("config must serialize");
+        assert_eq!(
+            written["projects"][0]["nextStep"]["sourceWishlistId"],
+            serde_json::json!("missing-wish"),
+            "an unknown wishlist id must not be dropped"
+        );
     }
 
     #[test]
