@@ -2219,68 +2219,85 @@ button.instructionTreeDisclosure:hover {
   width: 100%;
   height: 100%;
   min-height: 0;
-  align-content: center;
-  gap: 4px;
-  padding: 8px 12px;
+  align-content: stretch;
+  gap: 0;
+  padding: 0;
   overflow: hidden;
-  background: #1c1a16;
+  background: #0f0e0c;
   color: var(--text);
   cursor: move;
 }
 
+/* P10-14d N1: one 352×84 line replaces the old heading and the two framed buttons. */
 .miniTopline {
   display: flex;
-  min-height: 20px;
+  min-width: 0;
   align-items: center;
-  justify-content: space-between;
-  color: var(--muted);
+  gap: 10px;
+  padding: 0 14px;
+  color: var(--text);
   font-size: 11px;
   font-weight: 700;
 }
 
-.miniToplineActions {
+.miniTimerText {
   display: flex;
-  gap: 4px;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.miniExpandButton {
+.miniTimerText--idle {
+  gap: 3px;
+}
+
+.miniIdleHead {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.miniIconButton {
   display: grid;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
   padding: 0;
-  border: 1px solid var(--line);
-  border-radius: 5px;
+  border: 1px solid transparent;
+  border-radius: 8px;
   place-items: center;
-  background: var(--surface);
+  background: transparent;
   color: var(--text);
   cursor: pointer;
-  font-size: 15px;
-  line-height: 1;
 }
 
-.miniExpandButton:hover {
-  border-color: var(--accent);
+.miniIconButton:hover {
   background: var(--surface-strong);
 }
 
-.miniCloseButton {
-  display: grid;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: 1px solid rgba(240, 111, 104, 0.55);
-  border-radius: 5px;
-  place-items: center;
-  background: rgba(178, 78, 64, 0.18);
-  color: var(--text);
-  cursor: pointer;
-  font-size: 15px;
-  line-height: 1;
+.miniIconButton:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
 }
 
-.miniCloseButton:hover {
+.miniIconButton--finish {
+  border-color: rgba(240, 111, 104, 0.45);
+  color: var(--error);
+}
+
+.miniIconButton--finish:hover {
   border-color: var(--error);
-  background: rgba(178, 78, 64, 0.3);
+  background: rgba(240, 111, 104, 0.14);
+}
+
+.miniIconButton--expand {
+  color: var(--muted);
+}
+
+.miniIconButton--expand:hover {
+  color: var(--text);
 }
 
 .miniQuietText {
@@ -2731,63 +2748,110 @@ h3 {
 
 .timerPanel--mini {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-rows: 20px 30px 3px 28px;
+  width: 100%;
+  height: 100%;
+  grid-template-rows: 2px minmax(0, 1fr);
   grid-template-areas:
-    "meta state"
-    "clock clock"
-    "progress progress"
-    "controls controls";
+    "progress"
+    "line";
   min-width: 0;
   min-height: 0;
-  gap: 4px 8px;
-}
-
-.timerPanel--mini .timerMeta {
-  grid-area: meta;
-  min-width: 0;
   gap: 0;
-}
-
-.timerPanel--mini .timerStateRow {
-  grid-area: state;
-  justify-self: end;
-  min-width: 0;
-}
-
-.timerPanel--mini .timerMeta strong {
-  min-height: 0;
-  font-size: 13px;
-}
-
-.timerPanel--mini .timerClock {
-  grid-area: clock;
-  font-size: 30px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
 }
 
 .timerPanel--mini .timerProgress {
   grid-area: progress;
+  height: 2px;
+  border-radius: 0;
 }
 
-.timerPanel--mini .timerControls {
-  display: flex;
-  gap: 7px;
-  grid-area: controls;
-  min-width: 0;
+.timerPanel--mini .timerProgress span {
+  border-radius: 0;
 }
 
-.timerPanel--mini > .miniQuietText {
-  grid-area: controls;
-  min-width: 0;
+.timerPanel--mini .miniTopline {
+  grid-area: line;
+}
+
+.timerPanel--mini .miniTimerText {
   overflow: hidden;
+}
+
+.timerPanel--mini .timerMeta {
+  display: inline;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.timerPanel--mini .projectIdentity {
+  color: var(--project-color, var(--accent));
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.timerPanel--mini .projectIdentityDot {
+  width: 8px;
+  height: 8px;
+  box-shadow: none;
+}
+
+.timerPanel--mini .timerActionText {
+  display: block;
+  overflow: hidden;
+  min-width: 0;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.timerPanel--mini .timerControls .secondaryButton {
-  min-height: 28px;
-  padding: 5px 10px;
+.timerPanel--mini .timerClock {
+  flex: 0 0 auto;
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.timerPanel--mini .timerControls {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 6px;
+  min-width: 0;
+}
+
+.timerPanel--mini .timerStateBadge {
+  min-height: 18px;
+  padding-block: 0;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.timerPanel--mini .timerStateBadge.visuallyHidden {
+  inset: 0 auto auto 0;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.timerPanel--mini .miniQuietText {
+  overflow: hidden;
+  min-width: 0;
+  color: var(--muted);
   font-size: 12px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .timerMeta {
@@ -12517,67 +12581,18 @@ button.mainActionButton:is(
   overflow-wrap: anywhere;
 }
 
+/* P10-14d N1: active mini keeps the same 2px line and one content row. */
 .timerPanel--mini.timerPanel--active {
-  grid-template-rows: 18px 17px 26px 3px 26px;
+  grid-template-rows: 2px minmax(0, 1fr);
   grid-template-areas:
-    "identity state"
-    "action action"
-    "clock clock"
-    "progress progress"
-    "controls controls";
-  gap: 1px 8px;
+    "progress"
+    "line";
 }
 
-.timerPanel--mini.timerPanel--active .timerMeta {
-  display: contents;
-}
-
-.timerPanel--mini.timerPanel--active .timerMeta > span:not(.projectIdentity) {
-  display: none;
-}
-
-.timerPanel--mini.timerPanel--active .timerMeta > .projectIdentity {
-  grid-area: identity;
-  min-height: 0;
-}
-
-.timerPanel--mini.timerPanel--active .timerMeta > strong.timerActionText {
-  display: block;
-  grid-area: action;
-  min-height: 0;
-  font-size: 14px;
-  line-height: 17px;
-  white-space: nowrap;
-}
-
-.timerPanel--mini.timerPanel--active .timerStateRow {
-  display: flex;
-  align-items: center;
-  min-height: 0;
-}
-
-.timerPanel--mini.timerPanel--active .timerStateBadge {
-  min-height: 18px;
-  padding-block: 0;
-  line-height: 1;
-  font-size: 11px;
-}
-
-.timerPanel--mini.timerPanel--active .timerClock {
-  font-size: 26px;
-}
-
-.timerPanel--mini.timerPanel--active .timerControls .secondaryButton {
-  min-height: 26px;
-  padding-block: 3px;
-}
-
-/* P9-03: the idle mini is a heading, a "waiting" badge and a hint. */
+/* P9-03/P10-14d N1: the idle mini is a heading row plus one small hint line. */
 .timerPanel--mini.timerPanel--idle {
-  grid-template-rows: 20px 28px;
-  grid-template-areas:
-    "meta state"
-    "controls controls";
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "line";
 }
 
 /*
@@ -13700,24 +13715,12 @@ button.mainActionButton:is(
   font-weight: 700;
 }
 
-/* P10-08 (§7.3): the mini window keeps its size; the text is one truncated line. */
-.timerPanel--mini .timerProgress--mini {
-  margin: -2px 0 6px;
-}
-
 .timerMetaMiniHead {
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   width: 100%;
-}
-
-.timerPanel--mini .timerActionText {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* P10-10 (§6.1): the Picker is candidates on the left, numbered Today3 slots on the right. */
@@ -14443,4 +14446,872 @@ button.mainActionButton:is(
 /* P10-14: keep the Do Now secondary buttons (手順書・他の一手) at the previous 38px height. */
 .doNowSecondaryActions .mainActionButton {
   min-height: 38px;
+}
+
+/* P10-14d (M1): date and the victory band share one row at the top of the main content. */
+.topTitle--main {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.mainHeaderRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+}
+
+.mainHeaderDate {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.mainDateText {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.mainDateWeekday {
+  color: #a39c8e;
+  font-size: 13px;
+}
+
+.mainHeaderRow .victoryBar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 320px;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-height: 44px;
+  margin: 0;
+  border: 1px solid rgba(231, 185, 77, 0.5);
+  border-radius: 10px;
+  padding: 6px 14px;
+  background: rgba(231, 185, 77, 0.06);
+}
+
+.mainHeaderRow .victoryBar .victoryIcon {
+  order: 0;
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent-strong);
+}
+
+.mainHeaderRow .victoryLabel {
+  order: 1;
+  color: var(--accent-strong);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.mainHeaderRow .victoryContent {
+  order: 2;
+  flex: 1 1 120px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mainHeaderRow .victoryTextButton {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 700;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mainHeaderRow .victoryTextButton--empty {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.mainHeaderRow .victoryCheck {
+  order: 3;
+  width: 20px;
+  height: 20px;
+  margin-left: auto;
+}
+
+.mainHeaderRow .victoryInput {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.mainHeaderRow .victorySuggestions {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 14px;
+  z-index: 5;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  background: var(--surface-strong);
+}
+
+.mainHeaderRow .victoryBadge {
+  order: 4;
+  font-size: 12px;
+}
+
+.mainHeaderRow .victoryRewardSweep {
+  border-radius: 10px;
+}
+
+/* P10-14d (M2): the Do Now box, its three content rows and the chip row. */
+.doNowContent {
+  gap: 18px;
+  border: 1px solid #4a4639;
+  border-radius: 14px;
+  padding: 28px 32px 30px;
+  background: #211f1a;
+}
+
+.doNowContent[data-project-color],
+.doNowContent[data-project-color]:hover {
+  border: 1px solid #4a4639;
+  padding-left: 32px;
+  padding-right: 32px;
+  background: #211f1a;
+}
+
+.doNowContent:hover {
+  border-color: #4a4639;
+  transform: none;
+}
+
+.doNowCopy {
+  gap: 18px;
+  padding-inline-start: 0;
+}
+
+.doNowKicker {
+  gap: 10px;
+}
+
+.doNowStatusDot {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--project-color, #70a7ff);
+}
+
+.doNowKicker h2 {
+  color: #70a7ff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.doNowProjectChip {
+  border: 1px solid #4a4639;
+  border-radius: 999px;
+  padding: 2px 10px;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.doNowReason {
+  margin-left: auto;
+  color: #a39c8e;
+  font-size: 12px;
+}
+
+.doNowCopy > strong {
+  font-size: 32px;
+  line-height: 1.35;
+}
+
+.doNowMeta {
+  gap: 8px 14px;
+  color: #b8b0a0;
+  font-size: 13px;
+}
+
+.doNowMetaLabel {
+  color: #b8b0a0;
+  font-size: 13px;
+}
+
+.doNowDivider {
+  width: 1px;
+  height: 14px;
+  background: #4a4639;
+}
+
+.doNowOpenChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 10px;
+  background: #2b2922;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.doNowOpenChip--button:hover,
+.doNowOpenChip--button:focus-visible {
+  background: var(--surface-strong);
+}
+
+.doNowContent--active .doNowActions {
+  gap: 10px;
+}
+
+.doNowActions .doNowStartPrimary,
+.doNowActions .doNowStartSecondary {
+  width: auto;
+  min-width: 0;
+  height: 48px;
+  min-height: 48px;
+  gap: 10px;
+}
+
+.doNowActions .doNowStartPrimary {
+  padding: 0 26px 0 22px;
+  font-size: 15px;
+}
+
+.doNowActions .doNowStartSecondary {
+  padding: 0 22px 0 18px;
+  font-size: 15px;
+}
+
+.doNowActions .doNowStartPrimary .timerStartDuration,
+.doNowActions .doNowStartSecondary .timerStartDuration {
+  position: static;
+  display: inline-flex;
+  transform: none;
+  font-size: inherit;
+}
+
+.doNowActions .doNowStartPrimary .timerStartHoverGlyph,
+.doNowActions .doNowStartSecondary .timerStartHoverGlyph {
+  position: static;
+  display: inline-flex;
+  transform: none;
+  opacity: 1;
+}
+
+.doNowMeasureButton {
+  height: 48px;
+  font-size: 14px;
+}
+
+/* P10-14d (M3): the main content is capped at 1200px and centered. */
+.mainScrollContent {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* P10-14d (M4): the four section headers lose their frame; the arrow and the toggle stay. */
+.todaySectionBar,
+.disclosureHeader {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.todaySectionBar .todaySectionDisclosure h2,
+.disclosureHeader .disclosure strong {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.todaySectionBar .todaySectionDisclosure,
+.disclosureHeader .disclosure {
+  font-size: 15px;
+}
+
+.todaySectionBar .todayCompletedCount,
+.todaySectionBar .todaySectionDescription,
+.disclosureHeader .disclosureCount,
+.disclosureHeader .disclosureDescription {
+  color: #a39c8e;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+/* P10-14d (M5): the Next Step row's text sizes; 編集 shows on hover/focus only. */
+.nextStepCard .nextStepProjectRegion h3 .projectIdentity {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.nextStepCard .nextStepActionRegion p {
+  font-size: 14px;
+}
+
+.nextStepCard .nextStepRowAction--change {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.nextStepCard:hover .nextStepRowAction--change,
+.nextStepCard:focus-within .nextStepRowAction--change {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .nextStepCard .nextStepRowAction--change {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nextStepCard .nextStepRowAction--change {
+    transition: none;
+  }
+}
+
+/* P10-14d (M6): sidebar buttons are frameless rows with a 22px letter/icon square. */
+.quickButton {
+  border: 0;
+  border-radius: 8px;
+  padding: 0 6px;
+  background: transparent;
+  gap: 10px;
+  min-height: 34px;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.quickButton:hover,
+.quickButton:focus-visible {
+  border: 0;
+  background: var(--control-neutral-hover-bg);
+}
+
+.quickButton .quickButtonIcon,
+.quickButton .quickButtonInitial {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  border-radius: 5px;
+}
+
+.quickButton .quickButtonIcon img {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  object-fit: cover;
+}
+
+.quickGroupHeader {
+  font-size: 12px;
+  font-weight: 700;
+  color: #a39c8e;
+}
+
+.quickGroupHeader small {
+  margin-left: auto;
+  color: #a39c8e;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+/* P10-14d (C1): menu text 13px, key hints as gray text, danger items red. */
+.contextMenu {
+  padding: 6px;
+}
+
+.contextMenu button {
+  min-height: 34px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.contextMenuShortcut {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #a39c8e;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.contextMenuDanger,
+.contextMenu button.contextMenuDanger {
+  color: #f06f68;
+}
+
+.contextMenuDanger:hover:not(:disabled),
+.contextMenuDanger:focus-visible,
+.contextMenu button.contextMenuDanger:hover:not(:disabled),
+.contextMenu button.contextMenuDanger:focus-visible {
+  background: var(--control-danger-hover-bg) !important;
+  color: #ffd0cb !important;
+}
+
+/* P10-14d (M6) follow-up: make sure the frame is gone and the name is 14px. */
+.quickButton {
+  border: 0 !important;
+  background: transparent !important;
+  border-radius: 8px !important;
+  min-height: 34px;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 10px;
+  padding: 0 6px;
+}
+
+.quickButton:hover,
+.quickButton:focus-visible {
+  border: 0 !important;
+  background: var(--control-neutral-hover-bg) !important;
+}
+
+.quickButton span:last-child {
+  font-size: 14px;
+}
+
+.quickButton .quickIcon {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.quickButton .quickIcon img {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  object-fit: cover;
+}
+
+.quickButton .quickIcon svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* P10-14d (K1): one yellow ring (2px #ffce5b, 2px outside) for keyboard focus. */
+:where(button, a[href], [tabindex="0"]):focus-visible {
+  outline: 2px solid #ffce5b;
+  outline-offset: 2px;
+}
+
+/* P10-14d (R1): the expanded timer header is the app mark + "Life Launcher" + the
+   state badge on the left, and text-only 戻る / ミニ buttons on the right. The DOM
+   order stays ミニ → 戻る (the existing Tab / Shift+Tab path); row-reverse puts
+   戻る on the left on screen. The window buttons keep their own fixed band on the
+   right, so the header's padding-right reserve stays untouched. */
+.expandedTimerBrand {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 10px;
+}
+
+.expandedTimerLogo {
+  display: block;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  border-radius: 6px;
+}
+
+.expandedTimerBrandName {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.expandedTimerHeaderActions {
+  flex-direction: row-reverse;
+  gap: 0;
+}
+
+.expandedTimerHeader .expandedTimerClose,
+.expandedTimerHeader .expandedTimerMiniButton {
+  display: inline-flex;
+  width: auto;
+  min-width: 0;
+  height: 40px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #b8b0a0;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.expandedTimerHeader .expandedTimerClose:hover,
+.expandedTimerHeader .expandedTimerClose:focus-visible,
+.expandedTimerHeader .expandedTimerMiniButton:hover,
+.expandedTimerHeader .expandedTimerMiniButton:focus-visible {
+  border-color: transparent;
+  background: transparent;
+  color: var(--accent-strong);
+}
+
+/* The project name in the identity reuses the dot's --project-color. */
+.expandedTimerIdentity .projectIdentity,
+.expandedTimerIdentity .projectIdentityName {
+  color: var(--project-color, var(--text));
+}
+
+/* P10-14d (P1): the picker's two source groups stack; no tabs. */
+.todayPickerSource {
+  gap: 14px;
+}
+
+.todayPickerSourceGroup {
+  display: grid;
+  gap: 8px;
+}
+
+.todayPickerSourceGroup + .todayPickerSourceGroup {
+  border-top: 1px solid var(--line-soft);
+  padding-top: 14px;
+}
+
+.todayPickerSourceGroup .todayPickerPanelHeading strong {
+  color: #a39c8e;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.todayPickerSourceGroup .todayPickerPanelHeading span {
+  color: #a39c8e;
+  font-size: 12px;
+}
+
+/* P10-14d (P2): the chosen slot gets a 2px project color line on top. */
+.todayPickerSlot--selected[data-project-color] {
+  border-top: 2px solid var(--project-color);
+}
+
+/* P10-14d (P3): the carry-over note right of 決定. */
+.todayPickerNote {
+  margin-right: auto;
+  color: #a39c8e;
+  font-size: 12px;
+}
+/* P10-14d (S1/S2): the search window's rows take the mock's shape. Every row gets a
+   leading icon (project dot / file / plus / initial), the Project name moves above the
+   step text, and the hint moves to the right edge as 12px grey text. The row the Enter
+   key would run adds a 1px gold border on top of the existing sliding highlight, and
+   spells out what Enter does (no key badges). */
+.searchPaletteItem {
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.searchPaletteItem[data-kind="nextStep"],
+.searchPaletteItem[data-kind="wishlist"] {
+  min-height: 52px;
+}
+
+.searchPaletteItem--selected {
+  border-color: var(--accent);
+}
+
+/* The highlight still slides between rows (the same layoutId element). It is grown by
+   the 1px row border so its box keeps matching the row, and it paints the gold ring
+   above its own background because the row's border sits underneath it. */
+.searchPaletteHighlight {
+  inset: -1px;
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.searchPaletteItemIcon {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+}
+
+.searchPaletteItemIcon--dot {
+  width: 10px;
+  height: 10px;
+}
+
+.searchPaletteItemDot {
+  width: 10px;
+  height: 10px;
+  box-shadow: none;
+}
+
+.searchPaletteItemIcon--letter {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.searchPaletteItemIcon--glyph {
+  width: 22px;
+  height: 22px;
+}
+
+.searchPaletteItemIcon--file {
+  color: #9b8cf5;
+}
+
+.searchPaletteItemIcon--action {
+  color: var(--accent-strong);
+}
+
+.searchPaletteItemText {
+  flex: 1 1 auto;
+}
+
+.searchPaletteItemKicker {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.searchPaletteItemTitle {
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.searchPaletteItem[data-kind="nextStep"] .searchPaletteItemTitle {
+  font-weight: 700;
+}
+
+.searchPaletteItemRight {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.searchPaletteItemHint {
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.searchPaletteItemEnter {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.searchPaletteItemEnter--start {
+  color: var(--good);
+}
+
+/* P10-14d (S1): keep a long folder/page hint from pushing the row wider than the list;
+   the action text ("開く" and friends) never shrinks. */
+.searchPaletteItemRight {
+  min-width: 0;
+  max-width: 60%;
+}
+
+.searchPaletteItemHint {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.searchPaletteItemEnter,
+.searchPaletteItemEnter--start {
+  flex: 0 0 auto;
+}
+
+/* P10-14d (E1): the compact single-screen "一手を編集" form. */
+.nextStepEditDialog--edit {
+  width: min(600px, 100%);
+  gap: 18px;
+}
+
+.nextStepEditDialog--edit .modalTitleRow {
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.nextStepEditDialog--edit .eyebrow {
+  color: var(--text-muted-readable);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.nextStepEditHeaderRight {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.nextStepEditProjectChip {
+  max-width: 240px;
+  min-width: 0;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0 12px;
+}
+
+.nextStepEditProjectChip .projectIdentity {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.nextStepEditProjectChip .projectIdentityDot {
+  width: 10px;
+  height: 10px;
+}
+
+.nextStepEditField > span,
+.nextStepEditSectionLabel,
+.nextStepEditSmallField > span {
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.nextStepEditField .textInput {
+  height: 44px;
+}
+
+.nextStepEditField .nextStepEditActionInput {
+  height: 48px;
+  font-size: 16px;
+}
+
+.nextStepEditHint {
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.nextStepEditSmallField > .textInput {
+  height: 40px;
+}
+
+.nextStepEditTimerGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.nextStepEditTimerGrid .projectTimerSetting {
+  gap: 8px;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.nextStepEditTimerGrid .projectTimerSetting > span {
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* P10-14d (E2): the shared minutes stepper (− / N分 / +). */
+.nextStepTimerStepper {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+}
+
+.nextStepTimerStepButton {
+  width: 44px;
+  height: 42px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.nextStepTimerStepButton:hover:not(:disabled),
+.nextStepTimerStepButton:focus-visible:not(:disabled) {
+  background: var(--control-neutral-hover-bg);
+}
+
+.nextStepTimerStepperValue {
+  min-width: 0;
+  height: 100%;
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  cursor: ns-resize;
+}
+
+.nextStepTimerValueInput {
+  width: 3.4ch;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  cursor: ns-resize;
+}
+
+.nextStepTimerStepperUnit {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }

@@ -102,6 +102,128 @@ export function TimerPanel({
           ? "timerStateBadge timerStateBadge--running"
           : "timerStateBadge";
 
+  /**
+   * P10-14d N1: the mini window is one horizontal line. The project/action stay on the left,
+   * the remaining clock and the icon buttons on the right. Every label and action of the old
+   * mini header is kept (the header itself is replaced by this line).
+   */
+  if (variant === "mini") {
+    const displayClock = state === "complete" ? "00:00" : clock;
+
+    return (
+      <section
+        className={[
+          "timerPanel timerPanel--mini",
+          active ? "timerPanel--active" : "",
+          idleMini ? "timerPanel--idle" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        onPointerDownCapture={() => window.getSelection()?.removeAllRanges()}
+      >
+        {!idleMini && progressPercent !== null && (
+          <div className="timerProgress timerProgress--mini" aria-hidden="true">
+            <span style={{ width: `${progressPercent ?? 0}%` }} />
+          </div>
+        )}
+        <div className="miniTopline">
+          {idleMini ? (
+            <>
+              <span className="miniTimerText miniTimerText--idle">
+                <span className="miniIdleHead">
+                  <span className="timerMeta">
+                    <span>タイマー</span>
+                  </span>
+                  <span className={stateClass}>{status}</span>
+                </span>
+                <span className="miniQuietText">開始ボタンから計測できます</span>
+              </span>
+              {onExpand && (
+                <button
+                  aria-label="タイマーを大きく表示"
+                  className="miniIconButton miniIconButton--expand"
+                  onClick={onExpand}
+                  title="タイマーを大きく表示"
+                  type="button"
+                >
+                  <UiIcon name="maximize" size={16} />
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              <span className="miniTimerText">
+                {identity}
+                {(actionText ?? label) !== undefined && (
+                  <strong className="timerActionText" title={actionText ?? label}>
+                    {actionText ?? label}
+                  </strong>
+                )}
+                <span className={`${stateClass} visuallyHidden`}>{status}</span>
+              </span>
+              <div
+                aria-label={clockAdjustable ? clock : undefined}
+                className={[
+                  "timerClock",
+                  paused ? "timerClock--paused" : "",
+                  clockAdjustable ? "timerClock--adjustable" : "",
+                  clockDragging ? "timerClock--dragging" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                onPointerCancel={onClockPointerCancel}
+                onPointerDown={onClockPointerDown}
+                onPointerMove={onClockPointerMove}
+                onPointerUp={onClockPointerUp}
+                title={clockAdjustable ? "上下にドラッグして分数を変更" : undefined}
+              >
+                {clockAdjustable ? (
+                  <span aria-hidden="true">
+                    <RollingClock clock={displayClock} />
+                  </span>
+                ) : (
+                  displayClock
+                )}
+              </div>
+              <div className="timerControls">
+                <button
+                  aria-label={paused ? "再開" : "一時停止"}
+                  className="miniIconButton"
+                  onClick={onPause}
+                  title={paused ? "再開" : "一時停止"}
+                  type="button"
+                >
+                  <UiIcon name={paused ? "play" : "pause"} size={16} />
+                </button>
+                <button
+                  aria-label="終了"
+                  className="miniIconButton miniIconButton--finish"
+                  onClick={onFinish}
+                  title="終了"
+                  type="button"
+                >
+                  <UiIcon name="stop" size={16} />
+                </button>
+                {onExpand && (
+                  <button
+                    aria-label="タイマーを大きく表示"
+                    className="miniIconButton"
+                    onClick={onExpand}
+                    ref={expandButtonRef}
+                    title="タイマーを大きく表示"
+                    type="button"
+                  >
+                    <UiIcon name="maximize" size={16} />
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section
       className={[
@@ -121,11 +243,6 @@ export function TimerPanel({
       }
       onPointerDownCapture={() => window.getSelection()?.removeAllRanges()}
     >
-      {variant === "mini" && !idleMini && progressPercent !== null && (
-        <div className="timerProgress timerProgress--mini" aria-hidden="true">
-          <span style={{ width: `${progressPercent ?? 0}%` }} />
-        </div>
-      )}
       <div className="timerMeta">
         {variant === "sidebar" ? (
           <div className="timerMetaTop">

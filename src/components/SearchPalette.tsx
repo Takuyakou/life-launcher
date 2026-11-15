@@ -1,6 +1,8 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { springSnappy } from "../motion";
+import { resolveProjectColorId } from "../projectIdentity";
+import type { ProjectColorId } from "../types";
 import { UiIcon } from "./UiIcon";
 
 export type SearchItemKind = "nextStep" | "wishlist" | "button" | "instruction" | "action";
@@ -12,6 +14,13 @@ export type SearchItem = {
   title: string;
   subtitle?: string;
   meta?: string;
+  /** P10-14d (S1): presentation only. The caller may pass the button's glyph and the
+      Project's own colour; without them the row draws its fallback. */
+  icon?: string;
+  projectId?: string;
+  colorId?: ProjectColorId | null;
+  /** P10-14d (S1): the overlay page a button lives on, shown after the group name. */
+  pageName?: string;
 };
 
 export type SearchSection = {
@@ -32,6 +41,54 @@ type SearchPaletteProps = {
 };
 
 const LIST_ID = "search-palette-list";
+
+/** P10-14d (S1): the Project name sits above the step text on these two kinds of row. */
+function projectNameOf(item: SearchItem): string | undefined {
+  if (item.kind !== "nextStep" && item.kind !== "wishlist") return undefined;
+  return item.subtitle?.trim() || undefined;
+}
+
+/** P10-14d (S1): the project-colour dot. An explicit colour wins; otherwise the same
+    automatic colour the Project's own ProjectIdentity dot gets. */
+function projectColorOf(item: SearchItem): ProjectColorId {
+  if (item.colorId) return item.colorId;
+  const projectId =
+    item.projectId ?? (item.kind === "nextStep" ? item.id.slice("nextStep:".length) : undefined);
+  return resolveProjectColorId(projectId ?? projectNameOf(item) ?? item.id);
+}
+
+/** P10-14d (S1): the 12px grey hint at the right edge. Buttons show "group ・ page",
+    instructions show the folder path, and a Next Step keeps its existing trigger text. */
+function rowHintOf(item: SearchItem): string | undefined {
+  if (item.kind === "button") {
+    const group = item.subtitle?.trim();
+    const page = item.pageName?.trim() || item.meta?.trim();
+    if (group && page) return `${group} ・ ${page}`;
+    return group || page || undefined;
+  }
+  if (item.kind === "instruction") return item.subtitle?.trim() || undefined;
+  if (item.kind === "nextStep") return item.meta?.trim() || undefined;
+  return undefined;
+}
+
+/** P10-14d (S2): what Enter does, as text. Actions run nothing on Enter. */
+function enterHintOf(item: SearchItem): string | undefined {
+  switch (item.kind) {
+    case "nextStep":
+      return "5分で始める";
+    case "wishlist":
+      return "次の一手にする";
+    case "button":
+    case "instruction":
+      return "開く";
+    default:
+      return undefined;
+  }
+}
+
+function firstGlyph(text: string): string {
+  return Array.from(text.trim())[0] ?? "?";
+}
 
 /** P10-03 (D4): the search window that sits above the main window. */
 export function SearchPalette({
@@ -167,12 +224,16 @@ export function SearchPalette({
               </p>
               {section.items.map((item) => {
                 const isSelected = selected?.id === item.id;
+                const projectName = projectNameOf(item);
+                const hint = rowHintOf(item);
+                const enterHint = enterHintOf(item);
                 return (
                   <div
                     aria-selected={isSelected}
                     className={
                       isSelected ? "searchPaletteItem searchPaletteItem--selected" : "searchPaletteItem"
                     }
+                    data-kind={item.kind}
                     data-search-item={item.id}
                     id={`search-option-${item.id}`}
                     key={item.id}
@@ -194,13 +255,58 @@ export function SearchPalette({
                         />
                       )}
                     </AnimatePresence>
+                    {item.kind === "nextStep" || item.kind === "wishlist" ? (
+                      <span
+                        aria-hidden="true"
+                        className="searchPaletteItemIcon searchPaletteItemIcon--dot"
+                        data-project-color={projectColorOf(item)}
+                      >
+                        <span className="projectIdentityDot searchPaletteItemDot" />
+                      </span>
+                    ) : item.kind === "instruction" ? (
+                      <span
+                        aria-hidden="true"
+                        className="searchPaletteItemIcon searchPaletteItemIcon--glyph searchPaletteItemIcon--file"
+                      >
+                        <UiIcon name="fileText" size={16} />
+                      </span>
+                    ) : item.kind === "action" ? (
+                      <span
+                        aria-hidden="true"
+                        className="searchPaletteItemIcon searchPaletteItemIcon--glyph searchPaletteItemIcon--action"
+                      >
+                        <UiIcon name="add" size={16} />
+                      </span>
+                    ) : (
+                      <span
+                        aria-hidden="true"
+                        className="searchPaletteItemIcon searchPaletteItemIcon--letter"
+                      >
+                        {item.icon?.trim() || firstGlyph(item.title)}
+                      </span>
+                    )}
                     <span className="searchPaletteItemText">
+                      {projectName && (
+                        <span className="searchPaletteItemSubtitle searchPaletteItemKicker">
+                          {projectName}
+                        </span>
+                      )}
                       <span className="searchPaletteItemTitle">{item.title}</span>
-                      {item.subtitle && (
-                        <span className="searchPaletteItemSubtitle">{item.subtitle}</span>
+                    </span>
+                    <span className="searchPaletteItemRight">
+                      {hint && <span className="searchPaletteItemMeta searchPaletteItemHint">{hint}</span>}
+                      {isSelected && enterHint && (
+                        <span
+                          className={
+                            item.kind === "nextStep"
+                              ? "searchPaletteItemEnter searchPaletteItemEnter--start"
+                              : "searchPaletteItemEnter"
+                          }
+                        >
+                          {enterHint}
+                        </span>
                       )}
                     </span>
-                    {item.meta && <span className="searchPaletteItemMeta">{item.meta}</span>}
                   </div>
                 );
               })}

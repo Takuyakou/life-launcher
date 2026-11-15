@@ -16,6 +16,7 @@ export type UiIconName =
   | "external"
   | "fileCode"
   | "fileText"
+  | "flag"
   | "fileWeb"
   | "folder"
   | "help"
@@ -62,6 +63,8 @@ export function UiIcon({ name, size = 18, className, ...props }: UiIconProps) {
         <path {...common} d="M4 5.5A2.5 2.5 0 0 1 6.5 3H12v17H6.5A2.5 2.5 0 0 0 4 22V5.5Z" />
         <path {...common} d="M20 5.5A2.5 2.5 0 0 0 17.5 3H12v17h5.5A2.5 2.5 0 0 1 20 22V5.5Z" />
       </>
+    ) : name === "flag" ? (
+      <path {...common} d="M6 21V4M6 5h11l-2 4 2 4H6" />
     ) : name === "clock" ? (
       <>
         <circle {...common} cx="12" cy="12" r="8.5" />

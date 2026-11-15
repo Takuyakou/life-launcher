@@ -83,19 +83,32 @@ export function ExpandedTimerOverlay({
         ref={dialogRef}
         role="dialog"
       >
-        {/* P10-08 (§7.2): the state badge on the left, 戻る and ミニ on the right. */}
+        {/* P10-14d (R1): the app mark, the app name and the state badge on the left,
+            戻る and ミニ as text-only buttons on the right. The DOM keeps ミニ before
+            戻る so the existing Tab / Shift+Tab path stays exactly the same; the
+            header container reverses the row so 戻る sits left of ミニ on screen. */}
         <header className="expandedTimerHeader">
-          <span
-            className={
-              complete
-                ? "timerStateBadge timerStateBadge--complete"
-                : paused
-                  ? "timerStateBadge timerStateBadge--paused"
-                  : "timerStateBadge timerStateBadge--running"
-            }
-          >
-            {complete ? "時間になりました" : status}
-          </span>
+          <div className="expandedTimerBrand">
+            <img
+              alt=""
+              aria-hidden="true"
+              className="expandedTimerLogo"
+              draggable={false}
+              src="/life-launcher-icon.svg"
+            />
+            <span className="expandedTimerBrandName">Life Launcher</span>
+            <span
+              className={
+                complete
+                  ? "timerStateBadge timerStateBadge--complete"
+                  : paused
+                    ? "timerStateBadge timerStateBadge--paused"
+                    : "timerStateBadge timerStateBadge--running"
+              }
+            >
+              {complete ? "時間になりました" : status}
+            </span>
+          </div>
           <div className="expandedTimerHeaderActions">
             {onMini && !complete && (
               <button
@@ -105,7 +118,7 @@ export function ExpandedTimerOverlay({
                 title="ミニタイマーにする"
                 type="button"
               >
-                <UiIcon name="miniMode" size={20} />
+                <UiIcon name="miniMode" size={16} />
                 <span>ミニ</span>
               </button>
             )}
@@ -117,7 +130,7 @@ export function ExpandedTimerOverlay({
               title="メイン画面に戻る（タイマーは続きます）"
               type="button"
             >
-              <UiIcon name="collapse" size={20} />
+              <UiIcon name="collapse" size={16} />
               <span>戻る</span>
             </button>
           </div>
