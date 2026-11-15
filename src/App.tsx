@@ -115,6 +115,8 @@ import {
 } from "./types";
 import { ConfirmDialog, type ConfirmDialogRequest } from "./components/ConfirmDialog";
 import { ImportDialog } from "./components/ImportDialog";
+import { FirstRunBand } from "./components/FirstRunBand";
+import { IMPORT_PROMPT_FIRST } from "./content/importPrompt";
 import { earlyCompletionItem } from "./earlyCompletion";
 import { WindowControls } from "./components/WindowControls";
 import {
@@ -2350,6 +2352,8 @@ function DashboardApp() {
   const inboxAddSavingRef = useRef(false);
   const projectEditSavingRef = useRef(false);
   const configSaveBlockedRef = useRef(false);
+  // P10-11: the first-run guide must not appear while saves are blocked.
+  const [configSaveBlocked, setConfigSaveBlocked] = useState(false);
   const resetInProgressRef = useRef(false);
   const writeGenerationRef = useRef(0);
   const softwareResetChoiceOpenerRef = useRef<HTMLElement | null>(null);
@@ -2362,6 +2366,9 @@ function DashboardApp() {
   const inboxAddInitialProjectIdRef = useRef("");
   const todayPickerOpenerRef = useRef<HTMLElement | null>(null);
   const todayPickerInitialItemsRef = useRef<TodayItem[]>([]);
+  // P10-11 (§8.2): the IDs for the first-run guide are created once per guide.
+  const firstRunIdsRef = useRef<{ projectId: string; generationId: string } | null>(null);
+  const [firstRunSaving, setFirstRunSaving] = useState(false);
   const projectEditInitialDraftRef = useRef<ProjectEditDraft | null>(null);
   const nextStepEditInitialDraftRef = useRef<NextStepEditDraft | null>(null);
   const sourceEditOriginRef = useRef<"source" | "today" | "builder">("source");
@@ -3179,6 +3186,7 @@ function DashboardApp() {
           instruction: false,
         }));
         configSaveBlockedRef.current = response.saveBlocked;
+        setConfigSaveBlocked(response.saveBlocked);
         setShortcutRegistration(registration);
         setConfig(response.config);
         setMorningVictorySuggestion(response.morningVictorySuggestion ?? null);
@@ -3198,6 +3206,7 @@ function DashboardApp() {
         }
       } catch (error) {
         configSaveBlockedRef.current = true;
+        setConfigSaveBlocked(true);
         const message = error instanceof Error ? error.message : String(error);
         setBanner(message);
         setBackupPath("");
@@ -4468,6 +4477,7 @@ function DashboardApp() {
             await updateInstructionReferences(path, null, true);
             const response = await loadConfig();
             configSaveBlockedRef.current = response.saveBlocked;
+            setConfigSaveBlocked(response.saveBlocked);
             setConfig(response.config);
           }
           setSettingsDraft((current) =>
@@ -4877,6 +4887,7 @@ function DashboardApp() {
     }
 
     configSaveBlockedRef.current = response.saveBlocked;
+    setConfigSaveBlocked(response.saveBlocked);
     iconRefreshGenerationRef.current += 1;
     iconRequestIdsRef.current.clear();
     setButtonIconSources({});
@@ -9786,6 +9797,95 @@ function DashboardApp() {
     const next = doNowCandidates[(doNowCandidateIndex + 1) % doNowCandidates.length];
     setDoNowPickedProjectId(next === doNowCandidates[0] ? null : next.project.id);
   };
+
+  // P10-11 (§8.2): the first-run guide replaces the main screen only while there is nothing to
+  // show, the guide has never been finished (no stamp), and saving is not blocked.
+  const firstRunReady = Boolean(
+    config &&
+      !configSaveBlocked &&
+      activeView === "main" &&
+      !config.settings.firstRunDoneAt &&
+      config.projects.length === 0 &&
+      config.inbox.length === 0 &&
+      config.today.items.length === 0,
+  );
+  // Keep the guide mounted while its own save runs, so a failure never clears the inputs.
+  const firstRunVisible = firstRunReady || firstRunSaving;
+  if (firstRunVisible && !firstRunIdsRef.current) {
+    firstRunIdsRef.current = {
+      projectId: createStableId(),
+      generationId: createStableId(),
+    };
+  }
+  const submitFirstRun = async (projectName: string, stepText: string) => {
+    const current = configRef.current;
+    const ids = firstRunIdsRef.current;
+    if (!current || !ids || firstRunSaving) return;
+    setFirstRunSaving(true);
+    try {
+      const now = new Date().toISOString();
+      const existing = current.projects.find((project) => project.id === ids.projectId);
+      const project: LauncherProject =
+        existing ?? {
+          id: ids.projectId,
+          name: projectName,
+          colorId: resolveProjectColorId(ids.projectId, undefined),
+          nextStep: {
+            text: stepText,
+            generationId: ids.generationId,
+            buttonIds: [],
+            defaultTimerMinutes: current.settings.defaultTimerMinutes,
+            shortTimerMinutes: current.settings.shortTimerMinutes,
+            updatedAt: now,
+          },
+        };
+      const saved = await persistConfig({
+        ...current,
+        projects: existing ? current.projects : [...current.projects, project],
+        settings: {
+          ...current.settings,
+          firstRunDoneAt: current.settings.firstRunDoneAt ?? now,
+        },
+      });
+      if (!saved) return;
+      try {
+        startDoNowProject(project, "short");
+      } catch (error) {
+        showToast(
+          "warn",
+          `タイマーを始められませんでした: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    } finally {
+      setFirstRunSaving(false);
+    }
+  };
+  const laterFirstRun = async () => {
+    const current = configRef.current;
+    if (!current || firstRunSaving) return;
+    setFirstRunSaving(true);
+    try {
+      const now = new Date().toISOString();
+      await persistConfig({
+        ...current,
+        settings: {
+          ...current.settings,
+          firstRunDoneAt: current.settings.firstRunDoneAt ?? now,
+        },
+      });
+    } finally {
+      setFirstRunSaving(false);
+    }
+  };
+  const copyFirstRunPrompt = async () => {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("clipboard API is not available");
+      await navigator.clipboard.writeText(IMPORT_PROMPT_FIRST);
+    } catch (error) {
+      showToast("warn", "プロンプトをコピーできませんでした");
+      throw error;
+    }
+  };
   const acknowledgeDoNowCompletion = async () => {
     if (!(await refreshDoNow())) return;
     setDoNowExcludedProjectId(doNowCompletionHold?.projectId ?? null);
@@ -11031,6 +11131,15 @@ function DashboardApp() {
                 weekSessions={recordsWeekSessions}
                 weeklyReview={weeklyReview}
                 weeklyReviewProjects={weeklyReviewProjects}
+              />
+            ) : firstRunVisible ? (
+              <FirstRunBand
+                onCopyPrompt={copyFirstRunPrompt}
+                onLater={() => void laterFirstRun()}
+                onOpenImport={() => openImportDialog("")}
+                onStart={(projectName, stepText) => void submitFirstRun(projectName, stepText)}
+                saving={firstRunSaving}
+                shortTimerMinutes={config.settings.shortTimerMinutes}
               />
             ) : (
               <>

@@ -386,6 +386,9 @@ pub struct Settings {
     pub instruction_folder_identities: Option<Vec<InstructionFolderIdentity>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub instruction_hotkey: Option<String>,
+    /// P10-11: when the first-run guide was finished (or any save happened).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub first_run_done_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -836,6 +839,7 @@ fn default_settings() -> Settings {
         instruction_folders: None,
         instruction_folder_identities: None,
         instruction_hotkey: None,
+        first_run_done_at: None,
     }
 }
 

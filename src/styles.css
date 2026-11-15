@@ -14059,3 +14059,205 @@ button.mainActionButton:is(
 .projectTimerSetting:nth-of-type(2) .projectTimerDot {
   background: #70a7ff;
 }
+
+/* P10-11 (§8.2): the first-run guide and the copy button (D36). */
+.firstRunBand {
+  width: 100%;
+  max-width: 620px;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  margin: 0 auto;
+  padding: 48px 24px 40px;
+}
+
+.firstRunHero h1 {
+  margin: 0 0 10px;
+  font-size: 34px;
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+.firstRunHero p {
+  margin: 0;
+  color: var(--text-muted-readable);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.firstRunField {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.firstRunFieldLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.firstRunStepNumber {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--surface-strong);
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.firstRunInput {
+  height: 52px;
+  padding: 0 16px;
+  font-size: 17px;
+}
+
+.firstRunExamples {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted-readable);
+  font-size: 12px;
+}
+
+.firstRunExample {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.firstRunExample:hover,
+.firstRunExample:focus-visible {
+  border-color: var(--line-strong);
+  background: var(--control-neutral-hover-bg);
+}
+
+.firstRunHint {
+  color: var(--text-muted-readable);
+  font-size: 12px;
+}
+
+.firstRunStartActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.firstRunStartButton {
+  min-height: 48px;
+  padding: 0 22px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.firstRunLaterButton {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted-readable);
+  font-size: 14px;
+}
+
+.firstRunLaterButton:hover,
+.firstRunLaterButton:focus-visible {
+  color: var(--text);
+}
+
+.firstRunImport {
+  margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+
+.firstRunImportCopy {
+  min-width: 0;
+  flex: 1 1 280px;
+  display: grid;
+  gap: 2px;
+}
+
+.firstRunImportCopy strong {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.firstRunImportCopy span {
+  color: var(--text-muted-readable);
+  font-size: 12px;
+}
+
+.firstRunImportOpen {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.firstRunImportOpen:hover,
+.firstRunImportOpen:focus-visible {
+  border-color: var(--line-strong);
+  background: var(--control-neutral-hover-bg);
+}
+
+.copyButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.copyButton:hover,
+.copyButton:focus-visible {
+  border-color: var(--line-strong);
+  background: var(--control-neutral-hover-bg);
+}
+
+.copyButton[data-copied="true"] {
+  border-color: rgba(117, 196, 143, 0.55);
+  color: var(--good);
+}
+
+.copyButtonLabel {
+  position: relative;
+  display: inline-grid;
+  align-items: center;
+}
+
+.copyButtonSizer {
+  visibility: hidden;
+  white-space: nowrap;
+}
+
+.copyButtonText {
+  grid-area: 1 / 1;
+  white-space: nowrap;
+}

@@ -102,6 +102,8 @@ pub fn save_config(
     validate_project_v3_invariants(&config)?;
     let (mut config, _changed, _warnings) = sanitize_config(config);
     reconcile_config_instruction_roots(&mut config);
+    // P10-11: every ordinary save records that the first-run guide is no longer needed.
+    stamp_first_run_done_at(&mut config.settings);
     let path = config_path()?;
     validate_existing_config_before_save(&path)?;
     ensure_config_schema_file()?;
@@ -117,6 +119,17 @@ pub fn save_config(
         config,
         path: path.to_string_lossy().to_string(),
     })
+}
+
+/// P10-11 (§8.2): fills `firstRunDoneAt` on an ordinary save when it is still missing.
+/// The first-run guide itself writes it explicitly; this only covers users who set things up
+/// without finishing the guide (or who upgraded from a version without the field).
+fn stamp_first_run_done_at(settings: &mut Settings) -> bool {
+    if settings.first_run_done_at.is_some() {
+        return false;
+    }
+    settings.first_run_done_at = Some(chrono::Utc::now().to_rfc3339());
+    true
 }
 
 fn current_source_snapshot(config: &AppConfig, source_key: &str) -> Option<Value> {
@@ -2201,6 +2214,7 @@ pub(crate) fn config_schema_json() -> &'static str {
           }
         },
         "instructionHotkey": { "type": ["string", "null"], "default": null },
+        "firstRunDoneAt": { "type": "string", "format": "date-time" },
         "miniWindowPosition": {
           "type": ["object", "null"],
           "default": null,
@@ -2776,6 +2790,18 @@ fn normalize_settings(settings: &mut Settings, changed: &mut bool) {
             settings.instruction_hotkey = Some(trimmed.to_string());
         }
     }
+    // P10-11 (§8.2): an unreadable timestamp is only dropped; it is never replaced here.
+    if let Some(stamp) = settings.first_run_done_at.take() {
+        let trimmed = stamp.trim();
+        if trimmed.is_empty() || chrono::DateTime::parse_from_rfc3339(trimmed).is_err() {
+            *changed = true;
+        } else {
+            if trimmed != stamp {
+                *changed = true;
+            }
+            settings.first_run_done_at = Some(trimmed.to_string());
+        }
+    }
 }
 
 #[cfg(test)]
@@ -3116,6 +3142,87 @@ mod tests {
             written["projects"][0]["nextStep"]["sourceWishlistId"],
             serde_json::json!("missing-wish"),
             "an unknown wishlist id must not be dropped"
+        );
+    }
+
+    #[test]
+    fn first_run_done_at_is_stamped_once_and_kept_afterwards() {
+        let mut settings = sample_config().settings;
+        assert_eq!(settings.first_run_done_at, None);
+        assert!(stamp_first_run_done_at(&mut settings));
+        let stamp = settings
+            .first_run_done_at
+            .clone()
+            .expect("the first save must record the stamp");
+        assert!(
+            chrono::DateTime::parse_from_rfc3339(&stamp).is_ok(),
+            "the stamp must be an RFC 3339 instant: {stamp}"
+        );
+
+        assert!(!stamp_first_run_done_at(&mut settings));
+        assert_eq!(settings.first_run_done_at.as_deref(), Some(stamp.as_str()));
+    }
+
+    #[test]
+    fn first_run_done_at_survives_a_read_sanitize_and_write_round_trip() {
+        let mut config = sample_config();
+        config.settings.first_run_done_at = Some("2026-11-15T09:00:00+09:00".to_string());
+        let (config, _changed, _warnings) = sanitize_config(config);
+        assert_eq!(
+            config.settings.first_run_done_at.as_deref(),
+            Some("2026-11-15T09:00:00+09:00")
+        );
+        let written = serde_json::to_value(&config).expect("config must serialize");
+        assert_eq!(
+            written["settings"]["firstRunDoneAt"],
+            serde_json::json!("2026-11-15T09:00:00+09:00")
+        );
+    }
+
+    #[test]
+    fn unreadable_first_run_done_at_is_dropped_without_being_replaced() {
+        for value in ["", "   ", "not-a-date", "2026-11-15"] {
+            let mut config = sample_config();
+            config.settings.first_run_done_at = Some(value.to_string());
+            let (config, changed, _warnings) = sanitize_config(config);
+            assert!(changed, "{value:?} must count as a change");
+            assert_eq!(
+                config.settings.first_run_done_at, None,
+                "{value:?} must be dropped"
+            );
+            let written = serde_json::to_value(&config).expect("config must serialize");
+            assert!(
+                written["settings"].get("firstRunDoneAt").is_none(),
+                "{value:?} must not be written"
+            );
+        }
+    }
+
+    #[test]
+    fn loading_never_stamps_first_run_done_at() {
+        let mut config = sample_config();
+        config.settings.first_run_done_at = None;
+        let (config, _changed, _warnings) = sanitize_config(config);
+        assert_eq!(
+            config.settings.first_run_done_at, None,
+            "sanitize (the load path) must not create the stamp"
+        );
+    }
+
+    #[test]
+    fn generated_config_schema_has_first_run_done_at() {
+        let schema: serde_json::Value =
+            serde_json::from_str(config_schema_json()).expect("config schema must be valid JSON");
+        assert_eq!(
+            schema["$defs"]["settings"]["properties"]["firstRunDoneAt"],
+            serde_json::json!({ "type": "string", "format": "date-time" })
+        );
+        let required = schema["$defs"]["settings"]["required"]
+            .as_array()
+            .expect("settings required fields");
+        assert!(
+            required.iter().all(|field| field != "firstRunDoneAt"),
+            "firstRunDoneAt must stay optional"
         );
     }
 

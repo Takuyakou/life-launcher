@@ -157,6 +157,8 @@ function createConfig(): AppConfig {
       instructionFolders: [INSTRUCTION_ROOT],
       instructionFolderIdentities: [],
       instructionHotkey: null,
+      // P10-11: the fixtures represent users who already finished the first-run guide.
+      firstRunDoneAt: "2026-08-01T09:00:00+09:00",
     },
   };
 }

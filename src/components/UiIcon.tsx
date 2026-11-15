@@ -5,11 +5,13 @@ export type UiIconName =
   | "back"
   | "book"
   | "clock"
+  | "check"
   | "chevronDown"
   | "chevronLeft"
   | "chevronRight"
   | "close"
   | "collapse"
+  | "copy"
   | "edit"
   | "external"
   | "fileCode"
@@ -130,6 +132,13 @@ export function UiIcon({ name, size = 18, className, ...props }: UiIconProps) {
       <>
         <rect {...common} height="15" rx="2" width="17" x="3.5" y="4.5" />
         <path {...common} d="M13 4.5v6h7.5M13 10.5h7.5" />
+      </>
+    ) : name === "check" ? (
+      <path {...common} strokeWidth={2.4} d="m5 12.5 4.5 4.5L19 7.5" />
+    ) : name === "copy" ? (
+      <>
+        <rect {...common} height="12" rx="2" width="12" x="9" y="9" />
+        <path {...common} d="M5 15V6a2 2 0 0 1 2-2h8" />
       </>
     ) : name === "pause" ? (
       <path {...common} d="M9 6v12M15 6v12" />
