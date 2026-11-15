@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { springSnappy } from "../motion";
-import { resolveProjectColorId } from "../projectIdentity";
+import { PROJECT_COLOR_IDS, resolveProjectColorId } from "../projectIdentity";
 import type { ProjectColorId } from "../types";
 import { UiIcon } from "./UiIcon";
 
@@ -50,11 +50,17 @@ function projectNameOf(item: SearchItem): string | undefined {
 
 /** P10-14d (S1): the project-colour dot. An explicit colour wins; otherwise the same
     automatic colour the Project's own ProjectIdentity dot gets. */
-function projectColorOf(item: SearchItem): ProjectColorId {
+function projectColorOf(
+  item: SearchItem,
+  knownColors: Record<string, ProjectColorId>,
+): ProjectColorId | undefined {
   if (item.colorId) return item.colorId;
+  const projectName = projectNameOf(item);
+  if (projectName && knownColors[projectName]) return knownColors[projectName];
   const projectId =
     item.projectId ?? (item.kind === "nextStep" ? item.id.slice("nextStep:".length) : undefined);
-  return resolveProjectColorId(projectId ?? projectNameOf(item) ?? item.id);
+  if (projectId) return resolveProjectColorId(projectId);
+  return projectName ? resolveProjectColorId(projectName) : undefined;
 }
 
 /** P10-14d (S1): the 12px grey hint at the right edge. Buttons show "group ・ page",
@@ -115,6 +121,26 @@ export function SearchPalette({
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  // P10-14d (S1): the palette receives text only, and a wishlist id has no Project id in it.
+  // The main screen has already resolved each Project's colour into its ProjectIdentity dot,
+  // so reuse those colours for the dot (passing SearchItem.colorId skips this).
+  const [knownProjectColors, setKnownProjectColors] = useState<Record<string, ProjectColorId>>({});
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const colors: Record<string, ProjectColorId> = {};
+    for (const element of document.querySelectorAll<HTMLElement>("[data-project-color][title]")) {
+      const title = element.getAttribute("title") ?? "";
+      const prefix = "プロジェクト: ";
+      if (!title.startsWith(prefix)) continue;
+      const name = title.slice(prefix.length).trim();
+      const color = element.dataset.projectColor;
+      if (name && color && PROJECT_COLOR_IDS.includes(color as ProjectColorId)) {
+        colors[name] = color as ProjectColorId;
+      }
+    }
+    setKnownProjectColors(colors);
+  }, [sections]);
 
   const selected = flat[Math.min(selectedIndex, Math.max(flat.length - 1, 0))];
   if (selected) lastSelectedRef.current = selected;
@@ -259,7 +285,7 @@ export function SearchPalette({
                       <span
                         aria-hidden="true"
                         className="searchPaletteItemIcon searchPaletteItemIcon--dot"
-                        data-project-color={projectColorOf(item)}
+                        data-project-color={projectColorOf(item, knownProjectColors)}
                       >
                         <span className="projectIdentityDot searchPaletteItemDot" />
                       </span>

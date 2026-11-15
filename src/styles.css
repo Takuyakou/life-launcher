@@ -2228,13 +2228,13 @@ button.instructionTreeDisclosure:hover {
   cursor: move;
 }
 
-/* P10-14d N1: one 352×84 line replaces the old heading and the two framed buttons. */
+/* P10-14d N1: one horizontal line replaces the old heading and the two framed buttons. */
 .miniTopline {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 10px;
-  padding: 0 14px;
+  gap: 12px;
+  padding: 0 6px 0 16px;
   color: var(--text);
   font-size: 11px;
   font-weight: 700;
@@ -15314,4 +15314,18 @@ button.mainActionButton:is(
   font-size: 16px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+/* E1: the compact edit form is one screen, so its footer sits in flow instead of
+   sticking over the last field. */
+.nextStepEditDialog--edit.modalLongForm > .dialogActions {
+  position: static;
+  bottom: auto;
+  margin: 0;
+  padding: 14px 0 0;
+  background: transparent;
+}
+/* E1: the edit form is meant to be one screen; let the dialog use the free height
+   instead of the long-form 760px cap. */
+.nextStepEditDialog--edit {
+  max-height: calc(100vh - 36px);
 }
