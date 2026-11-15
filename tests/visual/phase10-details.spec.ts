@@ -139,7 +139,7 @@ test("P10-12 the Enter hint only appears for the focused row", async ({ page }) 
   await card.click({ position: { x: 12, y: 12 } });
   await card.focus();
   await expect(card).toBeFocused();
-  await expect.poll(() => hint.evaluate((node) => getComputedStyle(node).opacity)).toBe("0");
+  await expect(hint).toBeHidden();
 
   // Re-entering the row with the keyboard makes the hint visible.
   await page.keyboard.press("Shift+Tab");
@@ -148,7 +148,7 @@ test("P10-12 the Enter hint only appears for the focused row", async ({ page }) 
     if (await card.evaluate((node) => node === document.activeElement)) break;
   }
   await expect(card).toBeFocused();
-  await expect.poll(() => hint.evaluate((node) => getComputedStyle(node).opacity)).toBe("1");
+  await expect(hint).toBeVisible();
 });
 
 test("P10-12 the context menu shows only the key badges that work, and T adds to Today", async ({

@@ -126,8 +126,8 @@ test("Do Now timer labels and glyphs remain separate on hover and keyboard focus
   expect(await short.boundingBox()).toEqual(before);
   const glyph = (await short.locator(".timerStartHoverGlyph").boundingBox())!;
   const label = (await short.locator(".timerStartDuration").boundingBox())!;
-  // P10-14d: the hover arrow follows the label ("5分で始める ▶").
-  expect(glyph.x).toBeGreaterThanOrEqual(label.x + label.width);
+  // P10-14e: the hover arrow sits before the label ("▶ 5分で始める").
+  expect(glyph.x + glyph.width).toBeLessThanOrEqual(label.x);
   await page.mouse.move(0, 0);
   await normal.focus();
   await expect(normal.locator(".timerStartDuration")).toHaveCSS("opacity", "1");

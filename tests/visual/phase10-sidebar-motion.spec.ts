@@ -53,8 +53,10 @@ test("P10-02 a closed sidebar group keeps its buttons out of the tab order", asy
   await expect(page.getByRole("button", { name: "サンプル資料" })).toHaveCount(0);
   for (let step = 0; step < 12; step += 1) {
     await page.keyboard.press("Tab");
-    const focused = await page.evaluate(() => document.activeElement?.textContent ?? "");
-    expect(focused).not.toContain("サンプル資料");
+    const inQuickButton = await page.evaluate(
+      () => Boolean(document.activeElement?.closest(".quickButton")),
+    );
+    expect(inQuickButton).toBe(false);
   }
 });
 test("P10-02 reduced motion still ends with the same open and closed shape", async ({ page }) => {

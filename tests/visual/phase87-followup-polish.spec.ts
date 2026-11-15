@@ -151,11 +151,12 @@ test("Dictionary entry aligns with item rows and Guide footer stays inside its d
 
 test("Dictionary shortcut badge follows config and actual registration", async ({ page }) => {
   await prepare(page);
-  const badge = page.locator(".launcherOpenButton .shortcutBadge");
+  const badge = page.locator(".launcherOpenButton .uiKey");
   await expect(page.getByRole("button", { name: /辞書を開く/ }).locator(".uiIcon")).toHaveCount(1);
   await expect(badge).toHaveText("Ctrl+K");
-  await expect(badge).toHaveCSS("color", "rgb(231, 185, 77)");
-  await expect(badge).toHaveCSS("border-top-color", "rgba(231, 185, 77, 0.48)");
+  await expect(badge).toHaveCSS("font-size", "11px");
+  await expect(badge).toHaveCSS("border-top-style", "solid");
+  await expect(badge).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
   await expect(badge).toHaveCSS("font-weight", "700");
 
   await page.evaluate(() => {
@@ -205,6 +206,6 @@ test("Dictionary shortcut badge follows config and actual registration", async (
   });
   await expect(badge).toHaveClass(/shortcutBadge--unavailable/);
   await expect(badge).toHaveAttribute("title", /登録できていません/);
-  await expect(badge).toHaveCSS("color", "rgb(231, 185, 77)");
+  await expect(badge).toHaveCSS("color", "rgb(184, 176, 160)");
   await expect(badge).toHaveCSS("border-top-style", "dashed");
 });

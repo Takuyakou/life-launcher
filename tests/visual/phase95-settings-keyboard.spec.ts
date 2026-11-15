@@ -235,7 +235,7 @@ test("Arrows outside the Settings dialog are unchanged (a text field keeps its c
   await installTauriMock(page, createPublicFixture(), "main");
   await page.goto("/");
   await expect(page.locator(".sidebar")).toBeVisible();
-  await page.locator(".brandBlock").click({ button: "right" });
+  await page.locator(".topBrand").click({ button: "right" });
   await page.getByRole("menuitem", { name: "ボタンを追加" }).click();
   const dialog = page.getByRole("dialog", { name: "Button Builder" });
   const file = dialog.getByRole("textbox", { name: "ファイル", exact: true });

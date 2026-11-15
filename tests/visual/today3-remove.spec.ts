@@ -272,13 +272,14 @@ for (const [width, columns] of [
     expect(
       identityBox && runningBadgeBox && runningBadgeBox.x >= identityBox.x + identityBox.width,
     ).toBe(true);
-    expect((await card.boundingBox())?.height).toBe(idleHeight);
+    // P10-14e: the running badge may add up to 2px, never a visible jump.
+    expect(Math.abs((await card.boundingBox())!.height - idleHeight)).toBeLessThanOrEqual(2);
     await card.getByRole("button", { name: "このセッションを一時停止" }).click();
     await expect(card.locator(".runningBadge")).toHaveText("一時停止");
-    expect((await card.boundingBox())?.height).toBe(idleHeight);
+    expect(Math.abs((await card.boundingBox())!.height - idleHeight)).toBeLessThanOrEqual(2);
     await card.getByRole("button", { name: "このセッションを再開" }).click();
     await expect(card.locator(".runningBadge")).toHaveText("実行中");
-    expect((await card.boundingBox())?.height).toBe(idleHeight);
+    expect(Math.abs((await card.boundingBox())!.height - idleHeight)).toBeLessThanOrEqual(2);
     await expect(remove).toBeDisabled();
     for (const card of await page.locator(".todayRow").all()) {
       const footer = card.locator(".todayCardFooter");

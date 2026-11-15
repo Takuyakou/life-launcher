@@ -279,7 +279,7 @@ test("P95-01 resume right before the planned time still shows the time-up dialog
 
 /** Buttons of the top menu (everything except the leading summary), measured in the current view. */
 const topMenu = (page: Page) =>
-  page.locator(".mainPanel > .topBar .topPills").evaluate((pills) =>
+  page.locator(".topBar .topPills").evaluate((pills) =>
     Array.from(pills.querySelectorAll<HTMLElement>("button")).map((button) => {
       const rect = button.getBoundingClientRect();
       const label = button.querySelector<HTMLElement>(".viewToggleButtonLabel");
@@ -299,7 +299,7 @@ const topMenu = (page: Page) =>
 
 /** 上部メニューの文字を隠している段階(0=すべて出す / 1=一部 / 2=すべて)。 */
 const topMenuLabelLevel = async (page: Page) =>
-  Number((await page.locator(".mainPanel > .topBar").getAttribute("data-top-menu-labels")) ?? "0");
+  Number((await page.locator(".topBar").getAttribute("data-top-menu-labels")) ?? "0");
 
 // Records body text (the statistics numbers) at every display size; the display size only enlarges Main.
 const RECORDS_BODY_FONT_SIZE = "24px";

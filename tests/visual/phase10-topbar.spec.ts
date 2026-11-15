@@ -18,7 +18,7 @@ async function open(page: Page, fixture: VisualQaFixture = createFullTodayFixtur
   await expect(page.locator(".topBar")).toBeVisible();
 }
 
-const topBar = (page: Page) => page.locator(".mainPanel > .topBar");
+const topBar = (page: Page) => page.locator(".topBar");
 const autoStartButton = (page: Page) =>
   topBar(page).getByRole("button", { name: "Windows自動起動" });
 
@@ -106,7 +106,7 @@ test("P10-02 F1 opens the guide only when nothing else is open and the dictionar
     control.updateConfig(config);
   });
   // The badge follows the stored key, so it proves the new value reached the app.
-  await expect(page.locator(".launcherOpenButton .shortcutBadge")).toContainText("F1");
+  await expect(page.locator(".launcherOpenButton .uiKey")).toContainText("F1");
   await page.keyboard.press("F1");
   await expect(page.getByRole("dialog", { name: "使い方" })).toHaveCount(0);
 });
@@ -114,20 +114,20 @@ test("P10-02 F1 opens the guide only when nothing else is open and the dictionar
 test("P10-02 the empty middle of the top bar still drags the window", async ({ page }) => {
   await open(page);
   const middle = await page.evaluate(() => {
-    const bar = document.querySelector<HTMLElement>(".mainPanel > .topBar")!;
-    const summary = bar.querySelector<HTMLElement>(".topSummary")!;
-    const pills = bar.querySelector<HTMLElement>(".topPills")!;
-    const summaryRight = summary.getBoundingClientRect().right;
-    const pillsLeft = pills.getBoundingClientRect().left;
+    const bar = document.querySelector<HTMLElement>(".topBar")!;
+    const brand = bar.querySelector<HTMLElement>(".topBrand")!;
+    const search = bar.querySelector<HTMLElement>(".topSearchButton")!;
+    const brandRight = brand.getBoundingClientRect().right;
+    const searchLeft = search.getBoundingClientRect().left;
     const y = bar.getBoundingClientRect().top + bar.getBoundingClientRect().height / 2;
-    const x = summaryRight + (pillsLeft - summaryRight) / 2;
+    const x = brandRight + (searchLeft - brandRight) / 2;
     const hit = document.elementFromPoint(x, y);
     return {
-      width: pillsLeft - summaryRight,
+      width: searchLeft - brandRight,
       insideDragRegion: hit !== null && hit.closest("[data-tauri-drag-region]") !== null,
       hitClass: hit?.className?.toString() ?? "",
     };
   });
-  expect(middle.width).toBeGreaterThan(40);
+  expect(middle.width).toBeGreaterThan(10);
   expect(middle.insideDragRegion).toBe(true);
 });

@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { springSnappy } from "../motion";
-import { PROJECT_COLOR_IDS, resolveProjectColorId } from "../projectIdentity";
+import { buttonGlyph, PROJECT_COLOR_IDS, resolveProjectColorId } from "../projectIdentity";
 import type { ProjectColorId } from "../types";
 import { UiIcon } from "./UiIcon";
 
@@ -90,10 +90,6 @@ function enterHintOf(item: SearchItem): string | undefined {
     default:
       return undefined;
   }
-}
-
-function firstGlyph(text: string): string {
-  return Array.from(text.trim())[0] ?? "?";
 }
 
 /** P10-03 (D4): the search window that sits above the main window. */
@@ -306,9 +302,10 @@ export function SearchPalette({
                     ) : (
                       <span
                         aria-hidden="true"
-                        className="searchPaletteItemIcon searchPaletteItemIcon--letter"
+                        className="searchPaletteItemIcon uiLetterIcon"
+                        data-project-color={resolveProjectColorId(item.id)}
                       >
-                        {item.icon?.trim() || firstGlyph(item.title)}
+                        {buttonGlyph({ label: item.title, icon: item.icon })}
                       </span>
                     )}
                     <span className="searchPaletteItemText">

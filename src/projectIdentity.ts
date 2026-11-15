@@ -49,3 +49,17 @@ export function resolveProjectColorId(
   }
   return AUTO_PROJECT_COLOR_IDS[hash % AUTO_PROJECT_COLOR_IDS.length];
 }
+
+/** P10-14e (6): the placeholder glyphs that only mean "no picture". */
+const PLACEHOLDER_BUTTON_GLYPHS = new Set(["□", "▣", "↗", ">", "♻", "◇"]);
+
+/**
+ * P10-14e (6): the sidebar and the search rows show a picture when the button has one,
+ * otherwise the first letter of its name. A placeholder box glyph is not a picture.
+ */
+export function buttonGlyph(button: { label: string; icon?: string | null }): string {
+  const icon = button.icon?.trim();
+  if (icon && !PLACEHOLDER_BUTTON_GLYPHS.has(icon)) return icon;
+  const first = Array.from(button.label?.trim() || "?")[0] ?? "?";
+  return /[a-z]/.test(first) ? first.toUpperCase() : first;
+}

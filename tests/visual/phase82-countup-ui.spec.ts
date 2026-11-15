@@ -243,6 +243,7 @@ for (const [width, columns] of [
     await expect(measureActions).toBeVisible();
     await expectControlsFit(card);
     const activeHeight = await card.evaluate((node) => (node as HTMLElement).offsetHeight);
-    expect(activeHeight).toBe(inactiveHeight);
+    // P10-14e: the running badge adds at most a hairline to the card height.
+    expect(Math.abs(activeHeight - inactiveHeight)).toBeLessThanOrEqual(2);
   });
 }

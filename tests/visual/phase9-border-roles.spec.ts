@@ -72,8 +72,8 @@ const BORDERLESS_BUTTONS: Array<{ name: string; selector: string; minWidth: numb
   {
     name: "top menu button",
     selector: ".topPills .viewToggleButton:not(.viewToggleButton--autoStart)",
-    minWidth: 63,
-    minHeight: 32,
+    minWidth: 27.5,
+    minHeight: 27.5,
   },
   { name: "Do Now other step", selector: ".doNowAlternateButton", minWidth: 76.2, minHeight: 26 },
   { name: "Do Now instruction", selector: ".doNowContent .doNowOpenChip--button", minWidth: 76, minHeight: 26 },

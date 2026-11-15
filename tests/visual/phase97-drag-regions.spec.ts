@@ -15,7 +15,7 @@ async function open(page: Page) {
   await expect(page.locator(".doNowBand")).toBeVisible();
 }
 
-test("only the top margins, the top bar and the brand block are drag regions", async ({ page }) => {
+test("only the top bar and its brand are drag regions", async ({ page }) => {
   await open(page);
   const hits = await page.evaluate(() => {
     const drag = (element: Element | null) =>
@@ -27,7 +27,8 @@ test("only the top margins, the top bar and the brand block are drag regions", a
     const at = (x: number, y: number) => document.elementFromPoint(x, y);
     const panel = document.querySelector<HTMLElement>(".mainPanel")!.getBoundingClientRect();
     const sidebar = document.querySelector<HTMLElement>(".sidebar")!.getBoundingClientRect();
-    const bar = document.querySelector<HTMLElement>(".mainPanel > .topBar")!.getBoundingClientRect();
+    const bar = document.querySelector<HTMLElement>(".topBar")!.getBoundingClientRect();
+    const brand = document.querySelector<HTMLElement>(".topBrand")!.getBoundingClientRect();
     const groups = Array.from(document.querySelectorAll<HTMLElement>(".quickGroup"));
     const groupGapY =
       groups.length > 1
@@ -37,20 +38,20 @@ test("only the top margins, the top bar and the brand block are drag regions", a
         : sidebar.top + sidebar.height / 2;
     const timer = document.querySelector<HTMLElement>(".timerDock")!.getBoundingClientRect();
     return {
-      panelTopMargin: drag(at(panel.left + panel.width / 2, panel.top + 4)),
-      topBar: drag(at(panel.left + 120, bar.top + bar.height / 2)),
+      topBar: drag(at(bar.width / 2, bar.top + bar.height / 2)),
+      brand: drag(at(brand.left + 10, brand.top + brand.height / 2)),
+      panelTop: drag(at(panel.left + panel.width / 2, panel.top + 4)),
       panelBottom: drag(at(panel.left + panel.width / 2, panel.bottom - 3)),
       panelRight: drag(at(panel.right - 3, panel.top + panel.height / 2)),
       sidebarTop: drag(at(sidebar.left + sidebar.width / 2, sidebar.top + 6)),
-      brand: drag(at(sidebar.left + 24, sidebar.top + 32)),
       sidebarGroupGap: drag(at(sidebar.left + sidebar.width / 2, groupGapY)),
       timerSurround: drag(at(sidebar.left + sidebar.width / 2, timer.top - 4)),
     };
   });
-  expect(hits.panelTopMargin, "main panel top margin").toBe(true);
   expect(hits.topBar, "top bar").toBe(true);
-  expect(hits.sidebarTop, "sidebar top margin").toBe(true);
   expect(hits.brand, "brand block").toBe(true);
+  expect(hits.panelTop, "main panel top margin").toBe(false);
+  expect(hits.sidebarTop, "sidebar top margin").toBe(false);
   expect(hits.panelBottom, "main panel bottom margin").toBe(false);
   expect(hits.panelRight, "main panel right margin").toBe(false);
   expect(hits.sidebarGroupGap, "sidebar gap between the lists").toBe(false);
@@ -61,9 +62,6 @@ test("the panel and the sidebar themselves do not carry the drag attribute", asy
   await open(page);
   await expect(page.locator(".mainPanel")).not.toHaveAttribute("data-tauri-drag-region", "");
   await expect(page.locator(".sidebar")).not.toHaveAttribute("data-tauri-drag-region", "");
-  await expect(page.locator(".panelDragStrip--main")).toHaveAttribute("data-tauri-drag-region", "");
-  await expect(page.locator(".panelDragStrip--sidebar")).toHaveAttribute(
-    "data-tauri-drag-region",
-    "",
-  );
+  await expect(page.locator(".topBar")).toHaveAttribute("data-tauri-drag-region", "");
+  await expect(page.locator(".panelDragStrip")).toHaveCount(0);
 });

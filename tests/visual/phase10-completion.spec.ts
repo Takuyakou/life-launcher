@@ -135,7 +135,7 @@ test("P10-09 asks where to start even when the Project has no Wishlist", async (
   await expect(followup).toContainText("一手進みました");
   await expect(followup).toContainText("次はどこから始めますか");
   await expect(followup).toContainText("資料を1ページ読む");
-  await expect(followup).toContainText("実行 1分");
+  await expect(followup).toContainText(/1分 ・ \d{2}:\d{2}–\d{2}:\d{2}/);
   await expect(followup.getByRole("radio")).toHaveCount(3);
   const repeat = followup.getByRole("radio", { name: /同じ一手をもう一度（資料を1ページ読む）/ });
   await expect(repeat).toBeVisible();
@@ -407,4 +407,11 @@ test("P10-14 a chosen Wishlist item removed while open warns and keeps the dialo
   await expect(
     page.getByRole("dialog", { name: "一手進みました" }).getByRole("radio", { name: /同じ一手をもう一度/ }),
   ).toBeChecked();
+});
+
+test("P10-14e 3 the completion follow-up shows the start and end time", async ({ page }) => {
+  const fixture = completionFixture();
+  await prepare(page, fixture);
+  const followup = await openFollowup(page);
+  await expect(followup.locator(".completionDoneMinutes")).toHaveText("1分 ・ 09:30–09:31");
 });

@@ -22,7 +22,7 @@ async function currentConfig(page: Page) {
 
 test("Builder preserves each source and user label across mode round-trips", async ({ page }) => {
   await prepare(page);
-  await page.locator(".brandBlock").click({ button: "right" });
+  await page.locator(".topBrand").click({ button: "right" });
   await page.getByRole("menuitem", { name: "ボタンを追加" }).click();
   const dialog = page.getByRole("dialog", { name: "Button Builder" });
   const before = await currentConfig(page);
@@ -52,7 +52,7 @@ test("Builder preserves each source and user label across mode round-trips", asy
   await dialog.getByRole("button", { name: "キャンセル" }).click();
   await expect(dialog).toHaveCount(0);
   expect(await currentConfig(page)).toEqual(before);
-  await page.locator(".brandBlock").click({ button: "right" });
+  await page.locator(".topBrand").click({ button: "right" });
   await page.getByRole("menuitem", { name: "ボタンを追加" }).click();
   await expect(page.getByRole("dialog", { name: "Button Builder" }).getByRole("textbox", { name: "ファイル", exact: true })).toHaveValue("");
   expect((await currentConfig(page)).buttons.some((button) => button.label === "自分で決めた名前")).toBe(false);

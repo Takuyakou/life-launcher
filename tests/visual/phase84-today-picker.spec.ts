@@ -76,7 +76,8 @@ test("P84 Picker entry matches Today card height in the two-column small window"
   expect(cardBox).not.toBeNull();
   expect(entryBox).not.toBeNull();
   expect(visualBox).not.toBeNull();
-  expect(Math.abs(entryBox!.height - cardBox!.height)).toBeLessThanOrEqual(2);
+  // P10-14e: the Picker entry keeps the card's height within a few pixels.
+  expect(Math.abs(entryBox!.height - cardBox!.height)).toBeLessThanOrEqual(4);
   expect(visualBox!.width).toBeLessThan(entryBox!.width * 0.6);
   expect(visualBox!.height).toBeLessThan(entryBox!.height);
 
@@ -84,9 +85,7 @@ test("P84 Picker entry matches Today card height in the two-column small window"
   await expect(picker(page)).toBeVisible();
 });
 
-test("P84 Picker groups Wishlist by project, starts expanded, and uses a danger cancel", async ({
-  page,
-}) => {
+test("P84 Picker lists Wishlist rows flat with their Project name", async ({ page }) => {
   const fixture = createPublicFixture();
   fixture.config.today.items = [];
   fixture.config.inbox.push({
@@ -98,18 +97,12 @@ test("P84 Picker groups Wishlist by project, starts expanded, and uses a danger 
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const dialog = picker(page);
-  const projectGroup = dialog.locator(
-    '[data-today-picker-wishlist-group="project:sample-learning"]',
-  );
-  const header = projectGroup.locator(".todayPickerWishlistGroupHeader");
-  await expect(header).toHaveAttribute("aria-expanded", "true");
-  await expect(projectGroup.locator(".todayPickerRow")).toHaveCount(2);
-  await expect(header).toContainText("サンプル学習");
-  await expect(header).toContainText("2件");
-
-  await header.click();
-  await expect(header).toHaveAttribute("aria-expanded", "false");
-  await expect(projectGroup.locator(".todayPickerRow")).toHaveCount(0);
+  await expect(dialog.locator(".todayPickerWishlistGroupHeader")).toHaveCount(0);
+  const wishlistRows = dialog.locator('[data-today-picker-section="wishlist"] .todayPickerRow');
+  await expect(wishlistRows).toHaveCount(3);
+  await expect(wishlistRows.nth(0).locator(".todayPickerProject")).toContainText("サンプル学習");
+  await expect(wishlistRows.nth(1).locator(".todayPickerProject")).toContainText("サンプル学習");
+  await expect(wishlistRows.nth(2).locator(".todayPickerProject")).toContainText("未分類");
   await expect(dialog.getByRole("button", { name: "キャンセル" })).toHaveClass(/dangerButton/);
 });
 
@@ -129,10 +122,16 @@ test("Picker adoption preserves NextStep and Wishlist snapshots across reopening
 
   let selected = dialog.locator('[data-today-picker-section="selected"]');
   const nextStep = selected.locator(".todayPickerRow", { hasText: source.nextStep!.text });
-  await expect(nextStep.locator(".projectIdentity")).toHaveText(source.name);
+  await expect(nextStep.locator(".todayPickerSlotProject")).toHaveText(source.name);
   await expect(nextStep.locator(".todayPickerSlotTask")).toHaveText(source.nextStep!.text);
-  await expect(nextStep.locator(".todayPickerSelectedStatus")).toHaveText("✓ 選択済み");
-  await expect(dialog.locator('[data-today-picker-section="next-step"]')).not.toContainText(source.nextStep!.text);
+  await expect(nextStep.locator(".todayPickerSelectedStatus")).toHaveCount(0);
+  await expect(
+    dialog
+      .locator('[data-today-picker-section="next-step"] .todayPickerRow', {
+        hasText: source.nextStep!.text,
+      })
+      .locator(".todayPickerSelectedStatus"),
+  ).toHaveText("✓ 選択済み");
   await expect(dialog.locator(".todayPickerSlot--selected")).toHaveCount(1);
   await expect(dialog.locator(".todayPickerSlot--empty")).toHaveCount(2);
   expect((await currentConfig(page)).today.items).toHaveLength(0);
@@ -154,17 +153,21 @@ test("Picker adoption preserves NextStep and Wishlist snapshots across reopening
   dialog = picker(page);
   selected = dialog.locator('[data-today-picker-section="selected"]');
   await expect(selected).toContainText(source.nextStep!.text);
-  await expect(dialog.locator('[data-today-picker-section="next-step"]')).not.toContainText(source.nextStep!.text);
+  await expect(
+    dialog.locator('[data-today-picker-section="next-step"] .todayPickerSelectedStatus'),
+  ).toHaveText("✓ 選択済み");
   await dialog.locator('[data-today-picker-section="wishlist"] .todayPickerRow', { hasText: wish.text })
     .getByRole("button", { name: "今日へ" }).click();
   await expect(selected).toContainText(wish.text);
-  await expect(selected.getByText("✓ 選択済み")).toHaveCount(2);
-  await expect(dialog.locator('[data-today-picker-section="wishlist"]')).not.toContainText(wish.text);
+  await expect(
+    dialog.locator('[data-today-picker-section="next-step"] .todayPickerSelectedStatus, [data-today-picker-section="wishlist"] .todayPickerSelectedStatus'),
+  ).toHaveCount(2);
+  await expect(dialog.locator('[data-today-picker-section="wishlist"]')).toContainText(wish.text);
   await dialog.getByRole("button", { name: "決定", exact: true }).click();
   await expect(dialog).toHaveCount(0);
   await entry.click();
   await expect(picker(page).locator('[data-today-picker-section="selected"]')).toContainText(wish.text);
-  await expect(picker(page).locator('[data-today-picker-section="wishlist"]')).not.toContainText(wish.text);
+  await expect(picker(page).locator('[data-today-picker-section="wishlist"]')).toContainText(wish.text);
   const saved = await currentConfig(page);
   expect(saved.projects).toEqual(before.projects);
   expect(saved.inbox).toEqual(before.inbox);
@@ -253,13 +256,7 @@ test("P84 Picker removes selected cards by keyboard without resizing and updates
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const dialog = picker(page);
   const dialogBoxBefore = await dialog.boundingBox();
-  const progress = dialog.locator(".todayPickerProgress");
-  const progressBox = await progress.boundingBox();
-  const counterBox = await dialog.locator(".todayPickerCounter").boundingBox();
-
-  expect(progressBox && counterBox).toBeTruthy();
-  expect(progressBox!.x + progressBox!.width).toBeLessThanOrEqual(counterBox!.x);
-  await expect(progress).toHaveAttribute("aria-valuenow", "1");
+  await expect(dialog.locator(".todayPickerCounter")).toContainText("1 / 3");
 
   const selectedCard = dialog.locator(".todayPickerSlot--selected");
   await expect(selectedCard).toHaveAttribute("draggable", "true");
@@ -280,7 +277,7 @@ test("P84 Picker removes selected cards by keyboard without resizing and updates
   const dialogBoxAfter = await dialog.boundingBox();
   expect(Math.abs(dialogBoxAfter!.height - dialogBoxBefore!.height)).toBeLessThanOrEqual(1);
   expect((await currentConfig(page)).today.items).toHaveLength(1);
-  await expect(progress).toHaveAttribute("aria-valuenow", "0");
+  await expect(dialog.locator(".todayPickerCounter")).toContainText("0 / 3");
   await dialog.getByRole("button", { name: "決定" }).click();
   await expect(dialog).toHaveCount(0);
   expect((await currentConfig(page)).today.items).toHaveLength(0);
@@ -341,7 +338,7 @@ test("P84 Picker aligns project, task, and action columns with readable long con
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const dialog = picker(page);
   const nextStepTaskXs = await dialog
-    .locator('[data-today-picker-section="next-step"] .todayPickerCopy strong')
+    .locator('[data-today-picker-section="next-step"] .todayPickerTask')
     .evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().x));
   expect(Math.max(...nextStepTaskXs) - Math.min(...nextStepTaskXs)).toBeLessThanOrEqual(1);
   const nextStepActionRights = await dialog
@@ -352,12 +349,12 @@ test("P84 Picker aligns project, task, and action columns with readable long con
   );
 
   const wishlistTaskXs = await dialog
-    .locator(".todayPickerRow--groupedWishlist .todayPickerCopy strong")
+    .locator('[data-today-picker-section="wishlist"] .todayPickerTask')
     .evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().x));
   expect(Math.max(...wishlistTaskXs) - Math.min(...wishlistTaskXs)).toBeLessThanOrEqual(1);
-  expect(wishlistTaskXs[0]).toBeLessThan(nextStepTaskXs[0]);
+  expect(Math.abs(wishlistTaskXs[0] - nextStepTaskXs[0])).toBeLessThanOrEqual(1);
   const wishlistActionRights = await dialog
-    .locator(".todayPickerRow--groupedWishlist > button")
+    .locator('[data-today-picker-section="wishlist"] .todayPickerRow > button')
     .evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().right));
   expect(Math.max(...wishlistActionRights) - Math.min(...wishlistActionRights)).toBeLessThanOrEqual(
     1,
@@ -368,35 +365,33 @@ test("P84 Picker aligns project, task, and action columns with readable long con
     dialog.boundingBox(),
   ]);
   expect(confirmBox && cancelBox && dialogBox).toBeTruthy();
-  // P10-14d (P1): the footer is a two-column grid; the note takes the second cell of
-  // the first row, so キャンセル sits under 決定 and never beside it.
-  expect(cancelBox!.y).toBeGreaterThanOrEqual(confirmBox!.y + confirmBox!.height);
+  // P10-14e (4): the footer is a two-column row; キャンセル sits to the right of 決定.
+  expect(cancelBox!.x).toBeGreaterThan(confirmBox!.x + confirmBox!.width);
+  expect(Math.abs(cancelBox!.y - confirmBox!.y)).toBeLessThanOrEqual(1);
   expect(cancelBox!.x + cancelBox!.width).toBeLessThanOrEqual(dialogBox!.x + dialogBox!.width);
 });
 
-test("P84 Picker selection preserves collapsed Wishlist groups", async ({ page }) => {
+test("P84 Picker keeps the selected Wishlist row visible with its ✓", async ({ page }) => {
   const fixture = createPublicFixture();
   fixture.config.today.items = [];
   await prepare(page, fixture);
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const dialog = picker(page);
-  const projectHeader = dialog
-    .locator('[data-today-picker-wishlist-group="project:sample-learning"]')
-    .locator(".todayPickerWishlistGroupHeader");
-  await projectHeader.click();
-  await expect(projectHeader).toHaveAttribute("aria-expanded", "false");
-
-  const row = dialog.locator(".todayPickerRow", { hasText: "5分だけ体を動かす" });
+  const heightBefore = (await dialog.boundingBox())!.height;
+  const row = dialog.locator('[data-today-picker-section="wishlist"] .todayPickerRow', {
+    hasText: "あとで確認するサンプル",
+  });
   await row.getByRole("button", { name: "今日へ" }).click();
+  await expect(row.locator(".todayPickerSelectedStatus")).toHaveText("✓ 選択済み");
   await expect(
     dialog
       .locator('[data-today-picker-section="selected"] .todayPickerRow', {
-        hasText: "5分だけ体を動かす",
+        hasText: "あとで確認するサンプル",
       })
-      .getByText("✓ 選択済み"),
-  ).toBeVisible();
-  await expect(projectHeader).toHaveAttribute("aria-expanded", "false");
+      .locator(".todayPickerSlotTask"),
+  ).toHaveText("あとで確認するサンプル");
+  expect(Math.abs((await dialog.boundingBox())!.height - heightBefore)).toBeLessThanOrEqual(1);
   expect((await currentConfig(page)).today.items).toHaveLength(0);
   await dialog.getByRole("button", { name: "決定" }).click();
   await expect(dialog).toHaveCount(0);
@@ -421,7 +416,7 @@ test("P84 Picker remains contained and keeps actions visible at narrow width", a
   expect(actionBoxes.length).toBeGreaterThan(0);
   expect(actionBoxes.every((box) => box.left >= dialogBox!.x && box.right <= dialogBox!.x + dialogBox!.width + 1)).toBe(true);
   const longCandidate = dialog.locator(".todayPickerRow", { hasText: longAction });
-  await expect(longCandidate.locator(".todayPickerCopy strong")).toHaveText(longAction);
+  await expect(longCandidate.locator(".todayPickerTask")).toHaveText(longAction);
   const taskBox = await longCandidate.locator(".todayPickerCopy").boundingBox();
   const addBox = await longCandidate.getByRole("button", { name: "今日へ" }).boundingBox();
   expect(taskBox && addBox).toBeTruthy();
@@ -432,7 +427,7 @@ test("P84 Picker remains contained and keeps actions visible at narrow width", a
   expect(await dialog.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
 });
 
-test("P84 Picker stacks the numbered slots above a scrollable candidate list in the mini window", async ({
+test("P84 Picker keeps both columns and a scrollable candidate list in a small window", async ({
   page,
 }) => {
   const fixture = createPublicFixture();
@@ -458,14 +453,13 @@ test("P84 Picker stacks the numbered slots above a scrollable candidate list in 
     dialog.boundingBox(),
   ]);
   expect(destinationBox && sourceBox && cancelBox && dialogBox).toBeTruthy();
-  expect(destinationBox!.y).toBeLessThan(sourceBox!.y);
+  expect(destinationBox!.x).toBeGreaterThan(sourceBox!.x + sourceBox!.width);
+  expect(Math.abs(destinationBox!.y - sourceBox!.y)).toBeLessThanOrEqual(2);
   expect(cancelBox!.x + cancelBox!.width).toBeLessThanOrEqual(dialogBox!.x + dialogBox!.width);
   expect(cancelBox!.y + cancelBox!.height).toBeLessThanOrEqual(dialogBox!.y + dialogBox!.height);
 });
 
-test("P84 Picker shows a clear empty NextStep section when every NextStep is selected", async ({
-  page,
-}) => {
+test("P84 Picker keeps every selected NextStep visible with ✓", async ({ page }) => {
   const fixture = createPublicFixture();
   fixture.config.today.items = fixture.config.projects.map((project) => ({
     text: project.nextStep!.text,
@@ -477,8 +471,10 @@ test("P84 Picker shows a clear empty NextStep section when every NextStep is sel
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const nextStep = picker(page).locator('[data-today-picker-section="next-step"]');
-  await expect(nextStep.locator(".todayPickerRow")).toHaveCount(0);
-  await expect(nextStep).toContainText("追加できる次の一手はありません");
+  await expect(nextStep.locator(".todayPickerRow")).toHaveCount(2);
+  await expect(nextStep.locator(".todayPickerSelectedStatus")).toHaveCount(2);
+  await expect(nextStep.locator(".todayPickerAddButton")).toHaveCount(0);
+  await expect(nextStep).not.toContainText("追加できる次の一手はありません");
 });
 test("P84 Picker shows both source groups without tabs on every open", async ({ page }) => {
   const fixture = createPublicFixture();

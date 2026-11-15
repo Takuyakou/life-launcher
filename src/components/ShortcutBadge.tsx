@@ -13,7 +13,7 @@ export function ShortcutBadge({ label, shortcut, registered }: ShortcutBadgeProp
     : `${label}: ${value}（ショートカットを登録できていません）`;
   return (
     <kbd
-      className={`shortcutBadge${registered ? "" : " shortcutBadge--unavailable"}`}
+      className={`uiKey${registered ? "" : " shortcutBadge--unavailable"}`}
       title={title}
       aria-label={title}
     >

@@ -18,7 +18,7 @@ const SCREENSHOT_OPTIONS = {
 
 const MAIN_SIZE = { width: 1080, height: 680 };
 const MIN_SIZE = { width: 860, height: 560 };
-const MINI_SIZE = { width: 288, height: 136 };
+const MINI_SIZE = { width: 340, height: 120 };
 
 type QaWindow = Window & {
   __LIFE_LAUNCHER_VISUAL_QA__: { emit: (event: string, payload?: unknown) => void };

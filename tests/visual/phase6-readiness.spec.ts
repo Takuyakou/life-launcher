@@ -132,9 +132,8 @@ test("manual next batch accepts one, two, and three new items but no fourth", as
         ? '[data-today-picker-section="wishlist"]'
         : '[data-today-picker-section="next-step"]';
     await picker
-      .locator(`${section} .todayPickerRow`)
-      .nth(0)
-      .getByRole("button", { name: "＋ 今日へ", exact: true })
+      .locator(`${section} .todayPickerAddButton`)
+      .first()
       .click();
     await expect(picker.locator(".todayPickerSlot--selected")).toHaveCount(index + 1);
   }

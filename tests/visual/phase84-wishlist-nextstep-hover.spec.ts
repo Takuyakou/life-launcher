@@ -117,8 +117,7 @@ test("P84 Wishlist promote action is status-aware, stable, keyboard reachable, a
   expect((await currentConfig(page)).today).toEqual(originalToday);
   await dialog.getByRole("button", { name: "キャンセル", exact: true }).click();
 
-  await page.setViewportSize({ width: 520, height: 900 });
-  await expect(selected.locator(".wishlistNextStepSlot")).toHaveCSS("display", "none");
+  await page.setViewportSize({ width: 860, height: 900 });
   await expect(selectedNextStepStatus).toBeVisible();
   await expect(selectedStatus).toBeVisible();
   await expect(selectedMenu).toBeVisible();

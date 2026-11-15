@@ -215,7 +215,7 @@ for (const size of ["large", "xlarge"] as const) {
     "P89 " + size + " Main toolbar matches the content width and menu density",
     async ({ page }) => {
       await prepare(page, 1920, size);
-      const toolbar = page.locator(".mainPanel > .topBar");
+      const toolbar = page.locator(".topBar");
       const toolbarFont = await toolbar.evaluate((element) => getComputedStyle(element).fontSize);
       const settings = await openSettings(page);
       await settings.getByRole("radio", { name: size === "large" ? "特大" : "大", exact: true }).check();
@@ -234,17 +234,13 @@ for (const size of ["large", "xlarge"] as const) {
       expect(topBox).not.toBeNull();
       expect(panelBox).not.toBeNull();
       expect(contentBox).not.toBeNull();
-      // P10-14d (M3): the content is capped at 1200px inside the panel, while the
-      // top menu keeps its own centred width (1180 / 1298 / 1400).
-      const topCenter = topBox!.x + topBox!.width / 2;
+      // P10-14e (10): the top menu spans the whole window; the content stays capped
+      // at 1200px and centred inside the main panel.
+      expect(topBox!.x).toBeCloseTo(0, 0);
+      expect(topBox!.width).toBeCloseTo(page.viewportSize()!.width, 0);
       const panelCenter = panelBox!.x + panelBox!.width / 2;
       const contentCenter = contentBox!.x + contentBox!.width / 2;
-      expect(Math.abs(topCenter - panelCenter)).toBeLessThan(1);
       expect(Math.abs(contentCenter - panelCenter)).toBeLessThan(1);
-      expect(topBox!.width).toBeCloseTo(
-        Math.min(panelBox!.width, size === "large" ? 1298 : 1400),
-        0,
-      );
       expect(contentBox!.width).toBeLessThanOrEqual(1200);
 
       await page.getByRole("button", { name: "記録ビューを開く" }).click();

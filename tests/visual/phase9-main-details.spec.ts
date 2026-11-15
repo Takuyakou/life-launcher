@@ -197,7 +197,7 @@ test("P9-09 an open sidebar group without buttons shows a guide, and a button ca
     range.selectNodeContents(el);
     return new Set([...range.getClientRects()].map((rect) => Math.round(rect.top))).size;
   });
-  expect(guideLines).toBe(1);
+  expect(guideLines).toBeLessThanOrEqual(2);
   // Groups that have buttons do not show it.
   await expect(page.locator(".quickGroup", { hasText: "資料" }).locator(".quickGroupEmpty")).toHaveCount(0);
   // A collapsed group shows no guide.

@@ -27,6 +27,8 @@ type TimerPanelProps = {
   expandButtonRef?: Ref<HTMLButtonElement>;
   waitingContent?: ReactNode;
   identity?: ReactNode;
+  /** P10-14e N1: the Project colour for the mini window's left edge. */
+  projectColorId?: string | null;
   clockAdjustable?: boolean;
   clockDragging?: boolean;
   onClockPointerCancel?: PointerEventHandler<HTMLDivElement>;
@@ -84,6 +86,7 @@ export function TimerPanel({
   expandButtonRef,
   waitingContent,
   identity,
+  projectColorId,
   clockAdjustable = false,
   clockDragging = false,
   onClockPointerCancel,
@@ -95,17 +98,17 @@ export function TimerPanel({
   const idleMini = variant === "mini" && !active;
   const stateClass =
     state === "complete"
-      ? "timerStateBadge timerStateBadge--complete"
+      ? "uiPill uiPill--complete timerStateBadge timerStateBadge--complete"
       : state === "paused"
-        ? "timerStateBadge timerStateBadge--paused"
+        ? "uiPill uiPill--paused timerStateBadge timerStateBadge--paused"
         : state === "running"
-          ? "timerStateBadge timerStateBadge--running"
-          : "timerStateBadge";
+          ? "uiPill uiPill--running timerStateBadge timerStateBadge--running"
+          : "uiPill timerStateBadge";
 
   /**
-   * P10-14d N1: the mini window is one horizontal line. The project/action stay on the left,
-   * the remaining clock and the icon buttons on the right. Every label and action of the old
-   * mini header is kept (the header itself is replaced by this line).
+   * P10-14e N1 (Mini-C): the mini window is two rows. The top row keeps the Project name
+   * and the clock, the bottom row the action and the icon buttons. The left edge carries
+   * the Project colour (the frame colour when there is no Project or the timer is idle).
    */
   if (variant === "mini") {
     const displayClock = state === "complete" ? "00:00" : clock;
@@ -119,6 +122,7 @@ export function TimerPanel({
         ]
           .filter(Boolean)
           .join(" ")}
+        data-project-color={projectColorId ?? undefined}
         onPointerDownCapture={() => window.getSelection()?.removeAllRanges()}
       >
         {!idleMini && progressPercent !== null && (
@@ -126,18 +130,16 @@ export function TimerPanel({
             <span style={{ width: `${progressPercent ?? 0}%` }} />
           </div>
         )}
-        <div className="miniTopline">
-          {idleMini ? (
-            <>
-              <span className="miniTimerText miniTimerText--idle">
-                <span className="miniIdleHead">
-                  <span className="timerMeta">
-                    <span>タイマー</span>
-                  </span>
-                  <span className={stateClass}>{status}</span>
-                </span>
-                <span className="miniQuietText">開始ボタンから計測できます</span>
+        {idleMini ? (
+          <>
+            <div className="miniRow miniRow--top">
+              <span className="miniIdleHead">
+                <span className="miniTimerTitle">タイマー</span>
+                <span className={stateClass}>{status}</span>
               </span>
+            </div>
+            <div className="miniRow miniRow--bottom">
+              <span className="miniQuietText">開始ボタンから計測できます</span>
               {onExpand && (
                 <button
                   aria-label="タイマーを大きく表示"
@@ -149,17 +151,13 @@ export function TimerPanel({
                   <UiIcon name="maximize" size={16} />
                 </button>
               )}
-            </>
-          ) : (
-            <>
-              <span className="miniTimerText">
-                {identity}
-                {(actionText ?? label) !== undefined && (
-                  <strong className="timerActionText" title={actionText ?? label}>
-                    {actionText ?? label}
-                  </strong>
-                )}
-                <span className={`${stateClass} visuallyHidden`}>{status}</span>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="miniRow miniRow--top">
+              <span className="miniProjectLine">
+                {identity ?? <span className="miniProjectLineFallback">{label}</span>}
               </span>
               <div
                 aria-label={clockAdjustable ? clock : undefined}
@@ -185,6 +183,12 @@ export function TimerPanel({
                   displayClock
                 )}
               </div>
+              <span className={`${stateClass} visuallyHidden`}>{status}</span>
+            </div>
+            <div className="miniRow miniRow--bottom">
+              <strong className="timerActionText" title={actionText ?? label}>
+                {actionText ?? label}
+              </strong>
               <div className="timerControls">
                 <button
                   aria-label={paused ? "再開" : "一時停止"}
@@ -217,9 +221,9 @@ export function TimerPanel({
                   </button>
                 )}
               </div>
-            </>
-          )}
-        </div>
+            </div>
+          </>
+        )}
       </section>
     );
   }

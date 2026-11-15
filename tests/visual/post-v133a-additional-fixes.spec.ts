@@ -12,7 +12,7 @@ async function prepare(page: Page, fixture = createPublicFixture()) {
 
 async function openBuilder(page: Page, group?: string) {
   await (
-    group ? page.locator(".quickGroupHeader", { hasText: group }) : page.locator(".brandBlock")
+    group ? page.locator(".quickGroupHeader", { hasText: group }) : page.locator(".topBrand")
   ).click({ button: "right" });
   await page.getByRole("menuitem", { name: "ボタンを追加" }).click();
   return page.getByRole("dialog", { name: "Button Builder" });
@@ -27,7 +27,7 @@ test("static chrome cannot be text-selected while editable fields remain selecta
     main: getComputedStyle(document.querySelector(".mainPanel")!).userSelect,
     topBar: getComputedStyle(document.querySelector(".topBar")!).userSelect,
     disclosure: getComputedStyle(document.querySelector(".disclosureHeader")!).userSelect,
-    brandDraggable: (document.querySelector(".brandIcon") as HTMLImageElement).draggable,
+    brandDraggable: (document.querySelector(".topBrandIcon") as HTMLImageElement).draggable,
   }));
   expect(styles).toMatchObject({
     sidebar: "none",
@@ -36,7 +36,7 @@ test("static chrome cannot be text-selected while editable fields remain selecta
     disclosure: "none",
     brandDraggable: false,
   });
-  const brand = page.locator(".brandCopy");
+  const brand = page.locator(".topBrand");
   const box = await brand.boundingBox();
   expect(box).not.toBeNull();
   await page.mouse.move(box!.x + 2, box!.y + 8);
@@ -269,7 +269,7 @@ test("creating an empty group shows it immediately; deleting the last button kee
   await prepare(page, fixture);
   await page.locator(".timerDock").click({ button: "right", position: { x: 6, y: 6 } });
   await expect(page.getByRole("menuitem", { name: "グループを追加" })).toHaveCount(0);
-  await page.locator(".brandBlock").click({ button: "right" });
+  await page.locator(".topBrand").click({ button: "right" });
   await page.getByRole("menuitem", { name: "グループを追加" }).click();
   const groupDialog = page.getByRole("dialog", { name: "グループ追加" });
   const actions = groupDialog.locator(".formDialogActions").getByRole("button");
@@ -281,7 +281,7 @@ test("creating an empty group shows it immediately; deleting the last button kee
   await actions.last().click();
   await expect(groupDialog).toHaveCount(0);
   await expect(page.locator(".quickGroupHeader", { hasText: "確認用グループ" })).toHaveCount(0);
-  await page.locator(".brandBlock").click({ button: "right" });
+  await page.locator(".topBrand").click({ button: "right" });
   await page.getByRole("menuitem", { name: "グループを追加" }).click();
   await groupDialog.getByRole("textbox", { name: "グループ名" }).fill("新しい空グループ");
   await groupDialog.getByRole("button", { name: "追加", exact: true }).click();

@@ -151,7 +151,12 @@ import {
   completeWishlistAfterToday,
   type TodayCompletionSource,
 } from "./completionFollowup";
-import { PROJECT_COLOR_IDS, PROJECT_COLOR_LABELS, resolveProjectColorId } from "./projectIdentity";
+import {
+  buttonGlyph,
+  PROJECT_COLOR_IDS,
+  PROJECT_COLOR_LABELS,
+  resolveProjectColorId,
+} from "./projectIdentity";
 import { canRevealLauncherButton } from "./launcherReveal";
 import {
   groupWishlist,
@@ -831,8 +836,8 @@ const MINI_TIMER_COMMAND_EVENT = "mini-timer-command";
 const MINI_RETURN_EVENT = "mini-return-requested";
 const MINI_READY_EVENT = "mini-ready";
 const MINI_POSITION_STORAGE_KEY = "life-launcher-mini-position";
-const MINI_WINDOW_WIDTH_PX = 400;
-const MINI_WINDOW_HEIGHT_PX = 96;
+const MINI_WINDOW_WIDTH_PX = 340;
+const MINI_WINDOW_HEIGHT_PX = 120;
 const MINI_WINDOW_SAFE_MARGIN_PX = 16;
 const NUMBER_INPUT_DRAG_THRESHOLD_PX = 4;
 const NUMBER_INPUT_DRAG_PIXELS_PER_STEP = 8;
@@ -2029,6 +2034,7 @@ function MiniModeApp() {
         onPause={() => sendCommand("pause")}
         paused={snapshot.paused}
         progressPercent={snapshot.progressPercent}
+        projectColorId={snapshot.projectColorId}
         state={snapshot.active ? (snapshot.paused ? "paused" : "running") : "waiting"}
         status={
           snapshot.active
@@ -2123,7 +2129,7 @@ function DashboardApp() {
   const {
     barRef: topMenuBarRef,
     pillsRef: topMenuPillsRef,
-    level: topMenuLabelLevel,
+    level: measuredMenuLabelLevel,
   } = useTopMenuLabelLevel({
     measureKey: config ? (config.settings.mainDisplaySize ?? "standard") : "loading",
     summaryTitle: `今日 ${topMenuMinutes}分`,
@@ -2133,6 +2139,19 @@ function DashboardApp() {
         ? TOP_MENU_LABELS.records
         : TOP_MENU_LABELS.dashboard,
   });
+  // P10-14e (10): the wider top row keeps all three labels from 1000px, hides the
+  // two secondary labels down to 900px, and hides all three below that.
+  const [wideMenuLabelLevel, setWideMenuLabelLevel] = useState(0);
+  useEffect(() => {
+    const update = () => {
+      const width = window.innerWidth;
+      setWideMenuLabelLevel(width < 900 ? 2 : width < 1000 ? 1 : 0);
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+  const topMenuLabelLevel = Math.max(measuredMenuLabelLevel, wideMenuLabelLevel);
 
   useEffect(() => {
     const unlisten = listen<InstructionWindowOpenOptions>(
@@ -2186,9 +2205,6 @@ function DashboardApp() {
     {},
   );
   const [todayPickerOpen, setTodayPickerOpen] = useState(false);
-  const [todayPickerWishlistCollapsed, setTodayPickerWishlistCollapsed] = useState<
-    Record<string, boolean>
-  >({});
   const [todayPickerDraftItems, setTodayPickerDraftItems] = useState<TodayItem[]>([]);
   const [todayPickerSaving, setTodayPickerSaving] = useState(false);
   // P10-14 (§6.1): guard the single save with a ref too, so two calls in one tick cannot pass.
@@ -4076,7 +4092,6 @@ function DashboardApp() {
     todayPickerOpenerRef.current = opener;
     todayPickerInitialItemsRef.current = initialItems;
     setTodayPickerDraftItems(initialItems);
-    setTodayPickerWishlistCollapsed({});
     setTodayPickerDragIndex(null);
     setTodayPickerOpen(true);
   }, []);
@@ -7332,7 +7347,7 @@ function DashboardApp() {
                     ?.nextStep
                 : undefined,
               sessionMinutes(pending.timer, pending.stoppedAt),
-              pending.timer.startedAt,
+              new Date(pending.timer.startedAtMs).toISOString(),
               new Date(pending.stoppedAt).toISOString(),
             );
           }
@@ -7623,7 +7638,7 @@ function DashboardApp() {
                   ?.nextStep
               : undefined,
             sessionMinutes(completedTimer, stoppedAt),
-            completedTimer.startedAt,
+            new Date(completedTimer.startedAtMs).toISOString(),
             new Date(stoppedAt).toISOString(),
           );
         }
@@ -9597,10 +9612,10 @@ function DashboardApp() {
     return true;
   };
   const todayPickerNextStepCandidates = rawTodayBuilderCandidates.filter(
-    (candidate) => candidate.source === "次の一手" && !todayPickerCandidateSelected(candidate),
+    (candidate) => candidate.source === "次の一手",
   );
   const todayPickerWishlistCandidates = rawTodayBuilderCandidates.filter(
-    (candidate) => candidate.source === "やりたいこと" && !todayPickerCandidateSelected(candidate),
+    (candidate) => candidate.source === "やりたいこと",
   );
   const todayPickerWishlistCandidatesBySourceKey = new Map(
     todayPickerWishlistCandidates.map((candidate) => [candidate.sourceKey, candidate]),
@@ -9616,6 +9631,9 @@ function DashboardApp() {
       }),
     }))
     .filter((group) => group.candidates.length > 0);
+  const todayPickerWishlistFlatCandidates = todayPickerWishlistGroups.flatMap(
+    (group) => group.candidates,
+  );
   const wishlistItemIsCurrentNextStep = (item: AppConfig["inbox"][number]) => {
     if (!item.id || !item.projectId) return false;
     const nextStep = projectsById.get(item.projectId)?.nextStep;
@@ -9671,19 +9689,12 @@ function DashboardApp() {
           {index + 1}
         </span>
         <div className="todayPickerSlotCopy">
-          <div className="todayPickerSlotProject">
-            {project ? (
-              <ProjectIdentity
-                colorId={project.colorId}
-                compact
-                name={project.name}
-                projectId={project.id}
-              />
-            ) : (
-              <span className="sourceProjectNone">プロジェクトなし</span>
-            )}
-            <span className="todayPickerSelectedStatus">✓ 選択済み</span>
-          </div>
+          {project && (
+            <span className="todayPickerSlotProject">
+              <span aria-hidden="true" className="todayPickerDot" />
+              {project.name}
+            </span>
+          )}
           <strong className="todayPickerSlotTask" title={item.text}>
             {item.text}
           </strong>
@@ -9702,42 +9713,43 @@ function DashboardApp() {
       </div>
     );
   };
-  const renderTodayPickerCandidate = (candidate: TodayCandidate, grouped = false) => {
+  const renderTodayPickerCandidate = (candidate: TodayCandidate) => {
     const project = candidate.projectId ? projectsById.get(candidate.projectId) : undefined;
+    const selected = todayPickerCandidateSelected(candidate);
     return (
       <div
-        className={["todayPickerRow", grouped ? "todayPickerRow--groupedWishlist" : ""]
-          .filter(Boolean)
-          .join(" ")}
+        className="todayPickerRow"
+        data-project-color={
+          project ? resolveProjectColorId(project.id, project.colorId) : "uncategorized"
+        }
         key={candidate.key}
       >
         <div className="todayPickerCopy">
-          {!grouped &&
-            (project ? (
-              <ProjectIdentity
-                colorId={project.colorId}
-                compact
-                name={project.name}
-                projectId={project.id}
-              />
-            ) : (
-              <span className="sourceProjectNone">プロジェクトなし</span>
-            ))}
-          <strong>{candidate.text}</strong>
+          <span className="todayPickerProject">
+            <span aria-hidden="true" className="todayPickerDot" />
+            {project?.name ?? "未分類"}
+          </span>
+          <strong className="todayPickerTask" title={candidate.text}>
+            {candidate.text}
+          </strong>
         </div>
-        <button
-          className="todayPickerAddButton mainActionButton mainActionButton--gold"
-          disabled={todayPickerSaving || todayPickerDraftItems.length >= TODAY_ITEM_LIMIT}
-          onClick={() => void chooseTodayCandidate(candidate)}
-          title={
-            todayPickerDraftItems.length >= TODAY_ITEM_LIMIT
-              ? "今日の3件は3件埋まっています"
-              : undefined
-          }
-          type="button"
-        >
-          ＋ 今日へ
-        </button>
+        {selected ? (
+          <span className="uiPill uiPill--good todayPickerSelectedStatus">✓ 選択済み</span>
+        ) : (
+          <button
+            className="todayPickerAddButton"
+            disabled={todayPickerSaving || todayPickerDraftItems.length >= TODAY_ITEM_LIMIT}
+            onClick={() => void chooseTodayCandidate(candidate)}
+            title={
+              todayPickerDraftItems.length >= TODAY_ITEM_LIMIT
+                ? "今日の3件は3件埋まっています"
+                : undefined
+            }
+            type="button"
+          >
+            ＋ 今日へ
+          </button>
+        )}
       </div>
     );
   };
@@ -10051,6 +10063,27 @@ function DashboardApp() {
     return (
       <span className={className}>
         {button.icon ?? iconForAction(button.actions[0] ?? makeAction("open_file"))}
+      </span>
+    );
+  };
+
+  // P10-14e (6): a sidebar row without a picture shows the first letter of its
+  // name in a small square. The colour comes from the button id, so it is stable.
+  const renderSidebarButtonIcon = (button: LauncherButton) => {
+    const source = buttonIconSources[button.id];
+    if (source) {
+      return (
+        <span className="quickButtonIcon">
+          <img alt="" draggable={false} src={source} />
+        </span>
+      );
+    }
+    return (
+      <span
+        className="uiLetterIcon"
+        data-project-color={resolveProjectColorId(button.id)}
+      >
+        {buttonGlyph(button)}
       </span>
     );
   };
@@ -10424,6 +10457,131 @@ function DashboardApp() {
       {dictionaryVisible && (
         <div aria-hidden="true" className="dictionaryMainScrim" role="presentation" />
       )}
+      <header
+        className="topBar"
+        data-tauri-drag-region=""
+        data-top-menu-labels={topMenuLabelLevel}
+        ref={topMenuBarRef}
+      >
+        <div
+          className="topBrand"
+          data-tauri-drag-region=""
+          onContextMenu={(event) => {
+            event.preventDefault();
+            openContextMenu(
+              { kind: "sidebar" },
+              event.clientX,
+              event.clientY,
+              event.currentTarget,
+            );
+          }}
+        >
+          <span className="topBrandIcon" aria-hidden="true" data-tauri-drag-region="">
+            <img alt="" draggable={false} src="/life-launcher-icon.svg" />
+          </span>
+          <span className="topBrandName" data-tauri-drag-region="">
+            Life Launcher
+          </span>
+          {testProfile?.testProfile && (
+            <span className="uiPill testProfileBadge" title="テスト用の起動（普段のデータとは別）">
+              テスト
+            </span>
+          )}
+          {shortcutRegistration && (
+            <ShortcutBadge
+              label="Life Launcherを表示/隠す"
+              shortcut={config?.settings.focusHotkey}
+              registered={shortcutRegistration.main}
+            />
+          )}
+        </div>
+        <button
+          aria-keyshortcuts="Control+F"
+          aria-label="検索"
+          className="topSearchButton"
+          data-top-search=""
+          onClick={() => openSearchPalette()}
+          title="検索"
+          type="button"
+        >
+          <UiIcon name="search" size={18} />
+          <span className="topSearchLabel">一手・ボタン・手順書を検索</span>
+          <ShortcutBadge label="検索" registered shortcut="Ctrl+F" />
+        </button>
+
+        <div className="topPills" data-tauri-drag-region="" ref={topMenuPillsRef}>
+          <div
+            aria-label={TOP_MENU_GROUP_LABELS.autoStart}
+            className="topPillGroup topPillGroup--autostart"
+            role="group"
+          >
+            <button
+              aria-label="Windows自動起動"
+              aria-pressed={config.settings.autoStart === true}
+              className={
+                config.settings.autoStart
+                  ? "viewToggleButton viewToggleButton--autoStart viewToggleButton--active"
+                  : "viewToggleButton viewToggleButton--autoStart"
+              }
+              onClick={() => void toggleAutoStart()}
+              title={config.settings.autoStart ? "Windows自動起動: ON" : "Windows自動起動: OFF"}
+              type="button"
+            >
+              <UiIcon name="power" size={18} />
+              {config.settings.autoStart && (
+                <span aria-hidden="true" className="autoStartDot" />
+              )}
+            </button>
+          </div>
+          <span aria-hidden="true" className="topPillsDivider" />
+          <div
+            aria-label={TOP_MENU_GROUP_LABELS.work}
+            className="topPillGroup topPillGroup--work"
+            role="group"
+          >
+            <button
+              className="viewToggleButton"
+              data-view-toggle=""
+              onClick={() => setActiveView((view) => (view === "records" ? "main" : "records"))}
+              title={activeView === "records" ? "メイン画面に戻る" : "記録ビューを開く"}
+              aria-label={activeView === "records" ? "メイン画面に戻る" : "記録ビューを開く"}
+              type="button"
+            >
+              <UiIcon name={activeView === "records" ? "back" : "records"} size={18} />
+              <span className="viewToggleButtonLabel">
+                {activeView === "records" ? TOP_MENU_LABELS.dashboard : TOP_MENU_LABELS.records}
+              </span>
+            </button>
+            <button
+              aria-label="手順書を開く"
+              className="viewToggleButton"
+              data-menu-label-secondary=""
+              onClick={() => void openInstructionsManually()}
+              title="手順書を開く"
+              type="button"
+            >
+              <UiIcon name="book" size={18} />
+              <span className="viewToggleButtonLabel">
+                {TOP_MENU_LABELS.instructions}
+              </span>
+            </button>
+            <button
+              className="viewToggleButton"
+              data-menu-label-secondary=""
+              onClick={openSettingsCenter}
+              title="設定を開く"
+              aria-label="設定を開く"
+              type="button"
+            >
+              <UiIcon name="settings" size={18} />
+              <span className="viewToggleButtonLabel">{TOP_MENU_LABELS.settings}</span>
+            </button>
+          </div>
+        </div>
+      </header>
+      <WindowControls closeShortcutDisabled={closeShortcutDisabled} />
+
+      <div className="appBody">
       <aside
         className="sidebar"
         onContextMenu={(event) => {
@@ -10438,40 +10596,6 @@ function DashboardApp() {
         onKeyDown={(event) => openContextMenuFromKeyboard(event, { kind: "sidebar" })}
         tabIndex={-1}
       >
-        {/* 上端の余白だけをドラッグできるようにする（要素そのものには付けない） */}
-        <div aria-hidden="true" className="panelDragStrip panelDragStrip--sidebar" data-tauri-drag-region="" />
-        <div className="brandBlock" data-tauri-drag-region="">
-          <img
-            alt=""
-            aria-hidden="true"
-            className="brandIcon"
-            data-tauri-drag-region=""
-            draggable={false}
-            src="/life-launcher-icon.svg"
-          />
-          <div className="brandCopy" data-tauri-drag-region="">
-            <p className="eyebrow" data-tauri-drag-region="">
-              Life Launcher
-            </p>
-            <strong data-tauri-drag-region="">Quick</strong>
-            {testProfile?.testProfile && (
-              <span
-                className="testProfileBadge"
-                title="テスト用の起動（普段のデータとは別）"
-              >
-                テスト
-              </span>
-            )}
-            {shortcutRegistration && (
-              <ShortcutBadge
-                label="Life Launcherを表示/隠す"
-                shortcut={config?.settings.focusHotkey}
-                registered={shortcutRegistration.main}
-              />
-            )}
-          </div>
-        </div>
-
         <button
           className="launcherOpenButton"
           onClick={() => void openDictionaryManually()}
@@ -10638,7 +10762,7 @@ function DashboardApp() {
                                 <span className="spinner spinner--small" />
                               </span>
                             ) : (
-                              renderButtonIcon(button, "quickIcon")
+                              renderSidebarButtonIcon(button)
                             )}
                             <span>{button.label}</span>
                           </button>
@@ -10679,7 +10803,7 @@ function DashboardApp() {
                     width: sidebarPointerDrag.width,
                   }}
                 >
-                  {renderButtonIcon(button, "quickIcon")}
+                  {renderSidebarButtonIcon(button)}
                   <span>{button.label}</span>
                 </div>
               ) : null;
@@ -11129,107 +11253,6 @@ function DashboardApp() {
         className="mainPanel"
         data-main-display-size={config.settings.mainDisplaySize ?? "standard"}
       >
-        {/* 上端の余白だけをドラッグできるようにする（要素そのものには付けない） */}
-        <div aria-hidden="true" className="panelDragStrip panelDragStrip--main" data-tauri-drag-region="" />
-        <header
-          className="topBar"
-          data-tauri-drag-region=""
-          data-top-menu-labels={topMenuLabelLevel}
-          ref={topMenuBarRef}
-        >
-          <div className="topSummary" data-tauri-drag-region="">
-            <h1
-              className={activeView === "records" ? "topTitle topTitle--records" : "topTitle topTitle--main"}
-              data-tauri-drag-region=""
-            >
-              {/* P10-07: the minutes moved to the timer dock, so Main shows the date here. */}
-              {activeView === "records" ? "記録" : formatDateKeyForHeader(displayedDayKey)}
-            </h1>
-          </div>
-          {/* P10-03: the search field sits in the middle; the space around it still drags. */}
-          <button
-            aria-keyshortcuts="Control+F"
-            aria-label="検索"
-            className="topSearchButton"
-            data-top-search=""
-            onClick={() => openSearchPalette()}
-            title="検索"
-            type="button"
-          >
-            <UiIcon name="search" size={18} />
-            <span className="topSearchLabel">一手・ボタン・手順書を検索</span>
-            <ShortcutBadge label="検索" registered shortcut="Ctrl F" />
-          </button>
-
-          <div className="topPills" data-tauri-drag-region="" ref={topMenuPillsRef}>
-            <div
-              aria-label={TOP_MENU_GROUP_LABELS.autoStart}
-              className="topPillGroup topPillGroup--autostart"
-              role="group"
-            >
-              <button
-                aria-label="Windows自動起動"
-                aria-pressed={config.settings.autoStart === true}
-                className={
-                  config.settings.autoStart
-                    ? "viewToggleButton viewToggleButton--autoStart viewToggleButton--active"
-                    : "viewToggleButton viewToggleButton--autoStart"
-                }
-                onClick={() => void toggleAutoStart()}
-                title={config.settings.autoStart ? "Windows自動起動: ON" : "Windows自動起動: OFF"}
-                type="button"
-              >
-                <UiIcon name="power" size={18} />
-                {config.settings.autoStart && (
-                  <span aria-hidden="true" className="autoStartDot" />
-                )}
-              </button>
-            </div>
-            <div
-              aria-label={TOP_MENU_GROUP_LABELS.work}
-              className="topPillGroup topPillGroup--work"
-              role="group"
-            >
-              <button
-                className="viewToggleButton"
-                data-view-toggle=""
-                onClick={() => setActiveView((view) => (view === "records" ? "main" : "records"))}
-                title={activeView === "records" ? "メイン画面に戻る" : "記録ビューを開く"}
-                aria-label={activeView === "records" ? "メイン画面に戻る" : "記録ビューを開く"}
-                type="button"
-              >
-                <UiIcon name={activeView === "records" ? "back" : "records"} size={18} />
-                <span className="viewToggleButtonLabel">
-                  {activeView === "records" ? TOP_MENU_LABELS.dashboard : TOP_MENU_LABELS.records}
-                </span>
-              </button>
-              <button
-                aria-label="手順書を開く"
-                className="viewToggleButton"
-                data-menu-label-secondary=""
-                onClick={() => void openInstructionsManually()}
-                title="手順書を開く"
-                type="button"
-              >
-                <UiIcon name="book" size={18} />
-                <span className="viewToggleButtonLabel">{TOP_MENU_LABELS.instructions}</span>
-              </button>
-              <button
-                className="viewToggleButton"
-                data-menu-label-secondary=""
-                onClick={openSettingsCenter}
-                title="設定を開く"
-                aria-label="設定を開く"
-                type="button"
-              >
-                <UiIcon name="settings" size={18} />
-                <span className="viewToggleButtonLabel">{TOP_MENU_LABELS.settings}</span>
-              </button>
-            </div>
-          </div>
-          <WindowControls closeShortcutDisabled={closeShortcutDisabled} />
-        </header>
-
         <div className="mainScrollArea app-scrollbar" id="main-content" ref={mainScrollAreaRef}>
           <div
             className="mainScrollContent"
@@ -11237,6 +11260,15 @@ function DashboardApp() {
               activeView === "main" ? (config.settings.mainDisplaySize ?? "standard") : undefined
             }
           >
+            <h1
+              className={
+                activeView === "records"
+                  ? "topTitle topTitle--records"
+                  : "topTitle topTitle--main visuallyHidden"
+              }
+            >
+              {activeView === "records" ? "記録" : formatDateKeyForHeader(displayedDayKey)}
+            </h1>
             {banner && (
               <section className="banner">
                 <span>{banner}</span>
@@ -11405,7 +11437,7 @@ function DashboardApp() {
                       <div className="doNowCopy">
                         <div className="doNowKicker">
                           <h2 id="do-now-title">今やる一手</h2>
-                          <span className="doNowProjectChip">
+                          <span className="uiPill doNowProjectChip">
                             <ProjectIdentity
                               colorId={doNowCompletionHold.colorId}
                               compact
@@ -11461,7 +11493,7 @@ function DashboardApp() {
                         <div className="doNowKicker">
                           <span aria-hidden="true" className="doNowStatusDot" />
                           <h2 id="do-now-title">今やる一手</h2>
-                          <span className="doNowProjectChip">
+                          <span className="uiPill doNowProjectChip">
                             <ProjectIdentity
                               colorId={doNowSelection.project.colorId}
                               compact
@@ -11473,8 +11505,8 @@ function DashboardApp() {
                             <span
                               className={
                                 activeTimer.paused
-                                  ? "runningBadge runningBadge--paused"
-                                  : "runningBadge runningBadge--running"
+                                  ? "uiPill uiPill--paused runningBadge runningBadge--paused"
+                                  : "uiPill uiPill--running runningBadge runningBadge--running"
                               }
                             >
                               {activeTimer.paused
@@ -11615,7 +11647,7 @@ function DashboardApp() {
                         <div className="doNowSecondaryActions">
                           {doNowCandidates.length > 1 && (
                             <button
-                              className="doNowAlternateButton"
+                              className="uiSmallButton doNowAlternateButton"
                               onClick={showNextDoNowCandidate}
                               type="button"
                             >
@@ -11845,28 +11877,39 @@ function DashboardApp() {
                                 onPointerUp={finishTodayPointerDrag}
                                 tabIndex={0}
                               >
-                                <span aria-hidden="true" className="rowKeyHint">
-                                  Enter
-                                </span>
-                                <button
-                                  aria-label={`${item.text || "未入力"}の操作`}
-                                  aria-haspopup="menu"
-                                  className="sourceRowMenu todayRowMenu"
-                                  onClick={(event) => {
-                                    const rect = event.currentTarget.getBoundingClientRect();
-                                    openContextMenu(
-                                      { kind: "today", index, itemText: item.text },
-                                      rect.left,
-                                      rect.bottom,
-                                      event.currentTarget,
-                                    );
-                                  }}
-                                  onPointerDown={(event) => event.stopPropagation()}
-                                  title="操作メニュー"
-                                  type="button"
-                                >
-                                  <span aria-hidden="true">…</span>
-                                </button>
+                                <div className="todayRowTopActions">
+                                  {isHereNowTodayItem && (
+                                    <span
+                                      aria-label="いまここ"
+                                      className="uiPill todayHereBadge"
+                                      role="status"
+                                    >
+                                      いまここ
+                                    </span>
+                                  )}
+                                  <span aria-hidden="true" className="uiKey rowKeyHint">
+                                    Enter
+                                  </span>
+                                  <button
+                                    aria-label={`${item.text || "未入力"}の操作`}
+                                    aria-haspopup="menu"
+                                    className="sourceRowMenu todayRowMenu"
+                                    onClick={(event) => {
+                                      const rect = event.currentTarget.getBoundingClientRect();
+                                      openContextMenu(
+                                        { kind: "today", index, itemText: item.text },
+                                        rect.left,
+                                        rect.bottom,
+                                        event.currentTarget,
+                                      );
+                                    }}
+                                    onPointerDown={(event) => event.stopPropagation()}
+                                    title="操作メニュー"
+                                    type="button"
+                                  >
+                                    <span aria-hidden="true">…</span>
+                                  </button>
+                                </div>
                                 <span
                                   aria-label={item.done ? "今日の分は完了" : "未完了"}
                                   className={
@@ -11896,17 +11939,12 @@ function DashboardApp() {
                                     </span>
                                   )}
                                   {/* P10-05 (§4.3): the card linked to this moment's step. */}
-                                  {isHereNowTodayItem && (
-                                    <span aria-label="いまここ" className="todayHereBadge" role="status">
-                                      いまここ
-                                    </span>
-                                  )}
                                   {isRunningTodayItem && (
                                     <span
                                       className={
                                         activeTimer.paused
-                                          ? "runningBadge runningBadge--paused"
-                                          : "runningBadge runningBadge--running"
+                                          ? "uiPill uiPill--paused runningBadge runningBadge--paused"
+                                          : "uiPill uiPill--running runningBadge runningBadge--running"
                                       }
                                     >
                                       {activeTimer.paused
@@ -11952,6 +11990,7 @@ function DashboardApp() {
                                       </button>
                                     )}
                                     <button
+                                      aria-label="今日の3件から外す"
                                       className="todayRemoveButton mainActionButton mainActionButton--neutral"
                                       disabled={isRunningTodayItem}
                                       onClick={() =>
@@ -11961,12 +12000,12 @@ function DashboardApp() {
                                       title={
                                         isRunningTodayItem
                                           ? "タイマーを停止してから外してください"
-                                          : undefined
+                                          : "今日の3件から外す"
                                       }
                                       type="button"
                                     >
                                       <UiIcon name="back" size={16} />
-                                      今日の3件から外す
+                                      <span className="todayRemoveLabel">今日の3件から外す</span>
                                     </button>
                                   </div>
                                   <div className="todayTimerCluster">
@@ -12309,7 +12348,7 @@ function DashboardApp() {
                     <div className="disclosureHeaderActions">
                       <button
                         aria-label="プロジェクトを追加"
-                        className="sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd nextStepHeaderAdd--project mainActionButton mainActionButton--neutral"
+                        className="uiSmallButton sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd nextStepHeaderAdd--project mainActionButton mainActionButton--neutral"
                         onPointerDown={(event) => event.stopPropagation()}
                         onClick={(event) => {
                           event.stopPropagation();
@@ -12449,9 +12488,6 @@ function DashboardApp() {
                               onPointerUp={finishProjectPointerDrag}
                               tabIndex={0}
                             >
-                              <span aria-hidden="true" className="rowKeyHint">
-                                Enter
-                              </span>
                               {/* P10-14 (§4.4): one horizontal row: Project / action text / actions. */}
                               <div
                                 className="nextStepProjectRegion"
@@ -12521,7 +12557,7 @@ function DashboardApp() {
                                       </span>
                                       <span className="nextStepFreshnessActions">
                                         <button
-                                          className="nextStepFreshnessButton"
+                                          className="uiSmallButton nextStepFreshnessButton"
                                           onClick={() => openNextStepEditor(project, { mode: "edit" })}
                                           onPointerDown={(event) => event.stopPropagation()}
                                           type="button"
@@ -12529,7 +12565,7 @@ function DashboardApp() {
                                           小さくする
                                         </button>
                                         <button
-                                          className="nextStepFreshnessButton"
+                                          className="uiSmallButton nextStepFreshnessButton"
                                           disabled={nextStepReviewBusy === project.id}
                                           onClick={() => void markNextStepReviewed(project.id)}
                                           onPointerDown={(event) => event.stopPropagation()}
@@ -12553,7 +12589,7 @@ function DashboardApp() {
                                     </span>
                                   )}
                                   {alreadySelected && (
-                                    <span className="nextStepTodayStatus">✓ 今日の3件</span>
+                                    <span className="uiPill uiPill--good nextStepTodayStatus">✓ 今日の3件</span>
                                   )}
                                   {project.nextStep?.text.trim() ? (
                                     !sourceLocked && (
@@ -12583,7 +12619,7 @@ function DashboardApp() {
                                           ＋ 今日へ
                                         </button>
                                         <button
-                                          className="nextStepRowAction nextStepRowAction--change mainActionButton mainActionButton--neutral"
+                                          className="uiSmallButton nextStepRowAction nextStepRowAction--change mainActionButton mainActionButton--neutral"
                                           disabled={sourceEditBlocked(projectSourceKey)}
                                           onClick={(event) => {
                                             event.stopPropagation();
@@ -12599,7 +12635,7 @@ function DashboardApp() {
                                     )
                                   ) : (
                                     <button
-                                      className="nextStepRowAction nextStepRowAction--set mainActionButton mainActionButton--neutral"
+                                      className="uiSmallButton nextStepRowAction nextStepRowAction--set mainActionButton mainActionButton--neutral"
                                       disabled={sourceEditBlocked(projectSourceKey)}
                                       onClick={(event) => {
                                         event.stopPropagation();
@@ -12613,6 +12649,9 @@ function DashboardApp() {
                                     </button>
                                   )}
                                 </div>
+                                <span aria-hidden="true" className="uiKey rowKeyHint">
+                                  Enter
+                                </span>
                                 <button
                                   aria-label={`${project.name}の次の一手の操作`}
                                   aria-haspopup="menu"
@@ -12781,7 +12820,7 @@ function DashboardApp() {
                     <div className="disclosureHeaderActions">
                       <button
                         aria-label="やりたいことを追加"
-                        className="sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd nextStepHeaderAdd--wishlist mainActionButton mainActionButton--neutral"
+                        className="uiSmallButton sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd nextStepHeaderAdd--wishlist mainActionButton mainActionButton--neutral"
                         disabled={inboxAddOpen}
                         onPointerDown={(event) => event.stopPropagation()}
                         onClick={(event) => {
@@ -12945,7 +12984,7 @@ function DashboardApp() {
                                   <strong>未分類</strong>
                                 )}
                                 {groupNeedsNextStep && (
-                                  <span className="wishlistNextStepMissing">次の一手が未設定</span>
+                                  <span className="uiPill wishlistNextStepMissing">次の一手が未設定</span>
                                 )}
                                 <span>{group.items.length}件</span>
                               </button>
@@ -13027,9 +13066,6 @@ function DashboardApp() {
                                           onPointerUp={finishInboxPointerDrag}
                                           tabIndex={0}
                                         >
-                                          <span aria-hidden="true" className="rowKeyHint">
-                                            Enter
-                                          </span>
                                           <span className="inboxItemText" title={item.text}>
                                             {sourceLocked && (
                                               <span
@@ -13085,6 +13121,9 @@ function DashboardApp() {
                                                 ✓ 今日の3件に設定済み
                                               </span>
                                             )}
+                                            <span aria-hidden="true" className="uiKey rowKeyHint">
+                                              Enter
+                                            </span>
                                             <button
                                               aria-label={`${item.text}の操作`}
                                               aria-haspopup="menu"
@@ -13274,7 +13313,7 @@ function DashboardApp() {
                     </button>
                     <span className="disclosureCount">{todayActivityCount}件</span>
                     <span className="disclosureDescription">タイマーで実行した内容</span>
-                    <span className="todayActivityAutoBadge">自動</span>
+                    <span className="uiPill uiPill--good todayActivityAutoBadge">自動</span>
                   </div>
 
                   {todayActivityOpen && (
@@ -13319,6 +13358,7 @@ function DashboardApp() {
           </div>
         </div>
       </section>
+      </div>
 
       <div aria-live="polite" className="reorderAnnouncement" role="status">
         {reorderAnnouncement}
@@ -13989,12 +14029,12 @@ function DashboardApp() {
             role="dialog"
             tabIndex={-1}
           >
-            <div className="modalTitleRow">
-              <div>
+            <div className="todayPickerHead">
+              <div className="todayPickerHeadCopy">
                 <p className="eyebrow">Today</p>
                 <h2>今日やるものを選ぶ</h2>
-                <p className="todayPickerIntro">3件まで。決めたら、あとは始めるだけです</p>
               </div>
+              <p className="todayPickerIntro">3件まで。決めたら、あとは始めるだけです</p>
               <button
                 aria-label="今日やるものを選ぶを閉じる"
                 autoFocus
@@ -14010,99 +14050,37 @@ function DashboardApp() {
 
             <div className="todayPickerBody">
               <section className="todayPickerSource">
-                <div className="todayPickerSourceHeading">
-                  <span>候補</span>
-                  <h3>どこから選びますか？</h3>
-                </div>
-
-                  <div
-                    className="todayPickerSourceGroup"
-                    data-today-picker-section="next-step"
-                  >
-                    <div className="todayPickerPanelHeading">
-                      <strong>次の一手</strong>
-                      <span>今日やるなら「＋ 今日へ」</span>
-                    </div>
+                <div
+                  className="todayPickerSourceGroup"
+                  data-today-picker-section="next-step"
+                >
+                  <h3 className="todayPickerGroupTitle">次の一手</h3>
+                  <div className="todayPickerList">
                     {todayPickerNextStepCandidates.length === 0 ? (
                       <p className="todayPickerEmpty">追加できる次の一手はありません</p>
                     ) : (
-                      <div className="todayPickerList">
-                        {todayPickerNextStepCandidates.map((candidate) =>
-                          renderTodayPickerCandidate(candidate),
-                        )}
-                      </div>
+                      todayPickerNextStepCandidates.map((candidate) =>
+                        renderTodayPickerCandidate(candidate),
+                      )
                     )}
                   </div>
-                  <div
-                    className="todayPickerSourceGroup"
-                    data-today-picker-section="wishlist"
-                  >
-                    <div className="todayPickerPanelHeading">
-                      <strong>やりたいこと</strong>
-                      <span>プロジェクトごとに表示</span>
-                    </div>
-                    {todayPickerWishlistGroups.length === 0 ? (
+                </div>
+                <div
+                  className="todayPickerSourceGroup"
+                  data-today-picker-section="wishlist"
+                >
+                  <h3 className="todayPickerGroupTitle">やりたいこと</h3>
+                  <div className="todayPickerList">
+                    {todayPickerWishlistFlatCandidates.length === 0 ? (
                       <p className="todayPickerEmpty">追加できるやりたいことはありません</p>
                     ) : (
-                      <div className="todayPickerWishlistGroups">
-                        {todayPickerWishlistGroups.map((group) => {
-                          const collapsed = Boolean(todayPickerWishlistCollapsed[group.key]);
-                          const project = group.projectId
-                            ? projectsById.get(group.projectId)
-                            : undefined;
-                          return (
-                            <section
-                              className={
-                                collapsed
-                                  ? "todayPickerWishlistGroup todayPickerWishlistGroup--collapsed"
-                                  : "todayPickerWishlistGroup"
-                              }
-                              data-today-picker-wishlist-group={group.key}
-                              key={group.key}
-                            >
-                              <button
-                                aria-expanded={!collapsed}
-                                className="todayPickerWishlistGroupHeader"
-                                onClick={() =>
-                                  setTodayPickerWishlistCollapsed((current) => ({
-                                    ...current,
-                                    [group.key]: !current[group.key],
-                                  }))
-                                }
-                                type="button"
-                              >
-                                <UiIcon
-                                  name={collapsed ? "chevronRight" : "chevronDown"}
-                                  size={16}
-                                />
-                                {project ? (
-                                  <ProjectIdentity
-                                    colorId={project.colorId}
-                                    compact
-                                    name={project.name}
-                                    projectId={project.id}
-                                  />
-                                ) : (
-                                  <span className="sourceProjectNone">未分類</span>
-                                )}
-                                <span className="todayPickerWishlistGroupCount">
-                                  {group.candidates.length}件
-                                </span>
-                              </button>
-                              {!collapsed && (
-                                <div className="todayPickerList todayPickerWishlistGroupBody">
-                                  {group.candidates.map((candidate) =>
-                                    renderTodayPickerCandidate(candidate, true),
-                                  )}
-                                </div>
-                              )}
-                            </section>
-                          );
-                        })}
-                      </div>
+                      todayPickerWishlistFlatCandidates.map((candidate) =>
+                        renderTodayPickerCandidate(candidate),
+                      )
                     )}
                   </div>
-                </section>
+                </div>
+              </section>
 
               <section
                 className="todayPickerDestination"
@@ -14111,30 +14089,13 @@ function DashboardApp() {
                 <div className="todayPickerDestinationHeader">
                   <h3>今日の3件</h3>
                   <div
-                    aria-label={`今日の3件の選択状況 ${todayPickerDraftItems.length}/3`}
-                    aria-valuemax={TODAY_ITEM_LIMIT}
-                    aria-valuemin={0}
-                    aria-valuenow={todayPickerDraftItems.length}
-                    className="todayPickerProgress"
-                    role="progressbar"
-                  >
-                    <span
-                      style={{
-                        transform: `scaleX(${todayPickerDraftItems.length / TODAY_ITEM_LIMIT})`,
-                      }}
-                    />
-                  </div>
-                  <div
                     aria-label={`今日の3件 ${todayPickerDraftItems.length}件`}
                     className="todayPickerCounter"
                   >
                     <strong>{todayPickerDraftItems.length} / 3</strong>
-                    {todayPickerDraftItems.length < TODAY_ITEM_LIMIT && (
-                      <span>あと{TODAY_ITEM_LIMIT - todayPickerDraftItems.length}件</span>
-                    )}
                   </div>
+                  <span className="todayPickerDragHint">ドラッグで順番を変えられます</span>
                 </div>
-                <p className="todayPickerDestinationHelp">ドラッグで順番を変えられます</p>
                 <div className="todayPickerSlots">
                   {Array.from({ length: TODAY_ITEM_LIMIT }, (_, index) => {
                     const item = todayPickerDraftItems[index];
@@ -14156,9 +14117,7 @@ function DashboardApp() {
                       >
                         <span className="todayPickerSlotIndex">{index + 1}</span>
                         <span className="todayPickerSlotEmptyLabel">
-                          {index === TODAY_ITEM_LIMIT - 1
-                            ? "空けておいてもかまいません"
-                            : `空き ${index + 1}`}
+                          空けておいてもかまいません
                         </span>
                       </div>
                     );
@@ -14167,7 +14126,7 @@ function DashboardApp() {
               </section>
             </div>
 
-            <div className="dialogActions todayPickerActions">
+            <div className="dialogActions formDialogActions">
               <button
                 className="primaryButton todayPickerConfirmButton"
                 disabled={todayPickerSaving}
@@ -14176,9 +14135,6 @@ function DashboardApp() {
               >
                 {todayPickerSaving ? "保存中…" : "決定"}
               </button>
-              <span className="todayPickerNote">
-                残りは明日に繰り越されません。明日また選びます
-              </span>
               <button
                 className="dangerButton todayPickerCancelButton"
                 disabled={todayPickerSaving}

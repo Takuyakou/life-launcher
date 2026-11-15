@@ -74,8 +74,10 @@ test("P10-14d M3 the main content is capped at 1200px and centered", async ({ pa
 
   await page.setViewportSize({ width: 1000, height: 900 });
   const narrow = (await content.boundingBox())!;
-  const narrowMain = (await page.locator(".mainScrollArea").boundingBox())!;
-  expect(Math.round(narrow.width)).toBe(Math.round(narrowMain.width));
+  const narrowMainWidth = await page
+    .locator(".mainScrollArea")
+    .evaluate((element) => element.clientWidth);
+  expect(Math.round(narrow.width)).toBe(Math.round(narrowMainWidth));
 });
 
 test("P10-14d M4 the section headers have no frame and keep their arrow", async ({ page }) => {
@@ -105,6 +107,13 @@ test("P10-14d M6 sidebar buttons are frameless rows", async ({ page }) => {
   expect(
     parseFloat(await button.evaluate((element) => getComputedStyle(element).fontSize)),
   ).toBeGreaterThanOrEqual(14);
+  expect(await button.evaluate((element) => getComputedStyle(element).fontWeight)).toBe("400");
+  const heading = page.locator(".quickGroupHeader strong").first();
+  await expect(heading).toHaveCSS("font-size", "12px");
+  await expect(heading).toHaveCSS("font-weight", "700");
+  await expect(heading).toHaveCSS("color", "rgb(163, 156, 142)");
+  const sidebarBox = (await page.locator(".sidebar").boundingBox())!;
+  expect(sidebarBox.width).toBeLessThanOrEqual(232);
 });
 
 test("P10-14d P1 the picker shows both groups without tabs", async ({ page }) => {
@@ -114,7 +123,10 @@ test("P10-14d P1 the picker shows both groups without tabs", async ({ page }) =>
   await expect(dialog.getByRole("tab")).toHaveCount(0);
   await expect(dialog.locator('[data-today-picker-section="next-step"]')).toBeVisible();
   await expect(dialog.locator('[data-today-picker-section="wishlist"]')).toBeVisible();
-  await expect(dialog.locator(".todayPickerNote")).toContainText("明日に繰り越されません");
+  await expect(dialog.getByRole("heading", { name: "次の一手", exact: true })).toBeVisible();
+  await expect(dialog.getByRole("heading", { name: "やりたいこと", exact: true })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "決定", exact: true })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "キャンセル", exact: true })).toBeVisible();
 });
 
 test("P10-14d P2 the chosen slot has the project color line", async ({ page }) => {
@@ -156,4 +168,98 @@ test("P10-14d K1 keyboard focus shows one yellow ring", async ({ page }) => {
   expect(outline.color).toContain("255");
   expect(outline.width).toBe("2px");
   expect(outline.offset).toBe("2px");
+});
+
+test("P10-14e 1 the play icon sits left of the label on both start buttons", async ({ page }) => {
+  await prepare(page);
+  for (const selector of [".doNowStartPrimary", ".doNowStartSecondary"]) {
+    const button = page.locator(selector);
+    const glyph = (await button.locator(".timerStartHoverGlyph").boundingBox())!;
+    const label = (await button.locator(".timerStartDuration").boundingBox())!;
+    expect(glyph.x + glyph.width).toBeLessThanOrEqual(label.x);
+    const glyphCenter = glyph.y + glyph.height / 2;
+    const labelCenter = label.y + label.height / 2;
+    expect(Math.abs(glyphCenter - labelCenter)).toBeLessThanOrEqual(2);
+  }
+  await expect(page.locator(".doNowStartPrimary .timerStartDuration")).toHaveText("5分で始める");
+  await expect(page.locator(".doNowStartSecondary .timerStartDuration")).toHaveText("通常 25分");
+});
+
+test("P10-14e 2 the mini window is 340x120, two rows, with the Project colour on the left", async ({
+  page,
+}) => {
+  await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
+  await page.setViewportSize({ width: 340, height: 120 });
+  await installTauriMock(page, createPublicFixture(), "life-launcher-mini");
+  await page.goto("/?view=mini");
+  const panel = page.locator(".timerPanel--mini");
+  await expect(panel).toBeVisible();
+
+  const panelBox = (await panel.boundingBox())!;
+  expect(Math.round(panelBox.width)).toBe(340);
+  expect(Math.round(panelBox.height)).toBe(120);
+  // Idle: no Project, so the left edge is the frame colour.
+  await expect(panel).toHaveCSS("border-left-width", "3px");
+  await expect(panel).toHaveCSS("border-left-color", "rgb(74, 70, 57)");
+  await expect(page.locator(".miniRow--top")).toContainText("タイマー");
+  await expect(page.locator(".miniRow--bottom")).toContainText("開始ボタンから計測できます");
+  expect(await page.locator(".miniRow--bottom .miniIconButton").count()).toBe(1);
+
+  await page.evaluate(() =>
+    (
+      window as Window & {
+        __LIFE_LAUNCHER_VISUAL_QA__: { emit: (event: string, payload?: unknown) => void };
+      }
+    ).__LIFE_LAUNCHER_VISUAL_QA__.emit("mini-timer-snapshot", {
+      active: true,
+      label: "サンプル学習",
+      actionText: "ChatGPTの音声モードで10分話す",
+      mode: "countdown",
+      remainingClock: "24:55",
+      paused: false,
+      progressPercent: 0.33,
+      projectId: "sample-learning",
+      projectName: "サンプル学習",
+      projectColorId: "blue",
+    }),
+  );
+
+  await expect(panel).toHaveCSS("border-left-color", "rgb(112, 167, 255)");
+  await expect(page.locator(".miniProjectLine")).toContainText("サンプル学習");
+  await expect(page.locator(".timerPanel--mini .timerClock")).toHaveText("24:55");
+  const topBox = (await page.locator(".miniRow--top").boundingBox())!;
+  const bottomBox = (await page.locator(".miniRow--bottom").boundingBox())!;
+  expect(topBox.y).toBeLessThan(bottomBox.y);
+  const nameBox = (await page.locator(".miniProjectLine").boundingBox())!;
+  const clockBox = (await page.locator(".timerPanel--mini .timerClock").boundingBox())!;
+  expect(nameBox.x + nameBox.width).toBeLessThanOrEqual(clockBox.x);
+  expect(Math.abs(nameBox.y - clockBox.y)).toBeLessThanOrEqual(8);
+  const actionBox = (await page.locator(".timerActionText").boundingBox())!;
+  expect(actionBox.y).toBeGreaterThanOrEqual(clockBox.y + clockBox.height);
+  const action = page.locator(".timerActionText");
+  await expect(action).toHaveText("ChatGPTの音声モードで10分話す");
+  await expect(action).toHaveCSS("white-space", "nowrap");
+  await expect(action).toHaveCSS("text-overflow", "ellipsis");
+  const actionStyle = await action.evaluate((node) => {
+    const style = getComputedStyle(node);
+    return { whiteSpace: style.whiteSpace, textOverflow: style.textOverflow };
+  });
+  expect(actionStyle).toEqual({ whiteSpace: "nowrap", textOverflow: "ellipsis" });
+
+  const buttons = page.locator(".miniRow--bottom .miniIconButton");
+  await expect(buttons).toHaveCount(3);
+  await expect(buttons.nth(0)).toHaveAttribute("aria-label", "一時停止");
+  await expect(buttons.nth(1)).toHaveAttribute("aria-label", "終了");
+  await expect(buttons.nth(2)).toHaveAttribute("aria-label", "タイマーを大きく表示");
+  const buttonBoxes = [];
+  for (let index = 0; index < 3; index += 1) {
+    buttonBoxes.push((await buttons.nth(index).boundingBox())!);
+    expect(Math.round(buttonBoxes[index].width)).toBe(32);
+    expect(Math.round(buttonBoxes[index].height)).toBe(32);
+  }
+  expect(buttonBoxes[0].x + buttonBoxes[0].width).toBeLessThanOrEqual(buttonBoxes[1].x);
+  expect(buttonBoxes[1].x + buttonBoxes[1].width).toBeLessThanOrEqual(buttonBoxes[2].x);
+  expect(buttonBoxes[2].x + buttonBoxes[2].width).toBeLessThanOrEqual(panelBox.x + panelBox.width);
+  expect(buttonBoxes[0].y).toBeGreaterThanOrEqual(panelBox.y);
+  expect(buttonBoxes[0].y + buttonBoxes[0].height).toBeLessThanOrEqual(panelBox.y + panelBox.height);
 });
