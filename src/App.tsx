@@ -23,7 +23,7 @@ import type {
 } from "react";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { springLayout, staggerMax, staggerStep } from "./motion";
+import { springLayout, springSnappy, staggerMax, staggerStep } from "./motion";
 import { SEARCH_GROUP_LIMIT, matchesSearchQuery } from "./searchMatch";
 import { nextStepStaleDays } from "./nextStepFreshness";
 import {
@@ -2902,7 +2902,9 @@ function DashboardApp() {
         focusInside: false,
         documentHidden: document.hidden,
       };
-      if (!document.hidden) {
+      // P10-12 (D15): failures stay until their × is pressed; they never lose a time line.
+      const sticky = toast.tone === "error";
+      if (!document.hidden && !sticky) {
         timerState.dismissTimer = window.setTimeout(() => dismissToast(toast.id), toast.durationMs);
       } else {
         timerState.startedAt = null;
@@ -2988,29 +2990,65 @@ function DashboardApp() {
     return id;
   }, []);
 
-  const runToastAction = async (id: number) => {
-    const toast = toastsRef.current.find((item) => item.id === id);
-    if (!toast?.onAction || toastActionLocksRef.current.has(id)) return;
-    toastActionLocksRef.current.add(id);
-    pauseToast(id, "focus", true);
-    setToasts((current) =>
-      current.map((item) => (item.id === id ? { ...item, actionPending: true } : item)),
-    );
-    const succeeded = await toast.onAction();
-    if (succeeded) {
-      dismissToast(id);
-      showToast("neutral", "元に戻しました");
-      return;
-    }
-    toastActionLocksRef.current.delete(id);
-    setToasts((current) =>
-      current.map((item) => (item.id === id ? { ...item, actionPending: false } : item)),
-    );
-    window.requestAnimationFrame(() => {
-      const toastElement = document.querySelector<HTMLElement>(`[data-toast-id="${id}"]`);
-      pauseToast(id, "focus", Boolean(toastElement?.contains(document.activeElement)));
-    });
-  };
+  const runToastAction = useCallback(
+    async (id: number) => {
+      const toast = toastsRef.current.find((item) => item.id === id);
+      if (!toast?.onAction || toastActionLocksRef.current.has(id)) return;
+      toastActionLocksRef.current.add(id);
+      pauseToast(id, "focus", true);
+      setToasts((current) =>
+        current.map((item) => (item.id === id ? { ...item, actionPending: true } : item)),
+      );
+      const succeeded = await toast.onAction();
+      if (succeeded) {
+        dismissToast(id);
+        showToast("neutral", "元に戻しました");
+        return;
+      }
+      toastActionLocksRef.current.delete(id);
+      setToasts((current) =>
+        current.map((item) => (item.id === id ? { ...item, actionPending: false } : item)),
+      );
+      window.requestAnimationFrame(() => {
+        const toastElement = document.querySelector<HTMLElement>(`[data-toast-id="${id}"]`);
+        pauseToast(id, "focus", Boolean(toastElement?.contains(document.activeElement)));
+      });
+    },
+    [dismissToast, pauseToast, showToast],
+  );
+
+  // P10-12 (D15): Ctrl+Z presses the newest visible "元に戻す" toast. No badge (D30).
+  useEffect(() => {
+    const onUndoKey = (event: globalThis.KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.isComposing ||
+        event.key.toLowerCase() !== "z" ||
+        !event.ctrlKey ||
+        event.altKey ||
+        event.metaKey ||
+        event.shiftKey
+      ) {
+        return;
+      }
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        target.closest("input, textarea, select, [contenteditable='true']")
+      ) {
+        return;
+      }
+      if (document.querySelector('[aria-modal="true"], [role="menu"]')) return;
+      const newest = [...toastsRef.current]
+        .filter((toast) => toast.onAction && !toast.leaving && !toast.actionPending)
+        .sort((left, right) => right.id - left.id)[0];
+      if (!newest) return;
+      event.preventDefault();
+      void runToastAction(newest.id);
+    };
+    document.addEventListener("keydown", onUndoKey);
+    return () => document.removeEventListener("keydown", onUndoKey);
+  }, [runToastAction]);
 
   const refreshButtonIcon = useCallback(async (button: LauncherButton, force = false) => {
     const generation = iconRefreshGenerationRef.current;
@@ -9526,6 +9564,56 @@ function DashboardApp() {
       matchingSourceKeys.has(todaySourceKey(item, index)),
     );
   };
+  // P10-12 (D15): the "add to Today3" item exists only in the Next Step / Wishlist menus and
+  // answers the T key while that menu is open.
+  const contextMenuTodayAdd = (() => {
+    if (!contextMenu) return null;
+    if (contextMenu.kind === "nextStep") {
+      const sourceKey = `project:${contextMenu.project.id}`;
+      const candidate = rawTodayBuilderCandidates.find(
+        (item) => item.sourceKey === sourceKey || (item.sourceAliases ?? []).includes(sourceKey),
+      );
+      if (!candidate) return null;
+      return {
+        candidate,
+        disabled:
+          config.today.items.length >= TODAY_ITEM_LIMIT || todayCandidateSelected(candidate),
+        reason: todayCandidateSelected(candidate)
+          ? "今日の3件にあります"
+          : config.today.items.length >= TODAY_ITEM_LIMIT
+            ? "今日の3件は3件埋まっています"
+            : undefined,
+      };
+    }
+    if (contextMenu.kind === "inbox") {
+      const item = config.inbox[contextMenu.index];
+      if (!item) return null;
+      const sourceKey = wishlistSourceKey(item, contextMenu.index);
+      const candidate = rawTodayBuilderCandidates.find(
+        (entry) =>
+          entry.sourceKey === sourceKey || (entry.sourceAliases ?? []).includes(sourceKey),
+      );
+      if (!candidate) return null;
+      return {
+        candidate,
+        disabled:
+          config.today.items.length >= TODAY_ITEM_LIMIT || todayCandidateSelected(candidate),
+        reason: todayCandidateSelected(candidate)
+          ? "今日の3件にあります"
+          : config.today.items.length >= TODAY_ITEM_LIMIT
+            ? "今日の3件は3件埋まっています"
+            : undefined,
+      };
+    }
+    return null;
+  })();
+  const handleContextMenuShortcut = (key: string) => {
+    if (key !== "t" || !contextMenuTodayAdd || contextMenuTodayAdd.disabled) return false;
+    const candidate = contextMenuTodayAdd.candidate;
+    setContextMenu(null);
+    void addCandidateToToday(candidate);
+    return true;
+  };
   const todayPickerNextStepCandidates = rawTodayBuilderCandidates.filter(
     (candidate) => candidate.source === "次の一手" && !todayPickerCandidateSelected(candidate),
   );
@@ -9886,6 +9974,63 @@ function DashboardApp() {
       throw error;
     }
   };
+
+  // P10-12 (§8.3): keys on the row itself (not on a button inside it).
+  const handleRowShortcutKey = (
+    event: KeyboardEvent<HTMLElement>,
+    handlers: { activate?: () => void; edit?: () => void; remove?: () => void },
+  ): boolean => {
+    if (event.target !== event.currentTarget) return false;
+    if (event.nativeEvent.isComposing || event.key === "Process") return false;
+    if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return false;
+    const action =
+      event.key === "Enter"
+        ? handlers.activate
+        : event.key === "F2"
+          ? handlers.edit
+          : event.key === "Delete"
+            ? handlers.remove
+            : undefined;
+    if (!action) return false;
+    event.preventDefault();
+    event.stopPropagation();
+    action();
+    return true;
+  };
+  const startProjectShort = (project: LauncherProject) => {
+    if (!project.nextStep?.text.trim()) return;
+    startDoNowProject(project, "short");
+  };
+  const startTodayRowShort = (item: TodayItem, index: number, minutes: number) => {
+    if (item.done || !item.text.trim()) return;
+    const project = item.projectId ? projectsById.get(item.projectId) : undefined;
+    void startTimer(
+      todayTimerSourceId(item, index),
+      item.projectId && project ? project.name : item.text,
+      item.projectId && project ? item.projectId : null,
+      (item.buttonIds ?? []).flatMap((buttonId) => buttonsById.get(buttonId)?.actions ?? []),
+      minutes,
+      item.text,
+      item.instructionPath,
+      item.instructionOpenOnStart,
+      "countdown",
+      undefined,
+      project?.nextStep?.expandTimerOnStart === true,
+    );
+  };
+  const editTodayRowItem = (index: number) => {
+    const current = configRef.current;
+    const item = current?.today.items[index];
+    if (!current || !item?.sourceKey) return;
+    const key = canonicalSourceKey(current, item.sourceKey);
+    if (!key) return;
+    const project = current.projects.find((p) => `project:${p.id}` === key);
+    if (project) openNextStepEditor(project, { origin: "today" });
+    else {
+      const inboxIndex = current.inbox.findIndex((i) => `wishlist:${i.id}` === key);
+      if (inboxIndex >= 0) beginInboxEdit(inboxIndex, "today");
+    }
+  };
   const acknowledgeDoNowCompletion = async () => {
     if (!(await refreshDoNow())) return;
     setDoNowExcludedProjectId(doNowCompletionHold?.projectId ?? null);
@@ -10237,25 +10382,33 @@ function DashboardApp() {
       )}
       {jsonDrop && (
         <div aria-hidden="true" className="importDropOverlay">
-          <div
-            className={
-              jsonDrop === "sidebar"
-                ? "importDropZone importDropZone--sidebar importDropZone--active"
-                : "importDropZone importDropZone--sidebar"
-            }
+          <motion.div
+            animate={{ scale: jsonDrop === "sidebar" ? 1.02 : 1 }}
+            className={[
+              "importDropZone importDropZone--sidebar",
+              jsonDrop === "sidebar" ? "importDropZone--active is-dragover" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            initial={jsonDrop === "sidebar" ? { scale: 1.02 } : { scale: 1 }}
+            transition={springSnappy}
           >
             <span>ボタンとして登録</span>
-          </div>
-          <div
-            className={
-              jsonDrop === "main"
-                ? "importDropZone importDropZone--main importDropZone--active"
-                : "importDropZone importDropZone--main"
-            }
+          </motion.div>
+          <motion.div
+            animate={{ scale: jsonDrop === "main" ? 1.02 : 1 }}
+            className={[
+              "importDropZone importDropZone--main",
+              jsonDrop === "main" ? "importDropZone--active is-dragover" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            initial={jsonDrop === "main" ? { scale: 1.02 } : { scale: 1 }}
+            transition={springSnappy}
           >
             <strong>まとめて取り込む</strong>
             <small>プロジェクト・次の一手・やりたいこと</small>
-          </div>
+          </motion.div>
         </div>
       )}
       {!skipLinkBlocked && (
@@ -11646,19 +11799,32 @@ function DashboardApp() {
                                     event.currentTarget,
                                   );
                                 }}
-                                onKeyDown={(event) =>
+                                onKeyDown={(event) => {
+                                  if (
+                                    handleRowShortcutKey(event, {
+                                      activate: () =>
+                                        startTodayRowShort(item, index, shortMinutes),
+                                      edit: () => editTodayRowItem(index),
+                                      remove: () =>
+                                        void removeTodayItem(todaySourceKey(item, index)),
+                                    })
+                                  )
+                                    return;
                                   openContextMenuFromKeyboard(event, {
                                     kind: "today",
                                     index,
                                     itemText: item.text,
-                                  })
-                                }
+                                  });
+                                }}
                                 onPointerCancel={cancelTodayPointerDrag}
                                 onPointerDown={(event) => startTodayPointerDrag(event, index)}
                                 onPointerMove={updateTodayPointerDrag}
                                 onPointerUp={finishTodayPointerDrag}
                                 tabIndex={0}
                               >
+                                <span aria-hidden="true" className="rowKeyHint">
+                                  Enter
+                                </span>
                                 <button
                                   aria-label={`${item.text || "未入力"}の操作`}
                                   aria-haspopup="menu"
@@ -12266,15 +12432,26 @@ function DashboardApp() {
                                   projectListAnchorRef.current = null;
                                 }
                               }}
-                              onKeyDown={(event) =>
-                                openContextMenuFromKeyboard(event, { kind: "nextStep", project })
-                              }
+                              onKeyDown={(event) => {
+                                if (
+                                  handleRowShortcutKey(event, {
+                                    activate: () => startProjectShort(project),
+                                    edit: () => openNextStepEditor(project),
+                                    remove: () => requestProjectDeletion(project),
+                                  })
+                                )
+                                  return;
+                                openContextMenuFromKeyboard(event, { kind: "nextStep", project });
+                              }}
                               onPointerCancel={cancelProjectPointerDrag}
                               onPointerDown={(event) => startProjectPointerDrag(event, project.id)}
                               onPointerMove={updateProjectPointerDrag}
                               onPointerUp={finishProjectPointerDrag}
                               tabIndex={0}
                             >
+                              <span aria-hidden="true" className="rowKeyHint">
+                                Enter
+                              </span>
                               <div
                                 className="nextStepProjectRegion"
                                 onContextMenu={(event) => {
@@ -12822,13 +12999,21 @@ function DashboardApp() {
                                               event.currentTarget,
                                             );
                                           }}
-                                          onKeyDown={(event) =>
+                                          onKeyDown={(event) => {
+                                            if (
+                                              handleRowShortcutKey(event, {
+                                                activate: () => promoteInboxToNextStep(index),
+                                                edit: () => beginInboxEdit(index),
+                                                remove: () => deleteInboxItem(index),
+                                              })
+                                            )
+                                              return;
                                             openContextMenuFromKeyboard(event, {
                                               kind: "inbox",
                                               index,
                                               itemText: item.text,
-                                            })
-                                          }
+                                            });
+                                          }}
                                           onPointerCancel={cancelInboxPointerDrag}
                                           onPointerDown={(event) =>
                                             startInboxPointerDrag(event, index)
@@ -12837,6 +13022,9 @@ function DashboardApp() {
                                           onPointerUp={finishInboxPointerDrag}
                                           tabIndex={0}
                                         >
+                                          <span aria-hidden="true" className="rowKeyHint">
+                                            Enter
+                                          </span>
                                           <span className="inboxItemText" title={item.text}>
                                             {sourceLocked && (
                                               <span
@@ -13195,7 +13383,7 @@ function DashboardApp() {
                 >
                   <UiIcon name="close" size={16} />
                 </button>
-                <span aria-hidden="true" className="toastLifetime" />
+                <span aria-hidden="true" className="toastLifetime" hidden={toast.tone === "error"} />
               </div>
             ))}
         </div>
@@ -13205,6 +13393,7 @@ function DashboardApp() {
         <ContextMenu
           ariaLabel="操作メニュー"
           onClose={() => dismissContextMenu(false)}
+          onShortcutKey={handleContextMenuShortcut}
           opener={contextMenuReturnFocusRef.current}
           x={contextMenu.x}
           y={contextMenu.y}
@@ -13349,6 +13538,7 @@ function DashboardApp() {
                     if (index >= 0) beginInboxEdit(index, "today");
                   }
                 }}
+                shortcut="F2"
                 type="button"
               >
                 編集
@@ -13383,6 +13573,7 @@ function DashboardApp() {
                   const item = config?.today.items[contextMenu.index];
                   if (item) void removeTodayItem(todaySourceKey(item, contextMenu.index));
                 }}
+                shortcut="Delete"
                 type="button"
               >
                 今日の3件から外す
@@ -13431,6 +13622,7 @@ function DashboardApp() {
                   undefined
                 }
                 onClick={() => beginInboxEdit(contextMenu.index)}
+                shortcut="F2"
                 type="button"
               >
                 編集
@@ -13449,6 +13641,21 @@ function DashboardApp() {
               >
                 完了にする
               </ContextMenuItem>
+              {contextMenuTodayAdd ? (
+                <ContextMenuItem
+                  disabled={contextMenuTodayAdd.disabled}
+                  onClick={() => {
+                    const candidate = contextMenuTodayAdd.candidate;
+                    setContextMenu(null);
+                    void addCandidateToToday(candidate);
+                  }}
+                  shortcut="T"
+                  title={contextMenuTodayAdd.reason}
+                  type="button"
+                >
+                  今日の3件に入れる
+                </ContextMenuItem>
+              ) : null}
               <ContextMenuItem
                 className="contextMenuDanger"
                 disabled={
@@ -13460,6 +13667,7 @@ function DashboardApp() {
                   ])
                 }
                 onClick={() => deleteInboxItem(contextMenu.index)}
+                shortcut="Delete"
                 type="button"
               >
                 削除
@@ -13478,6 +13686,7 @@ function DashboardApp() {
                   <ContextMenuItem
                     disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
                     onClick={() => openNextStepEditor(contextMenu.project)}
+                    shortcut="F2"
                     title={sourceEditBlockReason(`project:${contextMenu.project.id}`) ?? undefined}
                     type="button"
                   >
@@ -13516,9 +13725,25 @@ function DashboardApp() {
                   次の一手を設定
                 </ContextMenuItem>
               )}
+              {contextMenuTodayAdd ? (
+                <ContextMenuItem
+                  disabled={contextMenuTodayAdd.disabled}
+                  onClick={() => {
+                    const candidate = contextMenuTodayAdd.candidate;
+                    setContextMenu(null);
+                    void addCandidateToToday(candidate);
+                  }}
+                  shortcut="T"
+                  title={contextMenuTodayAdd.reason}
+                  type="button"
+                >
+                  今日の3件に入れる
+                </ContextMenuItem>
+              ) : null}
               <ContextMenuItem
                 className="contextMenuDanger contextMenuSeparatorBefore"
                 onClick={() => requestProjectDeletion(contextMenu.project)}
+                shortcut="Delete"
                 type="button"
               >
                 プロジェクトを削除…

@@ -11,6 +11,7 @@ export type HelpSectionId =
   | "launcher-dictionary"
   | "records-review"
   | "settings-data"
+  | "keys"
   | "non-goals";
 
 type HelpGuideDefinition = {
@@ -39,7 +40,8 @@ export type HelpGuideBlock =
       content: string;
       copyable?: boolean;
     }
-  | { type: "examples"; items: HelpGuideExample[] };
+  | { type: "examples"; items: HelpGuideExample[] }
+  | { type: "keys"; rows: Array<{ keys: string; action: string }> };
 
 export type HelpGuideSection = {
   id: HelpSectionId;
@@ -108,6 +110,31 @@ export const HELP_GUIDE_SECTIONS: HelpGuideSection[] = [
       {
         type: "paragraph",
         text: "次の一手だけをやる必要はありません。ほかにやりたいことは「やりたいこと」に置いておき、やる日に今日の3件へ選べます。",
+      },
+    ],
+  },
+  {
+    id: "keys",
+    title: "キーの一覧",
+    summary: "よく使うキーです。行やメニューは、選んでいる所によって働きが変わります。",
+    blocks: [
+      {
+        type: "keys",
+        rows: [
+          { keys: "Ctrl + K", action: "辞書を開く" },
+          { keys: "Ctrl + F", action: "検索を開く(設定などを開いている間は開かない)" },
+          { keys: "F1", action: "使い方(この画面)を開く" },
+          { keys: "Ctrl + W", action: "開いている窓を閉じる" },
+          { keys: "↑ ↓ / Enter / Esc", action: "検索の窓で、候補を選ぶ / 開く・始める / 閉じる" },
+          { keys: "Shift + Enter", action: "検索の窓で、通常の分数で始める" },
+          { keys: "Enter", action: "行で: 短時間で始める(やりたいことの行は次の一手にする)" },
+          { keys: "F2", action: "行で: その行を編集する" },
+          { keys: "Delete", action: "行で: その行を削除する(今日の3件は今日から外す)" },
+          { keys: "T", action: "メニューを開いている間だけ: その項目を今日の3件に入れる" },
+          { keys: "Ctrl + Z", action: "元に戻す(出ている「元に戻す」のうち、一番新しい物)" },
+          { keys: "メニューキー / Shift + F10", action: "選んでいる行のメニューを開く" },
+          { keys: "設定で決めたキー", action: "表示/隠す・ミニ・手順書(設定で変えられます)" },
+        ],
       },
     ],
   },

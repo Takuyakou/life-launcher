@@ -1,4 +1,6 @@
 import { useState, type KeyboardEvent } from "react";
+import { motion } from "motion/react";
+import { springSnappy } from "./motion";
 import { ProjectIdentity } from "./components/ProjectIdentity";
 import { UiIcon } from "./components/UiIcon";
 import type {
@@ -127,7 +129,15 @@ export function RecordsView({
               role="tab"
               type="button"
             >
-              {label}
+              {tab === key && (
+                <motion.span
+                  aria-hidden="true"
+                  className="recordsTabFace"
+                  layoutId="records-tab-face"
+                  transition={springSnappy}
+                />
+              )}
+              <span className="recordsTabLabel">{label}</span>
             </button>
           ))}
         </nav>
@@ -367,7 +377,17 @@ export function RecordsView({
               <div className="filterGroup" aria-label="期間">
                 <span>期間</span><div className="segmentRow">
                   {([ ["week", "今週"], ["today", "今日"], ["all", "すべて"] ] as const).map(([value, label]) => (
-                    <button className={sessionDateScope === value ? "segmentButton segmentButton--active" : "segmentButton"} key={value} onClick={() => onDateScopeChange(value)} type="button">{label}</button>
+                    <button className={sessionDateScope === value ? "segmentButton segmentButton--active" : "segmentButton"} key={value} onClick={() => onDateScopeChange(value)} type="button">
+                      {sessionDateScope === value && (
+                        <motion.span
+                          aria-hidden="true"
+                          className="segmentFace"
+                          layoutId="records-scope-face"
+                          transition={springSnappy}
+                        />
+                      )}
+                      <span className="segmentLabel">{label}</span>
+                    </button>
                   ))}
                 </div>
               </div>

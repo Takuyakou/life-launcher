@@ -5,6 +5,7 @@ import { UiIcon } from "./UiIcon";
 
 type CopyButtonProps = {
   className?: string;
+  disabled?: boolean;
   /** Label while idle. */
   label: string;
   /** Label shown for 1.5s after a successful copy. */
@@ -22,6 +23,7 @@ const COPIED_LABEL_MS = 1_500;
  */
 export function CopyButton({
   className,
+  disabled = false,
   label,
   copiedLabel = "コピーしました",
   onCopy,
@@ -56,6 +58,7 @@ export function CopyButton({
     <button
       className={className ? `copyButton ${className}` : "copyButton"}
       data-copied={copied ? "true" : "false"}
+      disabled={disabled}
       onClick={() => void handleCopy()}
       type="button"
     >

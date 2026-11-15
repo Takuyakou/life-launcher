@@ -14261,3 +14261,150 @@ button.mainActionButton:is(
   grid-area: 1 / 1;
   white-space: nowrap;
 }
+
+/* P10-12 (D15): key badges in the context menu and the row focus hint. */
+.contextMenu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 9px;
+}
+
+.contextMenuItemLabel {
+  min-width: 0;
+  flex: 1;
+}
+
+.contextMenuShortcut {
+  flex: 0 0 auto;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.contextMenu button.contextMenuDanger .contextMenuShortcut {
+  border-color: rgba(240, 111, 104, 0.5);
+  background: rgba(240, 111, 104, 0.12);
+  color: #ffb4ad;
+}
+
+.sourceListRow,
+.todayRow {
+  position: relative;
+}
+
+.rowKeyHint {
+  position: absolute;
+  top: 5px;
+  right: 42px;
+  z-index: 1;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 1px 6px;
+  background: var(--surface-strong);
+  color: var(--text-muted-readable);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.4;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.sourceListRow:focus-visible > .rowKeyHint,
+.todayRow:focus-visible > .rowKeyHint {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rowKeyHint {
+    transition: none;
+  }
+}
+
+/* P10-12: the help guide's short key table. */
+.helpGuideKeys {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.helpGuideKeys th,
+.helpGuideKeys td {
+  border-bottom: 1px solid var(--line-soft);
+  padding: 7px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.helpGuideKeys th {
+  width: 34%;
+  white-space: nowrap;
+}
+
+.helpGuideKeys kbd {
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 1px 6px;
+  background: var(--surface-strong);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.helpGuideKeys td {
+  color: var(--text-muted-readable);
+}
+
+/* P10-12 (D36): copy buttons inside the import dialog. */
+.importPromptCopy {
+  min-height: 34px;
+  padding: 0 11px;
+  font-size: 12px;
+}
+
+/* P10-12 (D35): the drop frame while a file is over it. */
+.importDropZone.is-dragover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+/* P10-12 (D38): the sliding face behind the chosen records tab / date scope. */
+.recordsTabLabel,
+.segmentLabel {
+  position: relative;
+  z-index: 1;
+}
+
+.recordsTabFace {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--surface-soft);
+  pointer-events: none;
+}
+
+.recordsTab--active {
+  background: transparent;
+}
+
+.recordsTab:hover .recordsTabFace {
+  background: transparent;
+}
+
+.segmentButton {
+  position: relative;
+  overflow: hidden;
+}
+
+.segmentFace {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--surface-strong);
+  pointer-events: none;
+}
+
+.segmentButton--active {
+  background: transparent;
+}

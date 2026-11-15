@@ -140,7 +140,7 @@ test("Guide shows both import prompts and copies exactly what importPrompt.ts ha
   );
   await expect(example.getByRole("button")).toHaveCount(0);
 
-  await first.getByRole("button", { name: "はじめて用のプロンプトをコピー" }).click();
+  await first.getByRole("button", { name: "コピー", exact: true }).click();
   expect(
     await page.evaluate(
       () =>
@@ -148,7 +148,7 @@ test("Guide shows both import prompts and copies exactly what importPrompt.ts ha
     ),
   ).toBe(IMPORT_PROMPT_FIRST);
 
-  await repeat.getByRole("button", { name: "2回目以降用のプロンプトをコピー" }).click();
+  await repeat.getByRole("button", { name: "コピー", exact: true }).click();
   expect(
     await page.evaluate(
       () =>
