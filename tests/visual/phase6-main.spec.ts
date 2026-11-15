@@ -182,16 +182,23 @@ test("NextStep and Wishlist use compact non-destructive Today actions", async ({
   await expect(wishlist.getByRole("button", { name: "やりたいことを追加" })).toBeVisible();
   await expect(wishlist.locator(".inboxRow .moveTodayButton")).toHaveCount(0);
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
-  const builderRows = page.locator(".todayPickerRow");
-  await builderRows.nth(0).getByRole("button", { name: "今日へ" }).click();
-  await builderRows.nth(1).getByRole("button", { name: "今日へ" }).click();
+  const picker = page.getByRole("dialog", { name: "今日やるものを選ぶ" });
+  const nextRows = picker.locator('[data-today-picker-section="next-step"] .todayPickerRow');
+  await nextRows.nth(0).getByRole("button", { name: "今日へ" }).click();
+  await nextRows.nth(0).getByRole("button", { name: "今日へ" }).click();
   await page.getByRole("tab", { name: /やりたいこと/ }).click();
-  await builderRows.nth(2).getByRole("button", { name: "今日へ" }).click();
+  await picker
+    .locator('[data-today-picker-section="wishlist"] .todayPickerRow')
+    .nth(0)
+    .getByRole("button", { name: "今日へ" })
+    .click();
+  await expect(picker.locator(".todayPickerSlot--selected")).toHaveCount(3);
+  expect((await currentConfig(page)).today.items).toHaveLength(0);
+  await picker.getByRole("button", { name: "決定", exact: true }).click();
+  await expect(picker).toHaveCount(0);
   const config = await currentConfig(page);
   expect(config.today.items).toHaveLength(3);
   expect(config.inbox).toHaveLength(2);
-  const picker = page.getByRole("dialog", { name: "今日やるものを選ぶ" });
-  await expect(picker).toHaveCount(0);
   await expect(page.getByRole("button", { name: "今日やるものを選ぶ", exact: true })).toHaveCount(0);
 });
 
@@ -208,12 +215,17 @@ test("same-text Wishlist items keep separate stable identities", async ({ page }
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   await page.getByRole("tab", { name: /やりたいこと/ }).click();
-  const rows = page.locator(".todayPickerRow");
-  await expect(rows).toHaveCount(2);
-  await rows.nth(0).getByRole("button", { name: "今日へ" }).click();
-  await expect(rows.nth(0).locator(".todayPickerSelectedStatus")).toHaveText("✓ 選択済み");
-  await expect(rows.nth(1).getByRole("button", { name: "今日へ" })).toBeEnabled();
-  await rows.nth(1).getByRole("button", { name: "今日へ" }).click();
+  const panelRows = page.locator('[data-today-picker-section="wishlist"] .todayPickerRow');
+  await expect(panelRows).toHaveCount(2);
+  await panelRows.nth(0).getByRole("button", { name: "今日へ" }).click();
+  const slots = page.locator(".todayPickerSlot--selected");
+  await expect(slots).toHaveCount(1);
+  await expect(slots.nth(0).locator(".todayPickerSelectedStatus")).toHaveText("✓ 選択済み");
+  await expect(panelRows.nth(0).getByRole("button", { name: "今日へ" })).toBeEnabled();
+  await panelRows.nth(0).getByRole("button", { name: "今日へ" }).click();
+  await expect(slots).toHaveCount(2);
+  expect((await currentConfig(page)).today.items).toHaveLength(0);
+  await page.getByRole("button", { name: "決定", exact: true }).click();
 
   const items = (await currentConfig(page)).today.items;
   expect(items.map((item) => item.text)).toEqual(["同じ文面", "同じ文面"]);
@@ -242,10 +254,14 @@ test("legacy same-text Wishlist selection maps to only the first stable item", a
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   await page.getByRole("tab", { name: /やりたいこと/ }).click();
-  const rows = page.locator(".todayPickerRow");
-  await expect(rows.nth(0).locator(".todayPickerSelectedStatus")).toHaveText("✓ 選択済み");
-  await expect(rows.nth(1).getByRole("button", { name: "今日へ" })).toBeEnabled();
-  await rows.nth(1).getByRole("button", { name: "今日へ" }).click();
+  const slots = page.locator(".todayPickerSlot--selected");
+  await expect(slots).toHaveCount(1);
+  await expect(slots.locator(".todayPickerSelectedStatus")).toHaveText("✓ 選択済み");
+  const panelRows = page.locator('[data-today-picker-section="wishlist"] .todayPickerRow');
+  await expect(panelRows).toHaveCount(1);
+  await expect(panelRows.first().getByRole("button", { name: "今日へ" })).toBeEnabled();
+  await panelRows.first().getByRole("button", { name: "今日へ" }).click();
+  await page.getByRole("button", { name: "決定", exact: true }).click();
   expect((await currentConfig(page)).today.items.map((item) => item.sourceKey)).toEqual([
     "wishlist:none:同じ文面",
     "wishlist:same-second",
@@ -268,6 +284,10 @@ test("Today adoption snapshots timer, actions, text, and instruction", async ({ 
   const beforeSaves = await saveConfigCount(page);
   await source.getByRole("button", { name: "今日へ" }).click();
   expect(await background.evaluate((node) => node.scrollTop)).toBe(beforeScroll);
+  await expect(page.locator(".todayPickerSlot--selected")).toHaveCount(1);
+  expect(await saveConfigCount(page)).toBe(beforeSaves);
+  expect((await currentConfig(page)).today.items).toHaveLength(0);
+  await page.getByRole("button", { name: "決定", exact: true }).click();
   await expect.poll(() => saveConfigCount(page)).toBe(beforeSaves + 1);
   expect(await background.evaluate((node) => node.scrollTop)).toBe(beforeScroll);
   let item = (await currentConfig(page)).today.items[0];
@@ -321,7 +341,7 @@ test("Today adoption snapshots timer, actions, text, and instruction", async ({ 
   expect(item.shortTimerMinutes).toBe(7);
 });
 
-test("failed Today adoption rolls the optimistic UI back", async ({ page }) => {
+test("failed Picker save keeps the draft and rolls the UI back", async ({ page }) => {
   const fixture = createPublicFixture();
   fixture.config.today.items = [];
   await prepare(page, fixture);
@@ -335,8 +355,17 @@ test("failed Today adoption rolls the optimistic UI back", async ({ page }) => {
   });
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
-  await page.locator(".todayPickerRow").first().getByRole("button", { name: "今日へ" }).click();
+  const picker = page.getByRole("dialog", { name: "今日やるものを選ぶ" });
+  await picker
+    .locator('[data-today-picker-section="next-step"] .todayPickerRow')
+    .first()
+    .getByRole("button", { name: "今日へ" })
+    .click();
+  await expect(picker.locator(".todayPickerSlot--selected")).toHaveCount(1);
+  await picker.getByRole("button", { name: "決定" }).click();
   await expect(page.locator(".toast")).toContainText("保存できません");
+  await expect(picker).toBeVisible();
+  await expect(picker.locator(".todayPickerSlot--selected")).toHaveCount(1);
   await expect(page.locator(".todayRow")).toHaveCount(0);
   expect((await currentConfig(page)).today.items).toEqual([]);
 });

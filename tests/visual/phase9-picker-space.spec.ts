@@ -46,21 +46,28 @@ test("P9-08 at 1080x680 four or more candidate rows are fully visible without sc
   expect(await fullyVisibleRows(page)).toBeGreaterThanOrEqual(4);
 });
 
-test("P9-08 the three slots and the 0 / 3 progress stay, with a lower slot height", async ({ page }) => {
+test("P9-08 the three numbered slots and the 0 / 3 progress stay", async ({ page }) => {
   await openPicker(page, STANDARD);
   const slots = page.locator(".todayPickerSlot--empty");
   await expect(slots).toHaveCount(3);
   for (const index of [0, 1, 2]) {
-    await expect(slots.nth(index)).toHaveText(`空き ${index + 1}`);
-    // The v1.3.4 slot was 90px high; an empty one is at most half of that.
-    expect((await slots.nth(index).boundingBox())!.height).toBeLessThanOrEqual(45);
+    await expect(slots.nth(index).locator(".todayPickerSlotIndex")).toHaveText(String(index + 1));
   }
+  await expect(slots.nth(0).locator(".todayPickerSlotEmptyLabel")).toHaveText("空き 1");
+  await expect(slots.nth(1).locator(".todayPickerSlotEmptyLabel")).toHaveText("空き 2");
+  await expect(slots.nth(2).locator(".todayPickerSlotEmptyLabel")).toHaveText(
+    "空けておいてもかまいません",
+  );
+  const heights = await slots.evaluateAll((nodes) =>
+    nodes.map((node) => node.getBoundingClientRect().height),
+  );
+  expect(Math.max(...heights) - Math.min(...heights)).toBeLessThanOrEqual(1);
   await expect(page.locator(".todayPickerCounter")).toContainText("0 / 3");
   await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "0");
-  // The wording is unchanged.
+  // The wording follows the Phase 10 design.
   const dialog = page.getByRole("dialog", { name: "今日やるものを選ぶ" });
-  await expect(dialog).toContainText("上の「今日の3件」に、下の候補から追加します。");
-  await expect(dialog).toContainText("今日やると決めたもの。最大3件まで。");
+  await expect(dialog).toContainText("3件まで。決めたら、あとは始めるだけです");
+  await expect(dialog).toContainText("ドラッグで順番を変えられます");
   await expect(dialog).toContainText("どこから選びますか？");
 });
 

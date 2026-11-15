@@ -38,7 +38,8 @@ test("P8 instruction picker searches, applies and cancels a draft", async ({ pag
   await page.locator(".todayRow").first().click({ button: "right" });
   await page.getByRole("menuitem", { name: "編集", exact: true }).click();
   const editor = page.getByRole("dialog", { name: "次の一手を編集" });
-  await editor.getByRole("button", { name: "手順書を選ぶ" }).click();
+  await editor.getByRole("button", { name: "＋ ボタン・手順書を足す" }).click();
+  await editor.getByRole("menuitem", { name: "手順書を選ぶ" }).click();
   let picker = page.getByRole("dialog", { name: "手順書を選ぶ" });
   await expect(picker.getByRole("searchbox", { name: "手順書を検索" })).toBeFocused();
   await picker.getByRole("searchbox", { name: "手順書を検索" }).fill("guide");
@@ -46,12 +47,13 @@ test("P8 instruction picker searches, applies and cancels a draft", async ({ pag
   await picker.getByRole("option", { name: "手順書なし" }).click();
   const instructionCancel = picker.getByRole("button", { name: "キャンセル" });
   await instructionCancel.click();
-  await expect(editor.locator(".instructionPickerSelection")).toContainText("guide.md");
-  await editor.getByRole("button", { name: "手順書を選ぶ" }).click();
+  await expect(editor.locator(".nextStepOpenChip", { hasText: "guide.md" })).toHaveCount(1);
+  await editor.getByRole("button", { name: "＋ ボタン・手順書を足す" }).click();
+  await editor.getByRole("menuitem", { name: "手順書を選ぶ" }).click();
   picker = page.getByRole("dialog", { name: "手順書を選ぶ" });
   await picker.getByRole("option", { name: "手順書なし" }).click();
   await picker.getByRole("button", { name: "選択", exact: true }).click();
-  await expect(editor.locator(".instructionPickerSelection")).toContainText("選択されていません");
+  await expect(editor.locator(".nextStepOpenChip", { hasText: "guide.md" })).toHaveCount(0);
   await expect(editor.getByRole("checkbox", { name: "開始時に手順書を開く" })).toBeDisabled();
 
 });

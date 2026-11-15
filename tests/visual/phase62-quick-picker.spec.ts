@@ -135,9 +135,10 @@ test("Project picker preserves order, enforces two selections, and restores focu
   await page.locator('[data-project-id="sample-learning"]').click({ button: "right" });
   await page.getByRole("menuitem", { name: "次の一手を編集", exact: true }).click();
   const projectDialog = page.getByRole("dialog", { name: "次の一手を編集" });
-  const opener = projectDialog.getByRole("button", { name: "開始環境を選ぶ" });
-  await expect(projectDialog.locator(".startEnvironmentSelectedItem")).toHaveCount(1);
+  const opener = projectDialog.getByRole("button", { name: "＋ ボタン・手順書を足す" });
+  await expect(projectDialog.locator(".nextStepOpenChip")).toHaveCount(2);
   await opener.click();
+  await projectDialog.getByRole("menuitem", { name: "ボタンを選ぶ" }).click();
 
   let picker = page.getByRole("dialog", { name: "開始環境を選ぶ" });
   await expect(picker.locator(".dialogActions > button")).toHaveText(["選択", "キャンセル"]);
@@ -157,15 +158,16 @@ test("Project picker preserves order, enforces two selections, and restores focu
   await picker.getByRole("button", { name: "選択" }).click();
   await expect(picker).toHaveCount(0);
   await expect(opener).toBeFocused();
-  await expect(projectDialog.locator(".startEnvironmentSelectedItem")).toHaveCount(2);
+  await expect(projectDialog.locator(".nextStepOpenChip")).toHaveCount(3);
 
   await opener.click();
+  await projectDialog.getByRole("menuitem", { name: "ボタンを選ぶ" }).click();
   picker = page.getByRole("dialog", { name: "開始環境を選ぶ" });
   await picker.getByRole("option", { name: /参考サイト/ }).click();
   await page.keyboard.press("Escape");
   await expect(picker).toHaveCount(0);
   await expect(opener).toBeFocused();
-  await expect(projectDialog.locator(".startEnvironmentSelectedItem")).toHaveCount(2);
+  await expect(projectDialog.locator(".nextStepOpenChip")).toHaveCount(3);
 
   await projectDialog.getByRole("button", { name: "保存" }).click();
   const project = (await currentConfig(page)).projects.find(
@@ -222,9 +224,11 @@ test("Legacy selections over the limit are preserved and picker fits the narrow 
   await page.locator('[data-project-id="sample-learning"]').click({ button: "right" });
   await page.getByRole("menuitem", { name: "次の一手を編集", exact: true }).click();
   const projectDialog = page.getByRole("dialog", { name: "次の一手を編集" });
-  await expect(projectDialog.locator(".startEnvironmentCount")).toContainText("3 / 2");
-  await projectDialog.getByRole("button", { name: "開始環境を選ぶ" }).click();
+  await expect(projectDialog.locator(".nextStepOpenChip")).toHaveCount(4);
+  await projectDialog.getByRole("button", { name: "＋ ボタン・手順書を足す" }).click();
+  await projectDialog.getByRole("menuitem", { name: "ボタンを選ぶ" }).click();
   const picker = page.getByRole("dialog", { name: "開始環境を選ぶ" });
+  await expect(picker.locator(".startEnvironmentCount")).toContainText("3 / 2");
   const longOption = picker.getByRole("option", { name: /非常に長い日本語/ });
   await expect(longOption).toHaveAttribute("aria-disabled", "true");
   await longOption.dispatchEvent("click");

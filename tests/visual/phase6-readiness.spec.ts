@@ -124,20 +124,27 @@ test("manual next batch accepts one, two, and three new items but no fourth", as
   await page.getByRole("button", { name: /次の3件を選ぶ/ }).click();
   await expect(page.locator(".todayRow")).toHaveCount(0);
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
+  const picker = page.getByRole("dialog", { name: "今日やるものを選ぶ" });
 
   for (let index = 0; index < 3; index += 1) {
+    const section =
+      index === 2
+        ? '[data-today-picker-section="wishlist"]'
+        : '[data-today-picker-section="next-step"]';
     if (index === 2) {
       await page.getByRole("tab", { name: /やりたいこと/ }).click();
     }
-    await page
-      .locator(".todayPickerRow")
-      .nth(index)
+    await picker
+      .locator(`${section} .todayPickerRow`)
+      .nth(0)
       .getByRole("button", { name: "＋ 今日へ", exact: true })
       .click();
-    await expect(page.locator(".todayRow")).toHaveCount(index + 1);
+    await expect(picker.locator(".todayPickerSlot--selected")).toHaveCount(index + 1);
   }
-  const picker = page.getByRole("dialog", { name: "今日やるものを選ぶ" });
+  await expect(page.locator(".todayRow")).toHaveCount(0);
+  await picker.getByRole("button", { name: "決定" }).click();
   await expect(picker).toHaveCount(0);
+  await expect(page.locator(".todayRow")).toHaveCount(3);
   await expect(page.getByRole("button", { name: "今日やるものを選ぶ", exact: true })).toHaveCount(0);
 
   await page.locator(".inboxBand .disclosure").click();

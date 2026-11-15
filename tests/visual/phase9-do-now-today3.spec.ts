@@ -86,8 +86,12 @@ test("P9-05 every Today3 change asks for the candidates again", async ({ page })
   await refreshed(async () => {
     await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
     const picker = page.getByRole("dialog", { name: "今日やるものを選ぶ" });
-    // The third item closes the picker by itself.
-    await picker.getByRole("button", { name: "＋ 今日へ" }).first().click();
+    await picker
+      .locator('[data-today-picker-section="next-step"] .todayPickerRow')
+      .first()
+      .getByRole("button", { name: "＋ 今日へ" })
+      .click();
+    await picker.getByRole("button", { name: "決定" }).click();
     await expect(picker).toHaveCount(0);
   });
   // complete

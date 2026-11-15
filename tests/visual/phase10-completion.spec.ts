@@ -224,12 +224,12 @@ test("P10-09 same step again prefills the 9 copied fields and saves a new genera
   );
   await expect(actionInput(editor)).toHaveValue("資料を1ページ読む");
   await expect(editor.getByLabel(/始めるきっかけ/)).toHaveValue("サンプル資料");
-  await expect(editor.locator(".startEnvironmentSelected")).toContainText("サンプル資料");
-  await expect(editor.locator(".startEnvironmentSelected")).not.toContainText(
-    "登録が見つかりません",
+  await expect(editor.locator(".nextStepOpenChip", { hasText: "サンプル資料" })).toHaveCount(1);
+  await expect(editor.locator(".nextStepOpenChip", { hasText: "登録が見つかりません" })).toHaveCount(
+    0,
   );
-  await expect(editor.locator('.startEnvironmentSelectedItem')).toHaveCount(1);
-  await expect(editor.locator(".instructionPickerSelection")).toContainText("guide.md");
+  await expect(editor.locator(".nextStepOpenChip")).toHaveCount(2);
+  await expect(editor.locator(".nextStepOpenChip", { hasText: "guide.md" })).toHaveCount(1);
   await expect(editor.getByRole("checkbox", { name: "開始時に手順書を開く" })).toBeChecked();
   await expect(shortTimerInput(editor)).toHaveValue("1");
   await expect(defaultTimerInput(editor)).toHaveValue("25");
@@ -276,10 +276,7 @@ test("P10-09 自分で書く opens an empty Next Step editor", async ({ page }) 
   await editor.getByRole("tab", { name: /新しく入力/ }).click();
   await expect(actionInput(editor)).toHaveValue("");
   await expect(editor.getByLabel(/始めるきっかけ/)).toHaveValue("");
-  await expect(editor.locator(".startEnvironmentSelected")).toHaveCount(0);
-  await expect(editor.locator(".instructionPickerSelection")).toContainText(
-    "手順書は選択されていません",
-  );
+  await expect(editor.locator(".nextStepOpenChip")).toHaveCount(0);
   await expect(shortTimerInput(editor)).toHaveValue("");
   await expect(defaultTimerInput(editor)).toHaveValue("");
   await expect(editor.getByRole("checkbox", { name: "開始時に手順書を開く" })).not.toBeChecked();

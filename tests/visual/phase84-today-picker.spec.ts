@@ -134,6 +134,10 @@ test("Picker adoption preserves NextStep and Wishlist snapshots across reopening
   await expect(dialog.locator('[data-today-picker-section="next-step"]')).not.toContainText(source.nextStep!.text);
   await expect(dialog.locator(".todayPickerSlot--selected")).toHaveCount(1);
   await expect(dialog.locator(".todayPickerSlot--empty")).toHaveCount(2);
+  expect((await currentConfig(page)).today.items).toHaveLength(0);
+  await dialog.getByRole("button", { name: "決定", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.locator(".todayRow")).toHaveCount(1);
   expect((await currentConfig(page)).today.items[0]).toMatchObject({
     text: source.nextStep!.text,
     sourceKey: `project:${source.id}`,
@@ -145,8 +149,6 @@ test("Picker adoption preserves NextStep and Wishlist snapshots across reopening
     defaultTimerMinutes: source.nextStep!.defaultTimerMinutes,
     shortTimerMinutes: source.nextStep!.shortTimerMinutes,
   });
-  await dialog.getByRole("button", { name: "決定", exact: true }).click();
-  await expect(page.locator(".todayRow")).toHaveCount(1);
   await entry.click();
   dialog = picker(page);
   selected = dialog.locator('[data-today-picker-section="selected"]');
@@ -159,6 +161,7 @@ test("Picker adoption preserves NextStep and Wishlist snapshots across reopening
   await expect(selected.getByText("✓ 選択済み")).toHaveCount(2);
   await expect(dialog.locator('[data-today-picker-section="wishlist"]')).not.toContainText(wish.text);
   await dialog.getByRole("button", { name: "決定", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
   await entry.click();
   await picker(page).getByRole("tab", { name: /やりたいこと/ }).click();
   await expect(picker(page).locator('[data-today-picker-section="selected"]')).toContainText(wish.text);
@@ -170,7 +173,7 @@ test("Picker adoption preserves NextStep and Wishlist snapshots across reopening
   expect(new Set(saved.today.items.map((item) => item.sourceKey)).size).toBe(2);
 });
 
-test("P84-01 reaching 3/3 closes the Picker after the saved third selection", async ({ page }) => {
+test("P84-01 reaching 3/3 keeps the Picker open until 決定 saves the order", async ({ page }) => {
   const fixture = createPublicFixture();
   await prepare(page, fixture);
 
@@ -185,6 +188,12 @@ test("P84-01 reaching 3/3 closes the Picker after the saved third selection", as
     .getByRole("button", { name: "今日へ" })
     .click();
 
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator(".todayPickerSlot--selected")).toHaveCount(3);
+  await expect(dialog.locator(".todayPickerSlot--empty")).toHaveCount(0);
+  expect((await currentConfig(page)).today.items).toHaveLength(2);
+
+  await dialog.getByRole("button", { name: "決定", exact: true }).click();
   await expect(dialog).toHaveCount(0);
   await expect(page.locator(".todayRow")).toHaveCount(3);
   const completionToast = page.locator(".toast", { hasText: "今日の3件を選択しました" });
@@ -199,7 +208,7 @@ test("P84-01 reaching 3/3 closes the Picker after the saved third selection", as
   await expect(page.getByRole("button", { name: "今日やるものを選ぶ", exact: true })).toHaveCount(0);
 });
 
-test("P84 Picker keeps backdrop clicks inert and restores the opening snapshot on confirmed cancel", async ({
+test("P84 Picker keeps backdrop clicks inert and discards the draft on confirmed cancel", async ({
   page,
 }) => {
   const fixture = createPublicFixture();
@@ -212,7 +221,7 @@ test("P84 Picker keeps backdrop clicks inert and restores the opening snapshot o
     .locator(".todayPickerRow", { hasText: "5分だけ体を動かす" })
     .getByRole("button", { name: "今日へ" })
     .click();
-  expect((await currentConfig(page)).today.items).toHaveLength(1);
+  expect((await currentConfig(page)).today.items).toHaveLength(0);
 
   await page.locator(".modalBackdrop").click({ position: { x: 2, y: 2 } });
   await expect(dialog).toBeVisible();
@@ -223,6 +232,7 @@ test("P84 Picker keeps backdrop clicks inert and restores the opening snapshot o
   await expect(confirmation.getByRole("button", { name: "戻る" })).toBeFocused();
   await confirmation.getByRole("button", { name: "戻る" }).click();
   await expect(dialog).toBeVisible();
+  await expect(dialog.locator(".todayPickerSlot--selected")).toHaveCount(1);
 
   await dialog.getByRole("button", { name: "キャンセル" }).click();
   await page.getByRole("button", { name: "破棄して閉じる" }).click();
@@ -253,17 +263,16 @@ test("P84 Picker removes selected cards by keyboard without resizing and updates
   await expect(progress).toHaveAttribute("aria-valuenow", "1");
 
   const selectedCard = dialog.locator(".todayPickerSlot--selected");
-  await expect(selectedCard).not.toHaveAttribute("draggable", "true");
+  await expect(selectedCard).toHaveAttribute("draggable", "true");
   await expect(dialog.locator(".todayPickerRemoveDropZone")).toHaveCount(0);
   await expect(dialog.getByText(/ここにドロップして今日の3件から外す/)).toHaveCount(0);
   const removeButton = dialog.getByRole("button", { name: "今日から外す", exact: true });
   const cardBox = await selectedCard.boundingBox();
   const removeBox = await removeButton.boundingBox();
   expect(cardBox && removeBox).toBeTruthy();
+  expect(removeBox!.x).toBeGreaterThan(cardBox!.x + cardBox!.width / 2);
   expect(removeBox!.x + removeBox!.width).toBeLessThanOrEqual(cardBox!.x + cardBox!.width);
   expect(removeBox!.y + removeBox!.height).toBeLessThanOrEqual(cardBox!.y + cardBox!.height);
-  expect(removeBox!.y).toBeGreaterThan(cardBox!.y + cardBox!.height / 2);
-  expect(await removeButton.evaluate((node) => getComputedStyle(node).whiteSpace)).toBe("nowrap");
 
   await removeButton.focus();
   await expect(removeButton).toBeFocused();
@@ -271,36 +280,38 @@ test("P84 Picker removes selected cards by keyboard without resizing and updates
   await expect(dialog.locator(".todayPickerSlot--selected")).toHaveCount(0);
   const dialogBoxAfter = await dialog.boundingBox();
   expect(Math.abs(dialogBoxAfter!.height - dialogBoxBefore!.height)).toBeLessThanOrEqual(1);
-  expect((await currentConfig(page)).today.items).toHaveLength(0);
+  expect((await currentConfig(page)).today.items).toHaveLength(1);
   await expect(progress).toHaveAttribute("aria-valuenow", "0");
   await dialog.getByRole("button", { name: "決定" }).click();
   await expect(dialog).toHaveCount(0);
+  expect((await currentConfig(page)).today.items).toHaveLength(0);
 });
 
-test("P84-01 save failure rolls back and leaves the Picker usable", async ({ page }) => {
+test("P84-01 save failure on 決定 keeps the Picker and its draft usable", async ({ page }) => {
   const fixture = createPublicFixture();
   fixture.config.today.items = [];
   await prepare(page, fixture);
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const dialog = picker(page);
-  await setSaveFailure(page, true);
   await dialog
     .locator(".todayPickerRow", { hasText: "5分だけ体を動かす" })
     .getByRole("button", { name: "今日へ" })
     .click();
-
-  await expect(dialog).toBeVisible();
-  await expect(
-    dialog.locator('[data-today-picker-section="selected"] .todayPickerRow'),
-  ).toHaveCount(0);
+  await expect(dialog.locator(".todayPickerSlot--selected")).toHaveCount(1);
   expect((await currentConfig(page)).today.items).toHaveLength(0);
+
+  await setSaveFailure(page, true);
+  await dialog.getByRole("button", { name: "決定", exact: true }).click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator(".todayPickerSlot--selected")).toHaveCount(1);
+  await expect(page.locator(".toast", { hasText: "保存できません" })).toBeVisible();
+  expect((await currentConfig(page)).today.items).toHaveLength(0);
+
   await setSaveFailure(page, false);
-  await expect(
-    dialog
-      .locator(".todayPickerRow", { hasText: "5分だけ体を動かす" })
-      .getByRole("button", { name: "今日へ" }),
-  ).toBeEnabled();
+  await dialog.getByRole("button", { name: "決定", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  expect((await currentConfig(page)).today.items).toHaveLength(1);
 });
 
 test("P84-01 Escape closes the Picker and returns focus to its entry", async ({ page }) => {
@@ -353,14 +364,14 @@ test("P84 Picker aligns project, task, and action columns with readable long con
   expect(Math.max(...wishlistActionRights) - Math.min(...wishlistActionRights)).toBeLessThanOrEqual(
     1,
   );
-  const cancelBox = await dialog
-    .getByRole("button", { name: "キャンセル", exact: true })
-    .boundingBox();
-  expect(cancelBox).not.toBeNull();
-  expect(Math.abs(cancelBox!.x + cancelBox!.width - wishlistActionRights[0])).toBeLessThanOrEqual(
-    1,
-  );
-
+  const [confirmBox, cancelBox, dialogBox] = await Promise.all([
+    dialog.getByRole("button", { name: "決定", exact: true }).boundingBox(),
+    dialog.getByRole("button", { name: "キャンセル", exact: true }).boundingBox(),
+    dialog.boundingBox(),
+  ]);
+  expect(confirmBox && cancelBox && dialogBox).toBeTruthy();
+  expect(cancelBox!.x).toBeGreaterThan(confirmBox!.x + confirmBox!.width);
+  expect(cancelBox!.x + cancelBox!.width).toBeLessThanOrEqual(dialogBox!.x + dialogBox!.width);
 });
 
 test("P84 Picker selection preserves collapsed Wishlist groups", async ({ page }) => {
@@ -389,6 +400,9 @@ test("P84 Picker selection preserves collapsed Wishlist groups", async ({ page }
   ).toBeVisible();
   await dialog.getByRole("tab", { name: /やりたいこと/ }).click();
   await expect(projectHeader).toHaveAttribute("aria-expanded", "false");
+  expect((await currentConfig(page)).today.items).toHaveLength(0);
+  await dialog.getByRole("button", { name: "決定" }).click();
+  await expect(dialog).toHaveCount(0);
   expect((await currentConfig(page)).today.items).toHaveLength(1);
 });
 
@@ -421,7 +435,9 @@ test("P84 Picker remains contained and keeps actions visible at narrow width", a
   expect(await dialog.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
 });
 
-test("P84 Picker aligns candidate and footer actions in the mini window", async ({ page }) => {
+test("P84 Picker stacks the numbered slots above a scrollable candidate list in the mini window", async ({
+  page,
+}) => {
   const fixture = createPublicFixture();
   fixture.config.today.items = fixture.config.today.items.slice(0, 1);
   for (let index = 0; index < 8; index += 1) {
@@ -438,13 +454,17 @@ test("P84 Picker aligns candidate and footer actions in the mini window", async 
   await dialog.getByRole("tab", { name: /やりたいこと/ }).click();
   const panel = dialog.locator(".todayPickerSourcePanel");
   expect(await panel.evaluate((node) => node.scrollHeight > node.clientHeight)).toBe(true);
-  const [addBox, cancelBox] = await Promise.all([
-    dialog.locator(".todayPickerAddButton").first().boundingBox(),
+
+  const [destinationBox, sourceBox, cancelBox, dialogBox] = await Promise.all([
+    dialog.locator(".todayPickerDestination").boundingBox(),
+    dialog.locator(".todayPickerSource").boundingBox(),
     dialog.getByRole("button", { name: "キャンセル", exact: true }).boundingBox(),
+    dialog.boundingBox(),
   ]);
-  expect(addBox && cancelBox).toBeTruthy();
-  const candidateRight = addBox!.x + addBox!.width;
-  expect(Math.abs(cancelBox!.x + cancelBox!.width - candidateRight)).toBeLessThanOrEqual(1);
+  expect(destinationBox && sourceBox && cancelBox && dialogBox).toBeTruthy();
+  expect(destinationBox!.y).toBeLessThan(sourceBox!.y);
+  expect(cancelBox!.x + cancelBox!.width).toBeLessThanOrEqual(dialogBox!.x + dialogBox!.width);
+  expect(cancelBox!.y + cancelBox!.height).toBeLessThanOrEqual(dialogBox!.y + dialogBox!.height);
 });
 
 test("P84 Picker shows a clear empty NextStep section when every NextStep is selected", async ({
