@@ -15329,3 +15329,18 @@ button.mainActionButton:is(
 .nextStepEditDialog--edit {
   max-height: calc(100vh - 36px);
 }
+/* E1: at narrow widths the two minute fields stack, like the existing timer grid. */
+@media (max-width: 900px) {
+  .nextStepEditTimerGrid {
+    grid-template-columns: 1fr;
+  }
+}
+/* E1: keep the existing sticky save/cancel bar (the main window is 1200x680), now
+   that the compact form can use the full window height. */
+.nextStepEditDialog--edit.modalLongForm > .dialogActions {
+  position: sticky;
+  bottom: -18px;
+  margin: 0 -18px -18px;
+  padding: 12px 18px 18px;
+  background: var(--dialog-surface);
+}
