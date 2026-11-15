@@ -121,6 +121,11 @@ export function TimerPanel({
       }
       onPointerDownCapture={() => window.getSelection()?.removeAllRanges()}
     >
+      {variant === "mini" && !idleMini && progressPercent !== null && (
+        <div className="timerProgress timerProgress--mini" aria-hidden="true">
+          <span style={{ width: `${progressPercent ?? 0}%` }} />
+        </div>
+      )}
       <div className="timerMeta">
         {variant === "sidebar" ? (
           <div className="timerMetaTop">
@@ -150,7 +155,21 @@ export function TimerPanel({
             ) : null}
           </div>
         ) : (
-          <span>タイマー</span>
+          <>
+            <span>タイマー</span>
+            {active && onExpand && (
+              <button
+                aria-label="タイマーを大きく表示"
+                className="timerExpandButton"
+                onClick={onExpand}
+                ref={expandButtonRef}
+                title="タイマーを大きく表示"
+                type="button"
+              >
+                <UiIcon name="maximize" size={16} />
+              </button>
+            )}
+          </>
         )}
         {todaySummary ? (
           <span aria-label={todaySummary.replace("・", "、")} className="timerTodaySummary">
@@ -194,7 +213,7 @@ export function TimerPanel({
           )}
         </div>
       )}
-      {!idleMini && (progressPercent !== null || variant === "sidebar") && (
+      {!idleMini && variant === "sidebar" && (
         <div className="timerProgress" aria-hidden="true">
           <span style={{ width: `${progressPercent ?? 0}%` }} />
         </div>

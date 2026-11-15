@@ -2773,6 +2773,17 @@ function DashboardApp() {
           })),
     [launcherOverlayItems, launcherSearch, overlayPages, selectedOverlayPageButtons],
   );
+  // P10-08 (§7.2): "N分のうち … ・ HH:MM に終わります"; paused shows the pause note instead.
+  const expandedTimerPlanLabel = (() => {
+    if (!activeTimer || activeTimer.paused) return "";
+    if (activeTimer.mode === "measure") return "時間を決めずに計測しています";
+    const total = activeTimer.targetMinutes ?? config?.settings.defaultTimerMinutes ?? 25;
+    const endsAt = new Date(
+      activeTimer.startedAtMs + total * 60_000 + activeTimer.pausedTotalMs,
+    );
+    const ends = endsAt.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+    return `${total}分のうち ・ ${ends} に終わります`;
+  })();
   const timerProgressPercent =
     activeTimer?.mode === "countdown" && activeTimer.targetMinutes !== null && currentTimerMetrics
       ? Math.min(
@@ -15978,9 +15989,21 @@ function DashboardApp() {
             setExpandedTimerOpen(false);
             finishActiveTimer(activeTimer);
           }}
+          onMini={() => {
+            setExpandedTimerOpen(false);
+            void toggleMiniMode();
+          }}
           onPause={togglePause}
           paused={activeTimer.paused}
+          planLabel={expandedTimerPlanLabel}
           progressPercent={timerProgressPercent}
+          status={
+            activeTimer.paused
+              ? "一時停止中"
+              : activeTimer.mode === "measure"
+                ? "計測中"
+                : "実行中"
+          }
         />
       )}
 

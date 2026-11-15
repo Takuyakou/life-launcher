@@ -13576,3 +13576,79 @@ button.mainActionButton:is(
   border-radius: 50%;
   background: var(--project-color, var(--muted));
 }
+
+/* P10-08 (§7.2): the expanded timer header keeps the badge left and the buttons right. */
+.expandedTimerHeaderActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.expandedTimerPlan {
+  margin: 2px 0 0;
+  color: var(--text-muted-readable);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* P10-08: the plan line never widens the overlay. */
+.expandedTimerPlan {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-height: 520px), (max-width: 560px) {
+  .expandedTimer {
+    padding: 12px 14px;
+    gap: 8px;
+  }
+
+  .expandedTimerClock {
+    font-size: clamp(40px, 12vw, 64px);
+  }
+
+  .expandedTimerHeaderActions {
+    gap: 4px;
+  }
+
+  .expandedTimerClose span {
+    display: none;
+  }
+}
+
+/* P10-08: the mini button shares the 戻る look. */
+.expandedTimerMiniButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* P10-08 (§7.3): the mini window keeps its size; the text is one truncated line. */
+.timerPanel--mini .timerProgress--mini {
+  margin: -2px 0 6px;
+}
+
+.timerMetaMiniHead {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+
+.timerPanel--mini .timerActionText {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
