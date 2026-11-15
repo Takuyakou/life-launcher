@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createFullTodayFixture, createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 // P96-01: 一体型タイトルバー(窓のボタン・ドラッグ領域・ダイアログの帯)。
 
@@ -41,7 +42,7 @@ async function prepare(
   await installTauriMock(page, fixture, label);
   await page.goto("/");
   await expect(page.locator(".focusBand")).toBeVisible();
-  await page.evaluate(async () => document.fonts.ready);
+  await waitForBundledFonts(page);
 }
 
 async function prepareViewer(page: Page, width = 1000) {
@@ -57,7 +58,7 @@ async function prepareViewer(page: Page, width = 1000) {
     "/?view=instruction&path=" + encodeURIComponent(VIEWER_DOCUMENT_PATH),
   );
   await expect(page.getByRole("heading", { name: "ようこそ" })).toBeVisible();
-  await page.evaluate(async () => document.fonts.ready);
+  await waitForBundledFonts(page);
 }
 
 type LayoutProbe = {

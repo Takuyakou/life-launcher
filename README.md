@@ -151,6 +151,11 @@ powershell -ExecutionPolicy Bypass -File scripts/start-test-profile.ps1 -Exe <EX
 - Playwright（決定論的なVisual QA）
 - Zod（フロントエンドのデータ検証）
 
+## 使っているもの（フォント・動き）
+
+- フォント: [Inter](https://github.com/rsms/inter) と [Noto Sans JP](https://github.com/notofonts/noto-cjk) をアプリに同梱しています。どちらも SIL Open Font License 1.1 です。同梱は npm の `@fontsource-variable/inter` と `@fontsource-variable/noto-sans-jp`（フォントのファイルとライセンスの文書だけの包み）を使っています。ライセンスの文書は `node_modules/@fontsource-variable/inter/LICENSE` と `node_modules/@fontsource-variable/noto-sans-jp/LICENSE` にあります。
+- 動き: [Motion](https://motion.dev/)（npm の `motion`、MIT ライセンス）を使っています。
+
 ## セキュリティ
 
 公開ソースでは、faviconを取得する範囲を制限し、ローカルやプライベートな宛先への接続を拒否します。リダイレクト先の再検証とレスポンスの検証も行い、Tauriのcapabilitiesはウィンドウごとに設定しています。これらのネットワークと権限の制限は、Rustの自動テストで確かめています。

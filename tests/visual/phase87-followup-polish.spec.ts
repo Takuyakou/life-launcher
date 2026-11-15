@@ -154,7 +154,7 @@ test("Dictionary shortcut badge follows config and actual registration", async (
   await expect(badge).toHaveText("Ctrl+K");
   await expect(badge).toHaveCSS("color", "rgb(231, 185, 77)");
   await expect(badge).toHaveCSS("border-top-color", "rgba(231, 185, 77, 0.48)");
-  await expect(badge).toHaveCSS("font-weight", "820");
+  await expect(badge).toHaveCSS("font-weight", "700");
 
   await page.evaluate(() => {
     const control = (window as Window & {

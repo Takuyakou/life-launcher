@@ -7,6 +7,7 @@ import {
   type VisualQaFixture,
 } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 // P95-01: no start/pause toasts, pause/resume clock, top menu in Records, Records heading insets,
 // empty victory hover, aligned section-bar counts.
@@ -32,6 +33,7 @@ async function open(
   await page.setViewportSize(viewport);
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".doNowBand")).toBeVisible();
 }
 

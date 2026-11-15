@@ -52,7 +52,7 @@ for (const display of DISPLAYS) {
       await expect(description, selector).toHaveCSS("color", muted);
       await expect(description, selector).toHaveCSS("font-weight", "450");
       const name = bar.locator("h2, strong").first();
-      await expect(name, selector).toHaveCSS("font-weight", "900");
+      await expect(name, selector).toHaveCSS("font-weight", "700");
     }
     const sizes = await page
       .locator(BARS.map((selector) => `${selector} h2, ${selector} strong`).join(", "))
