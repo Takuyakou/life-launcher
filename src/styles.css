@@ -10570,49 +10570,110 @@ body:has([aria-modal="true"]) .toastStack {
 }
 
 .completionFollowupDialog {
-  width: min(560px, 100%);
+  width: min(580px, 100%);
+}
+
+/* P10-09 (§8.1): the completion dialog — ✓ header, finished step, then 4-5 radios. */
+.completionDoneHeader {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.completionDoneMark {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--good) 18%, transparent);
+  color: var(--good);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.completionDoneSubject {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  background: var(--surface);
+}
+
+.completionDoneSubject strong {
+  min-width: 0;
+  flex: 1;
+}
+
+.completionDoneMinutes {
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.completionFollowupQuestion {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
 }
 
 .completionFollowupChoices {
   display: grid;
-  border-block: 1px solid var(--line-soft);
+  max-height: 44vh;
+  gap: 4px;
+  overflow: auto;
 }
 
 .completionFollowupChoice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   min-width: 0;
   min-height: 44px;
-  display: grid;
-  grid-template-columns: 18px minmax(0, 1fr);
-  gap: 10px;
-  align-items: center;
-  border: 0;
-  border-bottom: 1px solid var(--line-soft);
-  border-radius: 0;
-  padding: 8px 6px;
-  background: transparent;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 0 12px;
+  background: var(--surface);
   color: var(--text);
+  font-size: 13px;
   text-align: left;
 }
 
-.completionFollowupChoice:last-child {
-  border-bottom: 0;
-}
-
 .completionFollowupChoice:hover,
-.completionFollowupChoice:focus-visible {
+.completionFollowupChoice:focus-within {
   background: var(--control-neutral-hover-bg);
 }
 
-.completionFollowupRadio {
-  width: 14px;
-  height: 14px;
-  border: 1px solid var(--muted);
-  border-radius: 50%;
+.completionFollowupChoice--selected {
+  border-color: var(--line);
+  background: var(--surface-strong);
 }
 
-.completionFollowupChoice--new {
-  color: var(--accent-strong);
-  font-weight: 700;
+.completionFollowupChoice input {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  accent-color: var(--accent-strong);
+}
+
+.completionFollowupChoice span {
+  min-width: 0;
+  flex: 1;
+}
+
+.completionFollowupChoice small {
+  color: var(--text-muted-readable);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.completionFollowupDecide {
+  min-width: 96px;
 }
 
 .nextStepFixedProject {

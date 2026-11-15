@@ -252,7 +252,7 @@ test("Phase 8.1 old Today A and current NextStep B stay separate in the real UI"
   expect(saved.today.items[0].done).toBe(true);
   expect(saved.projects[0].nextStep?.text).toBe("差し替え後の次の一手");
   expect(saved.sourceCompletions).toEqual([]);
-  await expect(page.getByRole("dialog", { name: "次の一手を決めますか？" })).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "一手進みました" })).toHaveCount(0);
 });
 
 test("Phase 8.1 direct Wishlist timer completion cannot select same-project NextStep", async ({
@@ -284,20 +284,24 @@ test("Phase 8.1 shows reward before NextStep follow-up and does not replay after
   await prepareUi(page, nextStepUiFixture());
   await finishPlannedTimer(page);
   await expect(page.locator(".todayRow")).toHaveClass(/todayRow--justCompleted/);
-  await expect(page.getByRole("dialog", { name: "次の一手を決めますか？" })).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "一手進みました" })).toHaveCount(0);
 
   await page.clock.fastForward(1_100);
-  const followup = page.getByRole("dialog", { name: "次の一手を決めますか？" });
+  const followup = page.getByRole("dialog", { name: "一手進みました" });
   await expect(followup).toBeVisible();
-  await expect(followup).toContainText("サンプル学習のやりたいこと");
-  await followup.getByRole("button", { name: "今は決めない" }).click();
+  await expect(followup).toContainText("次はどこから始めますか");
+  await expect(followup).toContainText("サンプル学習");
+  await expect(followup).toContainText("資料を1ページ読む");
+  await followup.getByRole("radio", { name: "今は決めない" }).check();
+  await followup.getByRole("button", { name: "決定" }).click();
+  await expect(followup).toHaveCount(0);
   expect((await currentConfig(page)).projects[0].nextStep).toBeUndefined();
 
   await page.reload();
   await page.clock.fastForward(2_000);
   expect((await currentConfig(page)).today.items[0].done).toBe(true);
   await expect(page.locator(".todayRow")).not.toHaveClass(/todayRow--justCompleted/);
-  await expect(page.getByRole("dialog", { name: "次の一手を決めますか？" })).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "一手進みました" })).toHaveCount(0);
 });
 
 test("Phase 8.1 Wishlist follow-up can keep the source", async ({ page }) => {
@@ -366,12 +370,20 @@ test("Phase 8.1 Wishlist follow-up rolls back on save failure and completes on r
   });
 });
 
-test("Phase 8.1 skips NextStep follow-up when the Project has no Wishlist", async ({ page }) => {
+test("Phase 8.1 still asks where to start when the Project has no Wishlist", async ({ page }) => {
   await prepareUi(page, nextStepUiFixture(false));
   await finishPlannedTimer(page);
   await page.clock.fastForward(2_000);
-  await expect(page.getByRole("dialog", { name: "次の一手を決めますか？" })).toHaveCount(0);
+  const followup = page.getByRole("dialog", { name: "一手進みました" });
+  await expect(followup).toBeVisible();
+  await expect(followup.getByRole("radio")).toHaveCount(3);
+  await expect(followup.getByRole("radio", { name: /同じ一手をもう一度/ })).toBeVisible();
+  await expect(followup.getByRole("radio", { name: "自分で書く" })).toBeVisible();
+  await expect(followup.getByRole("radio", { name: "今は決めない" })).toBeVisible();
+  await expect(followup.locator("small", { hasText: "やりたいことから" })).toHaveCount(0);
   expect((await currentConfig(page)).projects[0].nextStep).toBeUndefined();
+  await followup.getByRole("button", { name: "閉じる" }).click();
+  await expect(followup).toHaveCount(0);
 });
 
 test("Phase 8.1 incomplete early stop never opens a completion follow-up", async ({ page }) => {
@@ -387,7 +399,7 @@ test("Phase 8.1 incomplete early stop never opens a completion follow-up", async
     .getByRole("button", { name: "未完了のまま終了" })
     .click();
   await page.clock.fastForward(2_000);
-  await expect(page.getByRole("dialog", { name: "次の一手を決めますか？" })).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "一手進みました" })).toHaveCount(0);
   expect((await currentConfig(page)).projects[0].nextStep?.text).toBe("資料を1ページ読む");
   expect((await currentConfig(page)).today.items[0].done).toBe(false);
 });

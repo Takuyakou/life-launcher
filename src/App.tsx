@@ -528,6 +528,10 @@ type CompletionFollowup = {
   key: string;
   source: TodayCompletionSource;
   text: string;
+  /** P10-09 (§8.1): how long the finished Session actually ran. */
+  minutes?: number;
+  /** P10-09: the Next Step of the Project right before the completion (memory only). */
+  previousNextStep?: LauncherNextStep;
 };
 
 type ContextMenuTarget =
@@ -2245,6 +2249,8 @@ function DashboardApp() {
   const [doNowCompletionSaving, setDoNowCompletionSaving] = useState(false);
   const [doNowExcludedProjectId, setDoNowExcludedProjectId] = useState<string | null>(null);
   const [completionFollowup, setCompletionFollowup] = useState<CompletionFollowup | null>(null);
+  // P10-09 (§8.1): which choice is selected in the completion dialog.
+  const [completionFollowupChoice, setCompletionFollowupChoice] = useState("");
   const [now, setNow] = useState(Date.now());
   const [collapsedGroups, setCollapsedGroups] =
     useState<Record<string, boolean>>(readCollapsedGroups);
@@ -7043,19 +7049,33 @@ function DashboardApp() {
     });
   };
 
+  // P10-09 (§8.1): preselect the first wishlist item, else "repeat", else "write".
+  useEffect(() => {
+    if (!completionFollowup) return;
+    const current = configRef.current;
+    const projectId = completionFollowup.source.projectId;
+    const firstWishlist = current?.inbox.find(
+      (item) => item.projectId === projectId && Boolean(item.id),
+    );
+    if (firstWishlist?.id) {
+      setCompletionFollowupChoice(`wishlist:${firstWishlist.id}`);
+    } else if (completionFollowup.previousNextStep) {
+      setCompletionFollowupChoice("repeat");
+    } else {
+      setCompletionFollowupChoice("write");
+    }
+  }, [completionFollowup]);
   const queueCompletionFollowup = (
     key: string,
     source: TodayCompletionSource | null,
     text: string,
+    previousNextStep?: LauncherNextStep,
+    minutes?: number,
   ) => {
     if (!source || queuedCompletionFollowupsRef.current.has(key)) return;
-    if (
-      source.kind === "nextStep" &&
-      (!source.isCurrentSnapshot ||
-        !(configRef.current?.inbox.some((item) => item.projectId === source.projectId) ?? false))
-    ) {
-      return;
-    }
+    // P10-09 (§8.1): a Next Step completion always asks where to start next, even when the
+    // Project has no wishlist items yet.
+    if (source.kind === "nextStep" && !source.isCurrentSnapshot) return;
     queuedCompletionFollowupsRef.current.add(key);
     if (completionFollowupTimerRef.current !== null) {
       window.clearTimeout(completionFollowupTimerRef.current);
@@ -7063,8 +7083,11 @@ function DashboardApp() {
     const showFollowup = () => {
       completionFollowupTimerRef.current = null;
       if (source.kind === "nextStep") {
-        if (configRef.current?.inbox.some((item) => item.projectId === source.projectId)) {
-          setCompletionFollowup({ key, source, text });
+        // The Project must still be there and its Next Step must still be empty.
+        const current = configRef.current;
+        const project = current?.projects.find((item) => item.id === source.projectId);
+        if (project && !project.nextStep?.text.trim()) {
+          setCompletionFollowup({ key, source, text, minutes, previousNextStep });
         }
         return;
       }
@@ -7278,6 +7301,11 @@ function DashboardApp() {
               `timer:${current.today.date}:${pending.timer.instanceId}:${completedSourceKey}`,
               prepared.source,
               completedItem?.text ?? pending.timer.note ?? pending.timer.label,
+              prepared.source?.projectId
+                ? current.projects.find((project) => project.id === prepared.source!.projectId)
+                    ?.nextStep
+                : undefined,
+              sessionMinutes(pending.timer, pending.stoppedAt),
             );
           }
         }
@@ -7562,6 +7590,11 @@ function DashboardApp() {
             `timer:${current.today.date}:${completedTimer.instanceId}:${completedEntry.sourceKey}`,
             prepared.source,
             completedEntry.item.text,
+            prepared.source?.projectId
+              ? current.projects.find((project) => project.id === prepared.source!.projectId)
+                  ?.nextStep
+              : undefined,
+            sessionMinutes(completedTimer, stoppedAt),
           );
         }
         completed = true;
@@ -8505,6 +8538,21 @@ function DashboardApp() {
       promotedWishlistId?: string;
       projectLocked?: boolean;
       origin?: "source" | "today" | "builder";
+      /** P10-09: values copied from the Next Step that was just finished. */
+      prefill?: Partial<
+        Pick<
+          NextStepEditDraft,
+          | "text"
+          | "trigger"
+          | "buttonIds"
+          | "shortTimerMinutes"
+          | "defaultTimerMinutes"
+          | "instructionPath"
+          | "instructionOpenOnStart"
+          | "startNoteTemplate"
+          | "expandTimerOnStart"
+        >
+      >;
     },
   ) => {
     const sourceKey = `project:${project.id}`;
@@ -8516,8 +8564,13 @@ function DashboardApp() {
     const mode = options?.mode ?? (project.nextStep?.text.trim() ? "edit" : "set");
     const promotingWishlist = mode === "promote" && Boolean(options?.promotedWishlistId);
     const editingExisting = mode === "edit" && Boolean(project.nextStep);
-    const initialDecisionMode: NextStepDecisionMode =
-      promotingWishlist || mode === "set" ? "wishlist" : "new";
+    // P10-09 (§8.1): a prefilled Next Step ("same step again") starts on the free-text form so
+    // the copied action and its execution settings are visible as they are.
+    const initialDecisionMode: NextStepDecisionMode = options?.prefill
+      ? "new"
+      : promotingWishlist || mode === "set"
+        ? "wishlist"
+        : "new";
     sourceEditOriginRef.current = origin;
     captureDialogReturnFocus(nextStepEditReturnFocusRef);
     setContextMenu(null);
@@ -8536,6 +8589,7 @@ function DashboardApp() {
       replacementChoice: null,
       replacedNextStep: promotingWishlist ? project.nextStep : undefined,
       ...(options?.promotedWishlistId ? { promotedWishlistId: options.promotedWishlistId } : {}),
+      ...(options?.prefill ?? {}),
     };
     nextStepEditInitialDraftRef.current = draft;
     setNextStepEditDraft(draft);
@@ -15213,70 +15267,181 @@ function DashboardApp() {
         </div>
       )}
 
-      {completionFollowup?.source.kind === "nextStep" && (
-        <div className="modalBackdrop" role="presentation">
-          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
-          <section
-            aria-label="次の一手を決めますか？"
-            aria-modal="true"
-            className="dropDialog completionFollowupDialog"
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div>
-              <p className="eyebrow">Next Step</p>
-              <h2>次の一手を決めますか？</h2>
-              <p className="dialogLead">{completionFollowup.source.projectName}のやりたいこと</p>
-            </div>
-            <div className="completionFollowupChoices">
-              {config.inbox
-                .filter((item) => item.projectId === completionFollowup.source.projectId)
-                .map((item) => (
+      {completionFollowup?.source.kind === "nextStep" &&
+        (() => {
+          const projectId = completionFollowup.source.projectId;
+          const followupProject = config.projects.find((project) => project.id === projectId);
+          const followupWishlist = config.inbox.filter(
+            (item): item is AppConfig["inbox"][number] & { id: string } =>
+              item.projectId === projectId && Boolean(item.id),
+          );
+          const previous = completionFollowup.previousNextStep;
+          const decide = () => {
+            const live = configRef.current;
+            const project = live?.projects.find((candidate) => candidate.id === projectId);
+            if (!project) {
+              setCompletionFollowup(null);
+              showToast("warn", "プロジェクトが見つかりません");
+              return;
+            }
+            if (project.nextStep?.text.trim()) {
+              setCompletionFollowup(null);
+              showToast("warn", "次の一手はもう決まっています");
+              return;
+            }
+            if (completionFollowupChoice === "none") {
+              setCompletionFollowup(null);
+              return;
+            }
+            if (completionFollowupChoice.startsWith("wishlist:")) {
+              const wishlistId = completionFollowupChoice.slice("wishlist:".length);
+              const index = live?.inbox.findIndex((item) => item.id === wishlistId) ?? -1;
+              if (index < 0) return;
+              setCompletionFollowup(null);
+              promoteInboxToNextStep(index);
+              return;
+            }
+            if (completionFollowupChoice === "repeat" && previous) {
+              // Only the buttons that still exist and can be chosen in the editor are copied.
+              const liveButtons = new Set(projectSelectableButtons.map((button) => button.id));
+              setCompletionFollowup(null);
+              openNextStepEditor(project, {
+                mode: "set",
+                prefill: {
+                  text: previous.text,
+                  trigger: previous.trigger ?? "",
+                  buttonIds: previous.buttonIds.filter((id) => liveButtons.has(id)),
+                  shortTimerMinutes:
+                    previous.shortTimerMinutes === undefined
+                      ? ""
+                      : String(previous.shortTimerMinutes),
+                  defaultTimerMinutes:
+                    previous.defaultTimerMinutes === undefined
+                      ? ""
+                      : String(previous.defaultTimerMinutes),
+                  instructionPath: previous.instructionPath ?? "",
+                  instructionOpenOnStart: previous.instructionOpenOnStart ?? false,
+                  startNoteTemplate: previous.startNoteTemplate ?? "",
+                  expandTimerOnStart: previous.expandTimerOnStart ?? false,
+                },
+              });
+              return;
+            }
+            setCompletionFollowup(null);
+            openNextStepEditor(project, { mode: "set" });
+          };
+          const choiceClass = (selected: boolean) =>
+            selected
+              ? "completionFollowupChoice completionFollowupChoice--selected"
+              : "completionFollowupChoice";
+          return (
+            <div className="modalBackdrop" role="presentation">
+              <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
+              <section
+                aria-label="一手進みました"
+                aria-modal="true"
+                className="dropDialog completionFollowupDialog"
+                role="dialog"
+                tabIndex={-1}
+              >
+                <div className="completionDoneHeader">
+                  <span aria-hidden="true" className="completionDoneMark">
+                    ✓
+                  </span>
+                  <div>
+                    <p className="eyebrow">Session</p>
+                    <h2>一手進みました</h2>
+                  </div>
+                </div>
+                <div className="completionDoneSubject">
+                  {followupProject && (
+                    <ProjectIdentity
+                      colorId={followupProject.colorId}
+                      compact
+                      name={followupProject.name}
+                      projectId={followupProject.id}
+                    />
+                  )}
+                  <strong title={completionFollowup.text}>{completionFollowup.text}</strong>
+                  {completionFollowup.minutes ? (
+                    <span className="completionDoneMinutes">
+                      実行 {completionFollowup.minutes}分
+                    </span>
+                  ) : null}
+                </div>
+                <h3 className="completionFollowupQuestion" id="completion-followup-question">
+                  次はどこから始めますか
+                </h3>
+                <div
+                  aria-labelledby="completion-followup-question"
+                  className="completionFollowupChoices"
+                  role="radiogroup"
+                >
+                  {followupWishlist.map((item) => {
+                    const key = `wishlist:${item.id}`;
+                    return (
+                      <label className={choiceClass(completionFollowupChoice === key)} key={key}>
+                        <input
+                          aria-label={item.text}
+                          checked={completionFollowupChoice === key}
+                          onChange={() => setCompletionFollowupChoice(key)}
+                          type="radio"
+                        />
+                        <span>{item.text}</span>
+                        <small>やりたいことから</small>
+                      </label>
+                    );
+                  })}
+                  {previous && (
+                    <label className={choiceClass(completionFollowupChoice === "repeat")}>
+                      <input
+                        aria-label={`同じ一手をもう一度（${previous.text}）`}
+                        checked={completionFollowupChoice === "repeat"}
+                        onChange={() => setCompletionFollowupChoice("repeat")}
+                        type="radio"
+                      />
+                      <span>同じ一手をもう一度（{previous.text}）</span>
+                    </label>
+                  )}
+                  <label className={choiceClass(completionFollowupChoice === "write")}>
+                    <input
+                      aria-label="自分で書く"
+                      checked={completionFollowupChoice === "write"}
+                      onChange={() => setCompletionFollowupChoice("write")}
+                      type="radio"
+                    />
+                    <span>自分で書く</span>
+                  </label>
+                  <label className={choiceClass(completionFollowupChoice === "none")}>
+                    <input
+                      aria-label="今は決めない"
+                      checked={completionFollowupChoice === "none"}
+                      onChange={() => setCompletionFollowupChoice("none")}
+                      type="radio"
+                    />
+                    <span>今は決めない</span>
+                  </label>
+                </div>
+                <div className="dialogActions formDialogActions">
                   <button
-                    className="completionFollowupChoice"
-                    key={item.id ?? item.text}
-                    onClick={() => {
-                      const index = configRef.current?.inbox.findIndex(
-                        (candidate) => candidate.id === item.id,
-                      );
-                      if (index === undefined || index < 0) return;
-                      setCompletionFollowup(null);
-                      promoteInboxToNextStep(index);
-                    }}
+                    className="primaryButton completionFollowupDecide"
+                    onClick={decide}
                     type="button"
                   >
-                    <span aria-hidden="true" className="completionFollowupRadio" />
-                    <span>{item.text}</span>
+                    決定
                   </button>
-                ))}
-              <button
-                className="completionFollowupChoice completionFollowupChoice--new"
-                onClick={() => {
-                  const project = configRef.current?.projects.find(
-                    (candidate) => candidate.id === completionFollowup.source.projectId,
-                  );
-                  if (!project) return;
-                  setCompletionFollowup(null);
-                  openNextStepEditor(project, { mode: "set" });
-                }}
-                type="button"
-              >
-                <UiIcon name="add" size={16} />
-                新しく入力する
-              </button>
+                  <button
+                    className="secondaryButton dialogCancelButton"
+                    onClick={() => setCompletionFollowup(null)}
+                    type="button"
+                  >
+                    閉じる
+                  </button>
+                </div>
+              </section>
             </div>
-            <div className="dialogActions formDialogActions">
-              <button
-                className="secondaryButton dialogCancelButton"
-                onClick={() => setCompletionFollowup(null)}
-                type="button"
-              >
-                今は決めない
-              </button>
-            </div>
-          </section>
-        </div>
-      )}
+          );
+        })()}
 
       {nextStepEditDraft &&
         (() => {
