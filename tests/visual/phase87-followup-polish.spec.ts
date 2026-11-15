@@ -127,7 +127,9 @@ test("Dictionary entry aligns with item rows and Guide footer stays inside its d
   expect(launcherIconBox!.width).toBeGreaterThan(launcherIconBox!.height);
   await expect(launcherIcon.locator("circle")).toHaveCount(1);
 
-  await page.getByRole("button", { name: "使い方" }).click();
+  // P10-02: the Guide opens from Settings now (the top bar button is gone).
+  await page.getByRole("button", { name: "設定を開く" }).click();
+  await page.getByRole("button", { name: "使い方を開く" }).click();
   const footer = page.locator(".helpGuideFooter");
   const dialog = page.getByRole("dialog", { name: "使い方" });
   const close = footer.getByRole("button", { name: "閉じる", exact: true });

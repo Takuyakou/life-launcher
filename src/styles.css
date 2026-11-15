@@ -7921,6 +7921,62 @@ body:has([aria-modal="true"]) .toastStack {
   font-weight: 600;
 }
 
+/* P10-02 (D9): the auto-start button is icon-only. ON = green icon and a small green dot,
+   OFF = grey icon and no dot. */
+.viewToggleButton--autoStart {
+  position: relative;
+  width: 32px;
+  padding: 0;
+}
+
+.viewToggleButton--autoStart .uiIcon {
+  color: var(--muted);
+}
+
+.viewToggleButton--autoStart[aria-pressed="true"] .uiIcon {
+  color: var(--good);
+}
+
+.autoStartDot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--good);
+}
+
+/* P10-02: the guide lives inside Settings now (D5). It stays its own row at the top. */
+.settingsGuideRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  background: var(--surface-soft);
+}
+
+.settingsGuideRow h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.settingsGuideRow p {
+  margin: 2px 0 0;
+  color: var(--text-muted-readable);
+  font-size: 12px;
+}
+
+.settingsGuideButton {
+  flex: 0 0 auto;
+  min-width: 112px;
+}
+
 .viewToggleButtonLabel {
   font-size: var(--dashboard-font-meta);
   font-weight: 650;

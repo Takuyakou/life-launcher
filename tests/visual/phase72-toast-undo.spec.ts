@@ -111,7 +111,7 @@ test("P72-02 Undo lifetime pauses while either hover or focus remains", async ({
   await page.mouse.move(1, 1);
   await page.clock.runFor(9000);
   await expect(toast).toBeVisible();
-  await page.getByRole("button", { name: "使い方", exact: true }).focus();
+  await page.getByRole("button", { name: "Windows自動起動" }).focus();
   await page.clock.runFor(7900);
   await expect(toast).toBeVisible();
   await page.clock.runFor(400);
@@ -162,11 +162,11 @@ test("P72-02 keeps three visible Toasts and starts queued Undo lifetime only on 
   await expect(page.locator(".todayRow")).toHaveCount(0);
   await expect(page.locator(".toast")).toHaveCount(3);
   await page.mouse.move(1, 1);
-  await page.getByRole("button", { name: "使い方", exact: true }).focus();
+  await page.getByRole("button", { name: "Windows自動起動" }).focus();
   await page.clock.runFor(7000);
   await page.locator(".toast").first().getByRole("button", { name: "通知を閉じる" }).click();
   await page.mouse.move(1, 1);
-  await page.getByRole("button", { name: "使い方", exact: true }).focus();
+  await page.getByRole("button", { name: "Windows自動起動" }).focus();
   await page.clock.runFor(200);
   const queued = page.locator(".toast" + visibleIds.map((id) => ':not([data-toast-id="' + id + '"])').join(""));
   await expect(queued).toHaveCount(1);

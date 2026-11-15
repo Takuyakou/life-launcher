@@ -7,7 +7,9 @@ test("Guide navigation focuses the requested section and closing restores its op
   await page.setViewportSize({ width: 1440, height: 900 });
   await installTauriMock(page, createPublicFixture(), "main");
   await page.goto("/");
-  const opener = page.getByRole("button", { name: "使い方", exact: true });
+  // P10-02: the Guide opens from Settings, and the Settings row is the opener.
+  await page.getByRole("button", { name: "設定を開く" }).click();
+  const opener = page.getByRole("button", { name: "使い方を開く" });
   await opener.click();
   const dialog = page.getByRole("dialog", { name: "使い方" });
   await expect(dialog).toBeVisible();

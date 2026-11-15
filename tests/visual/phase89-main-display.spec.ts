@@ -223,7 +223,8 @@ for (const size of ["large", "xlarge"] as const) {
       await page.getByRole("dialog", { name: "入力内容を破棄して閉じますか？" })
         .getByRole("button", { name: /破棄/ }).click();
       await expect(page.locator(".mainScrollContent")).toHaveAttribute("data-main-display-size", size);
-      const button = toolbar.locator(".viewToggleButton").first();
+      // P10-02: the first toggle is the icon-only auto-start button; measure a labelled one.
+      const button = toolbar.locator(".viewToggleButton:has(.viewToggleButtonLabel)").first();
       const mainButtonBox = (await button.boundingBox())!;
       const mainLabelSize = await button.locator(".viewToggleButtonLabel")
         .evaluate((element) => parseFloat(getComputedStyle(element).fontSize));

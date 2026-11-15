@@ -68,7 +68,13 @@ const token = (page: Page, name: string, property: "color" | "backgroundColor" =
 // Buttons and bars that lose their border, with the hit area measured on v1.3.4-era CSS
 // (1080x680, standard) so the rectangles can only stay the same or grow.
 const BORDERLESS_BUTTONS: Array<{ name: string; selector: string; minWidth: number; minHeight: number }> = [
-  { name: "top menu button", selector: ".topPills .viewToggleButton", minWidth: 85, minHeight: 32 },
+  // P10-02: the auto-start button is icon-only; measure one of the labelled buttons.
+  {
+    name: "top menu button",
+    selector: ".topPills .viewToggleButton:not(.viewToggleButton--autoStart)",
+    minWidth: 63,
+    minHeight: 32,
+  },
   { name: "Do Now other step", selector: ".doNowAlternateButton", minWidth: 76.2, minHeight: 26 },
   { name: "Do Now instruction", selector: ".doNowContent .doNowInstructionButton", minWidth: 76, minHeight: 36 },
   { name: "Today instruction", selector: ".todayRow .todayInstructionButton", minWidth: 70, minHeight: 34 },

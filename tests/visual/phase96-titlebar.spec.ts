@@ -135,12 +135,14 @@ async function probeLayout(page: Page): Promise<LayoutProbe> {
   });
 }
 
-// 実測で決まる段階(0=すべて出す / 1=自動起動・ミニ・使い方・設定を隠す / 2=すべて隠す)。
+// 実測で決まる段階(0=すべて出す / 1=手順書・設定を隠す / 2=すべて隠す)。
 // 段階はメイン画面の見出し(「今日 N分」＋日付)の幅で決めるので、記録画面でも同じ値になる
 // (オーナー決定 2026-11-06)。1200px では標準・大・特大のすべてで6つとも出る。
+// P10-02: the top bar lost the mini and guide buttons, so the three remaining labels
+// (records / instructions / settings) fit at every width in the matrix.
 const EXPECTED_LABEL_LEVEL: Record<number, readonly [number, number, number]> = {
-  860: [2, 2, 2],
-  1080: [0, 1, 1],
+  860: [0, 0, 0],
+  1080: [0, 0, 0],
   1200: [0, 0, 0],
   1440: [0, 0, 0],
   1920: [0, 0, 0],
@@ -190,9 +192,9 @@ test.describe("P96-01 header layout budget (30 combos)", () => {
             )
             .toBe(EXPECTED_LABEL_LEVEL[width][index]);
           const probe = await probeLayout(page);
-          // 隠す段階(0=すべて出す / 1=自動起動・ミニ・使い方・設定を隠す / 2=すべて隠す)と、
-          // 実際に出ている文字の数が合っていること。
-          const expectedVisible = probe.labelLevel === 0 ? 6 : probe.labelLevel === 1 ? 2 : 0;
+          // 隠す段階(0=すべて出す / 1=手順書・設定を隠す / 2=すべて隠す)と、
+          // 実際に出ている文字の数が合っていること(文字を持つボタンは 3 つ)。
+          const expectedVisible = probe.labelLevel === 0 ? 3 : probe.labelLevel === 1 ? 1 : 0;
           expect(probe.visibleLabels, `visible label count (${label})`).toBe(expectedVisible);
           expect(probe.clippedLabels, `labels stay inside their buttons (${label})`).toEqual([]);
           expect(
@@ -274,8 +276,8 @@ test.describe("P96-01 top menu labels follow what fits", () => {
             elements.map((element) => getComputedStyle(element).display !== "none"),
           );
         // 表示切替のボタン(3番目)以外は、文字の出方がそのまま同じ
-        expect(labelsInRecords.filter((_, index) => index !== 2)).toEqual(
-          labelsInMain.filter((_, index) => index !== 2),
+        expect(labelsInRecords.filter((_, index) => index !== 0)).toEqual(
+          labelsInMain.filter((_, index) => index !== 0),
         );
       }
     }
@@ -285,9 +287,9 @@ test.describe("P96-01 top menu labels follow what fits", () => {
     // 読み込んだ後に窓の幅を変えても段階が追従すること(実機で「起動時の段階のまま」に
     // なる不具合が出たため)。幅は 1200 → 1070 → 930 → 860 → 1200 と動かし、戻るときも戻る。
     const EXPECTED: Record<"standard" | "large" | "xlarge", readonly number[]> = {
-      standard: [0, 0, 1, 2, 0],
-      large: [0, 1, 1, 2, 0],
-      xlarge: [0, 1, 1, 2, 0],
+      standard: [0, 0, 0, 0, 0],
+      large: [0, 0, 0, 0, 0],
+      xlarge: [0, 0, 0, 0, 0],
     };
     const STEPS = [1200, 1070, 930, 860, 1200] as const;
 
@@ -320,7 +322,7 @@ test.describe("P96-01 top menu labels follow what fits", () => {
             .toBe(EXPECTED[size][index]);
           const probe = await probeLayout(page);
           expect(probe.visibleLabels, `labels shown (${label})`).toBe(
-            probe.labelLevel === 0 ? 6 : probe.labelLevel === 1 ? 2 : 0,
+            probe.labelLevel === 0 ? 3 : probe.labelLevel === 1 ? 1 : 0,
           );
           expect(probe.titleLineCount, `title stays on one line (${label})`).toBeLessThan(1.2);
           expect(probe.topBarOverflow, `top bar does not overflow (${label})`).toBe(false);
@@ -354,19 +356,19 @@ test.describe("P96-01 top menu labels follow what fits", () => {
     };
     await expect.poll(level, { message: "standard at 1070" }).toBe(0);
     await setSize("large");
-    await expect.poll(level, { message: "large at 1070" }).toBe(1);
+    await expect.poll(level, { message: "large at 1070" }).toBe(0);
     await setSize("xlarge");
-    await expect.poll(level, { message: "xlarge at 1070" }).toBe(1);
+    await expect.poll(level, { message: "xlarge at 1070" }).toBe(0);
     await setSize("standard");
     await expect.poll(level, { message: "standard again at 1070" }).toBe(0);
-    // 切替のあとも、幅の変化に追従し続けること。
-    await page.setViewportSize({ width: 860, height: 680 });
-    await expect.poll(level, { message: "860 after size changes" }).toBe(2);
+    // 切替のあとも、幅の変化に追従し続けること(縦積みの幅では文字を出さない)。
+    await page.setViewportSize({ width: 760, height: 680 });
+    await expect.poll(level, { message: "760 after size changes" }).toBe(2);
     await page.setViewportSize({ width: 1200, height: 680 });
     await expect.poll(level, { message: "back to 1200" }).toBe(0);
   });
 
-  test("1200px shows all six labels at every display size", async ({ page }) => {
+  test("1200px shows all three labels at every display size", async ({ page }) => {
     await prepare(page, 1200);
     for (const size of SIZES) {
       await page.evaluate((next) => {
@@ -387,16 +389,10 @@ test.describe("P96-01 top menu labels follow what fits", () => {
         "block",
         "block",
         "block",
-        "block",
-        "block",
-        "block",
       ]);
       expect(labels.map((label) => label.text)).toEqual([
-        "自動起動",
-        "ミニ",
         "記録",
         "手順書",
-        "使い方",
         "設定",
       ]);
     }
@@ -726,12 +722,17 @@ test.describe("P96-01 dialogs and the window controls", () => {
       await discard.getByRole("button", { name: /破棄/ }).click();
       await expect(discard).toHaveCount(0);
 
-      // 使い方
-      await page.getByRole("button", { name: "使い方", exact: true }).click();
+      // 使い方 (P10-02: the top bar button is gone; the guide opens from Settings)
+      await page.getByRole("button", { name: "設定を開く" }).click();
+      await page.getByRole("button", { name: "使い方を開く" }).click();
       await expect(page.getByRole("dialog", { name: "使い方" })).toBeVisible();
       await expectControlsReachable(page, ".helpGuideBackdrop");
       await page.keyboard.press("Escape");
       await expect(page.getByRole("dialog", { name: "使い方" })).toHaveCount(0);
+      // The guide sits above Settings (P10-02), so Settings is still open and must be closed.
+      await expect(page.getByRole("dialog", { name: "設定" })).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("dialog", { name: "設定" })).toHaveCount(0);
 
       // 今日やるものを選ぶ
       await page.getByRole("button", { name: "今日やるものを選ぶ" }).first().click();

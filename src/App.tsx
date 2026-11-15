@@ -22,6 +22,8 @@ import type {
   PointerEvent,
 } from "react";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { springLayout, staggerMax, staggerStep } from "./motion";
 import {
   DEFAULT_BUTTON_GROUP,
   EXECUTION_TRIGGER_MAX_CHARS,
@@ -471,9 +473,9 @@ const TOP_MENU_LABELS = navigator.language.toLocaleLowerCase().startsWith("en")
       settings: "設定",
     };
 const TOP_MENU_GROUP_LABELS = {
-  window: `${TOP_MENU_LABELS.autoStart} / ${TOP_MENU_LABELS.miniMode}`,
-  work: `${TOP_MENU_LABELS.records} / ${TOP_MENU_LABELS.instructions}`,
-  support: `${TOP_MENU_LABELS.guide} / ${TOP_MENU_LABELS.settings}`,
+  // P10-02: [自動起動] [記録 / 手順書 / 設定] [窓のボタン] の 3 つに分けた(D5)。
+  autoStart: TOP_MENU_LABELS.autoStart,
+  work: `${TOP_MENU_LABELS.records} / ${TOP_MENU_LABELS.instructions} / ${TOP_MENU_LABELS.settings}`,
 };
 type MainShellDropEvent = {
   windowLabel: string;
@@ -2306,7 +2308,6 @@ function DashboardApp() {
   const [inboxPointerDrag, setInboxPointerDrag] = useState<InboxDragPreview | null>(null);
   const [wishlistGroupPointerDrag, setWishlistGroupPointerDrag] =
     useState<WishlistGroupDragPreview | null>(null);
-  const [miniTransitioning, setMiniTransitioning] = useState(false);
   const [numberInputDragging, setNumberInputDragging] = useState<NumberInputDragField | null>(null);
   const [actionDragId, setActionDragId] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
@@ -3508,7 +3509,6 @@ function DashboardApp() {
   const toggleMiniMode = useCallback(async () => {
     if (miniTransitioningRef.current) return;
     miniTransitioningRef.current = true;
-    setMiniTransitioning(true);
     try {
       if (miniModeOpenRef.current) {
         await returnToMain();
@@ -3517,7 +3517,6 @@ function DashboardApp() {
       }
     } finally {
       miniTransitioningRef.current = false;
-      setMiniTransitioning(false);
     }
   }, [openMiniMode, returnToMain]);
 
@@ -4133,6 +4132,33 @@ function DashboardApp() {
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [completionPrompt, confirmDialog, earlyStop, dismissNonCriticalModal, hasDismissibleModal]);
+
+  // P10-02: F1 opens the guide from the main window. It stays out of the way when a dialog or a
+  // menu is open, while Japanese input is composing, or when the dictionary key is exactly F1.
+  useEffect(() => {
+    const openGuideOnF1 = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "F1") return;
+      if (event.isComposing || event.keyCode === 229) return;
+      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      if (activeView !== "main") return;
+      if (hasDismissibleModal || completionPrompt || confirmDialog || earlyStop) return;
+      if (contextMenu) return;
+      const launcherKey = (config?.settings.launcherHotkey ?? "").trim().toUpperCase();
+      if (launcherKey === "F1") return;
+      event.preventDefault();
+      setHelpGuideOpen(true);
+    };
+    window.addEventListener("keydown", openGuideOnF1);
+    return () => window.removeEventListener("keydown", openGuideOnF1);
+  }, [
+    activeView,
+    completionPrompt,
+    config?.settings.launcherHotkey,
+    confirmDialog,
+    contextMenu,
+    earlyStop,
+    hasDismissibleModal,
+  ]);
 
   useEffect(() => {
     if (
@@ -9853,6 +9879,9 @@ function DashboardApp() {
           ) : (
             visibleSidebarButtonGroups.map((group) => {
               const collapsed = collapsedGroups[group.name] ?? false;
+              // P10-02: while a sidebar drag is in flight the open/close is instant (D33).
+              const sidebarDragActive =
+                sidebarPointerDrag !== null || sidebarGroupPointerDrag !== null;
               return (
                 <section
                   className={[
@@ -9917,22 +9946,45 @@ function DashboardApp() {
                     <strong>{group.name}</strong>
                     <small>{group.buttons.length}</small>
                   </button>
-                  {!collapsed && (
-                    <div className="quickGroupItems" data-sidebar-group-name={group.name}>
-                      {group.buttons.length === 0 && (
-                        <p className="quickGroupEmpty">見出しを右クリックしてボタンを追加</p>
-                      )}
-                      {group.buttons.map((button) => (
-                        <div
-                          className={
-                            sidebarPointerDrag?.id === button.id
-                              ? "quickButtonDrag quickButtonDrag--dragging"
-                              : "quickButtonDrag"
-                          }
-                          data-sidebar-button-id={button.id}
-                          data-sidebar-group-name={group.name}
-                          key={button.id}
-                        >
+                  <AnimatePresence initial={false}>
+                    {!collapsed && (
+                      <motion.div
+                        animate={{ height: "auto", opacity: 1 }}
+                        className="quickGroupItems"
+                        data-sidebar-group-name={group.name}
+                        exit={{ height: 0, opacity: 0 }}
+                        initial={{ height: 0, opacity: 0 }}
+                        key="items"
+                        style={{ overflow: "hidden" }}
+                        transition={
+                          sidebarDragActive ? { duration: 0 } : springLayout
+                        }
+                      >
+                        {group.buttons.length === 0 && (
+                          <p className="quickGroupEmpty">見出しを右クリックしてボタンを追加</p>
+                        )}
+                        {group.buttons.map((button, buttonIndex) => (
+                          <motion.div
+                            animate={{ opacity: 1, y: 0 }}
+                            className={
+                              sidebarPointerDrag?.id === button.id
+                                ? "quickButtonDrag quickButtonDrag--dragging"
+                                : "quickButtonDrag"
+                            }
+                            data-sidebar-button-id={button.id}
+                            data-sidebar-group-name={group.name}
+                            exit={sidebarDragActive ? { opacity: 1 } : { opacity: 0 }}
+                            initial={sidebarDragActive ? false : { opacity: 0, y: -4 }}
+                            key={button.id}
+                            transition={
+                              sidebarDragActive
+                                ? { duration: 0 }
+                                : {
+                                    delay: Math.min(buttonIndex * staggerStep, staggerMax),
+                                    duration: 0.18,
+                                  }
+                            }
+                          >
                           <button
                             className="quickButton"
                             onClick={(event) => {
@@ -9969,10 +10021,11 @@ function DashboardApp() {
                             )}
                             <span>{button.label}</span>
                           </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                          </motion.div>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </section>
               );
             })
@@ -10471,43 +10524,26 @@ function DashboardApp() {
           </div>
           <div className="topPills" data-tauri-drag-region="" ref={topMenuPillsRef}>
             <div
-              aria-label={TOP_MENU_GROUP_LABELS.window}
-              className="topPillGroup topPillGroup--window"
+              aria-label={TOP_MENU_GROUP_LABELS.autoStart}
+              className="topPillGroup topPillGroup--autostart"
               role="group"
             >
               <button
+                aria-label="Windows自動起動"
+                aria-pressed={config.settings.autoStart === true}
                 className={
                   config.settings.autoStart
-                    ? "viewToggleButton viewToggleButton--active"
-                    : "viewToggleButton"
+                    ? "viewToggleButton viewToggleButton--autoStart viewToggleButton--active"
+                    : "viewToggleButton viewToggleButton--autoStart"
                 }
                 onClick={() => void toggleAutoStart()}
                 title={config.settings.autoStart ? "Windows自動起動: ON" : "Windows自動起動: OFF"}
-                aria-label={
-                  config.settings.autoStart ? "Windows自動起動: ON" : "Windows自動起動: OFF"
-                }
                 type="button"
               >
                 <UiIcon name="power" size={18} />
-                <span className="viewToggleButtonLabel">{TOP_MENU_LABELS.autoStart}</span>
-              </button>
-              <button
-                className="viewToggleButton"
-                aria-busy={miniTransitioning}
-                disabled={!config.settings.miniMode || miniTransitioning}
-                onClick={() => void toggleMiniMode()}
-                title={
-                  miniTransitioning
-                    ? "ミニタイマーを準備中"
-                    : config.settings.miniMode
-                      ? "ミニタイマーへ切り替え"
-                      : "設定で「ミニタイマーを使う」をオンにしてください"
-                }
-                aria-label="ミニタイマーへ切り替え"
-                type="button"
-              >
-                <UiIcon name="miniMode" size={18} />
-                <span className="viewToggleButtonLabel">{TOP_MENU_LABELS.miniMode}</span>
+                {config.settings.autoStart && (
+                  <span aria-hidden="true" className="autoStartDot" />
+                )}
               </button>
             </div>
             <div
@@ -10531,6 +10567,7 @@ function DashboardApp() {
               <button
                 aria-label="手順書を開く"
                 className="viewToggleButton"
+                data-menu-label-secondary=""
                 onClick={() => void openInstructionsManually()}
                 title="手順書を開く"
                 type="button"
@@ -10538,24 +10575,9 @@ function DashboardApp() {
                 <UiIcon name="book" size={18} />
                 <span className="viewToggleButtonLabel">{TOP_MENU_LABELS.instructions}</span>
               </button>
-            </div>
-            <div
-              aria-label={TOP_MENU_GROUP_LABELS.support}
-              className="topPillGroup topPillGroup--support"
-              role="group"
-            >
-              <button
-                aria-label="使い方"
-                className="viewToggleButton"
-                onClick={() => setHelpGuideOpen(true)}
-                title="使い方"
-                type="button"
-              >
-                <UiIcon name="help" size={18} />
-                <span className="viewToggleButtonLabel">{TOP_MENU_LABELS.guide}</span>
-              </button>
               <button
                 className="viewToggleButton"
+                data-menu-label-secondary=""
                 onClick={openSettingsCenter}
                 title="設定を開く"
                 aria-label="設定を開く"
@@ -13611,6 +13633,19 @@ function DashboardApp() {
                   : "settingsSection settingsSection--hidden app-scrollbar"
               }
             >
+              <div className="settingsGuideRow">
+                <div>
+                  <h3>使い方</h3>
+                  <p>アプリの使い方とキーの一覧を開きます。</p>
+                </div>
+                <button
+                  className="secondaryButton settingsGuideButton"
+                  onClick={() => setHelpGuideOpen(true)}
+                  type="button"
+                >
+                  使い方を開く
+                </button>
+              </div>
               <h3>基本</h3>
               <div className="settingsGrid">
                 <label
