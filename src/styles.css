@@ -2499,7 +2499,7 @@ h3 {
   gap: 8px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 6px 8px;
+  padding: 6px;
   background: var(--surface);
   color: var(--text);
   font-size: 13px;
@@ -2518,7 +2518,7 @@ h3 {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
   align-items: center;
-  gap: 8px;
+  gap: 4px;
 }
 
 .launcherOpenButtonIcon {
@@ -13743,10 +13743,25 @@ button.mainActionButton:is(
 .todayPickerSource {
   min-height: 0;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
+  align-content: start;
   gap: 8px;
   padding: 0;
   border: 0;
+  /* P10-14d (P1): without tabs both groups are always present. The source column
+     scrolls so the second group and long lists stay reachable in short windows. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding-right: 4px;
+}
+
+.todayPickerSourceHeading {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding-block: 2px;
+  background: var(--dialog-surface);
 }
 
 .todayPickerSourcePanel {
@@ -14497,6 +14512,27 @@ button.mainActionButton:is(
   background: rgba(231, 185, 77, 0.06);
 }
 
+/* P10-14d (M1): the header layout must not drop the existing hover / editing
+   reaction. These selectors outrank the plain .mainHeaderRow .victoryBar rule. */
+.mainHeaderRow .victoryBar:hover,
+.mainHeaderRow .victoryBar:has(.victoryInput:focus) {
+  border-color: var(--accent);
+  background: rgba(231, 185, 77, 0.08);
+  transform: translateY(-1px);
+}
+
+.mainHeaderRow .victoryBar--done:hover,
+.mainHeaderRow .victoryBar--done:has(.victoryInput:focus) {
+  background:
+    linear-gradient(
+      120deg,
+      rgba(231, 185, 77, 0.14),
+      rgba(231, 185, 77, 0.025) 48%,
+      transparent 75%
+    ),
+    var(--surface);
+}
+
 .mainHeaderRow .victoryBar .victoryIcon {
   order: 0;
   display: inline-flex;
@@ -14524,16 +14560,25 @@ button.mainActionButton:is(
 .mainHeaderRow .victoryTextButton {
   overflow: hidden;
   color: var(--text);
-  font-size: 15px;
+  /* E1/M1: 2px smaller than the action size, but still follows the display size. */
+  font-size: calc(var(--dashboard-font-action) - 2px);
   font-weight: 700;
   text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.mainHeaderRow .victoryTextButton:hover {
+  color: var(--accent-strong);
+}
+
 .mainHeaderRow .victoryTextButton--empty {
   color: var(--muted);
   font-weight: 600;
+}
+
+.mainHeaderRow .victoryTextButton--empty:hover {
+  color: var(--muted);
 }
 
 .mainHeaderRow .victoryCheck {
@@ -14544,7 +14589,7 @@ button.mainActionButton:is(
 }
 
 .mainHeaderRow .victoryInput {
-  font-size: 15px;
+  font-size: calc(var(--dashboard-font-action) - 2px);
   font-weight: 700;
 }
 
@@ -14657,14 +14702,14 @@ button.mainActionButton:is(
   border: 0;
   border-radius: 6px;
   padding: 0 10px;
-  background: #2b2922;
+  background: #26241e;
   color: var(--text);
   font-size: 12px;
 }
 
 .doNowOpenChip--button:hover,
 .doNowOpenChip--button:focus-visible {
-  background: var(--surface-strong);
+  background: var(--control-neutral-hover-bg);
 }
 
 .doNowContent--active .doNowActions {
@@ -14728,13 +14773,13 @@ button.mainActionButton:is(
 
 .todaySectionBar .todaySectionDisclosure h2,
 .disclosureHeader .disclosure strong {
-  font-size: 15px;
+  font-size: calc(var(--dashboard-font-section) + 1px);
   font-weight: 700;
 }
 
 .todaySectionBar .todaySectionDisclosure,
 .disclosureHeader .disclosure {
-  font-size: 15px;
+  font-size: calc(var(--dashboard-font-section) + 1px);
 }
 
 .todaySectionBar .todayCompletedCount,
@@ -14742,7 +14787,7 @@ button.mainActionButton:is(
 .disclosureHeader .disclosureCount,
 .disclosureHeader .disclosureDescription {
   color: #a39c8e;
-  font-size: 12px;
+  font-size: calc(var(--dashboard-font-meta) + 1px);
   font-weight: 400;
 }
 
@@ -15158,7 +15203,11 @@ button.mainActionButton:is(
 /* P10-14d (E1): the compact single-screen "一手を編集" form. */
 .nextStepEditDialog--edit {
   width: min(600px, 100%);
-  gap: 18px;
+  /* E1: the compact form has to fit one screen at 620x900. 16px still reads as a
+     grouped form but keeps the last row inside the dialog at that height. */
+  gap: 16px;
+  /* E1: let the dialog use the free height instead of the long-form 760px cap. */
+  max-height: calc(100vh - 36px);
 }
 
 .nextStepEditDialog--edit .modalTitleRow {
@@ -15314,20 +15363,6 @@ button.mainActionButton:is(
   font-size: 16px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-}
-/* E1: the compact edit form is one screen, so its footer sits in flow instead of
-   sticking over the last field. */
-.nextStepEditDialog--edit.modalLongForm > .dialogActions {
-  position: static;
-  bottom: auto;
-  margin: 0;
-  padding: 14px 0 0;
-  background: transparent;
-}
-/* E1: the edit form is meant to be one screen; let the dialog use the free height
-   instead of the long-form 760px cap. */
-.nextStepEditDialog--edit {
-  max-height: calc(100vh - 36px);
 }
 /* E1: at narrow widths the two minute fields stack, like the existing timer grid. */
 @media (max-width: 900px) {
