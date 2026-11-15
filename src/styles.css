@@ -4138,15 +4138,14 @@ input[type="number"]::-webkit-inner-spin-button {
   display: none;
 }
 
+/* P10-05 (§4.1): the action is the headline: 32px, 700, wraps instead of clamping. */
 .doNowCopy > strong {
-  display: -webkit-box;
+  display: block;
   margin-inline-start: 3px;
-  overflow: hidden;
   overflow-wrap: anywhere;
-  font-size: 17px;
-  line-height: 1.38;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.25;
 }
 
 .doNowMeta {
@@ -13464,4 +13463,78 @@ button.mainActionButton:is(
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* P10-05 (D1 exception): only the height of the start buttons changes (48px). */
+.doNowActions .doNowStartPrimary,
+.doNowActions .doNowStartSecondary,
+.doNowActions .doNowMeasureButton {
+  height: 48px;
+  min-height: 48px;
+}
+
+/* P10-05 (§4.3): the "here now" badge on the Today card linked to this moment's step. */
+.todayHereBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  border: 1px solid color-mix(in srgb, var(--project-color, var(--accent)) 55%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--project-color, var(--accent)) 18%, transparent);
+  color: color-mix(in srgb, var(--project-color, var(--accent)) 70%, var(--text));
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+/* P10-05 (§4.4): the next-step rows keep one shape and grow with the text. */
+.projectGrid .nextStepCard.nextStepRow {
+  min-height: 56px;
+}
+
+/* P10-05 (D11): the staleness notice under the action text. */
+.nextStepFreshness {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  color: var(--warn);
+  font-size: 12px;
+}
+
+.nextStepFreshnessActions {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.nextStepFreshnessButton {
+  min-height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.nextStepFreshnessButton:hover:not(:disabled) {
+  border-color: var(--line);
+  background: var(--surface-strong);
+}
+
+/* P10-05 (§4.1): the Next Step headline wins over the older 17px rule. */
+.doNowCopy > strong {
+  display: block;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+/* P10-05 (§4.4): one Project per row, always. */
+.projectsBand .projectGrid {
+  grid-template-columns: minmax(0, 1fr);
 }

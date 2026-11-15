@@ -36,9 +36,11 @@ type RecordsViewProps = {
   onProjectFilterChange: (value: string) => void;
   onDateScopeChange: (value: RecordsDateScope) => void;
   onWeeklyFocusChange: (projectId: string, checked: boolean) => void;
-  onEditProject: (project: LauncherProject) => void;
+  /** P10-05: "書き直す" opens the Next Step editor, not the Project editor. */
+  onRewriteNextStep: (project: LauncherProject) => void;
   onTryShort: (project: LauncherProject) => void;
   onMarkReviewed: (projectId: string) => void;
+  reviewingProjectId?: string | null;
   onAddSession: () => void;
   onOpenSessionMenu: (session: SessionEntryRow, x: number, y: number, opener: HTMLElement) => void;
   onHistoryNoteChange: (date: string, index: number, value: string) => void;
@@ -86,9 +88,10 @@ export function RecordsView({
   onProjectFilterChange,
   onDateScopeChange,
   onWeeklyFocusChange,
-  onEditProject,
+  onRewriteNextStep,
   onTryShort,
   onMarkReviewed,
+  reviewingProjectId = null,
   onAddSession,
   onOpenSessionMenu,
   onHistoryNoteChange,
@@ -320,9 +323,28 @@ export function RecordsView({
                         <strong>{project.nextStep?.text}</strong><span>次の一手が14日以上同じです</span>
                       </div>
                       <div className="freshnessReviewActions">
-                        <button className="mainActionButton mainActionButton--neutral" onClick={() => onEditProject(project)} type="button">書き直す</button>
-                        <button className="mainActionButton mainActionButton--positive" onClick={() => onTryShort(project)} type="button">短時間で試す</button>
-                        <button className="mainActionButton mainActionButton--neutral" onClick={() => onMarkReviewed(project.id)} type="button">このまま</button>
+                                                <button
+                          className="mainActionButton mainActionButton--neutral"
+                          onClick={() => onRewriteNextStep(project)}
+                          type="button"
+                        >
+                          書き直す
+                        </button>
+                                                <button
+                          className="mainActionButton mainActionButton--positive"
+                          onClick={() => onTryShort(project)}
+                          type="button"
+                        >
+                          短時間で試す
+                        </button>
+                                                <button
+                          className="mainActionButton mainActionButton--neutral"
+                          disabled={reviewingProjectId === project.id}
+                          onClick={() => onMarkReviewed(project.id)}
+                          type="button"
+                        >
+                          このまま
+                        </button>
                       </div>
                     </div>
                   ))}

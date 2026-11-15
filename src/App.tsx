@@ -25,6 +25,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { AnimatePresence, motion } from "motion/react";
 import { springLayout, staggerMax, staggerStep } from "./motion";
 import { SEARCH_GROUP_LIMIT, matchesSearchQuery } from "./searchMatch";
+import { nextStepStaleDays } from "./nextStepFreshness";
 import {
   DEFAULT_BUTTON_GROUP,
   EXECUTION_TRIGGER_MAX_CHARS,
@@ -2207,6 +2208,7 @@ function DashboardApp() {
   const [sessionSummary, setSessionSummary] = useState<SessionSummaryResponse | null>(null);
   const [weeklyReview, setWeeklyReview] = useState<WeeklyReviewResponse | null>(null);
   const [staleNextStepProjectIds, setStaleNextStepProjectIds] = useState<string[]>([]);
+  const [nextStepReviewBusy, setNextStepReviewBusy] = useState<string | null>(null);
   const [doNowResponse, setDoNowResponse] = useState<DoNowResponse | null>(null);
   // The Project picked with "other step"; null shows the first candidate. Held by Project id so a
   // reordered candidate list never silently switches to another Project.
@@ -2635,6 +2637,18 @@ function DashboardApp() {
       (project) => staleIds.has(project.id) && project.nextStep?.text.trim(),
     );
   }, [config, staleNextStepProjectIds]);
+  // P10-05 (D11): the age of each stale Next Step, in whole days.
+  const staleNextStepMap = useMemo(() => {
+    const nowMs = Date.now();
+    const map = new Map<string, number>();
+    for (const project of staleNextStepProjects) {
+      const days = nextStepStaleDays(project.nextStep, nowMs);
+      if (days !== null && days >= 14) map.set(project.id, days);
+    }
+    return map;
+  }, [staleNextStepProjects]);
+
+
 
   const buttonGroups = useMemo<ButtonGroup[]>(() => {
     if (!config) return [];
@@ -3319,6 +3333,11 @@ function DashboardApp() {
         configRef.current = response.config;
         setConfig(response.config);
         setBanner(null);
+        // P10-05 (D11): a successful save can change which Next Steps are stale, so the
+        // list is read again from the saved config.
+        void loadNextStepFreshness()
+          .then((freshness) => setStaleNextStepProjectIds(freshness.staleProjectIds))
+          .catch(() => undefined);
       } catch (error) {
         if (resetInProgressRef.current || writeGeneration !== writeGenerationRef.current) {
           return false;
@@ -7418,6 +7437,9 @@ function DashboardApp() {
 
   const markNextStepReviewed = async (projectId: string) => {
     if (!config) return false;
+    // P10-05: one press at a time — the button is disabled while the save runs.
+    if (nextStepReviewBusy === projectId) return false;
+    setNextStepReviewBusy(projectId);
     const reviewedAt = new Date().toISOString();
     const saved = await persistConfig({
       ...config,
@@ -7430,6 +7452,7 @@ function DashboardApp() {
     if (saved) {
       setStaleNextStepProjectIds((ids) => ids.filter((id) => id !== projectId));
     }
+    setNextStepReviewBusy(null);
     return saved;
   };
 
@@ -10863,7 +10886,10 @@ function DashboardApp() {
                 notesHistory={notesHistory}
                 onAddSession={openManualSessionDialog}
                 onDateScopeChange={setSessionDateScope}
-                onEditProject={openProjectEditDialog}
+                onRewriteNextStep={(project) =>
+                  openNextStepEditor(project, { mode: "edit" })
+                }
+                reviewingProjectId={nextStepReviewBusy}
                 onHistoryNoteBlur={flushHistoryNotesSave}
                 onHistoryNoteChange={updateHistoryNoteText}
                 onMarkReviewed={(projectId) => void markNextStepReviewed(projectId)}
@@ -11349,6 +11375,14 @@ function DashboardApp() {
                                 : (item.defaultTimerMinutes ??
                                   project?.nextStep?.defaultTimerMinutes ??
                                   config.settings.defaultTimerMinutes);
+                            // P10-04's rule, used again here: the unfinished card adopted from
+                            // the current Next Step of the Project shown in "Do Now".
+                            const hereNowProject = doNowSelection?.project;
+                            const isHereNowTodayItem =
+                              !item.done &&
+                              Boolean(hereNowProject) &&
+                              item.sourceKey?.trim() === `project:${hereNowProject.id}` &&
+                              item.sourceGenerationId === hereNowProject.nextStep?.generationId;
                             return (
                               <article
                                 className={[
@@ -11438,6 +11472,12 @@ function DashboardApp() {
                                         name={projectsById.get(item.projectId)?.name ?? ""}
                                         projectId={item.projectId}
                                       />
+                                    </span>
+                                  )}
+                                  {/* P10-05 (§4.3): the card linked to this moment's step. */}
+                                  {isHereNowTodayItem && (
+                                    <span aria-label="いまここ" className="todayHereBadge" role="status">
+                                      いまここ
                                     </span>
                                   )}
                                   {isRunningTodayItem && (
@@ -12076,6 +12116,32 @@ function DashboardApp() {
                                   )}
                                   {project.nextStep?.text.trim() || "まだ次の一手がありません"}
                                 </p>
+                                {staleNextStepMap.has(project.id) && (
+                                  <div className="nextStepFreshness">
+                                    <span>
+                                      {staleNextStepMap.get(project.id)}日同じ一手です。大きすぎるかもしれません
+                                    </span>
+                                    <span className="nextStepFreshnessActions">
+                                      <button
+                                        className="nextStepFreshnessButton"
+                                        onClick={() => openNextStepEditor(project, { mode: "edit" })}
+                                        onPointerDown={(event) => event.stopPropagation()}
+                                        type="button"
+                                      >
+                                        小さくする
+                                      </button>
+                                      <button
+                                        className="nextStepFreshnessButton"
+                                        disabled={nextStepReviewBusy === project.id}
+                                        onClick={() => void markNextStepReviewed(project.id)}
+                                        onPointerDown={(event) => event.stopPropagation()}
+                                        type="button"
+                                      >
+                                        このまま
+                                      </button>
+                                    </span>
+                                  </div>
+                                )}
                                 {project.nextStep?.text.trim() ? (
                                   !sourceLocked && (
                                     <div className="nextStepCardActions">

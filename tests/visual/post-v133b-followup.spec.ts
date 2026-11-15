@@ -214,7 +214,8 @@ test("mouse-free arrows traverse Sidebar, Dictionary, Main, toolbar, Settings an
   await page.keyboard.press("ArrowRight");
   expect(await page.evaluate(() => Boolean(document.activeElement?.closest(".mainScrollArea")))).toBe(true);
   await page.keyboard.press("ArrowUp");
-  await expect(page.locator(".viewToggleButton").first()).toBeFocused();
+  // P10-03: the search field is the first stop in the top bar now.
+  await expect(page.locator(".topSearchButton")).toBeFocused();
   const settingsButton = page.getByRole("button", { name: "設定を開く" });
   for (let index = 0; index < 10; index += 1) {
     if (await settingsButton.evaluate((element) => document.activeElement === element)) break;

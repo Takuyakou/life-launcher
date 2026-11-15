@@ -556,11 +556,12 @@ test("v1.3 NextStep uses a compact 3x2 grid with aligned actions and six-item ex
 
   const cards = page.locator(".nextStepCard");
   await expect(cards).toHaveCount(6);
+  // P10-05 (§4.4): one Project per row now.
   expect(
     await page
       .locator(".projectGrid")
       .evaluate((node) => getComputedStyle(node).gridTemplateColumns.split(" ").length),
-  ).toBe(3);
+  ).toBe(1);
   const configuredAction = page
     .locator(".nextStepCard", { hasText: template.nextStep!.text })
     .getByRole("button", { name: "編集" });
@@ -578,9 +579,9 @@ test("v1.3 NextStep uses a compact 3x2 grid with aligned actions and six-item ex
   const placeholderBox = await unsetPlaceholder.boundingBox();
   expect(placeholderBox).not.toBeNull();
   expect(placeholderBox!.y + placeholderBox!.height).toBeLessThanOrEqual(unsetBox.y + 1);
-  expect(
-    Math.abs(configuredBox.y + configuredBox.height - (unsetBox.y + unsetBox.height)),
-  ).toBeLessThan(1);
+  // P10-05 (§4.4): rows are one per Project and grow with their own text, so the bottoms no
+  // longer line up across cards. The placeholder still sits inside its own card.
+  expect(configuredBox.height).toBeGreaterThan(0);
   const configuredCard = page.locator(".nextStepCard", { hasText: template.nextStep!.text });
   const cardBox = (await configuredCard.boundingBox())!;
   for (const part of [configuredAction, configuredCard.locator(".nextStepProjectRegion"), configuredCard.locator(".nextStepActionRegion p"), configuredCard.locator(".nextStepRegionMenu")]) {
@@ -597,11 +598,12 @@ test("v1.3 NextStep uses a compact 3x2 grid with aligned actions and six-item ex
   await expect(cards).toHaveCount(6);
 
   await page.setViewportSize({ width: 1000, height: 900 });
+  // P10-05 (§4.4): the Next Step list stays one row per Project at every width.
   expect(
     await page
       .locator(".projectGrid")
       .evaluate((node) => getComputedStyle(node).gridTemplateColumns.split(" ").length),
-  ).toBe(2);
+  ).toBe(1);
   await page.setViewportSize({ width: 620, height: 900 });
   expect(
     await page
