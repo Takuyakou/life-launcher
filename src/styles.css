@@ -13261,3 +13261,207 @@ button.mainActionButton:is(
 .timerClockUnit {
   margin-left: 2px;
 }
+
+/* P10-03 (D4): the search field in the top bar and the search window. */
+.topSearchButton {
+  display: inline-flex;
+  min-width: 34px;
+  max-width: 420px;
+  height: 32px;
+  flex: 0 1 340px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 0 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 13px;
+  text-align: left;
+}
+
+.topSearchButton:hover {
+  border-color: var(--line);
+  color: var(--text-muted-readable);
+}
+
+.topSearchLabel {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topSearchButton .shortcutBadge {
+  flex: 0 0 auto;
+}
+
+/* Narrow rows drop the hint text first, then the whole label. */
+.topBar[data-top-menu-labels="1"] .topSearchLabel,
+.topBar[data-top-menu-labels="2"] .topSearchLabel {
+  display: none;
+}
+
+.topBar[data-top-menu-labels="2"] .topSearchButton {
+  flex: 0 0 auto;
+  width: 32px;
+  justify-content: center;
+  padding: 0;
+}
+
+.topBar[data-top-menu-labels="2"] .topSearchButton .shortcutBadge {
+  display: none;
+}
+
+.searchPaletteBackdrop {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  display: grid;
+  place-items: start center;
+  padding: 78px 16px 16px;
+  background: rgba(0, 0, 0, 0.42);
+}
+
+.searchPalette {
+  display: grid;
+  width: min(640px, 100%);
+  max-height: min(520px, 70vh);
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-strong);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+}
+
+.searchPaletteInputRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--muted);
+}
+
+.searchPaletteInput {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 15px;
+  outline: none;
+}
+
+.searchPaletteList {
+  overflow: auto;
+  padding: 6px;
+}
+
+.searchPaletteGroup {
+  display: grid;
+  gap: 2px;
+  padding: 4px 0 6px;
+}
+
+.searchPaletteGroupTitle {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0;
+  padding: 2px 8px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.searchPaletteItem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: 5px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.searchPaletteHighlight {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  border-radius: 5px;
+  background: var(--surface-soft);
+  pointer-events: none;
+}
+
+.searchPaletteItemText {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.searchPaletteItemTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.searchPaletteItemSubtitle,
+.searchPaletteItemMeta {
+  color: var(--text-muted-readable);
+  font-size: 11px;
+}
+
+.searchPaletteItemMeta {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+}
+
+/* P10-03 (D34): the band behind the selected dictionary search result. */
+.dictionarySearchResult {
+  position: relative;
+}
+
+.dictionarySearchHighlight {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  border-radius: 5px;
+  background: var(--surface-soft);
+  pointer-events: none;
+}
+
+.dictionarySearchResult > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Narrow rows: the field keeps only its icon so the title and the menu keep their room. */
+@media (max-width: 1120px) {
+  .topSearchLabel {
+    display: none;
+  }
+
+  .topSearchButton {
+    flex: 0 0 34px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .topSearchButton .shortcutBadge {
+    display: none;
+  }
+}
+
+.topTitle {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

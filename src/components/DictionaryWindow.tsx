@@ -39,6 +39,8 @@ import type { AppConfig, LauncherAction, LauncherButton } from "../types";
 import { useDictionaryFeatureParity } from "./DictionaryFeatureParity";
 import { DictionaryFeatureParityUi } from "./DictionaryFeatureParityUi";
 import { UiIcon } from "./UiIcon";
+import { AnimatePresence, motion } from "motion/react";
+import { springSnappy } from "../motion";
 
 type DictionaryResizeDirection =
   "East" | "North" | "NorthEast" | "NorthWest" | "South" | "SouthEast" | "SouthWest" | "West";
@@ -1872,6 +1874,21 @@ export function DictionaryWindow() {
                         .join(" / ")}
                       type="button"
                     >
+                      {/* P10-03 (D34): one band slides behind the selected result. */}
+                      <AnimatePresence initial={false}>
+                        {selected && (
+                          <motion.span
+                            animate={{ opacity: 1 }}
+                            aria-hidden="true"
+                            className="dictionarySearchHighlight"
+                            exit={{ opacity: 0 }}
+                            initial={{ opacity: 0 }}
+                            key="highlight"
+                            layoutId="dictionary-highlight"
+                            transition={springSnappy}
+                          />
+                        )}
+                      </AnimatePresence>
                       {renderButtonIcon(button, "dictionarySearchResultIcon")}
                       <span className="dictionarySearchResultCopy">
                         <strong>{button.label}</strong>

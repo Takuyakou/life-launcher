@@ -1,0 +1,213 @@
+import { AnimatePresence, motion } from "motion/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { springSnappy } from "../motion";
+import { UiIcon } from "./UiIcon";
+
+export type SearchItemKind = "nextStep" | "wishlist" | "button" | "instruction" | "action";
+
+export type SearchItem = {
+  /** Stable id: the palette looks the entry up again by this id before running it. */
+  id: string;
+  kind: SearchItemKind;
+  title: string;
+  subtitle?: string;
+  meta?: string;
+};
+
+export type SearchSection = {
+  id: string;
+  title: string;
+  items: SearchItem[];
+  /** How many results the group found, before it was cut to five. */
+  total: number;
+};
+
+type SearchPaletteProps = {
+  sections: SearchSection[];
+  query: string;
+  onQueryChange: (value: string) => void;
+  onActivate: (item: SearchItem, mode: "enter" | "shift") => void;
+  onClose: () => void;
+  busy?: boolean;
+};
+
+const LIST_ID = "search-palette-list";
+
+/** P10-03 (D4): the search window that sits above the main window. */
+export function SearchPalette({
+  sections,
+  query,
+  onQueryChange,
+  onActivate,
+  onClose,
+  busy = false,
+}: SearchPaletteProps) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const dialogRef = useRef<HTMLElement | null>(null);
+  const flat = useMemo(() => sections.flatMap((section) => section.items), [sections]);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  // Kept so Enter still tries the entry that was selected before the list shrank (the caller
+  // looks it up again and warns when it is gone).
+  const lastSelectedRef = useRef<SearchItem | null>(null);
+
+  // A new result list always starts at the first entry.
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [query, sections]);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const selected = flat[Math.min(selectedIndex, Math.max(flat.length - 1, 0))];
+  if (selected) lastSelectedRef.current = selected;
+
+  useEffect(() => {
+    if (!selected) return;
+    const element = dialogRef.current?.querySelector<HTMLElement>(`[data-search-item="${selected.id}"]`);
+    element?.scrollIntoView({ block: "nearest" });
+  }, [selected]);
+
+  const move = useCallback(
+    (delta: number) => {
+      if (flat.length === 0) return;
+      setSelectedIndex((current) => {
+        const next = current + delta;
+        if (next < 0) return 0;
+        if (next > flat.length - 1) return flat.length - 1;
+        return next;
+      });
+    },
+    [flat.length],
+  );
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+    const native = event.nativeEvent;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      onClose();
+      return;
+    }
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      move(1);
+      return;
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      move(-1);
+      return;
+    }
+    if (event.key === "Enter") {
+      // Japanese input uses Enter to commit; never run anything while composing.
+      if (native.isComposing || native.keyCode === 229) return;
+      const target = selected ?? lastSelectedRef.current;
+      if (!target || busy) return;
+      event.preventDefault();
+      onActivate(target, event.shiftKey ? "shift" : "enter");
+      return;
+    }
+    if (event.key === "Tab") {
+      const focusables = Array.from(
+        dialogRef.current?.querySelectorAll<HTMLElement>("input, button, [tabindex='0']") ?? [],
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      }
+    }
+  };
+
+  return (
+    <div
+      className="searchPaletteBackdrop"
+      onPointerDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+      role="presentation"
+    >
+      <section
+        aria-label="検索"
+        aria-modal="true"
+        className="searchPalette"
+        onKeyDown={handleKeyDown}
+        ref={dialogRef}
+        role="dialog"
+      >
+        <div className="searchPaletteInputRow">
+          <UiIcon name="search" size={18} />
+          <input
+            aria-autocomplete="list"
+            aria-controls={LIST_ID}
+            aria-activedescendant={selected ? `search-option-${selected.id}` : undefined}
+            aria-expanded="true"
+            aria-label="検索語"
+            className="searchPaletteInput"
+            onChange={(event) => onQueryChange(event.target.value)}
+            placeholder="一手・ボタン・手順書を検索"
+            ref={inputRef}
+            role="combobox"
+            type="text"
+            value={query}
+          />
+        </div>
+        <div aria-label="検索結果" className="searchPaletteList app-scrollbar" id={LIST_ID} role="listbox">
+          {sections.map((section) => (
+            <div className="searchPaletteGroup" key={section.id}>
+              <p className="searchPaletteGroupTitle">
+                <span>{section.title}</span>
+                <span className="searchPaletteGroupCount">{section.total}件</span>
+              </p>
+              {section.items.map((item) => {
+                const isSelected = selected?.id === item.id;
+                return (
+                  <div
+                    aria-selected={isSelected}
+                    className={
+                      isSelected ? "searchPaletteItem searchPaletteItem--selected" : "searchPaletteItem"
+                    }
+                    data-search-item={item.id}
+                    id={`search-option-${item.id}`}
+                    key={item.id}
+                    onClick={() => {
+                      if (!busy) onActivate(item, "enter");
+                    }}
+                    role="option"
+                  >
+                    <AnimatePresence initial={false}>
+                      {isSelected && (
+                        <motion.span
+                          animate={{ opacity: 1 }}
+                          className="searchPaletteHighlight"
+                          exit={{ opacity: 0 }}
+                          initial={{ opacity: 0 }}
+                          key="highlight"
+                          layoutId="search-highlight"
+                          transition={springSnappy}
+                        />
+                      )}
+                    </AnimatePresence>
+                    <span className="searchPaletteItemText">
+                      <span className="searchPaletteItemTitle">{item.title}</span>
+                      {item.subtitle && (
+                        <span className="searchPaletteItemSubtitle">{item.subtitle}</span>
+                      )}
+                    </span>
+                    {item.meta && <span className="searchPaletteItemMeta">{item.meta}</span>}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}

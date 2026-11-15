@@ -24,6 +24,7 @@ import type {
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { springLayout, staggerMax, staggerStep } from "./motion";
+import { SEARCH_GROUP_LIMIT, matchesSearchQuery } from "./searchMatch";
 import {
   DEFAULT_BUTTON_GROUP,
   EXECUTION_TRIGGER_MAX_CHARS,
@@ -122,6 +123,7 @@ import {
 } from "./timerSource";
 import { ContextMenu, ContextMenuItem } from "./components/ContextMenu";
 import { HelpGuideDialog } from "./components/HelpGuideDialog";
+import { SearchPalette, type SearchItem, type SearchSection } from "./components/SearchPalette";
 import { ProjectIdentity } from "./components/ProjectIdentity";
 import {
   prepareProjectDeletion,
@@ -2089,6 +2091,12 @@ function DashboardApp() {
   const [banner, setBanner] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [dictionaryVisible, setDictionaryVisible] = useState(false);
+  // P10-03: the search window (D4).
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchBusy, setSearchBusy] = useState(false);
+  const searchOpenerRef = useRef<HTMLElement | null>(null);
+  const openSearchRef = useRef<() => void>(() => {});
   const [activeView, setActiveView] = useState<ActiveView>("main");
   const [pendingActionId, setPendingActionId] = useState<string | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -4136,6 +4144,32 @@ function DashboardApp() {
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [completionPrompt, confirmDialog, earlyStop, dismissNonCriticalModal, hasDismissibleModal]);
 
+  // P10-03: Ctrl+F opens the search window from the main window (the dictionary and the
+  // instruction viewer keep their own handling).
+  useEffect(() => {
+    const openOnCtrlF = (event: globalThis.KeyboardEvent) => {
+      if (event.key.toLowerCase() !== "f" || !event.ctrlKey) return;
+      if (event.altKey || event.metaKey || event.shiftKey) return;
+      if (event.repeat) return;
+      if (event.isComposing || event.keyCode === 229) return;
+      if (activeView !== "main") return;
+      if (completionPrompt || confirmDialog || earlyStop) return;
+      if (contextMenu) return;
+      if (hasDismissibleModal && !searchOpen) return;
+      event.preventDefault();
+      openSearchRef.current();
+    };
+    window.addEventListener("keydown", openOnCtrlF, true);
+    return () => window.removeEventListener("keydown", openOnCtrlF, true);
+  }, [
+    activeView,
+    completionPrompt,
+    confirmDialog,
+    contextMenu,
+    earlyStop,
+    hasDismissibleModal,
+    searchOpen,
+  ]);
   // P10-02: F1 opens the guide from the main window. It stays out of the way when a dialog or a
   // menu is open, while Japanese input is composing, or when the dictionary key is exactly F1.
   useEffect(() => {
@@ -9740,6 +9774,190 @@ function DashboardApp() {
     target.focus({ preventScroll: true });
     target.scrollIntoView({ block: "start", inline: "nearest" });
   };
+  // --- P10-03: the search window (D4) ---------------------------------------
+  const searchActions = [
+    { key: "mini", title: "ミニタイマーにする" },
+    { key: "records", title: "記録を開く" },
+    { key: "instructions", title: "手順書を開く" },
+    { key: "settings", title: "設定を開く" },
+    { key: "guide", title: "使い方を開く" },
+    { key: "dictionary", title: "辞書を開く" },
+  ];
+
+  const openSearchPalette = () => {
+    if (searchOpen) {
+      const input = document.querySelector<HTMLInputElement>(".searchPaletteInput");
+      input?.focus();
+      input?.select();
+      return;
+    }
+    const active = document.activeElement;
+    searchOpenerRef.current = active instanceof HTMLElement ? active : null;
+    setSearchQuery("");
+    setSearchOpen(true);
+    if (instructionChoices.length === 0 && !instructionChoicesLoading) {
+      void refreshInstructionChoices();
+    }
+  };
+  openSearchRef.current = openSearchPalette;
+
+  const closeSearchPalette = () => {
+    setSearchOpen(false);
+    const opener = searchOpenerRef.current;
+    searchOpenerRef.current = null;
+    if (opener && document.contains(opener)) opener.focus();
+  };
+
+  const searchNextStepItem = (project: LauncherProject): SearchItem | null => {
+    const step = project.nextStep;
+    if (!step || !step.text.trim()) return null;
+    return {
+      id: `nextStep:${project.id}`,
+      kind: "nextStep",
+      title: step.text.trim(),
+      subtitle: project.name,
+      meta: step.trigger?.trim() || undefined,
+    };
+  };
+
+  const buildSearchSections = (): SearchSection[] => {
+    const query = searchQuery.trim();
+    const sections: SearchSection[] = [];
+    const push = (id: string, title: string, items: SearchItem[]) => {
+      if (items.length === 0) return;
+      sections.push({ id, title, items: items.slice(0, SEARCH_GROUP_LIMIT), total: items.length });
+    };
+    const linkedToday = new Set(
+      config.today.items
+        .filter((item) => !item.done)
+        .map((item) => item.sourceKey?.trim())
+        .filter((key): key is string => Boolean(key)),
+    );
+
+    if (!query) {
+      const top = doNowSelection?.project;
+      const topItem = top ? searchNextStepItem(top) : null;
+      if (topItem) push("doNow", "今やる一手", [topItem]);
+      push("today3", "今日の3件の次の一手", config.projects
+        .filter((project) => linkedToday.has(`project:${project.id}`))
+        .map(searchNextStepItem)
+        .filter((item): item is SearchItem => item !== null));
+      return sections;
+    }
+
+    push("nextStep", "次の一手", config.projects
+      .filter((project) => {
+        const step = project.nextStep;
+        if (!step || !step.text.trim()) return false;
+        return matchesSearchQuery([project.name, step.text, step.trigger ?? ""].join("\n"), query);
+      })
+      .map(searchNextStepItem)
+      .filter((item): item is SearchItem => item !== null));
+
+    push("wishlist", "やりたいこと", config.inbox
+      .filter((item) => {
+        const project = item.projectId
+          ? config.projects.find((candidate) => candidate.id === item.projectId)
+          : undefined;
+        return matchesSearchQuery([item.text, project?.name ?? ""].join("\n"), query);
+      })
+      .map((item) => {
+        const project = item.projectId
+          ? config.projects.find((candidate) => candidate.id === item.projectId)
+          : undefined;
+        return {
+          id: `wishlist:${item.id}`,
+          kind: "wishlist" as const,
+          title: item.text,
+          subtitle: project?.name,
+        };
+      }));
+
+    push("button", "ボタン", searchOverlayButtons(
+      config.buttons,
+      config.overlayPages ?? [],
+      query,
+      config.dictionaryOrder,
+    ).map((button) => ({
+      id: `button:${button.id}`,
+      kind: "button" as const,
+      title: button.label,
+      subtitle: buttonGroupName(button),
+    })));
+
+    push("instruction", "手順書", instructionChoices
+      .filter((choice) => matchesSearchQuery(choice.label, query))
+      .map((choice) => ({
+        id: `instruction:${choice.path}`,
+        kind: "instruction" as const,
+        title: choice.label.split(" / ").pop() ?? choice.label,
+        subtitle: choice.label.split(" / ").slice(0, -1).join(" / "),
+      })));
+
+    push("action", "操作", searchActions
+      .filter((action) => matchesSearchQuery(action.title, query))
+      .map((action) => ({
+        id: `action:${action.key}`,
+        kind: "action" as const,
+        title: action.title,
+      })));
+
+    return sections;
+  };
+  const searchSections = buildSearchSections();
+
+  const runSearchItem = async (item: SearchItem, mode: "enter" | "shift") => {
+    if (searchBusy) return;
+    const missing = () => {
+      setSearchBusy(false);
+      showToast("warn", "見つかりません。一覧を作り直しました");
+      return;
+    };
+    setSearchBusy(true);
+    try {
+    if (item.kind === "nextStep") {
+      const projectId = item.id.replace("nextStep:", "");
+      const project = configRef.current?.projects.find((candidate) => candidate.id === projectId);
+      if (!project || !project.nextStep?.text.trim()) return missing();
+      closeSearchPalette();
+      startDoNowProject(project, mode === "shift" ? "normal" : "short");
+      return;
+    }
+    if (item.kind === "wishlist") {
+      const itemId = item.id.replace("wishlist:", "");
+      const index = (configRef.current?.inbox ?? []).findIndex((entry) => entry.id === itemId);
+      if (index < 0) return missing();
+      closeSearchPalette();
+      promoteInboxToNextStep(index);
+      return;
+    }
+    if (item.kind === "button") {
+      const buttonId = item.id.replace("button:", "");
+      const button = (configRef.current?.buttons ?? []).find((entry) => entry.id === buttonId);
+      if (!button) return missing();
+      closeSearchPalette();
+      void runActions(button.id, button.actions);
+      return;
+    }
+    if (item.kind === "instruction") {
+      const path = item.id.replace("instruction:", "");
+      if (!instructionChoices.some((choice) => choice.path === path)) return missing();
+      closeSearchPalette();
+      await openInstructionWindow({ path, focus: true });
+      return;
+    }
+    const key = item.id.replace("action:", "");
+    closeSearchPalette();
+    if (key === "mini") void toggleMiniMode();
+    else if (key === "records") setActiveView("records");
+    else if (key === "instructions") void openInstructionsManually();
+    else if (key === "settings") openSettingsCenter();
+    else if (key === "guide") setHelpGuideOpen(true);
+    else if (key === "dictionary") void openDictionaryManually();
+    } finally {
+      setSearchBusy(false);
+    }
+  };
   return (
     <main
       className={
@@ -10528,6 +10746,21 @@ function DashboardApp() {
               {activeView === "records" ? "記録" : formatDateKeyForHeader(displayedDayKey)}
             </h1>
           </div>
+          {/* P10-03: the search field sits in the middle; the space around it still drags. */}
+          <button
+            aria-keyshortcuts="Control+F"
+            aria-label="検索"
+            className="topSearchButton"
+            data-top-search=""
+            onClick={() => openSearchPalette()}
+            title="検索"
+            type="button"
+          >
+            <UiIcon name="search" size={18} />
+            <span className="topSearchLabel">一手・ボタン・手順書を検索</span>
+            <ShortcutBadge label="検索" registered shortcut="Ctrl F" />
+          </button>
+
           <div className="topPills" data-tauri-drag-region="" ref={topMenuPillsRef}>
             <div
               aria-label={TOP_MENU_GROUP_LABELS.autoStart}
@@ -15986,6 +16219,16 @@ function DashboardApp() {
             </div>
           </section>
         </div>
+      )}
+      {searchOpen && (
+        <SearchPalette
+          busy={searchBusy}
+          onActivate={(item, mode) => void runSearchItem(item, mode)}
+          onClose={closeSearchPalette}
+          onQueryChange={setSearchQuery}
+          query={searchQuery}
+          sections={searchSections}
+        />
       )}
       {helpGuideOpen && (
         <HelpGuideDialog
