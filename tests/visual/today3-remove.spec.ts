@@ -117,7 +117,7 @@ test("active and paused item cannot be removed; another item can", async ({
   await expect(page.getByRole("menuitem", { name: "今日の3件から外す" })).toBeDisabled();
   await page.locator(".todayCompletionSummary").click();
   await expect(page.getByRole("menu")).toHaveCount(0);
-  const todayDisclosure = page.getByRole("button", { name: "今日の3件" });
+  const todayDisclosure = page.getByRole("button", { name: "今日の3件", exact: true });
   await expect(todayDisclosure).toHaveAttribute("aria-expanded", "false");
   await todayDisclosure.click();
   await card.getByRole("button", { name: "このセッションを一時停止", exact: true }).click();

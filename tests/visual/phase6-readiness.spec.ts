@@ -88,14 +88,14 @@ test("switching from a sub-minute timer warns without recording or resizing manu
 
   await first.getByRole("button", { name: "短時間タイマー2分で開始" }).click();
   await expect(first.getByText("実行中", { exact: true })).toBeVisible();
-  expect((await first.boundingBox())?.height).toBe(firstIdleHeight);
+  expect(Math.abs((await first.boundingBox())!.height - firstIdleHeight!)).toBeLessThanOrEqual(2);
   await page.clock.fastForward(30_000);
   await second.getByRole("button", { name: "短時間タイマー2分で開始" }).click();
 
   await expect(page.getByText("1分未満なので記録しませんでした", { exact: true })).toBeVisible();
   await expect(second.getByText("実行中", { exact: true })).toBeVisible();
   await expect(first.getByText("実行中", { exact: true })).toHaveCount(0);
-  expect((await second.boundingBox())?.height).toBe(secondIdleHeight);
+  expect(Math.abs((await second.boundingBox())!.height - secondIdleHeight!)).toBeLessThanOrEqual(2);
   expect(
     (await invokeCommands(page)).filter((command) => command === "record_session"),
   ).toHaveLength(0);

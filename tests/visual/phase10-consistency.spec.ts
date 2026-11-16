@@ -2,10 +2,14 @@ import { expect, test, type Page } from "@playwright/test";
 import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 
-async function prepare(page: Page, viewport = { width: 1280, height: 900 }) {
+async function prepare(
+  page: Page,
+  fixture = createPublicFixture(),
+  viewport = { width: 1280, height: 900 },
+) {
   await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
   await page.setViewportSize(viewport);
-  await installTauriMock(page, createPublicFixture(), "main");
+  await installTauriMock(page, fixture, "main");
   await page.goto("/");
   await expect(page.locator(".doNowBand")).toBeVisible();
 }
@@ -64,21 +68,26 @@ test("P10-14e 12-1 every status pill uses the 20px / 11px / 700 base", async ({ 
   expect(await style(page, ".todayPickerSelectedStatus", "font-weight")).toBe("700");
 });
 
-test("P10-14e 12-2 the key caps share uiKey and the search cap is Ctrl+F", async ({ page }) => {
+test("P10-14e 12-2 / F4 the key caps keep one height; only Ctrl+F is muted", async ({ page }) => {
   await prepare(page);
   const searchKey = page.locator(".topSearchButton .uiKey");
   await expect(searchKey).toHaveText("Ctrl+F");
+  await expect(searchKey).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  await expect(searchKey).toHaveCSS("color", "rgb(184, 176, 160)");
+  const dictionaryKey = page.locator(".launcherOpenButton .uiKey");
+  await expect(dictionaryKey).toHaveCSS("background-color", "rgba(231, 185, 77, 0.12)");
+  await expect(dictionaryKey).toHaveCSS("color", "rgb(231, 185, 77)");
+  await expect(dictionaryKey).toHaveCSS("border-top-color", "rgba(231, 185, 77, 0.48)");
   const keys = page.locator(".uiKey");
-  expect(await keys.count()).toBeGreaterThanOrEqual(2);
-  for (let index = 0; index < (await keys.count()); index += 1) {
-    const key = keys.nth(index);
+  const heights = await keys.evaluateAll((nodes) =>
+    nodes.filter((node) => (node as HTMLElement).offsetParent !== null).map((node) => node.offsetHeight),
+  );
+  expect(new Set(heights).size).toBe(1);
+  for (const key of await keys.all()) {
     if (!(await key.isVisible())) continue;
     expect(await key.evaluate((node) => getComputedStyle(node).fontSize)).toBe("11px");
     expect(await key.evaluate((node) => getComputedStyle(node).fontWeight)).toBe("700");
     expect(await key.evaluate((node) => getComputedStyle(node).borderRadius)).toBe("5px");
-    expect(await key.evaluate((node) => getComputedStyle(node).backgroundColor)).toBe(
-      "rgba(0, 0, 0, 0)",
-    );
     expect(await key.evaluate((node) => getComputedStyle(node).paddingLeft)).toBe("6px");
     expect(await key.evaluate((node) => getComputedStyle(node).paddingRight)).toBe("6px");
   }
@@ -206,6 +215,7 @@ test("P10-14e 7 the remove button is 28x28 icon-only below the per-size threshol
     await page.setViewportSize({ width, height: 680 });
     for (const size of sizes) {
       await setDisplaySize(page, size);
+      await page.waitForTimeout(80);
       const cards = page.locator(".todayRow");
       await expect(cards.first()).toBeVisible();
       const cardCount = await cards.count();
@@ -241,8 +251,7 @@ test("P10-14e 7 the remove button is 28x28 icon-only below the per-size threshol
 
 test("P10-14e 2 the mini clock uses the same 700 weight as the sidebar clock", async ({
   page,
-}) => {
-  await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
+}) => {  await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
   await page.setViewportSize({ width: 340, height: 120 });
   await installTauriMock(page, createPublicFixture(), "life-launcher-mini");
   await page.goto("/?view=mini");
@@ -267,4 +276,133 @@ test("P10-14e 2 the mini clock uses the same 700 weight as the sidebar clock", a
   const clock = page.locator(".timerPanel--mini .timerClock");
   await expect(clock).toBeVisible();
   expect(await clock.evaluate((node) => getComputedStyle(node).fontWeight)).toBe("700");
+});
+
+test("F7 いまここ uses the same Project colour as its dot", async ({ page }) => {
+  await prepare(page);
+  const badge = page.locator(".todayHereBadge");
+  const dot = page
+    .locator(".todayRow")
+    .filter({ has: badge })
+    .locator(".todayProjectIdentity .projectIdentityDot")
+    .first();
+  const badgeColor = await badge.evaluate((node) => getComputedStyle(node).color);
+  const dotColor = await dot.evaluate((node) => getComputedStyle(node).backgroundColor);
+  expect(badgeColor).toBe(dotColor);
+  expect(await badge.evaluate((node) => getComputedStyle(node).borderTopColor)).not.toBe(
+    "rgb(74, 70, 57)",
+  );
+});
+
+test("F8 the long Project name, state pill, いまここ and Enter never overlap", async ({ page }) => {
+  const fixture = createPublicFixture();
+  fixture.config.projects[0].name = "とても長いプロジェクト名が入っている確認用のプロジェクト";
+  await prepare(page, fixture, { width: 1440, height: 900 });
+  const card = page.locator(".todayRow").first();
+  await card.locator(".todayShortTimerButton, .todayStartButton--short").first().click();
+  await page.clock.fastForward(3000);
+
+  for (const width of [1440, 960]) {
+    await page.setViewportSize({ width, height: 900 });
+    await card.focus();
+    await page.keyboard.press("Shift+Tab");
+    for (let index = 0; index < 80; index += 1) {
+      await page.keyboard.press("Tab");
+      if (await card.evaluate((node) => node === document.activeElement)) break;
+    }
+    const boxes = await card
+      .locator(
+        ".todayItemMeta .projectIdentityName, .todayItemMeta .runningBadge, .todayHereBadge, .rowKeyHint, .todayRowMenu",
+      )
+      .evaluateAll((nodes) =>
+        nodes
+          .filter((node) => (node as HTMLElement).offsetParent !== null)
+          .map((node) => node.getBoundingClientRect()),
+      );
+    for (let index = 0; index < boxes.length; index += 1) {
+      for (const other of boxes.slice(index + 1)) {
+        expect(
+          Math.min(boxes[index].right, other.right) - Math.max(boxes[index].left, other.left),
+          `${width}px`,
+        ).toBeLessThanOrEqual(1);
+      }
+    }
+  }
+});
+
+test("F9 Do Now and Today running buttons match the buttons beside them", async ({ page }) => {
+  await prepare(page);
+  const sizes = [
+    ["standard", 1280],
+    ["large", 1600],
+    ["xlarge", 1920],
+  ] as const;
+  for (const [size, width] of sizes) {
+    await page.setViewportSize({ width, height: 900 });
+    await setDisplaySize(page, size);
+    const doNowBefore = await page
+      .locator(".doNowStartPrimary, .doNowStartSecondary, .doNowMeasureButton")
+      .evaluateAll((nodes) =>
+        nodes.map((node) => ({
+          height: node.getBoundingClientRect().height,
+          font: getComputedStyle(node).fontSize,
+          weight: getComputedStyle(node).fontWeight,
+        })),
+      );
+    await page.locator(".doNowStartPrimary").click();
+    await expect(page.locator(".doNowActions .runningPauseButton")).toBeVisible();
+    await page.clock.fastForward(1000);
+    const doNowAfter = await page
+      .locator(".doNowActions .runningPauseButton, .doNowActions .runningStopButton")
+      .evaluateAll((nodes) =>
+        nodes.map((node) => ({
+          height: node.getBoundingClientRect().height,
+          font: getComputedStyle(node).fontSize,
+          weight: getComputedStyle(node).fontWeight,
+        })),
+      );
+    const doNow = [...doNowBefore, ...doNowAfter];
+    expect(new Set(doNow.map((item) => Math.round(item.height))).size).toBe(1);
+    expect(new Set(doNow.map((item) => item.font)).size).toBe(1);
+    expect(doNow.every((item) => item.weight === "700")).toBe(true);
+
+    await page.locator(".doNowActions .runningStopButton").click();
+    await page.clock.fastForward(500);
+    await page.keyboard.press("Escape");
+    const card = page.locator(".todayRow").first();
+    const todayBefore = await card
+      .locator(".todayStartButton--short, .todayStartButton--normal, .todayMeasureButton")
+      .evaluateAll((nodes) =>
+        nodes.map((node) => ({
+          height: node.getBoundingClientRect().height,
+          width: node.getBoundingClientRect().width,
+          font: getComputedStyle(node).fontSize,
+          weight: getComputedStyle(node).fontWeight,
+          radius: getComputedStyle(node).borderRadius,
+        })),
+      );
+    await card.locator(".todayStartButton--short").click();
+    await expect(card.locator(".runningPauseButton")).toBeVisible();
+    await page.clock.fastForward(3000);
+    const todayAfter = await card
+      .locator(".runningPauseButton, .runningStopButton")
+      .evaluateAll((nodes) =>
+        nodes.map((node) => ({
+          height: node.getBoundingClientRect().height,
+          width: node.getBoundingClientRect().width,
+          font: getComputedStyle(node).fontSize,
+          weight: getComputedStyle(node).fontWeight,
+          radius: getComputedStyle(node).borderRadius,
+        })),
+      );
+    const today = [...todayBefore, ...todayAfter];
+    expect(new Set(today.map((item) => Math.round(item.height))).size).toBe(1);
+    const labelled = today.filter((item) => item.width > 40);
+    expect(new Set(labelled.map((item) => Math.round(item.width))).size).toBe(1);
+    expect(new Set(labelled.map((item) => item.font)).size).toBe(1);
+    expect(labelled.every((item) => item.weight === "700")).toBe(true);
+    expect(today.every((item) => item.radius === "8px")).toBe(true);
+    await card.locator(".runningStopButton").click();
+    await page.keyboard.press("Escape");
+  }
 });

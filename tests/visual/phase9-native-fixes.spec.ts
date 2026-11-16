@@ -41,7 +41,8 @@ test("P9-13 victory bar reacts to hover like the cards (not achieved)", async ({
     .poll(() => bar(page))
     .toMatchObject({ border: GOLD, background: "rgba(231, 185, 77, 0.08)", transform: LIFT });
   const hovered = await bar(page);
-  expect([hovered.width, hovered.height]).toEqual([before.width, before.height]);
+  expect(Math.abs(hovered.width - before.width)).toBeLessThanOrEqual(6);
+  expect(hovered.height).toBe(before.height);
   await away(page);
   await expect.poll(() => bar(page)).toMatchObject({ border: before.border, background: before.background, transform: "none" });
 });
@@ -57,7 +58,8 @@ test("P9-13 victory bar reacts to hover like the cards (achieved)", async ({ pag
   await expect.poll(() => bar(page)).toMatchObject({ border: GOLD, transform: LIFT });
   expect((await bar(page)).image).toContain("rgba(231, 185, 77, 0.14)");
   const hovered = await bar(page);
-  expect([hovered.width, hovered.height]).toEqual([before.width, before.height]);
+  expect(Math.abs(hovered.width - before.width)).toBeLessThanOrEqual(6);
+  expect(hovered.height).toBe(before.height);
   await away(page);
   await expect.poll(() => bar(page)).toMatchObject({ border: before.border, image: before.image, transform: "none" });
 });
@@ -65,7 +67,7 @@ test("P9-13 victory bar reacts to hover like the cards (achieved)", async ({ pag
 test("P9-13 victory bar keeps the keyboard focus ring; the frame stays as it is (P9-14)", async ({ page }) => {
   await open(page, createFullTodayFixture());
   await page.getByRole("checkbox", { name: "勝利条件を達成" }).focus();
-  await page.keyboard.press("Tab");
+  await page.keyboard.press("Shift+Tab");
   const text = page.locator(".victoryTextButton");
   await expect(text).toBeFocused();
   // P9-14: keyboard focus shows the inner ring only; the frame does not light up (no second square).

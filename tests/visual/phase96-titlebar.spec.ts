@@ -219,11 +219,15 @@ test.describe("P96-01 header layout budget (30 combos)", () => {
             Math.abs(probe.dockCenterY - probe.rowCenterY),
             `dock is vertically centered with the row (${label})`,
           ).toBeLessThanOrEqual(2);
-          // P10-14e (10): the top row spans the window, so it always keeps room
-          // for the fixed window controls at the right edge.
+          // F5: the window controls' room is split into the symmetric 16px bar
+          // padding and the 128px right margin of the menu.
           const reserved = await page.evaluate(() => {
             const topBar = document.querySelector<HTMLElement>(".topBar")!;
-            return Number.parseFloat(getComputedStyle(topBar).paddingRight);
+            const pills = document.querySelector<HTMLElement>(".topPills")!;
+            return (
+              Number.parseFloat(getComputedStyle(topBar).paddingRight) +
+              Number.parseFloat(getComputedStyle(pills).marginRight)
+            );
           });
           expect(reserved, `reservation for the window controls (${label})`).toBeGreaterThanOrEqual(
             100,

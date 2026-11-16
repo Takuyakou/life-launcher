@@ -111,6 +111,32 @@ test("P10-02 F1 opens the guide only when nothing else is open and the dictionar
   await expect(page.getByRole("dialog", { name: "使い方" })).toHaveCount(0);
 });
 
+test("F5 the search box is centered at wide widths and nothing overlaps when narrow", async ({
+  page,
+}) => {
+  await open(page, createFullTodayFixture(), 1920);
+  for (const width of [1920, 1440]) {
+    await page.setViewportSize({ width, height: 680 });
+    const search = (await page.locator(".topSearchButton").boundingBox())!;
+    const center = search.x + search.width / 2;
+    expect(Math.abs(center - width / 2)).toBeLessThanOrEqual(2);
+  }
+  for (const width of [1280, 1100, 960, 860]) {
+    await page.setViewportSize({ width, height: 680 });
+    const boxes = await page
+      .locator(".topBrand, .topSearchButton, .topPills")
+      .evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect()));
+    for (let index = 0; index < boxes.length; index += 1) {
+      for (const other of boxes.slice(index + 1)) {
+        expect(
+          Math.min(boxes[index].right, other.right) - Math.max(boxes[index].left, other.left),
+          `${width}px overlap`,
+        ).toBeLessThanOrEqual(1);
+      }
+    }
+  }
+});
+
 test("P10-02 the empty middle of the top bar still drags the window", async ({ page }) => {
   await open(page);
   const middle = await page.evaluate(() => {

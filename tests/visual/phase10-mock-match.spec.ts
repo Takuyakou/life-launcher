@@ -183,6 +183,19 @@ test("P10-14e 1 the play icon sits left of the label on both start buttons", asy
   }
   await expect(page.locator(".doNowStartPrimary .timerStartDuration")).toHaveText("5分で始める");
   await expect(page.locator(".doNowStartSecondary .timerStartDuration")).toHaveText("通常 25分");
+  // F2: the same centring holds while the pointer is on the button.
+  for (const selector of [".doNowStartPrimary", ".doNowStartSecondary"]) {
+    const button = page.locator(selector);
+    await button.hover();
+    await page.waitForTimeout(160);
+    const glyph = (await button.locator(".timerStartHoverGlyph").boundingBox())!;
+    const label = (await button.locator(".timerStartDuration").boundingBox())!;
+    expect(Math.abs(glyph.y + glyph.height / 2 - (label.y + label.height / 2))).toBeLessThanOrEqual(
+      2,
+    );
+    await page.mouse.move(1, 1);
+    await page.waitForTimeout(160);
+  }
 });
 
 test("P10-14e 2 the mini window is 340x120, two rows, with the Project colour on the left", async ({

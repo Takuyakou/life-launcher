@@ -88,8 +88,11 @@ test("P84 Wishlist promote action is status-aware, stable, keyboard reachable, a
 
   const plainBefore = await style(plain);
   const plainMenuBefore = await style(plainMenu);
-  await plain.hover();
-  await page.waitForTimeout(140);
+  await plain.evaluate((node) => node.scrollIntoView({ block: "center" }));
+  await page.waitForTimeout(200);
+  const plainBox = (await plain.boundingBox())!;
+  await page.mouse.move(plainBox.x + 24, plainBox.y + plainBox.height / 2);
+  await page.waitForTimeout(160);
   await expect(plainAction).toHaveCSS("opacity", "1");
 
   const plainAfter = await style(plain);

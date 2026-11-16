@@ -27,6 +27,8 @@ async function prepare(page: Page, fixture: VisualQaFixture = createPublicFixtur
   await expect(page.locator(".inboxBand")).toBeVisible();
   const disclosure = page.locator(".inboxBand .disclosure");
   if ((await disclosure.getAttribute("aria-expanded")) !== "true") await disclosure.click();
+  await expect(page.locator(".inboxBody")).toBeVisible();
+  await page.waitForTimeout(350);
 }
 
 async function currentConfig(page: Page): Promise<AppConfig> {
@@ -374,6 +376,8 @@ test("P82-01 group D&D saves only on drop, persists order and rolls back failure
   await page.reload();
   const disclosure = page.locator(".inboxBand .disclosure");
   if ((await disclosure.getAttribute("aria-expanded")) !== "true") await disclosure.click();
+  await expect(page.locator(".inboxBody")).toBeVisible();
+  await page.waitForTimeout(350);
   await expect(
     page.locator('[data-wishlist-group="project:sample-learning"] .inboxRow').first(),
   ).toHaveAttribute("data-inbox-id", "wish-two");
@@ -630,7 +634,10 @@ test("v1.3 Wishlist project groups reorder independently and expose Project edit
   await prepare(page, fixture);
   const firstHeader = page.locator(".wishlistGroupHeader", { hasText: first.name });
   const secondHeader = page.locator(".wishlistGroupHeader", { hasText: second.name });
-  await secondHeader.scrollIntoViewIfNeeded();
+  await page.locator(".wishlistGroup").first().scrollIntoViewIfNeeded();
+  await page.mouse.move(700, 500);
+  await page.mouse.wheel(0, 120);
+  await page.waitForTimeout(350);
   const from = (await secondHeader.boundingBox())!;
   const to = (await firstHeader.boundingBox())!;
 

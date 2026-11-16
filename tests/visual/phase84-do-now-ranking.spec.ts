@@ -85,7 +85,7 @@ test("P84-03 Other Step cycles every ranked candidate without mutating config", 
   expect(await currentConfig(page)).toEqual(before);
 });
 
-test("P84 Do Now keeps a neutral card while Other Step follows the Project colour", async ({
+test("P84 Do Now keeps a neutral resting card and follows the Project colour on hover", async ({
   page,
 }) => {
   const fixture = createPublicFixture();
@@ -126,7 +126,10 @@ test("P84 Do Now keeps a neutral card while Other Step follows the Project colou
       transform: style.transform,
     };
   });
-  expect(hovered).toEqual(resting);
+  expect(hovered.left).toBe(firstDot);
+  expect(hovered.right).toBe(firstDot);
+  expect(hovered.background).toBe("rgb(43, 41, 34)");
+  expect(hovered.transform).not.toBe("none");
 
   await alternate.click();
   await expect(card.locator(".doNowCopy > strong")).toHaveText(
@@ -147,7 +150,10 @@ test("P84 Do Now keeps a neutral card while Other Step follows the Project colou
       transform: style.transform,
     };
   });
-  expect(afterSwitch).toEqual(resting);
+  expect(afterSwitch.left).toBe(secondDot);
+  expect(afterSwitch.right).toBe(secondDot);
+  expect(afterSwitch.background).toBe("rgb(43, 41, 34)");
+  expect(afterSwitch.transform).not.toBe("none");
 });
 
 test("P84-03 empty Do Now guides to NextStep instead of weekly focus", async ({ page }) => {

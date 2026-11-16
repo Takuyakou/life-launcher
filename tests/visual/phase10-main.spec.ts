@@ -217,6 +217,24 @@ test("P10-05 the Records 書き直す opens the Next Step editor too", async ({ 
   await expect(editor.first()).toBeVisible();
 });
 
+test("F14 Tab moves from the victory text to the check", async ({ page }) => {
+  const fixture = createFullTodayFixture();
+  fixture.config.today.victory.text = "今日の勝利条件をひとつ決める";
+  await open(page, fixture);
+  const text = page.locator(".victoryTextButton");
+  await text.focus();
+  await expect(text).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("checkbox", { name: "勝利条件を達成" })).toBeFocused();
+  expect(
+    await page.evaluate(() => {
+      const text = document.querySelector<HTMLElement>(".victoryTextButton")!;
+      const check = document.querySelector<HTMLElement>(".victoryCheck")!;
+      return Boolean(text.compareDocumentPosition(check) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }),
+  ).toBe(true);
+});
+
 test("P10-05 the freshness notice follows the 14 day rule and the clock", async ({ page }) => {
   const fixture = createFullTodayFixture();
     const lockedIds = new Set(

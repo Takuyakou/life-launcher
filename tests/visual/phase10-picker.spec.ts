@@ -246,6 +246,19 @@ test("P10-10 a running Timer card cannot be removed", async ({ page }) => {
   await expect(dialog.locator(".todayPickerSlot--selected")).toHaveCount(1);
 });
 
+test("F11 the Picker header has no rule and 今日の3件 sits next to 2 / 3", async ({ page }) => {
+  await prepare(page, createPublicFixture());
+  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
+  const dialog = page.getByRole("dialog", { name: "今日やるものを選ぶ" });
+  const header = dialog.locator(".todayPickerHead");
+  await expect(header).toHaveCSS("border-bottom-width", "0px");
+  const title = dialog.locator(".todayPickerDestinationHeader h3");
+  const counter = dialog.locator(".todayPickerCounter");
+  const titleBox = (await title.boundingBox())!;
+  const counterBox = (await counter.boundingBox())!;
+  expect(Math.abs(counterBox.x - (titleBox.x + titleBox.width) - 8)).toBeLessThanOrEqual(1);
+});
+
 test("P10-10 the Picker cannot be opened when Today3 is full", async ({ page }) => {
   const fixture = createPublicFixture();
   fixture.config.today.items.push({

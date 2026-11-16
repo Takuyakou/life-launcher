@@ -40,7 +40,17 @@ test("P10-02 opening a sidebar group ends at the height of its items", async ({ 
     .locator(".quickButtonDrag")
     .first()
     .evaluate((element) => getComputedStyle(element).opacity);
-  expect(Number(opacity)).toBe(1);
+  expect(Number(opacity)).toBeGreaterThanOrEqual(0.9);
+  await expect
+    .poll(async () =>
+      Number(
+        await group(page)
+          .locator(".quickButtonDrag")
+          .first()
+          .evaluate((element) => getComputedStyle(element).opacity),
+      ),
+    )
+    .toBe(1);
 });
 
 test("P10-02 a closed sidebar group keeps its buttons out of the tab order", async ({ page }) => {

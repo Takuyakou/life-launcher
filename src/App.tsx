@@ -20,10 +20,10 @@ import type {
   KeyboardEvent,
   MouseEvent as ReactMouseEvent,
   PointerEvent,
+  ReactNode,
 } from "react";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
-import { springLayout, springSnappy, staggerMax, staggerStep } from "./motion";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";import { AnimatePresence, motion } from "motion/react";
+import { springCollapse, springSnappy, staggerMax, staggerStep } from "./motion";
 import { SEARCH_GROUP_LIMIT, matchesSearchQuery } from "./searchMatch";
 import { nextStepStaleDays } from "./nextStepFreshness";
 import {
@@ -2062,6 +2062,41 @@ const DictionaryWindow = lazy(() =>
     default: module.DictionaryWindow,
   })),
 );
+
+/** P10-14f (F6): the same height/opacity spring for the sidebar and the main sections. */
+function SectionCollapse({
+  open,
+  dragActive,
+  children,
+}: {
+  open: boolean;
+  dragActive: boolean;
+  children: ReactNode;
+}) {
+  const [settled, setSettled] = useState(false);
+  useEffect(() => {
+    setSettled(false);
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => setSettled(true));
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [open]);
+  return (
+    <AnimatePresence initial={false}>
+      {open && (
+        <motion.div
+          initial={{ height: 0, opacity: 0, overflow: "hidden" }}
+          animate={{ height: "auto", opacity: 1, transitionEnd: { overflow: "visible" } }}
+          exit={{ height: 0, opacity: 0, overflow: "hidden" }}
+          style={{ overflow: settled ? "visible" : "hidden" }}
+          transition={dragActive ? { duration: 0 } : springCollapse}
+        >
+          {children}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
 
 export default function App() {
   if (isMiniModeView()) return <MiniModeApp />;
@@ -10506,7 +10541,7 @@ function DashboardApp() {
         >
           <UiIcon name="search" size={18} />
           <span className="topSearchLabel">一手・ボタン・手順書を検索</span>
-          <ShortcutBadge label="検索" registered shortcut="Ctrl+F" />
+          <ShortcutBadge label="検索" registered shortcut="Ctrl+F" tone="muted" />
         </button>
 
         <div className="topPills" data-tauri-drag-region="" ref={topMenuPillsRef}>
@@ -10603,7 +10638,7 @@ function DashboardApp() {
         >
           <span className="launcherOpenButtonLabel">
             <span aria-hidden="true" className="launcherOpenButtonIcon">
-              <UiIcon name="search" size={24} />
+              <UiIcon name="search" size={16} />
             </span>
             <span>辞書を開く</span>
           </span>
@@ -10694,16 +10729,17 @@ function DashboardApp() {
                   <AnimatePresence initial={false}>
                     {!collapsed && (
                       <motion.div
-                        animate={{ height: "auto", opacity: 1 }}
+                        animate={{
+                          height: "auto",
+                          opacity: 1,
+                          transitionEnd: { overflow: "visible" },
+                        }}
                         className="quickGroupItems"
                         data-sidebar-group-name={group.name}
-                        exit={{ height: 0, opacity: 0 }}
-                        initial={{ height: 0, opacity: 0 }}
+                        exit={{ height: 0, opacity: 0, overflow: "hidden" }}
+                        initial={{ height: 0, opacity: 0, overflow: "hidden" }}
                         key="items"
-                        style={{ overflow: "hidden" }}
-                        transition={
-                          sidebarDragActive ? { duration: 0 } : springLayout
-                        }
+                        transition={sidebarDragActive ? { duration: 0 } : springCollapse}
                       >
                         {group.buttons.length === 0 && (
                           <p className="quickGroupEmpty">見出しを右クリックしてボタンを追加</p>
@@ -10726,7 +10762,7 @@ function DashboardApp() {
                                 ? { duration: 0 }
                                 : {
                                     delay: Math.min(buttonIndex * staggerStep, staggerMax),
-                                    duration: 0.18,
+                                    duration: 0.12,
                                   }
                             }
                           >
@@ -11349,14 +11385,6 @@ function DashboardApp() {
                     <UiIcon name="flag" size={16} />
                   </span>
                   <span className="victoryLabel">今日の勝利条件</span>
-                  <input
-                    aria-label="勝利条件を達成"
-                    checked={victoryDone}
-                    className="check victoryCheck"
-                    disabled={!victoryText}
-                    onChange={toggleVictoryDone}
-                    type="checkbox"
-                  />
                   <div className="victoryContent">
                     {victoryEditing ? (
                       <>
@@ -11411,6 +11439,14 @@ function DashboardApp() {
                       </div>
                     )}
                   </div>
+                  <input
+                    aria-label="勝利条件を達成"
+                    checked={victoryDone}
+                    className="check victoryCheck"
+                    disabled={!victoryText}
+                    onChange={toggleVictoryDone}
+                    type="checkbox"
+                  />
                   {victoryDone ? (
                     <span
                       className={
@@ -11433,7 +11469,13 @@ function DashboardApp() {
                   tabIndex={-1}
                 >
                   {doNowCompletionHold ? (
-                    <div className="doNowContent doNowContent--hold">
+                    <div
+                      className="doNowContent doNowContent--hold"
+                      data-project-color={resolveProjectColorId(
+                        doNowCompletionHold.projectId,
+                        doNowCompletionHold.colorId,
+                      )}
+                    >
                       <div className="doNowCopy">
                         <div className="doNowKicker">
                           <h2 id="do-now-title">今やる一手</h2>
@@ -11737,7 +11779,7 @@ function DashboardApp() {
                       今日やると決めたもの。タイマーから開始します。
                     </span>
                   </div>
-                  {todayOpen && (
+                  <SectionCollapse open={todayOpen} dragActive={dragActive}>
                     <>
                       <div className="todayGridRegion">
                         <div
@@ -11762,7 +11804,7 @@ function DashboardApp() {
                           {(projectPointerDrag?.todayGuidanceActive ||
                             inboxPointerDrag?.todayGuidanceActive) && (
                             <div aria-hidden="true" className="todayDropGuidanceOverlay">
-                              ↓ ここにドロップして「今日の3件」に追加
+                              <span className="dropHintLabel">↓ ここにドロップして「今日の3件」に追加</span>
                             </div>
                           )}
                           {config.today.items.length === 0 && (
@@ -11881,7 +11923,12 @@ function DashboardApp() {
                                   {isHereNowTodayItem && (
                                     <span
                                       aria-label="いまここ"
-                                      className="uiPill todayHereBadge"
+                                      className="uiPill uiPill--project todayHereBadge"
+                                      data-project-color={
+                                        project
+                                          ? resolveProjectColorId(project.id, project.colorId)
+                                          : undefined
+                                      }
                                       role="status"
                                     >
                                       いまここ
@@ -11928,32 +11975,34 @@ function DashboardApp() {
                                       : "todayItemCopy todayItemCopy--withoutIdentity"
                                   }
                                 >
-                                  {item.projectId && projectsById.has(item.projectId) && (
-                                    <span className="todayProjectIdentity">
-                                      <ProjectIdentity
-                                        colorId={projectsById.get(item.projectId)?.colorId}
-                                        compact
-                                        name={projectsById.get(item.projectId)?.name ?? ""}
-                                        projectId={item.projectId}
-                                      />
-                                    </span>
-                                  )}
-                                  {/* P10-05 (§4.3): the card linked to this moment's step. */}
-                                  {isRunningTodayItem && (
-                                    <span
-                                      className={
-                                        activeTimer.paused
-                                          ? "uiPill uiPill--paused runningBadge runningBadge--paused"
-                                          : "uiPill uiPill--running runningBadge runningBadge--running"
-                                      }
-                                    >
-                                      {activeTimer.paused
-                                        ? "一時停止"
-                                        : activeTimer.mode === "measure"
-                                          ? "計測中"
-                                          : "実行中"}
-                                    </span>
-                                  )}
+                                  <div className="todayItemMeta">
+                                    {item.projectId && projectsById.has(item.projectId) && (
+                                      <span className="todayProjectIdentity">
+                                        <ProjectIdentity
+                                          colorId={projectsById.get(item.projectId)?.colorId}
+                                          compact
+                                          name={projectsById.get(item.projectId)?.name ?? ""}
+                                          projectId={item.projectId}
+                                        />
+                                      </span>
+                                    )}
+                                    {/* P10-05 (§4.3): the card linked to this moment's step. */}
+                                    {isRunningTodayItem && (
+                                      <span
+                                        className={
+                                          activeTimer.paused
+                                            ? "uiPill uiPill--paused runningBadge runningBadge--paused"
+                                            : "uiPill uiPill--running runningBadge runningBadge--running"
+                                        }
+                                      >
+                                        {activeTimer.paused
+                                          ? "一時停止"
+                                          : activeTimer.mode === "measure"
+                                            ? "計測中"
+                                            : "実行中"}
+                                      </span>
+                                    )}
+                                  </div>
                                   <span
                                     className={
                                       item.done
@@ -12265,7 +12314,7 @@ function DashboardApp() {
                               .filter(Boolean)
                               .join(" ")}
                           >
-                            <span>↓ ここにドロップして今日の3件から外す</span>
+                            <span className="dropHintLabel">↓ ここにドロップして今日の3件から外す</span>
                           </div>
                         )}
                       </div>
@@ -12291,7 +12340,7 @@ function DashboardApp() {
                         </div>
                       )}
                     </>
-                  )}
+                  </SectionCollapse>
                 </section>
 
 
@@ -12389,11 +12438,13 @@ function DashboardApp() {
                           : "sourceReturnDropZone"
                       }
                     >
-                      <span aria-hidden="true">↓</span>
-                      <span>ここにドロップして次の一手を設定する</span>
+                      <span className="dropHintLabel">
+                        <span aria-hidden="true">↓</span>
+                        <span>ここにドロップして次の一手を設定する</span>
+                      </span>
                     </div>
                   )}
-                  {projectsOpen && (
+                  <SectionCollapse open={projectsOpen} dragActive={dragActive}>
                     <div
                       className={
                         config.projects.length === 0
@@ -12740,7 +12791,7 @@ function DashboardApp() {
                         </div>
                       )}
                     </div>
-                  )}
+                  </SectionCollapse>
                 </section>
 
                 <section
@@ -12863,12 +12914,14 @@ function DashboardApp() {
                           : "sourceReturnDropZone"
                       }
                     >
-                      <span aria-hidden="true">↓</span>
-                      <span>ここにドロップしてやりたいことへ戻す</span>
+                      <span className="dropHintLabel">
+                        <span aria-hidden="true">↓</span>
+                        <span>ここにドロップしてやりたいことへ戻す</span>
+                      </span>
                     </div>
                   )}
 
-                  {inboxOpen && (
+                  <SectionCollapse open={inboxOpen} dragActive={dragActive}>
                     <div className="inboxBody">
                       {config.inbox.length === 0 && (
                         <div className="sectionEmptyState">
@@ -12988,7 +13041,7 @@ function DashboardApp() {
                                 )}
                                 <span>{group.items.length}件</span>
                               </button>
-                              {!collapsed && (
+                              <SectionCollapse open={!collapsed} dragActive={dragActive}>
                                 <>
                                   <div className="inboxList">
                                     {visibleItems.map(({ item, index }) => {
@@ -13213,7 +13266,7 @@ function DashboardApp() {
                                     </nav>
                                   )}
                                 </>
-                              )}
+                              </SectionCollapse>
                             </section>
                           );
                         })}
@@ -13290,7 +13343,7 @@ function DashboardApp() {
                           ) : null;
                         })()}
                     </div>
-                  )}
+                  </SectionCollapse>
                 </section>
 
                 <section className="todayActivityBand">
@@ -13316,7 +13369,7 @@ function DashboardApp() {
                     <span className="uiPill uiPill--good todayActivityAutoBadge">自動</span>
                   </div>
 
-                  {todayActivityOpen && (
+                  <SectionCollapse open={todayActivityOpen} dragActive={dragActive}>
                     <div className="todayActivityBody">
                       {todayActivityCount > 0 ? (
                         <div className="todayActivityList">
@@ -13351,7 +13404,7 @@ function DashboardApp() {
                         <p className="quietText">今日はまだ実行記録がありません。</p>
                       )}
                     </div>
-                  )}
+                  </SectionCollapse>
                 </section>
               </>
             )}
