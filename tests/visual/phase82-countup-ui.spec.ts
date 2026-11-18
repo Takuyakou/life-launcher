@@ -47,8 +47,8 @@ test("P82-03 Measure ticks, pauses, resumes, records and emits elapsed mini stat
   await measure.click();
   const dock = page.locator(".timerDock");
   await expect(dock.locator(".timerClock")).toHaveText("00:00");
-  // P10-07: the dock keeps the (empty) progress groove in every state, measure mode too.
-  await expect(dock.locator(".timerProgress")).toHaveCount(1);
+  // G7: measure mode has no progress line in the dock.
+  await expect(dock.locator(".timerProgress")).toHaveCount(0);
   await expect(page.locator(".doNowContent .runningBadge")).toHaveText("計測中");
 
   await page.clock.fastForward(65_000);

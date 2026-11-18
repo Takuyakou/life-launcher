@@ -19,8 +19,6 @@ type TimerPanelProps = {
   onPause: () => void;
   onFinish: () => void;
   onExpand?: () => void;
-  /** P10-07: the idle row above the action text ("今日 N分・N回"). */
-  todaySummary?: string;
   /** P10-07: idle only — the mini-window button in the expand slot. */
   onMini?: () => void;
   miniDisabled?: boolean;
@@ -80,7 +78,6 @@ export function TimerPanel({
   onPause,
   onFinish,
   onExpand,
-  todaySummary,
   onMini,
   miniDisabled = false,
   expandButtonRef,
@@ -292,13 +289,7 @@ export function TimerPanel({
             )}
           </>
         )}
-        {todaySummary ? (
-          <span aria-label={todaySummary.replace("・", "、")} className="timerTodaySummary">
-            {todaySummary}
-          </span>
-        ) : (
-          identity
-        )}
+        {identity}
         {!idleMini && (actionText ?? (identity ? undefined : label)) !== undefined && (
           <strong className="timerActionText" title={actionText ?? label}>
             {actionText ?? label}
@@ -334,7 +325,7 @@ export function TimerPanel({
           )}
         </div>
       )}
-      {!idleMini && variant === "sidebar" && (
+      {!idleMini && variant === "sidebar" && progressPercent !== null && (
         <div className="timerProgress" aria-hidden="true">
           <span style={{ width: `${progressPercent ?? 0}%` }} />
         </div>

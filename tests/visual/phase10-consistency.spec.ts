@@ -203,13 +203,12 @@ test("P10-14e 6 the sidebar and search letter icons share the 22px uiLetterIcon"
   expect(await searchIcon.evaluate((node) => getComputedStyle(node).fontWeight)).toBe("700");
 });
 
-test("P10-14e 7 the remove button is 28x28 icon-only below the per-size threshold", async ({
+test("P10-14e 7 / G3 every size shows the 外す label with room beside the timer", async ({
   page,
 }) => {
   await prepare(page);
   const sizes = ["standard", "large", "xlarge"] as const;
-  const thresholds = { standard: 359, large: 369, xlarge: 379 } as const;
-  const widths = [860, 960, 1080, 1280, 1440] as const;
+  const widths = [1920, 1440, 1280, 960, 860] as const;
 
   for (const width of widths) {
     await page.setViewportSize({ width, height: 680 });
@@ -222,25 +221,17 @@ test("P10-14e 7 the remove button is 28x28 icon-only below the per-size threshol
       for (let index = 0; index < cardCount; index += 1) {
         const card = cards.nth(index);
         const cardBox = (await card.boundingBox())!;
-        const contentWidth = await card.evaluate((node) => {
-          const style = getComputedStyle(node);
-          return (
-            node.clientWidth -
-            Number.parseFloat(style.paddingLeft) -
-            Number.parseFloat(style.paddingRight)
-          );
-        });
         const button = card.getByRole("button", { name: "今日の3件から外す" });
         const buttonBox = (await button.boundingBox())!;
         const label = button.locator(".todayRemoveLabel");
-        const labelVisible = await label.isVisible();
-        if (contentWidth <= thresholds[size]) {
-          expect(labelVisible, `${width}/${size} label hidden at ${contentWidth}`).toBe(false);
-          expect(Math.round(buttonBox.width), `${width}/${size} width`).toBe(28);
-          expect(Math.round(buttonBox.height), `${width}/${size} height`).toBe(28);
-        } else {
-          expect(labelVisible, `${width}/${size} label shown at ${contentWidth}`).toBe(true);
-        }
+        await expect(label, `${width}/${size} label`).toBeVisible();
+        await expect(label).toHaveText("外す");
+        expect((await label.boundingBox())!.width).toBeGreaterThan(0);
+        const timerBox = (await card.locator(".todayTimerCluster").boundingBox())!;
+        expect(
+          timerBox.x - (buttonBox.x + buttonBox.width),
+          `${width}/${size} gap`,
+        ).toBeGreaterThanOrEqual(4);
         expect(buttonBox.x + buttonBox.width).toBeLessThanOrEqual(cardBox.x + cardBox.width + 1);
         expect(buttonBox.y + buttonBox.height).toBeLessThanOrEqual(cardBox.y + cardBox.height + 1);
         await expect(button).toHaveAttribute("title");

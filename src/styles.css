@@ -2985,11 +2985,15 @@ h3 {
   width: 100%;
   height: 100%;
   min-height: 0;
-  padding: clamp(12px, 3vh, 32px) clamp(16px, 4vw, 64px);
+  padding: 0 0 clamp(12px, 3vh, 32px);
   color: var(--text);
 }
 
 .expandedTimerHeader {
+  min-height: 44px;
+  padding: 0 16px;
+  border-bottom: 1px solid #353126;
+  background: #1b1a17;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3041,6 +3045,7 @@ h3 {
   justify-content: center;
   min-width: 0;
   min-height: 0;
+  padding-inline: clamp(16px, 4vw, 64px);
   gap: clamp(6px, 2vh, 20px);
   text-align: center;
 }
@@ -3119,6 +3124,7 @@ h3 {
 
 .expandedTimerHint {
   margin: 0;
+  padding-inline: clamp(16px, 4vw, 64px);
   color: var(--muted);
   font-size: 12px;
   text-align: center;
@@ -5135,6 +5141,20 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .projectNextStepPlaceholder {
   color: var(--muted) !important;
+}
+
+.projectNextStepPlaceholder--action {
+  cursor: pointer;
+  transition:
+    border-color 130ms ease,
+    background-color 130ms ease,
+    color 130ms ease;
+}
+
+.projectNextStepPlaceholder--action:hover {
+  border-color: rgba(231, 185, 77, 0.6);
+  background-color: rgba(231, 185, 77, 0.06);
+  color: var(--accent-strong) !important;
 }
 
 .projectNextStepTrigger {
@@ -8720,7 +8740,6 @@ body:has([aria-modal="true"]) .toastStack {
 }
 
 .todayRow {
-  container: today-card / inline-size;
   min-height: 154px;
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr);
@@ -9023,69 +9042,6 @@ body:has([aria-modal="true"]) .toastStack {
   }
 
   .todayRow .todayRemoveButton .uiIcon {
-    width: 14px;
-    height: 14px;
-  }
-}
-
-@container today-card (max-width: 359px) {
-  .mainScrollContent[data-main-display-size="standard"] .todayRow .todayRemoveLabel,
-  .mainScrollContent:not([data-main-display-size]) .todayRow .todayRemoveLabel {
-    display: none;
-  }
-
-  .mainScrollContent[data-main-display-size="standard"] .todayRow .todayRemoveButton,
-  .mainScrollContent:not([data-main-display-size]) .todayRow .todayRemoveButton {
-    width: 28px;
-    min-width: 28px;
-    height: 28px;
-    min-height: 28px;
-    justify-content: center;
-    padding: 0;
-  }
-
-  .mainScrollContent[data-main-display-size="standard"] .todayRow .todayRemoveButton .uiIcon,
-  .mainScrollContent:not([data-main-display-size]) .todayRow .todayRemoveButton .uiIcon {
-    width: 14px;
-    height: 14px;
-  }
-}
-
-@container today-card (max-width: 369px) {
-  .mainScrollContent[data-main-display-size="large"] .todayRow .todayRemoveLabel {
-    display: none;
-  }
-
-  .mainScrollContent[data-main-display-size="large"] .todayRow .todayRemoveButton {
-    width: 28px;
-    min-width: 28px;
-    height: 28px;
-    min-height: 28px;
-    justify-content: center;
-    padding: 0;
-  }
-
-  .mainScrollContent[data-main-display-size="large"] .todayRow .todayRemoveButton .uiIcon {
-    width: 14px;
-    height: 14px;
-  }
-}
-
-@container today-card (max-width: 379px) {
-  .mainScrollContent[data-main-display-size="xlarge"] .todayRow .todayRemoveLabel {
-    display: none;
-  }
-
-  .mainScrollContent[data-main-display-size="xlarge"] .todayRow .todayRemoveButton {
-    width: 28px;
-    min-width: 28px;
-    height: 28px;
-    min-height: 28px;
-    justify-content: center;
-    padding: 0;
-  }
-
-  .mainScrollContent[data-main-display-size="xlarge"] .todayRow .todayRemoveButton .uiIcon {
     width: 14px;
     height: 14px;
   }
@@ -13114,10 +13070,6 @@ button.mainActionButton:is(
 
 /* 拡大タイマーの閉じるボタンも同じく窓のボタンの帯より左へ。
    今の右余白(16〜64px の段階)を下限にする。 */
-.expandedTimerHeader {
-  padding-right: max(clamp(16px, 4vw, 64px), calc(50% - 50vw + 143px));
-}
-
 @media (prefers-reduced-motion: reduce) {
   .windowControlsButtons,
   .windowControlButton {
@@ -13384,57 +13336,9 @@ button.mainActionButton:is(
   border: 0;
 }
 
-/* P10-07: the four timer states share one row grid, so the dock keeps one height. */
-.timerDock {
-  grid-auto-rows: min-content;
-}
-
+/* P10-07: the sidebar meta row keeps its height. */
 .timerDock .timerMetaTop {
   min-height: 26px;
-}
-
-.timerTodaySummary {
-  display: inline-flex;
-  min-height: 18px;
-  align-items: center;
-  gap: 5px;
-  color: var(--muted-strong, #b8b0a0);
-  font-size: 12px;
-  line-height: 1.3;
-}
-
-.timerDock .timerActionText {
-  min-height: 18px;
-}
-
-.timerDock .timerStateRow {
-  min-height: 22px;
-}
-
-.timerDock .timerProgress {
-  margin-top: 0;
-}
-
-/* The bottom row (controls or - / input / +) is always 34px tall. */
-.timerDock .timerControls,
-.timerDock .timerPresetRow {
-  min-height: 34px;
-  align-items: center;
-}
-
-.timerDock .timerControls .secondaryButton {
-  height: 34px;
-}
-
-.timerDock .timerPresetButton,
-.timerDock .timerPresetButton:hover {
-  width: 32px;
-  height: 34px;
-}
-
-.timerDock .timerPresetInputWrap {
-  height: 34px;
-  align-items: center;
 }
 
 /* P10-07 (D37): rolling digits in the idle clock. */
@@ -13758,6 +13662,7 @@ button.mainActionButton:is(
 
 /* P10-08 (§7.2): the expanded timer header keeps the badge left and the buttons right. */
 .expandedTimerHeaderActions {
+  margin-right: 128px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -13780,12 +13685,17 @@ button.mainActionButton:is(
 
 @media (max-height: 520px), (max-width: 560px) {
   .expandedTimer {
-    padding: 12px 14px;
+    padding: 0 0 12px;
     gap: 8px;
   }
 
   .expandedTimerClock {
     font-size: clamp(40px, 12vw, 64px);
+  }
+
+  .expandedTimerBody,
+  .expandedTimerHint {
+    padding-inline: 14px;
   }
 
   .expandedTimerHeaderActions {
@@ -14602,7 +14512,7 @@ button.mainActionButton:is(
   margin: 0;
   border: 1px solid rgba(231, 185, 77, 0.5);
   border-radius: 10px;
-  padding: 6px 14px;
+  padding: 6px 12px;
   background: rgba(231, 185, 77, 0.06);
 }
 
@@ -14628,14 +14538,12 @@ button.mainActionButton:is(
 }
 
 .mainHeaderRow .victoryBar .victoryIcon {
-  order: 0;
   display: inline-flex;
   align-items: center;
   color: var(--accent-strong);
 }
 
 .mainHeaderRow .victoryLabel {
-  order: 1;
   color: var(--accent-strong);
   font-size: 11px;
   font-weight: 700;
@@ -14643,8 +14551,7 @@ button.mainActionButton:is(
 }
 
 .mainHeaderRow .victoryContent {
-  order: 2;
-  flex: 1 1 120px;
+  flex: 1 1 auto;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -14676,9 +14583,10 @@ button.mainActionButton:is(
 }
 
 .mainHeaderRow .victoryCheck {
+  flex: 0 0 auto;
   width: 20px;
   height: 20px;
-  margin-left: auto;
+  margin-left: 0;
 }
 
 .mainHeaderRow .victoryInput {
@@ -14698,7 +14606,8 @@ button.mainActionButton:is(
 }
 
 .mainHeaderRow .victoryBadge {
-  order: 4;
+  flex: 0 0 auto;
+  margin-left: 0;
   font-size: 12px;
 }
 
@@ -15082,14 +14991,6 @@ button.mainActionButton:is(
   align-items: center;
   min-width: 0;
   gap: 10px;
-}
-
-.expandedTimerLogo {
-  display: block;
-  width: 22px;
-  height: 22px;
-  flex: 0 0 auto;
-  border-radius: 6px;
 }
 
 .expandedTimerBrandName {
@@ -15977,19 +15878,19 @@ button.mainActionButton:is(
 }
 
 .topBrandIcon {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  border-radius: 6px;
+  border-radius: 7px;
   background: #2b2922;
   color: #ffce5b;
 }
 
 .topBrandIcon img {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   display: block;
 }
 
@@ -16580,6 +16481,11 @@ button.mainActionButton:is(
 .topBar .viewToggleButton:focus-visible:not(.viewToggleButton--active) .uiIcon,
 .topBar .topSearchButton:hover .uiIcon,
 .topBar .topSearchButton:focus-visible .uiIcon {
+  color: var(--accent-strong);
+}
+
+.topBar .viewToggleButton:hover:not(:disabled):not(.viewToggleButton--active) .viewToggleButtonLabel,
+.topBar .viewToggleButton:focus-visible:not(.viewToggleButton--active) .viewToggleButtonLabel {
   color: var(--accent-strong);
 }
 

@@ -89,13 +89,9 @@ export function ExpandedTimerOverlay({
             header container reverses the row so 戻る sits left of ミニ on screen. */}
         <header className="expandedTimerHeader">
           <div className="expandedTimerBrand">
-            <img
-              alt=""
-              aria-hidden="true"
-              className="expandedTimerLogo"
-              draggable={false}
-              src="/life-launcher-icon.svg"
-            />
+            <span className="topBrandIcon" aria-hidden="true">
+              <img alt="" draggable={false} src="/life-launcher-icon.svg" />
+            </span>
             <span className="expandedTimerBrandName">Life Launcher</span>
             <span
               className={

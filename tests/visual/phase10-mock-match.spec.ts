@@ -198,6 +198,38 @@ test("P10-14e 1 the play icon sits left of the label on both start buttons", asy
   }
 });
 
+test("G5/G6 the expanded timer header matches the main top bar and logo", async ({ page }) => {
+  await prepare(page, { width: 1440, height: 900 });
+  const mainLogo = (await page.locator(".topBar .topBrandIcon").boundingBox())!;
+  expect(Math.round(mainLogo.width)).toBe(26);
+  expect(Math.round(mainLogo.height)).toBe(26);
+  expect(Math.round((await page.locator(".topBar .topBrandIcon img").boundingBox())!.width)).toBe(20);
+
+  await page.locator(".doNowStartPrimary").click();
+  await page.getByRole("button", { name: "タイマーを大きく表示" }).click();
+  const overlay = page.getByRole("dialog", { name: "拡大タイマー" });
+  await expect(overlay).toBeVisible();
+  const header = (await overlay.locator(".expandedTimerHeader").boundingBox())!;
+  expect(Math.round(header.x)).toBe(0);
+  expect(Math.round(header.y)).toBe(0);
+  expect(Math.round(header.width)).toBe(1440);
+  expect(Math.round(header.height)).toBe(44);
+  const logo = (await overlay.locator(".topBrandIcon").boundingBox())!;
+  expect(Math.round(logo.x - mainLogo.x)).toBe(0);
+  expect(Math.round(logo.y - mainLogo.y)).toBe(0);
+  expect(Math.round(logo.width)).toBe(26);
+  expect(Math.round(logo.height)).toBe(26);
+
+  const windowButton = (await page.locator(".windowControlsButtons .windowControlButton").first().boundingBox())!;
+  const windowCenter = windowButton.y + windowButton.height / 2;
+  for (const selector of [".expandedTimerClose", ".expandedTimerMiniButton"]) {
+    const control = overlay.locator(selector);
+    if ((await control.count()) === 0) continue;
+    const box = (await control.boundingBox())!;
+    expect(Math.abs(box.y + box.height / 2 - windowCenter)).toBeLessThanOrEqual(1);
+  }
+});
+
 test("P10-14e 2 the mini window is 340x120, two rows, with the Project colour on the left", async ({
   page,
 }) => {

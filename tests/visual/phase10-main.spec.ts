@@ -235,6 +235,42 @@ test("F14 Tab moves from the victory text to the check", async ({ page }) => {
   ).toBe(true);
 });
 
+test("G1 the victory check stays at the right edge without the badge", async ({ page }) => {
+  await open(page, createFullTodayFixture());
+  const bar = page.locator(".victoryBar");
+  const content = page.locator(".victoryContent");
+  const check = page.locator(".victoryCheck");
+  const barBox = (await bar.boundingBox())!;
+  const contentBox = (await content.boundingBox())!;
+  const checkBox = (await check.boundingBox())!;
+  expect(checkBox.x).toBeGreaterThan(contentBox.x + contentBox.width);
+  expect(barBox.x + barBox.width - (checkBox.x + checkBox.width)).toBeLessThanOrEqual(16);
+  await expect(page.locator(".victoryBadge")).toHaveCount(0);
+});
+
+test("G1 the achieved badge sits between the text and the check", async ({ page }) => {
+  const fixture = createFullTodayFixture();
+  fixture.config.today.victory.done = true;
+  await open(page, fixture);
+  const bar = page.locator(".victoryBar");
+  const content = page.locator(".victoryContent");
+  const badge = page.locator(".victoryBadge");
+  const check = page.locator(".victoryCheck");
+  const barBox = (await bar.boundingBox())!;
+  const contentBox = (await content.boundingBox())!;
+  const badgeBox = (await badge.boundingBox())!;
+  const checkBox = (await check.boundingBox())!;
+  expect(contentBox.x).toBeLessThan(badgeBox.x);
+  expect(badgeBox.x).toBeLessThan(checkBox.x);
+  expect(checkBox.x - (badgeBox.x + badgeBox.width)).toBeGreaterThanOrEqual(11);
+  expect(checkBox.x - (badgeBox.x + badgeBox.width)).toBeLessThanOrEqual(13);
+  expect(barBox.x + barBox.width - (checkBox.x + checkBox.width)).toBeLessThanOrEqual(16);
+  const text = page.locator(".victoryTextButton");
+  await text.focus();
+  await page.keyboard.press("Tab");
+  await expect(check).toBeFocused();
+});
+
 test("P10-05 the freshness notice follows the 14 day rule and the clock", async ({ page }) => {
   const fixture = createFullTodayFixture();
     const lockedIds = new Set(
@@ -316,4 +352,54 @@ test("P10-14 Next Step rows are one horizontal line and grow with the text", asy
     return text ? text.scrollHeight > text.clientHeight + 1 : false;
   });
   expect(clipped).toBe(false);
+});
+
+test("G10 the rightmost visible action ends at the same x in every Next Step row", async ({
+  page,
+}) => {
+  await open(page, createFullTodayFixture());
+  const rows = page.locator(".projectGrid .nextStepCard");
+  const count = await rows.count();
+  expect(count).toBeGreaterThanOrEqual(3);
+  const rightEdges: number[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const buttons = await rows
+      .nth(index)
+      .locator(".nextStepCardActions button, .nextStepRowAction--set, .nextStepTodayStatus")
+      .evaluateAll((nodes) =>
+      nodes
+        .map((node) => ({
+          right: node.getBoundingClientRect().right,
+          opacity: Number(getComputedStyle(node).opacity),
+          display: getComputedStyle(node).display,
+        }))
+        .filter((item) => item.display !== "none" && item.opacity > 0.3),
+    );
+    expect(buttons.length, `row ${index}`).toBeGreaterThan(0);
+    rightEdges.push(Math.max(...buttons.map((item) => item.right)));
+  }
+  expect(Math.max(...rightEdges) - Math.min(...rightEdges)).toBeLessThanOrEqual(1);
+
+  const row = rows.filter({ has: page.locator(".nextStepTodayAdd") }).first();
+  const add = row.locator(".nextStepTodayAdd");
+  const before = (await add.boundingBox())!;
+  await row.hover();
+  await page.waitForTimeout(160);
+  const after = (await add.boundingBox())!;
+  expect(Math.abs(after.x - before.x)).toBeLessThanOrEqual(1);
+});
+
+test("G8 the empty Next Step text opens the same editor", async ({ page }) => {
+  const fixture = createFullTodayFixture();
+  const project = fixture.config.projects[0];
+  fixture.config.projects = fixture.config.projects.map((item) =>
+    item.id === project.id ? { ...item, nextStep: undefined } : item,
+  );
+  await open(page, fixture);
+  const row = page.locator(".projectGrid .nextStepCard").filter({ hasText: project.name }).first();
+  const placeholder = row.locator(".projectNextStepPlaceholder--action");
+  await expect(placeholder).toBeVisible();
+  await expect(placeholder).toHaveCSS("cursor", "pointer");
+  await placeholder.click();
+  await expect(page.getByRole("dialog", { name: "次の一手を設定" })).toBeVisible();
 });

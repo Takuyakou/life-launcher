@@ -82,8 +82,8 @@ test("Today card shows its effective instruction action above remove and opens t
   await expect(instruction).toBeVisible();
   await expect(page.locator(".todayInstructionButton")).toHaveCount(1);
   await expect(card.locator(".todayCardSecondaryActions > button")).toHaveText([
-    "手順書",
-    "今日の3件から外す",
+    /手順書/,
+    "外す",
   ]);
   const instructionBox = await instruction.boundingBox();
   const removeBox = await card.locator(".todayRemoveButton").boundingBox();

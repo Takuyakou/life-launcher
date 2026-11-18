@@ -78,7 +78,7 @@ const BORDERLESS_BUTTONS: Array<{ name: string; selector: string; minWidth: numb
   { name: "Do Now other step", selector: ".doNowAlternateButton", minWidth: 76.2, minHeight: 26 },
   { name: "Do Now instruction", selector: ".doNowContent .doNowOpenChip--button", minWidth: 76, minHeight: 26 },
   { name: "Today instruction", selector: ".todayRow .todayInstructionButton", minWidth: 70, minHeight: 34 },
-  { name: "Today remove", selector: ".todayRow .todayRemoveButton", minWidth: 101.1, minHeight: 34 },
+  { name: "Today remove", selector: ".todayRow .todayRemoveButton", minWidth: 50.5, minHeight: 34 },
 ];
 
 test("P9-07 frames that carry no role are gone", async ({ page }) => {

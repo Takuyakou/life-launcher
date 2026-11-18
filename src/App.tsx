@@ -9797,7 +9797,6 @@ function DashboardApp() {
   const headerDateMain = headerDateParts[0] ?? headerDateLabel;
   const headerDateWeekday = headerDateParts.slice(1).join(" ");
 
-  const displayedTodayMinutes = topMenuMinutes;
   const todayActivityCount =
     todayActivityDate === displayedDayKey ? todayActivityEntries.length : 0;
   const shortcutConflicts = settingsDraft
@@ -10532,15 +10531,15 @@ function DashboardApp() {
         </div>
         <button
           aria-keyshortcuts="Control+F"
-          aria-label="検索"
+          aria-label="一手・ボタン・手順書を検索(Ctrl+F)"
           className="topSearchButton"
           data-top-search=""
           onClick={() => openSearchPalette()}
-          title="検索"
+          title="一手・ボタン・手順書を検索(Ctrl+F)"
           type="button"
         >
           <UiIcon name="search" size={18} />
-          <span className="topSearchLabel">一手・ボタン・手順書を検索</span>
+          <span className="topSearchLabel">検索</span>
           <ShortcutBadge label="検索" registered shortcut="Ctrl+F" tone="muted" />
         </button>
 
@@ -10912,11 +10911,6 @@ function DashboardApp() {
           variant="sidebar"
           onMini={() => void toggleMiniMode()}
           miniDisabled={!config.settings.miniMode || miniTransitioning}
-          todaySummary={
-            activeTimer
-              ? undefined
-              : `今日 ${displayedTodayMinutes}分・${todayActivityCount}回`
-          }
           waitingContent={
             <div className="timerPresetControls" aria-label="通常タイマーの分数">
               <div className="timerPresetRow">
@@ -11439,14 +11433,6 @@ function DashboardApp() {
                       </div>
                     )}
                   </div>
-                  <input
-                    aria-label="勝利条件を達成"
-                    checked={victoryDone}
-                    className="check victoryCheck"
-                    disabled={!victoryText}
-                    onChange={toggleVictoryDone}
-                    type="checkbox"
-                  />
                   {victoryDone ? (
                     <span
                       className={
@@ -11459,6 +11445,14 @@ function DashboardApp() {
                       ✓ 今日の勝利、達成
                     </span>
                   ) : null}
+                  <input
+                    aria-label="勝利条件を達成"
+                    checked={victoryDone}
+                    className="check victoryCheck"
+                    disabled={!victoryText}
+                    onChange={toggleVictoryDone}
+                    type="checkbox"
+                  />
                 </section>
                 </div>
 
@@ -12054,7 +12048,7 @@ function DashboardApp() {
                                       type="button"
                                     >
                                       <UiIcon name="back" size={16} />
-                                      <span className="todayRemoveLabel">今日の3件から外す</span>
+                                      <span className="todayRemoveLabel">外す</span>
                                     </button>
                                   </div>
                                   <div className="todayTimerCluster">
@@ -12471,6 +12465,8 @@ function DashboardApp() {
                       <div className="projectGrid">
                         {visibleProjects.map((project) => {
                           const projectSourceKey = `project:${project.id}`;
+                          const placeholderActionable =
+                            !project.nextStep?.text.trim() && !sourceEditBlocked(projectSourceKey);
                           const sourceLocked = Boolean(
                             project.nextStep &&
                             sourceLockedByUnfinishedToday(config, projectSourceKey),
@@ -12588,7 +12584,22 @@ function DashboardApp() {
                                     className={
                                       project.nextStep?.text.trim()
                                         ? ""
-                                        : "projectNextStepPlaceholder"
+                                        : placeholderActionable
+                                          ? "projectNextStepPlaceholder projectNextStepPlaceholder--action"
+                                          : "projectNextStepPlaceholder"
+                                    }
+                                    onClick={
+                                      placeholderActionable
+                                        ? (event) => {
+                                            event.stopPropagation();
+                                            openNextStepEditor(project);
+                                          }
+                                        : undefined
+                                    }
+                                    onPointerDown={
+                                      placeholderActionable
+                                        ? (event) => event.stopPropagation()
+                                        : undefined
                                     }
                                     title={
                                       project.nextStep?.text.trim() || "まだ次の一手がありません"
@@ -12646,6 +12657,19 @@ function DashboardApp() {
                                     !sourceLocked && (
                                       <div className="nextStepCardActions">
                                         <button
+                                          className="uiSmallButton nextStepRowAction nextStepRowAction--change mainActionButton mainActionButton--neutral"
+                                          disabled={sourceEditBlocked(projectSourceKey)}
+                                          onClick={(event) => {
+                                            event.stopPropagation();
+                                            openNextStepEditor(project);
+                                          }}
+                                          onPointerDown={(event) => event.stopPropagation()}
+                                          title={sourceEditBlockReason(projectSourceKey) ?? undefined}
+                                          type="button"
+                                        >
+                                          編集
+                                        </button>
+                                        <button
                                           className="nextStepTodayAdd mainActionButton mainActionButton--neutral"
                                           disabled={
                                             !todayCandidate ||
@@ -12668,19 +12692,6 @@ function DashboardApp() {
                                           type="button"
                                         >
                                           ＋ 今日へ
-                                        </button>
-                                        <button
-                                          className="uiSmallButton nextStepRowAction nextStepRowAction--change mainActionButton mainActionButton--neutral"
-                                          disabled={sourceEditBlocked(projectSourceKey)}
-                                          onClick={(event) => {
-                                            event.stopPropagation();
-                                            openNextStepEditor(project);
-                                          }}
-                                          onPointerDown={(event) => event.stopPropagation()}
-                                          title={sourceEditBlockReason(projectSourceKey) ?? undefined}
-                                          type="button"
-                                        >
-                                          編集
                                         </button>
                                       </div>
                                     )

@@ -59,57 +59,32 @@ async function measure(page: Page) {
   });
 }
 
-/** Reaches one of the four dock states on a fresh page. */
-async function openState(
-  page: Page,
-  state: "waiting" | "running" | "paused" | "complete",
-  size: "standard" | "large" | "xlarge" = "standard",
-) {
-  await open(page);
-  await setDisplaySize(page, size);
-  if (state !== "waiting") {
-    await startTimer(page);
-  }
-  if (state === "paused") {
-    await dock(page).getByRole("button", { name: "一時停止" }).click();
-    await expect(dock(page).locator(".timerClock--paused")).toBeVisible();
-  } else if (state === "complete") {
-    await page.clock.fastForward(180_000);
-    await page.locator(".todayRow").first().getByRole("button", { name: "終了", exact: true }).click();
-    await expect(page.getByRole("dialog").first()).toBeVisible();
-  }
-}
-
-const STATES = ["waiting", "running", "paused", "complete"] as const;
-
 for (const size of ["standard", "large", "xlarge"] as const) {
-  test(`P10-07 the four timer states share one dock height (${size})`, async ({ page }) => {
-    const heights: number[] = [];
-    for (const state of STATES) {
-      await openState(page, state, size);
-      heights.push((await measure(page)).height);
-    }
-    expect(heights).toHaveLength(4);
-    expect(Math.max(...heights) - Math.min(...heights)).toBeLessThanOrEqual(1);
+  test(`G7 the idle dock is back to its short Phase 10 shape (${size})`, async ({ page }) => {
+    await open(page);
+    await setDisplaySize(page, size);
+    const sample = await measure(page);
+    expect(Math.abs(sample.height - 192)).toBeLessThanOrEqual(2);
+    await expect(dock(page).locator(".timerTodaySummary")).toHaveCount(0);
+    await expect(dock(page).locator(".timerProgress")).toHaveCount(0);
+    const presetButton = (await dock(page).locator(".timerPresetButton").first().boundingBox())!;
+    expect(Math.round(presetButton.width)).toBe(32);
+    expect(Math.round(presetButton.height)).toBe(32);
+    const input = (await dock(page).locator(".timerPresetInputWrap").boundingBox())!;
+    expect(Math.round(input.height)).toBe(32);
   });
 }
 
-test("P10-07 the clock and the bottom row sit at the same place in every state", async ({
-  page,
-}) => {
-  const samples: Awaited<ReturnType<typeof measure>>[] = [];
-  for (const state of STATES) {
-    await openState(page, state);
-    samples.push(await measure(page));
-  }
-  const clockTops = samples.map((sample) => sample.clockTop);
-  const footerTops = samples.map((sample) => sample.footerTop);
-  expect(Math.max(...clockTops) - Math.min(...clockTops)).toBeLessThanOrEqual(1);
-  expect(Math.max(...footerTops) - Math.min(...footerTops)).toBeLessThanOrEqual(1);
-  for (const sample of samples) {
-    expect(sample.footerHeight).toBeGreaterThanOrEqual(33.5);
-  }
+test("G7 a running dock keeps its progress line and 34px controls", async ({ page }) => {
+  await open(page);
+  await startTimer(page);
+  await expect(dock(page).locator(".timerProgress")).toHaveCount(1);
+  const controls = (await dock(page).locator(".timerControls").boundingBox())!;
+  expect(Math.round(controls.height)).toBeGreaterThanOrEqual(34);
+  const paused = dock(page).getByRole("button", { name: "一時停止" });
+  expect(Math.round((await paused.boundingBox())!.height)).toBe(34);
 });
+
 test("P10-07 the idle dock has the mini button; the other states keep the expand button", async ({
   page,
 }) => {
@@ -141,21 +116,6 @@ test("P10-07 the idle dock has the mini button; the other states keep the expand
   await startTimer(page);
   await expect(dock(page).getByRole("button", { name: "ミニタイマーにする" })).toHaveCount(0);
   await expect(dock(page).getByRole("button", { name: "タイマーを大きく表示" })).toBeVisible();
-});
-
-test("P10-07 the idle dock shows today's minutes and runs", async ({ page }) => {
-  const fixture = createFullTodayFixture();
-  await open(page, fixture);
-  const summary = dock(page).locator(".timerTodaySummary");
-  await expect(summary).toBeVisible();
-  await expect(summary).toContainText(/^今日 \d+分・\d+回$/);
-  await expect(summary).toHaveAttribute("aria-label", /^今日 \d+分、\d+回$/);
-  const todayKey = fixture.config.today.date;
-  const expectedRuns = (fixture.sessionEntries?.entries ?? []).filter(
-    (entry) => entry.date === todayKey,
-  ).length;
-  const text = (await summary.textContent()) ?? "";
-  expect(text).toContain(`・${expectedRuns}回`);
 });
 
 test("P10-07 the main top title is the date now", async ({ page }) => {

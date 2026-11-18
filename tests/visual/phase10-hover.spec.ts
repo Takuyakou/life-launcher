@@ -11,13 +11,6 @@ async function prepare(page: Page, fixture = createPublicFixture()) {
   await page.mouse.move(1, 1);
 }
 
-async function css(page: Page, selector: string, property: string) {
-  return page
-    .locator(selector)
-    .first()
-    .evaluate((node, name) => getComputedStyle(node).getPropertyValue(name), property);
-}
-
 test("F1 the Do Now box keeps its Project border and lifts on hover", async ({ page }) => {
   await prepare(page);
   const box = page.locator(".doNowContent--active");
@@ -113,7 +106,34 @@ test("F1 the dictionary and the top-bar buttons turn yellow on hover", async ({ 
       "rgb(43, 41, 34)",
     );
     expect(await icon.evaluate((node) => getComputedStyle(node).color)).toBe("rgb(255, 206, 91)");
+    const label = button.locator(".viewToggleButtonLabel");
+    if ((await label.count()) > 0) {
+      expect(await label.evaluate((node) => getComputedStyle(node).color)).toBe(
+        "rgb(255, 206, 91)",
+      );
+    }
   }
+});
+
+test("G9 the top search reads 検索 and keeps its full name for assistive tech", async ({ page }) => {
+  await prepare(page);
+  const button = page.locator(".topSearchButton");
+  await expect(button).toHaveAccessibleName("一手・ボタン・手順書を検索(Ctrl+F)");
+  await expect(button).toHaveAttribute("title", "一手・ボタン・手順書を検索(Ctrl+F)");
+  await expect(button.locator(".topSearchLabel")).toHaveText("検索");
+  await button.click();
+  await expect(page.locator(".searchPaletteInput")).toBeVisible();
+});
+
+test("G6 the top app mark is a 26px box with a 20px icon", async ({ page }) => {
+  await prepare(page);
+  const box = page.locator(".topBrandIcon");
+  const icon = box.locator("img");
+  expect(Math.round((await box.boundingBox())!.width)).toBe(26);
+  expect(Math.round((await box.boundingBox())!.height)).toBe(26);
+  expect(Math.round((await icon.boundingBox())!.width)).toBe(20);
+  expect(Math.round((await icon.boundingBox())!.height)).toBe(20);
+  expect(await box.evaluate((node) => getComputedStyle(node).borderRadius)).toBe("7px");
 });
 
 test("F3 the dictionary icon is a 28px yellow 16px glyph with a 13px label", async ({ page }) => {
