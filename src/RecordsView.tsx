@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { springSnappy } from "./motion";
 import { ProjectIdentity } from "./components/ProjectIdentity";
 import { UiIcon } from "./components/UiIcon";
+import { WeeklyPlanning } from "./components/WeeklyPlanning";
 import type {
   AppConfig,
   LauncherProject,
@@ -10,23 +11,18 @@ import type {
   SessionEntryRow,
   SessionEntriesResponse,
   SessionSummaryResponse,
-  WeeklyReviewProjectSummary,
   WeeklyReviewResponse,
 } from "./types";
 
 type RecordsTab = "review" | "planning" | "all";
 type RecordsDateScope = "today" | "week" | "all";
-type WeeklyReviewDisplayProject = {
-  summary: WeeklyReviewProjectSummary;
-  project?: LauncherProject;
-};
 
 type RecordsViewProps = {
   config: AppConfig;
   sessionSummary: SessionSummaryResponse | null;
   weeklyReview: WeeklyReviewResponse | null;
-  weeklyReviewProjects: WeeklyReviewDisplayProject[];
   staleNextStepProjects: LauncherProject[];
+  staleNextStepDays: Map<string, number>;
   filteredSessions: SessionEntriesResponse | null;
   weekSessions: SessionEntryRow[];
   allSessions: SessionEntryRow[];
@@ -40,9 +36,11 @@ type RecordsViewProps = {
   onWeeklyFocusChange: (projectId: string, checked: boolean) => void;
   /** P10-05: "書き直す" opens the Next Step editor, not the Project editor. */
   onRewriteNextStep: (project: LauncherProject) => void;
-  onTryShort: (project: LauncherProject) => void;
   onMarkReviewed: (projectId: string) => void;
   reviewingProjectId?: string | null;
+  onOpenImport: () => void;
+  onDone: () => void;
+  onCopyError: () => void;
   onAddSession: () => void;
   onOpenSessionMenu: (session: SessionEntryRow, x: number, y: number, opener: HTMLElement) => void;
   onHistoryNoteChange: (date: string, index: number, value: string) => void;
@@ -77,8 +75,8 @@ export function RecordsView({
   config,
   sessionSummary,
   weeklyReview,
-  weeklyReviewProjects,
   staleNextStepProjects,
+  staleNextStepDays,
   filteredSessions,
   weekSessions,
   allSessions,
@@ -91,9 +89,11 @@ export function RecordsView({
   onDateScopeChange,
   onWeeklyFocusChange,
   onRewriteNextStep,
-  onTryShort,
   onMarkReviewed,
   reviewingProjectId = null,
+  onOpenImport,
+  onDone,
+  onCopyError,
   onAddSession,
   onOpenSessionMenu,
   onHistoryNoteChange,
@@ -283,85 +283,19 @@ export function RecordsView({
 
       {tab === "planning" && (
         <div className="recordsTabPanel" role="tabpanel">
-          <section className="weeklyReviewSection" aria-labelledby="weekly-review-title">
-            <div className="sectionHeading">
-              <div><h2 id="weekly-review-title">先週のふりかえり</h2>{weeklyReview && <span>{weeklyReview.previousWeekStart} - {weeklyReview.previousWeekEnd}</span>}</div>
-            </div>
-            <div className="weeklyReviewFacts">
-              <div><span>合計時間</span><strong>{weeklyReview?.totalMinutes ?? 0}分</strong></div>
-              <div><span>活動日数</span><strong>{weeklyReview?.activeDays ?? 0}日</strong></div>
-              <div><span>動かしたプロジェクト</span><strong>{weeklyReviewProjects.length}件</strong></div>
-            </div>
-            <div className="weeklyReviewBlock">
-              <div className="recordsInlineHeading"><h3>動かしたプロジェクト</h3><span>先週の実行記録に残ったプロジェクト</span></div>
-              {weeklyReviewProjects.length ? (
-                <div className="weeklyReviewProjectList">
-                  {weeklyReviewProjects.map(({ summary, project }) => (
-                    <div className="weeklyReviewProjectRow" key={summary.projectId ?? `label:${summary.label}`}>
-                      <div>
-                        {project ? <ProjectIdentity colorId={project.colorId} name={project.name} projectId={project.id} /> : <strong>{summary.label}</strong>}
-                        {project?.northStar && <span className="weeklyReviewNorthStar">目標: {project.northStar}</span>}
-                      </div>
-                      <span>{summary.sessionCount}回・{summary.totalMinutes}分</span>
-                    </div>
-                  ))}
-                </div>
-              ) : <p className="quietText">先週の実行記録はありません。</p>}
-            </div>
-            <div className="weeklyReviewBlock">
-              <div className="weeklyReviewBlockHeading">
-                <div className="recordsInlineHeading"><h3>今週の重点</h3><span>今週優先して進めるプロジェクトを最大3件まで選びます</span></div>
-                <span>{config.projects.filter((project) => project.weeklyFocus === true).length}/3</span>
-              </div>
-              <div className="weeklyFocusChecklist">
-                {config.projects.map((project) => (
-                  <label key={project.id}>
-                    <input checked={project.weeklyFocus === true} onChange={(event) => onWeeklyFocusChange(project.id, event.target.checked)} type="checkbox" />
-                    <ProjectIdentity colorId={project.colorId} name={project.name} projectId={project.id} />
-                  </label>
-                ))}
-              </div>
-            </div>
-            {staleNextStepProjects.length > 0 && (
-              <div className="weeklyReviewBlock freshnessReview" aria-labelledby="freshness-title">
-                <div className="recordsInlineHeading"><h3 id="freshness-title">鮮度レビュー</h3><span>次の一手を14日以上更新・確認していないプロジェクト</span></div>
-                <div className="freshnessReviewList">
-                  {staleNextStepProjects.map((project) => (
-                    <div className="freshnessReviewRow" key={project.id}>
-                      <div className="freshnessReviewCopy">
-                        <ProjectIdentity colorId={project.colorId} name={project.name} projectId={project.id} />
-                        <strong>{project.nextStep?.text}</strong><span>次の一手が14日以上同じです</span>
-                      </div>
-                      <div className="freshnessReviewActions">
-                                                <button
-                          className="mainActionButton mainActionButton--neutral"
-                          onClick={() => onRewriteNextStep(project)}
-                          type="button"
-                        >
-                          書き直す
-                        </button>
-                                                <button
-                          className="mainActionButton mainActionButton--positive"
-                          onClick={() => onTryShort(project)}
-                          type="button"
-                        >
-                          短時間で試す
-                        </button>
-                                                <button
-                          className="mainActionButton mainActionButton--neutral"
-                          disabled={reviewingProjectId === project.id}
-                          onClick={() => onMarkReviewed(project.id)}
-                          type="button"
-                        >
-                          このまま
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </section>
+          <WeeklyPlanning
+            config={config}
+            onCopyError={onCopyError}
+            onDone={onDone}
+            onMarkReviewed={onMarkReviewed}
+            onOpenImport={onOpenImport}
+            onRewriteNextStep={onRewriteNextStep}
+            onWeeklyFocusChange={onWeeklyFocusChange}
+            reviewingProjectId={reviewingProjectId}
+            staleNextStepDays={staleNextStepDays}
+            staleNextStepProjects={staleNextStepProjects}
+            weeklyReview={weeklyReview}
+          />
         </div>
       )}
 

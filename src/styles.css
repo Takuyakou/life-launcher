@@ -3571,203 +3571,6 @@ input[type="number"]::-webkit-inner-spin-button {
   gap: 16px;
 }
 
-.weeklyReviewSection {
-  display: grid;
-  gap: 16px;
-  padding: 2px 0 18px;
-  border-bottom: 1px solid var(--line-soft);
-}
-
-.weeklyReviewFacts {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  border-top: 1px solid var(--line-soft);
-  border-bottom: 1px solid var(--line-soft);
-}
-
-.weeklyReviewFacts > div {
-  display: grid;
-  gap: 3px;
-  padding: 11px 12px;
-}
-
-.weeklyReviewFacts > div + div {
-  border-left: 1px solid var(--line-soft);
-}
-
-.weeklyReviewFacts span,
-.weeklyReviewBlockHeading span {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.weeklyReviewFacts strong {
-  font-size: 20px;
-}
-
-.weeklyReviewBlock {
-  display: grid;
-  gap: 9px;
-}
-
-.weeklyReviewBlock h3 {
-  margin: 0;
-  font-size: 14px;
-}
-
-.weeklyReviewBlockHeading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.weeklyReviewProjectList,
-.weeklyFocusChecklist {
-  display: grid;
-  gap: 6px;
-}
-
-.weeklyReviewProjectRow {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  min-height: 48px;
-  border-bottom: 1px solid var(--line-soft);
-  padding: 7px 2px;
-}
-
-.weeklyReviewProjectRow > div {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-}
-
-.weeklyReviewProjectRow > span,
-.weeklyReviewNorthStar {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.weeklyReviewProjectRow > span {
-  white-space: nowrap;
-}
-
-.weeklyReviewNorthStar {
-  overflow-wrap: anywhere;
-}
-
-.weeklyFocusChecklist {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.weeklyFocusChecklist label {
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr);
-  align-items: center;
-  gap: 8px;
-  min-height: 40px;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius);
-  padding: 7px 9px;
-  background: var(--surface-soft);
-  cursor: pointer;
-}
-
-.weeklyFocusChecklist input {
-  width: 17px;
-  height: 17px;
-  accent-color: var(--accent);
-  cursor: pointer;
-}
-
-.settingsWeeklyFocus {
-  display: grid;
-  gap: 10px;
-  margin-top: 14px;
-  border-top: 1px solid var(--line-soft);
-  padding-top: 14px;
-}
-
-.settingsWeeklyFocusHeading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.settingsWeeklyFocusHeading h4,
-.settingsWeeklyFocusHeading p {
-  margin: 0;
-}
-
-.settingsWeeklyFocusHeading p {
-  margin-top: 3px;
-  color: var(--text-muted-readable);
-  font-size: 12px;
-}
-
-.settingsWeeklyFocusHeading > span {
-  color: var(--muted);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-
-.settingsWeeklyFocusChecklist label:has(input:disabled) {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.freshnessReviewList {
-  display: grid;
-  gap: 8px;
-}
-
-.freshnessReviewRow {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 14px;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius);
-  padding: 10px;
-  background: var(--surface-soft);
-}
-
-.freshnessReviewCopy {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-.freshnessReviewCopy strong {
-  overflow-wrap: anywhere;
-}
-
-.freshnessReviewCopy > span {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.freshnessReviewActions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 6px;
-}
-
-.freshnessReviewActions button {
-  min-height: 32px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 5px 9px;
-  background: var(--surface);
-  color: var(--text);
-  font-size: 12px;
-  font-weight: 700;
-}
-
 .recordsStats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -7931,23 +7734,8 @@ body:has([aria-modal="true"]) .toastStack {
     justify-content: flex-start;
   }
 
-  .weeklyReviewFacts,
-  .weeklyFocusChecklist,
   .recordsStats {
     grid-template-columns: 1fr;
-  }
-
-  .freshnessReviewRow {
-    grid-template-columns: 1fr;
-  }
-
-  .freshnessReviewActions {
-    justify-content: flex-start;
-  }
-
-  .weeklyReviewFacts > div + div {
-    border-top: 1px solid var(--line-soft);
-    border-left: 0;
   }
 }
 
@@ -16586,3 +16374,93 @@ button.mainActionButton:is(
   }
 }
 
+
+/* P10-15: the 今週を決める tab follows Review.html. */
+.weeklyPlanning {
+  width: 100%;
+  max-width: 1080px;
+  margin-inline: auto;
+  padding: 8px 0 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.weeklyPlanningIntro { display: grid; gap: 6px; }
+.weeklyPlanningTitle { margin: 0; color: #f4f0e8; font-size: 26px; font-weight: 700; line-height: 1.25; }
+.weeklyPlanningIntro p { margin: 0; color: #b8b0a0; font-size: 14px; font-weight: 400; line-height: 1.6; }
+.weeklyPlanningColumns { display: flex; flex-wrap: wrap; gap: 28px; }
+.weeklyPlanningColumn { flex: 1 1 440px; min-width: 0; display: flex; flex-direction: column; }
+.weeklyPlanningFacts { gap: 16px; }
+.weeklyPlanningPlan { gap: 24px; }
+.weeklyPlanningSection { display: grid; gap: 10px; }
+.weeklyPlanningKicker { margin: 0; color: #a39c8e; font-size: 12px; font-weight: 700; line-height: 1.4; }
+.weeklyPlanningStats { display: flex; flex-wrap: wrap; gap: 12px; }
+.weeklyPlanningStats > div { flex: 1 1 120px; display: grid; gap: 6px; padding: 14px 16px; border: 1px solid #353126; border-radius: 12px; }
+.weeklyPlanningStats span { color: #a39c8e; font-size: 12px; font-weight: 400; }
+.weeklyPlanningStats strong {
+  color: #f4f0e8;
+  font-size: 24px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.weeklyPlanningProjectList { overflow: hidden; border: 1px solid #353126; border-radius: 12px; background: #1b1a17; }
+.weeklyPlanningProjectRow { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 16px; }
+.weeklyPlanningProjectRow + .weeklyPlanningProjectRow { border-top: 1px solid #353126; }
+.weeklyPlanningDot { width: 10px; height: 10px; flex: 0 0 auto; border-radius: 50%; background: var(--project-color, #a8b2c1); }
+.weeklyPlanningDot--missing { background: #a8b2c1; }
+.weeklyPlanningProjectName { flex: 1; min-width: 0; overflow: hidden; color: #f4f0e8; font-size: 14px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.weeklyPlanningProjectCount, .weeklyPlanningProjectMinutes { flex: 0 0 auto; color: #b8b0a0; font-size: 14px; font-weight: 400; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.weeklyPlanningProjectMinutes { width: 90px; color: #f4f0e8; text-align: right; }
+.weeklyPlanningCompleted { display: flex; flex-direction: column; gap: 8px; }
+.weeklyPlanningCompleted ul { margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; list-style: none; }
+.weeklyPlanningCompleted li { display: flex; align-items: center; gap: 10px; min-width: 0; color: #b8b0a0; font-size: 13px; font-weight: 400; }
+.weeklyPlanningCompleted li .uiIcon { flex: 0 0 auto; color: var(--good); }
+.weeklyPlanningCompleted li > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.weeklyPlanningCompleted .weeklyPlanningMore { color: #a39c8e; }
+.weeklyPlanningEmpty { margin: 0; color: #a39c8e; font-size: 13px; font-weight: 400; line-height: 1.5; }
+.weeklyPlanningFocus { display: flex; flex-direction: column; gap: 12px; }
+.weeklyPlanningFocusHead { display: flex; align-items: baseline; gap: 10px; }
+.weeklyPlanningFocusHead h3 { margin: 0; color: #ffce5b; font-size: 15px; font-weight: 700; }
+.weeklyPlanningFocusHead span { color: #b8b0a0; font-size: 12px; font-weight: 400; }
+.weeklyPlanningFocusButtons { display: flex; flex-wrap: wrap; gap: 8px; }
+.weeklyPlanningFocusButton { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border: 1px solid #4a4639; border-radius: 999px; background: transparent; color: #b8b0a0; font-size: 14px; font-weight: 400; transition: border-color 130ms ease, background-color 130ms ease, color 130ms ease; }
+.weeklyPlanningFocusButton[aria-pressed="true"] { border-color: #ffce5b; background: rgba(231, 185, 77, 0.1); color: #f4f0e8; font-weight: 700; }
+.weeklyPlanningFocusButton:hover, .weeklyPlanningFocusButton:focus-visible { border-color: #b8b0a0; background: #2b2922; color: #f4f0e8; }
+.weeklyPlanningFocusButton[aria-pressed="true"]:hover, .weeklyPlanningFocusButton[aria-pressed="true"]:focus-visible { background: rgba(231, 185, 77, 0.16); }
+.weeklyPlanningStale { display: flex; flex-direction: column; gap: 10px; }
+.weeklyPlanningStale h3 { margin: 0; color: #a39c8e; font-size: 12px; font-weight: 700; }
+.weeklyPlanningStaleList { display: flex; flex-direction: column; gap: 8px; }
+.weeklyPlanningStaleRow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 16px; border: 1px solid #353126; border-radius: 12px; }
+.weeklyPlanningStaleCopy { flex: 1 1 200px; min-width: 0; display: grid; gap: 4px; }
+.weeklyPlanningStaleCopy strong { color: #f4f0e8; font-size: 14px; font-weight: 700; }
+.weeklyPlanningStaleCopy span { color: #f2a65a; font-size: 12px; font-weight: 400; }
+.weeklyPlanningStaleActions { display: flex; gap: 8px; }
+.weeklyPlanningAi { display: flex; flex-direction: column; gap: 14px; padding: 20px; border: 1px solid #4a4639; border-radius: 14px; background: #211f1a; }
+.weeklyPlanningAiIntro { display: grid; gap: 4px; }
+.weeklyPlanningAiIntro h3 { margin: 0; color: #f4f0e8; font-size: 15px; font-weight: 700; }
+.weeklyPlanningAiIntro p { margin: 0; color: #a39c8e; font-size: 12px; font-weight: 400; line-height: 1.5; }
+.weeklyPlanningAiStep { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.weeklyPlanningAiStep p { margin: 0; color: #b8b0a0; font-size: 13px; font-weight: 400; }
+.weeklyPlanningStepNumber { display: inline-grid; place-items: center; width: 24px; height: 24px; flex: 0 0 auto; border-radius: 50%; background: #2b2922; color: #ffce5b; font-size: 12px; font-weight: 700; }
+.weeklyPlanningAi .copyButton, .weeklyPlanningImportButton { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 14px; border: 1px solid #4a4639; border-radius: 10px; background: #1b1a17; color: #f4f0e8; font-size: 13px; font-weight: 400; transition: border-color 130ms ease, background-color 130ms ease; }
+.weeklyPlanningAi .copyButton:hover, .weeklyPlanningAi .copyButton:focus-visible, .weeklyPlanningImportButton:hover, .weeklyPlanningImportButton:focus-visible { border-color: #b8b0a0; background: #2b2922; }
+.weeklyPlanningDone { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.weeklyPlanningDone span { color: #a39c8e; font-size: 12px; font-weight: 400; }
+@media (max-width: 720px) { .weeklyPlanningColumn { flex-basis: 100%; } }
+
+.weeklyPlanningDone .primaryButton {
+  min-height: 44px;
+  padding: 0 30px;
+  border-color: rgba(117, 196, 143, 0.7);
+  background: #27342b;
+  color: #9be0b6;
+  font-size: 14px;
+  font-weight: 700;
+}
+.weeklyPlanningDone .primaryButton:hover:not(:disabled) {
+  border-color: var(--good);
+  background: rgba(117, 196, 143, 0.16);
+  color: #9be0b6;
+}

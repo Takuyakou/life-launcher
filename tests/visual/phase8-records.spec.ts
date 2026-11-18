@@ -78,7 +78,7 @@ test("records opens on review and keeps the three information layers separate", 
   await expect(records.getByText("完了した項目", { exact: true })).toHaveCount(0);
 
   await records.getByRole("tab", { name: "今週を決める" }).click();
-  await expect(records.getByRole("heading", { name: "先週のふりかえり" })).toBeVisible();
+  await expect(records.getByRole("heading", { name: "今週を決める" })).toBeVisible();
   await expect(records.getByRole("heading", { name: "今週の重点" })).toBeVisible();
   await expect(records.getByText("今日", { exact: true })).toHaveCount(0);
 

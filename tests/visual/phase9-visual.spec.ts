@@ -141,3 +141,12 @@ for (const [name, tab] of [
     await expect(page).toHaveScreenshot(`${name}.png`, SCREENSHOT_OPTIONS);
   });
 }
+
+test("P9-00 visual records-planning", async ({ page }) => {
+  await open(page, createFullTodayFixture(), { width: 1280, height: 980 });
+  await page.getByRole("button", { name: "記録ビューを開く" }).click();
+  const records = page.locator(".recordsView");
+  await records.getByRole("tab", { name: "今週を決める" }).click();
+  await expect(page.locator(".weeklyPlanning")).toBeVisible();
+  await expect(page).toHaveScreenshot("records-planning.png", SCREENSHOT_OPTIONS);
+});

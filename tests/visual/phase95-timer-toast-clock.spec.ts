@@ -375,11 +375,6 @@ function recordsFixture(): VisualQaFixture {
   return fixture;
 }
 
-const rightEdge = (page: Page, selector: string) =>
-  page.locator(selector).first().evaluate((element) => element.getBoundingClientRect().right);
-const leftEdge = (page: Page, selector: string) =>
-  page.locator(selector).first().evaluate((element) => element.getBoundingClientRect().left);
-
 test("P95-01 Records headings: the right text lines up with the text inside the frame below", async ({ page }) => {
   await open(page, recordsFixture(), "standard", { width: 1440, height: 900 });
   await openRecords(page);
@@ -416,17 +411,15 @@ test("P95-01 Records headings: the right text lines up with the text inside the 
   }
 });
 
-test("P95-01 Records headings: this week's focus count lines up with the checklist chips", async ({ page }) => {
+test("P95-01 Records headings: this week's focus count sits beside the title", async ({ page }) => {
   await open(page, recordsFixture(), "standard", { width: 1440, height: 900 });
   await openRecords(page);
   await page.getByRole("tab", { name: "今週を決める" }).click();
-  const count = await rightEdge(page, ".weeklyReviewBlockHeading > span");
-  const list = await rightEdge(page, ".weeklyFocusChecklist");
-  // The right-hand chip has a 1px border and 9px padding.
-  expect(Math.abs(list - 10 - count)).toBeLessThanOrEqual(1);
-  const left = await page.locator(".weeklyReviewBlockHeading h3").evaluate((el) => el.getBoundingClientRect().left);
-  const frameLeft = await leftEdge(page, ".weeklyFocusChecklist");
-  expect(Math.abs(left - frameLeft)).toBeLessThanOrEqual(1);
+  const title = (await page.locator(".weeklyPlanningFocusHead h3").boundingBox())!;
+  const count = (await page.locator(".weeklyPlanningFocusHead > span").boundingBox())!;
+  expect(Math.abs(count.x - (title.x + title.width) - 10)).toBeLessThanOrEqual(1);
+  const chip = (await page.locator(".weeklyPlanningFocusButtons").boundingBox())!;
+  expect(Math.abs(title.x - chip.x)).toBeLessThanOrEqual(1);
 });
 
 test("P95-01 Records headings without right-hand text or with a button are unchanged", async ({ page }) => {

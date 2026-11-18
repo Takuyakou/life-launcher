@@ -1,3 +1,17 @@
+export const IMPORT_JSON_FORMAT = `{
+  "lifeLauncherImport": 1,
+  "projects": [
+    {
+      "name": "プロジェクトの名前",
+      "color": "blue",
+      "goal": "このプロジェクトで目指すこと(60文字まで)",
+      "nextStep": { "text": "次にやる行動", "trigger": "いつ・どこで", "minutes": 25, "shortMinutes": 5 },
+      "wishes": ["ほかにやりたいこと"]
+    }
+  ],
+  "wishes": ["どのプロジェクトにも入らないやりたいこと"]
+}`;
+
 export const IMPORT_PROMPT_FIRST = `あなたは、私が「今これをやる」を決めて始めるのを手伝うアシスタントです。
 私は Life Launcher という Windows アプリを使っています。このアプリには、次の3つを登録します。
 
@@ -19,19 +33,7 @@ export const IMPORT_PROMPT_FIRST = `あなたは、私が「今これをやる�
 - アプリのボタン・リンク・手順書は書かない(アプリで設定します)
 
 形式:
-{
-  "lifeLauncherImport": 1,
-  "projects": [
-    {
-      "name": "プロジェクトの名前",
-      "color": "blue",
-      "goal": "このプロジェクトで目指すこと(60文字まで)",
-      "nextStep": { "text": "次にやる行動", "trigger": "いつ・どこで", "minutes": 25, "shortMinutes": 5 },
-      "wishes": ["ほかにやりたいこと"]
-    }
-  ],
-  "wishes": ["どのプロジェクトにも入らないやりたいこと"]
-}
+${IMPORT_JSON_FORMAT}
 
 私の状況:
 (続けたいこと、気になっていること、使える時間などを自由に書く。空でもかまいません)`;
@@ -62,7 +64,7 @@ export const IMPORT_PROMPT_REPEAT = `あなたは、私が「今これをやる�
 - アプリのボタン・リンク・手順書は書かない
 
 形式:
-(はじめて用と同じ JSON の形式をそのまま入れる)
+${IMPORT_JSON_FORMAT}
 
 今のアプリの内容:
 {CURRENT_STATE}

@@ -210,9 +210,9 @@ test("P10-05 the Records 書き直す opens the Next Step editor too", async ({ 
   await expect(page.locator(".recordsView")).toBeVisible();
   // The freshness review lives in the planning tab.
   await page.getByRole("tab", { name: "今週を決める" }).click();
-  const review = page.locator(".freshnessReview");
+  const review = page.locator(".weeklyPlanningStale");
   await expect(review).toBeVisible();
-  await review.getByRole("button", { name: "書き直す" }).first().click();
+  await review.getByRole("button", { name: "小さくする" }).first().click();
   const editor = page.locator(".nextStepEditDialog");
   await expect(editor.first()).toBeVisible();
 });

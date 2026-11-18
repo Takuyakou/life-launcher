@@ -110,7 +110,6 @@ import {
   SoftwareResetStorageSnapshot,
   SourceCompletion,
   WeeklyReviewResponse,
-  WeeklyReviewProjectSummary,
   TodayItem,
 } from "./types";
 import { ConfirmDialog, type ConfirmDialogRequest } from "./components/ConfirmDialog";
@@ -295,11 +294,6 @@ type ToastTimerState = {
   pointerInside: boolean;
   focusInside: boolean;
   documentHidden: boolean;
-};
-
-type WeeklyReviewDisplayProject = {
-  summary: WeeklyReviewProjectSummary;
-  project?: LauncherProject;
 };
 
 type ActiveTimer = {
@@ -2679,24 +2673,6 @@ function DashboardApp() {
     config?.projects.forEach((project) => map.set(project.id, project));
     return map;
   }, [config]);
-
-  const weeklyReviewProjects = useMemo<WeeklyReviewDisplayProject[]>(() => {
-    if (!config || !weeklyReview) return [];
-    const summariesByProjectId = new Map(
-      weeklyReview.projects
-        .filter((summary) => summary.projectId)
-        .map((summary) => [summary.projectId as string, summary]),
-    );
-    const ordered = config.projects.flatMap((project) => {
-      const summary = summariesByProjectId.get(project.id);
-      return summary ? [{ summary, project }] : [];
-    });
-    const knownIds = new Set(config.projects.map((project) => project.id));
-    const unmatched = weeklyReview.projects
-      .filter((summary) => !summary.projectId || !knownIds.has(summary.projectId))
-      .map((summary) => ({ summary }));
-    return [...ordered, ...unmatched];
-  }, [config, weeklyReview]);
 
   const staleNextStepProjects = useMemo(() => {
     if (!config) return [];
@@ -7573,22 +7549,6 @@ function DashboardApp() {
     return saved;
   };
 
-  const tryStaleNextStepForShortTime = async (project: LauncherProject) => {
-    if (!config || !project.nextStep?.text.trim()) return;
-    const actions = project.nextStep.buttonIds.flatMap(
-      (buttonId) => buttonsById.get(buttonId)?.actions ?? [],
-    );
-    await startTimer(
-      project.id,
-      project.name,
-      project.id,
-      actions,
-      project.nextStep.shortTimerMinutes ?? config.settings.shortTimerMinutes,
-      project.nextStep.startNoteTemplate,
-    );
-    await markNextStepReviewed(project.id);
-  };
-
   const continueCompletedTimer = () => {
     if (!completionPrompt || plannedCommitRef.current || finishingTimerRef.current !== null) return;
     if (!activeTimer || activeTimerRef.current?.instanceId !== activeTimer.instanceId) return;
@@ -11329,21 +11289,23 @@ function DashboardApp() {
                 onHistoryNoteBlur={flushHistoryNotesSave}
                 onHistoryNoteChange={updateHistoryNoteText}
                 onMarkReviewed={(projectId) => void markNextStepReviewed(projectId)}
+                onCopyError={() => showToast("warn", "プロンプトをコピーできませんでした")}
+                onDone={() => setActiveView("main")}
+                onOpenImport={() => openImportDialog("")}
                 onOpenSessionMenu={(session, x, y, opener) =>
                   openContextMenu({ kind: "session", session }, x, y, opener)
                 }
                 onProjectFilterChange={setSessionProjectFilter}
                 onSearchChange={setSessionSearch}
-                onTryShort={(project) => void tryStaleNextStepForShortTime(project)}
                 onWeeklyFocusChange={setWeeklyReviewProjectFocus}
                 sessionDateScope={sessionDateScope}
                 sessionProjectFilter={sessionProjectFilter}
                 sessionSearch={sessionSearch}
                 sessionSummary={sessionSummary}
                 staleNextStepProjects={staleNextStepProjects}
+                staleNextStepDays={staleNextStepMap}
                 weekSessions={recordsWeekSessions}
                 weeklyReview={weeklyReview}
-                weeklyReviewProjects={weeklyReviewProjects}
               />
             ) : firstRunVisible ? (
               <FirstRunBand
