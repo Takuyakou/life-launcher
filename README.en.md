@@ -8,7 +8,9 @@ Life Launcher is a local-first Windows desktop app that presents one next step, 
 
 [Download Life Launcher for Windows](https://github.com/Takuyakou/life-launcher/releases/latest)
 
-![Life Launcher main dashboard](docs/screenshots/main-dashboard.png)
+![Life Launcher: start a step for 5 minutes, then leave a “Resume here” note when you finish](docs/screenshots/demo-start.gif)
+
+<sub>Generated from synthetic data. In the real app, the apps and instructions attached to the step open as well.</sub>
 
 ## Web Demo
 
@@ -25,7 +27,7 @@ Note: it is not a complete port of the Windows product. The Web Demo has a separ
 ## Highlights
 
 - **One thing to do now**
-  Suggests one next step: the Next Step already in Today's Three first, then this week's focus, then items you have not touched today, then the oldest session. Start it right away with 5 minutes, 25 minutes, or Measure from the idle timer.
+  Suggests one next step: the Next Step already in Today's Three first, then this week's focus, then items you have not touched today, then the oldest session. Start it right away with 5 minutes, 25 minutes, or Measure from the idle timer. A one-line “Resume here” note you left last time appears under the action, and attachments that can no longer be found are marked “Not found”.
 
 - **Today's Three**
   Limit the day to at most three items. Start from project-colored cards; an item is completed after its planned timer expires and you confirm the session. Once all three are complete, choose the next three from “Choose today's work”. Use the card's “Remove” button, its “…” menu, its context menu, or Delete on a focused card to remove only its adoption into today (the original entry and session records remain).
@@ -46,7 +48,7 @@ Note: it is not a complete port of the Windows product. The Web Demo has a separ
   Register apps, folders, files, and URLs, then open them from the sidebar or `Ctrl+K` search. The button builder retains drafts when switching registration modes. Navigate the dictionary with arrow keys; on multiple monitors, it opens on the same screen as the main app.
 
 - **Timer / Session Records**
-  Start a short or normal timer, or use Measure to count up from 0:00, and store sessions of at least one minute locally. Stopping early does not automatically complete today's item. When the planned time is up you can finish as is, add 5 minutes, take another step for 5 minutes, pick from Today's Three, or stop.
+  Start a short or normal timer, or use Measure to count up from 0:00, and store sessions of at least one minute locally. Stopping early does not automatically complete today's item. When the planned time is up, choose “Continue (+15 min)” or “Finish”; for a Next Step that is not in Today's Three you can also leave a one-line “Resume here” note. Finishing a Next Step from Today's Three asks where to start next.
 
 - **Plan this week**
   On the “Plan this week” tab of Records, review last week's total time, active days, sessions, time per project, and completed items, then choose up to three focus projects. Projects whose Next Step has stayed the same for 14 days or more appear under “Not moving lately” with “Make it smaller” and “Keep”. “Copy with last week's facts” builds a prompt for ChatGPT or Claude, and you can add the JSON reply through Bulk import. No scores or ratings.
@@ -103,7 +105,7 @@ You can verify the release files with the included `SHA256SUMS.txt`.
 
 ## Updating
 
-Fully exit Life Launcher and back up the `%APPDATA%\life-launcher` folder to another location before updating. There is no automatic updater.
+Fully exit Life Launcher and back up the `%APPDATA%\life-launcher` folder to another location before updating. There is no automatic updater. To check for a new version, use “Open the releases page” in Settings → Maintenance; it only opens your browser, and the app itself does not connect.
 
 The first launch after updating from v1.2 to v1.3 migrates config schema `2` to `3`. The app creates a raw pre-migration backup and leaves the original config unchanged if migration, validation, or backup fails. Session records are not deleted.
 
