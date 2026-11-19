@@ -2439,6 +2439,7 @@ function DashboardApp() {
   const lastSettingsApplyErrorRef = useRef<string | null>(null);
   const shortcutCaptureActiveRef = useRef(false);
   const victoryInputRef = useRef<HTMLInputElement | null>(null);
+  const victorySuggestionsRef = useRef<HTMLDivElement | null>(null);
   const victoryNavigationRef = useRef<HTMLButtonElement | null>(null);
   const victorySaveRef = useRef<Promise<boolean> | null>(null);
   const launcherSearchRef = useRef<HTMLInputElement | null>(null);
@@ -11476,6 +11477,7 @@ function DashboardApp() {
                     <span className="mainDateText">{headerDateMain}</span>
                     <span className="mainDateWeekday">{headerDateWeekday}</span>
                   </div>
+                <div className="victoryBarWrap">
                 <section
                   className={[
                     "victoryBar",
@@ -11503,7 +11505,13 @@ function DashboardApp() {
                             victoryDone ? "victoryInput victoryInput--done" : "victoryInput"
                           }
                           maxLength={90}
-                          onBlur={() => setVictoryEditing(false)}
+                          onBlur={(event) => {
+                            const next = event.relatedTarget;
+                            if (next instanceof Node && victorySuggestionsRef.current?.contains(next)) {
+                              return;
+                            }
+                            setVictoryEditing(false);
+                          }}
                           onChange={(event) => {
                             victorySaveRef.current = updateVictoryText(event.target.value);
                           }}
@@ -11532,21 +11540,6 @@ function DashboardApp() {
                         {config.today.victory.text || "今日はこれができれば勝ち"}
                       </button>
                     )}
-                    {!victoryText && victorySuggestions.length > 0 && (
-                      <div className="victorySuggestions" aria-label="勝利条件の候補">
-                        {victorySuggestions.map((suggestion) => (
-                          <button
-                            className="suggestionChip"
-                            key={suggestion}
-                            onMouseDown={(event) => event.preventDefault()}
-                            onClick={() => applyVictorySuggestion(suggestion)}
-                            type="button"
-                          >
-                            {suggestion}
-                          </button>
-                        ))}
-                      </div>
-                    )}
                   </div>
                   {victoryDone ? (
                     <span
@@ -11569,6 +11562,44 @@ function DashboardApp() {
                     type="checkbox"
                   />
                 </section>
+                {victoryEditing && !victoryText && victorySuggestions.length > 0 && (
+                  <div
+                    className="victorySuggestions"
+                    aria-label="勝利条件の候補"
+                    ref={victorySuggestionsRef}
+                  >
+                    {victorySuggestions.map((suggestion) => (
+                      <button
+                        className="suggestionChip"
+                        key={suggestion}
+                        onBlur={(event) => {
+                          const next = event.relatedTarget;
+                          if (
+                            next instanceof Node &&
+                            (next === victoryInputRef.current ||
+                              victorySuggestionsRef.current?.contains(next))
+                          ) {
+                            return;
+                          }
+                          setVictoryEditing(false);
+                        }}
+                        onClick={() => applyVictorySuggestion(suggestion)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Escape") {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            leaveVictoryEditing();
+                          }
+                        }}
+                        onMouseDown={(event) => event.preventDefault()}
+                        type="button"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                </div>
                 </div>
 
                 <section

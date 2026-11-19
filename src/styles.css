@@ -8825,6 +8825,27 @@ body:has([aria-modal="true"]) .toastStack {
   padding-inline: 3px 5px;
 }
 
+.todayRow .todayRemoveButton {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.todayRow:hover .todayRemoveButton,
+.todayRow:focus-within .todayRemoveButton {
+  opacity: 1;
+}
+
+.todayRow:hover .todayRemoveButton:disabled,
+.todayRow:focus-within .todayRemoveButton:disabled {
+  opacity: 0.45;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .todayRow .todayRemoveButton {
+    transition: none;
+  }
+}
+
 .todayRow .todayInstructionButton:hover:not(:disabled),
 .todayRow .todayInstructionButton:focus-visible,
 .todayRow .todayRemoveButton:hover:not(:disabled),
@@ -8836,7 +8857,6 @@ body:has([aria-modal="true"]) .toastStack {
 
 .todayRow .todayRemoveButton:disabled {
   cursor: not-allowed;
-  opacity: 0.45;
 }
 
 .todayRow .todayRemoveButton.mainActionButton--neutral:hover:not(:disabled),
@@ -14333,11 +14353,19 @@ button.mainActionButton:is(
   font-size: 13px;
 }
 
+.mainHeaderRow .victoryBarWrap {
+  position: relative;
+  display: flex;
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
 .mainHeaderRow .victoryBar {
   position: relative;
   display: flex;
   align-items: center;
-  flex: 1 1 320px;
+  flex: 1 1 auto;
+  min-width: 0;
   flex-wrap: wrap;
   gap: 12px;
   min-height: 44px;
@@ -14435,6 +14463,7 @@ button.mainActionButton:is(
   border-radius: 8px;
   padding: 8px;
   background: var(--surface-strong);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
 }
 
 .mainHeaderRow .victoryBadge {

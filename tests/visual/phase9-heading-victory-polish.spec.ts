@@ -191,8 +191,12 @@ test("P9-14 an empty victory bar keeps its suggestion chips unchanged and unlit 
   await open(page, emptyVictory());
   await expect(page.locator(".victoryTextButton")).toBeFocused(); // the automatic focus lands first
   const chips = page.locator(".suggestionChip");
+  await expect(chips).toHaveCount(0);
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".victoryInput")).toBeFocused();
   await expect(chips.first()).toBeVisible();
-  await keyboardFocus(page, chips.first());
+  await page.keyboard.press("Tab");
+  await expect(chips.first()).toBeFocused();
   await expect.poll(() => bar(page)).toMatchObject({ border: RESTING_BORDER, transform: "none" });
 });
 

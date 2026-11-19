@@ -101,11 +101,12 @@ test("P9-01 xlarge at 860x560 keeps victory view, edit and suggestions inside th
         ),
       ).toBe(true);
 
-    if (!text) await expect(page.locator(".victorySuggestions .suggestionChip").first()).toBeVisible();
+    if (!text) await expect(page.locator(".victorySuggestions")).toHaveCount(0);
     await expectInsideOrBelowBar(SELECTORS.victoryView);
     await expectNoHorizontalOverflow();
     await page.locator(SELECTORS.victoryView).click();
     await expect(page.locator(SELECTORS.victoryEdit)).toBeFocused();
+    if (!text) await expect(page.locator(".victorySuggestions .suggestionChip").first()).toBeVisible();
     await expectInsideOrBelowBar(SELECTORS.victoryEdit);
     await expectInsideOrBelowBar(".victorySuggestions, .suggestionChip");
     await expectNoHorizontalOverflow();

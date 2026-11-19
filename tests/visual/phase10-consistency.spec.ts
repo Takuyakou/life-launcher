@@ -248,8 +248,10 @@ test("P10-14e 7 / G3 every size shows the 外す label with room beside the time
       const cardCount = await cards.count();
       for (let index = 0; index < cardCount; index += 1) {
         const card = cards.nth(index);
+        await card.hover();
         const cardBox = (await card.boundingBox())!;
         const button = card.getByRole("button", { name: "今日の3件から外す" });
+        await expect(button).toHaveCSS("opacity", "1");
         const buttonBox = (await button.boundingBox())!;
         const label = button.locator(".todayRemoveLabel");
         await expect(label, `${width}/${size} label`).toBeVisible();
@@ -266,6 +268,47 @@ test("P10-14e 7 / G3 every size shows the 外す label with room beside the time
       }
     }
   }
+});
+
+test("P10-18c R1 Today card remove button appears only on card hover or focus-within, and dims to 0.45 while running", async ({
+  page,
+}) => {
+  await prepare(page);
+  await page.mouse.move(4, 4);
+  const firstCard = page.locator(".todayRow").first();
+  const removeButton = firstCard.locator(".todayRemoveButton");
+  const timerStart = firstCard.locator(".todayStartButton--short");
+
+  // Resting (no hover, no focus): opacity 0, layout space preserved.
+  const restTimerBox = (await timerStart.boundingBox())!;
+  const restRemoveBox = (await removeButton.boundingBox())!;
+  await expect(removeButton).toHaveCSS("opacity", "0");
+  expect(restRemoveBox.width).toBeGreaterThan(0);
+
+  // Card hover: opacity 1, sibling buttons do not shift.
+  await firstCard.hover();
+  await expect(removeButton).toHaveCSS("opacity", "1");
+  const hoverTimerBox = (await timerStart.boundingBox())!;
+  expect(Math.abs(hoverTimerBox.x - restTimerBox.x)).toBeLessThanOrEqual(0.5);
+
+  // Move pointer away -> back to 0.
+  await page.mouse.move(4, 4);
+  await expect(removeButton).toHaveCSS("opacity", "0");
+
+  // Tab focus inside the card -> opacity 1.
+  await firstCard.focus();
+  await page.keyboard.press("Tab");
+  expect(await firstCard.evaluate((node) => node.contains(document.activeElement))).toBe(true);
+  await expect(removeButton).toHaveCSS("opacity", "1");
+
+  // Running card: disabled remove stays 0 at rest, 0.45 on hover.
+  await timerStart.click();
+  await expect(removeButton).toBeDisabled();
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await page.mouse.move(4, 4);
+  await expect(removeButton).toHaveCSS("opacity", "0");
+  await firstCard.hover();
+  await expect(removeButton).toHaveCSS("opacity", "0.45");
 });
 
 test("P10-14e 2 the mini clock uses the same 700 weight as the sidebar clock", async ({

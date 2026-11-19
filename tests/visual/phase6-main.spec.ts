@@ -99,6 +99,7 @@ for (const width of [860, 1440]) {
     await page.setViewportSize({ width, height: 700 });
 
     const scrollArea = page.locator(".mainScrollArea");
+    await page.getByRole("button", { name: "今日の勝利条件を編集" }).click();
     const suggestion = page
       .locator('[aria-label="勝利条件の候補"]')
       .getByRole("button")
