@@ -116,6 +116,8 @@ pub struct NextStepV3 {
     pub updated_at: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reviewed_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resume_note: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub button_ids: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -225,6 +227,7 @@ impl From<LegacyProjectV2> for ProjectV3 {
             trigger: next_step_trigger,
             updated_at: next_step_updated_at,
             reviewed_at: next_step_reviewed_at,
+            resume_note: None,
             button_ids: execution.button_ids.clone(),
             default_timer_minutes: execution.default_timer_minutes,
             short_timer_minutes: execution.short_timer_minutes,
@@ -661,6 +664,13 @@ pub struct NextStepFreshnessResponse {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct MissingLaunchTargetsResponse {
+    pub missing_button_ids: Vec<String>,
+    pub missing_instruction_project_ids: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DoNowCandidate {
     pub project_id: String,
     pub reason: String,
@@ -928,6 +938,7 @@ pub fn sample_config() -> AppConfig {
                     trigger: None,
                     updated_at: None,
                     reviewed_at: None,
+                    resume_note: None,
                     button_ids: vec!["music-web".to_string()],
                     default_timer_minutes: None,
                     short_timer_minutes: None,
@@ -951,6 +962,7 @@ pub fn sample_config() -> AppConfig {
                     trigger: None,
                     updated_at: None,
                     reviewed_at: None,
+                    resume_note: None,
                     button_ids: vec!["documents".to_string()],
                     default_timer_minutes: None,
                     short_timer_minutes: None,

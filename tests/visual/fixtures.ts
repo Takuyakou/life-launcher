@@ -25,6 +25,10 @@ export type VisualQaFixture = {
     restartEligible: boolean;
   }>;
   staleProjectIds?: string[];
+  missingLaunchTargets?: {
+    missingButtonIds: string[];
+    missingInstructionProjectIds: string[];
+  };
   instructionDocuments?: Record<string, string>;
   /** MHTML fixtures, base64-encoded so the mock can return raw bytes. */
   instructionBytes?: Record<string, string>;

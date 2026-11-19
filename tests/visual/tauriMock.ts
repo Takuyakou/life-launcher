@@ -195,6 +195,13 @@ export async function installTauriMock(
       let failSaveConfig = false;
       let failReapplyDashboardSettings = false;
       let failRecordSession = false;
+      let failMissingLaunchTargets = false;
+      let missingLaunchTargets = clone(
+        fixture.missingLaunchTargets ?? {
+          missingButtonIds: [],
+          missingInstructionProjectIds: [],
+        },
+      );
       let mainWindowState = {
         visible: true,
         minimized: false,
@@ -252,6 +259,15 @@ export async function installTauriMock(
         },
         setRecordSessionFailure: (shouldFail: boolean) => {
           failRecordSession = shouldFail;
+        },
+        setMissingLaunchTargets: (next: {
+          missingButtonIds: string[];
+          missingInstructionProjectIds: string[];
+        }) => {
+          missingLaunchTargets = clone(next);
+        },
+        setMissingLaunchTargetsFailure: (shouldFail: boolean) => {
+          failMissingLaunchTargets = shouldFail;
         },
         setMainWindowState: (state: typeof mainWindowState) => {
           mainWindowState = { ...state };
@@ -530,6 +546,11 @@ export async function installTauriMock(
                 };
               case "load_next_step_freshness":
                 return { staleProjectIds: fixture.staleProjectIds ?? [] };
+              case "load_missing_launch_targets":
+                if (failMissingLaunchTargets) {
+                  throw new Error("Public demo mock: missing launch targets check failed");
+                }
+                return clone(missingLaunchTargets);
               case "load_today_notes":
                 return { date: currentConfig.today.date, items: currentNotes, path: paths.notes };
               case "save_today_notes":

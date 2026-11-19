@@ -118,6 +118,7 @@ export const NextStepSchema = NextStepExecutionSchema.extend({
   trigger: z.string().max(EXECUTION_TRIGGER_MAX_CHARS).optional(),
   updatedAt: z.string().datetime({ offset: true }).optional(),
   reviewedAt: z.string().datetime({ offset: true }).optional(),
+  resumeNote: z.string().optional(),
 });
 
 export const ProjectSchema = z
@@ -599,4 +600,9 @@ export type ImportCommitResponse = {
 export type ImportUndoResponse = {
   config: AppConfig;
   path: string;
+};
+
+export type MissingLaunchTargetsResponse = {
+  missingButtonIds: string[];
+  missingInstructionProjectIds: string[];
 };

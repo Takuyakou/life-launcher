@@ -26,7 +26,7 @@ async function openSettings(page: Page) {
   return settings;
 }
 
-test("the Maintenance tab shows the package version at the bottom without controls", async ({
+test("the Maintenance tab shows the package version at the bottom with the release page link", async ({
   page,
 }) => {
   await prepare(page);
@@ -36,8 +36,9 @@ test("the Maintenance tab shows the package version at the bottom without contro
     .locator(".settingsSection")
     .filter({ has: page.getByRole("heading", { name: "メンテナンス", exact: true }) });
   const version = maintenance.locator(".settingsVersion");
-  await expect(version).toHaveText(`バージョン ${PACKAGE_VERSION}`);
-  await expect(version.locator("button, a")).toHaveCount(0);
+  await expect(version).toContainText(`バージョン ${PACKAGE_VERSION}`);
+  await expect(version.locator("button, a")).toHaveCount(1);
+  await expect(version.locator(".settingsReleaseLink")).toHaveText("リリースページを開く");
   await expect(version).toHaveCSS("font-size", "13px");
 });
 

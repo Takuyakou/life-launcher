@@ -7021,6 +7021,26 @@ body:has([aria-modal="true"]) .toastStack {
   border-top: 1px solid var(--line-soft);
 }
 
+.settingsReleaseLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #b8b0a0;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.settingsReleaseLink:hover,
+.settingsReleaseLink:focus-visible {
+  color: #ffce5b;
+}
+
 .softwareResetButton {
   width: fit-content;
   min-width: 172px;
@@ -7625,6 +7645,17 @@ body:has([aria-modal="true"]) .toastStack {
 .timerCompleteText {
   color: var(--muted);
   font-size: 17px;
+}
+
+.timerResumeField {
+  margin-top: 4px;
+}
+
+.timerResumeHint {
+  margin: -4px 0 0;
+  color: #a39c8e;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .dialogActions {
@@ -13792,6 +13823,19 @@ button.mainActionButton:is(
   white-space: nowrap;
 }
 
+.nextStepOpenChip--missing {
+  border-color: rgba(242, 166, 90, 0.6);
+}
+
+.nextStepOpenChip--missing .nextStepOpenChipLabel {
+  color: #f2a65a;
+}
+
+.nextStepOpenChipMissing {
+  color: #f2a65a;
+  background: rgba(242, 166, 90, 0.12);
+}
+
 .nextStepOpenChipRemove {
   width: 32px;
   height: 32px;
@@ -14472,6 +14516,31 @@ button.mainActionButton:is(
   line-height: 1.35;
 }
 
+.doNowResume {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.doNowResumeLabel {
+  flex: none;
+  color: #a39c8e;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.doNowResumeText {
+  min-width: 0;
+  overflow: hidden;
+  color: #e8e2d6;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .doNowMeta {
   gap: 8px 14px;
   color: #b8b0a0;
@@ -14505,6 +14574,16 @@ button.mainActionButton:is(
 .doNowOpenChip--button:hover,
 .doNowOpenChip--button:focus-visible {
   background: var(--control-neutral-hover-bg);
+}
+
+.doNowOpenChip--missing {
+  color: #f2a65a;
+  box-shadow: inset 0 0 0 1px rgba(242, 166, 90, 0.45);
+}
+
+.doNowMissingText {
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .doNowContent--active .doNowActions {

@@ -55,7 +55,7 @@ test("P9-05 a today3 candidate says it is in Today3, and the older reasons keep 
 
   // "Other step" keeps its own sentence.
   await page.locator(".doNowAlternateButton").click();
-  await expect(reason(page)).toHaveText("今の状況から選んだ別の候補です");
+  await expect(reason(page)).toHaveText("「他の一手」で選んだ候補です");
 });
 
 test("P9-05 the restart guidance after 14 idle days outranks the Today3 reason", async ({

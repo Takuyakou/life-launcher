@@ -112,7 +112,7 @@ fn ensure_exists(path: &str) -> Result<(), String> {
     }
 }
 
-fn expand_env_path(path: &str) -> String {
+pub(crate) fn expand_env_path(path: &str) -> String {
     let mut expanded = path.to_string();
     for (key, value) in std::env::vars() {
         let needle = format!("%{key}%");

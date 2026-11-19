@@ -2,6 +2,7 @@ import type { SVGProps } from "react";
 
 export type UiIconName =
   | "add"
+  | "alert"
   | "back"
   | "book"
   | "clock"
@@ -56,6 +57,11 @@ export function UiIcon({ name, size = 18, className, ...props }: UiIconProps) {
   const content =
     name === "add" ? (
       <path {...common} d="M12 5v14M5 12h14" />
+    ) : name === "alert" ? (
+      <>
+        <path {...common} d="M12 4 3 20h18L12 4Z" />
+        <path {...common} d="M12 10v4.5M12 17.5h.01" />
+      </>
     ) : name === "back" ? (
       <path {...common} d="m14.5 6-6 6 6 6M9 12h10" />
     ) : name === "book" ? (

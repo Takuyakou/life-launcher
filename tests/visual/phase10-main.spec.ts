@@ -52,7 +52,7 @@ test("P10-05 the Do Now action is the headline and the start buttons are 48px ta
   expect(primary.border).toBe("rgba(111, 207, 151, 0.45)");
 });
 
-test("P10-05 the Today card linked to this moment's step shows いまここ", async ({ page }) => {
+test("P10-05 the Today card linked to this moment's step shows 今やる一手", async ({ page }) => {
   const fixture = createFullTodayFixture();
   // Only the Project of the linked Today card keeps a Next Step, so Do Now shows it.
   const linkedId = fixture.config.today.items.find((item) => item.sourceKey?.startsWith("project:"))
@@ -81,6 +81,10 @@ test("P10-05 the Today card linked to this moment's step shows いまここ", as
   await open(page, fixture);
   const here = page.locator(".todayHereBadge");
   await expect(here).toHaveCount(1);
+  const headingText = (await doNow(page).locator("#do-now-title").innerText()).trim();
+  await expect(here).toHaveText("今やる一手");
+  await expect(here).toHaveAttribute("aria-label", "今やる一手");
+  expect((await here.innerText()).trim()).toBe(headingText);
   const linkedCard = page.locator(".todayRow", { has: page.locator(".todayHereBadge") });
   await expect(linkedCard).toHaveCount(1);
   // The linked card is the one adopted from the current Next Step of the shown Project.
@@ -88,6 +92,26 @@ test("P10-05 the Today card linked to this moment's step shows いまここ", as
   const cardText = await linkedCard.innerText();
   expect(projectName.trim().length).toBeGreaterThan(0);
   expect(cardText.length).toBeGreaterThan(0);
+
+  for (const viewport of [
+    { width: 1440, height: 900 },
+    { width: 860, height: 560 },
+  ]) {
+    await page.setViewportSize(viewport);
+    const overflow = await linkedCard.evaluate((card) => {
+      const cardRect = card.getBoundingClientRect();
+      const badge = card.querySelector<HTMLElement>(".todayHereBadge");
+      const badgeRect = badge?.getBoundingClientRect();
+      return {
+        scrollOverflow: card.scrollWidth - card.clientWidth,
+        badgeRightOverflow: badgeRect ? badgeRect.right - cardRect.right : 0,
+      };
+    });
+    expect(overflow.scrollOverflow, `${viewport.width}x${viewport.height}`).toBeLessThanOrEqual(1);
+    expect(overflow.badgeRightOverflow, `${viewport.width}x${viewport.height}`).toBeLessThanOrEqual(
+      1,
+    );
+  }
 
   // 他の一手 moves the badge with the Do Now project.
   const alternate = doNow(page).getByRole("button", { name: "他の一手" });
@@ -428,4 +452,51 @@ test("P10-15c J2 the victory bar never gets its top border clipped", async ({ pa
     const hovered = (await bar.boundingBox())!;
     expect(hovered.y).toBeGreaterThanOrEqual(areaBox.y - 0.5);
   }
+});
+
+test("P10-17 N2 the three Do Now reason phrases use everyday Japanese", async ({ page }) => {
+  const cases: Array<{
+    reason: "manualOrder" | "oldestSession";
+    expected: string;
+  }> = [
+    {
+      reason: "manualOrder",
+      expected: "ほかの条件が同じなので、次の一手の並びで上のプロジェクトを選びました",
+    },
+    {
+      reason: "oldestSession",
+      expected: "最後に取り組んでから、いちばん間があいている一手です",
+    },
+  ];
+  for (const item of cases) {
+    const fixture = createFullTodayFixture();
+    fixture.doNowCandidates = [
+      { projectId: fixture.config.projects[0].id, reason: item.reason, restartEligible: false },
+      { projectId: fixture.config.projects[1].id, reason: "noToday", restartEligible: false },
+    ];
+    await open(page, fixture);
+    await expect(doNow(page).locator(".doNowReason")).toHaveText(item.expected);
+    for (const viewport of [
+      { width: 1440, height: 900 },
+      { width: 860, height: 560 },
+    ]) {
+      await page.setViewportSize(viewport);
+      const metrics = await doNow(page)
+        .locator(".doNowReason")
+        .evaluate((node) => {
+          const style = getComputedStyle(node);
+          const rect = node.getBoundingClientRect();
+          const parentRect = node.parentElement!.getBoundingClientRect();
+          return {
+            whiteSpace: style.whiteSpace,
+            overflow: style.overflow,
+            textOverflow: style.textOverflow,
+            rightOverflow: rect.right - parentRect.right,
+          };
+        });
+      expect(metrics.rightOverflow, `${item.reason} ${viewport.width}`).toBeLessThanOrEqual(1);
+    }
+  }
+  await doNow(page).locator(".doNowAlternateButton").click();
+  await expect(doNow(page).locator(".doNowReason")).toHaveText("「他の一手」で選んだ候補です");
 });

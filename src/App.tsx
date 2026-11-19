@@ -51,6 +51,7 @@ import {
   focusDashboardWindow,
   listenForConfigChanges,
   loadConfig,
+  loadMissingLaunchTargets,
   loadShortcutRegistrationStatus,
   loadDoNowCandidates,
   loadNotesHistory,
@@ -120,6 +121,7 @@ import { earlyCompletionItem } from "./earlyCompletion";
 import { WindowControls } from "./components/WindowControls";
 import {
   findTodayEntryForTimer,
+  sameSourceGeneration,
   timerMatchesProjectNextStep,
   timerRunsTodayItem,
 } from "./timerSource";
@@ -407,6 +409,7 @@ type NextStepEditDraft = {
   text: string;
   originalText: string;
   trigger: string;
+  resumeNote: string;
   buttonIds: string[];
   defaultTimerMinutes: string;
   shortTimerMinutes: string;
@@ -2255,6 +2258,11 @@ function DashboardApp() {
   const [sessionSummary, setSessionSummary] = useState<SessionSummaryResponse | null>(null);
   const [weeklyReview, setWeeklyReview] = useState<WeeklyReviewResponse | null>(null);
   const [staleNextStepProjectIds, setStaleNextStepProjectIds] = useState<string[]>([]);
+  const [missingButtonIds, setMissingButtonIds] = useState<Set<string>>(() => new Set());
+  const [missingInstructionProjectIds, setMissingInstructionProjectIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const missingTargetsRequestRef = useRef(0);
   const [nextStepReviewBusy, setNextStepReviewBusy] = useState<string | null>(null);
   const [doNowResponse, setDoNowResponse] = useState<DoNowResponse | null>(null);
   // The Project picked with "other step"; null shows the first candidate. Held by Project id so a
@@ -2287,6 +2295,9 @@ function DashboardApp() {
   const [earlyStop, setEarlyStop] = useState<typeof earlyStopRef.current>(null);
   const [earlyStopSaving, setEarlyStopSaving] = useState(false);
   const [completionPrompt, setCompletionPrompt] = useState<TimerCompletionPrompt | null>(null);
+  const [timerResumeDraft, setTimerResumeDraft] = useState("");
+  const [completionResumeSaving, setCompletionResumeSaving] = useState(false);
+  const completionResumeSavingRef = useRef(false);
   const [completionFeedback, setCompletionFeedback] = useState<CompletionFeedback | null>(null);
   const [doNowCompletionHold, setDoNowCompletionHold] = useState<DoNowCompletionHold | null>(null);
   const [doNowCompletionSaving, setDoNowCompletionSaving] = useState(false);
@@ -3407,12 +3418,16 @@ function DashboardApp() {
   }, [buttonIconSources, config, refreshButtonIcon]);
 
   const persistConfig = useCallback(
-    async (nextConfig: AppConfig, applySettingsAfterSave = false) => {
+    async (
+      nextConfig: AppConfig,
+      applySettingsAfterSave = false,
+      options?: { errorToastMessage?: string },
+    ) => {
       if (resetInProgressRef.current) return false;
       if (configSaveBlockedRef.current) {
         const message = "設定ファイルに問題があるため、元データを保護して保存を停止しています";
         setBanner(message);
-        showToast("error", message);
+        showToast("error", options?.errorToastMessage ?? message);
         return false;
       }
       const safeConfig = limitToday(nextConfig);
@@ -3444,7 +3459,7 @@ function DashboardApp() {
         }
         const message = error instanceof Error ? error.message : String(error);
         setBanner(message);
-        showToast("error", `保存できません: ${message}`);
+        showToast("error", options?.errorToastMessage ?? `保存できません: ${message}`);
         return false;
       }
 
@@ -7550,8 +7565,59 @@ function DashboardApp() {
     return saved;
   };
 
+  const refreshMissingLaunchTargets = useCallback(async () => {
+    const requestId = ++missingTargetsRequestRef.current;
+    try {
+      const response = await loadMissingLaunchTargets();
+      if (requestId !== missingTargetsRequestRef.current) return;
+      setMissingButtonIds(new Set(response.missingButtonIds));
+      setMissingInstructionProjectIds(new Set(response.missingInstructionProjectIds));
+    } catch {
+      // Quietly keep the previous missing-target state when checking fails.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!config) return;
+    const timer = window.setTimeout(() => {
+      void refreshMissingLaunchTargets();
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [config, refreshMissingLaunchTargets]);
+
+  useEffect(() => {
+    const handleFocus = () => {
+      if (!configRef.current) return;
+      void refreshMissingLaunchTargets();
+    };
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [refreshMissingLaunchTargets]);
+
+  const prevCompletionPromptRef = useRef<TimerCompletionPrompt | null>(null);
+  useEffect(() => {
+    const previous = prevCompletionPromptRef.current;
+    prevCompletionPromptRef.current = completionPrompt;
+    if (!previous && completionPrompt) {
+      const project = completionPrompt.projectId
+        ? configRef.current?.projects.find(
+            (candidate) => candidate.id === completionPrompt.projectId,
+          )
+        : undefined;
+      setTimerResumeDraft(project?.nextStep?.resumeNote ?? "");
+    } else if (!completionPrompt) {
+      setTimerResumeDraft("");
+    }
+  }, [completionPrompt]);
+
   const continueCompletedTimer = () => {
-    if (!completionPrompt || plannedCommitRef.current || finishingTimerRef.current !== null) return;
+    if (
+      !completionPrompt ||
+      completionResumeSavingRef.current ||
+      plannedCommitRef.current ||
+      finishingTimerRef.current !== null
+    )
+      return;
     if (!activeTimer || activeTimerRef.current?.instanceId !== activeTimer.instanceId) return;
     setCompletionPrompt(null);
     setNow(Date.now());
@@ -8648,6 +8714,7 @@ function DashboardApp() {
         initialDecisionMode === "wishlist" ? "" : (options?.text ?? project.nextStep?.text ?? ""),
       originalText: project.nextStep?.text ?? "",
       trigger: editingExisting ? (project.nextStep?.trigger ?? "") : "",
+      resumeNote: editingExisting ? (project.nextStep?.resumeNote ?? "") : "",
       ...nextStepExecutionDraft(editingExisting ? project.nextStep : undefined),
       legacyChoice:
         !editingExisting && !project.nextStep && project.legacyNextStepSettings ? null : "discard",
@@ -8704,6 +8771,7 @@ function DashboardApp() {
       text: "",
       originalText: "",
       trigger: "",
+      resumeNote: "",
       ...nextStepExecutionDraft(),
       legacyChoice: "discard",
       replacementChoice: null,
@@ -8817,6 +8885,7 @@ function DashboardApp() {
       projectId,
       originalText: project?.nextStep?.text ?? "",
       trigger: "",
+      resumeNote: "",
       ...nextStepExecutionDraft(),
       legacyChoice: project?.legacyNextStepSettings && !project.nextStep ? null : "discard",
       replacementChoice: null,
@@ -8841,6 +8910,7 @@ function DashboardApp() {
         mode: "promote",
         decisionMode,
         trigger: "",
+        resumeNote: "",
         ...nextStepExecutionDraft(),
         legacyChoice: "discard",
         replacementChoice: null,
@@ -8853,6 +8923,7 @@ function DashboardApp() {
       ...draft,
       mode: project?.nextStep ? "edit" : "set",
       decisionMode,
+      resumeNote: project?.nextStep?.resumeNote ?? "",
       legacyChoice: project?.legacyNextStepSettings && !project.nextStep ? null : "discard",
       replacementChoice: null,
       replacedNextStep: undefined,
@@ -8983,6 +9054,7 @@ function DashboardApp() {
         : {}),
       updatedAt: existing?.updatedAt && text === draft.originalText ? existing.updatedAt : now,
       ...(existing?.reviewedAt ? { reviewedAt: existing.reviewedAt } : {}),
+      ...(existing && draft.resumeNote.trim() ? { resumeNote: draft.resumeNote.trim() } : {}),
     };
 
     let nextConfig: AppConfig;
@@ -9791,6 +9863,74 @@ function DashboardApp() {
   const completionProject = completionPrompt?.projectId
     ? config.projects.find((project) => project.id === completionPrompt.projectId)
     : undefined;
+  const completionCanEditResume = Boolean(
+    completionPrompt &&
+      completionProject &&
+      completionProject.nextStep?.text.trim() &&
+      activeTimer &&
+      timerMatchesProjectNextStep(
+        activeTimer,
+        completionProject.id,
+        completionProject.nextStep.generationId,
+      ) &&
+      sameSourceGeneration(
+        completionProject.nextStep.generationId,
+        activeTimer.sourceGenerationId,
+      ) &&
+      !findTodayEntryForTimer(todayEntries(config.today.items), activeTimer),
+  );
+  const submitCompletedTimer = async () => {
+    if (
+      completionResumeSavingRef.current ||
+      plannedCommitRef.current ||
+      finishingTimerRef.current !== null ||
+      earlyStopRef.current
+    ) {
+      return;
+    }
+    if (completionCanEditResume && completionProject?.nextStep) {
+      const trimmed = timerResumeDraft.trim();
+      const currentResume = completionProject.nextStep.resumeNote?.trim() ?? "";
+      if (trimmed !== currentResume) {
+        const currentConfig = configRef.current;
+        const liveProject = currentConfig?.projects.find(
+          (project) => project.id === completionProject.id,
+        );
+        if (
+          currentConfig &&
+          liveProject?.nextStep &&
+          sameSourceGeneration(
+            liveProject.nextStep.generationId,
+            completionProject.nextStep.generationId,
+          )
+        ) {
+          completionResumeSavingRef.current = true;
+          setCompletionResumeSaving(true);
+          try {
+            const nextStep: LauncherNextStep = { ...liveProject.nextStep };
+            if (trimmed) {
+              nextStep.resumeNote = trimmed;
+            } else {
+              delete nextStep.resumeNote;
+            }
+            const nextConfig: AppConfig = {
+              ...currentConfig,
+              projects: currentConfig.projects.map((project) =>
+                project.id === liveProject.id ? { ...project, nextStep } : project,
+              ),
+            };
+            await persistConfig(nextConfig, false, {
+              errorToastMessage: "次はここからを保存できませんでした",
+            });
+          } finally {
+            completionResumeSavingRef.current = false;
+            setCompletionResumeSaving(false);
+          }
+        }
+      }
+    }
+    finishCompletedTimer();
+  };
   const nextStepSetupProject =
     config.projects.find((project) => !project.nextStep?.text.trim()) ?? config.projects[0];
   const doNowCandidates = (doNowResponse?.candidates ?? [])
@@ -9824,7 +9964,7 @@ function DashboardApp() {
     ? doNowRestartPreferred
       ? "14日以上空いているため、短時間から再開できます"
       : doNowCandidateIndex > 0
-        ? "今の状況から選んだ別の候補です"
+        ? "「他の一手」で選んだ候補です"
         : doNowSelection.candidate.reason === "today3"
           ? "今日の3件に入っている一手です"
           : doNowSelection.candidate.reason === "noToday"
@@ -9832,8 +9972,8 @@ function DashboardApp() {
             ? "今週の重点で、今日はまだ取り組んでいません"
             : "今日はまだ取り組んでいない候補です"
           : doNowSelection.candidate.reason === "manualOrder"
-            ? "同じ条件の中で、手動の優先順が最も高いプロジェクトです"
-            : "最後の実行が最も古い候補です"
+            ? "ほかの条件が同じなので、次の一手の並びで上のプロジェクトを選びました"
+            : "最後に取り組んでから、いちばん間があいている一手です"
     : "";
   const doNowDefaultTimerMinutes = doNowSelection
     ? (doNowSelection.project.nextStep?.defaultTimerMinutes ?? config.settings.defaultTimerMinutes)
@@ -11535,6 +11675,15 @@ function DashboardApp() {
                           {doNowSelection.project.nextStep?.text}
                         </strong>
                         {(() => {
+                          const resumeNote = doNowSelection.project.nextStep?.resumeNote?.trim();
+                          return resumeNote ? (
+                            <p className="doNowResume" title={resumeNote}>
+                              <span className="doNowResumeLabel">次はここから</span>
+                              <span className="doNowResumeText">{resumeNote}</span>
+                            </p>
+                          ) : null;
+                        })()}
+                        {(() => {
                           const openButtons = (doNowSelection.project.nextStep?.buttonIds ?? [])
                             .map((id) => buttonsById.get(id))
                             .filter((button): button is LauncherButton => Boolean(button));
@@ -11543,6 +11692,9 @@ function DashboardApp() {
                             ?.split(/[\\/]/)
                             .filter(Boolean)
                             .pop();
+                          const instructionMissing = missingInstructionProjectIds.has(
+                            doNowSelection.project.id,
+                          );
                           if (!openButtons.length && !doNowInstructionPath && !trigger) return null;
                           return (
                             <div className="doNowMeta">
@@ -11558,15 +11710,37 @@ function DashboardApp() {
                               {openButtons.length || doNowInstructionPath ? (
                                 <span className="doNowMetaLabel">始めると一緒に開く</span>
                               ) : null}
-                              {openButtons.map((button) => (
-                                <span className="doNowOpenChip" key={button.id}>
-                                  <UiIcon name="external" size={12} />
-                                  {button.label}
-                                </span>
-                              ))}
+                              {openButtons.map((button) => {
+                                const missing = missingButtonIds.has(button.id);
+                                return (
+                                  <span
+                                    className={
+                                      missing
+                                        ? "doNowOpenChip doNowOpenChip--missing"
+                                        : "doNowOpenChip"
+                                    }
+                                    key={button.id}
+                                    title={
+                                      missing
+                                        ? "見つかりません。次の一手の編集で選び直してください"
+                                        : undefined
+                                    }
+                                  >
+                                    <UiIcon name={missing ? "alert" : "external"} size={12} />
+                                    {button.label}
+                                    {missing && (
+                                      <span className="doNowMissingText">見つかりません</span>
+                                    )}
+                                  </span>
+                                );
+                              })}
                               {doNowInstructionPath ? (
                                 <button
-                                  className="doNowOpenChip doNowOpenChip--button"
+                                  className={
+                                    instructionMissing
+                                      ? "doNowOpenChip doNowOpenChip--button doNowOpenChip--missing"
+                                      : "doNowOpenChip doNowOpenChip--button"
+                                  }
                                   onClick={() => {
                                     void openInstructionWindow({
                                       path: doNowInstructionPath,
@@ -11578,10 +11752,18 @@ function DashboardApp() {
                                       );
                                     });
                                   }}
+                                  title={
+                                    instructionMissing
+                                      ? "見つかりません。次の一手の編集で選び直してください"
+                                      : undefined
+                                  }
                                   type="button"
                                 >
-                                  <UiIcon name="book" size={12} />
+                                  <UiIcon name={instructionMissing ? "alert" : "book"} size={12} />
                                   {instructionName || "手順書"}
+                                  {instructionMissing && (
+                                    <span className="doNowMissingText">見つかりません</span>
+                                  )}
                                 </button>
                               ) : null}
                             </div>
@@ -11893,7 +12075,7 @@ function DashboardApp() {
                                 <div className="todayRowTopActions">
                                   {isHereNowTodayItem && (
                                     <span
-                                      aria-label="いまここ"
+                                      aria-label="今やる一手"
                                       className="uiPill uiPill--project todayHereBadge"
                                       data-project-color={
                                         project
@@ -11902,7 +12084,7 @@ function DashboardApp() {
                                       }
                                       role="status"
                                     >
-                                      いまここ
+                                      今やる一手
                                     </span>
                                   )}
                                   <span aria-hidden="true" className="uiKey rowKeyHint">
@@ -14974,6 +15156,30 @@ function DashboardApp() {
               </div>
               <p className="quietText quietText--small settingsVersion">
                 バージョン {APP_VERSION}
+                <button
+                  className="settingsReleaseLink"
+                  onClick={() => {
+                    void executeActions([
+                      {
+                        type: "open_url",
+                        payload: { url: "https://github.com/Takuyakou/life-launcher/releases" },
+                      },
+                    ])
+                      .then((results) => {
+                        if (!results[0]?.ok) {
+                          showToast("error", "リリースページを開けませんでした");
+                        }
+                      })
+                      .catch(() => {
+                        showToast("error", "リリースページを開けませんでした");
+                      });
+                  }}
+                  title="https://github.com/Takuyakou/life-launcher/releases"
+                  type="button"
+                >
+                  リリースページを開く
+                  <UiIcon name="external" size={12} />
+                </button>
               </p>
             </div>
 
@@ -16125,6 +16331,22 @@ function DashboardApp() {
                   <>
                     {renderActionField(true)}
                     {renderTriggerField(true)}
+                    <label className="fieldStack nextStepEditField">
+                      <span>次はここから(任意)</span>
+                      <input
+                        aria-label="次はここから(任意)"
+                        className="textInput"
+                        maxLength={80}
+                        onChange={(event) =>
+                          setNextStepEditDraft({
+                            ...nextStepEditDraft,
+                            resumeNote: event.target.value,
+                          })
+                        }
+                        placeholder="例: 3章の途中から"
+                        value={nextStepEditDraft.resumeNote}
+                      />
+                    </label>
                     {renderTimerGrid(true)}
                   </>
                 ) : null}
@@ -16369,8 +16591,16 @@ function DashboardApp() {
                     {nextStepEditDraft.buttonIds.map((buttonId) => {
                       const button = buttonsById.get(buttonId);
                       const label = button?.label ?? "登録が見つかりません";
+                      const buttonMissing = Boolean(button && missingButtonIds.has(button.id));
                       return (
-                        <span className="nextStepOpenChip" key={`button:${buttonId}`}>
+                        <span
+                          className={
+                            buttonMissing
+                              ? "nextStepOpenChip nextStepOpenChip--missing"
+                              : "nextStepOpenChip"
+                          }
+                          key={`button:${buttonId}`}
+                        >
                           {button ? (
                             renderButtonIcon(button, "nextStepOpenChipIcon")
                           ) : (
@@ -16381,6 +16611,9 @@ function DashboardApp() {
                           <span className="nextStepOpenChipLabel" title={label}>
                             {label}
                           </span>
+                          {buttonMissing && (
+                            <span className="uiPill nextStepOpenChipMissing">見つかりません</span>
+                          )}
                           <button
                             aria-label={`${label}を外す`}
                             className="nextStepOpenChipRemove"
@@ -16400,26 +16633,46 @@ function DashboardApp() {
                       );
                     })}
                     {nextStepEditDraft.instructionPath ? (
-                      <span className="nextStepOpenChip">
-                        <UiIcon name="fileText" size={16} />
-                        <span className="nextStepOpenChipLabel" title={nextStepInstructionLabel}>
-                          {nextStepInstructionLabel}
-                        </span>
-                        <button
-                          aria-label={`${nextStepInstructionLabel}を外す`}
-                          className="nextStepOpenChipRemove"
-                          onClick={() =>
-                            setNextStepEditDraft({
-                              ...nextStepEditDraft,
-                              instructionPath: "",
-                              instructionOpenOnStart: false,
-                            })
-                          }
-                          type="button"
-                        >
-                          <UiIcon name="close" size={12} />
-                        </button>
-                      </span>
+                      (() => {
+                        const instructionMissing = Boolean(
+                          editingExisting &&
+                            nextStepProject &&
+                            missingInstructionProjectIds.has(nextStepProject.id) &&
+                            nextStepEditDraft.instructionPath ===
+                              (nextStepProject.nextStep?.instructionPath ?? ""),
+                        );
+                        return (
+                          <span
+                            className={
+                              instructionMissing
+                                ? "nextStepOpenChip nextStepOpenChip--missing"
+                                : "nextStepOpenChip"
+                            }
+                          >
+                            <UiIcon name="fileText" size={16} />
+                            <span className="nextStepOpenChipLabel" title={nextStepInstructionLabel}>
+                              {nextStepInstructionLabel}
+                            </span>
+                            {instructionMissing && (
+                              <span className="uiPill nextStepOpenChipMissing">見つかりません</span>
+                            )}
+                            <button
+                              aria-label={`${nextStepInstructionLabel}を外す`}
+                              className="nextStepOpenChipRemove"
+                              onClick={() =>
+                                setNextStepEditDraft({
+                                  ...nextStepEditDraft,
+                                  instructionPath: "",
+                                  instructionOpenOnStart: false,
+                                })
+                              }
+                              type="button"
+                            >
+                              <UiIcon name="close" size={12} />
+                            </button>
+                          </span>
+                        );
+                      })()
                     ) : null}
                     <button
                       aria-expanded={nextStepOpenMenuOpen}
@@ -16786,13 +17039,49 @@ function DashboardApp() {
 
             <p className="timerCompleteText">予定時間になりました</p>
 
+            {completionCanEditResume && (
+              <>
+                <label className="fieldStack timerResumeField">
+                  <span>次はここから(任意)</span>
+                  <input
+                    aria-label="次はここから(任意)"
+                    className="textInput"
+                    disabled={completionResumeSaving}
+                    maxLength={80}
+                    onChange={(event) => setTimerResumeDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (
+                        event.key === "Enter" &&
+                        !event.nativeEvent.isComposing &&
+                        event.keyCode !== 229
+                      ) {
+                        event.preventDefault();
+                        void submitCompletedTimer();
+                      }
+                    }}
+                    placeholder="例: 3章の途中から"
+                    value={timerResumeDraft}
+                  />
+                </label>
+                <p className="timerResumeHint">
+                  書くと、次に「今やる一手」に出たときに、行動の下に出ます。
+                </p>
+              </>
+            )}
+
             <div className="dialogActions">
-              <button className="secondaryButton" onClick={continueCompletedTimer} type="button">
+              <button
+                className="secondaryButton"
+                disabled={completionResumeSaving}
+                onClick={continueCompletedTimer}
+                type="button"
+              >
                 続ける(+15分)
               </button>
               <button
                 className="secondaryButton secondaryButton--finish"
-                onClick={finishCompletedTimer}
+                disabled={completionResumeSaving}
+                onClick={() => void submitCompletedTimer()}
                 type="button"
               >
                 終わる

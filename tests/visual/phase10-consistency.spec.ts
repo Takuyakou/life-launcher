@@ -144,7 +144,7 @@ test("P10-14e 12-4 the Phase 10 weights are only 400, 500 or 700", async ({ page
   }
 });
 
-test("P10-14e 5 the Enter hint sits left of the menu, after いまここ, and only on focus", async ({
+test("P10-14e 5 the Enter hint sits left of the menu, after 今やる一手, and only on focus", async ({
   page,
 }) => {
   await prepare(page);
@@ -297,7 +297,7 @@ test("P10-14e 2 the mini clock uses the same 700 weight as the sidebar clock", a
   expect(await clock.evaluate((node) => getComputedStyle(node).fontWeight)).toBe("700");
 });
 
-test("F7 いまここ uses the same Project colour as its dot", async ({ page }) => {
+test("F7 今やる一手 uses the same Project colour as its dot", async ({ page }) => {
   await prepare(page);
   const badge = page.locator(".todayHereBadge");
   const dot = page
@@ -313,7 +313,7 @@ test("F7 いまここ uses the same Project colour as its dot", async ({ page })
   );
 });
 
-test("F8 the long Project name, state pill, いまここ and Enter never overlap", async ({ page }) => {
+test("F8 the long Project name, state pill, 今やる一手 and Enter never overlap", async ({ page }) => {
   const fixture = createPublicFixture();
   fixture.config.projects[0].name = "とても長いプロジェクト名が入っている確認用のプロジェクト";
   await prepare(page, fixture, { width: 1440, height: 900 });

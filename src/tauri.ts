@@ -26,6 +26,7 @@ import {
   LauncherButton,
   LoadConfigResponse,
   ManualSessionInput,
+  MissingLaunchTargetsResponse,
   NotesForDateInput,
   NotesHistoryResponse,
   NextStepFreshnessResponse,
@@ -183,6 +184,10 @@ export async function loadWeeklyReview(): Promise<WeeklyReviewResponse> {
 
 export async function loadNextStepFreshness(): Promise<NextStepFreshnessResponse> {
   return invoke<NextStepFreshnessResponse>("load_next_step_freshness");
+}
+
+export async function loadMissingLaunchTargets(): Promise<MissingLaunchTargetsResponse> {
+  return invoke<MissingLaunchTargetsResponse>("load_missing_launch_targets");
 }
 
 export async function loadSessionEntries(
