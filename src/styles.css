@@ -15256,7 +15256,7 @@ button.mainActionButton:is(
   font-variant-numeric: tabular-nums;
 }
 /* E1: at narrow widths the two minute fields stack, like the existing timer grid. */
-@media (max-width: 900px) {
+@media (max-width: 520px) {
   .nextStepEditTimerGrid {
     grid-template-columns: 1fr;
   }

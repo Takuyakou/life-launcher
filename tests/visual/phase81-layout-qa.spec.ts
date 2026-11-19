@@ -387,11 +387,31 @@ for (const width of [620] as const) {
     await expect(nextStep.getByRole("combobox", { name: "プロジェクト" })).toHaveCount(0);
     await expect(nextStep.getByRole("heading", { level: 3 })).toHaveCount(0);
     await expectInsideViewport(page, nextStep, "NextStep dialog");
-    expect(await nextStep.evaluate((node) => node.scrollHeight <= node.clientHeight)).toBe(true);
+    const nextStepBox = await measurable(nextStep, "NextStep dialog");
+    const viewport = page.viewportSize();
+    if (!viewport) throw new Error("Viewport size is unavailable");
+    expect(nextStepBox.y, "NextStep dialog top edge").toBeGreaterThanOrEqual(0);
+    expect(
+      nextStepBox.y + nextStepBox.height,
+      "NextStep dialog bottom edge",
+    ).toBeLessThanOrEqual(viewport.height);
 
     const nextStepActions = nextStep.locator(".formDialogActions");
     const nextStepSave = nextStepActions.getByRole("button", { name: "保存", exact: true });
     const nextStepCancel = nextStepActions.getByRole("button", { name: "キャンセル", exact: true });
+    const startNoteTemplate = nextStep.getByRole("textbox", {
+      name: "開始noteテンプレート（任意）",
+    });
+    await startNoteTemplate.scrollIntoViewIfNeeded();
+    await expect(startNoteTemplate).toBeVisible();
+    await expect(nextStepSave).toBeVisible();
+    await expect(nextStepCancel).toBeVisible();
+
+    const timerGridColumns = await nextStep
+      .locator(".nextStepEditTimerGrid")
+      .evaluate((node) => getComputedStyle(node).gridTemplateColumns.trim().split(/\s+/).filter(Boolean).length);
+    expect(timerGridColumns).toBe(2);
+
     await nextStepActions.scrollIntoViewIfNeeded();
     await page.mouse.move(0, 0);
     const nextStepCancelRest = await nextStepCancel.evaluate(

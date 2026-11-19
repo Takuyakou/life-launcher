@@ -87,13 +87,13 @@ test("P71 Today Project editor saves both in one call; failure retains draft",as
   const dialog=page.getByRole("dialog",{name:"次の一手を編集",exact:true});
   await expect(dialog.locator(".dialogActions > button")).toHaveText(["保存","キャンセル"]);
   await expect(dialog.locator(".projectTimerSetting > span")).toHaveText(["短時間","通常"]);
-  for (const width of [1440, 860]) {
+  for (const width of [1440, 860, 500]) {
     await page.setViewportSize({ width, height: 900 });
     const short = dialog.getByRole("spinbutton", { name: "短時間タイマー分数" });
     const normal = dialog.getByRole("spinbutton", { name: "通常タイマー分数" });
     await short.scrollIntoViewIfNeeded();
     const a = (await short.boundingBox())!, b = (await normal.boundingBox())!;
-    expect(width <= 900 ? a.y + a.height <= b.y : a.x + a.width <= b.x).toBe(true);
+    expect(width <= 520 ? a.y + a.height <= b.y : a.x + a.width <= b.x).toBe(true);
   }
   await dialog.getByRole("textbox",{name:"行動",exact:true}).fill("同期した次の一手");
   await page.evaluate(()=>{
