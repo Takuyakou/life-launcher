@@ -16418,7 +16418,7 @@ button.mainActionButton:is(
 .weeklyPlanningKicker { margin: 0; color: #a39c8e; font-size: 12px; font-weight: 700; line-height: 1.4; }
 .weeklyPlanningStats { display: flex; flex-wrap: wrap; gap: 12px; }
 .weeklyPlanningStats > div { flex: 1 1 120px; display: grid; gap: 6px; padding: 14px 16px; border: 1px solid #353126; border-radius: 12px; }
-.weeklyPlanningStats span { color: #a39c8e; font-size: 12px; font-weight: 400; }
+.weeklyPlanningStats > div > span { color: #a39c8e; font-size: 12px; font-weight: 400; }
 .weeklyPlanningStats strong {
   color: #f4f0e8;
   font-size: 24px;

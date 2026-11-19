@@ -132,7 +132,14 @@ test("P10-15 2 the weekly typography and controls follow the values", async ({ p
   await openWeekly(page, weeklyFixture());
   await expect(page.locator(".weeklyPlanningTitle")).toHaveCSS("font-size", "26px");
   await expect(page.locator(".weeklyPlanningTitle")).toHaveCSS("font-weight", "700");
-  await expect(page.locator(".weeklyPlanningStats strong").first()).toHaveCSS("font-size", "24px");
+  const statNumber = page.locator(".weeklyPlanningStats strong > span").first();
+  await expect(statNumber).toHaveCSS("font-size", "24px");
+  await expect(statNumber).toHaveCSS("font-weight", "700");
+  await expect(statNumber).toHaveCSS("color", "rgb(244, 240, 232)");
+  await expect(page.locator(".weeklyPlanningStats > div > span").first()).toHaveCSS(
+    "font-size",
+    "12px",
+  );
   expect(Math.round((await page.locator(".weeklyPlanningProjectRow").first().boundingBox())!.height)).toBeGreaterThanOrEqual(48);
   const selected = page.locator('.weeklyPlanningFocusButton[aria-pressed="true"]').first();
   await expect(selected).toHaveCSS("border-top-color", "rgb(255, 206, 91)");
