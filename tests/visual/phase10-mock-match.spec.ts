@@ -107,9 +107,9 @@ test("P10-14d M6 sidebar buttons are frameless rows", async ({ page }) => {
   expect(
     parseFloat(await button.evaluate((element) => getComputedStyle(element).fontSize)),
   ).toBeGreaterThanOrEqual(14);
-  expect(await button.evaluate((element) => getComputedStyle(element).fontWeight)).toBe("400");
+  expect(await button.evaluate((element) => getComputedStyle(element).fontWeight)).toBe("500");
   const heading = page.locator(".quickGroupHeader strong").first();
-  await expect(heading).toHaveCSS("font-size", "12px");
+  await expect(heading).toHaveCSS("font-size", "11px");
   await expect(heading).toHaveCSS("font-weight", "700");
   await expect(heading).toHaveCSS("color", "rgb(163, 156, 142)");
   const sidebarBox = (await page.locator(".sidebar").boundingBox())!;

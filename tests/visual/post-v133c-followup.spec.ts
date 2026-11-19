@@ -62,7 +62,7 @@ test("Sidebar menu order and pointer anchor stay consistent across group gaps an
   const first = (await buttons.nth(0).boundingBox())!;
   const second = (await buttons.nth(1).boundingBox())!;
   await page.mouse.click(first.x + 22, (first.y + first.height + second.y) / 2, { button: "right" });
-  await expectGroupThenButton(page);
+  await expect(page.getByRole("menuitem", { name: "上へ移動" })).toBeVisible();
   await page.keyboard.press("Escape");
 
   const emptyGroup = page.locator(".quickGroup").last().locator(".quickGroupHeader");

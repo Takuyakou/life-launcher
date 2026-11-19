@@ -255,6 +255,7 @@ test("P84 Picker removes selected cards by keyboard without resizing and updates
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const dialog = picker(page);
+  await page.waitForTimeout(300);
   const dialogBoxBefore = await dialog.boundingBox();
   await expect(dialog.locator(".todayPickerCounter")).toContainText("1 / 3");
 
@@ -337,6 +338,7 @@ test("P84 Picker aligns project, task, and action columns with readable long con
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const dialog = picker(page);
+  await page.waitForTimeout(300);
   const nextStepTaskXs = await dialog
     .locator('[data-today-picker-section="next-step"] .todayPickerTask')
     .evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().x));
@@ -378,6 +380,7 @@ test("P84 Picker keeps the selected Wishlist row visible with its ✓", async ({
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const dialog = picker(page);
+  await page.waitForTimeout(300);
   const heightBefore = (await dialog.boundingBox())!.height;
   const row = dialog.locator('[data-today-picker-section="wishlist"] .todayPickerRow', {
     hasText: "あとで確認するサンプル",

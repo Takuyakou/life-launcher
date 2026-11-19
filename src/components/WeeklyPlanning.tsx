@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { animate, useReducedMotion } from "motion/react";
 import type { LauncherProject, AppConfig, WeeklyReviewResponse } from "../types";
 import { buildWeeklyPrompt } from "../content/weeklyPrompt";
 import {
@@ -50,6 +52,36 @@ export function WeeklyPlanning({
   const weekRange = weeklyReview
     ? formatWeekRange(weeklyReview.previousWeekStart, weeklyReview.previousWeekEnd)
     : null;
+  const totalMinutes = weeklyReview?.totalMinutes ?? 0;
+  const activeDays = weeklyReview?.activeDays ?? 0;
+  const sessionCount =
+    weeklyReview?.projects.reduce((sum, project) => sum + project.sessionCount, 0) ?? 0;
+  const reducedMotion = useReducedMotion();
+  const [counted, setCounted] = useState(() =>
+    reducedMotion
+      ? { minutes: totalMinutes, days: activeDays, count: sessionCount }
+      : { minutes: 0, days: 0, count: 0 },
+  );
+
+  useEffect(() => {
+    if (reducedMotion || (totalMinutes === 0 && activeDays === 0 && sessionCount === 0)) {
+      setCounted({ minutes: totalMinutes, days: activeDays, count: sessionCount });
+      return;
+    }
+    setCounted({ minutes: 0, days: 0, count: 0 });
+    const control = animate(0, 1, {
+      duration: 0.6,
+      ease: [0.23, 1, 0.32, 1],
+      onUpdate: (progress) => {
+        setCounted({
+          minutes: Math.round(totalMinutes * progress),
+          days: Math.round(activeDays * progress),
+          count: Math.round(sessionCount * progress),
+        });
+      },
+    });
+    return () => control.stop();
+  }, [activeDays, reducedMotion, sessionCount, totalMinutes]);
 
   const copyPrompt = async () => {
     try {
@@ -77,18 +109,20 @@ export function WeeklyPlanning({
             <div className="weeklyPlanningStats">
               <div>
                 <span>合計</span>
-                <strong>{formatDuration(weeklyReview?.totalMinutes ?? 0)}</strong>
+                <strong aria-label={formatDuration(totalMinutes)}>
+                  <span aria-hidden="true">{formatDuration(counted.minutes)}</span>
+                </strong>
               </div>
               <div>
                 <span>動いた日</span>
-                <strong>{weeklyReview?.activeDays ?? 0}日</strong>
+                <strong aria-label={`${activeDays}日`}>
+                  <span aria-hidden="true">{counted.days}日</span>
+                </strong>
               </div>
               <div>
                 <span>始めた回数</span>
-                <strong>
-                  {weeklyReview?.projects.reduce((sum, project) => sum + project.sessionCount, 0) ??
-                    0}
-                  回
+                <strong aria-label={`${sessionCount}回`}>
+                  <span aria-hidden="true">{counted.count}回</span>
                 </strong>
               </div>
             </div>

@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { motion } from "motion/react";
-import { springSnappy } from "../motion";
 import { CopyButton } from "./CopyButton";
 import { IMPORT_PROMPT_FIRST, IMPORT_PROMPT_REPEAT } from "../content/importPrompt";
 import { buildImportCurrentState } from "../importCurrentState";
@@ -129,12 +127,10 @@ export function ImportDialog({
       }}
       role="presentation"
     >
-      <motion.section
+      <section
         aria-label="まとめて取り込む"
         aria-modal="true"
-        animate={{ opacity: 1, y: 0, scale: 1 }}
         className="importDialog"
-        initial={{ opacity: 0, y: 8, scale: 0.98 }}
         onKeyDown={(event) => {
           if (event.key === "Escape" && !busy) {
             event.preventDefault();
@@ -142,7 +138,6 @@ export function ImportDialog({
           }
         }}
         role="dialog"
-        transition={springSnappy}
       >
         <header className="importDialogHeader">
           <div>
@@ -356,7 +351,7 @@ export function ImportDialog({
             キャンセル
           </button>
         </footer>
-      </motion.section>
+      </section>
     </div>
   );
 }

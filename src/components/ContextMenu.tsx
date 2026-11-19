@@ -151,7 +151,7 @@ export function ContextMenu({
   return (
     <div
       aria-label={ariaLabel}
-      className={className}
+      className={`${className} uiMenuEnter`}
       onClick={handleClick}
       onKeyDown={(event) => {
         if (event.key === "Escape") {

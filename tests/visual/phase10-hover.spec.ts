@@ -185,3 +185,27 @@ test("F13 the Do Now heading uses the Project colour, not the old blue", async (
     await dot.evaluate((node) => getComputedStyle(node).backgroundColor),
   );
 });
+
+test("P10-15c J1 the Do Now start buttons lift and cast the same shadow as the Today cards", async ({
+  page,
+}) => {
+  await prepare(page);
+  const doNowShort = page.locator(".doNowActions .doNowStartSecondary").first();
+  const doNowNormal = page.locator(".doNowActions .doNowStartPrimary").first();
+  const todayStart = page.locator(".todayStartButton").first();
+  const read = (locator: typeof doNowShort) =>
+    locator.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { boxShadow: style.boxShadow, transform: style.transform };
+    });
+  await todayStart.hover();
+  await page.waitForTimeout(180);
+  const today = await read(todayStart);
+  expect(today.transform).not.toBe("none");
+  expect(today.boxShadow).not.toBe("none");
+  for (const button of [doNowShort, doNowNormal]) {
+    await button.hover();
+    await page.waitForTimeout(180);
+    expect(await read(button)).toEqual(today);
+  }
+});

@@ -406,3 +406,26 @@ test("G8 the empty Next Step text opens the same editor", async ({ page }) => {
   await placeholder.click();
   await expect(page.getByRole("dialog", { name: "次の一手を設定" })).toBeVisible();
 });
+
+test("P10-15c J2 the victory bar never gets its top border clipped", async ({ page }) => {
+  for (const viewport of [
+    { width: 1440, height: 900 },
+    { width: 860, height: 560 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
+    await installTauriMock(page, createFullTodayFixture(), "main");
+    await page.goto("/");
+    await expect(page.locator(".doNowBand")).toBeVisible();
+    const bar = page.locator(".victoryBar");
+    const area = page.locator(".mainScrollArea");
+    const barBox = (await bar.boundingBox())!;
+    const areaBox = (await area.boundingBox())!;
+    const before = Math.round(barBox.y);
+    expect(before).toBe(80);
+    await bar.hover();
+    await page.waitForTimeout(180);
+    const hovered = (await bar.boundingBox())!;
+    expect(hovered.y).toBeGreaterThanOrEqual(areaBox.y - 0.5);
+  }
+});

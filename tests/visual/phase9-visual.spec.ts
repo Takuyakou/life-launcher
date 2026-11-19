@@ -138,6 +138,7 @@ for (const [name, tab] of [
     const records = page.locator(".recordsView");
     await records.getByRole("tab", { name: tab }).click();
     await expect(records.getByRole("tab", { name: tab })).toHaveAttribute("aria-selected", "true");
+    if (name === "records-week") await page.waitForTimeout(800);
     await expect(page).toHaveScreenshot(`${name}.png`, SCREENSHOT_OPTIONS);
   });
 }
@@ -148,5 +149,6 @@ test("P9-00 visual records-planning", async ({ page }) => {
   const records = page.locator(".recordsView");
   await records.getByRole("tab", { name: "今週を決める" }).click();
   await expect(page.locator(".weeklyPlanning")).toBeVisible();
+  await page.waitForTimeout(800);
   await expect(page).toHaveScreenshot("records-planning.png", SCREENSHOT_OPTIONS);
 });

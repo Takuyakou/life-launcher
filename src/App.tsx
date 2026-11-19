@@ -2131,6 +2131,7 @@ function DashboardApp() {
   const [searchBusy, setSearchBusy] = useState(false);
   const searchOpenerRef = useRef<HTMLElement | null>(null);
   const openSearchRef = useRef<() => void>(() => {});
+  const doNowInitialCopyKeyRef = useRef<string | null>(null);
   const [activeView, setActiveView] = useState<ActiveView>("main");
   const [pendingActionId, setPendingActionId] = useState<string | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -9808,6 +9809,14 @@ function DashboardApp() {
       : doNowCandidates.findIndex(({ project }) => project.id === doNowPickedProjectId);
   const doNowCandidateIndex = Math.max(0, doNowPickedIndex);
   const doNowSelection = doNowCandidates[doNowCandidateIndex];
+  const doNowCopyKey = doNowSelection
+    ? `${doNowSelection.project.id}:${doNowSelection.project.nextStep?.generationId ?? ""}`
+    : null;
+  if (doNowCopyKey && doNowInitialCopyKeyRef.current === null) {
+    doNowInitialCopyKeyRef.current = doNowCopyKey;
+  }
+  const doNowCopyShouldAnimate =
+    doNowCopyKey !== null && doNowInitialCopyKeyRef.current !== doNowCopyKey;
   const doNowRestartPreferred = Boolean(
     doNowSelection?.candidate.restartEligible && (config.settings.restartShortFirst ?? true),
   );
@@ -11487,7 +11496,13 @@ function DashboardApp() {
                       }}
                       tabIndex={doNowCandidates.length > 1 ? 0 : undefined}
                     >
-                      <div className="doNowCopy">
+                      <motion.div
+                        animate={{ opacity: 1, x: 0 }}
+                        className="doNowCopy"
+                        initial={doNowCopyShouldAnimate ? { opacity: 0, x: 12 } : false}
+                        key={doNowCopyKey ?? undefined}
+                        transition={springSnappy}
+                      >
                         <div className="doNowKicker">
                           <span aria-hidden="true" className="doNowStatusDot" />
                           <h2 id="do-now-title">今やる一手</h2>
@@ -11572,7 +11587,7 @@ function DashboardApp() {
                             </div>
                           );
                         })()}
-                      </div>
+                      </motion.div>
                       <div className="doNowFooter">
                         <div className="doNowActions">
                           {isDoNowRunning && activeTimer ? (
