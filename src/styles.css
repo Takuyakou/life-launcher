@@ -16751,3 +16751,73 @@ button.mainActionButton:is(
 .mainScrollArea .recordsViewHeader {
   top: -6px;
 }
+
+/* P10-18d: settings weekly focus (restored; removed by P10-15) */
+.weeklyFocusChecklist {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.weeklyFocusChecklist label {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 7px 9px;
+  background: var(--surface-soft);
+  cursor: pointer;
+}
+
+.weeklyFocusChecklist input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.settingsWeeklyFocus {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  border-top: 1px solid var(--line-soft);
+  padding-top: 14px;
+}
+
+.settingsWeeklyFocusHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settingsWeeklyFocusHeading h4,
+.settingsWeeklyFocusHeading p {
+  margin: 0;
+}
+
+.settingsWeeklyFocusHeading p {
+  margin-top: 3px;
+  color: var(--text-muted-readable);
+  font-size: 12px;
+}
+
+.settingsWeeklyFocusHeading > span {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.settingsWeeklyFocusChecklist label:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+@media (max-width: 760px) {
+  .weeklyFocusChecklist {
+    grid-template-columns: 1fr;
+  }
+}
