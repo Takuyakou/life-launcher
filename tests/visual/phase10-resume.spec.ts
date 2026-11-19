@@ -295,6 +295,58 @@ test("P10-17 N3-5 8, 9 & 10 Next Step edit updates/clears resumeNote, maxLength 
   expect(savedStep).toBeUndefined();
 });
 
+test("P10-18 O1 initial focus lands on Continue (+15 min) with or without resume input, Enter continues, and Shift+Tab moves to input", async ({
+  page,
+}) => {
+  // With resume input (standalone Next Step).
+  await open(page, createStandaloneNextStepFixture());
+  const dialogWithInput = await startDoNowAndExpire(page);
+  const continueButton = dialogWithInput.getByRole("button", { name: "続ける(+15分)" });
+  const input = dialogWithInput.getByLabel("次はここから(任意)");
+  await expect(continueButton).toBeFocused();
+
+  // Shift+Tab moves focus to the resume input.
+  await page.keyboard.press("Shift+Tab");
+  await expect(input).toBeFocused();
+
+  // Tab returns focus to Continue (+15 min), and pressing Enter extends the timer by +15 min.
+  await page.keyboard.press("Tab");
+  await expect(continueButton).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(dialogWithInput).toHaveCount(0);
+  expect(await commandCalls(page, "save_config")).toHaveLength(0);
+  expect(await commandCalls(page, "record_session")).toHaveLength(0);
+  await expect(page.locator(".timerPanel .timerClock")).toHaveText(/^(14:5\d|15:00)$/);
+
+  // Without resume input (Today3 Next Step card).
+  const todayFixture = createPublicFixture();
+  todayFixture.config.projects[0].nextStep = {
+    ...todayFixture.config.projects[0].nextStep!,
+    generationId: "gen-today-focus",
+    shortTimerMinutes: 1,
+  };
+  todayFixture.config.today.items = [
+    {
+      ...todayFixture.config.today.items[0],
+      done: false,
+      projectId: todayFixture.config.projects[0].id,
+      sourceKey: `project:${todayFixture.config.projects[0].id}`,
+      sourceGenerationId: "gen-today-focus",
+      shortTimerMinutes: 1,
+    },
+  ];
+  await open(page, todayFixture);
+  await page.locator(".todayRow").first().getByRole("button", { name: "1分" }).click();
+  await page.clock.fastForward(61_000);
+  const dialogWithoutInput = page.getByRole("dialog", { name: "タイマー満了" });
+  await expect(dialogWithoutInput).toBeVisible();
+  await expect(dialogWithoutInput.getByLabel("次はここから(任意)")).toHaveCount(0);
+  await expect(dialogWithoutInput.getByRole("button", { name: "続ける(+15分)" })).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(dialogWithoutInput).toHaveCount(0);
+  await expect(page.locator(".timerPanel .timerClock")).toHaveText(/^(14:5\d|15:00)$/);
+});
+
 test("P10-17 N3-5 11 baseline screenshots for timer-complete-resume and main-do-now-resume", async ({
   page,
 }) => {

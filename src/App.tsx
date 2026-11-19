@@ -4326,7 +4326,11 @@ function DashboardApp() {
     const focusFrame = window.requestAnimationFrame(() => {
       const surface = topSurface();
       if (!surface || surface.contains(document.activeElement)) return;
-      (focusableInside(surface)[0] ?? surface).focus();
+      (
+        surface.querySelector<HTMLElement>("[data-initial-focus]:not([disabled])") ??
+        focusableInside(surface)[0] ??
+        surface
+      ).focus();
     });
     const trapFocus = (event: globalThis.KeyboardEvent) => {
       if (event.key !== "Tab") return;
@@ -17072,6 +17076,7 @@ function DashboardApp() {
             <div className="dialogActions">
               <button
                 className="secondaryButton"
+                data-initial-focus=""
                 disabled={completionResumeSaving}
                 onClick={continueCompletedTimer}
                 type="button"

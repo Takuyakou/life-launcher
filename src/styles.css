@@ -7642,6 +7642,12 @@ body:has([aria-modal="true"]) .toastStack {
   max-width: 420px;
 }
 
+.timerCompleteDialog > div:first-child {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+}
+
 .timerCompleteText {
   color: var(--muted);
   font-size: 17px;
