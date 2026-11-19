@@ -63,7 +63,10 @@ test("P9-08 the three numbered slots and the 0 / 3 progress stay", async ({ page
   );
   expect(Math.max(...heights) - Math.min(...heights)).toBeLessThanOrEqual(1);
   await expect(page.locator(".todayPickerCounter")).toContainText("0 / 3");
-  await expect(page.getByRole("progressbar")).toHaveCount(0);
+  const progress = page.getByRole("progressbar");
+  await expect(progress).toHaveCount(1);
+  await expect(progress).toHaveAttribute("aria-valuenow", "0");
+  expect(Math.round((await progress.locator("span").boundingBox())!.width)).toBe(0);
   // The wording follows the Picker mock (P10-14e, item 4).
   const dialog = page.getByRole("dialog", { name: "今日やるものを選ぶ" });
   await expect(dialog).toContainText("3件まで。決めたら、あとは始めるだけです");

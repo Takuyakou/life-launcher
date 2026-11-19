@@ -13,8 +13,10 @@ async function prepare(
   route: string,
   windowLabel: string,
   viewport: { width: number; height: number },
+  setup?: (fixture: ReturnType<typeof createPublicFixture>) => void,
 ) {
   const fixture = createPublicFixture();
+  setup?.(fixture);
   const errors: string[] = [];
   page.on("console", (message) => {
     if (message.type() === "error") errors.push(message.text());
@@ -61,6 +63,49 @@ test("@manual capture public instruction viewer", async ({ page }) => {
   await guide.click();
   await expect(page.getByText("Markdown手順書", { exact: true })).toBeVisible();
   await page.screenshot({ path: resolve(SCREENSHOT_DIR, "instruction-viewer.png") });
+  expect(errors).toEqual([]);
+});
+
+test("@manual capture public weekly planning", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const errors = await prepare(
+    page,
+    "/",
+    "main",
+    { width: 1366, height: 768 },
+    (fixture) => {
+      fixture.config.sourceCompletions = [
+        {
+          id: "done-1",
+          sourceType: "nextStep",
+          sourceIdentity: "project:sample-learning:1",
+          textSnapshot: "資料を1ページ読む",
+          projectId: "sample-learning",
+          completedAt: "2026-08-04T10:00:00+09:00",
+        },
+        {
+          id: "done-2",
+          sourceType: "wishlist",
+          sourceIdentity: "wishlist:sample-weekend",
+          textSnapshot: "週末に試すアイデア",
+          projectId: "sample-learning",
+          completedAt: "2026-08-06T10:00:00+09:00",
+        },
+        {
+          id: "done-3",
+          sourceType: "nextStep",
+          sourceIdentity: "project:sample-stretch:1",
+          textSnapshot: "5分だけ体を動かす",
+          projectId: "sample-stretch",
+          completedAt: "2026-08-08T10:00:00+09:00",
+        },
+      ];
+    },
+  );
+  await page.getByRole("button", { name: "記録ビューを開く" }).click();
+  await page.getByRole("tab", { name: "今週を決める" }).click();
+  await expect(page.locator(".weeklyPlanning")).toBeVisible();
+  await page.screenshot({ path: resolve(SCREENSHOT_DIR, "weekly-planning.png") });
   expect(errors).toEqual([]);
 });
 

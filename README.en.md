@@ -28,7 +28,7 @@ Note: it is not a complete port of the Windows product. The Web Demo has a separ
   Suggests one next step: the Next Step already in Today's Three first, then this week's focus, then items you have not touched today, then the oldest session. Start it right away with 5 minutes, 25 minutes, or Measure from the idle timer.
 
 - **Today's Three**
-  Limit the day to at most three items. Start from project-colored cards; an item is completed after its planned timer expires and you confirm the session. Once all three are complete, choose the next three from “Choose today's work”. Use the card's “…” menu, its context menu, or Delete on a focused card to remove only its adoption into today (the original entry and session records remain).
+  Limit the day to at most three items. Start from project-colored cards; an item is completed after its planned timer expires and you confirm the session. Once all three are complete, choose the next three from “Choose today's work”. Use the card's “Remove” button, its “…” menu, its context menu, or Delete on a focused card to remove only its adoption into today (the original entry and session records remain).
 
 - **Choose today's work**
   Candidates (Next Steps and Other ideas) on the left, numbered Today slots on the right. Reorder with drag or Alt+↑/↓; the decision is saved once when you press Decide. Closing with changes asks whether to discard them. Picking a third item does not confirm automatically.
@@ -48,12 +48,20 @@ Note: it is not a complete port of the Windows product. The Web Demo has a separ
 - **Timer / Session Records**
   Start a short or normal timer, or use Measure to count up from 0:00, and store sessions of at least one minute locally. Stopping early does not automatically complete today's item. When the planned time is up you can finish as is, add 5 minutes, take another step for 5 minutes, pick from Today's Three, or stop.
 
+- **Plan this week**
+  On the “Plan this week” tab of Records, review last week's total time, active days, sessions, time per project, and completed items, then choose up to three focus projects. Projects whose Next Step has stayed the same for 14 days or more appear under “Not moving lately” with “Make it smaller” and “Keep”. “Copy with last week's facts” builds a prompt for ChatGPT or Claude, and you can add the JSON reply through Bulk import. No scores or ratings.
+
 - **View instructions**
   Read Markdown, text, sanitized HTML, and MHTML (`.mhtml` / `.mht`) files from registered folders in a separate window.
 
 - **Keys**
   `Ctrl+K` dictionary / `Ctrl+F` search / `F1` guide / `Ctrl+W` close / on a row `Enter` start (Other ideas: make it the Next Step), `F2` edit, `Delete` remove (Today's Three: remove from today) / while a menu is open `T` add to Today's Three / `Ctrl+Z` undo / `Menu` or `Shift+F10` menu. Configure the show/hide, mini, and instructions keys in Settings.
+
 ## Screenshots
+
+### Plan this week
+
+![Plan this week](docs/screenshots/weekly-planning.png)
 
 ### Dictionary / Instructions
 

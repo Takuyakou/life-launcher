@@ -55,6 +55,8 @@ test("Dictionary button edit keeps its footer visible and matches the Drop Regis
   await page.getByRole("menuitem", { name: "編集" }).click();
 
   const dialog = page.getByRole("dialog", { name: "ボタン編集" });
+  await expect(dialog).toBeVisible();
+  await page.waitForTimeout(300);
   const footer = dialog.locator(".buttonEditDialogFooter");
   await expect(dialog).not.toHaveAttribute("aria-modal");
   await expect(dialog.getByRole("button", { name: "既存から選ぶ" })).toBeVisible();
