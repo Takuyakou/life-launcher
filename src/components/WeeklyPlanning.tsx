@@ -194,14 +194,14 @@ export function WeeklyPlanning({
                     </div>
                     <div className="weeklyPlanningStaleActions">
                       <button
-                        className="uiSmallButton"
+                        className="uiSmallButton nextStepFreshnessButton"
                         onClick={() => onRewriteNextStep(project)}
                         type="button"
                       >
                         小さくする
                       </button>
                       <button
-                        className="uiSmallButton"
+                        className="uiSmallButton nextStepFreshnessButton"
                         disabled={reviewingProjectId === project.id}
                         onClick={() => onMarkReviewed(project.id)}
                         type="button"

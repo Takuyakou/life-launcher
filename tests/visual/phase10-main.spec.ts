@@ -400,6 +400,9 @@ test("G8 the empty Next Step text opens the same editor", async ({ page }) => {
   const placeholder = row.locator(".projectNextStepPlaceholder--action");
   await expect(placeholder).toBeVisible();
   await expect(placeholder).toHaveCSS("cursor", "pointer");
+  await placeholder.hover();
+  await expect(placeholder).toHaveCSS("color", "rgb(255, 206, 91)");
+  await expect(placeholder).toHaveCSS("border-top-color", "rgba(231, 185, 77, 0.6)");
   await placeholder.click();
   await expect(page.getByRole("dialog", { name: "次の一手を設定" })).toBeVisible();
 });

@@ -271,6 +271,89 @@ test("P10-10 the Picker cannot be opened when Today3 is full", async ({ page }) 
   await expect(page.getByRole("button", { name: "今日やるものを選ぶ", exact: true })).toHaveCount(0);
 });
 
+test("P10-15b H0 the picker progress line sits under the header and follows the count", async ({
+  page,
+}) => {
+  const fixture = createPublicFixture();
+  fixture.config.today.items = fixture.config.today.items.slice(0, 1);
+  await prepare(page, fixture);
+  const dialog = await openPicker(page);
+  const progress = dialog.locator(".todayPickerProgress");
+  const header = dialog.locator(".todayPickerDestinationHeader");
+  const destination = dialog.locator(".todayPickerDestination");
+  await expect(progress).toBeVisible();
+  const headerBox = (await header.boundingBox())!;
+  const progressBox = (await progress.boundingBox())!;
+  const destinationBox = (await destination.boundingBox())!;
+  const destinationStyle = await destination.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      paddingLeft: parseFloat(style.paddingLeft),
+      paddingRight: parseFloat(style.paddingRight),
+    };
+  });
+  expect(Math.abs(progressBox.y - (headerBox.y + headerBox.height) - 10)).toBeLessThanOrEqual(1);
+  expect(
+    Math.abs(
+      progressBox.width -
+        (destinationBox.width - destinationStyle.paddingLeft - destinationStyle.paddingRight),
+    ),
+  ).toBeLessThanOrEqual(2);
+  const expected = async (count: number) => {
+    await expect(progress).toHaveAttribute("aria-valuenow", String(count));
+    const bar = progress.locator("span");
+    await page.waitForTimeout(260);
+    const barBox = (await bar.boundingBox())!;
+    const full = (await progress.boundingBox())!;
+    expect(Math.abs(barBox.width - (full.width * count) / 3)).toBeLessThanOrEqual(2);
+  };
+  await expected(1);
+  await addNextStepCandidate(dialog, "5分だけ体を動かす");
+  await expected(2);
+  await dialog
+    .locator('[data-today-picker-section="wishlist"] .todayPickerRow', {
+      hasText: "あとで確認するサンプル",
+    })
+    .getByRole("button", { name: "今日へ" })
+    .click();
+  await expected(3);
+});
+
+test("P10-15b H1 the picker footer lines up with the 今日の3件 frame and uses 42px", async ({
+  page,
+}) => {
+  const fixture = createPublicFixture();
+  await prepare(page, fixture);
+  const dialog = await openPicker(page);
+  const frame = (await dialog.locator(".todayPickerDestination").boundingBox())!;
+  const actions = (await dialog.locator(".formDialogActions").boundingBox())!;
+  expect(Math.abs(actions.x - frame.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(actions.x + actions.width - (frame.x + frame.width))).toBeLessThanOrEqual(1);
+  const decide = (await dialog.getByRole("button", { name: "決定" }).boundingBox())!;
+  const cancel = (await dialog.getByRole("button", { name: "キャンセル" }).boundingBox())!;
+  expect(Math.round(decide.height)).toBe(42);
+  expect(Math.round(cancel.height)).toBe(42);
+  await page.setViewportSize({ width: 860, height: 560 });
+  await page.waitForTimeout(100);
+  const narrowFrame = (await dialog.locator(".todayPickerDestination").boundingBox())!;
+  const narrowActions = (await dialog.locator(".formDialogActions").boundingBox())!;
+  expect(Math.abs(narrowActions.x - narrowFrame.x)).toBeLessThanOrEqual(1);
+  expect(
+    Math.abs(narrowActions.x + narrowActions.width - (narrowFrame.x + narrowFrame.width)),
+  ).toBeLessThanOrEqual(1);
+  await dialog.getByRole("button", { name: "キャンセル" }).click();
+  const card = page.locator(".nextStepCard").filter({ hasText: "ストレッチ" }).first();
+  await card.hover();
+  await card.getByRole("button", { name: "編集", exact: true }).click();
+  const editor = page.locator(".nextStepEditDialog").first();
+  await expect(editor).toBeVisible();
+  const save = (await editor.getByRole("button", { name: "保存" }).boundingBox())!;
+  const cancelSave = (await editor.getByRole("button", { name: "キャンセル" }).boundingBox())!;
+  expect(Math.round(save.height)).toBe(42);
+  expect(Math.round(cancelSave.height)).toBe(42);
+  expect(Math.round(decide.height)).toBe(Math.round(save.height));
+});
+
 test("P10-10 決定 pressed twice in one task still saves once (P10-14)", async ({ page }) => {
   const fixture = createPublicFixture();
   fixture.config.today.items = fixture.config.today.items.slice(0, 1);

@@ -33,6 +33,42 @@ test("P10-02 the top bar has no Mini or Guide button", async ({ page }) => {
   expect(names).toEqual(["記録ビューを開く", "手順書を開く", "設定を開く"]);
 });
 
+test("P10-15b H3 the Ctrl+F badge stays inside the search field and the collapsed button centers", async ({
+  page,
+}) => {
+  for (const width of [1000, 960, 900, 860]) {
+    await open(page, createFullTodayFixture(), width);
+    const search = topBar(page).locator(".topSearchButton");
+    const badge = search.locator(".uiKey");
+    const badgeBox = await badge.boundingBox();
+    const searchBox = (await search.boundingBox())!;
+    if (badgeBox && badgeBox.width > 0) {
+      expect(badgeBox.x + badgeBox.width).toBeLessThanOrEqual(searchBox.x + searchBox.width + 0.5);
+    } else {
+      expect(await badge.evaluate((element) => getComputedStyle(element).display)).toBe("none");
+    }
+  }
+  await open(page, createFullTodayFixture(), 860);
+  await expect(page.locator(".topSearchButton .uiKey")).toBeHidden();
+  const center = await topBar(page).evaluate((bar) => {
+    const style = getComputedStyle(bar);
+    const rect = bar.getBoundingClientRect();
+    const columns = style.gridTemplateColumns.split(" ").map((value) => parseFloat(value));
+    const gap = parseFloat(style.columnGap) || 0;
+    const paddingLeft = parseFloat(style.paddingLeft);
+    return {
+      button: (bar.querySelector(".topSearchButton") as HTMLElement).getBoundingClientRect(),
+      columnCenter: rect.left + paddingLeft + columns[0] + gap + columns[1] / 2,
+    };
+  });
+  expect(
+    Math.abs(center.button.x + center.button.width / 2 - center.columnCenter),
+  ).toBeLessThanOrEqual(1);
+  const box = (await page.locator(".topSearchButton").boundingBox())!;
+  expect(Math.round(box.width)).toBe(32);
+  expect(Math.round(box.height)).toBe(30);
+});
+
 test("P10-02 the auto-start button is icon-only and shows its state", async ({ page }) => {
   await open(page);
   const button = autoStartButton(page);

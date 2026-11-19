@@ -134,7 +134,7 @@ test("P10-14e 12-4 the Phase 10 weights are only 400, 500 or 700", async ({ page
     [".doNowMeasureButton span", "700"],
     [".todayTextButton", "700"],
     [".nextStepTextRegion p", "400"],
-    [".quickButton", "400"],
+    [".quickButton", "500"],
     [".quickGroupHeader strong", "700"],
   ];
   for (const [selector, weight] of expected) {
@@ -177,17 +177,44 @@ test("P10-14e 5 the Enter hint sits left of the menu, after いまここ, and on
   );
 });
 
-test("P10-14e 6 the sidebar and search letter icons share the 22px uiLetterIcon", async ({
+test("P10-15b H5 the sidebar row, name, icon and header use the decided values", async ({
+  page,
+}) => {
+  await prepare(page);
+  const button = page.locator(".sidebar .quickButton").first();
+  const name = button.locator("span:last-child");
+  await expect(button).toBeVisible();
+  expect(Math.round((await button.boundingBox())!.height)).toBe(32);
+  await expect(name).toHaveCSS("font-size", "13px");
+  await expect(name).toHaveCSS("font-weight", "500");
+  await expect(name).toHaveCSS("color", "rgb(184, 176, 160)");
+  await button.hover();
+  await expect(name).toHaveCSS("color", "rgb(244, 240, 232)");
+  const icon = button.locator(".uiLetterIcon").first();
+  const iconBox = (await icon.boundingBox())!;
+  expect(Math.round(iconBox.width)).toBe(20);
+  expect(Math.round(iconBox.height)).toBe(20);
+  await expect(icon).toHaveCSS("font-size", "10px");
+  await expect(icon).toHaveCSS("font-weight", "700");
+  const header = page.locator(".sidebar .quickGroupHeader").first();
+  expect(Math.round((await header.boundingBox())!.height)).toBe(28);
+  await expect(header.locator("strong")).toHaveCSS("font-size", "11px");
+  await expect(header.locator("strong")).toHaveCSS("font-weight", "700");
+  await expect(header.locator("small")).toHaveCSS("font-weight", "400");
+  await expect(header.locator("small")).toHaveCSS("font-size", "11px");
+});
+
+test("P10-14e 6 the sidebar letter icons are 20px and the search icons stay 22px", async ({
   page,
 }) => {
   await prepare(page);
   const icon = page.locator(".quickButton .uiLetterIcon").first();
   await expect(icon).toBeVisible();
   const box = (await icon.boundingBox())!;
-  expect(Math.round(box.width)).toBe(22);
-  expect(Math.round(box.height)).toBe(22);
+  expect(Math.round(box.width)).toBe(20);
+  expect(Math.round(box.height)).toBe(20);
   expect(await icon.evaluate((node) => getComputedStyle(node).fontWeight)).toBe("700");
-  expect(await icon.evaluate((node) => getComputedStyle(node).fontSize)).toBe("11px");
+  expect(await icon.evaluate((node) => getComputedStyle(node).fontSize)).toBe("10px");
   expect(await icon.evaluate((node) => getComputedStyle(node).borderRadius)).toBe("6px");
   const color = await icon.getAttribute("data-project-color");
   expect(color).toBeTruthy();

@@ -315,6 +315,47 @@ test("P10-15 9 narrow windows stack the columns without sideways scroll", async 
   }
 });
 
+test("P10-15b H2 the stale buttons use the main-screen button colours", async ({ page }) => {
+  const fixture = weeklyFixture();
+  await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await installTauriMock(page, fixture, "main");
+  await page.goto("/");
+  const mainButton = page.locator(".nextStepFreshnessButton").first();
+  await expect(mainButton).toBeVisible();
+  const read = (locator: typeof mainButton) =>
+    locator.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        backgroundColor: style.backgroundColor,
+        borderTopColor: style.borderTopColor,
+        borderRadius: style.borderRadius,
+        color: style.color,
+        fontSize: style.fontSize,
+        fontWeight: style.fontWeight,
+        height: Math.round(element.getBoundingClientRect().height),
+      };
+    });
+  const mainStyle = await read(mainButton);
+  await mainButton.hover();
+  await page.waitForTimeout(200);
+  const mainHover = (await mainButton.evaluate((element) => getComputedStyle(element).color)) ?? "";
+  await page.getByRole("button", { name: "記録ビューを開く" }).click();
+  await page.getByRole("tab", { name: "今週を決める" }).click();
+  const weeklyButtons = page.locator(".weeklyPlanningStaleActions .nextStepFreshnessButton");
+  await expect(weeklyButtons).toHaveCount(2);
+  for (let index = 0; index < 2; index += 1) {
+    const weekly = weeklyButtons.nth(index);
+    expect(await read(weekly)).toEqual(mainStyle);
+    await weekly.hover();
+    await page.waitForTimeout(200);
+    await expect(weekly).toHaveCSS("color", mainHover);
+  }
+  await weeklyButtons.first().hover();
+  await page.waitForTimeout(200);
+  await expect(weeklyButtons.first()).toHaveCSS("color", "rgb(255, 206, 91)");
+});
+
 test("P10-15 10 the repeated import prompt contains the JSON format", () => {
   expect(IMPORT_PROMPT_REPEAT).toContain(IMPORT_JSON_FORMAT);
   expect(IMPORT_PROMPT_REPEAT).toContain('"lifeLauncherImport": 1');

@@ -4954,7 +4954,7 @@ input[type="number"]::-webkit-inner-spin-button {
     color 130ms ease;
 }
 
-.projectNextStepPlaceholder--action:hover {
+.nextStepCard .nextStepActionRegion .projectNextStepPlaceholder--action:hover {
   border-color: rgba(231, 185, 77, 0.6);
   background-color: rgba(231, 185, 77, 0.06);
   color: var(--accent-strong) !important;
@@ -13183,7 +13183,7 @@ button.mainActionButton:is(
   white-space: nowrap;
 }
 
-.topSearchButton .shortcutBadge {
+.topSearchButton .uiKey {
   flex: 0 0 auto;
 }
 
@@ -13197,10 +13197,11 @@ button.mainActionButton:is(
   flex: 0 0 auto;
   width: 32px;
   justify-content: center;
+  justify-self: center;
   padding: 0;
 }
 
-.topBar[data-top-menu-labels="2"] .topSearchButton .shortcutBadge {
+.topBar[data-top-menu-labels="2"] .topSearchButton .uiKey {
   display: none;
 }
 
@@ -13342,10 +13343,11 @@ button.mainActionButton:is(
   .topSearchButton {
     flex: 0 0 34px;
     justify-content: center;
+    justify-self: center;
     padding: 0;
   }
 
-  .topSearchButton .shortcutBadge {
+  .topSearchButton .uiKey {
     display: none;
   }
 }
@@ -15588,16 +15590,44 @@ button.mainActionButton:is(
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 10px;
-  margin: 0;
+  width: calc((100% - 24px) / 2 - 16px);
+  margin: 0 16px 0 auto;
   padding: 0;
   border: 0;
 }
 
 .todayPickerDialog .formDialogActions > button {
   width: 100%;
-  height: 44px;
-  min-height: 44px;
+  height: 42px;
+  min-height: 42px;
   font-size: 14px;
+}
+
+.todayPickerProgress {
+  width: 100%;
+  flex: 0 0 auto;
+  height: 6px;
+  margin: -4px 0 0;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--line-soft);
+}
+
+.todayPickerProgress > span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--good);
+  box-shadow: 0 0 5px rgba(117, 196, 143, 0.24);
+  transform-origin: left center;
+  transition: transform 220ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .todayPickerProgress > span {
+    transition: none;
+  }
 }
 
 @media (min-width: 1000px) {
@@ -15727,7 +15757,7 @@ button.mainActionButton:is(
   white-space: nowrap;
 }
 
-.topBar .topSearchButton .shortcutBadge {
+.topBar .topSearchButton .uiKey {
   flex: 0 0 auto;
 }
 
@@ -16463,4 +16493,92 @@ button.mainActionButton:is(
   border-color: var(--good);
   background: rgba(117, 196, 143, 0.16);
   color: #9be0b6;
+}
+/* P10-15b H5: the sidebar row values decided by the user (案 B + C の色). */
+.sidebar .quickGroup {
+  gap: 10px;
+}
+
+.sidebar .quickGroupItems {
+  gap: 0;
+}
+
+.sidebar .quickButton {
+  min-height: 32px;
+  height: 32px;
+  padding: 0 6px;
+  gap: 10px;
+  border: 0 !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  grid-template-columns: 20px minmax(0, 1fr);
+}
+
+.sidebar .quickButton span:last-child {
+  color: #b8b0a0;
+  font-size: 13px;
+  font-weight: 500;
+  transition: color 130ms ease, background-color 130ms ease;
+}
+
+.sidebar .quickButton:hover:not(:disabled) span:last-child,
+.sidebar .quickButton:focus-visible span:last-child {
+  color: #f4f0e8;
+}
+
+.sidebar .quickButton:hover:not(:disabled),
+.sidebar .quickButton:focus-visible {
+  background: rgba(190, 181, 164, 0.08) !important;
+}
+
+.sidebar .quickButton .quickButtonIcon,
+.sidebar .quickButton .quickButtonInitial,
+.sidebar .quickButton .quickIcon,
+.sidebar .quickButton .uiLetterIcon {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  flex: 0 0 20px;
+  border-radius: 6px;
+}
+
+.sidebar .quickButton .quickButtonIcon img,
+.sidebar .quickButton .quickIcon img {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+}
+
+.sidebar .quickButton .uiLetterIcon {
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.sidebar .quickGroupHeader {
+  min-height: 28px;
+  height: 28px;
+  padding: 0 6px;
+  gap: 6px;
+  grid-template-columns: 20px minmax(0, 1fr) 28px;
+}
+
+.sidebar .quickGroupHeader strong {
+  color: #a39c8e;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.sidebar .quickGroupHeader small {
+  color: #a39c8e;
+  font-size: 11px;
+  font-weight: 400;
+}
+/* P10-15b H2: the freshness buttons keep the main-screen yellow on hover. */
+.nextStepFreshnessButton:hover:not(:disabled),
+.nextStepFreshnessButton:focus-visible {
+  border-color: rgba(231, 185, 77, 0.55);
+  color: #ffce5b;
+}
+.sidebar .quickButton {
+  font-weight: 500;
 }

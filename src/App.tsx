@@ -14122,6 +14122,18 @@ function DashboardApp() {
                   </div>
                   <span className="todayPickerDragHint">ドラッグで順番を変えられます</span>
                 </div>
+                <div
+                  aria-label={`今日の3件の選択状況 ${todayPickerDraftItems.length}/3`}
+                  aria-valuemax={TODAY_ITEM_LIMIT}
+                  aria-valuemin={0}
+                  aria-valuenow={todayPickerDraftItems.length}
+                  className="todayPickerProgress"
+                  role="progressbar"
+                >
+                  <span
+                    style={{ transform: `scaleX(${todayPickerDraftItems.length / TODAY_ITEM_LIMIT})` }}
+                  />
+                </div>
                 <div className="todayPickerSlots">
                   {Array.from({ length: TODAY_ITEM_LIMIT }, (_, index) => {
                     const item = todayPickerDraftItems[index];

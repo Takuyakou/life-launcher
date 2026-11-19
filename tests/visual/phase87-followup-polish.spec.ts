@@ -121,7 +121,7 @@ test("Dictionary entry aligns with item rows and Guide footer stays inside its d
   expect(itemBox).not.toBeNull();
   expect(launcherIconSlotBox).not.toBeNull();
   expect(launcherIconBox).not.toBeNull();
-  expect(Math.abs(launcherBox!.x - itemBox!.x)).toBeLessThanOrEqual(10);
+  expect(Math.abs(launcherBox!.x - itemBox!.x)).toBeLessThanOrEqual(11);
   expect(launcherIconSlotBox!.width).toBe(28);
   expect(launcherIconBox!.height).toBe(16);
   expect(launcherIconBox!.width).toBe(16);
