@@ -16507,15 +16507,10 @@ button.mainActionButton:is(
 }
 
 .sidebar .quickButton span:last-child {
-  color: #b8b0a0;
+  color: #f4f0e8;
   font-size: 13px;
   font-weight: 500;
   transition: color 130ms ease, background-color 130ms ease;
-}
-
-.sidebar .quickButton:hover:not(:disabled) span:last-child,
-.sidebar .quickButton:focus-visible span:last-child {
-  color: #f4f0e8;
 }
 
 .sidebar .quickButton:hover:not(:disabled),

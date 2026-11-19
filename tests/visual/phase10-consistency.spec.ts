@@ -187,9 +187,10 @@ test("P10-15b H5 the sidebar row, name, icon and header use the decided values",
   expect(Math.round((await button.boundingBox())!.height)).toBe(32);
   await expect(name).toHaveCSS("font-size", "13px");
   await expect(name).toHaveCSS("font-weight", "500");
-  await expect(name).toHaveCSS("color", "rgb(184, 176, 160)");
+  await expect(name).toHaveCSS("color", "rgb(244, 240, 232)");
   await button.hover();
   await expect(name).toHaveCSS("color", "rgb(244, 240, 232)");
+  await expect(button).toHaveCSS("background-color", "rgba(190, 181, 164, 0.08)");
   const icon = button.locator(".uiLetterIcon").first();
   const iconBox = (await icon.boundingBox())!;
   expect(Math.round(iconBox.width)).toBe(20);
