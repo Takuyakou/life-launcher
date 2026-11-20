@@ -2,6 +2,8 @@
 
 **READY FOR USER APPROVAL**（自動で確かめられるゲートはすべて通った。ネイティブ確認・公開は、オーナーの判断で行う）
 
+**実機確認は 2026-11-20 に済んだ(native-checklist.md)。オーナーの承認で公開した。**
+
 - 日付: 2026-11-19（JST）
 - 候補のソース: ブランチ `p10/18-release`、ビルドしたコミット `7d1b0a1d4b7239e4e7d4f8505ac4b03e8fdd0268`。成果物をビルドした時点の作業ツリーはきれい（`git status --porcelain` が空。ビルド中に `tauri build` が `src-tauri/Cargo.toml` の改行だけを書き換えたため、ビルド後に戻した。`git diff --ignore-all-space -- src-tauri/Cargo.toml` は空）。
 - config schema: 3(v1.4.3 から変更なし)。省略できる項目を 2 つ足した(`settings.firstRunDoneAt`、`projects[].nextStep.resumeNote`)。v1.4.3 で開いても壊れず、v1.4.3 で保存するとこの 2 つは消える。
