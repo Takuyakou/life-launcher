@@ -2,6 +2,8 @@
 
 **READY FOR USER APPROVAL**（自動で確かめられるゲートはすべて通った。ネイティブ確認・公開は、オーナーの判断で行う）
 
+**実機の確認は 2026-11-21 に済んだ(native-checklist.md)。オーナーの承認で公開した。**
+
 - 日付: 2026-11-21（JST）
 - 候補のソース: ブランチ `v151/01-tests`、ビルドしたコミット `712f4957f8b210a01fe6dab9f12de8c9f5b7dce9`(X)。**GitHub Actions の CI(run `44766836898`、attempt 1)が確かめたコミットと同じ**。成果物をビルドした時点の作業ツリーはきれい（`git status --porcelain` が空）。ビルド中に `tauri build` が `src-tauri/Cargo.toml` の改行だけを書き換えた。`git diff --ignore-all-space -- src-tauri/Cargo.toml` が空である事を確かめ、ビルド後に戻した。
 - X は、S7 のコミット `5ac469f` に S8(テストだけ)の 4 コミットを足した物。`git diff --name-only 5ac469f 712f495` はすべて `tests/` の中(67 ファイル)。
@@ -112,7 +114,7 @@ v1.5.0 と比べて、大きさはわずかに減った。
 
 ## 6. ネイティブ確認
 
-`native-checklist.md` に書いた(9 件)。オーナー確認待ち。
+`native-checklist.md` に書いた(10 件。S7 の行を足した)。オーナー確認待ち。
 
 ## 7. レビュー
 
