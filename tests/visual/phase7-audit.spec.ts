@@ -132,8 +132,12 @@ test("P7 baseline: paused time is excluded before and after resume", async ({ pa
 test("P7 baseline: a wall-clock jump counts as elapsed unless paused", async ({ page }) => {
   await prepare(page, 3, 25);
   const card = page.locator(".todayRow");
+  // V151-S8: jump 10 minutes from the moment the timer starts. The running page clock has moved
+  // since install, so a jump to FIXTURE_NOW + 10 minutes could count less than 10.
+  const startAt = await page.evaluate(() => Date.now() + 1_000);
+  await page.clock.pauseAt(startAt);
   await card.getByRole("button", { name: "通常タイマー25分で開始" }).click();
-  await page.clock.setSystemTime(new Date(new Date(FIXTURE_NOW).getTime() + 600_000));
+  await page.clock.setSystemTime(new Date(startAt + 600_000));
   await page.clock.runFor(1_000);
   await card.getByRole("button", { name: "終了", exact: true }).click();
   await page.getByRole("button", { name: "未完了のまま終了", exact: true }).click();
