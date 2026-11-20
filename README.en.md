@@ -175,6 +175,8 @@ Public quality checks cover React / TypeScript lint and build, Playwright Visual
 
 The public source includes bounded favicon retrieval, local and private destination rejection, redirect revalidation, response validation, and window-specific Tauri capabilities. Automated Rust tests cover the network and permission contracts.
 
+Life Launcher opens the apps, files, folders, and URLs you register. Do not import JSON from an unknown source. You can review the contents before importing. Right after an import, you can undo it from the notification, as long as nothing else has changed since.
+
 ## Local Data And Network Use
 
 Life Launcher does not require an account or a Life Launcher server. Configuration, sessions, notes, backups, and icon cache data are stored locally under `%APPDATA%\life-launcher` or in a backup folder selected by the user.
