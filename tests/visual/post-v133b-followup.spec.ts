@@ -133,7 +133,9 @@ test("Wishlist replacement uses identity, not display text", async ({ page }) =>
 test("Today total, execution list and selection roll over together at local midnight", async ({ page }) => {
   const fixture = createPublicFixture();
   fixture.config.settings.dayStartHour = 0;
-  await page.clock.install({ time: new Date("2026-08-13T23:59:59+09:00").getTime() });
+  // V151-S8: hold the page clock at 23:59:59 while the page loads; only runFor below crosses midnight.
+  await page.clock.install({ time: new Date("2026-08-13T23:59:50+09:00").getTime() });
+  await page.clock.pauseAt(new Date("2026-08-13T23:59:59+09:00").getTime());
   await installTauriMock(page, fixture, "main", null, { rolloverOnLoadConfig: true });
   await page.goto("/");
   await waitForBundledFonts(page);
