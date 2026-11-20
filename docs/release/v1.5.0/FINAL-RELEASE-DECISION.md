@@ -3,7 +3,7 @@
 **READY FOR USER APPROVAL**（自動で確かめられるゲートはすべて通った。ネイティブ確認・公開は、オーナーの判断で行う）
 
 - 日付: 2026-11-19（JST）
-- 候補のソース: ブランチ `p10/18-release`、ビルドしたコミット `33ace1b13c5926418eae949729b836d2fc28c0cc`。成果物をビルドした時点の作業ツリーはきれい（`git status --porcelain` が空。ビルド中に `tauri build` が `src-tauri/Cargo.toml` の改行だけを書き換えたため、ビルド後に戻した。`git diff --ignore-all-space -- src-tauri/Cargo.toml` は空）。
+- 候補のソース: ブランチ `p10/18-release`、ビルドしたコミット `7d1b0a1d4b7239e4e7d4f8505ac4b03e8fdd0268`。成果物をビルドした時点の作業ツリーはきれい（`git status --porcelain` が空。ビルド中に `tauri build` が `src-tauri/Cargo.toml` の改行だけを書き換えたため、ビルド後に戻した。`git diff --ignore-all-space -- src-tauri/Cargo.toml` は空）。
 - config schema: 3(v1.4.3 から変更なし)。省略できる項目を 2 つ足した(`settings.firstRunDoneAt`、`projects[].nextStep.resumeNote`)。v1.4.3 で開いても壊れず、v1.4.3 で保存するとこの 2 つは消える。
 - 公開（tag・GitHub Release・アセットのアップロード）は**行っていない**。オーナーの明示承認を待つ。
 - ビルドの環境: Node v24.14.1、npm 11.11.0、Windows 11 Home 10.0.26200（x64）、`@tauri-apps/cli` 2.11.4、`@tauri-apps/api` 2.11.1、`rustc 1.96.1 (31fca3adb 2026-06-26)`、`cargo 1.96.1 (356927216 2026-06-26)`。
@@ -56,7 +56,7 @@
 | P10-15〜15d | 記録の「今週を決める」の作り直し、取り込みのプロンプトの不具合の直し、動き 4 つと始めるボタンの浮き方、サイドバーの字 |
 | P10-16 | リリースの準備(1 回目) |
 | P10-17 | 足す物:札の字「今やる一手」・理由の言葉・次はここから(`resumeNote`)・見つからない物の知らせ(`load_missing_launch_targets`)・リリースページを開く・使い方の直し |
-| P10-18 | 直し(予定時間のダイアログのフォーカスと見出しの間、「外す」を乗せた時だけ出す、勝利条件の候補のずれ、設定の今週の重点の見た目)と、リリースの準備のやり直し |
+| P10-18 | 直し(予定時間のダイアログのフォーカスと見出しの間、「外す」を乗せた時だけ出す、勝利条件の候補のずれ、設定の今週の重点の見た目、ミニのタイマーの数字のフォント)と、リリースの準備のやり直し |
 
 ## 4. 成果物とハッシュ
 
@@ -64,13 +64,13 @@
 
 | ファイル | サイズ(バイト) | SHA-256 |
 | --- | --- | --- |
-| `Life-Launcher-v1.5.0-windows-x64-setup.exe` | 9,668,465 | `7DC0526DA069EC085138C5AA9DB911672206107EE60C0D23A541075B169E8663` |
-| `Life-Launcher-v1.5.0-windows-x64.exe` | 22,234,624 | `88B68161D33F148459F7714FF9A89617845C2480604F915E7C90EB3729679E7A` |
-| `Life-Launcher-v1.5.0-windows-x64-portable.zip` | 10,995,866 | `3BFEF518EE6C40C67E09949D965894019C736D08B1EAA6A10ECD4B3AF4A1904D` |
+| `Life-Launcher-v1.5.0-windows-x64-setup.exe` | 9,668,799 | `8DE4144914281837ACE6FD9AF1B54F33030817E2ADC44A8778313C0CA15206F3` |
+| `Life-Launcher-v1.5.0-windows-x64.exe` | 22,234,624 | `CF51460F921084EC9D0E95E1F4F4A1D03965164052ABE845985C7AFEFEE69141` |
+| `Life-Launcher-v1.5.0-windows-x64-portable.zip` | 10,995,837 | `22E370D113D67DB4801654825F467F0527C1C4083BD47399A21C468AF81C9C08` |
 | `release-notes.md` | 6,587 | `229D191C4E08D3D37AFE6FE6DA4670F95CB59F5969277605B7350C260131BE90`（`docs/releases/v1.5.0.md` と同じ） |
 | `SHA256SUMS.txt` | 327 | 上の 3 つのハッシュを記録 |
 
-v1.4.3 と比べると、インストーラーは 3,771,887 → 9,668,465 バイト（+5,896,578 バイト、約 +5.90 MB）、単体 EXE は 16,179,712 → 22,234,624 バイト（+6,054,912 バイト、約 +6.05 MB）、ポータブル ZIP は 5,143,775 → 10,995,866 バイト（+5,852,091 バイト、約 +5.85 MB）増えている。主な理由は P10-01 で同梱した Inter / Noto Sans JP の `.woff2` フォント（`dist/assets/*.woff2` 131 ファイル、合計 5,692,164 バイト、約 5.69 MB）であり、すでに圧縮された形式のためインストーラーと ZIP にもそのまま乗る。残りの約 0.16〜0.36 MB は Motion と Phase 10 の UI・Rust の追加分である。
+v1.4.3 と比べると、インストーラーは 3,771,887 → 9,668,799 バイト（+5,896,912 バイト、約 +5.90 MB）、単体 EXE は 16,179,712 → 22,234,624 バイト（+6,054,912 バイト、約 +6.05 MB）、ポータブル ZIP は 5,143,775 → 10,995,837 バイト（+5,852,062 バイト、約 +5.85 MB）増えている。主な理由は P10-01 で同梱した Inter / Noto Sans JP の `.woff2` フォント（`dist/assets/*.woff2` 131 ファイル、合計 5,692,164 バイト、約 5.69 MB）であり、すでに圧縮された形式のためインストーラーと ZIP にもそのまま乗る。残りの約 0.16〜0.36 MB は Motion と Phase 10 の UI・Rust の追加分である。
 
 `SHA256SUMS.txt` の 3 行を独立に再計算した値と照合し、一致した。ZIP を一時フォルダに展開した中身は `Life-Launcher-v1.5.0-windows-x64.exe` と `README.txt` の 2 つで、ZIP 内 EXE の SHA-256 は単体 EXE と一致した。
 
@@ -88,7 +88,7 @@ v1.4.3 と比べると、インストーラーは 3,771,887 → 9,668,465 バイ
 8. **Windows Defender**: 成果物のコピー 3 ファイルを CustomScan。スキャン前後で検出数は 1 のまま（新しい検出 0）。署名 `1.463.368.0`。
 9. **ビルドに使ったコミットの `dist/`**: 秘密情報の走査で 0 件（`.map` 0 件）。
 10. **権限**: `git diff v1.4.3 -- src-tauri/capabilities src-tauri/gen/schemas` は差分なし。新しい Rust の命令 `load_missing_launch_targets` は、設定に入っている次の一手のアプリ・フォルダ・ファイル・手順書の場所があるかを確かめるだけで、ファイルの中は読まず、ネットワークの場所(`\\`・`//`)と URL は確かめない。権限の追加はない。
-11. **FULL**: `npm.cmd run test:visual -- --reporter=line --workers=1` は 869 件、15.4 分。869 件中 868 件が通り、落ちた 1 件（`phase97-import` の半透明オーバーレイ背後に透ける「外す」非表示による差分）は基準画像 2 枚を撮り直し、該当 spec（11 件）を回し直して全件通った。P10-18d(CSS を戻しただけ)では FULL を回さず、設定に関わる spec を回して通った(phase10-settings-weekly-focus・css-class-contract・phase9-visual・phase10-resume・phase97-import・phase83-settings-maintenance・phase83-clean-start・phase83-software-reset・phase95-settings-keyboard・phase10-weekly・phase81-entry-contracts の 11 spec、84 件)。
+11. **FULL**: `npm.cmd run test:visual -- --reporter=line --workers=1` は 869 件、15.4 分。869 件中 868 件が通り、落ちた 1 件（`phase97-import` の半透明オーバーレイ背後に透ける「外す」非表示による差分）は基準画像 2 枚を撮り直し、該当 spec（11 件）を回し直して全件通った。P10-18d(CSS を戻しただけ)では FULL を回さず、設定に関わる spec を回して通った(phase10-settings-weekly-focus・css-class-contract・phase9-visual・phase10-resume・phase97-import・phase83-settings-maintenance・phase83-clean-start・phase83-software-reset・phase95-settings-keyboard・phase10-weekly・phase81-entry-contracts の 11 spec、84 件)。P10-18e(ミニのタイマーの数字のフォントと、CI で揺れたテストの測り方)でも FULL を回さず、ミニの窓と予定の画面の spec を回して通った(phase9-visual・phase9-mini-idle・phase9-timer-action-text・phase96-timer-line・phase97-small-fixes・phase10-consistency・phase10-mock-match・phase10-picker・css-class-contract の 9 spec、79 件)。
 12. **環境変数なしの起動**: 成果物の単体 EXE を、`APPDATA`（および `LOCALAPPDATA`）を一時フォルダへ向け、`LIFE_LAUNCHER_TEST_PROFILE` を渡さずに起動した。窓のタイトルは「Life Launcher」で、「テスト」は出なかった。確認の後にその起動だけを閉じた。
 13. **テスト用の起動**: `scripts/start-test-profile.ps1 -Exe <単体 EXE>` で起動し、タイトルが「Life Launcher (テスト)」になることを確認した。確認の後にその起動だけを閉じた。
 14. **公開スクリーンショット**: `npm.cmd run screenshot:public` で再生成し、`demo-start.gif` を更新した。`main-dashboard.png`（今日の3件の札「今やる一手」・理由の文言変更・通常時の「外す」非表示）、`contact-sheet.png`、`weekly-planning.png`（タブ下線位置の微小差のみ）、`dictionary.png`（P10-18 で 1000×640 中 12 ピクセル・最大 1 階調の描画差のみ）が更新された。`instruction-viewer.png` は変わっていない。
