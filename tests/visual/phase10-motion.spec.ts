@@ -224,15 +224,50 @@ test("K3 the Do Now copy enters from the side when the selection changes", async
   const initialText = (await copy.locator("strong").textContent())?.trim() ?? "";
   expect(await copy.evaluate((node) => getComputedStyle(node).opacity)).toBe("1");
 
-  // Sampler starts before the operation, so an intermediate opacity is recorded even when CI is slow.
-  await startFrameSampler(page, "k3-do-now-copy", ".doNowCopy", "opacity");
+  // V151-S8 (S1 rule 2.2): Motion runs the copy's entrance as Web Animations, created on the next
+  // frame. Catch each one as it is created, pause it, and read the copy at the middle of its time.
+  await page.evaluate(() => {
+    const store = window as unknown as { __k3Animations: Animation[] };
+    store.__k3Animations = [];
+    const original = Element.prototype.animate;
+    Element.prototype.animate = function (this: Element, ...args: Parameters<Element["animate"]>) {
+      const animation = original.apply(this, args);
+      if (this.classList.contains("doNowCopy")) {
+        animation.pause();
+        store.__k3Animations.push(animation);
+      }
+      return animation;
+    };
+  });
   await page.getByRole("button", { name: "他の一手" }).click();
   await expect(copy.locator("strong")).not.toHaveText(initialText);
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (window as unknown as { __k3Animations: Animation[] }).__k3Animations.some((animation) =>
+          (animation.effect as KeyframeEffect).getKeyframes().some((frame) => "opacity" in frame),
+        ),
+      ),
+    )
+    .toBe(true);
+  const middle = await copy.evaluate((node) => {
+    const animations = (window as unknown as { __k3Animations: Animation[] }).__k3Animations;
+    for (const animation of animations) {
+      animation.currentTime = Number(animation.effect!.getTiming().duration) / 2;
+    }
+    const style = getComputedStyle(node);
+    return { opacity: Number(style.opacity) };
+  });
+  const samples = [middle.opacity];
+  await page.evaluate(async () => {
+    const animations = (window as unknown as { __k3Animations: Animation[] }).__k3Animations;
+    animations.forEach((animation) => animation.play());
+    await Promise.all(animations.map((animation) => animation.finished));
+  });
   await expect(copy).toHaveCSS("opacity", "1");
   await expect
     .poll(async () => copy.evaluate((node) => getComputedStyle(node).transform))
     .toMatch(/none|matrix\(1, 0, 0, 1, 0, 0\)/);
-  const samples = await readFrameSamples(page, "k3-do-now-copy");
   expect(
     samples.some((value) => value > 0 && value < 1),
     `expected an intermediate opacity in [${samples.join(", ")}]`,

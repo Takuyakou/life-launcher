@@ -3,6 +3,7 @@ import type { AppConfig } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 import { waitForBundledFonts } from "./bundledFonts";
+import { waitForAnimations } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
 
@@ -126,6 +127,8 @@ test("Do Now timer labels and glyphs remain separate on hover and keyboard focus
   await expect(short.locator(".timerStartDuration")).toHaveCSS("opacity", "1");
   await expect(short.locator(".timerStartHoverGlyph")).toHaveCSS("opacity", "1");
   await expect.poll(async () => (await short.boundingBox())!.y).toBeLessThan(before!.y - 0.5);
+  // V151-S8: measure the lifted button only after its hover transition has finished.
+  await waitForAnimations(short);
   const after = (await short.boundingBox())!;
   expect(after.x).toBe(before!.x);
   expect(after.width).toBe(before!.width);

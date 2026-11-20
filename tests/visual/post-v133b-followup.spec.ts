@@ -3,6 +3,7 @@ import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtur
 import { installTauriMock } from "./tauriMock";
 import { findShortcutConflicts } from "../../src/shortcutConflicts";
 import { waitForBundledFonts } from "./bundledFonts";
+import { waitForStableRects } from "./helpers";
 
 async function prepare(page: Page, fixture = createPublicFixture()) {
   await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
@@ -111,10 +112,15 @@ test("Wishlist replacement uses identity, not display text", async ({ page }) =>
   await expect(page.locator(".inboxBody")).toBeVisible();
   await expect(page.locator(".inboxBody")).toHaveCSS("overflow", "visible");
   const source = page.locator('[data-inbox-id="new-wish"]');
-  const target = page.locator(`.nextStepCard[data-project-id="${project.id}"]`);
+  // V151-S8 (S1 rule 4): scroll only after the opened section has settled, then read both rects in
+  // one evaluate once the scroll has settled too.
+  const sourceSelector = '[data-inbox-id="new-wish"]';
+  const targetSelector = `.nextStepCard[data-project-id="${project.id}"]`;
+  await waitForStableRects(page, [sourceSelector, targetSelector]);
   await source.scrollIntoViewIfNeeded();
-  const from = (await source.boundingBox())!;
-  const to = (await target.boundingBox())!;
+  const rects = await waitForStableRects(page, [sourceSelector, targetSelector]);
+  const from = rects[sourceSelector];
+  const to = rects[targetSelector];
   await page.mouse.move(from.x + 20, from.y + from.height / 2);
   await page.mouse.down();
   await page.mouse.move(from.x + 32, from.y + from.height / 2, { steps: 2 });
