@@ -29,6 +29,12 @@ jobs:
       - run: npm.cmd run lint
       - run: npm.cmd run build
       - run: npm.cmd run test:visual
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-qa-results
+          path: dist/visual-qa/test-results
+          retention-days: 3
       - run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
       - run: cargo check --manifest-path src-tauri/Cargo.toml
       - run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
