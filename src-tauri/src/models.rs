@@ -1092,15 +1092,9 @@ mod tests {
         let at_start =
             crate::datetime::parse_rfc3339("2026-07-05T04:00:00+09:00").expect("datetime");
 
-        assert_eq!(
-            crate::datetime::date_key_at(before_start, 4),
-            "2026-07-04"
-        );
+        assert_eq!(crate::datetime::date_key_at(before_start, 4), "2026-07-04");
         assert_eq!(crate::datetime::date_key_at(at_start, 4), "2026-07-05");
-        assert_eq!(
-            crate::datetime::date_key_at(before_start, 0),
-            "2026-07-05"
-        );
+        assert_eq!(crate::datetime::date_key_at(before_start, 0), "2026-07-05");
     }
 
     #[test]

@@ -8,8 +8,7 @@ use tauri::{AppHandle, State};
 use crate::commands::config::configured_day_start_hour;
 use crate::datetime;
 use crate::models::{
-    NotesForDateInput, NotesHistoryEntry, NotesHistoryResponse, TodayNotesInput,
-    TodayNotesResponse,
+    NotesForDateInput, NotesHistoryEntry, NotesHistoryResponse, TodayNotesInput, TodayNotesResponse,
 };
 use crate::state::AppState;
 

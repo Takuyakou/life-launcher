@@ -102,8 +102,8 @@ pub fn record_manual_session(
 pub fn load_session_summary(_app: AppHandle) -> Result<SessionSummaryResponse, String> {
     let path = sessions_path()?;
     let date = datetime::today_date(configured_day_start_hour());
-    let today = datetime::parse_date(&date)
-        .ok_or_else(|| format!("failed to parse today date {date}"))?;
+    let today =
+        datetime::parse_date(&date).ok_or_else(|| format!("failed to parse today date {date}"))?;
     let week_start = datetime::week_start_date(today);
     let entries = read_session_entries(&path)?;
     let mut today_minutes = 0u32;
@@ -181,8 +181,8 @@ fn project_totals(entries: &[SessionLogEntry]) -> Vec<ProjectSessionTotal> {
 #[tauri::command]
 pub fn load_weekly_review(_app: AppHandle) -> Result<WeeklyReviewResponse, String> {
     let date = datetime::today_date(configured_day_start_hour());
-    let today = datetime::parse_date(&date)
-        .ok_or_else(|| format!("failed to parse today date {date}"))?;
+    let today =
+        datetime::parse_date(&date).ok_or_else(|| format!("failed to parse today date {date}"))?;
     let current_week_start = datetime::week_start_date(today);
     let previous_week_start = datetime::add_days(current_week_start, -7);
     let previous_week_end = datetime::add_days(current_week_start, -1);
@@ -427,8 +427,7 @@ pub fn update_session_entry(
         return Err("session row key is required".to_string());
     }
     let date = input.date.trim();
-    datetime::parse_date(date)
-        .ok_or_else(|| format!("session date must be YYYY-MM-DD: {date}"))?;
+    datetime::parse_date(date).ok_or_else(|| format!("session date must be YYYY-MM-DD: {date}"))?;
     if input.minutes == 0 {
         return Err("session minutes must be greater than 0".to_string());
     }
@@ -630,8 +629,8 @@ fn filter_session_entries(
         .map(|scope| scope.trim().to_lowercase())
         .filter(|scope| !scope.is_empty())
         .unwrap_or_else(|| "all".to_string());
-    let today_date = datetime::parse_date(today)
-        .ok_or_else(|| format!("failed to parse today date {today}"))?;
+    let today_date =
+        datetime::parse_date(today).ok_or_else(|| format!("failed to parse today date {today}"))?;
     let week_start = datetime::week_start_date(today_date);
 
     let mut rows = Vec::new();
@@ -1701,10 +1700,16 @@ mod tests {
         assert_eq!(public_review.total_minutes, 3);
         assert_eq!(public_review.active_days, 2);
         assert_eq!(public_review.projects.len(), 2);
-        assert_eq!(public_review.projects[0].project_id.as_deref(), Some("sample-learning"));
+        assert_eq!(
+            public_review.projects[0].project_id.as_deref(),
+            Some("sample-learning")
+        );
         assert_eq!(public_review.projects[0].session_count, 1);
         assert_eq!(public_review.projects[0].total_minutes, 1);
-        assert_eq!(public_review.projects[1].project_id.as_deref(), Some("sample-stretch"));
+        assert_eq!(
+            public_review.projects[1].project_id.as_deref(),
+            Some("sample-stretch")
+        );
         assert_eq!(public_review.projects[1].session_count, 1);
         assert_eq!(public_review.projects[1].total_minutes, 2);
 

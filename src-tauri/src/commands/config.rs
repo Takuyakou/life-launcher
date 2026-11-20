@@ -3575,10 +3575,8 @@ mod tests {
         let next_step = project.next_step.as_mut().expect("next step");
         next_step.updated_at = Some("2026-07-02T12:00:00Z".to_string());
         next_step.reviewed_at = None;
-        let thirteen_days =
-            datetime::parse_rfc3339("2026-07-15T12:00:00Z").expect("datetime");
-        let fourteen_days =
-            datetime::parse_rfc3339("2026-07-16T12:00:00Z").expect("datetime");
+        let thirteen_days = datetime::parse_rfc3339("2026-07-15T12:00:00Z").expect("datetime");
+        let fourteen_days = datetime::parse_rfc3339("2026-07-16T12:00:00Z").expect("datetime");
 
         assert!(!project_is_stale_at(&project, thirteen_days));
         assert!(project_is_stale_at(&project, fourteen_days));
