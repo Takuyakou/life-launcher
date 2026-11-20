@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { createFullTodayFixture, createPickerFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 import { waitForBundledFonts } from "./bundledFonts";
+import { waitForStableRects } from "./helpers";
 
 type QaWindow = Window & {
   __LIFE_LAUNCHER_VISUAL_QA__: {
@@ -234,14 +235,18 @@ async function expectCompleteHeading(page: Page) {
   await dialog.evaluate((node) =>
     Promise.allSettled(node.getAnimations().map((animation) => animation.finished)),
   );
-  // The heading is the action text; the Project is the small coloured label above it.
-  await expect(dialog.getByRole("heading", { level: 2 })).toHaveText(NEXT_STEP);
+  // V151-S6: the action text sits in the subject band; the Project is the small coloured label above it.
+  await expect(dialog.locator(".timerCompleteHeading")).toHaveText(NEXT_STEP);
   const identity = dialog.locator(".projectIdentity");
   await expect(identity).toHaveCount(1);
   await expect(identity).toContainText(PROJECT);
-  const identityBox = (await identity.boundingBox())!;
-  const headingBox = (await dialog.getByRole("heading", { level: 2 }).boundingBox())!;
-  expect(identityBox.y + identityBox.height).toBeLessThanOrEqual(headingBox.y + 1);
+  const rects = await waitForStableRects(page, [
+    ".timerCompleteDialog .projectIdentity",
+    ".timerCompleteDialog .timerCompleteHeading",
+  ]);
+  const identityBox = rects[".timerCompleteDialog .projectIdentity"];
+  const headingBox = rects[".timerCompleteDialog .timerCompleteHeading"];
+  expect(identityBox.bottom).toBeLessThanOrEqual(headingBox.top + 1);
   expect(identityBox.height).toBeLessThan(headingBox.height);
   // Buttons and behaviour are unchanged.
   await expect(dialog.getByRole("button")).toHaveText(["続ける(+15分)", "終わる"]);
@@ -292,10 +297,15 @@ test("P9-09 a long action text wraps in the completion heading without leaving t
     .click();
   await page.clock.fastForward(60_500);
   const dialog = page.getByRole("dialog", { name: "タイマー満了" });
-  const heading = dialog.getByRole("heading", { level: 2 });
-  const dialogBox = (await dialog.boundingBox())!;
-  const headingBox = (await heading.boundingBox())!;
-  expect(headingBox.x + headingBox.width).toBeLessThanOrEqual(dialogBox.x + dialogBox.width);
-  const buttonBox = (await dialog.getByRole("button", { name: "終わる" }).boundingBox())!;
-  expect(headingBox.y + headingBox.height).toBeLessThanOrEqual(buttonBox.y);
+  await expect(dialog.locator(".timerCompleteHeading")).toBeVisible();
+  const rects = await waitForStableRects(page, [
+    ".timerCompleteDialog",
+    ".timerCompleteDialog .timerCompleteHeading",
+    ".timerCompleteDialog .secondaryButton--finish",
+  ]);
+  const dialogBox = rects[".timerCompleteDialog"];
+  const headingBox = rects[".timerCompleteDialog .timerCompleteHeading"];
+  expect(headingBox.right).toBeLessThanOrEqual(dialogBox.right);
+  const buttonBox = rects[".timerCompleteDialog .secondaryButton--finish"];
+  expect(headingBox.bottom).toBeLessThanOrEqual(buttonBox.top);
 });

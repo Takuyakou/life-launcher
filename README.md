@@ -4,7 +4,7 @@
 
 **「何をしよう？」を「今これをやる」に変えるWindowsアプリ。**
 
-Life Launcherは、迷っているときに「今やる一手」を1つ示し、その作業に必要な環境を開いて、すぐに始められるようにするWindowsデスクトップアプリです。データは手元のPCに保存します（local-first）。
+Life Launcherは、迷っているときに「今やる一手」を1つ示し、その作業に必要な環境を開いて、すぐに始められるようにするWindowsデスクトップアプリです。データは手元のPCに保存します。
 
 [Windows版をダウンロード](https://github.com/Takuyakou/life-launcher/releases/latest)
 

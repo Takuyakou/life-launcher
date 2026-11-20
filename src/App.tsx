@@ -17059,8 +17059,17 @@ function DashboardApp() {
             role="dialog"
             tabIndex={-1}
           >
-            <div>
-              <p className="eyebrow">Timer Complete</p>
+            <div className="timerCompleteHeader">
+              <span aria-hidden="true" className="timerCompleteMark">
+                <UiIcon name="clock" size={20} />
+              </span>
+              <div>
+                <p className="eyebrow">Timer</p>
+                <h2 className="timerCompleteText">予定時間になりました</h2>
+              </div>
+            </div>
+
+            <div className="timerCompleteSubject">
               {completionProject && (
                 <ProjectIdentity
                   colorId={completionProject.colorId}
@@ -17069,10 +17078,9 @@ function DashboardApp() {
                   projectId={completionProject.id}
                 />
               )}
-              <h2 className="timerCompleteHeading">{timerActionText(completionPrompt)}</h2>
+              <span className="timerCompleteMinutes">予定 {completionPrompt.targetMinutes}分</span>
+              <strong className="timerCompleteHeading">{timerActionText(completionPrompt)}</strong>
             </div>
-
-            <p className="timerCompleteText">予定時間になりました</p>
 
             {completionCanEditResume && (
               <>

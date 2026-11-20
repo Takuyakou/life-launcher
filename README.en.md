@@ -4,7 +4,7 @@
 
 **A Windows app that turns “What should I do?” into “I will do this now.”**
 
-Life Launcher is a local-first Windows desktop app that presents one next step, opens the environment needed for it, and helps you move from deciding to starting.
+Life Launcher is a Windows desktop app that presents one next step, opens the environment needed for it, and helps you move from deciding to starting. Your data is stored on your own PC.
 
 [Download Life Launcher for Windows](https://github.com/Takuyakou/life-launcher/releases/latest)
 

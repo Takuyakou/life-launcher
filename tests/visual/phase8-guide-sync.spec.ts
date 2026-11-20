@@ -13,6 +13,11 @@ test("Guide navigation focuses the requested section and closing restores its op
   await opener.click();
   const dialog = page.getByRole("dialog", { name: "使い方" });
   await expect(dialog).toBeVisible();
+  // V151-S6: click only after the open animation ends; clicking a 目次 item while the dialog is
+  // still growing made Playwright scroll the outer dialog to reach it.
+  await dialog.evaluate((node) =>
+    Promise.allSettled(node.getAnimations({ subtree: true }).map((animation) => animation.finished)),
+  );
 
   const navigation = dialog.getByRole("navigation", { name: "使い方の目次" });
   const records = navigation.getByRole("button", { name: /記録を見る/ });
