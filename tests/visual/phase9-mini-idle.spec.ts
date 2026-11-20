@@ -17,6 +17,8 @@ async function openMini(page: Page) {
 }
 
 async function expectNoOverlapInsideWindow(page: Page, selectors: string[]) {
+  // P10-18e: the clock now uses the bundled font, which loads lazily; measure after it has settled.
+  await page.evaluate(() => document.fonts.ready);
   const boxes = [];
   for (const selector of selectors) {
     const box = await page.locator(`.timerPanel--mini ${selector}`).first().boundingBox();

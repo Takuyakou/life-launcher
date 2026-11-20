@@ -252,11 +252,23 @@ test("F11 the Picker header has no rule and 今日の3件 sits next to 2 / 3", a
   const dialog = page.getByRole("dialog", { name: "今日やるものを選ぶ" });
   const header = dialog.locator(".todayPickerHead");
   await expect(header).toHaveCSS("border-bottom-width", "0px");
-  const title = dialog.locator(".todayPickerDestinationHeader h3");
-  const counter = dialog.locator(".todayPickerCounter");
-  const titleBox = (await title.boundingBox())!;
-  const counterBox = (await counter.boundingBox())!;
-  expect(Math.abs(counterBox.x - (titleBox.x + titleBox.width) - 8)).toBeLessThanOrEqual(1);
+  await expect(dialog.locator(".todayPickerDestinationHeader h3")).toBeVisible();
+  await expect(dialog.locator(".todayPickerCounter")).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+  // Measure both boxes in one evaluate: two boundingBox() calls can straddle a font-load reflow.
+  await expect
+    .poll(async () => {
+      const { titleRight, counterLeft } = await page.evaluate(
+        ([titleSelector, counterSelector]) => {
+          const titleRect = document.querySelector(titleSelector)!.getBoundingClientRect();
+          const counterRect = document.querySelector(counterSelector)!.getBoundingClientRect();
+          return { titleRight: titleRect.right, counterLeft: counterRect.left };
+        },
+        [".todayPickerDestinationHeader h3", ".todayPickerCounter"],
+      );
+      return Math.abs(counterLeft - (titleRight + 8));
+    })
+    .toBeLessThanOrEqual(1);
 });
 
 test("P10-10 the Picker cannot be opened when Today3 is full", async ({ page }) => {

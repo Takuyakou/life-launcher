@@ -124,6 +124,12 @@ test("P9-00 visual mini-running", async ({ page }) => {
     }),
   );
   await expect(page.getByText("24:55")).toBeVisible();
+  // P10-18e: the clock must use the bundled font, not an OS font that only some PCs have.
+  const clockFamily = await page
+    .locator(".timerPanel--mini .timerClock")
+    .evaluate((element) => getComputedStyle(element).fontFamily);
+  expect(clockFamily.startsWith('"Inter Variable"')).toBe(true);
+  expect(await page.evaluate(() => document.fonts.check('700 30px "Inter Variable"'))).toBe(true);
   await expect(page).toHaveScreenshot("mini-running.png", SCREENSHOT_OPTIONS);
 });
 

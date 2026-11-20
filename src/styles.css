@@ -2326,7 +2326,7 @@ button.instructionTreeDisclosure:hover {
 .timerPanel--mini .timerClock {
   flex: 0 0 auto;
   color: #ffce5b;
-  font-family: Inter, "Noto Sans JP", sans-serif;
+  font-family: var(--font-ui);
   font-size: 30px;
   font-weight: 700;
   line-height: 1;

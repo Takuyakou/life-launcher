@@ -28,6 +28,16 @@ function tsxFiles(dir: string): string[] {
   });
 }
 
+// P10-18e: the bundled fonts register "Inter Variable" / "Noto Sans JP Variable". A plain `Inter` or
+// `"Noto Sans JP"` only works on a PC that has the font installed, so CI (and most users) got an OS font.
+test("styles.css font-family never names Inter or Noto Sans JP without ' Variable'", () => {
+  const css = readFileSync("src/styles.css", "utf8");
+  const bad = [...css.matchAll(/font-family:\s*([^;]+);/g)]
+    .map((match) => match[1])
+    .filter((value) => /(["']?)(Inter|Noto Sans JP)\1(?!\s*Variable)/.test(value));
+  expect(bad, "font-family values that do not use the bundled font names").toEqual([]);
+});
+
 test("every className string in src/**/*.tsx has a rule in styles.css", () => {
   const css = readFileSync("src/styles.css", "utf8");
   const used = new Map<string, string>();
