@@ -83,9 +83,9 @@ v1.4.3 と比べると、インストーラーは 3,771,887 → 9,668,799 バイ
    - `RUSTSEC-2026-0543`（`chrono 0.4.45` / 種類: `unmaintained`）: `chrono` が保守されていないという助言。Windows の直接の実行時依存に入る（`cargo tree --manifest-path src-tauri/Cargo.toml -i chrono --edges normal` の結果: `life-launcher v1.5.0` から直接到達）が、知られている脆弱性は無い。
 4. **公開安全**: `public:check` は 3,713 ファイル、0 blockers。
 5. **ポータブル ZIP**: 展開すると `Life-Launcher-v1.5.0-windows-x64.exe` と `README.txt`（v1.5.0 表記）。ZIP 内 EXE のハッシュは単体 EXE と一致。
-6. **秘密情報の走査**: 単体 EXE、インストーラー、ZIP、ZIP 内 EXE、`dist/`（計 138 ファイル、`.map` 0 件）を ASCII と UTF-16LE で走査し、0 件（ユーザーパス、リポジトリ名、ローカルユーザー名、トークン接頭辞、秘密鍵、source map）。インストーラーと ZIP は圧縮されているため、生のバイト列の走査である。
+6. **秘密情報の走査**: 単体 EXE、インストーラー、ZIP、ZIP 内 EXE、`dist/`（計 138 ファイル、`.map` 0 件）を ASCII と UTF-16LE で走査し、0 件（ユーザーパス、リポジトリ名、ローカルユーザー名、トークン接頭辞、秘密鍵、source map）。インストーラーと ZIP は圧縮されているため、生のバイト列の走査である。P10-18e のビルドでは、ZIP の生のバイト列で走査する語の 1 つ(5 文字)が 1 か所だけ当たった。位置は ZIP 内 EXE の圧縮データの中で、展開した EXE(単体 EXE とハッシュ一致)と README.txt には無い。ZIP の中はこの 2 つだけで、ZIP とファイルの注釈・拡張フィールドは空なので、圧縮データの偶然の並びと判断した。
 7. **バージョン情報**: 単体 EXE・インストーラー・ZIP 内 EXE の FileVersion / ProductVersion は 1.5.0。ProductName は Life Launcher。
-8. **Windows Defender**: 成果物のコピー 3 ファイルを CustomScan。スキャン前後で検出数は 1 のまま（新しい検出 0）。署名 `1.463.368.0`。
+8. **Windows Defender**: 成果物のコピー 3 ファイルを CustomScan。スキャン前後で検出数は 1 のまま（新しい検出 0）。署名 `1.463.379.0`。
 9. **ビルドに使ったコミットの `dist/`**: 秘密情報の走査で 0 件（`.map` 0 件）。
 10. **権限**: `git diff v1.4.3 -- src-tauri/capabilities src-tauri/gen/schemas` は差分なし。新しい Rust の命令 `load_missing_launch_targets` は、設定に入っている次の一手のアプリ・フォルダ・ファイル・手順書の場所があるかを確かめるだけで、ファイルの中は読まず、ネットワークの場所(`\\`・`//`)と URL は確かめない。権限の追加はない。
 11. **FULL**: `npm.cmd run test:visual -- --reporter=line --workers=1` は 869 件、15.4 分。869 件中 868 件が通り、落ちた 1 件（`phase97-import` の半透明オーバーレイ背後に透ける「外す」非表示による差分）は基準画像 2 枚を撮り直し、該当 spec（11 件）を回し直して全件通った。P10-18d(CSS を戻しただけ)では FULL を回さず、設定に関わる spec を回して通った(phase10-settings-weekly-focus・css-class-contract・phase9-visual・phase10-resume・phase97-import・phase83-settings-maintenance・phase83-clean-start・phase83-software-reset・phase95-settings-keyboard・phase10-weekly・phase81-entry-contracts の 11 spec、84 件)。P10-18e(ミニのタイマーの数字のフォントと、CI で揺れたテストの測り方)でも FULL を回さず、ミニの窓と予定の画面の spec を回して通った(phase9-visual・phase9-mini-idle・phase9-timer-action-text・phase96-timer-line・phase97-small-fixes・phase10-consistency・phase10-mock-match・phase10-picker・css-class-contract の 9 spec、79 件)。
