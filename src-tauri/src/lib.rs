@@ -1,5 +1,6 @@
 mod app_paths;
 mod commands;
+mod datetime;
 mod display_awake;
 mod models;
 mod startup;

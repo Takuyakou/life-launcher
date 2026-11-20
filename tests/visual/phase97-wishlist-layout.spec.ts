@@ -6,7 +6,9 @@ import {
   reorderWishlistGroups,
 } from "../../src/nextStepWishlist";
 import { createFullTodayFixture, FIXTURE_NOW } from "./fixtures";
+import { waitForStableRects } from "./helpers";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 type Control = {
   currentConfig: () => AppConfig;
@@ -22,12 +24,14 @@ async function prepare(
   await page.setViewportSize({ width: 1440, height: 900 });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".doNowBand")).toBeVisible();
   const disclosure = page.locator(".inboxBand .disclosure");
   if ((await disclosure.getAttribute("aria-expanded")) !== "true") {
     await disclosure.click();
   }
   await expect(page.locator(".inboxBody")).toBeVisible();
+  await expect(page.locator(".inboxBody")).toHaveCSS("overflow", "visible");
 }
 
 async function currentConfig(page: Page): Promise<AppConfig> {
@@ -170,15 +174,17 @@ test("the keyboard order ends at 未分類", async ({ page }) => {
 
 test("the 未分類 header cannot start a group drag", async ({ page }) => {
   await prepare(page);
-  const unassignedHeader = page.locator(
-    '[data-wishlist-group="unassigned"] .wishlistGroupHeader',
-  );
-  const learningHeader = page.locator(
-    '[data-wishlist-group="project:sample-learning"] .wishlistGroupHeader',
-  );
+  const unassignedSelector = '[data-wishlist-group="unassigned"] .wishlistGroupHeader';
+  const learningSelector =
+    '[data-wishlist-group="project:sample-learning"] .wishlistGroupHeader';
+  const unassignedHeader = page.locator(unassignedSelector);
+  await page.evaluate(async () => document.fonts.ready);
   await unassignedHeader.scrollIntoViewIfNeeded();
-  const from = (await unassignedHeader.boundingBox())!;
-  const to = (await learningHeader.boundingBox())!;
+  // The section keeps growing while the disclosure spring and the async rows settle. Measure and
+  // press only after both headers hold still, otherwise the press can land on another group.
+  const rects = await waitForStableRects(page, [unassignedSelector, learningSelector]);
+  const from = rects[unassignedSelector];
+  const to = rects[learningSelector];
 
   await page.mouse.move(from.x + 20, from.y + from.height / 2);
   await page.mouse.down();
@@ -191,7 +197,14 @@ test("the 未分類 header cannot start a group drag", async ({ page }) => {
 test("dragging a group after 未分類 keeps 未分類 last on screen", async ({ page }) => {
   await prepare(page);
   await page.setViewportSize({ width: 1440, height: 1600 });
-  await page.waitForTimeout(300);
+  await expect
+    .poll(() =>
+      page
+        .locator('[data-wishlist-group="project:sample-learning"] .wishlistGroupHeader')
+        .boundingBox()
+        .then((b) => Boolean(b && b.width > 0 && b.height > 0)),
+    )
+    .toBe(true);
   const learningHeader = page.locator(
     '[data-wishlist-group="project:sample-learning"] .wishlistGroupHeader',
   );

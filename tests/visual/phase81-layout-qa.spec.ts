@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import type { InboxItem, LauncherProject } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 const VIEWPORTS = [1920, 1000, 860, 620] as const;
 const LONG_PROJECT_NAME = "長い名前でも責務が混ざらない公開確認用プロジェクト";
@@ -88,6 +89,7 @@ async function prepare(page: Page, width: number, fixture = createPhase81LayoutF
   await page.emulateMedia({ reducedMotion: "reduce" });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".doNowBand")).toBeVisible();
   await page.evaluate(async () => document.fonts.ready);
 }

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { extname, resolve } from "node:path";
 import { createPublicFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 const FIXTURE_ROOT = resolve("tests/fixtures/instruction-html");
 const HTML_PATH = resolve(FIXTURE_ROOT, "browser-parity/index.html");
@@ -57,6 +58,7 @@ async function prepareViewer(page: Page, width: number, height: number): Promise
   await routeInstructionAssets(page);
   await installTauriMock(page, fixture, "life-launcher-instruction");
   await page.goto("/?view=instruction&path=" + encodeURIComponent(INSTRUCTION_PATH));
+  await waitForBundledFonts(page);
   const iframe = page.locator(".instructionHtmlFrame");
   await expect(iframe).toBeVisible();
   await expect
@@ -192,7 +194,11 @@ test("HTML preview keeps local assets but blocks active and remote content", asy
       .locator('a[href="./linked.html"]')
       .evaluate((anchor: HTMLAnchorElement) => anchor.href),
   ).toBe("http://asset.localhost/instructions/browser-parity/linked.html");
-  await page.waitForTimeout(100);
+  await expect(frame.locator("#toc-link")).toHaveAttribute("href", "#toc-target");
+  // A hidden iframe can throttle requestAnimationFrame, so wait for the document's own end state.
+  await expect
+    .poll(() => frame.locator("body").evaluate(() => document.readyState))
+    .toBe("complete");
   expect(remoteRequests).toEqual([]);
 });
 
@@ -218,6 +224,7 @@ test("HTML preview preserves disabled form controls that own layout grid columns
   await page.setViewportSize({ width: 900, height: 640 });
   await installTauriMock(page, fixture, "life-launcher-instruction");
   await page.goto("/?view=instruction&path=" + encodeURIComponent(path));
+  await waitForBundledFonts(page);
   const iframe = page.locator(".instructionHtmlFrame");
   await expect(iframe).toBeVisible();
   const handle = await iframe.elementHandle();

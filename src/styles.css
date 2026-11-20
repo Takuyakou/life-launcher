@@ -7639,18 +7639,55 @@ body:has([aria-modal="true"]) .toastStack {
 }
 
 .timerCompleteDialog {
-  max-width: 420px;
+  max-width: 440px;
 }
 
-.timerCompleteDialog > div:first-child {
+/* V151: same header shape as the 一手進みました dialog — mark, eyebrow, title. */
+.timerCompleteHeader {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.timerCompleteMark {
   display: grid;
-  justify-items: start;
-  gap: 6px;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent-strong) 16%, transparent);
+  color: var(--accent-strong);
 }
 
 .timerCompleteText {
-  color: var(--muted);
+  margin: 0;
+}
+
+/* V151: what the timer was for — project and minutes on the first row, the action below. */
+.timerCompleteSubject {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px 14px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  background: var(--surface);
+}
+
+.timerCompleteMinutes {
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.timerCompleteSubject .timerCompleteHeading {
+  grid-column: 1 / -1;
   font-size: 17px;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .timerResumeField {
@@ -16430,6 +16467,86 @@ button.mainActionButton:is(
   height: 16px;
 }
 
+/* V151: the base rule's fixed 90px left no room for the 15px label. Let both grow with the text;
+   the pause button keeps the width of 「一時停止」 so 「再開」 does not make the row jump. */
+.doNowActions .runningPauseButton,
+.doNowActions .runningStopButton {
+  width: auto;
+  min-width: 0;
+}
+
+.doNowActions .runningPauseButton {
+  min-width: 128px;
+}
+
+/* V151: the running buttons move like the start buttons — lift, shadow, the bottom line, and the
+   small press. Only in the Do Now band; the Today card's small buttons keep their own look. */
+.doNowActions .runningPauseButton,
+.doNowActions .runningStopButton {
+  position: relative;
+  overflow: hidden;
+  transition:
+    background-color 130ms ease,
+    border-color 130ms ease,
+    transform 130ms ease,
+    box-shadow 130ms ease;
+}
+
+.doNowActions .runningPauseButton::after,
+.doNowActions .runningStopButton::after {
+  position: absolute;
+  right: 12px;
+  bottom: 0;
+  left: 12px;
+  height: 2px;
+  background: currentColor;
+  content: "";
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 150ms ease;
+}
+
+.doNowActions .runningPauseButton:hover:not(:disabled),
+.doNowActions .runningPauseButton:focus-visible,
+.doNowActions .runningStopButton:hover:not(:disabled),
+.doNowActions .runningStopButton:focus-visible {
+  transform: translateY(-1px);
+  box-shadow:
+    0 7px 16px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.doNowActions .runningPauseButton:hover:not(:disabled)::after,
+.doNowActions .runningPauseButton:focus-visible::after,
+.doNowActions .runningStopButton:hover:not(:disabled)::after,
+.doNowActions .runningStopButton:focus-visible::after {
+  transform: scaleX(1);
+}
+
+.doNowActions .runningPauseButton:active:not(:disabled),
+.doNowActions .runningStopButton:active:not(:disabled) {
+  transform: translateY(0) scale(0.985);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.18);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .doNowActions .runningPauseButton,
+  .doNowActions .runningStopButton,
+  .doNowActions .runningPauseButton::after,
+  .doNowActions .runningStopButton::after {
+    transition: none !important;
+  }
+
+  .doNowActions .runningPauseButton:hover:not(:disabled),
+  .doNowActions .runningPauseButton:focus-visible,
+  .doNowActions .runningStopButton:hover:not(:disabled),
+  .doNowActions .runningStopButton:focus-visible,
+  .doNowActions .runningPauseButton:active:not(:disabled),
+  .doNowActions .runningStopButton:active:not(:disabled) {
+    transform: none;
+  }
+}
+
 .todayRow .todayTimerActions .runningPauseButton,
 .todayRow .todayTimerActions .runningStopButton {
   width: 82px;
@@ -16602,11 +16719,18 @@ button.mainActionButton:is(
 }
 /* P10-15b H5: the sidebar row values decided by the user (案 B + C の色). */
 .sidebar .quickGroup {
-  gap: 10px;
+  gap: 0;
 }
 
 .sidebar .quickGroupItems {
   gap: 0;
+}
+
+/* V151: the 10px between a heading and its buttons sits inside the collapsing box, so it shrinks
+   and grows with the box instead of appearing or vanishing in one frame. */
+.sidebar .quickGroupItems::before {
+  height: 10px;
+  content: "";
 }
 
 .sidebar .quickButton {

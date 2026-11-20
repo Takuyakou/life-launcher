@@ -109,10 +109,14 @@ export function SearchPalette({
   // looks it up again and warns when it is gone).
   const lastSelectedRef = useRef<SearchItem | null>(null);
 
+  // V151-S7: the App re-renders every second while a timer runs, which rebuilt `sections`.
+  // Only a change in the listed entries (or the query) may move the selection back to the top.
+  const itemKey = useMemo(() => flat.map((item) => item.id).join("\n"), [flat]);
+
   // A new result list always starts at the first entry.
   useEffect(() => {
     setSelectedIndex(0);
-  }, [query, sections]);
+  }, [query, itemKey]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -136,16 +140,17 @@ export function SearchPalette({
       }
     }
     setKnownProjectColors(colors);
-  }, [sections]);
+  }, [itemKey]);
 
   const selected = flat[Math.min(selectedIndex, Math.max(flat.length - 1, 0))];
   if (selected) lastSelectedRef.current = selected;
 
   useEffect(() => {
-    if (!selected) return;
-    const element = dialogRef.current?.querySelector<HTMLElement>(`[data-search-item="${selected.id}"]`);
+    const selectedId = selected?.id;
+    if (!selectedId) return;
+    const element = dialogRef.current?.querySelector<HTMLElement>(`[data-search-item="${selectedId}"]`);
     element?.scrollIntoView({ block: "nearest" });
-  }, [selected]);
+  }, [selected?.id]);
 
   const move = useCallback(
     (delta: number) => {
@@ -163,6 +168,8 @@ export function SearchPalette({
   const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
     const native = event.nativeEvent;
     if (event.key === "Escape") {
+      // Japanese input uses Escape to cancel the conversion; never close while composing.
+      if (native.isComposing || native.keyCode === 229) return;
       event.preventDefault();
       event.stopPropagation();
       onClose();
@@ -203,6 +210,21 @@ export function SearchPalette({
       }
     }
   };
+
+  // V151-S2-3: the palette only receives keydown while focus is inside it. When focus moves to the
+  // page (body) the window listener still closes the palette with one Escape. The capture phase and
+  // stopImmediatePropagation keep the app's other Escape handlers (dialogs, menus, drags) out of it.
+  useEffect(() => {
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (event.isComposing || event.keyCode === 229) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      onClose();
+    };
+    window.addEventListener("keydown", closeOnEscape, true);
+    return () => window.removeEventListener("keydown", closeOnEscape, true);
+  }, [onClose]);
 
   return (
     <div

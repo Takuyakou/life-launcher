@@ -4,7 +4,7 @@
 
 **A Windows app that turns “What should I do?” into “I will do this now.”**
 
-Life Launcher is a local-first Windows desktop app that presents one next step, opens the environment needed for it, and helps you move from deciding to starting.
+Life Launcher is a Windows desktop app that presents one next step, opens the environment needed for it, and helps you move from deciding to starting. Your data is stored on your own PC.
 
 [Download Life Launcher for Windows](https://github.com/Takuyakou/life-launcher/releases/latest)
 
@@ -174,6 +174,8 @@ Public quality checks cover React / TypeScript lint and build, Playwright Visual
 ## Security
 
 The public source includes bounded favicon retrieval, local and private destination rejection, redirect revalidation, response validation, and window-specific Tauri capabilities. Automated Rust tests cover the network and permission contracts.
+
+Life Launcher opens the apps, files, folders, and URLs you register. Do not import JSON from an unknown source. You can review the contents before importing. Right after an import, you can undo it from the notification, as long as nothing else has changed since.
 
 ## Local Data And Network Use
 

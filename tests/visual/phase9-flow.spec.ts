@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { createFullTodayFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 type QaWindow = Window & {
   __LIFE_LAUNCHER_VISUAL_QA__: {
@@ -24,6 +25,7 @@ test("P9-00 flow: Today3 short Timer expires, continues, pauses, resumes, ends a
   await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
   await installTauriMock(page, createFullTodayFixture(), "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
 
   await expect(page.locator(".doNowBand")).toContainText("資料を1ページ読む");
 
@@ -71,6 +73,7 @@ async function prepare(page: Page, fixture = createFullTodayFixture()) {
   await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(doNowCard(page)).toContainText(NEXT_STEP_TEXT);
 }
 

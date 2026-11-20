@@ -2,12 +2,14 @@ import { expect, test, type Page } from "@playwright/test";
 import type { AppConfig } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 async function prepare(page: Page, fixture: VisualQaFixture) {
   await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
   await page.setViewportSize({ width: 1440, height: 900 });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".doNowBand")).toBeVisible();
 }
 
@@ -116,7 +118,9 @@ test("P84 Do Now keeps a neutral resting card and follows the Project colour on 
     .evaluate((node) => getComputedStyle(node).backgroundColor);
 
   await card.hover();
-  await page.waitForTimeout(140);
+  await expect(card).toHaveCSS("border-left-color", firstDot);
+  await expect(card).toHaveCSS("border-right-color", firstDot);
+  await expect(card).toHaveCSS("background-color", "rgb(43, 41, 34)");
   const hovered = await card.evaluate((node) => {
     const style = getComputedStyle(node);
     return {
@@ -140,7 +144,8 @@ test("P84 Do Now keeps a neutral resting card and follows the Project colour on 
     .evaluate((node) => getComputedStyle(node).backgroundColor);
   expect(secondDot).not.toBe(firstDot);
   await page.mouse.move(1, 1);
-  await page.waitForTimeout(140);
+  await expect(card).toHaveCSS("border-left-color", secondDot);
+  await expect(card).toHaveCSS("border-right-color", secondDot);
   const afterSwitch = await card.evaluate((node) => {
     const style = getComputedStyle(node);
     return {

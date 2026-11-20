@@ -1,7 +1,9 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import type { AppConfig } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
+import { waitForStableRects } from "./helpers";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 type VisualQaControl = {
   currentConfig: () => AppConfig;
@@ -12,9 +14,12 @@ async function prepare(page: Page, fixture: VisualQaFixture, width = 1440) {
   await page.setViewportSize({ width, height: 900 });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   const disclosure = page.locator(".inboxBand .disclosure");
   if ((await disclosure.getAttribute("aria-expanded")) !== "true") await disclosure.click();
   await expect(page.locator(".inboxRow")).toHaveCount(fixture.config.inbox.length);
+  await page.evaluate(async () => document.fonts.ready);
+  await waitForStableRects(page, [".inboxBody"]);
 }
 
 async function currentConfig(page: Page): Promise<AppConfig> {
@@ -89,10 +94,11 @@ test("P84 Wishlist promote action is status-aware, stable, keyboard reachable, a
   const plainBefore = await style(plain);
   const plainMenuBefore = await style(plainMenu);
   await plain.evaluate((node) => node.scrollIntoView({ block: "center" }));
-  await page.waitForTimeout(200);
-  const plainBox = (await plain.boundingBox())!;
-  await page.mouse.move(plainBox.x + 24, plainBox.y + plainBox.height / 2);
-  await page.waitForTimeout(160);
+  // Settle the row's position before the pointer is placed; the bundled font moves the row.
+  const plainRect = (
+    await waitForStableRects(page, ['[data-inbox-id="sample-later"]'])
+  )['[data-inbox-id="sample-later"]'];
+  await page.mouse.move(plainRect.x + 24, plainRect.y + plainRect.height / 2);
   await expect(plainAction).toHaveCSS("opacity", "1");
 
   const plainAfter = await style(plain);
@@ -103,13 +109,14 @@ test("P84 Wishlist promote action is status-aware, stable, keyboard reachable, a
   const selectedMenuBefore = await style(selectedMenu);
   const selectedStatusBefore = await style(selectedStatus);
   await selected.hover();
-  await page.waitForTimeout(140);
   await expect(selectedAction).toHaveCount(0);
+  await selected.evaluate((node) =>
+    Promise.allSettled(node.getAnimations().map((animation) => animation.finished)),
+  );
   expect((await style(selectedMenu)).right).toBeCloseTo(selectedMenuBefore.right, 1);
   expect((await style(selectedStatus)).right).toBeCloseTo(selectedStatusBefore.right, 1);
 
   await page.mouse.move(1, 1);
-  await page.waitForTimeout(140);
   await expect(plainAction).toHaveCSS("opacity", "0");
   await plainAction.focus();
   await expect(plainAction).toBeFocused();

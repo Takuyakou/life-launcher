@@ -4,7 +4,7 @@
 
 **「何をしよう？」を「今これをやる」に変えるWindowsアプリ。**
 
-Life Launcherは、迷っているときに「今やる一手」を1つ示し、その作業に必要な環境を開いて、すぐに始められるようにするWindowsデスクトップアプリです。データは手元のPCに保存します（local-first）。
+Life Launcherは、迷っているときに「今やる一手」を1つ示し、その作業に必要な環境を開いて、すぐに始められるようにするWindowsデスクトップアプリです。データは手元のPCに保存します。
 
 [Windows版をダウンロード](https://github.com/Takuyakou/life-launcher/releases/latest)
 
@@ -179,6 +179,8 @@ powershell -ExecutionPolicy Bypass -File scripts/start-test-profile.ps1 -Exe <EX
 ## セキュリティ
 
 公開ソースでは、faviconを取得する範囲を制限し、ローカルやプライベートな宛先への接続を拒否します。リダイレクト先の再検証とレスポンスの検証も行い、Tauriのcapabilitiesはウィンドウごとに設定しています。これらのネットワークと権限の制限は、Rustの自動テストで確かめています。
+
+Life Launcherは、自分で登録したアプリ・ファイル・フォルダ・URLを開くアプリです。出所の分からないJSONは取り込まないでください。取り込む前に中身を確かめられます。取り込んだ直後は、ほかに何も変えていなければ、知らせの「元に戻す」で取り消せます。
 
 ## ローカルデータとネットワーク利用
 

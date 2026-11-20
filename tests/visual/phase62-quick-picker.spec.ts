@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import type { AppConfig, LauncherButton } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 test.describe.configure({ mode: "serial" });
 
@@ -14,6 +15,7 @@ async function prepare(
   await page.setViewportSize(viewport);
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".doNowBand")).toBeVisible();
   await page.evaluate(async () => document.fonts.ready);
   await page.addStyleTag({
@@ -73,6 +75,7 @@ test("Quick and Dictionary move the same item without deleting its action", asyn
   await page.reload();
   await expect(page.locator(".quickButton", { hasText: "サンプルエディター" })).toHaveCount(0);
   await page.goto("/?view=dictionary");
+  await waitForBundledFonts(page);
   const dictionaryTile = page.locator(".dictionaryTile", { hasText: "サンプルエディター" });
   await expect(dictionaryTile).toBeVisible();
   await dictionaryTile.focus();
@@ -85,8 +88,10 @@ test("Quick and Dictionary move the same item without deleting its action", asyn
   expect(moved).toMatchObject({ showInSidebar: true, showInOverlay: true });
   expect(moved.actions).toEqual(original.actions);
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".quickButton", { hasText: "サンプルエディター" })).toBeVisible();
   await page.goto("/?view=dictionary");
+  await waitForBundledFonts(page);
   await dictionaryTile.focus();
   await dictionaryTile.press("Shift+F10");
   await expect(page.getByRole("menuitem", { name: "サイドバーに移動" })).toBeDisabled();
@@ -112,6 +117,7 @@ test("Dictionary to Quick move rolls the display back when saving fails", async 
   const fixture = createPublicFixture();
   await prepare(page, fixture);
   await page.goto("/?view=dictionary");
+  await waitForBundledFonts(page);
   await setSaveFailure(page, true);
   const dictionaryOnlyTile = page.locator(".dictionaryTile", { hasText: "参考サイト" });
   await expect(dictionaryOnlyTile).toBeVisible();

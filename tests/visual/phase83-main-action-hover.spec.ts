@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 type ActionStyle = {
   backgroundColor: string;
@@ -35,6 +36,7 @@ async function prepare(
   await page.setViewportSize({ width, height: 900 });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".doNowBand")).toBeVisible();
   await page.evaluate(async () => document.fonts.ready);
 }
@@ -113,7 +115,9 @@ test("P83-03 reduced motion actions never move", async ({ page }) => {
 
   const enabled = page.locator(".nextStepRowAction").first();
   await enabled.hover();
-  await page.waitForTimeout(140);
+  await enabled.evaluate(async (node) => {
+    await Promise.allSettled(node.getAnimations().map((a) => a.finished));
+  });
   const reduced = await readStyle(enabled);
   expect(reduced.transform).toBe("none");
   expect(reduced.transitionProperty).not.toContain("transform");

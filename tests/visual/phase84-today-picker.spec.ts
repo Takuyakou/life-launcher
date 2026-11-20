@@ -2,12 +2,14 @@ import { expect, test, type Page } from "@playwright/test";
 import type { AppConfig } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 async function prepare(page: Page, fixture: VisualQaFixture, width = 1280, height = 900) {
   await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
   await page.setViewportSize({ width, height });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".focusBand")).toBeVisible();
 }
 
@@ -255,7 +257,9 @@ test("P84 Picker removes selected cards by keyboard without resizing and updates
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const dialog = picker(page);
-  await page.waitForTimeout(300);
+  await dialog.evaluate((node) =>
+    Promise.allSettled(node.getAnimations().map((animation) => animation.finished)),
+  );
   const dialogBoxBefore = await dialog.boundingBox();
   await expect(dialog.locator(".todayPickerCounter")).toContainText("1 / 3");
 
@@ -338,7 +342,9 @@ test("P84 Picker aligns project, task, and action columns with readable long con
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const dialog = picker(page);
-  await page.waitForTimeout(300);
+  await dialog.evaluate((node) =>
+    Promise.allSettled(node.getAnimations().map((animation) => animation.finished)),
+  );
   const nextStepTaskXs = await dialog
     .locator('[data-today-picker-section="next-step"] .todayPickerTask')
     .evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().x));
@@ -380,7 +386,9 @@ test("P84 Picker keeps the selected Wishlist row visible with its ✓", async ({
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const dialog = picker(page);
-  await page.waitForTimeout(300);
+  await dialog.evaluate((node) =>
+    Promise.allSettled(node.getAnimations().map((animation) => animation.finished)),
+  );
   const heightBefore = (await dialog.boundingBox())!.height;
   const row = dialog.locator('[data-today-picker-section="wishlist"] .todayPickerRow', {
     hasText: "あとで確認するサンプル",

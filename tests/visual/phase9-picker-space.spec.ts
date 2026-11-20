@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createPickerFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 const STANDARD = { width: 1080, height: 680 };
 const MINIMUM = { width: 860, height: 560 };
@@ -19,6 +20,7 @@ async function openPicker(
   await page.setViewportSize(size);
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   await expect(page.getByRole("dialog", { name: "今日やるものを選ぶ" })).toBeVisible();
 }

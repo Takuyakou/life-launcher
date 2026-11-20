@@ -1,12 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 async function prepare(page: Page, viewport = { width: 1280, height: 900 }) {
   await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
   await page.setViewportSize(viewport);
   await installTauriMock(page, createPublicFixture(), "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".doNowBand")).toBeVisible();
 }
 
@@ -187,14 +189,20 @@ test("P10-14e 1 the play icon sits left of the label on both start buttons", asy
   for (const selector of [".doNowStartPrimary", ".doNowStartSecondary"]) {
     const button = page.locator(selector);
     await button.hover();
-    await page.waitForTimeout(160);
-    const glyph = (await button.locator(".timerStartHoverGlyph").boundingBox())!;
-    const label = (await button.locator(".timerStartDuration").boundingBox())!;
-    expect(Math.abs(glyph.y + glyph.height / 2 - (label.y + label.height / 2))).toBeLessThanOrEqual(
-      2,
+    await button.evaluate((node) =>
+      Promise.allSettled(node.getAnimations().map((animation) => animation.finished)),
     );
+    await expect
+      .poll(async () => {
+        const glyph = (await button.locator(".timerStartHoverGlyph").boundingBox())!;
+        const label = (await button.locator(".timerStartDuration").boundingBox())!;
+        return Math.abs(glyph.y + glyph.height / 2 - (label.y + label.height / 2));
+      })
+      .toBeLessThanOrEqual(2);
     await page.mouse.move(1, 1);
-    await page.waitForTimeout(160);
+    await button.evaluate((node) =>
+      Promise.allSettled(node.getAnimations().map((animation) => animation.finished)),
+    );
   }
 });
 
@@ -237,6 +245,7 @@ test("P10-14e 2 the mini window is 340x120, two rows, with the Project colour on
   await page.setViewportSize({ width: 340, height: 120 });
   await installTauriMock(page, createPublicFixture(), "life-launcher-mini");
   await page.goto("/?view=mini");
+  await waitForBundledFonts(page);
   const panel = page.locator(".timerPanel--mini");
   await expect(panel).toBeVisible();
 

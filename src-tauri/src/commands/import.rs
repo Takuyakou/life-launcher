@@ -39,12 +39,12 @@ static IMPORT_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 fn new_id(prefix: &str) -> String {
     let sequence = IMPORT_SEQUENCE.fetch_add(1, Ordering::Relaxed);
-    let timestamp = chrono::Utc::now().timestamp_millis();
+    let timestamp = crate::datetime::timestamp_millis(crate::datetime::now_utc());
     format!("{prefix}-{timestamp:x}-{sequence:x}")
 }
 
 fn now_iso() -> String {
-    chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
+    crate::datetime::format_rfc3339_millis_utc(crate::datetime::now_utc())
 }
 
 fn suppress_reload_for_own_write(state: &AppState) -> Result<(), String> {

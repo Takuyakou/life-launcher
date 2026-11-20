@@ -5,6 +5,7 @@ import { buildImportCurrentState } from "../../src/importCurrentState";
 import { extractImportJson } from "../../src/importJson";
 import { createFullTodayFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 const IMPORT_JSON = JSON.stringify({
   lifeLauncherImport: 1,
@@ -94,8 +95,9 @@ async function prepare(page: Page, fixture = createFullTodayFixture()) {
   await page.setViewportSize({ width: 1440, height: 900 });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".doNowBand")).toBeVisible();
-  await page.waitForTimeout(150);
+  await page.evaluate(async () => document.fonts.ready);
   return fixture;
 }
 

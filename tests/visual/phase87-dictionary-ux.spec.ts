@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import type { LauncherButton } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 function dictionaryFixture() {
   const fixture = createPublicFixture();
@@ -25,7 +26,7 @@ async function prepare(page: Page, view: "main" | "dictionary", width = 1000) {
   await page.setViewportSize({ width, height: 640 });
   await installTauriMock(page, dictionaryFixture(), view);
   await page.goto(view === "dictionary" ? "/?view=dictionary" : "/");
-  await page.evaluate(async () => document.fonts.ready);
+  await waitForBundledFonts(page);
 }
 
 test("Main remains interactive while Dictionary is visible", async ({ page }) => {

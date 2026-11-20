@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createFullTodayFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 type QaWindow = Window & {
   __LIFE_LAUNCHER_VISUAL_QA__: { emit: (event: string, payload?: unknown) => void };
@@ -13,6 +14,7 @@ async function openMini(page: Page) {
   await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
   await installTauriMock(page, createFullTodayFixture(), "life-launcher-mini");
   await page.goto("/?view=mini");
+  await waitForBundledFonts(page);
   await expect(page.locator(".miniShell")).toBeVisible();
 }
 

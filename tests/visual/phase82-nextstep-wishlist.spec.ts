@@ -10,7 +10,9 @@ import {
 } from "../../src/nextStepWishlist";
 import type { AppConfig, LauncherNextStep } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
+import { waitForStableRects } from "./helpers";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 type VisualQaControl = {
   currentConfig: () => AppConfig;
@@ -24,11 +26,13 @@ async function prepare(page: Page, fixture: VisualQaFixture = createPublicFixtur
   await page.setViewportSize({ width: 1440, height: 900 });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".inboxBand")).toBeVisible();
   const disclosure = page.locator(".inboxBand .disclosure");
   if ((await disclosure.getAttribute("aria-expanded")) !== "true") await disclosure.click();
   await expect(page.locator(".inboxBody")).toBeVisible();
-  await page.waitForTimeout(350);
+  await page.evaluate(async () => document.fonts.ready);
+  await waitForStableRects(page, [".inboxBody"]);
 }
 
 async function currentConfig(page: Page): Promise<AppConfig> {
@@ -354,11 +358,13 @@ test("P82-01 group D&D saves only on drop, persists order and rolls back failure
           .length,
     );
   const drag = async (sourceId: string, targetId: string, after = true) => {
-    const source = page.locator(`[data-inbox-id="${sourceId}"]`);
-    const target = page.locator(`[data-inbox-id="${targetId}"]`);
+    const sourceSelector = `[data-inbox-id="${sourceId}"]`;
+    const targetSelector = `[data-inbox-id="${targetId}"]`;
+    const source = page.locator(sourceSelector);
     await source.evaluate((element) => element.scrollIntoView({ block: "center" }));
-    const from = (await source.boundingBox())!;
-    const to = (await target.boundingBox())!;
+    const rects = await waitForStableRects(page, [sourceSelector, targetSelector]);
+    const from = rects[sourceSelector];
+    const to = rects[targetSelector];
     await page.mouse.move(from.x + 40, from.y + from.height / 2);
     await page.mouse.down();
     await page.mouse.move(from.x + 52, from.y + from.height / 2, { steps: 2 });
@@ -377,7 +383,8 @@ test("P82-01 group D&D saves only on drop, persists order and rolls back failure
   const disclosure = page.locator(".inboxBand .disclosure");
   if ((await disclosure.getAttribute("aria-expanded")) !== "true") await disclosure.click();
   await expect(page.locator(".inboxBody")).toBeVisible();
-  await page.waitForTimeout(350);
+  await page.evaluate(async () => document.fonts.ready);
+  await waitForStableRects(page, [".inboxBody"]);
   await expect(
     page.locator('[data-wishlist-group="project:sample-learning"] .inboxRow').first(),
   ).toHaveAttribute("data-inbox-id", "wish-two");
@@ -632,14 +639,15 @@ test("v1.3 Wishlist project groups reorder independently and expose Project edit
     { id: "group-second", text: "二番目の項目", projectId: second.id },
   ];
   await prepare(page, fixture);
-  const firstHeader = page.locator(".wishlistGroupHeader", { hasText: first.name });
-  const secondHeader = page.locator(".wishlistGroupHeader", { hasText: second.name });
+  const firstSelector = `[data-wishlist-group="project:${first.id}"] .wishlistGroupHeader`;
+  const secondSelector = `[data-wishlist-group="project:${second.id}"] .wishlistGroupHeader`;
   await page.locator(".wishlistGroup").first().scrollIntoViewIfNeeded();
   await page.mouse.move(700, 500);
   await page.mouse.wheel(0, 120);
-  await page.waitForTimeout(350);
-  const from = (await secondHeader.boundingBox())!;
-  const to = (await firstHeader.boundingBox())!;
+  await page.evaluate(async () => document.fonts.ready);
+  const rects = await waitForStableRects(page, [firstSelector, secondSelector]);
+  const from = rects[secondSelector];
+  const to = rects[firstSelector];
 
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();

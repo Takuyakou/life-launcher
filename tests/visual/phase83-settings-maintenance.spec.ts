@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 type InvokeCall = { command: string; args: Record<string, unknown> };
 
@@ -19,6 +20,7 @@ async function prepare(page: Page, width = 1440) {
   });
   await installTauriMock(page, createPublicFixture());
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator("main, [role=main]").first()).toBeVisible();
 }
 

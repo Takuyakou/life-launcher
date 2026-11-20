@@ -2,11 +2,14 @@ import { expect, test, type Page } from "@playwright/test";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 import { findShortcutConflicts } from "../../src/shortcutConflicts";
+import { waitForBundledFonts } from "./bundledFonts";
+import { waitForStableRects } from "./helpers";
 
 async function prepare(page: Page, fixture = createPublicFixture()) {
   await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".sidebar")).toBeVisible();
 }
 
@@ -68,7 +71,7 @@ test("Wishlist self-drop does not duplicate or save, including after repeated dr
   const disclosure = page.locator(".inboxBand .disclosure");
   if ((await disclosure.getAttribute("aria-expanded")) !== "true") await disclosure.click();
   await expect(page.locator(".inboxBody")).toBeVisible();
-  await page.waitForTimeout(350);
+  await expect(page.locator(".inboxBody")).toHaveCSS("overflow", "visible");
   const source = page.locator('[data-inbox-id="same-wish"]');
   const target = page.locator(`.nextStepCard[data-project-id="${project.id}"]`);
   const saveCount = () => page.evaluate(() =>
@@ -107,12 +110,17 @@ test("Wishlist replacement uses identity, not display text", async ({ page }) =>
   const disclosure = page.locator(".inboxBand .disclosure");
   if ((await disclosure.getAttribute("aria-expanded")) !== "true") await disclosure.click();
   await expect(page.locator(".inboxBody")).toBeVisible();
-  await page.waitForTimeout(350);
+  await expect(page.locator(".inboxBody")).toHaveCSS("overflow", "visible");
   const source = page.locator('[data-inbox-id="new-wish"]');
-  const target = page.locator(`.nextStepCard[data-project-id="${project.id}"]`);
+  // V151-S8 (S1 rule 4): scroll only after the opened section has settled, then read both rects in
+  // one evaluate once the scroll has settled too.
+  const sourceSelector = '[data-inbox-id="new-wish"]';
+  const targetSelector = `.nextStepCard[data-project-id="${project.id}"]`;
+  await waitForStableRects(page, [sourceSelector, targetSelector]);
   await source.scrollIntoViewIfNeeded();
-  const from = (await source.boundingBox())!;
-  const to = (await target.boundingBox())!;
+  const rects = await waitForStableRects(page, [sourceSelector, targetSelector]);
+  const from = rects[sourceSelector];
+  const to = rects[targetSelector];
   await page.mouse.move(from.x + 20, from.y + from.height / 2);
   await page.mouse.down();
   await page.mouse.move(from.x + 32, from.y + from.height / 2, { steps: 2 });
@@ -125,9 +133,12 @@ test("Wishlist replacement uses identity, not display text", async ({ page }) =>
 test("Today total, execution list and selection roll over together at local midnight", async ({ page }) => {
   const fixture = createPublicFixture();
   fixture.config.settings.dayStartHour = 0;
-  await page.clock.install({ time: new Date("2026-08-13T23:59:59+09:00").getTime() });
+  // V151-S8: hold the page clock at 23:59:59 while the page loads; only runFor below crosses midnight.
+  await page.clock.install({ time: new Date("2026-08-13T23:59:50+09:00").getTime() });
+  await page.clock.pauseAt(new Date("2026-08-13T23:59:59+09:00").getTime());
   await installTauriMock(page, fixture, "main", null, { rolloverOnLoadConfig: true });
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".timerTodaySummary")).toHaveCount(0);
   await page.locator(".todayActivityBand .disclosure").click();
   await expect(page.locator(".todayActivityRow")).toHaveCount(1);
@@ -146,6 +157,7 @@ test("Today refreshes on focus after a suspended configured-day boundary", async
   await page.clock.install({ time: new Date("2026-08-14T03:59:59+09:00").getTime() });
   await installTauriMock(page, fixture, "main", null, { rolloverOnLoadConfig: true });
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".timerTodaySummary")).toHaveCount(0);
   await page.clock.setFixedTime(new Date("2026-08-14T04:15:00+09:00"));
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
@@ -195,6 +207,7 @@ test("mouse-free arrows traverse Sidebar, Dictionary, Main, toolbar, Settings an
       .__LIFE_LAUNCHER_VISUAL_QA__.invokeCalls.some((call) => call.command === "plugin:webview|create_webview_window"),
   )).toBe(true);
   await page.goto("/?view=dictionary");
+  await waitForBundledFonts(page);
   await expect(page.locator(".dictionaryWindowShell")).toBeVisible();
   const titleAction = page.locator(".dictionaryWindowTitleActions button").first();
   await titleAction.focus();
@@ -208,6 +221,7 @@ test("mouse-free arrows traverse Sidebar, Dictionary, Main, toolbar, Settings an
   await expect(page.locator(".dictionarySearchInput")).toHaveAttribute("aria-activedescendant", /dictionary-search-result-/);
   await page.keyboard.press("Escape");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await page.evaluate(() => (document.activeElement as HTMLElement).blur());
   await page.keyboard.press("ArrowDown");
   await expect(dictionaryButton).toBeFocused();

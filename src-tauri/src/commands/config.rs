@@ -21,9 +21,10 @@ use super::actions::expand_env_path;
 use super::instructions::{
     normalize_instruction_folder_settings, reconcile_instruction_folder_settings,
 };
+use crate::datetime;
 use crate::models::{
     default_backup_keep, default_day_start_hour, default_focus_hotkey, default_timer_minutes,
-    initial_config, short_timer_minutes, today_date, Action, AppConfig, InboxItem,
+    initial_config, short_timer_minutes, Action, AppConfig, InboxItem,
     InstructionReferenceUpdateResponse, LauncherButton, LegacyProjectV2, LoadConfigResponse,
     MissingLaunchTargetsResponse, NextStepFreshnessResponse, OverlayPage, Project, ProjectV3,
     SaveConfigResponse, Settings, TodayVictory, UndoTodaySelectionInput, CONFIG_VERSION,
@@ -79,7 +80,7 @@ pub fn load_next_step_freshness(
         .lock()
         .map_err(|_| "failed to lock config writes".to_string())?;
     let config = load_config_internal(&app)?.config;
-    let now = chrono::Utc::now().fixed_offset();
+    let now = datetime::now_utc();
     Ok(NextStepFreshnessResponse {
         stale_project_ids: config
             .projects
@@ -242,7 +243,7 @@ fn stamp_first_run_done_at(settings: &mut Settings) -> bool {
     if settings.first_run_done_at.is_some() {
         return false;
     }
-    settings.first_run_done_at = Some(chrono::Utc::now().to_rfc3339());
+    settings.first_run_done_at = Some(datetime::format_rfc3339_auto(datetime::now_utc()));
     true
 }
 
@@ -1093,7 +1094,7 @@ pub(crate) fn backup_existing_config(path: &PathBuf) -> Result<(), String> {
     fs::create_dir_all(&backup_dir)
         .map_err(|error| format!("failed to create {}: {error}", backup_dir.display()))?;
 
-    let timestamp = chrono::Local::now().format("%Y%m%d-%H%M%S-%f");
+    let timestamp = datetime::format_file_stamp_nanos(datetime::now_local());
     let backup_path = backup_dir.join(format!("config-{timestamp}.json"));
     fs::copy(path, &backup_path).map_err(|error| {
         format!(
@@ -1126,7 +1127,7 @@ fn daily_backup(config: &AppConfig) -> Result<Option<PathBuf>, String> {
 
     ensure_config_schema_file()?;
 
-    let date_key = today_date(config.settings.day_start_hour);
+    let date_key = datetime::today_date(config.settings.day_start_hour);
     let file_date = date_key.replace('-', "");
     let backup_path = backup_dir.join(format!(
         "{DAILY_BACKUP_PREFIX}{file_date}{DAILY_BACKUP_SUFFIX}"
@@ -1157,7 +1158,7 @@ pub(crate) fn create_forced_user_backup(config: &AppConfig) -> Result<PathBuf, S
 
     ensure_config_schema_file()?;
     let entries = daily_backup_entries()?;
-    let timestamp = chrono::Local::now().format("%Y%m%d-%H%M%S-%f");
+    let timestamp = datetime::format_file_stamp_nanos(datetime::now_local());
     let mut backup_path = backup_dir.join(format!(
         "{DAILY_BACKUP_PREFIX}{timestamp}{DAILY_BACKUP_SUFFIX}"
     ));
@@ -1282,7 +1283,7 @@ fn restore_backup_from_path(zip_path: &PathBuf) -> Result<PathBuf, String> {
         .map_err(|error| format!("failed to create {}: {error}", data_dir.display()))?;
     let pre_restore_dir = backups_path()?.join(format!(
         "pre-restore-{}",
-        chrono::Local::now().format("%Y%m%d-%H%M%S-%f")
+        datetime::format_file_stamp_nanos(datetime::now_local())
     ));
     fs::create_dir_all(&pre_restore_dir).map_err(|error| {
         format!(
@@ -1740,7 +1741,7 @@ pub(crate) fn sanitize_config(mut config: AppConfig) -> (AppConfig, bool, Vec<St
 
     normalize_settings(&mut config.settings, &mut changed);
 
-    let today = today_date(config.settings.day_start_hour);
+    let today = datetime::today_date(config.settings.day_start_hour);
     if config.today.date != today {
         config.today.date = today;
         config.today.items.clear();
@@ -1815,7 +1816,7 @@ fn morning_victory_suggestion(config: &AppConfig) -> Option<String> {
     } else {
         default_day_start_hour()
     };
-    let today = today_date(day_start_hour);
+    let today = datetime::today_date(day_start_hour);
     let text = config.today.victory.text.trim();
 
     if config.today.date != today && !config.today.victory.done && !text.is_empty() {
@@ -2494,7 +2495,7 @@ fn trim_empty_projects(
             normalize_project_timestamp(&mut next_step.updated_at, changed);
             normalize_project_timestamp(&mut next_step.reviewed_at, changed);
             if next_step.updated_at.is_none() && next_step.reviewed_at.is_none() {
-                let baseline = chrono::Utc::now().to_rfc3339();
+                let baseline = datetime::format_rfc3339_auto(datetime::now_utc());
                 next_step.updated_at = Some(baseline.clone());
                 next_step.reviewed_at = Some(baseline);
                 *changed = true;
@@ -2610,7 +2611,7 @@ fn normalize_project_timestamp(value: &mut Option<String>, changed: &mut bool) {
         return;
     };
     let trimmed = raw.trim();
-    if chrono::DateTime::parse_from_rfc3339(trimmed).is_ok() {
+    if datetime::parse_rfc3339(trimmed).is_some() {
         if trimmed != raw {
             *changed = true;
         }
@@ -2620,7 +2621,7 @@ fn normalize_project_timestamp(value: &mut Option<String>, changed: &mut bool) {
     }
 }
 
-fn project_is_stale_at(project: &Project, now: chrono::DateTime<chrono::FixedOffset>) -> bool {
+fn project_is_stale_at(project: &Project, now: datetime::Instant) -> bool {
     let Some(next_step) = project.next_step.as_ref() else {
         return false;
     };
@@ -2629,20 +2630,20 @@ fn project_is_stale_at(project: &Project, now: chrono::DateTime<chrono::FixedOff
     let reviewed = next_step
         .reviewed_at
         .as_ref()
-        .and_then(|value| chrono::DateTime::parse_from_rfc3339(value).ok());
+        .and_then(|value| datetime::parse_rfc3339(value));
     let updated = next_step
         .updated_at
         .as_ref()
-        .and_then(|value| chrono::DateTime::parse_from_rfc3339(value).ok());
+        .and_then(|value| datetime::parse_rfc3339(value));
     let Some(basis) = reviewed
         .into_iter()
         .chain(updated)
-        .max_by_key(|value| value.timestamp())
+        .max_by_key(|value| datetime::timestamp_millis(*value))
     else {
         return false;
     };
 
-    now.signed_duration_since(basis) >= chrono::Duration::days(14)
+    datetime::is_at_least_days_old(basis, now, 14)
 }
 
 fn normalize_today_item_projects(
@@ -2929,7 +2930,7 @@ fn normalize_settings(settings: &mut Settings, changed: &mut bool) {
     // P10-11 (§8.2): an unreadable timestamp is only dropped; it is never replaced here.
     if let Some(stamp) = settings.first_run_done_at.take() {
         let trimmed = stamp.trim();
-        if trimmed.is_empty() || chrono::DateTime::parse_from_rfc3339(trimmed).is_err() {
+        if trimmed.is_empty() || datetime::parse_rfc3339(trimmed).is_none() {
             *changed = true;
         } else {
             if trimmed != stamp {
@@ -3291,7 +3292,7 @@ mod tests {
             .clone()
             .expect("the first save must record the stamp");
         assert!(
-            chrono::DateTime::parse_from_rfc3339(&stamp).is_ok(),
+            datetime::parse_rfc3339(&stamp).is_some(),
             "the stamp must be an RFC 3339 instant: {stamp}"
         );
 
@@ -3474,9 +3475,7 @@ mod tests {
     fn reconciles_renamed_instruction_root_and_project_reference_by_folder_identity() {
         let parent = std::env::temp_dir().join(format!(
             "life-launcher-instruction-root-identity-{}",
-            chrono::Local::now()
-                .timestamp_nanos_opt()
-                .unwrap_or_default()
+            datetime::timestamp_nanos(datetime::now_local())
         ));
         let old_root = parent.join("Before");
         let new_root = parent.join("After");
@@ -3567,10 +3566,7 @@ mod tests {
         let next_step = project.next_step.as_ref().expect("next step");
         assert!(next_step.updated_at.is_some());
         assert!(next_step.reviewed_at.is_some());
-        assert!(!project_is_stale_at(
-            project,
-            chrono::Utc::now().fixed_offset()
-        ));
+        assert!(!project_is_stale_at(project, datetime::now_utc()));
     }
 
     #[test]
@@ -3579,10 +3575,8 @@ mod tests {
         let next_step = project.next_step.as_mut().expect("next step");
         next_step.updated_at = Some("2026-07-02T12:00:00Z".to_string());
         next_step.reviewed_at = None;
-        let thirteen_days =
-            chrono::DateTime::parse_from_rfc3339("2026-07-15T12:00:00Z").expect("datetime");
-        let fourteen_days =
-            chrono::DateTime::parse_from_rfc3339("2026-07-16T12:00:00Z").expect("datetime");
+        let thirteen_days = datetime::parse_rfc3339("2026-07-15T12:00:00Z").expect("datetime");
+        let fourteen_days = datetime::parse_rfc3339("2026-07-16T12:00:00Z").expect("datetime");
 
         assert!(!project_is_stale_at(&project, thirteen_days));
         assert!(project_is_stale_at(&project, fourteen_days));
@@ -3594,13 +3588,13 @@ mod tests {
 
     #[test]
     fn p10_05_next_step_freshness_uses_the_newer_of_reviewed_and_updated() {
-        let now = chrono::DateTime::parse_from_rfc3339("2026-07-16T12:00:00Z").expect("datetime");
-        let stale_before = chrono::DateTime::parse_from_rfc3339("2026-07-02T12:00:00Z")
-            .expect("datetime")
-            .to_rfc3339();
-        let recent = chrono::DateTime::parse_from_rfc3339("2026-07-15T12:00:00Z")
-            .expect("datetime")
-            .to_rfc3339();
+        let now = datetime::parse_rfc3339("2026-07-16T12:00:00Z").expect("datetime");
+        let stale_before = datetime::format_rfc3339_auto(
+            datetime::parse_rfc3339("2026-07-02T12:00:00Z").expect("datetime"),
+        );
+        let recent = datetime::format_rfc3339_auto(
+            datetime::parse_rfc3339("2026-07-15T12:00:00Z").expect("datetime"),
+        );
 
         let mut project = sample_config().projects.remove(0);
 
@@ -4214,9 +4208,7 @@ mod tests {
     ) {
         let root = std::env::temp_dir().join(format!(
             "{prefix}-{}",
-            chrono::Local::now()
-                .timestamp_nanos_opt()
-                .unwrap_or_default()
+            datetime::timestamp_nanos(datetime::now_local())
         ));
         let previous_appdata = std::env::var_os("APPDATA");
         std::env::set_var("APPDATA", &root);
@@ -4304,9 +4296,7 @@ mod tests {
         let _guard = ENV_LOCK.lock().expect("env lock");
         let root = std::env::temp_dir().join(format!(
             "life-launcher-dictionary-load-migration-{}",
-            chrono::Local::now()
-                .timestamp_nanos_opt()
-                .unwrap_or_default()
+            datetime::timestamp_nanos(datetime::now_local())
         ));
         let previous_appdata = std::env::var_os("APPDATA");
         std::env::set_var("APPDATA", &root);
@@ -4424,9 +4414,7 @@ mod tests {
         let _guard = ENV_LOCK.lock().expect("env lock");
         let root = std::env::temp_dir().join(format!(
             "life-launcher-backup-test-{}",
-            chrono::Local::now()
-                .timestamp_nanos_opt()
-                .unwrap_or_default()
+            datetime::timestamp_nanos(datetime::now_local())
         ));
         let previous_appdata = std::env::var_os("APPDATA");
         std::env::set_var("APPDATA", &root);
@@ -4458,14 +4446,83 @@ mod tests {
         let _ = fs::remove_dir_all(root);
     }
 
+    // V151-S3-2: the config files below were written by the v1.5.0 app itself (the public demo
+    // profile and the lead's v1.5.0 test profile). Reading them with the v1.5.1 code must give the
+    // same "しばらく動いていないもの" answer as v1.5.0 did.
+    #[test]
+    fn reads_v150_config_fixtures_with_the_same_staleness() {
+        let now = datetime::parse_rfc3339("2026-11-20T06:00:00Z").expect("fixed now");
+        let public: AppConfig = serde_json::from_str(include_str!(
+            "../../tests/fixtures/v150/public/config-v150.json"
+        ))
+        .expect("public v1.5.0 config");
+        let lead: AppConfig = serde_json::from_str(include_str!(
+            "../../tests/fixtures/v150/lead/config-v150.json"
+        ))
+        .expect("lead v1.5.0 config");
+
+        let stale_ids = |config: &AppConfig| {
+            config
+                .projects
+                .iter()
+                .filter(|project| project_is_stale_at(project, now))
+                .map(|project| project.id.clone())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            stale_ids(&public),
+            [
+                "sample-stretch".to_string(),
+                "sample-writing".to_string(),
+                "sample-music".to_string(),
+                "sample-home".to_string()
+            ]
+        );
+        assert!(stale_ids(&lead).is_empty());
+        assert_eq!(public.settings.first_run_done_at.as_deref(), None);
+        assert_eq!(
+            lead.settings.first_run_done_at.as_deref(),
+            Some("2026-11-19T14:21:31.260Z")
+        );
+    }
+
+    #[test]
+    fn keeps_the_latest_five_v150_backup_names() {
+        let dir = std::env::temp_dir().join(format!(
+            "life-launcher-v150-backups-{}",
+            datetime::timestamp_nanos(datetime::now_local())
+        ));
+        fs::create_dir_all(&dir).expect("create backup dir");
+        let names = [
+            "config-20261118-120000-000000000.json",
+            "config-20261119-232600-027915400.json",
+            "config-20261119-232643-944431000.json",
+            "config-20261119-232645-392691100.json",
+            "config-20261119-232717-843668500.json",
+            "config-20261120-010016-351359600.json",
+        ];
+        for name in names {
+            fs::write(dir.join(name), b"{}").expect("write v1.5.0 backup");
+        }
+
+        prune_config_backups(&dir).expect("prune v1.5.0 backups");
+
+        let mut kept = fs::read_dir(&dir)
+            .expect("read backup dir")
+            .filter_map(Result::ok)
+            .map(|entry| entry.file_name().to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+        kept.sort();
+        assert_eq!(kept, names[1..].to_vec());
+        let _ = fs::remove_dir_all(dir);
+    }
+
     #[test]
     fn creates_daily_backup_zip_and_prunes_old_generations() {
         let _guard = ENV_LOCK.lock().expect("env lock");
         let root = std::env::temp_dir().join(format!(
             "life-launcher-daily-backup-test-{}",
-            chrono::Local::now()
-                .timestamp_nanos_opt()
-                .unwrap_or_default()
+            datetime::timestamp_nanos(datetime::now_local())
         ));
         let backup_dir = root.join("sync");
         let previous_appdata = std::env::var_os("APPDATA");
@@ -4547,9 +4604,7 @@ mod tests {
         let _guard = ENV_LOCK.lock().expect("env lock");
         let root = std::env::temp_dir().join(format!(
             "life-launcher-restore-clean-test-{}",
-            chrono::Local::now()
-                .timestamp_nanos_opt()
-                .unwrap_or_default()
+            datetime::timestamp_nanos(datetime::now_local())
         ));
         let previous_appdata = std::env::var_os("APPDATA");
         std::env::set_var("APPDATA", &root);
@@ -4628,9 +4683,7 @@ mod tests {
         let _guard = ENV_LOCK.lock().expect("env lock");
         let root = std::env::temp_dir().join(format!(
             "life-launcher-restore-retreat-test-{}",
-            chrono::Local::now()
-                .timestamp_nanos_opt()
-                .unwrap_or_default()
+            datetime::timestamp_nanos(datetime::now_local())
         ));
         let previous_appdata = std::env::var_os("APPDATA");
         std::env::set_var("APPDATA", &root);
@@ -4967,9 +5020,7 @@ mod tests {
         let _guard = ENV_LOCK.lock().expect("env lock");
         let root = std::env::temp_dir().join(format!(
             "life-launcher-v2-production-load-{}",
-            chrono::Local::now()
-                .timestamp_nanos_opt()
-                .unwrap_or_default()
+            datetime::timestamp_nanos(datetime::now_local())
         ));
         let previous_appdata = std::env::var_os("APPDATA");
         std::env::set_var("APPDATA", &root);
@@ -5007,9 +5058,7 @@ mod tests {
         let _guard = ENV_LOCK.lock().expect("env lock");
         let root = std::env::temp_dir().join(format!(
             "life-launcher-blocked-production-load-{}",
-            chrono::Local::now()
-                .timestamp_nanos_opt()
-                .unwrap_or_default()
+            datetime::timestamp_nanos(datetime::now_local())
         ));
         let previous_appdata = std::env::var_os("APPDATA");
         std::env::set_var("APPDATA", &root);
@@ -5067,9 +5116,7 @@ mod tests {
         let _guard = ENV_LOCK.lock().expect("env lock");
         let root = std::env::temp_dir().join(format!(
             "life-launcher-save-validation-{}",
-            chrono::Local::now()
-                .timestamp_nanos_opt()
-                .unwrap_or_default()
+            datetime::timestamp_nanos(datetime::now_local())
         ));
         let previous_appdata = std::env::var_os("APPDATA");
         std::env::set_var("APPDATA", &root);
@@ -5094,9 +5141,7 @@ mod tests {
     fn failed_atomic_replacement_retains_original_destination() {
         let root = std::env::temp_dir().join(format!(
             "life-launcher-atomic-replace-failure-{}",
-            chrono::Local::now()
-                .timestamp_nanos_opt()
-                .unwrap_or_default()
+            datetime::timestamp_nanos(datetime::now_local())
         ));
         fs::create_dir_all(&root).expect("create replacement root");
         let destination = root.join("config.json");
@@ -5138,9 +5183,7 @@ mod tests {
     fn unique_atomic_write_ignores_a_locked_legacy_temp_file() {
         let root = std::env::temp_dir().join(format!(
             "life-launcher-unique-temp-{}",
-            chrono::Local::now()
-                .timestamp_nanos_opt()
-                .unwrap_or_default()
+            datetime::timestamp_nanos(datetime::now_local())
         ));
         fs::create_dir_all(&root).expect("create unique temp root");
         let destination = root.join("config.schema.json");

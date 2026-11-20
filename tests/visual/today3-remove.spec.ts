@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import type { AppConfig } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 type Control = {
   currentConfig: () => AppConfig;
@@ -24,6 +25,7 @@ async function prepare(page: Page, fixture = fixture3()) {
   await page.setViewportSize({ width: 1440, height: 900 });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".todayRow")).toHaveCount(3);
 }
 
@@ -41,9 +43,12 @@ test("removes only Today adoption, preserves both sources, candidates and sessio
   const fixture = fixture3();
   await prepare(page, fixture);
   const before = await state(page);
+  await page.locator(".todayRow").first().hover();
   await page.locator(".todayRemoveButton").first().click();
   await expect(page.locator(".toast").last()).toContainText("今日の3件から外しました");
+  await expect(page.locator(".todayRow")).toHaveCount(2);
   await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.locator(".todayRow").first().hover();
   await page.locator(".todayRemoveButton").first().click();
   await expect(page.locator(".todayRow")).toHaveCount(1);
   const after = await state(page);

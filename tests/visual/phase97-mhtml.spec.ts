@@ -301,7 +301,10 @@ test("external images and CSS urls are not fetched", async ({ page }) => {
   await expect(frame.locator("h1")).toHaveText("外部参照の本文");
   await expect(frame.locator("#external-image")).not.toHaveAttribute("src", /.*/);
   await expect(frame.locator("#external-bg")).toHaveCSS("background-image", "none");
-  await page.waitForTimeout(300);
+  // A hidden iframe can throttle requestAnimationFrame, so wait for the document's own end state.
+  await expect
+    .poll(() => frame.locator("body").evaluate(() => document.readyState))
+    .toBe("complete");
   expect(remoteRequests).toEqual([]);
 });
 

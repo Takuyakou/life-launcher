@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 // P96-02: 窓の上端のタイマーの線(メイン画面の窓だけ)。
 // 予定時間のあるタイマー(countdown)が実行中・一時停止中のときだけ、上端に 2px の線を出す。
@@ -13,6 +14,7 @@ async function open(page: Page, fixture: VisualQaFixture = createPublicFixture()
   await page.setViewportSize({ width: 1200, height: 680 });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".doNowBand")).toBeVisible();
   // 時計を止めて、runFor で進めた分だけが経過時間になるようにする
   await page.clock.pauseAt(new Date(FIXTURE_NOW).getTime() + 600_000);
@@ -182,10 +184,12 @@ test.describe("P96-02 window timer line", () => {
     const viewer = createPublicFixture();
     await installTauriMock(page, viewer, "life-launcher-instruction");
     await page.goto("/?view=instruction");
+    await waitForBundledFonts(page);
     await expect(page.locator(".windowTimerLine")).toHaveCount(0);
 
     await installTauriMock(page, createPublicFixture(), "life-launcher-mini");
     await page.goto("/?view=mini");
+    await waitForBundledFonts(page);
     await expect(page.locator(".windowTimerLine")).toHaveCount(0);
   });
 

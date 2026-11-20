@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { createFullTodayFixture, createPickerFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 type QaWindow = Window & {
   __LIFE_LAUNCHER_VISUAL_QA__: {
@@ -19,6 +20,7 @@ async function open(
   await page.setViewportSize(size);
   await installTauriMock(page, fixture, view);
   await page.goto(view === "dictionary" ? "/?view=dictionary" : "/");
+  await waitForBundledFonts(page);
   if (view === "main") await expect(page.locator(".doNowBand")).toBeVisible();
 }
 

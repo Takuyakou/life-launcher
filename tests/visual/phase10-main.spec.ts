@@ -406,9 +406,10 @@ test("G10 the rightmost visible action ends at the same x in every Next Step row
 
   const row = rows.filter({ has: page.locator(".nextStepTodayAdd") }).first();
   const add = row.locator(".nextStepTodayAdd");
+  const edit = row.locator(".nextStepRowAction");
   const before = (await add.boundingBox())!;
   await row.hover();
-  await page.waitForTimeout(160);
+  await expect(edit).toHaveCSS("opacity", "1");
   const after = (await add.boundingBox())!;
   expect(Math.abs(after.x - before.x)).toBeLessThanOrEqual(1);
 });
@@ -448,7 +449,9 @@ test("P10-15c J2 the victory bar never gets its top border clipped", async ({ pa
     const before = Math.round(barBox.y);
     expect(before).toBe(80);
     await bar.hover();
-    await page.waitForTimeout(180);
+    await bar.evaluate((node) =>
+      Promise.allSettled(node.getAnimations().map((animation) => animation.finished)),
+    );
     const hovered = (await bar.boundingBox())!;
     expect(hovered.y).toBeGreaterThanOrEqual(areaBox.y - 0.5);
   }

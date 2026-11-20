@@ -1,0 +1,99 @@
+{
+  "$schema": "./config.schema.json",
+  "version": 3,
+  "groups": [],
+  "overlayPages": [],
+  "dictionaryOrder": [],
+  "buttons": [],
+  "projects": [
+    {
+      "id": "fe8e7460-a447-48a1-803b-a4d7efdc2648",
+      "name": "英語",
+      "weeklyFocus": true,
+      "colorId": "amber",
+      "nextStep": {
+        "text": "英単語を10個読む",
+        "generationId": "04b53545-3406-4cbf-aca1-f48f5b42f747",
+        "updatedAt": "2026-11-19T14:21:31.260Z",
+        "defaultTimerMinutes": 25,
+        "shortTimerMinutes": 5
+      }
+    },
+    {
+      "id": "project",
+      "name": "運動",
+      "colorId": "blue",
+      "nextStep": {
+        "text": "5分歩く",
+        "generationId": "67a8ddfd-ba86-41e4-8dd1-6ef63ec9d8f1",
+        "updatedAt": "2026-11-19T14:24:37.226Z",
+        "resumeNote": "3周目から",
+        "shortTimerMinutes": 1
+      }
+    }
+  ],
+  "today": {
+    "date": "2026-11-19",
+    "victory": {
+      "text": "",
+      "done": false
+    },
+    "items": [
+      {
+        "text": "英単語を10個読む",
+        "done": false,
+        "sourceKey": "project:fe8e7460-a447-48a1-803b-a4d7efdc2648",
+        "sourceGenerationId": "04b53545-3406-4cbf-aca1-f48f5b42f747",
+        "projectId": "fe8e7460-a447-48a1-803b-a4d7efdc2648",
+        "defaultTimerMinutes": 25,
+        "shortTimerMinutes": 5
+      },
+      {
+        "text": "5分歩く",
+        "done": true,
+        "sourceKey": "project:project",
+        "sourceGenerationId": "6dff0b78-91c2-4f54-9137-b650a93bfcce",
+        "projectId": "project",
+        "defaultTimerMinutes": 25,
+        "shortTimerMinutes": 1
+      }
+    ]
+  },
+  "inbox": [
+    {
+      "id": "125bbf4c-1074-4cd4-ac7b-e78c43bae2cb",
+      "text": "te"
+    }
+  ],
+  "sourceCompletions": [
+    {
+      "id": "14a652da-04bf-4e9e-bd89-6d376f2513ff",
+      "sourceType": "nextStep",
+      "sourceIdentity": "project:project",
+      "textSnapshot": "5分歩く",
+      "projectId": "project",
+      "projectNameSnapshot": "運動",
+      "completedAt": "2026-11-19T14:24:25.762Z"
+    }
+  ],
+  "settings": {
+    "alwaysOnTop": false,
+    "focusHotkey": "Ctrl+Alt+Space",
+    "launcherHotkey": "Ctrl+K",
+    "miniHotkey": null,
+    "autoStart": false,
+    "defaultTimerMinutes": 25,
+    "shortTimerMinutes": 5,
+    "dayStartHour": 4,
+    "backupFolder": null,
+    "backupKeep": 30,
+    "miniMode": true,
+    "miniWindowPosition": {
+      "x": 1564,
+      "y": 944
+    },
+    "restartShortFirst": true,
+    "instructionFolders": [],
+    "firstRunDoneAt": "2026-11-19T14:21:31.260Z"
+  }
+}

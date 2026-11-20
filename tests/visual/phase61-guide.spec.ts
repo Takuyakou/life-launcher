@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { IMPORT_PROMPT_FIRST, IMPORT_PROMPT_REPEAT } from "../../src/content/importPrompt";
 import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 test.describe.configure({ mode: "serial" });
 
@@ -11,6 +12,7 @@ async function prepare(page: Page, viewport = { width: 1440, height: 900 }) {
   await page.setViewportSize(viewport);
   await installTauriMock(page, createPublicFixture(), "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".doNowBand")).toBeVisible();
   await page.evaluate(async () => document.fonts.ready);
   await page.addStyleTag({

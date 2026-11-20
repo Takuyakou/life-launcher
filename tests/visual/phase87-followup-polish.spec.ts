@@ -1,6 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
+import { measureRects, waitForAnimations } from "./helpers";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 async function prepare(
   page: Page,
@@ -11,7 +13,7 @@ async function prepare(
   await page.setViewportSize(viewport);
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
-  await page.evaluate(async () => document.fonts.ready);
+  await waitForBundledFonts(page);
 }
 
 test("Main button edit shares the group control and positive/cancel footer grammar", async ({
@@ -107,24 +109,38 @@ test("Dictionary entry aligns with item rows and Guide footer stays inside its d
   page,
 }) => {
   await prepare(page, { width: 1064, height: 703 });
-  const launcherLabel = page.locator(".launcherOpenButtonLabel > span:last-child");
-  const itemLabel = page.locator(".quickButton span:last-child").first();
   const launcherIconSlot = page.locator(".launcherOpenButtonIcon");
   const launcherIcon = launcherIconSlot.locator(".uiIcon");
-  const [launcherBox, itemBox, launcherIconSlotBox, launcherIconBox] = await Promise.all([
-    launcherLabel.boundingBox(),
-    itemLabel.boundingBox(),
-    launcherIconSlot.boundingBox(),
-    launcherIcon.boundingBox(),
+  await expect
+    .poll(async () => {
+      const rects = await measureRects(page, [
+        ".launcherOpenButtonLabel > span:last-child",
+        ".quickButton span:last-child",
+        ".launcherOpenButtonIcon",
+        ".launcherOpenButtonIcon .uiIcon",
+      ]);
+      const launcherBox = rects[".launcherOpenButtonLabel > span:last-child"];
+      const itemBox = rects[".quickButton span:last-child"];
+      const launcherIconSlotBox = rects[".launcherOpenButtonIcon"];
+      const launcherIconBox = rects[".launcherOpenButtonIcon .uiIcon"];
+      return {
+        xDiff: Math.abs(launcherBox.x - itemBox.x),
+        slotW: launcherIconSlotBox.width,
+        iconH: launcherIconBox.height,
+        iconW: launcherIconBox.width,
+      };
+    })
+    .toMatchObject({ slotW: 28, iconH: 16, iconW: 16 });
+  const initialRects = await measureRects(page, [
+    ".launcherOpenButtonLabel > span:last-child",
+    ".quickButton span:last-child",
   ]);
-  expect(launcherBox).not.toBeNull();
-  expect(itemBox).not.toBeNull();
-  expect(launcherIconSlotBox).not.toBeNull();
-  expect(launcherIconBox).not.toBeNull();
-  expect(Math.abs(launcherBox!.x - itemBox!.x)).toBeLessThanOrEqual(11);
-  expect(launcherIconSlotBox!.width).toBe(28);
-  expect(launcherIconBox!.height).toBe(16);
-  expect(launcherIconBox!.width).toBe(16);
+  expect(
+    Math.abs(
+      initialRects[".launcherOpenButtonLabel > span:last-child"].x -
+        initialRects[".quickButton span:last-child"].x,
+    ),
+  ).toBeLessThanOrEqual(11);
   await expect(launcherIcon.locator("circle")).toHaveCount(1);
 
   // P10-02: the Guide opens from Settings now (the top bar button is gone).
@@ -132,21 +148,24 @@ test("Dictionary entry aligns with item rows and Guide footer stays inside its d
   await page.getByRole("button", { name: "使い方を開く" }).click();
   const footer = page.locator(".helpGuideFooter");
   const dialog = page.getByRole("dialog", { name: "使い方" });
+  await expect(dialog).toBeVisible();
+  await waitForAnimations(dialog);
   const close = footer.getByRole("button", { name: "閉じる", exact: true });
-  const [dialogBox, footerBox, closeBox] = await Promise.all([
-    dialog.boundingBox(),
-    footer.boundingBox(),
-    close.boundingBox(),
+  await expect(close).toBeVisible();
+  const guideRects = await measureRects(page, [
+    ".helpGuideDialog",
+    ".helpGuideFooter",
+    ".helpGuideFooter button",
   ]);
-  expect(dialogBox).not.toBeNull();
-  expect(footerBox).not.toBeNull();
-  expect(closeBox).not.toBeNull();
-  expect(closeBox!.y - footerBox!.y).toBeGreaterThanOrEqual(8);
-  expect(closeBox!.y + closeBox!.height).toBeLessThanOrEqual(footerBox!.y + footerBox!.height + 1);
-  expect(footerBox!.y + footerBox!.height).toBeLessThanOrEqual(
-    dialogBox!.y + dialogBox!.height + 1,
+  const dialogBox = guideRects[".helpGuideDialog"];
+  const footerBox = guideRects[".helpGuideFooter"];
+  const closeBox = guideRects[".helpGuideFooter button"];
+  expect(closeBox.y - footerBox.y).toBeGreaterThanOrEqual(8);
+  expect(closeBox.y + closeBox.height).toBeLessThanOrEqual(footerBox.y + footerBox.height + 1);
+  expect(footerBox.y + footerBox.height).toBeLessThanOrEqual(
+    dialogBox.y + dialogBox.height + 1,
   );
-  expect(closeBox!.y + closeBox!.height).toBeLessThanOrEqual(dialogBox!.y + dialogBox!.height + 1);
+  expect(closeBox.y + closeBox.height).toBeLessThanOrEqual(dialogBox.y + dialogBox.height + 1);
 });
 
 test("Dictionary shortcut badge follows config and actual registration", async ({ page }) => {

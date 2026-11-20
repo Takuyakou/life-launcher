@@ -3,16 +3,16 @@ use std::fs::{self, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 
-use chrono::{Duration, Local, NaiveDate};
 use tauri::{AppHandle, State};
 
 use crate::commands::config::{backups_path, configured_day_start_hour, load_config_internal};
+use crate::datetime::{self, Date};
 use crate::models::{
-    today_date, week_start_date, DeleteSessionEntryInput, DoNowCandidate, DoNowResponse,
-    ManualSessionInput, Project, ProjectSessionTotal, RecentSessionEntry, SessionEntriesFilter,
-    SessionEntriesResponse, SessionEntryRow, SessionLogEntry, SessionLogInput,
-    SessionSummaryResponse, SessionTotalResponse, Today, UpdateSessionEntryInput,
-    WeeklyReviewProjectSummary, WeeklyReviewResponse,
+    DeleteSessionEntryInput, DoNowCandidate, DoNowResponse, ManualSessionInput, Project,
+    ProjectSessionTotal, RecentSessionEntry, SessionEntriesFilter, SessionEntriesResponse,
+    SessionEntryRow, SessionLogEntry, SessionLogInput, SessionSummaryResponse,
+    SessionTotalResponse, Today, UpdateSessionEntryInput, WeeklyReviewProjectSummary,
+    WeeklyReviewResponse,
 };
 use crate::state::AppState;
 
@@ -21,7 +21,7 @@ const SESSIONS_FILE_NAME: &str = "sessions.jsonl";
 #[tauri::command]
 pub fn load_today_session_total(_app: AppHandle) -> Result<SessionTotalResponse, String> {
     let path = sessions_path()?;
-    let date = today_date(configured_day_start_hour());
+    let date = datetime::today_date(configured_day_start_hour());
     let total_minutes = total_for_date(&path, &date)?;
 
     Ok(SessionTotalResponse {
@@ -39,7 +39,7 @@ pub fn record_session(
 ) -> Result<SessionTotalResponse, String> {
     let _reset_guard = state.begin_app_write()?;
     let path = sessions_path()?;
-    let date = today_date(configured_day_start_hour());
+    let date = datetime::today_date(configured_day_start_hour());
 
     if session.minutes > 0 {
         if let Some(parent) = path.parent() {
@@ -77,8 +77,8 @@ pub fn record_manual_session(
     let _reset_guard = state.begin_app_write()?;
     let path = sessions_path()?;
     let date = session.date.trim();
-    NaiveDate::parse_from_str(date, "%Y-%m-%d")
-        .map_err(|error| format!("manual session date must be YYYY-MM-DD: {error}"))?;
+    datetime::parse_date(date)
+        .ok_or_else(|| format!("manual session date must be YYYY-MM-DD: {date}"))?;
     if session.minutes == 0 {
         return Err("manual session minutes must be greater than 0".to_string());
     }
@@ -101,10 +101,10 @@ pub fn record_manual_session(
 #[tauri::command]
 pub fn load_session_summary(_app: AppHandle) -> Result<SessionSummaryResponse, String> {
     let path = sessions_path()?;
-    let date = today_date(configured_day_start_hour());
-    let today = NaiveDate::parse_from_str(&date, "%Y-%m-%d")
-        .map_err(|error| format!("failed to parse today date {date}: {error}"))?;
-    let week_start = week_start_date(today);
+    let date = datetime::today_date(configured_day_start_hour());
+    let today =
+        datetime::parse_date(&date).ok_or_else(|| format!("failed to parse today date {date}"))?;
+    let week_start = datetime::week_start_date(today);
     let entries = read_session_entries(&path)?;
     let mut today_minutes = 0u32;
     let mut week_minutes = 0u32;
@@ -112,7 +112,7 @@ pub fn load_session_summary(_app: AppHandle) -> Result<SessionSummaryResponse, S
     let mut weekly_entries = Vec::new();
 
     for entry in &entries {
-        let Ok(entry_date) = NaiveDate::parse_from_str(&entry.date, "%Y-%m-%d") else {
+        let Some(entry_date) = datetime::parse_date(&entry.date) else {
             continue;
         };
         if entry.date == date {
@@ -154,7 +154,7 @@ fn project_totals(entries: &[SessionLogEntry]) -> Vec<ProjectSessionTotal> {
             )
         });
         total.2 = total.2.saturating_add(entry.minutes);
-        if NaiveDate::parse_from_str(&entry.date, "%Y-%m-%d").is_ok() {
+        if datetime::parse_date(&entry.date).is_some() {
             total.3.insert(entry.date.clone());
         }
     }
@@ -180,12 +180,12 @@ fn project_totals(entries: &[SessionLogEntry]) -> Vec<ProjectSessionTotal> {
 
 #[tauri::command]
 pub fn load_weekly_review(_app: AppHandle) -> Result<WeeklyReviewResponse, String> {
-    let date = today_date(configured_day_start_hour());
-    let today = NaiveDate::parse_from_str(&date, "%Y-%m-%d")
-        .map_err(|error| format!("failed to parse today date {date}: {error}"))?;
-    let current_week_start = week_start_date(today);
-    let previous_week_start = current_week_start - Duration::days(7);
-    let previous_week_end = current_week_start - Duration::days(1);
+    let date = datetime::today_date(configured_day_start_hour());
+    let today =
+        datetime::parse_date(&date).ok_or_else(|| format!("failed to parse today date {date}"))?;
+    let current_week_start = datetime::week_start_date(today);
+    let previous_week_start = datetime::add_days(current_week_start, -7);
+    let previous_week_end = datetime::add_days(current_week_start, -1);
     let entries = read_session_entries(&sessions_path()?)?;
     Ok(build_weekly_review(
         &entries,
@@ -206,7 +206,7 @@ pub fn load_do_now_candidates(
         .lock()
         .map_err(|_| "failed to lock config writes".to_string())?;
     let config = load_config_internal(&app)?.config;
-    let date = today_date(config.settings.day_start_hour);
+    let date = datetime::today_date(config.settings.day_start_hour);
     let entries = read_session_entries(&sessions_path()?)?;
 
     Ok(DoNowResponse {
@@ -241,7 +241,7 @@ fn build_do_now_candidates(
     today_state: &Today,
     date: &str,
 ) -> Vec<DoNowCandidate> {
-    let today = NaiveDate::parse_from_str(date, "%Y-%m-%d").ok();
+    let today = datetime::parse_date(date);
     let mut candidates = projects
         .iter()
         .enumerate()
@@ -261,14 +261,13 @@ fn build_do_now_candidates(
                 .iter()
                 .filter(|entry| entry.project_id.as_deref() == Some(project.id.as_str()))
                 .filter_map(|entry| {
-                    NaiveDate::parse_from_str(&entry.date, "%Y-%m-%d")
-                        .ok()
+                    datetime::parse_date(&entry.date)
                         .map(|entry_date| (entry_date, entry.started_at.clone()))
                 })
                 .max();
             let restart_eligible = today
                 .zip(last_session.as_ref().map(|(last_date, _)| *last_date))
-                .is_some_and(|(today, last)| today.signed_duration_since(last).num_days() >= 14);
+                .is_some_and(|(today, last)| (today - last).whole_days() >= 14);
             (
                 manual_index,
                 weekly_focus,
@@ -342,16 +341,16 @@ fn build_do_now_candidates(
 
 fn build_weekly_review(
     entries: &[SessionLogEntry],
-    current_week_start: NaiveDate,
-    previous_week_start: NaiveDate,
-    previous_week_end: NaiveDate,
+    current_week_start: Date,
+    previous_week_start: Date,
+    previous_week_end: Date,
 ) -> WeeklyReviewResponse {
     let mut total_minutes = 0u32;
     let mut active_dates = std::collections::BTreeSet::<String>::new();
     let mut project_totals = BTreeMap::<String, (Option<String>, String, u32, u32)>::new();
 
     for entry in entries {
-        let Ok(entry_date) = NaiveDate::parse_from_str(&entry.date, "%Y-%m-%d") else {
+        let Some(entry_date) = datetime::parse_date(&entry.date) else {
             continue;
         };
         if entry_date < previous_week_start || entry_date > previous_week_end {
@@ -377,9 +376,9 @@ fn build_weekly_review(
     }
 
     WeeklyReviewResponse {
-        week_key: current_week_start.to_string(),
-        previous_week_start: previous_week_start.to_string(),
-        previous_week_end: previous_week_end.to_string(),
+        week_key: datetime::format_date(current_week_start),
+        previous_week_start: datetime::format_date(previous_week_start),
+        previous_week_end: datetime::format_date(previous_week_end),
         total_minutes,
         active_days: u32::try_from(active_dates.len()).unwrap_or(u32::MAX),
         projects: project_totals
@@ -402,7 +401,7 @@ pub fn load_session_entries(
     filter: Option<SessionEntriesFilter>,
 ) -> Result<SessionEntriesResponse, String> {
     let path = sessions_path()?;
-    let date = today_date(configured_day_start_hour());
+    let date = datetime::today_date(configured_day_start_hour());
     let read = read_session_file(&path)?;
     let entries = filter_session_entries(&read.entries, filter.as_ref(), &date)?;
 
@@ -428,8 +427,7 @@ pub fn update_session_entry(
         return Err("session row key is required".to_string());
     }
     let date = input.date.trim();
-    NaiveDate::parse_from_str(date, "%Y-%m-%d")
-        .map_err(|error| format!("session date must be YYYY-MM-DD: {error}"))?;
+    datetime::parse_date(date).ok_or_else(|| format!("session date must be YYYY-MM-DD: {date}"))?;
     if input.minutes == 0 {
         return Err("session minutes must be greater than 0".to_string());
     }
@@ -561,12 +559,11 @@ fn total_for_date(path: &PathBuf, date: &str) -> Result<u32, String> {
         .fold(0u32, |total, entry| total.saturating_add(entry.minutes)))
 }
 
-fn active_days_between(entries: &[SessionLogEntry], start: NaiveDate, end: NaiveDate) -> u32 {
+fn active_days_between(entries: &[SessionLogEntry], start: Date, end: Date) -> u32 {
     let dates = entries
         .iter()
         .filter_map(|entry| {
-            NaiveDate::parse_from_str(&entry.date, "%Y-%m-%d")
-                .ok()
+            datetime::parse_date(&entry.date)
                 .filter(|date| *date >= start && *date <= end)
                 .map(|_| entry.date.clone())
         })
@@ -632,9 +629,9 @@ fn filter_session_entries(
         .map(|scope| scope.trim().to_lowercase())
         .filter(|scope| !scope.is_empty())
         .unwrap_or_else(|| "all".to_string());
-    let today_date = NaiveDate::parse_from_str(today, "%Y-%m-%d")
-        .map_err(|error| format!("failed to parse today date {today}: {error}"))?;
-    let week_start = week_start_date(today_date);
+    let today_date =
+        datetime::parse_date(today).ok_or_else(|| format!("failed to parse today date {today}"))?;
+    let week_start = datetime::week_start_date(today_date);
 
     let mut rows = Vec::new();
     for (index, entry) in entries.iter().enumerate().rev() {
@@ -648,7 +645,7 @@ fn filter_session_entries(
             continue;
         }
         if date_scope == "week" {
-            let Ok(entry_date) = NaiveDate::parse_from_str(&entry.date, "%Y-%m-%d") else {
+            let Some(entry_date) = datetime::parse_date(&entry.date) else {
                 continue;
             };
             if entry_date < week_start || entry_date > today_date {
@@ -750,7 +747,7 @@ fn normalize_started_at(value: &str) -> Result<String, String> {
 fn new_session_id() -> String {
     format!(
         "session_{}",
-        Local::now().timestamp_nanos_opt().unwrap_or_default()
+        datetime::timestamp_nanos(datetime::now_local())
     )
 }
 
@@ -769,7 +766,7 @@ fn backup_sessions_file(path: &PathBuf) -> Result<(), String> {
 
     let backup_dir = backups_path()?.join(format!(
         "pre-session-edit-{}",
-        Local::now().format("%Y%m%d-%H%M%S")
+        datetime::format_file_stamp_seconds(datetime::now_local())
     ));
     fs::create_dir_all(&backup_dir)
         .map_err(|error| format!("failed to create {}: {error}", backup_dir.display()))?;
@@ -1205,9 +1202,7 @@ mod tests {
     fn reads_legacy_session_without_note() {
         let path = std::env::temp_dir().join(format!(
             "life-launcher-legacy-session-{}.jsonl",
-            chrono::Local::now()
-                .timestamp_nanos_opt()
-                .unwrap_or_default()
+            datetime::timestamp_nanos(datetime::now_local())
         ));
         fs::write(
             &path,
@@ -1318,9 +1313,7 @@ mod tests {
     fn next_step_suggestions_are_project_scoped_trimmed_unique_and_limited_to_latest_five() {
         let path = std::env::temp_dir().join(format!(
             "life-launcher-next-step-suggestions-{}.jsonl",
-            chrono::Local::now()
-                .timestamp_nanos_opt()
-                .unwrap_or_default()
+            datetime::timestamp_nanos(datetime::now_local())
         ));
         let mut entries = [
             "alpha", "beta", "gamma", "delta", "epsilon", "zeta", " zeta ", "  ",
@@ -1410,9 +1403,9 @@ mod tests {
                 manual: false,
             },
         ];
-        let current_week_start = NaiveDate::from_ymd_opt(2026, 7, 13).expect("date");
-        let previous_week_start = NaiveDate::from_ymd_opt(2026, 7, 6).expect("date");
-        let previous_week_end = NaiveDate::from_ymd_opt(2026, 7, 12).expect("date");
+        let current_week_start = datetime::parse_date("2026-07-13").expect("date");
+        let previous_week_start = datetime::parse_date("2026-07-06").expect("date");
+        let previous_week_end = datetime::parse_date("2026-07-12").expect("date");
 
         let review = build_weekly_review(
             &entries,
@@ -1666,19 +1659,75 @@ mod tests {
         assert_eq!(
             active_days_between(
                 &entries,
-                NaiveDate::from_ymd_opt(2026, 7, 13).expect("date"),
-                NaiveDate::from_ymd_opt(2026, 7, 19).expect("date"),
+                datetime::parse_date("2026-07-13").expect("date"),
+                datetime::parse_date("2026-07-19").expect("date"),
             ),
             2
         );
         assert_eq!(
             active_days_between(
                 &[],
-                NaiveDate::from_ymd_opt(2026, 7, 13).expect("date"),
-                NaiveDate::from_ymd_opt(2026, 7, 19).expect("date"),
+                datetime::parse_date("2026-07-13").expect("date"),
+                datetime::parse_date("2026-07-19").expect("date"),
             ),
             0
         );
+    }
+
+    // V151-S3-2: these sessions were written by the v1.5.0 app itself (the public demo profile
+    // and the lead's v1.5.0 test profile). The weekly numbers must not change in v1.5.1.
+    #[test]
+    fn reads_v150_sessions_with_the_same_weekly_numbers() {
+        let entries = |source: &str| {
+            source
+                .lines()
+                .filter(|line| !line.trim().is_empty())
+                .map(|line| serde_json::from_str::<SessionLogEntry>(line).expect("v1.5.0 session"))
+                .collect::<Vec<_>>()
+        };
+        let public = entries(include_str!(
+            "../../tests/fixtures/v150/public/sessions-v150.jsonl"
+        ));
+        let public_review = build_weekly_review(
+            &public,
+            datetime::parse_date("2026-11-02").expect("current week"),
+            datetime::parse_date("2026-10-26").expect("previous week"),
+            datetime::parse_date("2026-11-01").expect("previous week end"),
+        );
+        assert_eq!(public_review.week_key, "2026-11-02");
+        assert_eq!(public_review.previous_week_start, "2026-10-26");
+        assert_eq!(public_review.previous_week_end, "2026-11-01");
+        assert_eq!(public_review.total_minutes, 3);
+        assert_eq!(public_review.active_days, 2);
+        assert_eq!(public_review.projects.len(), 2);
+        assert_eq!(
+            public_review.projects[0].project_id.as_deref(),
+            Some("sample-learning")
+        );
+        assert_eq!(public_review.projects[0].session_count, 1);
+        assert_eq!(public_review.projects[0].total_minutes, 1);
+        assert_eq!(
+            public_review.projects[1].project_id.as_deref(),
+            Some("sample-stretch")
+        );
+        assert_eq!(public_review.projects[1].session_count, 1);
+        assert_eq!(public_review.projects[1].total_minutes, 2);
+
+        let lead = entries(include_str!(
+            "../../tests/fixtures/v150/lead/sessions-v150.jsonl"
+        ));
+        let lead_review = build_weekly_review(
+            &lead,
+            datetime::parse_date("2026-11-23").expect("current week"),
+            datetime::parse_date("2026-11-16").expect("previous week"),
+            datetime::parse_date("2026-11-22").expect("previous week end"),
+        );
+        assert_eq!(lead_review.total_minutes, 2);
+        assert_eq!(lead_review.active_days, 1);
+        assert_eq!(lead_review.projects.len(), 1);
+        assert_eq!(lead_review.projects[0].label, "運動");
+        assert_eq!(lead_review.projects[0].session_count, 2);
+        assert_eq!(lead_review.projects[0].total_minutes, 2);
     }
 
     #[test]

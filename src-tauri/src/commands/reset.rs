@@ -504,7 +504,7 @@ fn prepare_snapshot(
 ) -> Result<ResetMarker, String> {
     let id = format!(
         "{}-{}",
-        chrono::Local::now().format("%Y%m%d-%H%M%S-%f"),
+        crate::datetime::format_file_stamp_nanos(crate::datetime::now_local()),
         std::process::id()
     );
     let root = paths.backups_dir.join(format!("pre-reset-{id}"));
@@ -1109,7 +1109,7 @@ mod tests {
             let root = std::env::temp_dir().join(format!(
                 "life-launcher-p83-{label}-{}-{}",
                 std::process::id(),
-                chrono::Utc::now().timestamp_nanos_opt().unwrap_or_default()
+                crate::datetime::timestamp_nanos(crate::datetime::now_utc())
             ));
             let data_dir = root.join("appdata").join("life-launcher");
             let backups_dir = data_dir.join("backups");

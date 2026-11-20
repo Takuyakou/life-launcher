@@ -180,6 +180,7 @@ import {
   type TodayCandidate,
 } from "./todayCandidates";
 import {
+  plannedEndAtMs,
   SESSION_MINIMUM_MINUTES,
   sessionMinutes,
   timerMetrics,
@@ -316,6 +317,7 @@ type ActiveTimer = {
   paused: boolean;
   pausedStartedAtMs: number | null;
   pausedTotalMs: number;
+  expiredAtMs?: number | null;
 };
 
 type DoNowCompletionSnapshot = {
@@ -7418,6 +7420,13 @@ function DashboardApp() {
         return;
       }
 
+      // V151-S7: stop counting at the planned end while the prompt waits for an answer.
+      const expiredAtMs = plannedEndAtMs(activeTimer);
+      if (expiredAtMs !== null && activeTimer.expiredAtMs == null) {
+        const frozen = { ...activeTimer, expiredAtMs };
+        activeTimerRef.current = frozen;
+        setActiveTimer(frozen);
+      }
       setCompletionPrompt({
         sourceId: activeTimer.sourceId,
         projectId: activeTimer.projectId,
@@ -7625,7 +7634,8 @@ function DashboardApp() {
       return;
     if (!activeTimer || activeTimerRef.current?.instanceId !== activeTimer.instanceId) return;
     setCompletionPrompt(null);
-    setNow(Date.now());
+    const continuedAt = Date.now();
+    setNow(continuedAt);
     setActiveTimer((timer) => {
       if (
         !timer ||
@@ -7635,10 +7645,15 @@ function DashboardApp() {
         return timer;
       }
 
+      // V151-S7: the time spent on the prompt is not counted; +15 starts from the press.
+      const waitedMs =
+        timer.expiredAtMs != null ? Math.max(0, continuedAt - timer.expiredAtMs) : 0;
       const extended = {
         ...timer,
         continuedAfterCompletion: true,
         targetMinutes: (timer.targetMinutes ?? completionPrompt.targetMinutes) + 15,
+        pausedTotalMs: timer.pausedTotalMs + waitedMs,
+        expiredAtMs: null,
       };
       activeTimerRef.current = extended;
       return extended;
@@ -7735,7 +7750,8 @@ function DashboardApp() {
     // once and must not read the clock or write the ref. The display clock (`now`) is aligned to the
     // moment of the press so that rapid pause/resume never leaves it behind pausedTotalMs.
     const timer = activeTimerRef.current;
-    if (!timer) return;
+    // V151-S7: while the planned-time prompt waits, the timer is already stopped at its end.
+    if (!timer || timer.expiredAtMs != null) return;
     const current = Date.now();
     const pausedDelta = timer.pausedStartedAtMs ? current - timer.pausedStartedAtMs : 0;
     const nextTimer: ActiveTimer = timer.paused
@@ -17059,8 +17075,17 @@ function DashboardApp() {
             role="dialog"
             tabIndex={-1}
           >
-            <div>
-              <p className="eyebrow">Timer Complete</p>
+            <div className="timerCompleteHeader">
+              <span aria-hidden="true" className="timerCompleteMark">
+                <UiIcon name="clock" size={20} />
+              </span>
+              <div>
+                <p className="eyebrow">Timer</p>
+                <h2 className="timerCompleteText">予定時間になりました</h2>
+              </div>
+            </div>
+
+            <div className="timerCompleteSubject">
               {completionProject && (
                 <ProjectIdentity
                   colorId={completionProject.colorId}
@@ -17069,10 +17094,9 @@ function DashboardApp() {
                   projectId={completionProject.id}
                 />
               )}
-              <h2 className="timerCompleteHeading">{timerActionText(completionPrompt)}</h2>
+              <span className="timerCompleteMinutes">予定 {completionPrompt.targetMinutes}分</span>
+              <strong className="timerCompleteHeading">{timerActionText(completionPrompt)}</strong>
             </div>
-
-            <p className="timerCompleteText">予定時間になりました</p>
 
             {completionCanEditResume && (
               <>

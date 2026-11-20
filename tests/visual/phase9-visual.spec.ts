@@ -7,6 +7,7 @@ import {
   type VisualQaFixture,
 } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 // Same-machine renders are pixel-identical; the ratio only absorbs font rasterization drift
 // between this machine and the windows-latest CI runner.
@@ -38,7 +39,7 @@ async function open(
   await page.clock.pauseAt(now + 1_000);
   await installTauriMock(page, fixture, windowLabel);
   await page.goto(route);
-  await page.evaluate(async () => document.fonts.ready);
+  await waitForBundledFonts(page);
   await page.addStyleTag({
     content:
       "*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important;cursor:none!important}",
@@ -144,7 +145,13 @@ for (const [name, tab] of [
     const records = page.locator(".recordsView");
     await records.getByRole("tab", { name: tab }).click();
     await expect(records.getByRole("tab", { name: tab })).toHaveAttribute("aria-selected", "true");
-    if (name === "records-week") await page.waitForTimeout(800);
+    if (name === "records-week") {
+      // The count-up is a JS animation, so advance the paused page clock by its full duration.
+      await page.clock.runFor(800);
+      await expect(page.locator(".weeklyPlanningStats strong").first()).toHaveText("1時間15分");
+      await expect(page.locator(".weeklyPlanningStats strong").nth(1)).toHaveText("3日");
+      await expect(page.locator(".weeklyPlanningStats strong").nth(2)).toHaveText("3回");
+    }
     await expect(page).toHaveScreenshot(`${name}.png`, SCREENSHOT_OPTIONS);
   });
 }
@@ -155,6 +162,9 @@ test("P9-00 visual records-planning", async ({ page }) => {
   const records = page.locator(".recordsView");
   await records.getByRole("tab", { name: "今週を決める" }).click();
   await expect(page.locator(".weeklyPlanning")).toBeVisible();
-  await page.waitForTimeout(800);
+  await page.clock.runFor(800);
+  await expect(page.locator(".weeklyPlanningStats strong").first()).toHaveText("1時間15分");
+  await expect(page.locator(".weeklyPlanningStats strong").nth(1)).toHaveText("3日");
+  await expect(page.locator(".weeklyPlanningStats strong").nth(2)).toHaveText("3回");
   await expect(page).toHaveScreenshot("records-planning.png", SCREENSHOT_OPTIONS);
 });

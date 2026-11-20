@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 type VisualQaWindow = Window & {
   __LIFE_LAUNCHER_VISUAL_QA__: {
@@ -17,6 +18,7 @@ async function prepare(page: Page, width = 1440, size?: "standard" | "large" | "
   await page.emulateMedia({ reducedMotion: "reduce" });
   await installTauriMock(page, fixture);
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".focusBand")).toBeVisible();
   await page.evaluate(async () => document.fonts.ready);
 }
@@ -175,6 +177,7 @@ for (const size of ["large", "xlarge"] as const) {
     await page.setViewportSize({ width: 1920, height: 900 });
     await installTauriMock(page, fixture);
     await page.goto("/");
+    await waitForBundledFonts(page);
     const source = page.locator('.nextStepCard[data-project-id="sample-stretch"]');
     const target = page.locator(".todayRow").first();
     await expect(source).toBeVisible();

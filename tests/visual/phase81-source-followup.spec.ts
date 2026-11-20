@@ -6,6 +6,7 @@ import {
 } from "../../src/completionFollowup";
 import type { AppConfig } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
+import { waitForStableRects } from "./helpers";
 import { installTauriMock } from "./tauriMock";
 
 async function prepareUi(page: Page, fixture: VisualQaFixture, expectedTodayCount = 1) {
@@ -327,6 +328,12 @@ test("Phase 8.1 Wishlist follow-up waits while another confirm dialog is busy", 
   await finishPlannedTimer(page);
   await page.locator(".inboxBand .disclosure").click();
   const otherWishlist = page.locator(".inboxRow", { hasText: "あとで確認するサンプル" });
+  await expect(otherWishlist).toBeVisible();
+  // The section opens with a height spring; wait for the row to hold still before right-clicking
+  // it, otherwise the menu can open on a different element while the rows are still moving.
+  await page.evaluate(async () => document.fonts.ready);
+  const otherWishlistId = await otherWishlist.getAttribute("data-inbox-id");
+  await waitForStableRects(page, [`[data-inbox-id="${otherWishlistId}"]`]);
   await otherWishlist.click({ button: "right" });
   await page.getByRole("menuitem", { name: "削除" }).evaluate((button: HTMLButtonElement) => {
     button.click();

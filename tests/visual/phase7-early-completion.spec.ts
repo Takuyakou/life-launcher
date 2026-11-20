@@ -3,6 +3,7 @@ import { earlyCompletionItem, earlyCompletionThresholdSeconds } from "../../src/
 import type { AppConfig } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 type Control = {
   currentConfig: () => AppConfig;
@@ -49,6 +50,7 @@ async function prepare(page: Page, fixture = fixtureForEarly()) {
   await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".doNowBand")).toBeVisible();
 }
 

@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 async function prepare(page: Page) {
   await prepareFixture(page, createPublicFixture());
@@ -10,6 +11,7 @@ async function prepareFixture(page: Page, fixture: VisualQaFixture) {
   await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".doNowStartPrimary")).toBeVisible();
 }
 
@@ -125,6 +127,7 @@ test("P8.10 TX-02 expiry keeps overlay and existing continue/finish flow", async
   await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await page.locator(".doNowStartPrimary").click();
   await page.getByRole("button", { name: "タイマーを大きく表示" }).click();
   const overlay = page.getByRole("dialog", { name: "拡大タイマー" });
@@ -157,6 +160,7 @@ test("P8.10 TX-02 early stop uses the existing Today confirmation", async ({ pag
   await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await page.locator(".todayRow").first().getByRole("button", { name: "通常タイマー25分で開始" }).click();
   await page.clock.fastForward(180_000);
   await page.getByRole("button", { name: "タイマーを大きく表示" }).click();

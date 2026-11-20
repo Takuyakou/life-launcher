@@ -6,9 +6,9 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, State};
 
 use crate::commands::config::configured_day_start_hour;
+use crate::datetime;
 use crate::models::{
-    today_date, NotesForDateInput, NotesHistoryEntry, NotesHistoryResponse, TodayNotesInput,
-    TodayNotesResponse,
+    NotesForDateInput, NotesHistoryEntry, NotesHistoryResponse, TodayNotesInput, TodayNotesResponse,
 };
 use crate::state::AppState;
 
@@ -24,7 +24,7 @@ struct NotesDay {
 #[tauri::command]
 pub fn load_today_notes(_app: AppHandle) -> Result<TodayNotesResponse, String> {
     let path = notes_path()?;
-    let date = today_date(configured_day_start_hour());
+    let date = datetime::today_date(configured_day_start_hour());
     let notes = read_notes_file(&path)?;
     let items = notes
         .get(&date)
@@ -46,7 +46,7 @@ pub fn save_today_notes(
 ) -> Result<TodayNotesResponse, String> {
     let _reset_guard = state.begin_app_write()?;
     let path = notes_path()?;
-    let date = today_date(configured_day_start_hour());
+    let date = datetime::today_date(configured_day_start_hour());
     let mut notes = read_notes_file(&path)?;
     let items = sanitize_note_items(&input.items);
 
@@ -91,7 +91,7 @@ pub fn save_notes_for_date(
     let path = notes_path()?;
     let mut notes = read_notes_file(&path)?;
     let date = input.date.trim();
-    if chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d").is_err() {
+    if crate::datetime::parse_date(date).is_none() {
         return Err(format!("invalid note date: {}", input.date));
     }
 
