@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { createFullTodayFixture, FIXTURE_NOW } from "./fixtures";
 import { readFrameSamples, startFrameSampler } from "./helpers";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 async function open(
   page: Page,
@@ -13,6 +14,7 @@ async function open(
   await page.emulateMedia({ reducedMotion: reducedMotion as "reduce" | "no-preference" });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".doNowBand")).toBeVisible();
 }
 

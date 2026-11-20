@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 // P97-02 B: 窓を動かせるのは上端の余白・上部メニューの行・ブランド表示だけ。
 // .mainPanel / .sidebar そのものに付けると、内側の下端・右端の余白まで動いてしまう。
@@ -12,6 +13,7 @@ async function open(page: Page) {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".doNowBand")).toBeVisible();
 }
 

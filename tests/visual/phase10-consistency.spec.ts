@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 async function prepare(
   page: Page,
@@ -11,6 +12,7 @@ async function prepare(
   await page.setViewportSize(viewport);
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".doNowBand")).toBeVisible();
 }
 
@@ -317,6 +319,7 @@ test("P10-14e 2 the mini clock uses the same 700 weight as the sidebar clock", a
   await page.setViewportSize({ width: 340, height: 120 });
   await installTauriMock(page, createPublicFixture(), "life-launcher-mini");
   await page.goto("/?view=mini");
+  await waitForBundledFonts(page);
   await page.evaluate(() =>
     (
       window as Window & {

@@ -3,6 +3,7 @@ import type { AppConfig } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { waitForStableRects } from "./helpers";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 async function prepare(page: Page, fixture: VisualQaFixture, height = 1000) {
   await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
@@ -10,6 +11,7 @@ async function prepare(page: Page, fixture: VisualQaFixture, height = 1000) {
   await page.setViewportSize({ width: 1440, height });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".doNowBand")).toBeVisible();
 }
 

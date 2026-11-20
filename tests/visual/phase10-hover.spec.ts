@@ -2,12 +2,14 @@ import { expect, test, type Page } from "@playwright/test";
 import { createFullTodayFixture, createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { waitForAnimations, waitForStableRects } from "./helpers";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 async function prepare(page: Page, fixture = createPublicFixture()) {
   await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
   await page.setViewportSize({ width: 1280, height: 900 });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".doNowBand")).toBeVisible();
   await page.evaluate(async () => document.fonts.ready);
   await page.mouse.move(1, 1);

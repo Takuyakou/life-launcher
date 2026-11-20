@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { extname, resolve } from "node:path";
 import { createPublicFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 const FIXTURE_ROOT = resolve("tests/fixtures/instruction-html");
 const HTML_PATH = resolve(FIXTURE_ROOT, "browser-parity/index.html");
@@ -57,6 +58,7 @@ async function prepareViewer(page: Page, width: number, height: number): Promise
   await routeInstructionAssets(page);
   await installTauriMock(page, fixture, "life-launcher-instruction");
   await page.goto("/?view=instruction&path=" + encodeURIComponent(INSTRUCTION_PATH));
+  await waitForBundledFonts(page);
   const iframe = page.locator(".instructionHtmlFrame");
   await expect(iframe).toBeVisible();
   await expect
@@ -222,6 +224,7 @@ test("HTML preview preserves disabled form controls that own layout grid columns
   await page.setViewportSize({ width: 900, height: 640 });
   await installTauriMock(page, fixture, "life-launcher-instruction");
   await page.goto("/?view=instruction&path=" + encodeURIComponent(path));
+  await waitForBundledFonts(page);
   const iframe = page.locator(".instructionHtmlFrame");
   await expect(iframe).toBeVisible();
   const handle = await iframe.elementHandle();

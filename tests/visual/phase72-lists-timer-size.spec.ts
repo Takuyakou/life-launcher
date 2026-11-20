@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import type { AppConfig, InboxItem, LauncherProject } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 function fixtureWithCount(kind: "projects" | "inbox", count: number): VisualQaFixture {
   const fixture = createPublicFixture();
@@ -36,6 +37,7 @@ async function prepare(page: Page, fixture: VisualQaFixture, width = 1440) {
   await page.setViewportSize({ width, height: 900 });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".doNowBand")).toBeVisible();
 }
 

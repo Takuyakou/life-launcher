@@ -2,11 +2,13 @@ import { expect, test, type Page } from "@playwright/test";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 import { findShortcutConflicts } from "../../src/shortcutConflicts";
+import { waitForBundledFonts } from "./bundledFonts";
 
 async function prepare(page: Page, fixture = createPublicFixture()) {
   await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".sidebar")).toBeVisible();
 }
 
@@ -128,6 +130,7 @@ test("Today total, execution list and selection roll over together at local midn
   await page.clock.install({ time: new Date("2026-08-13T23:59:59+09:00").getTime() });
   await installTauriMock(page, fixture, "main", null, { rolloverOnLoadConfig: true });
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".timerTodaySummary")).toHaveCount(0);
   await page.locator(".todayActivityBand .disclosure").click();
   await expect(page.locator(".todayActivityRow")).toHaveCount(1);
@@ -146,6 +149,7 @@ test("Today refreshes on focus after a suspended configured-day boundary", async
   await page.clock.install({ time: new Date("2026-08-14T03:59:59+09:00").getTime() });
   await installTauriMock(page, fixture, "main", null, { rolloverOnLoadConfig: true });
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".timerTodaySummary")).toHaveCount(0);
   await page.clock.setFixedTime(new Date("2026-08-14T04:15:00+09:00"));
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
@@ -195,6 +199,7 @@ test("mouse-free arrows traverse Sidebar, Dictionary, Main, toolbar, Settings an
       .__LIFE_LAUNCHER_VISUAL_QA__.invokeCalls.some((call) => call.command === "plugin:webview|create_webview_window"),
   )).toBe(true);
   await page.goto("/?view=dictionary");
+  await waitForBundledFonts(page);
   await expect(page.locator(".dictionaryWindowShell")).toBeVisible();
   const titleAction = page.locator(".dictionaryWindowTitleActions button").first();
   await titleAction.focus();
@@ -208,6 +213,7 @@ test("mouse-free arrows traverse Sidebar, Dictionary, Main, toolbar, Settings an
   await expect(page.locator(".dictionarySearchInput")).toHaveAttribute("aria-activedescendant", /dictionary-search-result-/);
   await page.keyboard.press("Escape");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await page.evaluate(() => (document.activeElement as HTMLElement).blur());
   await page.keyboard.press("ArrowDown");
   await expect(dictionaryButton).toBeFocused();

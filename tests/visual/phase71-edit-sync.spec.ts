@@ -3,6 +3,7 @@ import { canonicalSourceKey, resnapshotSource, timerSourceKey } from "../../src/
 import type { AppConfig } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 function seed() {
   const f = createPublicFixture();
@@ -18,6 +19,7 @@ async function prepare(page: Page) {
   await page.clock.install({time:new Date(FIXTURE_NOW).getTime()});
   await installTauriMock(page,seed(),"main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".todayRow")).toHaveCount(2);
 }
 async function current(page: Page) {

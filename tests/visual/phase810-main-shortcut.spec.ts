@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 type MainWindowState = { visible: boolean; minimized: boolean; focused: boolean };
 type ShortcutControl = {
@@ -18,7 +19,7 @@ async function prepare(page: Page) {
   fixture.config.settings.focusHotkey = "Ctrl+Alt+Space";
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
-  await page.evaluate(async () => document.fonts.ready);
+  await waitForBundledFonts(page);
 }
 
 test("Main shortcut hides only a visible focused window", async ({ page }) => {

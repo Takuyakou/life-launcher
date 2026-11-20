@@ -4,6 +4,7 @@ import { formatDuration } from "../../src/weeklyPlanning";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { waitForStableRects } from "./helpers";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 type QaWindow = Window & {
   __LIFE_LAUNCHER_VISUAL_QA__: {
@@ -23,6 +24,7 @@ async function openWeekly(
   await page.setViewportSize(viewport);
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await page.getByRole("button", { name: "記録ビューを開く" }).click();
   await expect(page.locator(".recordsView")).toBeVisible();
   await page.getByRole("tab", { name: "今週を決める" }).click();
@@ -334,6 +336,7 @@ test("P10-15b H2 the stale buttons use the main-screen button colours", async ({
   await page.setViewportSize({ width: 1280, height: 900 });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   const mainButton = page.locator(".nextStepFreshnessButton").first();
   await expect(mainButton).toBeVisible();
   // The bundled font swaps in after first paint and moves the freshness button sideways.

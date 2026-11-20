@@ -12,6 +12,7 @@ import type { AppConfig, LauncherNextStep } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { waitForStableRects } from "./helpers";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 type VisualQaControl = {
   currentConfig: () => AppConfig;
@@ -25,6 +26,7 @@ async function prepare(page: Page, fixture: VisualQaFixture = createPublicFixtur
   await page.setViewportSize({ width: 1440, height: 900 });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".inboxBand")).toBeVisible();
   const disclosure = page.locator(".inboxBand .disclosure");
   if ((await disclosure.getAttribute("aria-expanded")) !== "true") await disclosure.click();

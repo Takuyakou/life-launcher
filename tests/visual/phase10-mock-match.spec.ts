@@ -1,12 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 async function prepare(page: Page, viewport = { width: 1280, height: 900 }) {
   await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
   await page.setViewportSize(viewport);
   await installTauriMock(page, createPublicFixture(), "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".doNowBand")).toBeVisible();
 }
 
@@ -243,6 +245,7 @@ test("P10-14e 2 the mini window is 340x120, two rows, with the Project colour on
   await page.setViewportSize({ width: 340, height: 120 });
   await installTauriMock(page, createPublicFixture(), "life-launcher-mini");
   await page.goto("/?view=mini");
+  await waitForBundledFonts(page);
   const panel = page.locator(".timerPanel--mini");
   await expect(panel).toBeVisible();
 

@@ -7,6 +7,7 @@ import {
   type VisualQaFixture,
 } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 // Same-machine renders are pixel-identical; the ratio only absorbs font rasterization drift
 // between this machine and the windows-latest CI runner.
@@ -38,7 +39,7 @@ async function open(
   await page.clock.pauseAt(now + 1_000);
   await installTauriMock(page, fixture, windowLabel);
   await page.goto(route);
-  await page.evaluate(async () => document.fonts.ready);
+  await waitForBundledFonts(page);
   await page.addStyleTag({
     content:
       "*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important;cursor:none!important}",

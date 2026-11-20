@@ -6,6 +6,7 @@ import {
   nextInstructionWindowSizePreset,
 } from "../../src/instructionWindow";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 type InstructionRootChoice = {
   name: string;
@@ -29,6 +30,7 @@ async function prepareEmpty(page: Page) {
   await page.setViewportSize({ width: 1000, height: 700 });
   await installTauriMock(page, fixture, "life-launcher-instruction");
   await page.goto("/?view=instruction");
+  await waitForBundledFonts(page);
   await expect(page.getByText("手順書フォルダが未登録です")).toBeVisible();
 }
 
@@ -140,6 +142,7 @@ test("viewer sidebar resizes within balanced limits and size cycle resets the sp
 test("file and folder menus only unregister their containing root", async ({ page }) => {
   await installTauriMock(page, createPublicFixture(), "life-launcher-instruction");
   await page.goto("/?view=instruction");
+  await waitForBundledFonts(page);
   const root = page.locator('.instructionTreeRow[aria-level="1"]').first();
   await root.getByRole("button", { name: /を展開する/ }).click();
   const file = page.locator(".instructionTreeRow", { hasText: "guide.md" });
@@ -157,6 +160,7 @@ test("rename instruction uses the positive Change action before the muted red Ca
 }) => {
   await installTauriMock(page, createPublicFixture(), "life-launcher-instruction");
   await page.goto("/?view=instruction");
+  await waitForBundledFonts(page);
   const root = page.locator('.instructionTreeRow[aria-level="1"]').first();
   await root.getByRole("button", { name: /を展開する/ }).click();
   await page.locator(".instructionTreeRow", { hasText: "guide.md" }).click({ button: "right" });
@@ -176,11 +180,13 @@ test("Markdown exposes Edit while HTML remains read-only without a disabled Edit
   await page.goto(
     "/?view=instruction&path=" + encodeURIComponent("C:\\PublicDemo\\Instructions\\guide.md"),
   );
+  await waitForBundledFonts(page);
   await expect(page.getByRole("button", { name: "手順書を編集" })).toBeVisible();
 
   await page.goto(
     "/?view=instruction&path=" + encodeURIComponent("C:\\PublicDemo\\Instructions\\reference.html"),
   );
+  await waitForBundledFonts(page);
   await expect(page.locator(".instructionHtmlFrame")).toBeVisible();
   await expect(page.getByRole("button", { name: "手順書を編集" })).toHaveCount(0);
   await expect(page.getByText("読み取り専用", { exact: true })).toHaveCount(0);

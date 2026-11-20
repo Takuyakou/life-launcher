@@ -8,6 +8,7 @@ import {
 } from "../../src/projectIdentity";
 import { createFullTodayFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 const LEGACY_PROJECT_COLOR_IDS = [
   "amber",
@@ -34,6 +35,7 @@ async function prepare(page: Page, fixture: VisualQaFixture = createFullTodayFix
   await page.setViewportSize({ width: 1440, height: 900 });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".doNowBand")).toBeVisible();
 }
 
@@ -112,6 +114,7 @@ test("the twelve-color palette stays inside the editor without overlapping at 56
   await page.setViewportSize({ width: 560, height: 900 });
   await installTauriMock(page, createFullTodayFixture(), "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".doNowBand")).toBeVisible();
 
   const editor = await openProjectEditor(page, "sample-learning");

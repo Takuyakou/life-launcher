@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createFullTodayFixture, createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 const VIEWER_DOCUMENT_PATH = "C:\\PublicDemo\\Instructions\\welcome.md";
 
@@ -28,6 +29,7 @@ async function prepare(
   await page.setViewportSize({ width, height: 900 });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".doNowBand")).toBeVisible();
 }
 
@@ -43,6 +45,7 @@ async function prepareViewer(page: Page, width = 1000) {
   await page.goto(
     "/?view=instruction&path=" + encodeURIComponent(VIEWER_DOCUMENT_PATH),
   );
+  await waitForBundledFonts(page);
   await expect(page.getByRole("heading", { name: "ようこそ" })).toBeVisible();
 }
 

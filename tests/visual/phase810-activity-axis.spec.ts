@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 for (const { width, height, size } of [
   { width: 860, height: 560, size: "standard" },
@@ -22,7 +23,7 @@ for (const { width, height, size } of [
     await page.setViewportSize({ width, height });
     await installTauriMock(page, fixture, "main");
     await page.goto("/");
-    await page.evaluate(async () => document.fonts.ready);
+    await waitForBundledFonts(page);
     await expect(page.locator(".mainScrollContent")).toHaveAttribute("data-main-display-size", size);
     await page.locator(".todayActivityBand .disclosure").click();
 

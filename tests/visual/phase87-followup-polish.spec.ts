@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { measureRects, waitForAnimations } from "./helpers";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 async function prepare(
   page: Page,
@@ -12,7 +13,7 @@ async function prepare(
   await page.setViewportSize(viewport);
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
-  await page.evaluate(async () => document.fonts.ready);
+  await waitForBundledFonts(page);
 }
 
 test("Main button edit shares the group control and positive/cancel footer grammar", async ({

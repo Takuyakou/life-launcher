@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 // ダイアログを開いている間の通知は上端の中央に出し、ダイアログのボタンに重ならない
 // (右下のままだと、幅 1050px 以下で保存の失敗の通知が「キャンセル」を約8秒ふさいでいた)。
@@ -22,6 +23,7 @@ async function open(page: Page, size: { width: number; height: number }) {
   await page.setViewportSize(size);
   await installTauriMock(page, createPublicFixture(), "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await page.getByRole("button", { name: /辞書を開く/ }).waitFor();
 }
 

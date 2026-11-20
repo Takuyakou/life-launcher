@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 const SCREENSHOT_OPTIONS = {
   maxDiffPixelRatio: 0.001,
@@ -47,6 +48,7 @@ async function open(
   await page.clock.install({ time: now });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".doNowBand")).toBeVisible();
   await page.evaluate(async () => document.fonts.ready);
   if (freezeAnimations) {
@@ -140,6 +142,7 @@ test("P10-17 N4-3 4 debounces config updates (400ms) and checks on window focus"
   await page.clock.pauseAt(now);
   await installTauriMock(page, createPublicFixture(), "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".doNowBand")).toBeVisible();
   await page.clock.fastForward(450);
   const afterLoad = await missingCheckCount(page);

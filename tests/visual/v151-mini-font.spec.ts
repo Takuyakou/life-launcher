@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createFullTodayFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 // V151-S2-4: the mini clock uses the bundled font (P10-18e). While that font is still loading, the
 // digits and the action text or the buttons must not overlap, neither before nor after the load.
@@ -16,6 +17,7 @@ async function openMini(page: Page) {
   await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
   await installTauriMock(page, createFullTodayFixture(), "life-launcher-mini");
   await page.goto("/?view=mini");
+  await waitForBundledFonts(page);
   await expect(page.locator(".miniShell")).toBeVisible();
 }
 

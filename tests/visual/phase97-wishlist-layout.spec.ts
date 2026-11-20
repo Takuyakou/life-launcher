@@ -8,6 +8,7 @@ import {
 import { createFullTodayFixture, FIXTURE_NOW } from "./fixtures";
 import { waitForStableRects } from "./helpers";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 type Control = {
   currentConfig: () => AppConfig;
@@ -23,6 +24,7 @@ async function prepare(
   await page.setViewportSize({ width: 1440, height: 900 });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".doNowBand")).toBeVisible();
   const disclosure = page.locator(".inboxBand .disclosure");
   if ((await disclosure.getAttribute("aria-expanded")) !== "true") {

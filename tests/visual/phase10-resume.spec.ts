@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 const SCREENSHOT_OPTIONS = {
   maxDiffPixelRatio: 0.001,
@@ -48,6 +49,7 @@ async function open(
   await page.clock.install({ time: now });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".doNowBand")).toBeVisible();
   await page.evaluate(async () => document.fonts.ready);
   if (freezeAnimations) {

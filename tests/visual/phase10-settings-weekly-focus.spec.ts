@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 // P10-18d: 設定 → 基本の「今週の重点」の CSS(P10-15 で消えていた)が当たっている。
 
@@ -28,6 +29,7 @@ async function openSettingsBasics(page: Page, viewport: { width: number; height:
   await page.emulateMedia({ reducedMotion: "reduce" });
   await installTauriMock(page, createThreeFocusFixture(), "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await page.getByRole("button", { name: "設定を開く" }).click();
   const settings = page.getByRole("dialog", { name: "設定" });
   await settings.getByRole("tab", { name: "基本" }).click();

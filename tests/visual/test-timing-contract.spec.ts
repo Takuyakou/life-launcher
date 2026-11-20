@@ -40,3 +40,22 @@ test("tests/visual contains no waitForTimeout and only explicitly marked simulat
     "setTimeout( without // simulated-latency is forbidden in tests/visual",
   ).toEqual([]);
 });
+
+// V151-S8: the bundled fonts load by Unicode range, so `document.fonts.ready` alone can let a test
+// measure text in a fallback face. Every spec that measures geometry or compares screenshots must
+// call waitForBundledFonts at least once.
+const FONT_WAIT_EXCLUSIONS: Record<string, string> = {
+  "test-timing-contract.spec.ts": "reads source files only; it names these APIs as text",
+};
+
+test("specs that measure layout or compare screenshots wait for the bundled fonts", () => {
+  const specs = readdirSync("tests/visual").filter((name) => name.endsWith(".spec.ts"));
+  expect(specs.length).toBeGreaterThan(20);
+  const missing = specs.filter((name) => {
+    if (name in FONT_WAIT_EXCLUSIONS) return false;
+    const source = readFileSync(join("tests/visual", name), "utf8");
+    const measures = /boundingBox\(|getBoundingClientRect|toHaveScreenshot/.test(source);
+    return measures && !source.includes("waitForBundledFonts(");
+  });
+  expect(missing, "specs that measure text must call waitForBundledFonts(page)").toEqual([]);
+});

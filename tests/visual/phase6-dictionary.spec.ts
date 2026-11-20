@@ -3,6 +3,7 @@ import type { AppConfig, LauncherButton } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { waitForStableRects } from "./helpers";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 test.describe.configure({ mode: "serial" });
 
@@ -41,7 +42,7 @@ async function prepare(
   await page.setViewportSize(viewport);
   await installTauriMock(page, fixture, view);
   await page.goto(view === "dictionary" ? "/?view=dictionary" : "/");
-  await page.evaluate(async () => document.fonts.ready);
+  await waitForBundledFonts(page);
   await page.addStyleTag({
     content: "*,*::before,*::after{animation:none!important;transition:none!important}",
   });

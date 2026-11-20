@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createFullTodayFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 type QaWindow = Window & {
   __LIFE_LAUNCHER_VISUAL_QA__: {
@@ -20,6 +21,7 @@ async function prepare(page: Page, fixture: VisualQaFixture, route = "/", window
   await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
   await installTauriMock(page, fixture, windowLabel);
   await page.goto(route);
+  await waitForBundledFonts(page);
 }
 
 const calls = (page: Page, command: string) =>
