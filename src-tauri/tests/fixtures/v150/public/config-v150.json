@@ -1,0 +1,223 @@
+{
+  "$schema": "./config.schema.json",
+  "version": 3,
+  "groups": [
+    "ショートカット",
+    "資料",
+    "リンク"
+  ],
+  "overlayPages": [
+    {
+      "id": "tools",
+      "name": "ツール"
+    },
+    {
+      "id": "reference",
+      "name": "参考資料"
+    }
+  ],
+  "dictionaryOrder": [
+    "sample-editor",
+    "sample-documents",
+    "reference-site"
+  ],
+  "buttons": [
+    {
+      "id": "sample-documents",
+      "label": "サンプル資料",
+      "icon": "□",
+      "group": "ショートカット",
+      "showInSidebar": true,
+      "showInOverlay": true,
+      "overlayPageId": "reference",
+      "aliases": [
+        "documents",
+        "資料"
+      ],
+      "description": "公開撮影用の架空フォルダ",
+      "actions": [
+        {
+          "type": "open_folder",
+          "payload": {
+            "path": "C:\\PublicDemo\\Documents"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sample-editor",
+      "label": "サンプルエディター",
+      "icon": "□",
+      "group": "ショートカット",
+      "showInSidebar": true,
+      "showInOverlay": true,
+      "overlayPageId": "tools",
+      "aliases": [
+        "editor",
+        "編集"
+      ],
+      "description": "作業を始めるためのサンプルアプリ",
+      "actions": [
+        {
+          "type": "open_folder",
+          "payload": {
+            "path": "C:\\PublicDemo\\Documents"
+          }
+        }
+      ]
+    },
+    {
+      "id": "reference-site",
+      "label": "参考サイト",
+      "icon": "□",
+      "group": "リンク",
+      "showInSidebar": false,
+      "showInOverlay": true,
+      "overlayPageId": "reference",
+      "aliases": [
+        "reference",
+        "調べる"
+      ],
+      "description": "外部リンク表示のサンプル",
+      "actions": [
+        {
+          "type": "open_folder",
+          "payload": {
+            "path": "C:\\PublicDemo\\Documents"
+          }
+        }
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "id": "sample-learning",
+      "name": "サンプル学習",
+      "northStar": "小さな一手から理解を深める",
+      "weeklyFocus": true,
+      "colorId": "blue"
+    },
+    {
+      "id": "sample-stretch",
+      "name": "ストレッチ",
+      "northStar": "無理なく体を整える",
+      "weeklyFocus": true,
+      "colorId": "green",
+      "nextStep": {
+        "text": "5分だけ体を動かす",
+        "generationId": "gen-stretch-1",
+        "updatedAt": "2026-10-29T11:37:53.075780400+00:00",
+        "reviewedAt": "2026-10-29T11:37:53.075780400+00:00",
+        "defaultTimerMinutes": 20,
+        "shortTimerMinutes": 5
+      }
+    },
+    {
+      "id": "sample-writing",
+      "name": "文章づくり",
+      "northStar": "毎日少しずつ書く",
+      "colorId": "violet",
+      "nextStep": {
+        "text": "見出しを3つ書き出す",
+        "generationId": "gen-writing-1",
+        "updatedAt": "2026-10-29T11:37:53.075780800+00:00",
+        "reviewedAt": "2026-10-29T11:37:53.075780800+00:00",
+        "defaultTimerMinutes": 25,
+        "shortTimerMinutes": 5
+      }
+    },
+    {
+      "id": "sample-music",
+      "name": "音づくり",
+      "northStar": "短いループを1本仕上げる",
+      "colorId": "rose",
+      "nextStep": {
+        "text": "ドラムの音を1つ選ぶ",
+        "generationId": "gen-music-1",
+        "updatedAt": "2026-10-29T11:37:53.075781200+00:00",
+        "reviewedAt": "2026-10-29T11:37:53.075781200+00:00",
+        "defaultTimerMinutes": 25,
+        "shortTimerMinutes": 5
+      }
+    },
+    {
+      "id": "sample-home",
+      "name": "暮らしの整理",
+      "northStar": "部屋を軽く保つ",
+      "colorId": "orange",
+      "nextStep": {
+        "text": "引き出しを1段だけ片づける",
+        "generationId": "gen-home-1",
+        "updatedAt": "2026-10-29T11:37:53.075781600+00:00",
+        "reviewedAt": "2026-10-29T11:37:53.075781600+00:00",
+        "defaultTimerMinutes": 20,
+        "shortTimerMinutes": 5
+      }
+    }
+  ],
+  "today": {
+    "date": "2026-11-01",
+    "victory": {
+      "text": "",
+      "done": false
+    },
+    "items": []
+  },
+  "inbox": [
+    {
+      "id": "sample-later",
+      "text": "あとで確認するサンプル"
+    },
+    {
+      "id": "sample-weekend",
+      "text": "週末に試すアイデア",
+      "projectId": "sample-learning"
+    },
+    {
+      "id": "sample-book",
+      "text": "気になる本を1冊読み始める",
+      "projectId": "sample-writing"
+    },
+    {
+      "id": "sample-walk",
+      "text": "夕方に散歩する",
+      "projectId": "sample-stretch"
+    },
+    {
+      "id": "sample-shelf",
+      "text": "本棚の上を拭く",
+      "projectId": "sample-home"
+    }
+  ],
+  "sourceCompletions": [
+    {
+      "id": "a7ce9502-2c6c-4b68-a827-c9cb5a904b5e",
+      "sourceType": "nextStep",
+      "sourceIdentity": "project:sample-learning",
+      "textSnapshot": "資料を1ページ読む",
+      "projectId": "sample-learning",
+      "projectNameSnapshot": "サンプル学習",
+      "completedAt": "2026-10-29T11:40:23.538Z"
+    }
+  ],
+  "settings": {
+    "alwaysOnTop": false,
+    "focusHotkey": null,
+    "launcherHotkey": null,
+    "miniHotkey": null,
+    "autoStart": false,
+    "defaultTimerMinutes": 25,
+    "shortTimerMinutes": 5,
+    "dayStartHour": 4,
+    "backupFolder": "C:\\PublicDemo\\Backups",
+    "backupKeep": 30,
+    "miniMode": true,
+    "miniWindowPosition": {
+      "x": 1473,
+      "y": 871
+    },
+    "restartShortFirst": true,
+    "mainDisplaySize": "large",
+    "instructionFolders": []
+  }
+}

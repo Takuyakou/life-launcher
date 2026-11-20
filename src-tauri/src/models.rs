@@ -809,27 +809,6 @@ pub fn default_button_visibility() -> bool {
     true
 }
 
-pub fn date_key_at<Tz: chrono::TimeZone>(now: chrono::DateTime<Tz>, day_start_hour: u8) -> String {
-    use chrono::Timelike;
-
-    let date = now.date_naive();
-    if now.hour() < u32::from(day_start_hour.min(23)) {
-        date.pred_opt().unwrap_or(date).to_string()
-    } else {
-        date.to_string()
-    }
-}
-
-pub fn today_date(day_start_hour: u8) -> String {
-    date_key_at(chrono::Local::now(), day_start_hour)
-}
-
-pub fn week_start_date(date: chrono::NaiveDate) -> chrono::NaiveDate {
-    use chrono::Datelike;
-
-    date - chrono::Duration::days(i64::from(date.weekday().num_days_from_monday()))
-}
-
 fn default_settings() -> Settings {
     Settings {
         always_on_top: false,
@@ -863,7 +842,7 @@ pub fn initial_config() -> AppConfig {
         buttons: Vec::new(),
         projects: Vec::new(),
         today: Today {
-            date: today_date(DEFAULT_DAY_START_HOUR),
+            date: crate::datetime::today_date(DEFAULT_DAY_START_HOUR),
             victory: TodayVictory::default(),
             items: Vec::new(),
             candidate_excluded_source_keys: Vec::new(),
@@ -975,7 +954,7 @@ pub fn sample_config() -> AppConfig {
             },
         ],
         today: Today {
-            date: today_date(DEFAULT_DAY_START_HOUR),
+            date: crate::datetime::today_date(DEFAULT_DAY_START_HOUR),
             victory: TodayVictory::default(),
             candidate_excluded_source_keys: Vec::new(),
             selection_mutation_tokens: std::collections::HashMap::new(),
@@ -1026,7 +1005,6 @@ pub fn sample_config() -> AppConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::{FixedOffset, TimeZone};
 
     fn sample_legacy_project() -> LegacyProjectV2 {
         LegacyProjectV2 {
@@ -1109,28 +1087,29 @@ mod tests {
 
     #[test]
     fn date_key_changes_at_the_configured_day_start_hour() {
-        let timezone = FixedOffset::east_opt(9 * 60 * 60).expect("timezone");
-        let before_start = timezone
-            .with_ymd_and_hms(2026, 7, 5, 3, 59, 0)
-            .single()
-            .expect("datetime");
-        let at_start = timezone
-            .with_ymd_and_hms(2026, 7, 5, 4, 0, 0)
-            .single()
-            .expect("datetime");
+        let before_start =
+            crate::datetime::parse_rfc3339("2026-07-05T03:59:00+09:00").expect("datetime");
+        let at_start =
+            crate::datetime::parse_rfc3339("2026-07-05T04:00:00+09:00").expect("datetime");
 
-        assert_eq!(date_key_at(before_start, 4), "2026-07-04");
-        assert_eq!(date_key_at(at_start, 4), "2026-07-05");
-        assert_eq!(date_key_at(before_start, 0), "2026-07-05");
+        assert_eq!(
+            crate::datetime::date_key_at(before_start, 4),
+            "2026-07-04"
+        );
+        assert_eq!(crate::datetime::date_key_at(at_start, 4), "2026-07-05");
+        assert_eq!(
+            crate::datetime::date_key_at(before_start, 0),
+            "2026-07-05"
+        );
     }
 
     #[test]
     fn week_start_is_monday() {
-        let sunday = chrono::NaiveDate::from_ymd_opt(2026, 7, 12).expect("date");
-        let monday = chrono::NaiveDate::from_ymd_opt(2026, 7, 6).expect("date");
+        let sunday = crate::datetime::parse_date("2026-07-12").expect("date");
+        let monday = crate::datetime::parse_date("2026-07-06").expect("date");
 
-        assert_eq!(week_start_date(sunday), monday);
-        assert_eq!(week_start_date(monday), monday);
+        assert_eq!(crate::datetime::week_start_date(sunday), monday);
+        assert_eq!(crate::datetime::week_start_date(monday), monday);
     }
 
     #[test]
