@@ -139,31 +139,28 @@ test("P10-03 no key hints are shown under the list", async ({ page }) => {
   await expect(palette(page)).not.toContainText("↑↓");
 });
 
+/** V151-S7 (S1 rule 4): the option and the highlight are measured in one evaluate. */
+async function highlightOffset(page: Page, index: number) {
+  await page.evaluate(async () => document.fonts.ready);
+  return page.evaluate((nth) => {
+    const dialog = document.querySelector('[role="dialog"][aria-label="検索"]');
+    const option = dialog?.querySelectorAll('[role="option"]')[nth];
+    const highlights = dialog?.querySelectorAll(".searchPaletteHighlight");
+    const highlight = highlights?.[highlights.length - 1];
+    if (!option || !highlight) return 999;
+    const a = option.getBoundingClientRect();
+    const b = highlight.getBoundingClientRect();
+    return Math.abs(a.y - b.y) + Math.abs(a.height - b.height);
+  }, index);
+}
+
 test("P10-03 the highlight follows the selection", async ({ page }) => {
   await open(page);
   await page.keyboard.press("Control+f");
   await input(page).fill("サンプル");
-  await expect
-    .poll(async () => {
-      const option = palette(page).getByRole("option").first();
-      const highlight = palette(page).locator(".searchPaletteHighlight").last();
-      const a = await option.boundingBox();
-      const b = await highlight.boundingBox();
-      if (!a || !b) return 999;
-      return Math.abs(a.y - b.y) + Math.abs(a.height - b.height);
-    })
-    .toBeLessThanOrEqual(1);
+  await expect.poll(() => highlightOffset(page, 0)).toBeLessThanOrEqual(1);
   await page.keyboard.press("ArrowDown");
-  await expect
-    .poll(async () => {
-      const option = palette(page).getByRole("option").nth(1);
-      const highlight = palette(page).locator(".searchPaletteHighlight").last();
-      const a = await option.boundingBox();
-      const b = await highlight.boundingBox();
-      if (!a || !b) return 999;
-      return Math.abs(a.y - b.y) + Math.abs(a.height - b.height);
-    })
-    .toBeLessThanOrEqual(1);
+  await expect.poll(() => highlightOffset(page, 1)).toBeLessThanOrEqual(1);
 });
 
 test("P10-03 a composing Enter never runs anything", async ({ page }) => {

@@ -109,10 +109,14 @@ export function SearchPalette({
   // looks it up again and warns when it is gone).
   const lastSelectedRef = useRef<SearchItem | null>(null);
 
+  // V151-S7: the App re-renders every second while a timer runs, which rebuilt `sections`.
+  // Only a change in the listed entries (or the query) may move the selection back to the top.
+  const itemKey = useMemo(() => flat.map((item) => item.id).join("\n"), [flat]);
+
   // A new result list always starts at the first entry.
   useEffect(() => {
     setSelectedIndex(0);
-  }, [query, sections]);
+  }, [query, itemKey]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -136,16 +140,17 @@ export function SearchPalette({
       }
     }
     setKnownProjectColors(colors);
-  }, [sections]);
+  }, [itemKey]);
 
   const selected = flat[Math.min(selectedIndex, Math.max(flat.length - 1, 0))];
   if (selected) lastSelectedRef.current = selected;
 
   useEffect(() => {
-    if (!selected) return;
-    const element = dialogRef.current?.querySelector<HTMLElement>(`[data-search-item="${selected.id}"]`);
+    const selectedId = selected?.id;
+    if (!selectedId) return;
+    const element = dialogRef.current?.querySelector<HTMLElement>(`[data-search-item="${selectedId}"]`);
     element?.scrollIntoView({ block: "nearest" });
-  }, [selected]);
+  }, [selected?.id]);
 
   const move = useCallback(
     (delta: number) => {

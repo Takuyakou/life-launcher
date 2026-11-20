@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { AppConfig, LauncherButton } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
+import { waitForStableRects } from "./helpers";
 import { installTauriMock } from "./tauriMock";
 
 test.describe.configure({ mode: "serial" });
@@ -300,11 +301,13 @@ test("Quick button and group drag save only on drop and survive reload", async (
   const saveCount = async () =>
     (await invokeCalls(page)).filter((call) => call.command === "save_config").length;
 
-  const quickButtons = page.locator(".quickGroup", { hasText: "資料" }).locator(".quickButton");
-  const source = await quickButtons.nth(0).boundingBox();
-  const target = await quickButtons.nth(1).boundingBox();
-  expect(source).not.toBeNull();
-  expect(target).not.toBeNull();
+  // V151-S7 (S1 rule 4): read both buttons in one evaluate once the sidebar has stopped moving,
+  // so the drop point cannot come from a layout that changed between two measurements.
+  const sourceSelector = '[data-sidebar-button-id="grid-file-1"] .quickButton';
+  const targetSelector = '[data-sidebar-button-id="grid-file-2"] .quickButton';
+  const buttonRects = await waitForStableRects(page, [sourceSelector, targetSelector]);
+  const source = buttonRects[sourceSelector];
+  const target = buttonRects[targetSelector];
   const beforeButtonDrag = await saveCount();
   await page.mouse.move(source!.x + source!.width / 2, source!.y + source!.height / 2);
   await page.mouse.down();
