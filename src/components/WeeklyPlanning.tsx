@@ -128,11 +128,11 @@ export function WeeklyPlanning({
             </div>
           </div>
 
-          <div className="weeklyPlanningProjectList">
-            {projects.length === 0 ? (
-              <p className="weeklyPlanningEmpty">先週の実行記録はありません。</p>
-            ) : (
-              projects.map((project) => (
+          {projects.length === 0 ? (
+            <p className="weeklyPlanningEmpty">先週の実行記録はありません。</p>
+          ) : (
+            <div className="weeklyPlanningProjectList">
+              {projects.map((project) => (
                 <div
                   className="weeklyPlanningProjectRow"
                   data-project-color={
@@ -158,9 +158,9 @@ export function WeeklyPlanning({
                     {formatDuration(project.totalMinutes)}
                   </span>
                 </div>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
 
           <div className="weeklyPlanningCompleted">
             <h3 className="weeklyPlanningKicker">完了にした項目 {completed.length}件</h3>

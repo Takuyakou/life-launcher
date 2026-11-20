@@ -299,7 +299,12 @@ test("P10-15 8 empty words are shown", async ({ page }) => {
   await expect(page.locator(".weeklyPlanningStats strong").nth(0)).toHaveText("0分");
   await expect(page.locator(".weeklyPlanningStats strong").nth(1)).toHaveText("0日");
   await expect(page.locator(".weeklyPlanningStats strong").nth(2)).toHaveText("0回");
-  await expect(page.getByText("先週の実行記録はありません。")).toBeVisible();
+  await expect(page.locator(".weeklyPlanningProjectList")).toHaveCount(0);
+  const projectEmpty = page.locator(".weeklyPlanningEmpty", {
+    hasText: "先週の実行記録はありません。",
+  });
+  await expect(projectEmpty).toBeVisible();
+  await expect(projectEmpty).toHaveText("先週の実行記録はありません。");
   await expect(page.locator(".weeklyPlanningCompleted .weeklyPlanningKicker")).toHaveText(
     "完了にした項目 0件",
   );

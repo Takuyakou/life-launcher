@@ -201,9 +201,10 @@ export function HelpGuideDialog({ onClose, onCopyResult }: HelpGuideDialogProps)
   );
 
   const jumpTo = (id: HelpSectionId) => {
-    const section = bodyRef.current?.querySelector<HTMLElement>(`#help-${id}`);
+    const body = bodyRef.current;
+    const section = body?.querySelector<HTMLElement>(`#help-${id}`);
     const heading = section?.querySelector<HTMLHeadingElement>("h3");
-    if (!section || !heading) return;
+    if (!body || !section || !heading) return;
     const reducedMotion = prefersReducedMotion();
     if (navigationReleaseTimerRef.current !== null) {
       window.clearTimeout(navigationReleaseTimerRef.current);
@@ -211,10 +212,11 @@ export function HelpGuideDialog({ onClose, onCopyResult }: HelpGuideDialogProps)
     navigationTargetRef.current = id;
     setActiveSectionId(id);
     heading.focus({ preventScroll: true });
-    section.scrollIntoView({
-      block: "start",
-      behavior: reducedMotion ? "auto" : "smooth",
-    });
+    // P10-02 (V151-S2-1): scroll only the content column. scrollIntoView also scrolled the outer
+    // dialog, which pushed the header out of view.
+    const top =
+      section.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop;
+    body.scrollTo({ top, behavior: reducedMotion ? "auto" : "smooth" });
     navigationReleaseTimerRef.current = window.setTimeout(
       () => {
         navigationTargetRef.current = null;

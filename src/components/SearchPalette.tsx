@@ -163,6 +163,8 @@ export function SearchPalette({
   const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
     const native = event.nativeEvent;
     if (event.key === "Escape") {
+      // Japanese input uses Escape to cancel the conversion; never close while composing.
+      if (native.isComposing || native.keyCode === 229) return;
       event.preventDefault();
       event.stopPropagation();
       onClose();
@@ -203,6 +205,21 @@ export function SearchPalette({
       }
     }
   };
+
+  // V151-S2-3: the palette only receives keydown while focus is inside it. When focus moves to the
+  // page (body) the window listener still closes the palette with one Escape. The capture phase and
+  // stopImmediatePropagation keep the app's other Escape handlers (dialogs, menus, drags) out of it.
+  useEffect(() => {
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (event.isComposing || event.keyCode === 229) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      onClose();
+    };
+    window.addEventListener("keydown", closeOnEscape, true);
+    return () => window.removeEventListener("keydown", closeOnEscape, true);
+  }, [onClose]);
 
   return (
     <div
