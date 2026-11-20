@@ -85,7 +85,7 @@ test("P84-03 Other Step cycles every ranked candidate without mutating config", 
   expect(await currentConfig(page)).toEqual(before);
 });
 
-test("P84 Do Now hover follows the Project color and does not stick after Other Step", async ({
+test("P84 Do Now keeps a neutral resting card and follows the Project colour on hover", async ({
   page,
 }) => {
   const fixture = createPublicFixture();
@@ -100,39 +100,60 @@ test("P84 Do Now hover follows the Project color and does not stick after Other 
   const card = page.locator(".doNowContent");
   const alternate = card.getByRole("button", { name: "他の一手", exact: true });
 
-  await card.hover();
-  await page.waitForTimeout(140);
-  const firstHover = await card.evaluate((node) => {
-    const style = getComputedStyle(node);
-    return { left: style.borderLeftColor, right: style.borderRightColor };
-  });
-  expect(firstHover.right).toBe(firstHover.left);
-
-  await alternate.click();
-  await expect(card.locator(".doNowCopy > strong")).toHaveText(
-    fixture.config.projects[1].nextStep!.text,
-  );
-  await page.mouse.move(1, 1);
-  await page.waitForTimeout(140);
+  // P10-14d (M2): the card is neutral; the Project colour lives in the status dot.
   const resting = await card.evaluate((node) => {
     const style = getComputedStyle(node);
     return {
       left: style.borderLeftColor,
       right: style.borderRightColor,
+      background: style.backgroundColor,
       transform: style.transform,
     };
   });
-  expect(resting.right).not.toBe(resting.left);
-  expect(resting.transform).toBe("none");
+  expect(resting.left).toBe(resting.right);
+  const firstDot = await card
+    .locator(".doNowStatusDot")
+    .evaluate((node) => getComputedStyle(node).backgroundColor);
 
   await card.hover();
   await page.waitForTimeout(140);
-  const secondHover = await card.evaluate((node) => {
+  const hovered = await card.evaluate((node) => {
     const style = getComputedStyle(node);
-    return { left: style.borderLeftColor, right: style.borderRightColor };
+    return {
+      left: style.borderLeftColor,
+      right: style.borderRightColor,
+      background: style.backgroundColor,
+      transform: style.transform,
+    };
   });
-  expect(secondHover.right).toBe(secondHover.left);
-  expect(secondHover.right).not.toBe(firstHover.right);
+  expect(hovered.left).toBe(firstDot);
+  expect(hovered.right).toBe(firstDot);
+  expect(hovered.background).toBe("rgb(43, 41, 34)");
+  expect(hovered.transform).not.toBe("none");
+
+  await alternate.click();
+  await expect(card.locator(".doNowCopy > strong")).toHaveText(
+    fixture.config.projects[1].nextStep!.text,
+  );
+  const secondDot = await card
+    .locator(".doNowStatusDot")
+    .evaluate((node) => getComputedStyle(node).backgroundColor);
+  expect(secondDot).not.toBe(firstDot);
+  await page.mouse.move(1, 1);
+  await page.waitForTimeout(140);
+  const afterSwitch = await card.evaluate((node) => {
+    const style = getComputedStyle(node);
+    return {
+      left: style.borderLeftColor,
+      right: style.borderRightColor,
+      background: style.backgroundColor,
+      transform: style.transform,
+    };
+  });
+  expect(afterSwitch.left).toBe(secondDot);
+  expect(afterSwitch.right).toBe(secondDot);
+  expect(afterSwitch.background).toBe("rgb(43, 41, 34)");
+  expect(afterSwitch.transform).not.toBe("none");
 });
 
 test("P84-03 empty Do Now guides to NextStep instead of weekly focus", async ({ page }) => {

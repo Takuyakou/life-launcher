@@ -145,6 +145,9 @@ for (const size of ["standard", "large", "xlarge"] as const) {
 
 test("the wishlist section keeps the new layout", async ({ page }) => {
   await prepare(page);
+  // Keep hover and focus away from the rows so the shot does not depend on the previous test.
+  await page.mouse.move(0, 0);
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   await expect(page.locator(".inboxBand")).toHaveScreenshot("phase97-wishlist-layout.png", {
     maxDiffPixels: 12,
   });
@@ -187,13 +190,14 @@ test("the 未分類 header cannot start a group drag", async ({ page }) => {
 
 test("dragging a group after 未分類 keeps 未分類 last on screen", async ({ page }) => {
   await prepare(page);
+  await page.setViewportSize({ width: 1440, height: 1600 });
+  await page.waitForTimeout(300);
   const learningHeader = page.locator(
     '[data-wishlist-group="project:sample-learning"] .wishlistGroupHeader',
   );
   const unassignedHeader = page.locator(
     '[data-wishlist-group="unassigned"] .wishlistGroupHeader',
   );
-  await learningHeader.scrollIntoViewIfNeeded();
   const from = (await learningHeader.boundingBox())!;
   const to = (await unassignedHeader.boundingBox())!;
 
@@ -201,7 +205,7 @@ test("dragging a group after 未分類 keeps 未分類 last on screen", async ({
   await page.mouse.down();
   await page.mouse.move(from.x + 32, from.y + from.height / 2, { steps: 2 });
   await expect(page.locator(".wishlistGroupDragGhost")).toBeVisible();
-  await page.mouse.move(to.x + 20, to.y + to.height - 3, { steps: 5 });
+  await page.mouse.move(to.x + 20, to.y + to.height / 2 + 5, { steps: 5 });
   await expect(page.locator(".wishlistGroupDropIndicator")).toBeVisible();
   await page.mouse.up();
 

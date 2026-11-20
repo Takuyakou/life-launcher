@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { CopyButton } from "./CopyButton";
 import { IMPORT_PROMPT_FIRST, IMPORT_PROMPT_REPEAT } from "../content/importPrompt";
 import { buildImportCurrentState } from "../importCurrentState";
 import { extractImportJson } from "../importJson";
@@ -79,23 +80,20 @@ export function ImportDialog({
     : 0;
   const currentState = buildImportCurrentState(config);
 
-  const copyPrompt = async (prompt: string, message: string) => {
+  const copyPrompt = async (prompt: string) => {
     try {
+      if (!navigator.clipboard?.writeText) throw new Error("clipboard API is not available");
       await navigator.clipboard.writeText(prompt);
-      onNotify("ok", message);
-    } catch {
+    } catch (error) {
       onNotify("warn", "プロンプトをコピーできませんでした");
+      throw error;
     }
   };
 
-  const copyFirstPrompt = () =>
-    copyPrompt(IMPORT_PROMPT_FIRST, "はじめて用のプロンプトをコピーしました");
+  const copyFirstPrompt = () => copyPrompt(IMPORT_PROMPT_FIRST);
 
   const copyRepeatPrompt = () =>
-    copyPrompt(
-      IMPORT_PROMPT_REPEAT.replace("{CURRENT_STATE}", currentState),
-      "今の内容を付けてコピーしました",
-    );
+    copyPrompt(IMPORT_PROMPT_REPEAT.replace("{CURRENT_STATE}", currentState));
 
   const commit = async () => {
     if (!preview || !json || busy) return;
@@ -178,23 +176,19 @@ export function ImportDialog({
           </label>
 
           <div className="importPromptActions">
-            <button
-              className="secondaryButton"
+            <CopyButton
+              className="importPromptCopy"
               disabled={busy}
-              onClick={() => void copyFirstPrompt()}
-              type="button"
-            >
-              はじめて用をコピー
-            </button>
+              label="はじめて用をコピー"
+              onCopy={copyFirstPrompt}
+            />
             <div className="importPromptRepeat">
-              <button
-                className="secondaryButton"
+              <CopyButton
+                className="importPromptCopy"
                 disabled={busy}
-                onClick={() => void copyRepeatPrompt()}
-                type="button"
-              >
-                今の内容を付けてコピー
-              </button>
+                label="今の内容を付けてコピー"
+                onCopy={copyRepeatPrompt}
+              />
               <small className="quietText quietText--small">
                 コピーする文には、今のプロジェクト名・目標・次の一手・やりたいことが入ります。
               </small>

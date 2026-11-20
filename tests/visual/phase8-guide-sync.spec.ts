@@ -7,7 +7,9 @@ test("Guide navigation focuses the requested section and closing restores its op
   await page.setViewportSize({ width: 1440, height: 900 });
   await installTauriMock(page, createPublicFixture(), "main");
   await page.goto("/");
-  const opener = page.getByRole("button", { name: "使い方", exact: true });
+  // P10-02: the Guide opens from Settings, and the Settings row is the opener.
+  await page.getByRole("button", { name: "設定を開く" }).click();
+  const opener = page.getByRole("button", { name: "使い方を開く" });
   await opener.click();
   const dialog = page.getByRole("dialog", { name: "使い方" });
   await expect(dialog).toBeVisible();
@@ -24,4 +26,22 @@ test("Guide navigation focuses the requested section and closing restores its op
   await dialog.getByRole("button", { name: "使い方を閉じる", exact: true }).click();
   await expect(dialog).toHaveCount(0);
   await expect(opener).toBeFocused();
+});
+
+test("P10-17 N6 the guide matches the current timer completion, missing target, and resume note behavior", async ({
+  page,
+}) => {
+  await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await installTauriMock(page, createPublicFixture(), "main");
+  await page.goto("/");
+  await expect(page.locator(".doNowBand")).toBeVisible();
+  await page.keyboard.press("F1");
+  const dialog = page.getByRole("dialog", { name: "使い方" });
+  await expect(dialog).toBeVisible();
+  const bodyText = await dialog.innerText();
+  expect(bodyText).not.toContain("5つから選べます");
+  expect(bodyText).toContain("「続ける(+15分)」か「終わる」を選べます");
+  expect(bodyText).toContain("オレンジ色の「見つかりません」が付きます");
+  expect(bodyText).toContain("やりかけで終えたときは？");
 });

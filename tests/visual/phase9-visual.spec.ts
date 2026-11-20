@@ -18,7 +18,7 @@ const SCREENSHOT_OPTIONS = {
 
 const MAIN_SIZE = { width: 1080, height: 680 };
 const MIN_SIZE = { width: 860, height: 560 };
-const MINI_SIZE = { width: 288, height: 136 };
+const MINI_SIZE = { width: 340, height: 120 };
 
 type QaWindow = Window & {
   __LIFE_LAUNCHER_VISUAL_QA__: { emit: (event: string, payload?: unknown) => void };
@@ -124,6 +124,12 @@ test("P9-00 visual mini-running", async ({ page }) => {
     }),
   );
   await expect(page.getByText("24:55")).toBeVisible();
+  // P10-18e: the clock must use the bundled font, not an OS font that only some PCs have.
+  const clockFamily = await page
+    .locator(".timerPanel--mini .timerClock")
+    .evaluate((element) => getComputedStyle(element).fontFamily);
+  expect(clockFamily.startsWith('"Inter Variable"')).toBe(true);
+  expect(await page.evaluate(() => document.fonts.check('700 30px "Inter Variable"'))).toBe(true);
   await expect(page).toHaveScreenshot("mini-running.png", SCREENSHOT_OPTIONS);
 });
 
@@ -138,6 +144,17 @@ for (const [name, tab] of [
     const records = page.locator(".recordsView");
     await records.getByRole("tab", { name: tab }).click();
     await expect(records.getByRole("tab", { name: tab })).toHaveAttribute("aria-selected", "true");
+    if (name === "records-week") await page.waitForTimeout(800);
     await expect(page).toHaveScreenshot(`${name}.png`, SCREENSHOT_OPTIONS);
   });
 }
+
+test("P9-00 visual records-planning", async ({ page }) => {
+  await open(page, createFullTodayFixture(), { width: 1280, height: 980 });
+  await page.getByRole("button", { name: "記録ビューを開く" }).click();
+  const records = page.locator(".recordsView");
+  await records.getByRole("tab", { name: "今週を決める" }).click();
+  await expect(page.locator(".weeklyPlanning")).toBeVisible();
+  await page.waitForTimeout(800);
+  await expect(page).toHaveScreenshot("records-planning.png", SCREENSHOT_OPTIONS);
+});

@@ -105,7 +105,7 @@ test("P9-10 the day start field shows 時 on the right and keeps its meaning and
 
 // 3. Mini timer setting -----------------------------------------------------------------------
 
-test("P9-10 the mini setting is named 'use the mini timer' and still only gates the Mini button", async ({
+test("P9-10 the mini setting is named 'use the mini timer' and the top bar has no Mini button", async ({
   page,
 }) => {
   await open(page);
@@ -118,12 +118,9 @@ test("P9-10 the mini setting is named 'use the mini timer' and still only gates 
   await expect(settings).toHaveCount(0);
   const saved = await page.evaluate(() => (window as QaWindow).__LIFE_LAUNCHER_VISUAL_QA__.currentConfig());
   expect(saved.settings.miniMode).toBe(false);
-  // Same stored key, same effect: the top menu Mini button is disabled.
-  await expect(page.getByRole("button", { name: "ミニタイマーへ切り替え" })).toBeDisabled();
-  await expect(page.getByRole("button", { name: "ミニタイマーへ切り替え" })).toHaveAttribute(
-    "title",
-    "設定で「ミニタイマーを使う」をオンにしてください",
-  );
+  // P10-02 (D5): the top bar no longer has a Mini button at all; the setting still gates
+  // the remaining mini entries (the timer dock button, the expanded timer and the hotkey).
+  await expect(page.getByRole("button", { name: "ミニタイマーへ切り替え" })).toHaveCount(0);
   await expect(page.getByText("ミニモード")).toHaveCount(0);
 });
 

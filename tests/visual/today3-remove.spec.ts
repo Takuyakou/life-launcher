@@ -64,7 +64,6 @@ test("removes only Today adoption, preserves both sources, candidates and sessio
       .locator(".todayPickerRow", { hasText: fixture.config.projects[0].nextStep!.text })
       .getByRole("button", { name: "＋ 今日へ", exact: true }),
   ).toBeEnabled();
-  await page.getByRole("tab", { name: /やりたいこと/ }).click();
   await expect(
     page
       .locator(".todayPickerRow", { hasText: fixture.config.inbox[0].text })
@@ -83,8 +82,8 @@ test("Today card shows its effective instruction action above remove and opens t
   await expect(instruction).toBeVisible();
   await expect(page.locator(".todayInstructionButton")).toHaveCount(1);
   await expect(card.locator(".todayCardSecondaryActions > button")).toHaveText([
-    "手順書",
-    "今日の3件から外す",
+    /手順書/,
+    "外す",
   ]);
   const instructionBox = await instruction.boundingBox();
   const removeBox = await card.locator(".todayRemoveButton").boundingBox();
@@ -118,7 +117,7 @@ test("active and paused item cannot be removed; another item can", async ({
   await expect(page.getByRole("menuitem", { name: "今日の3件から外す" })).toBeDisabled();
   await page.locator(".todayCompletionSummary").click();
   await expect(page.getByRole("menu")).toHaveCount(0);
-  const todayDisclosure = page.getByRole("button", { name: "今日の3件" });
+  const todayDisclosure = page.getByRole("button", { name: "今日の3件", exact: true });
   await expect(todayDisclosure).toHaveAttribute("aria-expanded", "false");
   await todayDisclosure.click();
   await card.getByRole("button", { name: "このセッションを一時停止", exact: true }).click();
@@ -273,13 +272,14 @@ for (const [width, columns] of [
     expect(
       identityBox && runningBadgeBox && runningBadgeBox.x >= identityBox.x + identityBox.width,
     ).toBe(true);
-    expect((await card.boundingBox())?.height).toBe(idleHeight);
+    // P10-14e: the running badge may add up to 2px, never a visible jump.
+    expect(Math.abs((await card.boundingBox())!.height - idleHeight)).toBeLessThanOrEqual(2);
     await card.getByRole("button", { name: "このセッションを一時停止" }).click();
     await expect(card.locator(".runningBadge")).toHaveText("一時停止");
-    expect((await card.boundingBox())?.height).toBe(idleHeight);
+    expect(Math.abs((await card.boundingBox())!.height - idleHeight)).toBeLessThanOrEqual(2);
     await card.getByRole("button", { name: "このセッションを再開" }).click();
     await expect(card.locator(".runningBadge")).toHaveText("実行中");
-    expect((await card.boundingBox())?.height).toBe(idleHeight);
+    expect(Math.abs((await card.boundingBox())!.height - idleHeight)).toBeLessThanOrEqual(2);
     await expect(remove).toBeDisabled();
     for (const card of await page.locator(".todayRow").all()) {
       const footer = card.locator(".todayCardFooter");

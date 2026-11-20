@@ -38,7 +38,9 @@ test("Main remains interactive while Dictionary is visible", async ({ page }) =>
     ).__LIFE_LAUNCHER_VISUAL_QA__?.emit("dictionary-visibility-changed", true);
   });
   await expect(page.locator(".dictionaryMainScrim")).toHaveCSS("pointer-events", "none");
-  await page.getByRole("button", { name: "使い方" }).click();
+  // P10-02: the Guide opens from Settings now (the top bar button is gone).
+  await page.getByRole("button", { name: "設定を開く" }).click();
+  await page.getByRole("button", { name: "使い方を開く" }).click();
   await expect(page.getByRole("dialog", { name: "使い方" })).toBeVisible();
 });
 
@@ -53,6 +55,10 @@ test("Dictionary button edit keeps its footer visible and matches the Drop Regis
   await page.getByRole("menuitem", { name: "編集" }).click();
 
   const dialog = page.getByRole("dialog", { name: "ボタン編集" });
+  await expect(dialog).toBeVisible();
+  await dialog.evaluate((element) =>
+    Promise.all(element.getAnimations().map((animation) => animation.finished)),
+  );
   const footer = dialog.locator(".buttonEditDialogFooter");
   await expect(dialog).not.toHaveAttribute("aria-modal");
   await expect(dialog.getByRole("button", { name: "既存から選ぶ" })).toBeVisible();

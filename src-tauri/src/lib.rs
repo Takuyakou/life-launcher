@@ -7,9 +7,10 @@ mod state;
 
 use commands::actions::execute_actions;
 use commands::config::{
-    backup_config_before_instruction_change, load_config, load_next_step_freshness,
-    open_config_backups, open_data_folder, restore_backup, save_config, select_backup_folder,
-    select_backup_zip, test_profile_info, undo_today_selection, update_instruction_references,
+    backup_config_before_instruction_change, load_config, load_missing_launch_targets,
+    load_next_step_freshness, open_config_backups, open_data_folder, restore_backup, save_config,
+    select_backup_folder, select_backup_zip, test_profile_info, undo_today_selection,
+    update_instruction_references,
 };
 use commands::drop::{choose_launcher_target, resolve_drop_item};
 use commands::explorer::reveal_launcher_item;
@@ -293,6 +294,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             load_config,
+            load_missing_launch_targets,
             load_next_step_freshness,
             save_config,
             preview_import,

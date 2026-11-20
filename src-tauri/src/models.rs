@@ -109,11 +109,15 @@ pub struct NextStepV3 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub generation_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_wishlist_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub trigger: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub updated_at: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reviewed_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resume_note: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub button_ids: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -219,9 +223,11 @@ impl From<LegacyProjectV2> for ProjectV3 {
         let next_step = has_step.then(|| NextStepV3 {
             text: next_step,
             generation_id: None,
+            source_wishlist_id: None,
             trigger: next_step_trigger,
             updated_at: next_step_updated_at,
             reviewed_at: next_step_reviewed_at,
+            resume_note: None,
             button_ids: execution.button_ids.clone(),
             default_timer_minutes: execution.default_timer_minutes,
             short_timer_minutes: execution.short_timer_minutes,
@@ -383,6 +389,9 @@ pub struct Settings {
     pub instruction_folder_identities: Option<Vec<InstructionFolderIdentity>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub instruction_hotkey: Option<String>,
+    /// P10-11: when the first-run guide was finished (or any save happened).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub first_run_done_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -655,6 +664,13 @@ pub struct NextStepFreshnessResponse {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct MissingLaunchTargetsResponse {
+    pub missing_button_ids: Vec<String>,
+    pub missing_instruction_project_ids: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DoNowCandidate {
     pub project_id: String,
     pub reason: String,
@@ -833,6 +849,7 @@ fn default_settings() -> Settings {
         instruction_folders: None,
         instruction_folder_identities: None,
         instruction_hotkey: None,
+        first_run_done_at: None,
     }
 }
 
@@ -917,9 +934,11 @@ pub fn sample_config() -> AppConfig {
                 next_step: Some(NextStepV3 {
                     text: "資料を1ページ読む".to_string(),
                     generation_id: None,
+                    source_wishlist_id: None,
                     trigger: None,
                     updated_at: None,
                     reviewed_at: None,
+                    resume_note: None,
                     button_ids: vec!["music-web".to_string()],
                     default_timer_minutes: None,
                     short_timer_minutes: None,
@@ -939,9 +958,11 @@ pub fn sample_config() -> AppConfig {
                 next_step: Some(NextStepV3 {
                     text: "サンプルフォルダを開く".to_string(),
                     generation_id: None,
+                    source_wishlist_id: None,
                     trigger: None,
                     updated_at: None,
                     reviewed_at: None,
+                    resume_note: None,
                     button_ids: vec!["documents".to_string()],
                     default_timer_minutes: None,
                     short_timer_minutes: None,

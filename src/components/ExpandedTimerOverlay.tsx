@@ -11,6 +11,12 @@ type ExpandedTimerOverlayProps = {
   onClose: () => void;
   onFinish: () => void;
   onPause: () => void;
+  /** P10-08: "実行中" / "一時停止中" / "計測中". */
+  status: string;
+  /** P10-08: "N分のうち … ・ HH:MM に終わります" (paused keeps the pause note). */
+  planLabel: string;
+  /** P10-08: the mini window entry in the header. */
+  onMini?: () => void;
 };
 
 export function ExpandedTimerOverlay({
@@ -23,6 +29,9 @@ export function ExpandedTimerOverlay({
   onClose,
   onFinish,
   onPause,
+  status,
+  planLabel,
+  onMini,
 }: ExpandedTimerOverlayProps) {
   const dialogRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -74,29 +83,66 @@ export function ExpandedTimerOverlay({
         ref={dialogRef}
         role="dialog"
       >
+        {/* P10-14d (R1): the app mark, the app name and the state badge on the left,
+            戻る and ミニ as text-only buttons on the right. The DOM keeps ミニ before
+            戻る so the existing Tab / Shift+Tab path stays exactly the same; the
+            header container reverses the row so 戻る sits left of ミニ on screen. */}
         <header className="expandedTimerHeader">
-          <span className="expandedTimerEyebrow">Timer</span>
-          <button
-            aria-label="メイン画面に戻る（タイマーは続きます）"
-            className="expandedTimerClose"
-            onClick={onClose}
-            ref={closeRef}
-            title="メイン画面に戻る（タイマーは続きます）"
-            type="button"
-          >
-            <UiIcon name="collapse" size={20} />
-            <span>戻る</span>
-          </button>
+          <div className="expandedTimerBrand">
+            <span className="topBrandIcon" aria-hidden="true">
+              <img alt="" draggable={false} src="/life-launcher-icon.svg" />
+            </span>
+            <span className="expandedTimerBrandName">Life Launcher</span>
+            <span
+              className={
+                complete
+                  ? "timerStateBadge timerStateBadge--complete"
+                  : paused
+                    ? "timerStateBadge timerStateBadge--paused"
+                    : "timerStateBadge timerStateBadge--running"
+              }
+            >
+              {complete ? "時間になりました" : status}
+            </span>
+          </div>
+          <div className="expandedTimerHeaderActions">
+            {onMini && !complete && (
+              <button
+                aria-label="ミニタイマーにする"
+                className="expandedTimerMiniButton"
+                onClick={onMini}
+                title="ミニタイマーにする"
+                type="button"
+              >
+                <UiIcon name="miniMode" size={16} />
+                <span>ミニ</span>
+              </button>
+            )}
+            <button
+              aria-label="メイン画面に戻る（タイマーは続きます）"
+              className="expandedTimerClose"
+              onClick={onClose}
+              ref={closeRef}
+              title="メイン画面に戻る（タイマーは続きます）"
+              type="button"
+            >
+              <UiIcon name="collapse" size={16} />
+              <span>戻る</span>
+            </button>
+          </div>
         </header>
         <div className="expandedTimerBody">
           <div className="expandedTimerIdentity">{identity}</div>
           <p className="expandedTimerTask" title={label}>{label}</p>
-          <span className={complete ? "expandedTimerState expandedTimerState--complete" : "expandedTimerState"}>
-            {complete ? "時間になりました" : paused ? "一時停止中" : "実行中"}
-          </span>
+
           <strong className={paused || complete ? "expandedTimerClock expandedTimerClock--paused" : "expandedTimerClock"}>
             {clock}
           </strong>
+          {/* P10-08 (§7.2): plan line under the clock. */}
+          {!complete && planLabel !== "" && (
+            <p className="expandedTimerPlan">{planLabel}</p>
+          )}
+          {/* D12: there is no "あとで" column here. */}
           {progressPercent !== null && (
             <div aria-hidden="true" className="expandedTimerProgress">
               <span style={{ width: `${progressPercent}%` }} />

@@ -47,6 +47,7 @@ test("P82-03 Measure ticks, pauses, resumes, records and emits elapsed mini stat
   await measure.click();
   const dock = page.locator(".timerDock");
   await expect(dock.locator(".timerClock")).toHaveText("00:00");
+  // G7: measure mode has no progress line in the dock.
   await expect(dock.locator(".timerProgress")).toHaveCount(0);
   await expect(page.locator(".doNowContent .runningBadge")).toHaveText("計測中");
 
@@ -242,6 +243,7 @@ for (const [width, columns] of [
     await expect(measureActions).toBeVisible();
     await expectControlsFit(card);
     const activeHeight = await card.evaluate((node) => (node as HTMLElement).offsetHeight);
-    expect(activeHeight).toBe(inactiveHeight);
+    // P10-14e: the running badge adds at most a hairline to the card height.
+    expect(Math.abs(activeHeight - inactiveHeight)).toBeLessThanOrEqual(2);
   });
 }

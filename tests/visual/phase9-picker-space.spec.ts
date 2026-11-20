@@ -23,13 +23,13 @@ async function openPicker(
   await expect(page.getByRole("dialog", { name: "今日やるものを選ぶ" })).toBeVisible();
 }
 
-const rows = (page: Page) => page.locator(".todayPickerSourcePanel .todayPickerRow");
+const rows = (page: Page) => page.locator(".todayPickerSource .todayPickerRow");
 
 /** Rows that sit completely inside the scrolling candidate panel, without scrolling. */
 const fullyVisibleRows = (page: Page) =>
   page.evaluate(() => {
-    const panel = document.querySelector(".todayPickerSourcePanel")!.getBoundingClientRect();
-    return [...document.querySelectorAll(".todayPickerSourcePanel .todayPickerRow")].filter((row) => {
+    const panel = document.querySelector(".todayPickerSource")!.getBoundingClientRect();
+    return [...document.querySelectorAll(".todayPickerSource .todayPickerRow")].filter((row) => {
       const box = row.getBoundingClientRect();
       return box.top >= panel.top - 0.5 && box.bottom <= panel.bottom + 0.5;
     }).length;
@@ -46,22 +46,34 @@ test("P9-08 at 1080x680 four or more candidate rows are fully visible without sc
   expect(await fullyVisibleRows(page)).toBeGreaterThanOrEqual(4);
 });
 
-test("P9-08 the three slots and the 0 / 3 progress stay, with a lower slot height", async ({ page }) => {
+test("P9-08 the three numbered slots and the 0 / 3 progress stay", async ({ page }) => {
   await openPicker(page, STANDARD);
   const slots = page.locator(".todayPickerSlot--empty");
   await expect(slots).toHaveCount(3);
   for (const index of [0, 1, 2]) {
-    await expect(slots.nth(index)).toHaveText(`空き ${index + 1}`);
-    // The v1.3.4 slot was 90px high; an empty one is at most half of that.
-    expect((await slots.nth(index).boundingBox())!.height).toBeLessThanOrEqual(45);
+    await expect(slots.nth(index).locator(".todayPickerSlotIndex")).toHaveText(String(index + 1));
   }
+  for (let index = 0; index < 3; index += 1) {
+    await expect(slots.nth(index).locator(".todayPickerSlotEmptyLabel")).toHaveText(
+      "空けておいてもかまいません",
+    );
+  }
+  const heights = await slots.evaluateAll((nodes) =>
+    nodes.map((node) => node.getBoundingClientRect().height),
+  );
+  expect(Math.max(...heights) - Math.min(...heights)).toBeLessThanOrEqual(1);
   await expect(page.locator(".todayPickerCounter")).toContainText("0 / 3");
-  await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "0");
-  // The wording is unchanged.
+  const progress = page.getByRole("progressbar");
+  await expect(progress).toHaveCount(1);
+  await expect(progress).toHaveAttribute("aria-valuenow", "0");
+  expect(Math.round((await progress.locator("span").boundingBox())!.width)).toBe(0);
+  // The wording follows the Picker mock (P10-14e, item 4).
   const dialog = page.getByRole("dialog", { name: "今日やるものを選ぶ" });
-  await expect(dialog).toContainText("上の「今日の3件」に、下の候補から追加します。");
-  await expect(dialog).toContainText("今日やると決めたもの。最大3件まで。");
-  await expect(dialog).toContainText("どこから選びますか？");
+  await expect(dialog).toContainText("3件まで。決めたら、あとは始めるだけです");
+  await expect(dialog).toContainText("ドラッグで順番を変えられます");
+  await expect(dialog).toContainText("次の一手");
+  await expect(dialog).toContainText("やりたいこと");
+  await expect(dialog).not.toContainText("どこから選びますか？");
 });
 
 test("P9-08 at 860x560 the last candidate is reachable by scrolling and the footer buttons stay visible", async ({
@@ -69,7 +81,7 @@ test("P9-08 at 860x560 the last candidate is reachable by scrolling and the foot
 }) => {
   await openPicker(page, MINIMUM);
   await snapshot(page, "picker-860x560");
-  const panel = page.locator(".todayPickerSourcePanel");
+  const panel = page.locator(".todayPickerSource");
   await expect
     .poll(() => panel.evaluate((element) => element.scrollHeight > element.clientHeight))
     .toBe(true);
@@ -94,7 +106,7 @@ for (const display of ["standard", "large", "xlarge"] as const) {
     expect(box.y).toBeGreaterThanOrEqual(0);
     expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
     expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
-    const panel = page.locator(".todayPickerSourcePanel");
+    const panel = page.locator(".todayPickerSource");
     await panel.evaluate((element) => element.scrollTo(0, element.scrollHeight));
     await expect(rows(page).last()).toBeInViewport({ ratio: 1 });
     for (const name of ["決定", "キャンセル"]) {

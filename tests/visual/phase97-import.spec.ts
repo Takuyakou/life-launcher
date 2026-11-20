@@ -348,7 +348,11 @@ test("copies the first-time prompt exactly", async ({ page }) => {
   await page.getByRole("button", { name: "次の一手の操作", exact: true }).click();
   await page.getByRole("menuitem", { name: "まとめて取り込む" }).click();
   await page.getByRole("button", { name: "はじめて用をコピー" }).click();
-  await expect(page.getByText("はじめて用のプロンプトをコピーしました")).toBeVisible();
+  // P10-12 (D36): the button swaps its own label instead of showing a success toast.
+  await expect(page.getByRole("button", { name: "コピーしました" })).toBeVisible();
+  await expect(
+    page.locator(".toast", { hasText: "はじめて用のプロンプトをコピーしました" }),
+  ).toHaveCount(0);
   const copied = await page.evaluate(
     () => (window as typeof window & { __copiedPrompt?: string }).__copiedPrompt ?? "",
   );
@@ -378,6 +382,7 @@ test("copies the current app state with the 2nd-and-later prompt", async ({ page
     ),
   ).toBeVisible();
   await page.getByRole("button", { name: "今の内容を付けてコピー" }).click();
+  await expect(page.getByRole("button", { name: "コピーしました" })).toBeVisible();
 
   const copied = await page.evaluate(
     () => (window as typeof window & { __copiedPrompt?: string }).__copiedPrompt ?? "",

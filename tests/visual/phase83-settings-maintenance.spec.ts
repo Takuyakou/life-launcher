@@ -168,6 +168,7 @@ test("P83-01 Maintenance controls follow a complete keyboard tab sequence", asyn
     "手順書ウィンドウ位置をリセット",
     "手順書一覧を再読み込み",
     "ソフトウェアリセット...",
+    "リリースページを開く",
     "保存",
     "キャンセル",
   ];

@@ -432,7 +432,7 @@ test("mini finish opens the topmost dialog and repeated mini commands cannot res
     .getByRole("button", { name: "通常タイマー25分で開始" })
     .click();
   await page.clock.fastForward(180_000);
-  await page.getByRole("button", { name: "使い方", exact: true }).click();
+  await page.getByRole("button", { name: "設定を開く" }).click();
   await page.evaluate(() =>
     (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: Control }).__LIFE_LAUNCHER_VISUAL_QA__.emit(
       "mini-timer-command",

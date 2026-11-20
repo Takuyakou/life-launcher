@@ -27,6 +27,8 @@ async function prepare(page: Page, fixture: VisualQaFixture = createPublicFixtur
   await expect(page.locator(".inboxBand")).toBeVisible();
   const disclosure = page.locator(".inboxBand .disclosure");
   if ((await disclosure.getAttribute("aria-expanded")) !== "true") await disclosure.click();
+  await expect(page.locator(".inboxBody")).toBeVisible();
+  await page.waitForTimeout(350);
 }
 
 async function currentConfig(page: Page): Promise<AppConfig> {
@@ -374,6 +376,8 @@ test("P82-01 group D&D saves only on drop, persists order and rolls back failure
   await page.reload();
   const disclosure = page.locator(".inboxBand .disclosure");
   if ((await disclosure.getAttribute("aria-expanded")) !== "true") await disclosure.click();
+  await expect(page.locator(".inboxBody")).toBeVisible();
+  await page.waitForTimeout(350);
   await expect(
     page.locator('[data-wishlist-group="project:sample-learning"] .inboxRow').first(),
   ).toHaveAttribute("data-inbox-id", "wish-two");
@@ -464,13 +468,17 @@ test("Phase 8.4 NextStep menu offers edit, change and unset without legacy regis
 
   await row.getByRole("button", { name: "サンプル学習の次の一手の操作" }).click();
   const menu = page.getByRole("menu");
-  await expect(menu.getByRole("menuitem")).toHaveText([
-    "プロジェクトを編集",
-    "次の一手を編集",
-    "別の行動に入れ替える",
-    "次の一手を未設定にする",
-    "プロジェクトを削除…",
-  ]);
+  await expect(menu.getByRole("menuitem")).toHaveCount(6);
+  for (const name of [
+    /プロジェクトを編集/,
+    /次の一手を編集/,
+    /別の行動に入れ替える/,
+    /次の一手を未設定にする/,
+    /今日の3件に入れる/,
+    /プロジェクトを削除/,
+  ]) {
+    await expect(menu.getByRole("menuitem", { name })).toBeVisible();
+  }
   await menu.getByRole("menuitem", { name: "次の一手を未設定にする" }).click();
   const dialog = page.getByRole("dialog", { name: "次の一手を未設定にしますか？" });
   await expect(dialog.getByRole("button")).toHaveText([
@@ -556,11 +564,12 @@ test("v1.3 NextStep uses a compact 3x2 grid with aligned actions and six-item ex
 
   const cards = page.locator(".nextStepCard");
   await expect(cards).toHaveCount(6);
+  // P10-05 (§4.4): one Project per row now.
   expect(
     await page
       .locator(".projectGrid")
       .evaluate((node) => getComputedStyle(node).gridTemplateColumns.split(" ").length),
-  ).toBe(3);
+  ).toBe(1);
   const configuredAction = page
     .locator(".nextStepCard", { hasText: template.nextStep!.text })
     .getByRole("button", { name: "編集" });
@@ -577,10 +586,11 @@ test("v1.3 NextStep uses a compact 3x2 grid with aligned actions and six-item ex
   await expect(unsetPlaceholder).toBeVisible();
   const placeholderBox = await unsetPlaceholder.boundingBox();
   expect(placeholderBox).not.toBeNull();
-  expect(placeholderBox!.y + placeholderBox!.height).toBeLessThanOrEqual(unsetBox.y + 1);
-  expect(
-    Math.abs(configuredBox.y + configuredBox.height - (unsetBox.y + unsetBox.height)),
-  ).toBeLessThan(1);
+  // P10-14 (§4.4): the placeholder and the set button sit on one horizontal line.
+  expect(placeholderBox!.x + placeholderBox!.width).toBeLessThanOrEqual(unsetBox.x + 1);
+  // P10-05 (§4.4): rows are one per Project and grow with their own text, so the bottoms no
+  // longer line up across cards. The placeholder still sits inside its own card.
+  expect(configuredBox.height).toBeGreaterThan(0);
   const configuredCard = page.locator(".nextStepCard", { hasText: template.nextStep!.text });
   const cardBox = (await configuredCard.boundingBox())!;
   for (const part of [configuredAction, configuredCard.locator(".nextStepProjectRegion"), configuredCard.locator(".nextStepActionRegion p"), configuredCard.locator(".nextStepRegionMenu")]) {
@@ -597,11 +607,12 @@ test("v1.3 NextStep uses a compact 3x2 grid with aligned actions and six-item ex
   await expect(cards).toHaveCount(6);
 
   await page.setViewportSize({ width: 1000, height: 900 });
+  // P10-05 (§4.4): the Next Step list stays one row per Project at every width.
   expect(
     await page
       .locator(".projectGrid")
       .evaluate((node) => getComputedStyle(node).gridTemplateColumns.split(" ").length),
-  ).toBe(2);
+  ).toBe(1);
   await page.setViewportSize({ width: 620, height: 900 });
   expect(
     await page
@@ -623,7 +634,10 @@ test("v1.3 Wishlist project groups reorder independently and expose Project edit
   await prepare(page, fixture);
   const firstHeader = page.locator(".wishlistGroupHeader", { hasText: first.name });
   const secondHeader = page.locator(".wishlistGroupHeader", { hasText: second.name });
-  await secondHeader.scrollIntoViewIfNeeded();
+  await page.locator(".wishlistGroup").first().scrollIntoViewIfNeeded();
+  await page.mouse.move(700, 500);
+  await page.mouse.wheel(0, 120);
+  await page.waitForTimeout(350);
   const from = (await secondHeader.boundingBox())!;
   const to = (await firstHeader.boundingBox())!;
 

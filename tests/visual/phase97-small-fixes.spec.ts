@@ -328,6 +328,6 @@ test("double-clicking pause/resume keeps the mini window and toggles twice", asy
 
 test("double-clicking an empty part of the mini returns to the main window", async ({ page }) => {
   await openRunningMini(page);
-  await page.locator(".miniTopline > span").first().dblclick();
+  await page.locator(".miniRow--top .miniProjectLine").dblclick();
   await expect.poll(async () => (await miniReturnRequests(page)).length).toBe(1);
 });

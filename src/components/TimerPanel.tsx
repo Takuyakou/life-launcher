@@ -1,4 +1,6 @@
 import type { PointerEventHandler, ReactNode, Ref } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { springSnappy } from "../motion";
 import { UiIcon } from "./UiIcon";
 
 export type TimerPanelVariant = "sidebar" | "mini";
@@ -17,9 +19,14 @@ type TimerPanelProps = {
   onPause: () => void;
   onFinish: () => void;
   onExpand?: () => void;
+  /** P10-07: idle only — the mini-window button in the expand slot. */
+  onMini?: () => void;
+  miniDisabled?: boolean;
   expandButtonRef?: Ref<HTMLButtonElement>;
   waitingContent?: ReactNode;
   identity?: ReactNode;
+  /** P10-14e N1: the Project colour for the mini window's left edge. */
+  projectColorId?: string | null;
   clockAdjustable?: boolean;
   clockDragging?: boolean;
   onClockPointerCancel?: PointerEventHandler<HTMLDivElement>;
@@ -27,6 +34,36 @@ type TimerPanelProps = {
   onClockPointerMove?: PointerEventHandler<HTMLDivElement>;
   onClockPointerUp?: PointerEventHandler<HTMLDivElement>;
 };
+
+/**
+ * P10-07 (D37): the idle minutes roll digit by digit when the value changes.
+ * Only the idle, adjustable clock uses this; running clocks (mm:ss) stay plain text.
+ */
+function RollingClock({ clock }: { clock: string }) {
+  const match = clock.match(/^(\d+)(.*)$/);
+  if (!match) return <>{clock}</>;
+  const [, digits, suffix] = match;
+  return (
+    <span className="timerClockRolling">
+      {Array.from(digits).map((digit, index) => (
+        <span className="timerClockDigit" key={`${index}-${digits.length}`}>
+          <AnimatePresence initial={false} mode="popLayout">
+            <motion.span
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: "-100%", opacity: 0 }}
+              initial={{ y: "100%", opacity: 0 }}
+              key={digit + "-" + index}
+              transition={springSnappy}
+            >
+              {digit}
+            </motion.span>
+          </AnimatePresence>
+        </span>
+      ))}
+      <span className="timerClockUnit">{suffix}</span>
+    </span>
+  );
+}
 
 export function TimerPanel({
   variant,
@@ -41,9 +78,12 @@ export function TimerPanel({
   onPause,
   onFinish,
   onExpand,
+  onMini,
+  miniDisabled = false,
   expandButtonRef,
   waitingContent,
   identity,
+  projectColorId,
   clockAdjustable = false,
   clockDragging = false,
   onClockPointerCancel,
@@ -55,12 +95,135 @@ export function TimerPanel({
   const idleMini = variant === "mini" && !active;
   const stateClass =
     state === "complete"
-      ? "timerStateBadge timerStateBadge--complete"
+      ? "uiPill uiPill--complete timerStateBadge timerStateBadge--complete"
       : state === "paused"
-        ? "timerStateBadge timerStateBadge--paused"
+        ? "uiPill uiPill--paused timerStateBadge timerStateBadge--paused"
         : state === "running"
-          ? "timerStateBadge timerStateBadge--running"
-          : "timerStateBadge";
+          ? "uiPill uiPill--running timerStateBadge timerStateBadge--running"
+          : "uiPill timerStateBadge";
+
+  /**
+   * P10-14e N1 (Mini-C): the mini window is two rows. The top row keeps the Project name
+   * and the clock, the bottom row the action and the icon buttons. The left edge carries
+   * the Project colour (the frame colour when there is no Project or the timer is idle).
+   */
+  if (variant === "mini") {
+    const displayClock = state === "complete" ? "00:00" : clock;
+
+    return (
+      <section
+        className={[
+          "timerPanel timerPanel--mini",
+          active ? "timerPanel--active" : "",
+          idleMini ? "timerPanel--idle" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        data-project-color={projectColorId ?? undefined}
+        onPointerDownCapture={() => window.getSelection()?.removeAllRanges()}
+      >
+        {!idleMini && progressPercent !== null && (
+          <div className="timerProgress timerProgress--mini" aria-hidden="true">
+            <span style={{ width: `${progressPercent ?? 0}%` }} />
+          </div>
+        )}
+        {idleMini ? (
+          <>
+            <div className="miniRow miniRow--top">
+              <span className="miniIdleHead">
+                <span className="miniTimerTitle">タイマー</span>
+                <span className={stateClass}>{status}</span>
+              </span>
+            </div>
+            <div className="miniRow miniRow--bottom">
+              <span className="miniQuietText">開始ボタンから計測できます</span>
+              {onExpand && (
+                <button
+                  aria-label="タイマーを大きく表示"
+                  className="miniIconButton miniIconButton--expand"
+                  onClick={onExpand}
+                  title="タイマーを大きく表示"
+                  type="button"
+                >
+                  <UiIcon name="maximize" size={16} />
+                </button>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="miniRow miniRow--top">
+              <span className="miniProjectLine">
+                {identity ?? <span className="miniProjectLineFallback">{label}</span>}
+              </span>
+              <div
+                aria-label={clockAdjustable ? clock : undefined}
+                className={[
+                  "timerClock",
+                  paused ? "timerClock--paused" : "",
+                  clockAdjustable ? "timerClock--adjustable" : "",
+                  clockDragging ? "timerClock--dragging" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                onPointerCancel={onClockPointerCancel}
+                onPointerDown={onClockPointerDown}
+                onPointerMove={onClockPointerMove}
+                onPointerUp={onClockPointerUp}
+                title={clockAdjustable ? "上下にドラッグして分数を変更" : undefined}
+              >
+                {clockAdjustable ? (
+                  <span aria-hidden="true">
+                    <RollingClock clock={displayClock} />
+                  </span>
+                ) : (
+                  displayClock
+                )}
+              </div>
+              <span className={`${stateClass} visuallyHidden`}>{status}</span>
+            </div>
+            <div className="miniRow miniRow--bottom">
+              <strong className="timerActionText" title={actionText ?? label}>
+                {actionText ?? label}
+              </strong>
+              <div className="timerControls">
+                <button
+                  aria-label={paused ? "再開" : "一時停止"}
+                  className="miniIconButton"
+                  onClick={onPause}
+                  title={paused ? "再開" : "一時停止"}
+                  type="button"
+                >
+                  <UiIcon name={paused ? "play" : "pause"} size={16} />
+                </button>
+                <button
+                  aria-label="終了"
+                  className="miniIconButton miniIconButton--finish"
+                  onClick={onFinish}
+                  title="終了"
+                  type="button"
+                >
+                  <UiIcon name="stop" size={16} />
+                </button>
+                {onExpand && (
+                  <button
+                    aria-label="タイマーを大きく表示"
+                    className="miniIconButton"
+                    onClick={onExpand}
+                    ref={expandButtonRef}
+                    title="タイマーを大きく表示"
+                    type="button"
+                  >
+                    <UiIcon name="maximize" size={16} />
+                  </button>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+      </section>
+    );
+  }
 
   return (
     <section
@@ -85,6 +248,33 @@ export function TimerPanel({
         {variant === "sidebar" ? (
           <div className="timerMetaTop">
             <span>Timer</span>
+            {active && onExpand ? (
+              <button
+                aria-label="タイマーを大きく表示"
+                className="timerExpandButton"
+                onClick={onExpand}
+                ref={expandButtonRef}
+                title="タイマーを大きく表示"
+                type="button"
+              >
+                <UiIcon name="maximize" size={16} />
+              </button>
+            ) : !active && onMini ? (
+              <button
+                aria-label="ミニタイマーにする"
+                className="timerExpandButton"
+                disabled={miniDisabled}
+                onClick={onMini}
+                title="ミニタイマーにする"
+                type="button"
+              >
+                <UiIcon name="miniMode" size={16} />
+              </button>
+            ) : null}
+          </div>
+        ) : (
+          <>
+            <span>タイマー</span>
             {active && onExpand && (
               <button
                 aria-label="タイマーを大きく表示"
@@ -97,9 +287,7 @@ export function TimerPanel({
                 <UiIcon name="maximize" size={16} />
               </button>
             )}
-          </div>
-        ) : (
-          <span>タイマー</span>
+          </>
         )}
         {identity}
         {!idleMini && (actionText ?? (identity ? undefined : label)) !== undefined && (
@@ -126,13 +314,20 @@ export function TimerPanel({
           onPointerMove={onClockPointerMove}
           onPointerUp={onClockPointerUp}
           title={clockAdjustable ? "上下にドラッグして分数を変更" : undefined}
+          aria-label={clockAdjustable ? clock : undefined}
         >
-          {clock}
+          {clockAdjustable ? (
+            <span aria-hidden="true">
+              <RollingClock clock={clock} />
+            </span>
+          ) : (
+            clock
+          )}
         </div>
       )}
-      {!idleMini && progressPercent !== null && (
+      {!idleMini && variant === "sidebar" && progressPercent !== null && (
         <div className="timerProgress" aria-hidden="true">
-          <span style={{ width: `${progressPercent}%` }} />
+          <span style={{ width: `${progressPercent ?? 0}%` }} />
         </div>
       )}
       {active ? (

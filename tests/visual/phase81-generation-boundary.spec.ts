@@ -187,6 +187,11 @@ test("generation boundary: adoption copies the marker and editing preserves it",
     .locator(".todayPickerRow", { hasText: project.nextStep!.text })
     .getByRole("button", { name: "＋ 今日へ", exact: true })
     .click();
+  await expect(
+    page.locator(".todayPickerSlot--selected", { hasText: project.nextStep!.text }),
+  ).toHaveCount(1);
+  expect((await currentConfig(page)).today.items).toHaveLength(0);
+  await page.getByRole("button", { name: "決定", exact: true }).click();
 
   let saved = await currentConfig(page);
   expect(saved.today.items).toHaveLength(1);
@@ -194,7 +199,6 @@ test("generation boundary: adoption copies the marker and editing preserves it",
     sourceKey: PROJECT_KEY,
     sourceGenerationId: "gen-a",
   });
-  await page.getByRole("button", { name: "決定", exact: true }).click();
 
   await page.locator(".todayRow").first().click({ button: "right" });
   await page.getByRole("menuitem", { name: "編集", exact: true }).click();

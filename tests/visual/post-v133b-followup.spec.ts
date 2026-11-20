@@ -22,7 +22,7 @@ async function currentConfig(page: Page) {
 
 test("Builder preserves each source and user label across mode round-trips", async ({ page }) => {
   await prepare(page);
-  await page.locator(".brandBlock").click({ button: "right" });
+  await page.locator(".topBrand").click({ button: "right" });
   await page.getByRole("menuitem", { name: "ボタンを追加" }).click();
   const dialog = page.getByRole("dialog", { name: "Button Builder" });
   const before = await currentConfig(page);
@@ -52,7 +52,7 @@ test("Builder preserves each source and user label across mode round-trips", asy
   await dialog.getByRole("button", { name: "キャンセル" }).click();
   await expect(dialog).toHaveCount(0);
   expect(await currentConfig(page)).toEqual(before);
-  await page.locator(".brandBlock").click({ button: "right" });
+  await page.locator(".topBrand").click({ button: "right" });
   await page.getByRole("menuitem", { name: "ボタンを追加" }).click();
   await expect(page.getByRole("dialog", { name: "Button Builder" }).getByRole("textbox", { name: "ファイル", exact: true })).toHaveValue("");
   expect((await currentConfig(page)).buttons.some((button) => button.label === "自分で決めた名前")).toBe(false);
@@ -67,6 +67,8 @@ test("Wishlist self-drop does not duplicate or save, including after repeated dr
   await prepare(page, fixture);
   const disclosure = page.locator(".inboxBand .disclosure");
   if ((await disclosure.getAttribute("aria-expanded")) !== "true") await disclosure.click();
+  await expect(page.locator(".inboxBody")).toBeVisible();
+  await page.waitForTimeout(350);
   const source = page.locator('[data-inbox-id="same-wish"]');
   const target = page.locator(`.nextStepCard[data-project-id="${project.id}"]`);
   const saveCount = () => page.evaluate(() =>
@@ -104,6 +106,8 @@ test("Wishlist replacement uses identity, not display text", async ({ page }) =>
   await prepare(page, fixture);
   const disclosure = page.locator(".inboxBand .disclosure");
   if ((await disclosure.getAttribute("aria-expanded")) !== "true") await disclosure.click();
+  await expect(page.locator(".inboxBody")).toBeVisible();
+  await page.waitForTimeout(350);
   const source = page.locator('[data-inbox-id="new-wish"]');
   const target = page.locator(`.nextStepCard[data-project-id="${project.id}"]`);
   await source.scrollIntoViewIfNeeded();
@@ -124,12 +128,11 @@ test("Today total, execution list and selection roll over together at local midn
   await page.clock.install({ time: new Date("2026-08-13T23:59:59+09:00").getTime() });
   await installTauriMock(page, fixture, "main", null, { rolloverOnLoadConfig: true });
   await page.goto("/");
-  await expect(page.locator(".topTitle")).toContainText("今日 25分");
+  await expect(page.locator(".timerTodaySummary")).toHaveCount(0);
   await page.locator(".todayActivityBand .disclosure").click();
   await expect(page.locator(".todayActivityRow")).toHaveCount(1);
   await page.clock.runFor(2_000);
-  await expect(page.locator(".topTitle")).toContainText("今日 0分");
-  await expect(page.locator(".topDateLabel")).toContainText("8月14日");
+  await expect(page.locator(".topTitle")).toContainText("8月14日");
   await expect(page.locator(".todayActivityRow")).toHaveCount(0);
   await expect(page.locator(".todayActivityBody")).toContainText("今日はまだ実行記録がありません");
   const saved = await currentConfig(page);
@@ -143,11 +146,10 @@ test("Today refreshes on focus after a suspended configured-day boundary", async
   await page.clock.install({ time: new Date("2026-08-14T03:59:59+09:00").getTime() });
   await installTauriMock(page, fixture, "main", null, { rolloverOnLoadConfig: true });
   await page.goto("/");
-  await expect(page.locator(".topTitle")).toContainText("今日 25分");
+  await expect(page.locator(".timerTodaySummary")).toHaveCount(0);
   await page.clock.setFixedTime(new Date("2026-08-14T04:15:00+09:00"));
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-  await expect(page.locator(".topDateLabel")).toContainText("8月14日");
-  await expect(page.locator(".topTitle")).toContainText("今日 0分");
+  await expect(page.locator(".topTitle")).toContainText("8月14日");
   expect((await currentConfig(page)).today.date).toBe("2026-08-14");
 });
 
@@ -214,7 +216,8 @@ test("mouse-free arrows traverse Sidebar, Dictionary, Main, toolbar, Settings an
   await page.keyboard.press("ArrowRight");
   expect(await page.evaluate(() => Boolean(document.activeElement?.closest(".mainScrollArea")))).toBe(true);
   await page.keyboard.press("ArrowUp");
-  await expect(page.locator(".viewToggleButton").first()).toBeFocused();
+  // P10-03: the search field is the first stop in the top bar now.
+  await expect(page.locator(".topSearchButton")).toBeFocused();
   const settingsButton = page.getByRole("button", { name: "設定を開く" });
   for (let index = 0; index < 10; index += 1) {
     if (await settingsButton.evaluate((element) => document.activeElement === element)) break;

@@ -1,5 +1,6 @@
 import type { KeyboardEvent } from "react";
 import { UiIcon } from "./UiIcon";
+import { CopyButton } from "./CopyButton";
 import { useEffect, useRef, useState } from "react";
 import {
   HELP_GUIDE_LEAD,
@@ -19,12 +20,10 @@ function prefersReducedMotion() {
 
 function HelpBlock({
   block,
-  copyingId,
   onCopy,
 }: {
   block: HelpGuideBlock;
-  copyingId: string | null;
-  onCopy: (id: string, content: string) => void;
+  onCopy: (content: string) => Promise<void>;
 }) {
   if (block.type === "paragraph") {
     return <p>{block.text}</p>;
@@ -63,6 +62,23 @@ function HelpBlock({
     );
   }
 
+  if (block.type === "keys") {
+    return (
+      <table className="helpGuideKeys">
+        <tbody>
+          {block.rows.map((row) => (
+            <tr key={row.keys}>
+              <th scope="row">
+                <kbd>{row.keys}</kbd>
+              </th>
+              <td>{row.action}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  }
+
   if (block.type === "note") {
     return <aside className={`helpGuideNote helpGuideNote--${block.tone}`}>{block.text}</aside>;
   }
@@ -73,15 +89,7 @@ function HelpBlock({
         <figcaption>
           <span>{block.label}</span>
           {block.copyable && (
-            <button
-              aria-label={`${block.label}をコピー`}
-              className="secondaryButton helpGuideCopyButton"
-              disabled={copyingId !== null}
-              onClick={() => onCopy(block.id, block.content)}
-              type="button"
-            >
-              {copyingId === block.id ? "コピー中" : "コピー"}
-            </button>
+            <CopyButton label="コピー" onCopy={() => onCopy(block.content)} />
           )}
         </figcaption>
         <pre tabIndex={0}>
@@ -129,7 +137,6 @@ export function HelpGuideDialog({ onClose, onCopyResult }: HelpGuideDialogProps)
     document.activeElement instanceof HTMLElement ? document.activeElement : null,
   );
   const [activeSectionId, setActiveSectionId] = useState<HelpSectionId>(HELP_GUIDE_SECTIONS[0].id);
-  const [copyingId, setCopyingId] = useState<string | null>(null);
   const [tocOpen, setTocOpen] = useState(() => !window.matchMedia("(max-width: 760px)").matches);
 
   useEffect(() => {
@@ -218,17 +225,13 @@ export function HelpGuideDialog({ onClose, onCopyResult }: HelpGuideDialogProps)
     if (window.matchMedia("(max-width: 760px)").matches) setTocOpen(false);
   };
 
-  const copyBlock = async (id: string, content: string) => {
-    if (copyingId !== null) return;
-    setCopyingId(id);
+  const copyBlock = async (content: string) => {
     try {
       if (!navigator.clipboard?.writeText) throw new Error("clipboard API is not available");
       await navigator.clipboard.writeText(content);
-      onCopyResult(true);
-    } catch {
+    } catch (error) {
       onCopyResult(false);
-    } finally {
-      setCopyingId(null);
+      throw error;
     }
   };
 
@@ -331,7 +334,6 @@ export function HelpGuideDialog({ onClose, onCopyResult }: HelpGuideDialogProps)
                 {section.blocks.map((block, blockIndex) => (
                   <HelpBlock
                     block={block}
-                    copyingId={copyingId}
                     key={`${section.id}-${block.type}-${blockIndex}`}
                     onCopy={copyBlock}
                   />

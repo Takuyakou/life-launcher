@@ -55,7 +55,7 @@ test("P9-05 a today3 candidate says it is in Today3, and the older reasons keep 
 
   // "Other step" keeps its own sentence.
   await page.locator(".doNowAlternateButton").click();
-  await expect(reason(page)).toHaveText("今の状況から選んだ別の候補です");
+  await expect(reason(page)).toHaveText("「他の一手」で選んだ候補です");
 });
 
 test("P9-05 the restart guidance after 14 idle days outranks the Today3 reason", async ({
@@ -86,8 +86,12 @@ test("P9-05 every Today3 change asks for the candidates again", async ({ page })
   await refreshed(async () => {
     await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
     const picker = page.getByRole("dialog", { name: "今日やるものを選ぶ" });
-    // The third item closes the picker by itself.
-    await picker.getByRole("button", { name: "＋ 今日へ" }).first().click();
+    await picker
+      .locator('[data-today-picker-section="next-step"] .todayPickerRow')
+      .first()
+      .getByRole("button", { name: "＋ 今日へ" })
+      .click();
+    await picker.getByRole("button", { name: "決定" }).click();
     await expect(picker).toHaveCount(0);
   });
   // complete

@@ -243,7 +243,7 @@ test("Phase 8.1 resolves pending legacy execution settings only after a successf
   dialog = await openNextStepSetter(page, "legacy-inherit");
   await dialog.getByRole("tab", { name: "＋ 新しく入力" }).click();
   await dialog.getByRole("button", { name: "引き継ぐ" }).click();
-  await expect(dialog.getByLabel("選択済みの開始環境")).toContainText("サンプルエディター");
+  await expect(dialog.locator(".nextStepOpenChip", { hasText: "サンプルエディター" })).toHaveCount(1);
   await expect(dialog.getByRole("spinbutton", { name: "通常タイマー分数" })).toHaveValue("41");
   await expect(dialog.getByRole("spinbutton", { name: "短時間タイマー分数" })).toHaveValue("8");
   await dialog.getByRole("textbox", { name: "行動" }).fill("旧設定から始める");
@@ -301,10 +301,10 @@ test("Phase 8.1 Wishlist promotion starts from a reset execution package", async
     "aria-checked",
     "true",
   );
-  await expect(dialog.getByText("開始環境は選択されていません", { exact: true })).toBeVisible();
+  await expect(dialog.locator(".nextStepOpenChip")).toHaveCount(0);
   await expect(dialog.getByRole("spinbutton", { name: "通常タイマー分数" })).toHaveValue("");
   await expect(dialog.getByRole("spinbutton", { name: "短時間タイマー分数" })).toHaveValue("");
-  await expect(dialog.locator(".instructionPickerSelection")).toContainText("選択されていません");
+  await expect(dialog.getByRole("checkbox", { name: "開始時に手順書を開く" })).toBeDisabled();
   await dialog.getByRole("button", { name: "やりたいことへ戻す" }).click();
   await dialog.getByRole("button", { name: "保存", exact: true }).click();
 

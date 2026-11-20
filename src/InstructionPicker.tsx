@@ -10,14 +10,33 @@ type Props = {
   onChange: (path: string) => void;
   onRetry: () => void;
   selectedPath: string;
+  /** "chips" hides the built-in header/selection/opener; the caller draws the chips and opens the dialog. */
+  chrome?: "full" | "chips";
+  /** Controlled dialog visibility (used with chrome="chips"). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
-export function InstructionPicker({ choices, error, loading, onChange, onRetry, selectedPath }: Props) {
-  const [open, setOpen] = useState(false);
+export function InstructionPicker({
+  choices,
+  error,
+  loading,
+  onChange,
+  onRetry,
+  selectedPath,
+  chrome = "full",
+  open: controlledOpen,
+  onOpenChange,
+}: Props) {
+  const [localOpen, setLocalOpen] = useState(false);
+  const dialogOpen = controlledOpen ?? localOpen;
   const [draftPath, setDraftPath] = useState("");
   const [query, setQuery] = useState("");
   const openerRef = useRef<HTMLButtonElement | null>(null);
   const searchRef = useRef<HTMLInputElement | null>(null);
+  const selectedPathRef = useRef(selectedPath);
+  selectedPathRef.current = selectedPath;
+  const wasDialogOpenRef = useRef(false);
   const selectedChoice = choices.find((choice) => choice.path === selectedPath);
   const rows = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
@@ -29,49 +48,66 @@ export function InstructionPicker({ choices, error, loading, onChange, onRetry, 
       : available;
   }, [choices, query, selectedPath]);
 
+  const setDialogOpen = (next: boolean) => {
+    if (controlledOpen === undefined) setLocalOpen(next);
+    onOpenChange?.(next);
+  };
+
   const close = () => {
-    setOpen(false);
+    setDialogOpen(false);
     window.requestAnimationFrame(() => openerRef.current?.focus());
   };
   const show = () => {
-    setDraftPath(selectedPath);
-    setQuery("");
-    setOpen(true);
+    setDialogOpen(true);
   };
 
+  // Reset the draft whenever the dialog opens (also for the controlled chips variant).
   useEffect(() => {
-    if (open) window.requestAnimationFrame(() => searchRef.current?.focus());
-  }, [open]);
+    if (dialogOpen === wasDialogOpenRef.current) return;
+    wasDialogOpenRef.current = dialogOpen;
+    if (!dialogOpen) return;
+    setDraftPath(selectedPathRef.current);
+    setQuery("");
+    window.requestAnimationFrame(() => searchRef.current?.focus());
+  }, [dialogOpen]);
 
   return (
-    <div className="instructionPicker">
-      <div className="instructionPickerHeader">
-        <div>
-          <strong>手順書</strong>
-          <span>開始時に確認したいMarkdown・TXT・HTMLなど</span>
-        </div>
-        <button className="secondaryButton instructionPickerOpen" disabled={loading} onClick={show} ref={openerRef} type="button">
-          {loading ? "読み込み中…" : "手順書を選ぶ"}
-        </button>
-      </div>
-      <div className="instructionPickerSelection">
-        <UiIcon name="fileText" size={16} />
-        <span title={selectedChoice?.label ?? selectedPath}>
-          {selectedPath ? (selectedChoice?.label ?? "現在の設定") : "手順書は選択されていません"}
-        </span>
-        {selectedPath ? (
-          <button aria-label="手順書の選択を解除" onClick={() => onChange("")} type="button">
-            <UiIcon name="close" size={16} />
-          </button>
-        ) : null}
-      </div>
-      {error ? (
-        <div className="projectInstructionLoadError" role="status">
-          <small>一覧を読み込めません: {error}</small>
-          <button onClick={onRetry} type="button">再読み込み</button>
-        </div>
+    <div
+      className={
+        chrome === "chips" ? "instructionPicker instructionPicker--chips" : "instructionPicker"
+      }
+    >
+      {chrome === "full" ? (
+        <>
+          <div className="instructionPickerHeader">
+            <div>
+              <strong>手順書</strong>
+              <span>開始時に確認したいMarkdown・TXT・HTMLなど</span>
+            </div>
+            <button className="secondaryButton instructionPickerOpen" disabled={loading} onClick={show} ref={openerRef} type="button">
+              {loading ? "読み込み中…" : "手順書を選ぶ"}
+            </button>
+          </div>
+          <div className="instructionPickerSelection">
+            <UiIcon name="fileText" size={16} />
+            <span title={selectedChoice?.label ?? selectedPath}>
+              {selectedPath ? (selectedChoice?.label ?? "現在の設定") : "手順書は選択されていません"}
+            </span>
+            {selectedPath ? (
+              <button aria-label="手順書の選択を解除" onClick={() => onChange("")} type="button">
+                <UiIcon name="close" size={16} />
+              </button>
+            ) : null}
+          </div>
+          {error ? (
+            <div className="projectInstructionLoadError" role="status">
+              <small>一覧を読み込めません: {error}</small>
+              <button onClick={onRetry} type="button">再読み込み</button>
+            </div>
+          ) : null}
+        </>
       ) : null}
-      {open ? (
+      {dialogOpen ? (
         <div className="modalBackdrop startEnvironmentBackdrop" role="presentation">
           <section
             aria-label="手順書を選ぶ"

@@ -63,9 +63,9 @@ test("P84 Wishlist promote action is status-aware, stable, keyboard reachable, a
 
   const plain = page.locator('[data-inbox-id="sample-later"]');
   const selected = page.locator('[data-inbox-id="sample-weekend"]');
-  const plainAction = plain.getByRole("button", { name: "あとで確認するサンプルの次の一手を設定" });
+  const plainAction = plain.getByRole("button", { name: "あとで確認するサンプルの次の一手にする" });
   const selectedAction = selected.getByRole("button", {
-    name: "週末に試すアイデアの次の一手を設定",
+    name: "週末に試すアイデアの次の一手にする",
   });
   const plainMenu = plain.locator(".sourceRowMenu");
   const selectedMenu = selected.locator(".sourceRowMenu");
@@ -88,8 +88,11 @@ test("P84 Wishlist promote action is status-aware, stable, keyboard reachable, a
 
   const plainBefore = await style(plain);
   const plainMenuBefore = await style(plainMenu);
-  await plain.hover();
-  await page.waitForTimeout(140);
+  await plain.evaluate((node) => node.scrollIntoView({ block: "center" }));
+  await page.waitForTimeout(200);
+  const plainBox = (await plain.boundingBox())!;
+  await page.mouse.move(plainBox.x + 24, plainBox.y + plainBox.height / 2);
+  await page.waitForTimeout(160);
   await expect(plainAction).toHaveCSS("opacity", "1");
 
   const plainAfter = await style(plain);
@@ -117,8 +120,7 @@ test("P84 Wishlist promote action is status-aware, stable, keyboard reachable, a
   expect((await currentConfig(page)).today).toEqual(originalToday);
   await dialog.getByRole("button", { name: "キャンセル", exact: true }).click();
 
-  await page.setViewportSize({ width: 520, height: 900 });
-  await expect(selected.locator(".wishlistNextStepSlot")).toHaveCSS("display", "none");
+  await page.setViewportSize({ width: 860, height: 900 });
   await expect(selectedNextStepStatus).toBeVisible();
   await expect(selectedStatus).toBeVisible();
   await expect(selectedMenu).toBeVisible();

@@ -215,7 +215,7 @@ for (const size of ["large", "xlarge"] as const) {
     "P89 " + size + " Main toolbar matches the content width and menu density",
     async ({ page }) => {
       await prepare(page, 1920, size);
-      const toolbar = page.locator(".mainPanel > .topBar");
+      const toolbar = page.locator(".topBar");
       const toolbarFont = await toolbar.evaluate((element) => getComputedStyle(element).fontSize);
       const settings = await openSettings(page);
       await settings.getByRole("radio", { name: size === "large" ? "特大" : "大", exact: true }).check();
@@ -223,16 +223,25 @@ for (const size of ["large", "xlarge"] as const) {
       await page.getByRole("dialog", { name: "入力内容を破棄して閉じますか？" })
         .getByRole("button", { name: /破棄/ }).click();
       await expect(page.locator(".mainScrollContent")).toHaveAttribute("data-main-display-size", size);
-      const button = toolbar.locator(".viewToggleButton").first();
+      // P10-02: the first toggle is the icon-only auto-start button; measure a labelled one.
+      const button = toolbar.locator(".viewToggleButton:has(.viewToggleButtonLabel)").first();
       const mainButtonBox = (await button.boundingBox())!;
       const mainLabelSize = await button.locator(".viewToggleButtonLabel")
         .evaluate((element) => parseFloat(getComputedStyle(element).fontSize));
       const topBox = await toolbar.boundingBox();
+      const panelBox = await page.locator(".mainPanel").boundingBox();
       const contentBox = await page.locator(".mainScrollContent").boundingBox();
       expect(topBox).not.toBeNull();
+      expect(panelBox).not.toBeNull();
       expect(contentBox).not.toBeNull();
-      expect(Math.abs(topBox!.x - contentBox!.x)).toBeLessThan(1);
-      expect(Math.abs(topBox!.width - contentBox!.width)).toBeLessThan(1);
+      // P10-14e (10): the top menu spans the whole window; the content stays capped
+      // at 1200px and centred inside the main panel.
+      expect(topBox!.x).toBeCloseTo(0, 0);
+      expect(topBox!.width).toBeCloseTo(page.viewportSize()!.width, 0);
+      const panelCenter = panelBox!.x + panelBox!.width / 2;
+      const contentCenter = contentBox!.x + contentBox!.width / 2;
+      expect(Math.abs(contentCenter - panelCenter)).toBeLessThan(1);
+      expect(contentBox!.width).toBeLessThanOrEqual(1200);
 
       await page.getByRole("button", { name: "記録ビューを開く" }).click();
       await expect(page.locator(".mainScrollContent")).not.toHaveAttribute("data-main-display-size", /large|xlarge/);

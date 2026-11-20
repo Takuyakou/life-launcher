@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createFullTodayFixture, createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 // P96-01: 一体型タイトルバー(窓のボタン・ドラッグ領域・ダイアログの帯)。
 
@@ -41,7 +42,7 @@ async function prepare(
   await installTauriMock(page, fixture, label);
   await page.goto("/");
   await expect(page.locator(".focusBand")).toBeVisible();
-  await page.evaluate(async () => document.fonts.ready);
+  await waitForBundledFonts(page);
 }
 
 async function prepareViewer(page: Page, width = 1000) {
@@ -57,7 +58,7 @@ async function prepareViewer(page: Page, width = 1000) {
     "/?view=instruction&path=" + encodeURIComponent(VIEWER_DOCUMENT_PATH),
   );
   await expect(page.getByRole("heading", { name: "ようこそ" })).toBeVisible();
-  await page.evaluate(async () => document.fonts.ready);
+  await waitForBundledFonts(page);
 }
 
 type LayoutProbe = {
@@ -81,10 +82,10 @@ type LayoutProbe = {
 
 async function probeLayout(page: Page): Promise<LayoutProbe> {
   return page.evaluate(() => {
-    const topBar = document.querySelector<HTMLElement>(".mainPanel > .topBar");
+    const topBar = document.querySelector<HTMLElement>(".topBar");
     const pills = topBar?.querySelector<HTMLElement>(".topPills");
-    const title = topBar?.querySelector<HTMLElement>(".topTitle");
-    const summary = topBar?.querySelector<HTMLElement>(".topSummary");
+    const title = document.querySelector<HTMLElement>(".topTitle");
+    const summary = topBar?.querySelector<HTMLElement>(".topBrand");
     const dock = document.querySelector<HTMLElement>(".windowControls");
     if (!topBar || !pills || !title || !summary || !dock) {
       throw new Error("header parts are missing");
@@ -134,12 +135,14 @@ async function probeLayout(page: Page): Promise<LayoutProbe> {
   });
 }
 
-// 実測で決まる段階(0=すべて出す / 1=自動起動・ミニ・使い方・設定を隠す / 2=すべて隠す)。
+// 実測で決まる段階(0=すべて出す / 1=手順書・設定を隠す / 2=すべて隠す)。
 // 段階はメイン画面の見出し(「今日 N分」＋日付)の幅で決めるので、記録画面でも同じ値になる
 // (オーナー決定 2026-11-06)。1200px では標準・大・特大のすべてで6つとも出る。
+// P10-02: the top bar lost the mini and guide buttons, so the three remaining labels
+// (records / instructions / settings) fit at every width in the matrix.
 const EXPECTED_LABEL_LEVEL: Record<number, readonly [number, number, number]> = {
   860: [2, 2, 2],
-  1080: [0, 1, 1],
+  1080: [0, 0, 0],
   1200: [0, 0, 0],
   1440: [0, 0, 0],
   1920: [0, 0, 0],
@@ -182,16 +185,16 @@ test.describe("P96-01 header layout budget (30 combos)", () => {
             .poll(
               async () =>
                 Number(
-                  (await page.locator(".mainPanel > .topBar").getAttribute("data-top-menu-labels")) ??
+                  (await page.locator(".topBar").getAttribute("data-top-menu-labels")) ??
                     "0",
                 ),
               { message: `level (${label})` },
             )
             .toBe(EXPECTED_LABEL_LEVEL[width][index]);
           const probe = await probeLayout(page);
-          // 隠す段階(0=すべて出す / 1=自動起動・ミニ・使い方・設定を隠す / 2=すべて隠す)と、
-          // 実際に出ている文字の数が合っていること。
-          const expectedVisible = probe.labelLevel === 0 ? 6 : probe.labelLevel === 1 ? 2 : 0;
+          // 隠す段階(0=すべて出す / 1=手順書・設定を隠す / 2=すべて隠す)と、
+          // 実際に出ている文字の数が合っていること(文字を持つボタンは 3 つ)。
+          const expectedVisible = probe.labelLevel === 0 ? 3 : probe.labelLevel === 1 ? 1 : 0;
           expect(probe.visibleLabels, `visible label count (${label})`).toBe(expectedVisible);
           expect(probe.clippedLabels, `labels stay inside their buttons (${label})`).toEqual([]);
           expect(
@@ -216,17 +219,22 @@ test.describe("P96-01 header layout budget (30 combos)", () => {
             Math.abs(probe.dockCenterY - probe.rowCenterY),
             `dock is vertically centered with the row (${label})`,
           ).toBeLessThanOrEqual(2);
-          // 重なる幅(窓の右端から約1470px以内)では右に空きを取り、
-          // 重ならない幅(1920 など中央寄せが効く幅)では空きを取らない。
+          // F5: the window controls' room is split into the symmetric 16px bar
+          // padding and the 128px right margin of the menu.
           const reserved = await page.evaluate(() => {
-            const topBar = document.querySelector<HTMLElement>(".mainPanel > .topBar")!;
-            return Number.parseFloat(getComputedStyle(topBar).paddingRight);
+            const topBar = document.querySelector<HTMLElement>(".topBar")!;
+            const pills = document.querySelector<HTMLElement>(".topPills")!;
+            return (
+              Number.parseFloat(getComputedStyle(topBar).paddingRight) +
+              Number.parseFloat(getComputedStyle(pills).marginRight)
+            );
           });
-          if (width >= 1920) {
-            expect(reserved, `no reservation when centered (${label})`).toBe(0);
-          } else if (view === "main") {
-            expect(reserved, `reservation while overlapping (${label})`).toBeGreaterThan(100);
-          }
+          expect(reserved, `reservation for the window controls (${label})`).toBeGreaterThanOrEqual(
+            100,
+          );
+          expect(reserved, `reservation for the window controls (${label})`).toBeLessThanOrEqual(
+            160,
+          );
         }
       }
     });
@@ -250,7 +258,7 @@ test.describe("P96-01 top menu labels follow what fits", () => {
         const openRecords = page.getByRole("button", { name: "記録ビューを開く" });
         const readLevel = () =>
           page
-            .locator(".mainPanel > .topBar")
+            .locator(".topBar")
             .getAttribute("data-top-menu-labels")
             .then((value) => Number(value ?? "0"));
         await expect.poll(readLevel, { message: `main level at w=${width} ${size}` }).toBe(
@@ -258,7 +266,7 @@ test.describe("P96-01 top menu labels follow what fits", () => {
         );
         const mainLevel = await readLevel();
         const labelsInMain = await page
-          .locator(".mainPanel > .topBar .viewToggleButtonLabel")
+          .locator(".topBar .viewToggleButtonLabel")
           .evaluateAll((elements) =>
             elements.map((element) => getComputedStyle(element).display !== "none"),
           );
@@ -268,13 +276,13 @@ test.describe("P96-01 top menu labels follow what fits", () => {
           mainLevel,
         );
         const labelsInRecords = await page
-          .locator(".mainPanel > .topBar .viewToggleButtonLabel")
+          .locator(".topBar .viewToggleButtonLabel")
           .evaluateAll((elements) =>
             elements.map((element) => getComputedStyle(element).display !== "none"),
           );
         // 表示切替のボタン(3番目)以外は、文字の出方がそのまま同じ
-        expect(labelsInRecords.filter((_, index) => index !== 2)).toEqual(
-          labelsInMain.filter((_, index) => index !== 2),
+        expect(labelsInRecords.filter((_, index) => index !== 0)).toEqual(
+          labelsInMain.filter((_, index) => index !== 0),
         );
       }
     }
@@ -285,8 +293,8 @@ test.describe("P96-01 top menu labels follow what fits", () => {
     // なる不具合が出たため)。幅は 1200 → 1070 → 930 → 860 → 1200 と動かし、戻るときも戻る。
     const EXPECTED: Record<"standard" | "large" | "xlarge", readonly number[]> = {
       standard: [0, 0, 1, 2, 0],
-      large: [0, 1, 1, 2, 0],
-      xlarge: [0, 1, 1, 2, 0],
+      large: [0, 0, 1, 2, 0],
+      xlarge: [0, 0, 1, 2, 0],
     };
     const STEPS = [1200, 1070, 930, 860, 1200] as const;
 
@@ -311,7 +319,7 @@ test.describe("P96-01 top menu labels follow what fits", () => {
             .poll(
               () =>
                 page
-                  .locator(".mainPanel > .topBar")
+                  .locator(".topBar")
                   .getAttribute("data-top-menu-labels")
                   .then((value) => Number(value ?? "0")),
               { message: `level (${label})` },
@@ -319,7 +327,7 @@ test.describe("P96-01 top menu labels follow what fits", () => {
             .toBe(EXPECTED[size][index]);
           const probe = await probeLayout(page);
           expect(probe.visibleLabels, `labels shown (${label})`).toBe(
-            probe.labelLevel === 0 ? 6 : probe.labelLevel === 1 ? 2 : 0,
+            probe.labelLevel === 0 ? 3 : probe.labelLevel === 1 ? 1 : 0,
           );
           expect(probe.titleLineCount, `title stays on one line (${label})`).toBeLessThan(1.2);
           expect(probe.topBarOverflow, `top bar does not overflow (${label})`).toBe(false);
@@ -339,7 +347,7 @@ test.describe("P96-01 top menu labels follow what fits", () => {
     await prepare(page, 1070);
     const level = () =>
       page
-        .locator(".mainPanel > .topBar")
+        .locator(".topBar")
         .getAttribute("data-top-menu-labels")
         .then((value) => Number(value ?? "0"));
     const setSize = async (next: "standard" | "large" | "xlarge") => {
@@ -353,19 +361,19 @@ test.describe("P96-01 top menu labels follow what fits", () => {
     };
     await expect.poll(level, { message: "standard at 1070" }).toBe(0);
     await setSize("large");
-    await expect.poll(level, { message: "large at 1070" }).toBe(1);
+    await expect.poll(level, { message: "large at 1070" }).toBe(0);
     await setSize("xlarge");
-    await expect.poll(level, { message: "xlarge at 1070" }).toBe(1);
+    await expect.poll(level, { message: "xlarge at 1070" }).toBe(0);
     await setSize("standard");
     await expect.poll(level, { message: "standard again at 1070" }).toBe(0);
-    // 切替のあとも、幅の変化に追従し続けること。
-    await page.setViewportSize({ width: 860, height: 680 });
-    await expect.poll(level, { message: "860 after size changes" }).toBe(2);
+    // 切替のあとも、幅の変化に追従し続けること(縦積みの幅では文字を出さない)。
+    await page.setViewportSize({ width: 760, height: 680 });
+    await expect.poll(level, { message: "760 after size changes" }).toBe(2);
     await page.setViewportSize({ width: 1200, height: 680 });
     await expect.poll(level, { message: "back to 1200" }).toBe(0);
   });
 
-  test("1200px shows all six labels at every display size", async ({ page }) => {
+  test("1200px shows all three labels at every display size", async ({ page }) => {
     await prepare(page, 1200);
     for (const size of SIZES) {
       await page.evaluate((next) => {
@@ -375,7 +383,7 @@ test.describe("P96-01 top menu labels follow what fits", () => {
         control.updateConfig(config);
       }, size);
       const labels = await page
-        .locator(".mainPanel > .topBar .viewToggleButtonLabel")
+        .locator(".topBar .viewToggleButtonLabel")
         .evaluateAll((elements) =>
           elements.map((element) => ({
             text: element.textContent?.trim() ?? "",
@@ -386,16 +394,10 @@ test.describe("P96-01 top menu labels follow what fits", () => {
         "block",
         "block",
         "block",
-        "block",
-        "block",
-        "block",
       ]);
       expect(labels.map((label) => label.text)).toEqual([
-        "自動起動",
-        "ミニ",
         "記録",
         "手順書",
-        "使い方",
         "設定",
       ]);
     }
@@ -590,20 +592,10 @@ test.describe("P96-01 drag regions", () => {
         Boolean(document.querySelector(selector)?.hasAttribute("data-tauri-drag-region"));
       return {
         present: {
-          // P97-02 B: 窓を動かせるのは上端の余白とブランド表示だけ。
-          // パネル・サイドバーの要素そのものには付けない（内側の余白まで動いてしまうため）。
-          mainPanelDragStrip: has(".panelDragStrip--main"),
-          sidebarDragStrip: has(".panelDragStrip--sidebar"),
-          topBar: has(".mainPanel > .topBar"),
-          topSummary: has(".topSummary"),
-          topTitle: has(".topTitle"),
-          topDateLabel: has(".topDateLabel"),
-          topPills: has(".topPills"),
-          brandBlock: has(".brandBlock"),
-          brandIcon: has(".brandIcon"),
-          brandCopy: has(".brandCopy"),
-          eyebrow: has(".brandCopy .eyebrow"),
-          brandStrong: has(".brandCopy strong"),
+          topBar: has(".topBar"),
+          topBrand: has(".topBrand"),
+          topBrandIcon: has(".topBrandIcon"),
+          topBrandName: has(".topBrandName"),
         },
         absent: {
           mainPanel: has(".mainPanel"),
@@ -614,9 +606,12 @@ test.describe("P96-01 drag regions", () => {
           windowButton: document
             .querySelector(".windowControlButton")
             ?.hasAttribute("data-tauri-drag-region"),
+          searchButton: document
+            .querySelector(".topSearchButton")
+            ?.hasAttribute("data-tauri-drag-region"),
           quickList: has(".quickList"),
           launcherOpenButton: has(".launcherOpenButton"),
-          shortcutBadge: has(".shortcutBadge"),
+          shortcutBadge: has(".uiKey"),
         },
       };
     });
@@ -725,12 +720,17 @@ test.describe("P96-01 dialogs and the window controls", () => {
       await discard.getByRole("button", { name: /破棄/ }).click();
       await expect(discard).toHaveCount(0);
 
-      // 使い方
-      await page.getByRole("button", { name: "使い方", exact: true }).click();
+      // 使い方 (P10-02: the top bar button is gone; the guide opens from Settings)
+      await page.getByRole("button", { name: "設定を開く" }).click();
+      await page.getByRole("button", { name: "使い方を開く" }).click();
       await expect(page.getByRole("dialog", { name: "使い方" })).toBeVisible();
       await expectControlsReachable(page, ".helpGuideBackdrop");
       await page.keyboard.press("Escape");
       await expect(page.getByRole("dialog", { name: "使い方" })).toHaveCount(0);
+      // The guide sits above Settings (P10-02), so Settings is still open and must be closed.
+      await expect(page.getByRole("dialog", { name: "設定" })).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("dialog", { name: "設定" })).toHaveCount(0);
 
       // 今日やるものを選ぶ
       await page.getByRole("button", { name: "今日やるものを選ぶ" }).first().click();

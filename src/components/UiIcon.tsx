@@ -2,18 +2,22 @@ import type { SVGProps } from "react";
 
 export type UiIconName =
   | "add"
+  | "alert"
   | "back"
   | "book"
   | "clock"
+  | "check"
   | "chevronDown"
   | "chevronLeft"
   | "chevronRight"
   | "close"
   | "collapse"
+  | "copy"
   | "edit"
   | "external"
   | "fileCode"
   | "fileText"
+  | "flag"
   | "fileWeb"
   | "folder"
   | "help"
@@ -53,6 +57,11 @@ export function UiIcon({ name, size = 18, className, ...props }: UiIconProps) {
   const content =
     name === "add" ? (
       <path {...common} d="M12 5v14M5 12h14" />
+    ) : name === "alert" ? (
+      <>
+        <path {...common} d="M12 4 3 20h18L12 4Z" />
+        <path {...common} d="M12 10v4.5M12 17.5h.01" />
+      </>
     ) : name === "back" ? (
       <path {...common} d="m14.5 6-6 6 6 6M9 12h10" />
     ) : name === "book" ? (
@@ -60,6 +69,8 @@ export function UiIcon({ name, size = 18, className, ...props }: UiIconProps) {
         <path {...common} d="M4 5.5A2.5 2.5 0 0 1 6.5 3H12v17H6.5A2.5 2.5 0 0 0 4 22V5.5Z" />
         <path {...common} d="M20 5.5A2.5 2.5 0 0 0 17.5 3H12v17h5.5A2.5 2.5 0 0 1 20 22V5.5Z" />
       </>
+    ) : name === "flag" ? (
+      <path {...common} d="M6 21V4M6 5h11l-2 4 2 4H6" />
     ) : name === "clock" ? (
       <>
         <circle {...common} cx="12" cy="12" r="8.5" />
@@ -130,6 +141,13 @@ export function UiIcon({ name, size = 18, className, ...props }: UiIconProps) {
       <>
         <rect {...common} height="15" rx="2" width="17" x="3.5" y="4.5" />
         <path {...common} d="M13 4.5v6h7.5M13 10.5h7.5" />
+      </>
+    ) : name === "check" ? (
+      <path {...common} strokeWidth={2.4} d="m5 12.5 4.5 4.5L19 7.5" />
+    ) : name === "copy" ? (
+      <>
+        <rect {...common} height="12" rx="2" width="12" x="9" y="9" />
+        <path {...common} d="M5 15V6a2 2 0 0 1 2-2h8" />
       </>
     ) : name === "pause" ? (
       <path {...common} d="M9 6v12M15 6v12" />

@@ -215,17 +215,22 @@ pub fn load_do_now_candidates(
     })
 }
 
-/// Whether today's Today3 holds an unfinished item adopted from this Project's current Next Step
+/// Where today's Today3 holds an unfinished item adopted from this Project's current Next Step
 /// (same generation, strictly: both missing counts as equal, only one present does not).
-fn project_in_today3(project: &Project, today: &Today, date: &str) -> bool {
-    let Some(step) = project.next_step.as_ref() else {
-        return false;
-    };
+/// The position counts unfinished cards from the left (0-based); finished cards and cards that
+/// belong to no project still take a place, so the numbers compare like the visible order.
+fn project_today3_position(project: &Project, today: &Today, date: &str) -> Option<usize> {
+    let step = project.next_step.as_ref()?;
+    if today.date != date {
+        return None;
+    }
     let source_key = format!("project:{}", project.id);
-    today.date == date
-        && today.items.iter().any(|item| {
-            !item.done
-                && item.source_key.as_deref().map(str::trim) == Some(source_key.as_str())
+    today
+        .items
+        .iter()
+        .filter(|item| !item.done)
+        .position(|item| {
+            item.source_key.as_deref().map(str::trim) == Some(source_key.as_str())
                 && item.source_generation_id == step.generation_id
         })
 }
@@ -247,7 +252,7 @@ fn build_do_now_candidates(
                 .is_some_and(|step| !step.text.trim().is_empty())
         })
         .map(|(manual_index, project)| {
-            let in_today3 = project_in_today3(project, today_state, date);
+            let today3_position = project_today3_position(project, today_state, date);
             let weekly_focus = project.weekly_focus == Some(true);
             let executed_today = entries.iter().any(|entry| {
                 entry.date == date && entry.project_id.as_deref() == Some(project.id.as_str())
@@ -271,16 +276,19 @@ fn build_do_now_candidates(
                 executed_today,
                 last_session,
                 restart_eligible,
-                in_today3,
+                today3_position,
             )
         })
         .collect::<Vec<_>>();
 
     candidates.sort_by(|left, right| {
-        // A Project whose current Next Step is already in Today3 comes first; not a filter.
+        // A Project whose current Next Step is in Today3 comes first, in Today3's left-to-right
+        // order (unfinished cards only); not a filter.
         right
             .6
-            .cmp(&left.6)
+            .is_some()
+            .cmp(&left.6.is_some())
+            .then_with(|| left.6.cmp(&right.6))
             .then_with(|| right.1.cmp(&left.1))
             .then_with(|| left.3.cmp(&right.3))
             .then_with(|| left.4.cmp(&right.4))
@@ -300,10 +308,10 @@ fn build_do_now_candidates(
                     executed_today,
                     last_session,
                     restart_eligible,
-                    in_today3,
+                    today3_position,
                 ),
             )| {
-                let reason = if *in_today3 {
+                let reason = if today3_position.is_some() {
                     "today3"
                 } else if !executed_today {
                     "noToday"
@@ -315,7 +323,7 @@ fn build_do_now_candidates(
                             && candidate.1 == *weekly_focus
                             && candidate.3 == *executed_today
                             && candidate.4 == *last_session
-                            && candidate.6 == *in_today3
+                            && candidate.6.is_some() == today3_position.is_some()
                     })
                 {
                     "manualOrder"
@@ -998,10 +1006,10 @@ mod tests {
 
         let candidates = build_do_now_candidates(&projects, &[], &today, "2026-07-16");
 
-        // Today3 group first, ordered by the old rules (focus first); the rest follow.
+        // Today3 group first, in Today3's left-to-right order (P10-04 / D27); the rest follow.
         assert_eq!(
             candidate_order(&candidates),
-            vec!["focus", "plain", "outside"]
+            vec!["plain", "focus", "outside"]
         );
         assert_eq!(candidates[0].reason, "today3");
         assert_eq!(candidates[1].reason, "today3");
@@ -1032,6 +1040,152 @@ mod tests {
                 .collect::<Vec<_>>(),
             old.iter().map(|c| c.reason.as_str()).collect::<Vec<_>>()
         );
+    }
+
+    #[test]
+    fn p10_04_today3_position_orders_candidates_by_the_card_order() {
+        let projects = vec![
+            project_with_generation("a", None, Some("ga")),
+            project_with_generation("b", None, Some("gb")),
+            project_with_generation("c", None, Some("gc")),
+        ];
+        let today = today_with(vec![
+            today_item("project:b", Some("gb"), false),
+            today_item("project:a", Some("ga"), false),
+        ]);
+
+        let candidates = build_do_now_candidates(&projects, &[], &today, "2026-07-16");
+
+        assert_eq!(candidate_order(&candidates), vec!["b", "a", "c"]);
+        assert_eq!(candidates[0].reason, "today3");
+        assert_eq!(candidates[1].reason, "today3");
+        assert_ne!(candidates[2].reason, "today3");
+    }
+
+    #[test]
+    fn p10_04_finished_today3_cards_do_not_give_a_position() {
+        let projects = vec![
+            project_with_generation("a", None, Some("ga")),
+            project_with_generation("b", None, Some("gb")),
+        ];
+        let today = today_with(vec![
+            today_item("project:b", Some("gb"), true),
+            today_item("project:a", Some("ga"), false),
+        ]);
+
+        let candidates = build_do_now_candidates(&projects, &[], &today, "2026-07-16");
+
+        assert_eq!(candidate_order(&candidates), vec!["a", "b"]);
+        assert_eq!(candidates[0].reason, "today3");
+        assert_ne!(candidates[1].reason, "today3");
+    }
+
+    #[test]
+    fn p10_04_empty_today3_keeps_the_manual_order() {
+        let projects = vec![
+            project_with_generation("a", None, Some("ga")),
+            project_with_generation("b", None, Some("gb")),
+            project_with_generation("c", None, Some("gc")),
+        ];
+
+        let candidates = build_do_now_candidates(&projects, &[], &no_today(), "2026-07-16");
+
+        assert_eq!(candidate_order(&candidates), vec!["a", "b", "c"]);
+        assert!(candidates
+            .iter()
+            .all(|candidate| candidate.reason != "today3"));
+    }
+
+    #[test]
+    fn p10_04_all_finished_today3_keeps_the_manual_order() {
+        let projects = vec![
+            project_with_generation("a", None, Some("ga")),
+            project_with_generation("b", None, Some("gb")),
+            project_with_generation("c", None, Some("gc")),
+        ];
+        let today = today_with(vec![
+            today_item("project:c", Some("gc"), true),
+            today_item("project:a", Some("ga"), true),
+        ]);
+
+        let candidates = build_do_now_candidates(&projects, &[], &today, "2026-07-16");
+
+        assert_eq!(candidate_order(&candidates), vec!["a", "b", "c"]);
+        assert!(candidates
+            .iter()
+            .all(|candidate| candidate.reason != "today3"));
+    }
+
+    #[test]
+    fn p10_04_manual_and_wishlist_cards_do_not_give_a_position() {
+        let projects = vec![
+            project_with_generation("a", None, Some("ga")),
+            project_with_generation("b", None, Some("gb")),
+            project_with_generation("c", None, Some("gc")),
+        ];
+        let today = today_with(vec![
+            today_item("manual:one", None, false),
+            today_item("wishlist:legacy-1", None, false),
+        ]);
+
+        let candidates = build_do_now_candidates(&projects, &[], &today, "2026-07-16");
+
+        assert_eq!(candidate_order(&candidates), vec!["a", "b", "c"]);
+        assert!(candidates
+            .iter()
+            .all(|candidate| candidate.reason != "today3"));
+    }
+
+    #[test]
+    fn p10_04_a_rewritten_next_step_loses_its_today3_position() {
+        let projects = vec![
+            project_with_generation("a", None, Some("ga")),
+            project_with_generation("b", None, Some("g-new")),
+            project_with_generation("c", None, Some("gc")),
+        ];
+        let today = today_with(vec![today_item("project:b", Some("g-old"), false)]);
+
+        let candidates = build_do_now_candidates(&projects, &[], &today, "2026-07-16");
+
+        assert_eq!(candidate_order(&candidates), vec!["a", "b", "c"]);
+        assert!(candidates
+            .iter()
+            .all(|candidate| candidate.reason != "today3"));
+    }
+
+    #[test]
+    fn p10_04_today3_leads_then_focus_then_manual_order() {
+        let projects = vec![
+            project_with_generation("a", Some(true), Some("ga")),
+            project_with_generation("b", None, Some("gb")),
+            project_with_generation("c", None, Some("gc")),
+        ];
+        let today = today_with(vec![today_item("project:c", Some("gc"), false)]);
+
+        let candidates = build_do_now_candidates(&projects, &[], &today, "2026-07-16");
+
+        assert_eq!(candidate_order(&candidates), vec!["c", "a", "b"]);
+        assert_eq!(candidates[0].reason, "today3");
+    }
+
+    #[test]
+    fn p10_04_today3_from_another_day_gives_no_position() {
+        let projects = vec![
+            project_with_generation("a", None, Some("ga")),
+            project_with_generation("b", None, Some("gb")),
+        ];
+        let mut today = today_with(vec![
+            today_item("project:b", Some("gb"), false),
+            today_item("project:a", Some("ga"), false),
+        ]);
+        today.date = "2026-07-15".to_string();
+
+        let candidates = build_do_now_candidates(&projects, &[], &today, "2026-07-16");
+
+        assert_eq!(candidate_order(&candidates), vec!["a", "b"]);
+        assert!(candidates
+            .iter()
+            .all(|candidate| candidate.reason != "today3"));
     }
 
     fn candidate_session(project_id: &str, date: &str, started_at: &str) -> SessionLogEntry {

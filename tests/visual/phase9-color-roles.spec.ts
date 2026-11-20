@@ -74,8 +74,9 @@ test("P9-06 add buttons on Main use the neutral tokens, with visible hover, focu
     background: await token(page, "--control-neutral-bg", "backgroundColor"),
     border: await token(page, "--line"),
   };
-  const hoverBackground = await token(page, "--control-neutral-hover-bg", "backgroundColor");
-  const hoverBorder = await token(page, "--muted");
+  const hoverBackground = await token(page, "--surface-strong", "backgroundColor");
+  const hoverBorderFor = async (selector: string) =>
+    selector === ".nextStepTodayAdd" ? await token(page, "--muted") : "rgba(231, 185, 77, 0.48)";
   const activeBackground = await token(page, "--control-neutral-active-bg", "backgroundColor");
 
   for (const selector of ADD_BUTTONS) {
@@ -84,7 +85,7 @@ test("P9-06 add buttons on Main use the neutral tokens, with visible hover, focu
     expect(await styleOf(page, selector), selector).toMatchObject(neutral);
 
     await button.hover();
-    await expectStyle(page, selector, { background: hoverBackground, border: hoverBorder }, `${selector} hover`);
+    await expectStyle(page, selector, { background: hoverBackground, border: await hoverBorderFor(selector) }, `${selector} hover`);
 
     // Hold the press, then leave the button before releasing so it is not a click.
     await page.mouse.down();

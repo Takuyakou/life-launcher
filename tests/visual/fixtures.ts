@@ -25,6 +25,10 @@ export type VisualQaFixture = {
     restartEligible: boolean;
   }>;
   staleProjectIds?: string[];
+  missingLaunchTargets?: {
+    missingButtonIds: string[];
+    missingInstructionProjectIds: string[];
+  };
   instructionDocuments?: Record<string, string>;
   /** MHTML fixtures, base64-encoded so the mock can return raw bytes. */
   instructionBytes?: Record<string, string>;
@@ -157,6 +161,8 @@ function createConfig(): AppConfig {
       instructionFolders: [INSTRUCTION_ROOT],
       instructionFolderIdentities: [],
       instructionHotkey: null,
+      // P10-11: the fixtures represent users who already finished the first-run guide.
+      firstRunDoneAt: "2026-08-01T09:00:00+09:00",
     },
   };
 }

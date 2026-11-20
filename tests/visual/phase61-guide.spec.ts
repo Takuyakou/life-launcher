@@ -18,8 +18,9 @@ async function prepare(page: Page, viewport = { width: 1440, height: 900 }) {
   });
 }
 
+// P10-02: the Guide opens from the Settings dialog now.
 function guideOpener(page: Page) {
-  return page.getByRole("button", { name: "使い方" });
+  return page.getByRole("button", { name: "使い方を開く" });
 }
 
 function guideDialog(page: Page) {
@@ -27,6 +28,10 @@ function guideDialog(page: Page) {
 }
 
 async function openGuide(page: Page) {
+  // Settings may already be open (closing the Guide returns to it), so only open it once.
+  if ((await page.getByRole("dialog", { name: "設定" }).count()) === 0) {
+    await page.getByRole("button", { name: "設定を開く" }).click();
+  }
   await guideOpener(page).click();
   const dialog = guideDialog(page);
   await expect(dialog).toBeVisible();
@@ -135,7 +140,7 @@ test("Guide shows both import prompts and copies exactly what importPrompt.ts ha
   );
   await expect(example.getByRole("button")).toHaveCount(0);
 
-  await first.getByRole("button", { name: "はじめて用のプロンプトをコピー" }).click();
+  await first.getByRole("button", { name: "コピー", exact: true }).click();
   expect(
     await page.evaluate(
       () =>
@@ -143,7 +148,7 @@ test("Guide shows both import prompts and copies exactly what importPrompt.ts ha
     ),
   ).toBe(IMPORT_PROMPT_FIRST);
 
-  await repeat.getByRole("button", { name: "2回目以降用のプロンプトをコピー" }).click();
+  await repeat.getByRole("button", { name: "コピー", exact: true }).click();
   expect(
     await page.evaluate(
       () =>

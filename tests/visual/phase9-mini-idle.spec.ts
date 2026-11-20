@@ -6,7 +6,7 @@ type QaWindow = Window & {
   __LIFE_LAUNCHER_VISUAL_QA__: { emit: (event: string, payload?: unknown) => void };
 };
 
-const MINI = { width: 288, height: 136 };
+const MINI = { width: 340, height: 120 };
 
 async function openMini(page: Page) {
   await page.setViewportSize(MINI);
@@ -17,6 +17,8 @@ async function openMini(page: Page) {
 }
 
 async function expectNoOverlapInsideWindow(page: Page, selectors: string[]) {
+  // P10-18e: the clock now uses the bundled font, which loads lazily; measure after it has settled.
+  await page.evaluate(() => document.fonts.ready);
   const boxes = [];
   for (const selector of selectors) {
     const box = await page.locator(`.timerPanel--mini ${selector}`).first().boundingBox();
@@ -44,7 +46,7 @@ test("P9-03 idle mini shows a heading, one waiting badge and a hint without over
 }) => {
   await openMini(page);
   const panel = page.locator(".timerPanel--mini");
-  await expect(panel.locator(".timerMeta span")).toHaveText("タイマー");
+  await expect(panel.locator(".miniTimerTitle")).toHaveText("タイマー");
   await expect(panel.locator(".timerStateBadge")).toHaveText("待機中");
   await expect(panel.locator(".miniQuietText")).toHaveText("開始ボタンから計測できます");
   // "待機中" appears exactly once, and the idle mini has no clock or progress to disagree
@@ -53,7 +55,12 @@ test("P9-03 idle mini shows a heading, one waiting badge and a hint without over
   await expect(panel.locator(".timerClock")).toHaveCount(0);
   await expect(panel.locator(".timerProgress")).toHaveCount(0);
   await expect(panel.locator(".timerControls")).toHaveCount(0);
-  await expectNoOverlapInsideWindow(page, [".timerMeta span", ".timerStateBadge", ".miniQuietText"]);
+  await expectNoOverlapInsideWindow(page, [
+    ".miniTimerTitle",
+    ".timerStateBadge",
+    ".miniQuietText",
+    ".miniIconButton--expand",
+  ]);
 });
 
 test("P9-03 running and paused mini keep the P9-02 layout", async ({ page }) => {
@@ -74,7 +81,7 @@ test("P9-03 running and paused mini keep the P9-02 layout", async ({ page }) => 
       });
     }, paused);
   const panel = page.locator(".timerPanel--mini");
-  const parts = [".projectIdentity", ".timerActionText", ".timerStateBadge", ".timerClock", ".timerControls"];
+  const parts = [".miniProjectLine", ".timerActionText", ".timerClock", ".timerControls"];
 
   await emit(false);
   await expect(panel.locator(".timerStateBadge")).toHaveText("実行中");

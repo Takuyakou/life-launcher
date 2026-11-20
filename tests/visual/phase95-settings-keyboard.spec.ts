@@ -53,7 +53,9 @@ test("ArrowDown alone walks every item of the Basic tab without changing a numbe
   const before = await settingsConfig(page);
   await settings.getByRole("tab", { name: "基本" }).focus();
   const visited = await walkDown(page);
-  expect(visited.slice(0, 6)).toEqual([
+  // P10-02: the Basic tab opens with the guide row, so the walk starts there.
+  expect(visited.slice(0, 7)).toEqual([
+    "button:使い方を開く",
     "number:短時間タイマー分数",
     "number:通常タイマー分数",
     "number:日付切替時刻時",
@@ -98,6 +100,8 @@ test("Enter edits a number: all selected, arrows step it, Enter commits and arro
   const short = settings.getByRole("spinbutton", { name: "短時間タイマー分数" });
   const original = Number(await short.inputValue());
   await settings.getByRole("tab", { name: "基本" }).focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(settings.getByRole("button", { name: "使い方を開く" })).toBeFocused();
   await page.keyboard.press("ArrowDown");
   await expect(short).toBeFocused();
   // Arrows over a field only move: ArrowRight goes to the next field and ArrowLeft back, value untouched.
@@ -190,6 +194,8 @@ test("Navigating and editing a field look different (ring and caret)", async ({ 
     });
   await settings.getByRole("tab", { name: "基本" }).focus();
   await page.keyboard.press("ArrowDown");
+  await expect(settings.getByRole("button", { name: "使い方を開く" })).toBeFocused();
+  await page.keyboard.press("ArrowDown");
   await expect(short).toBeFocused();
   await expect(short).toHaveCSS("outline-style", "solid");
   await expect(short).toHaveCSS("outline-width", "2px");
@@ -229,7 +235,7 @@ test("Arrows outside the Settings dialog are unchanged (a text field keeps its c
   await installTauriMock(page, createPublicFixture(), "main");
   await page.goto("/");
   await expect(page.locator(".sidebar")).toBeVisible();
-  await page.locator(".brandBlock").click({ button: "right" });
+  await page.locator(".topBrand").click({ button: "right" });
   await page.getByRole("menuitem", { name: "ボタンを追加" }).click();
   const dialog = page.getByRole("dialog", { name: "Button Builder" });
   const file = dialog.getByRole("textbox", { name: "ファイル", exact: true });

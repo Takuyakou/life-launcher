@@ -97,6 +97,9 @@ test("P8.10 TX-01 overlay traps Tab, closes without backdrop click, and can end 
   expect(await page.evaluate(() => Boolean(document.activeElement?.closest(".expandedTimerActions")))).toBe(true);
   await close.focus();
   await page.keyboard.press("Shift+Tab");
+  // P10-08: ミニ sits between 戻る and the actions now.
+  await expect(overlay.getByRole("button", { name: "ミニタイマーにする" })).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
   await expect(overlay.getByRole("button", { name: "終了" })).toBeFocused();
   await page.locator(".expandedTimerBackdrop").click({ position: { x: 3, y: 3 } });
   await expect(overlay).toBeVisible();

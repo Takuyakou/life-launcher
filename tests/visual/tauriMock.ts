@@ -18,6 +18,8 @@ export async function installTauriMock(
     rolloverOnLoadConfig?: boolean;
     /** テスト用の起動（普段のデータから切り離した起動）として動かす。 */
     testProfile?: boolean;
+    /** load_config が「保存を止めている」を返す（P10-11 のはじめての案内の条件用）。 */
+    saveBlocked?: boolean;
   } = {},
 ): Promise<void> {
   await page.addInitScript(
@@ -138,6 +140,8 @@ export async function installTauriMock(
           instructionFolders: [],
           instructionFolderIdentities: [],
           instructionHotkey: null,
+          // P10-11: reset tests assert the normal empty dashboard, not the first-run guide.
+          firstRunDoneAt: "2026-08-13T09:30:00+09:00",
         },
       });
       const cleanStartTotalMinutes = () =>
@@ -191,6 +195,13 @@ export async function installTauriMock(
       let failSaveConfig = false;
       let failReapplyDashboardSettings = false;
       let failRecordSession = false;
+      let failMissingLaunchTargets = false;
+      let missingLaunchTargets = clone(
+        fixture.missingLaunchTargets ?? {
+          missingButtonIds: [],
+          missingInstructionProjectIds: [],
+        },
+      );
       let mainWindowState = {
         visible: true,
         minimized: false,
@@ -248,6 +259,15 @@ export async function installTauriMock(
         },
         setRecordSessionFailure: (shouldFail: boolean) => {
           failRecordSession = shouldFail;
+        },
+        setMissingLaunchTargets: (next: {
+          missingButtonIds: string[];
+          missingInstructionProjectIds: string[];
+        }) => {
+          missingLaunchTargets = clone(next);
+        },
+        setMissingLaunchTargetsFailure: (shouldFail: boolean) => {
+          failMissingLaunchTargets = shouldFail;
         },
         setMainWindowState: (state: typeof mainWindowState) => {
           mainWindowState = { ...state };
@@ -352,7 +372,7 @@ export async function installTauriMock(
                   error: null,
                   backupError: null,
                   changed: false,
-                  saveBlocked: false,
+                  saveBlocked: options.saveBlocked ?? false,
                   morningVictorySuggestion: null,
                 };
               case "shortcut_registration_status":
@@ -526,6 +546,11 @@ export async function installTauriMock(
                 };
               case "load_next_step_freshness":
                 return { staleProjectIds: fixture.staleProjectIds ?? [] };
+              case "load_missing_launch_targets":
+                if (failMissingLaunchTargets) {
+                  throw new Error("Public demo mock: missing launch targets check failed");
+                }
+                return clone(missingLaunchTargets);
               case "load_today_notes":
                 return { date: currentConfig.today.date, items: currentNotes, path: paths.notes };
               case "save_today_notes":

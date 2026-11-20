@@ -118,6 +118,7 @@ export const NextStepSchema = NextStepExecutionSchema.extend({
   trigger: z.string().max(EXECUTION_TRIGGER_MAX_CHARS).optional(),
   updatedAt: z.string().datetime({ offset: true }).optional(),
   reviewedAt: z.string().datetime({ offset: true }).optional(),
+  resumeNote: z.string().optional(),
 });
 
 export const ProjectSchema = z
@@ -203,6 +204,8 @@ export const SettingsSchema = z.object({
   instructionFolders: InstructionFolderListSchema.default([]),
   instructionFolderIdentities: z.array(InstructionFolderIdentitySchema).max(5).optional(),
   instructionHotkey: z.string().trim().min(1).nullable().optional(),
+  /** P10-11 (§8.2): when the first-run guide was finished (or any ordinary save happened). */
+  firstRunDoneAt: z.string().datetime({ offset: true }).optional(),
 });
 
 export const AppConfigSchema = z
@@ -597,4 +600,9 @@ export type ImportCommitResponse = {
 export type ImportUndoResponse = {
   config: AppConfig;
   path: string;
+};
+
+export type MissingLaunchTargetsResponse = {
+  missingButtonIds: string[];
+  missingInstructionProjectIds: string[];
 };

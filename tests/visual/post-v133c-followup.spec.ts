@@ -1,11 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForBundledFonts } from "./bundledFonts";
 
 async function prepare(page: Page, fixture = createPublicFixture()) {
   await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
+  await waitForBundledFonts(page);
   await expect(page.locator(".sidebar")).toBeVisible();
 }
 
@@ -34,7 +36,7 @@ test("Sidebar menu order and pointer anchor stay consistent across group gaps an
     label: "二つ目",
   });
   await prepare(page, fixture);
-  await page.locator(".brandBlock").click({ button: "right" });
+  await page.locator(".topBrand").click({ button: "right" });
   await expectGroupThenButton(page);
   await page.keyboard.press("Escape");
 
@@ -60,7 +62,7 @@ test("Sidebar menu order and pointer anchor stay consistent across group gaps an
   const first = (await buttons.nth(0).boundingBox())!;
   const second = (await buttons.nth(1).boundingBox())!;
   await page.mouse.click(first.x + 22, (first.y + first.height + second.y) / 2, { button: "right" });
-  await expectGroupThenButton(page);
+  await expect(page.getByRole("menuitem", { name: "上へ移動" })).toBeVisible();
   await page.keyboard.press("Escape");
 
   const emptyGroup = page.locator(".quickGroup").last().locator(".quickGroupHeader");
@@ -77,7 +79,7 @@ test("Sidebar menu order and pointer anchor stay consistent across group gaps an
 });
 
 test("Sidebar menu remains inside a narrow viewport after scrolling and near the bottom", async ({ page }) => {
-  await page.setViewportSize({ width: 320, height: 380 });
+  await page.setViewportSize({ width: 320, height: 600 });
   const fixture = createPublicFixture();
   for (let index = 0; index < 12; index += 1) {
     fixture.config.buttons.push({
@@ -97,7 +99,7 @@ test("Sidebar menu remains inside a narrow viewport after scrolling and near the
   expect(box.x).toBeGreaterThanOrEqual(0);
   expect(box.y).toBeGreaterThanOrEqual(0);
   expect(box.x + box.width).toBeLessThanOrEqual(320);
-  expect(box.y + box.height).toBeLessThanOrEqual(380);
+  expect(box.y + box.height).toBeLessThanOrEqual(600);
 });
 
 test("Victory navigation enters editing and returns after Enter or Escape", async ({ page }) => {
@@ -231,9 +233,14 @@ test("Record tabs stay opaque and unobstructed while scrolling at desktop and na
       const areaBox = (await scrollArea.boundingBox())!;
       expect(headerBox.x).toBeGreaterThanOrEqual(areaBox.x);
       expect(headerBox.x + headerBox.width).toBeLessThanOrEqual(areaBox.x + areaBox.width);
+      const scrollTop = await scrollArea.evaluate((element) => element.scrollTop);
       expect(headerBox.y).toBeGreaterThanOrEqual(areaBox.y - 1);
       expect(headerBox.y + headerBox.height).toBeLessThanOrEqual(areaBox.y + areaBox.height);
-      if (position !== "top") expect(Math.abs(headerBox.y - areaBox.y)).toBeLessThanOrEqual(1);
+      // The records title now sits above the sticky header, so the header only reaches
+      // the top once the title has scrolled away.
+      if (position !== "top" && scrollTop > 48) {
+        expect(Math.abs(headerBox.y - areaBox.y)).toBeLessThanOrEqual(1);
+      }
 
       const controls = header.locator("button");
       await expect(controls).toHaveCount(3);

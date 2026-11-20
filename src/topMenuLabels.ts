@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 /**
- * P96-01 追加修正: 上部メニューの文字を隠す段階。
+ * P10-02: 上部メニューの文字を隠す段階。
  * 0 = すべて出す
- * 1 = 自動起動・ミニ・使い方・設定の文字を隠す
- * 2 = 記録・手順書の文字も隠す(すべてアイコンだけ)
+ * 1 = 手順書・設定の文字を隠す(自動起動は字を持たない)
+ * 2 = 記録の文字も隠す(すべてアイコンだけ)
  *
  * 幅の決まった境目(@media)ではなく、文字を出したときに必要な幅を実測し、
  * 実際に入りきらないときだけ隠す。
@@ -34,12 +34,11 @@ export type TopMenuMeasureInput = {
 function hideLabelsIn(root: ParentNode, level: TopMenuLabelLevel): void {
   const hideAll = level >= 2;
   root.querySelectorAll<HTMLElement>(".viewToggleButtonLabel").forEach((label) => {
-    const group = label.closest(".topPillGroup");
-    const groupHidden =
-      level === 1 &&
-      (group?.classList.contains("topPillGroup--window") === true ||
-        group?.classList.contains("topPillGroup--support") === true);
-    label.style.display = hideAll || groupHidden ? "none" : "";
+    // P10-02: the auto-start button has no label; the secondary buttons (instructions,
+    // settings) lose their text one step before the records toggle does.
+    const isSecondary = label.closest("[data-menu-label-secondary]") !== null;
+    const hideSecondary = level >= 1 && isSecondary;
+    label.style.display = hideAll || hideSecondary ? "none" : "";
   });
 }
 

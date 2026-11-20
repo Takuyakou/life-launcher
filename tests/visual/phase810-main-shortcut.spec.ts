@@ -76,11 +76,13 @@ test("Main shortcut hides only a visible focused window", async ({ page }) => {
   }
 });
 
-test("Main shortcut badge fits beside Quick and follows its configured value", async ({ page }) => {
+test("Main shortcut badge sits beside the app name and follows its configured value", async ({
+  page,
+}) => {
   await prepare(page);
-  const badge = page.locator(".brandCopy .shortcutBadge");
+  const badge = page.locator(".topBrand .uiKey");
   await expect(badge).toHaveText("Ctrl+Alt+Space");
-  const dictionaryBadge = page.locator(".launcherOpenButton .shortcutBadge");
+  const dictionaryBadge = page.locator(".launcherOpenButton .uiKey");
   for (const property of ["color", "border-top-color", "font-weight"] as const) {
     const expected = await dictionaryBadge.evaluate(
       (element, name) => getComputedStyle(element).getPropertyValue(name),
@@ -89,17 +91,12 @@ test("Main shortcut badge fits beside Quick and follows its configured value", a
     await expect(badge).toHaveCSS(property, expected);
   }
   await expect(badge).toHaveAttribute("title", /Life Launcherを表示\/隠す: Ctrl\+Alt\+Space/);
-  const quick = page.locator(".brandCopy strong");
-  const [quickBox, badgeBox, sidebarBox] = await Promise.all([
-    quick.boundingBox(),
-    badge.boundingBox(),
-    page.locator(".sidebar").boundingBox(),
-  ]);
-  expect(quickBox).not.toBeNull();
+  const brand = page.locator(".topBrand");
+  const [brandBox, badgeBox] = await Promise.all([brand.boundingBox(), badge.boundingBox()]);
+  expect(brandBox).not.toBeNull();
   expect(badgeBox).not.toBeNull();
-  expect(sidebarBox).not.toBeNull();
-  expect(badgeBox!.x).toBeGreaterThanOrEqual(quickBox!.x + quickBox!.width);
-  expect(badgeBox!.x + badgeBox!.width).toBeLessThan(sidebarBox!.x + sidebarBox!.width);
+  expect(badgeBox!.x).toBeGreaterThanOrEqual(brandBox!.x);
+  expect(badgeBox!.x + badgeBox!.width).toBeLessThanOrEqual(brandBox!.x + brandBox!.width);
 
   await page.evaluate(() => {
     const qa = (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: ShortcutControl })

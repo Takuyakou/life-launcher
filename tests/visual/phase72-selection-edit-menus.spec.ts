@@ -50,7 +50,6 @@ test("Phase 8.4 keeps legacy candidate exclusions inert and removes restore acti
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const picker = page.getByRole("dialog", { name: "今日やるものを選ぶ" });
   await expect(picker).toContainText("資料を1ページ読む");
-  await picker.getByRole("tab", { name: /やりたいこと/ }).click();
   await expect(picker.locator(".todayPickerRow", { hasText: "同じ本文" })).toHaveCount(2);
   expect((await currentConfig(page)).today.candidateExcludedSourceKeys).toEqual([
     "project:sample-learning",
@@ -72,7 +71,6 @@ test("Phase 8.4 opening the Picker does not rewrite legacy exclusion state", asy
 
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
   const picker = page.getByRole("dialog", { name: "今日やるものを選ぶ" });
-  await picker.getByRole("tab", { name: /やりたいこと/ }).click();
   await expect(picker).toContainText("あとで確認するサンプル");
   expect((await currentConfig(page)).today.candidateExcludedSourceKeys).toEqual([
     "wishlist:sample-later",
@@ -84,7 +82,7 @@ test("v1.3 Do Now switches candidates from the copy area and context menu", asyn
   await prepare(page, fixture);
   const band = page.locator(".doNowContent");
   const actions = band.locator(".doNowActions");
-  const alternate = band.locator(".doNowCopy").getByRole("button", {
+  const alternate = band.locator(".doNowSecondaryActions").getByRole("button", {
     name: "他の一手",
     exact: true,
   });
@@ -125,9 +123,15 @@ test("Do Now timer labels and glyphs remain separate on hover and keyboard focus
   await short.hover();
   await expect(short.locator(".timerStartDuration")).toHaveCSS("opacity", "1");
   await expect(short.locator(".timerStartHoverGlyph")).toHaveCSS("opacity", "1");
-  expect(await short.boundingBox()).toEqual(before);
+  await page.waitForTimeout(180);
+  const after = (await short.boundingBox())!;
+  expect(after.x).toBe(before.x);
+  expect(after.width).toBe(before.width);
+  expect(after.height).toBe(before.height);
+  expect(before.y - after.y).toBeGreaterThanOrEqual(0.5);
   const glyph = (await short.locator(".timerStartHoverGlyph").boundingBox())!;
   const label = (await short.locator(".timerStartDuration").boundingBox())!;
+  // P10-14e: the hover arrow sits before the label ("▶ 5分で始める").
   expect(glyph.x + glyph.width).toBeLessThanOrEqual(label.x);
   await page.mouse.move(0, 0);
   await normal.focus();

@@ -2,9 +2,15 @@ type ShortcutBadgeProps = {
   label: string;
   shortcut: string | null | undefined;
   registered: boolean;
+  tone?: "accent" | "muted";
 };
 
-export function ShortcutBadge({ label, shortcut, registered }: ShortcutBadgeProps) {
+export function ShortcutBadge({
+  label,
+  shortcut,
+  registered,
+  tone = "accent",
+}: ShortcutBadgeProps) {
   const value = shortcut?.trim();
   if (!value) return null;
 
@@ -13,7 +19,9 @@ export function ShortcutBadge({ label, shortcut, registered }: ShortcutBadgeProp
     : `${label}: ${value}（ショートカットを登録できていません）`;
   return (
     <kbd
-      className={`shortcutBadge${registered ? "" : " shortcutBadge--unavailable"}`}
+      className={`uiKey${tone === "accent" ? " uiKey--accent" : ""}${
+        registered ? "" : " shortcutBadge--unavailable"
+      }`}
       title={title}
       aria-label={title}
     >

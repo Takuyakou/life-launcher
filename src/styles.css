@@ -2,7 +2,8 @@
   color: #f4f0e8;
   background: #161512;
   --app-background: #161512;
-  font-family: "Segoe UI", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
+  --font-ui: "Inter Variable", "Noto Sans JP Variable", "Yu Gothic UI", Meiryo, system-ui, sans-serif;
+  font-family: var(--font-ui);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -242,7 +243,7 @@ body {
 .dictionaryWindowTitle strong {
   color: var(--text);
   font-size: 13px;
-  font-weight: 820;
+  font-weight: 700;
 }
 
 .dictionaryWindowTitleActions {
@@ -419,7 +420,7 @@ body {
   background: var(--surface);
   color: var(--text);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   text-align: center;
 }
 
@@ -487,7 +488,7 @@ body {
   margin: 0 0 2px;
   color: var(--text-muted-readable);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .dictionarySearchScope small {
@@ -918,7 +919,7 @@ body {
   padding: 0;
   color: var(--text);
   font-size: 13px;
-  font-weight: 820;
+  font-weight: 700;
 }
 
 .dictionarySizeFieldset p {
@@ -949,7 +950,7 @@ body {
   background: var(--surface-soft);
   color: var(--text-muted-readable);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .dictionarySizeOptions button:hover,
@@ -1475,7 +1476,7 @@ button.instructionTreeDisclosure:hover {
 .instructionTreeUnavailable {
   color: #ffaaa4;
   font-size: 11px;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .instructionTreeMore {
@@ -1821,7 +1822,7 @@ button.instructionTreeDisclosure:hover {
 .instructionSearchResultName > span {
   color: var(--accent-strong);
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .instructionSearchResultName strong,
@@ -2218,73 +2219,213 @@ button.instructionTreeDisclosure:hover {
   width: 100%;
   height: 100%;
   min-height: 0;
-  align-content: center;
-  gap: 4px;
-  padding: 8px 12px;
+  align-content: stretch;
+  gap: 0;
+  padding: 0;
   overflow: hidden;
-  background: #1c1a16;
+  background: #0f0e0c;
   color: var(--text);
   cursor: move;
 }
 
-.miniTopline {
+/* P10-14e N1 (Mini-C): two rows, a Project-colour left edge and a 3px progress line. */
+.timerPanel--mini {
+  --mini-accent: var(--project-color, #4a4639);
+  position: relative;
   display: flex;
-  min-height: 20px;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid #4a4639;
+  border-left: 3px solid var(--mini-accent);
+  border-radius: 10px;
+  padding: 16px 18px 14px 15px;
+  background: #211f1a;
+}
+
+.timerPanel--mini .timerProgress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  margin: 0;
+  border-radius: 0;
+}
+
+.timerPanel--mini .timerProgress span {
+  border-radius: 0;
+  background: #e7b94d;
+}
+
+.miniRow {
+  display: flex;
+  min-width: 0;
   align-items: center;
-  justify-content: space-between;
-  color: var(--muted);
+  gap: 10px;
+}
+
+.miniRow--top {
+  align-items: center;
+}
+
+.miniRow--bottom {
+  margin-top: auto;
+}
+
+.miniProjectLine {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.miniProjectLine .projectIdentity {
+  min-width: 0;
+  color: var(--project-color, var(--accent));
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.miniProjectLine .projectIdentityDot {
+  width: 8px;
+  height: 8px;
+  box-shadow: none;
+}
+
+.miniProjectLineFallback {
+  overflow: hidden;
+  color: #b8b0a0;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.miniTimerTitle {
+  color: #b8b0a0;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.miniIdleHead {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.timerPanel--mini .timerClock {
+  flex: 0 0 auto;
+  color: #ffce5b;
+  font-family: var(--font-ui);
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.timerPanel--mini .timerClock--paused {
+  color: var(--warn);
+}
+
+.timerPanel--mini .timerStateBadge {
+  min-height: 20px;
+  padding: 1px 7px;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
+  line-height: normal;
 }
 
-.miniToplineActions {
-  display: flex;
-  gap: 4px;
-}
-
-.miniExpandButton {
-  display: grid;
-  width: 24px;
-  height: 24px;
+.timerPanel--mini .timerStateBadge.visuallyHidden {
+  inset: 0 auto auto 0;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  margin: 0;
   padding: 0;
-  border: 1px solid var(--line);
-  border-radius: 5px;
+  border: 0;
+}
+
+.miniIconButton {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 1px solid #4a4639;
+  border-radius: 8px;
   place-items: center;
-  background: var(--surface);
+  background: #2b2922;
   color: var(--text);
   cursor: pointer;
-  font-size: 15px;
-  line-height: 1;
 }
 
-.miniExpandButton:hover {
-  border-color: var(--accent);
-  background: var(--surface-strong);
+.miniIconButton:hover {
+  border-color: var(--muted);
+  background: #343127;
 }
 
-.miniCloseButton {
-  display: grid;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: 1px solid rgba(240, 111, 104, 0.55);
-  border-radius: 5px;
-  place-items: center;
-  background: rgba(178, 78, 64, 0.18);
-  color: var(--text);
-  cursor: pointer;
-  font-size: 15px;
-  line-height: 1;
+.miniIconButton:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
 }
 
-.miniCloseButton:hover {
+.miniIconButton--finish {
+  border-color: rgba(240, 111, 104, 0.45);
+  color: var(--error);
+}
+
+.miniIconButton--finish:hover {
   border-color: var(--error);
-  background: rgba(178, 78, 64, 0.3);
+  background: rgba(240, 111, 104, 0.14);
+}
+
+.miniIconButton--expand {
+  color: var(--muted);
+}
+
+.miniIconButton--expand:hover {
+  color: var(--text);
+}
+
+.timerPanel--mini .timerControls {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 8px;
+  min-width: 0;
+}
+
+.timerPanel--mini .timerActionText {
+  flex: 1 1 auto;
+  overflow: hidden;
+  min-width: 0;
+  color: #f4f0e8;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .miniQuietText {
-  color: var(--muted);
-  font-size: 12px;
+  overflow: hidden;
+  flex: 1 1 auto;
+  min-width: 0;
+  color: #a39c8e;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .uiIcon {
@@ -2352,7 +2493,7 @@ h3 {
   background: var(--surface-strong);
   color: var(--text);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
   transform: translateY(calc(-100% - 18px));
   transition: transform 120ms ease;
 }
@@ -2387,7 +2528,7 @@ h3 {
   background: rgba(22, 21, 18, 0.76);
   color: var(--text);
   font-size: 28px;
-  font-weight: 850;
+  font-weight: 700;
   pointer-events: none;
 }
 
@@ -2470,7 +2611,7 @@ h3 {
 .eyebrow {
   color: var(--muted);
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .launcherOpenButton {
@@ -2481,11 +2622,11 @@ h3 {
   gap: 8px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 6px 8px;
+  padding: 6px;
   background: var(--surface);
   color: var(--text);
   font-size: 13px;
-  font-weight: 820;
+  font-weight: 700;
 }
 
 .launcherOpenButton > span {
@@ -2500,7 +2641,7 @@ h3 {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
   align-items: center;
-  gap: 8px;
+  gap: 4px;
 }
 
 .launcherOpenButtonIcon {
@@ -2526,11 +2667,7 @@ h3 {
   color: var(--accent);
   font-family: inherit;
   font-size: 11px;
-  font-weight: 820;
-}
-
-.launcherOpenButton .shortcutBadge {
-  font-size: 10px;
+  font-weight: 700;
 }
 
 .shortcutBadge {
@@ -2728,67 +2865,6 @@ h3 {
   user-select: none;
 }
 
-.timerPanel--mini {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-rows: 20px 30px 3px 28px;
-  grid-template-areas:
-    "meta state"
-    "clock clock"
-    "progress progress"
-    "controls controls";
-  min-width: 0;
-  min-height: 0;
-  gap: 4px 8px;
-}
-
-.timerPanel--mini .timerMeta {
-  grid-area: meta;
-  min-width: 0;
-  gap: 0;
-}
-
-.timerPanel--mini .timerStateRow {
-  grid-area: state;
-  justify-self: end;
-  min-width: 0;
-}
-
-.timerPanel--mini .timerMeta strong {
-  min-height: 0;
-  font-size: 13px;
-}
-
-.timerPanel--mini .timerClock {
-  grid-area: clock;
-  font-size: 30px;
-}
-
-.timerPanel--mini .timerProgress {
-  grid-area: progress;
-}
-
-.timerPanel--mini .timerControls {
-  display: flex;
-  gap: 7px;
-  grid-area: controls;
-  min-width: 0;
-}
-
-.timerPanel--mini > .miniQuietText {
-  grid-area: controls;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.timerPanel--mini .timerControls .secondaryButton {
-  min-height: 28px;
-  padding: 5px 10px;
-  font-size: 12px;
-}
-
 .timerMeta {
   display: grid;
   gap: 3px;
@@ -2847,7 +2923,7 @@ h3 {
   gap: 7px;
   color: var(--text);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.2;
 }
 
@@ -2909,11 +2985,15 @@ h3 {
   width: 100%;
   height: 100%;
   min-height: 0;
-  padding: clamp(12px, 3vh, 32px) clamp(16px, 4vw, 64px);
+  padding: 0 0 clamp(12px, 3vh, 32px);
   color: var(--text);
 }
 
 .expandedTimerHeader {
+  min-height: 44px;
+  padding: 0 16px;
+  border-bottom: 1px solid #353126;
+  background: #1b1a17;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2965,6 +3045,7 @@ h3 {
   justify-content: center;
   min-width: 0;
   min-height: 0;
+  padding-inline: clamp(16px, 4vw, 64px);
   gap: clamp(6px, 2vh, 20px);
   text-align: center;
 }
@@ -2991,7 +3072,7 @@ h3 {
 .expandedTimerState--complete {
   color: var(--accent-strong);
   font-size: clamp(22px, 3cqi, 42px);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .expandedTimer--complete .expandedTimerBody {
@@ -3043,6 +3124,7 @@ h3 {
 
 .expandedTimerHint {
   margin: 0;
+  padding-inline: clamp(16px, 4vw, 64px);
   color: var(--muted);
   font-size: 12px;
   text-align: center;
@@ -3058,7 +3140,7 @@ h3 {
   color: var(--accent-strong);
   font-size: 34px;
   font-variant-numeric: tabular-nums;
-  font-weight: 850;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -3128,7 +3210,7 @@ h3 {
   background: var(--surface);
   color: var(--text);
   font-size: 18px;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .timerPresetButton:hover {
@@ -3148,7 +3230,7 @@ h3 {
   background: var(--surface);
   color: var(--muted);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .timerPresetInputWrap input {
@@ -3321,7 +3403,8 @@ input[type="number"]::-webkit-inner-spin-button {
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  padding: 0 0 16px;
+  padding: 6px 0 16px;
+  scrollbar-gutter: stable both-edges;
   overscroll-behavior: contain;
 }
 
@@ -3382,7 +3465,7 @@ input[type="number"]::-webkit-inner-spin-button {
   background: transparent;
   color: var(--muted);
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 700;
   white-space: nowrap;
   transition:
     border-color 120ms ease,
@@ -3476,7 +3559,7 @@ input[type="number"]::-webkit-inner-spin-button {
   background: rgba(240, 111, 104, 0.16);
   color: #ffe7e4;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .bannerButton:hover:not(:disabled) {
@@ -3486,203 +3569,6 @@ input[type="number"]::-webkit-inner-spin-button {
 .recordsView {
   display: grid;
   gap: 16px;
-}
-
-.weeklyReviewSection {
-  display: grid;
-  gap: 16px;
-  padding: 2px 0 18px;
-  border-bottom: 1px solid var(--line-soft);
-}
-
-.weeklyReviewFacts {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  border-top: 1px solid var(--line-soft);
-  border-bottom: 1px solid var(--line-soft);
-}
-
-.weeklyReviewFacts > div {
-  display: grid;
-  gap: 3px;
-  padding: 11px 12px;
-}
-
-.weeklyReviewFacts > div + div {
-  border-left: 1px solid var(--line-soft);
-}
-
-.weeklyReviewFacts span,
-.weeklyReviewBlockHeading span {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.weeklyReviewFacts strong {
-  font-size: 20px;
-}
-
-.weeklyReviewBlock {
-  display: grid;
-  gap: 9px;
-}
-
-.weeklyReviewBlock h3 {
-  margin: 0;
-  font-size: 14px;
-}
-
-.weeklyReviewBlockHeading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.weeklyReviewProjectList,
-.weeklyFocusChecklist {
-  display: grid;
-  gap: 6px;
-}
-
-.weeklyReviewProjectRow {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  min-height: 48px;
-  border-bottom: 1px solid var(--line-soft);
-  padding: 7px 2px;
-}
-
-.weeklyReviewProjectRow > div {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-}
-
-.weeklyReviewProjectRow > span,
-.weeklyReviewNorthStar {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.weeklyReviewProjectRow > span {
-  white-space: nowrap;
-}
-
-.weeklyReviewNorthStar {
-  overflow-wrap: anywhere;
-}
-
-.weeklyFocusChecklist {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.weeklyFocusChecklist label {
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr);
-  align-items: center;
-  gap: 8px;
-  min-height: 40px;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius);
-  padding: 7px 9px;
-  background: var(--surface-soft);
-  cursor: pointer;
-}
-
-.weeklyFocusChecklist input {
-  width: 17px;
-  height: 17px;
-  accent-color: var(--accent);
-  cursor: pointer;
-}
-
-.settingsWeeklyFocus {
-  display: grid;
-  gap: 10px;
-  margin-top: 14px;
-  border-top: 1px solid var(--line-soft);
-  padding-top: 14px;
-}
-
-.settingsWeeklyFocusHeading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.settingsWeeklyFocusHeading h4,
-.settingsWeeklyFocusHeading p {
-  margin: 0;
-}
-
-.settingsWeeklyFocusHeading p {
-  margin-top: 3px;
-  color: var(--text-muted-readable);
-  font-size: 12px;
-}
-
-.settingsWeeklyFocusHeading > span {
-  color: var(--muted);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-
-.settingsWeeklyFocusChecklist label:has(input:disabled) {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.freshnessReviewList {
-  display: grid;
-  gap: 8px;
-}
-
-.freshnessReviewRow {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 14px;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius);
-  padding: 10px;
-  background: var(--surface-soft);
-}
-
-.freshnessReviewCopy {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-.freshnessReviewCopy strong {
-  overflow-wrap: anywhere;
-}
-
-.freshnessReviewCopy > span {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.freshnessReviewActions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 6px;
-}
-
-.freshnessReviewActions button {
-  min-height: 32px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 5px 9px;
-  background: var(--surface);
-  color: var(--text);
-  font-size: 12px;
-  font-weight: 800;
 }
 
 .recordsStats {
@@ -3726,7 +3612,7 @@ input[type="number"]::-webkit-inner-spin-button {
   padding: 1px 7px;
   color: var(--muted);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .timerStateBadge--running {
@@ -3757,7 +3643,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .filterGroup > span {
   color: var(--muted);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .sectionLinkButton {
@@ -3786,7 +3672,7 @@ input[type="number"]::-webkit-inner-spin-button {
   background: var(--surface-soft);
   color: var(--muted);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .segmentButton--active,
@@ -3838,8 +3724,16 @@ input[type="number"]::-webkit-inner-spin-button {
 .topTitle {
   color: var(--text);
   font-size: 25px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.2;
+}
+
+.mainScrollContent > .topTitle {
+  margin: 0 0 16px;
+}
+
+.mainScrollContent > .topTitle--main {
+  margin: 0;
 }
 
 .topTitle--records {
@@ -3891,7 +3785,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .victoryLabel {
   color: var(--muted);
   font-size: 12px;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .victoryInput,
@@ -3991,7 +3885,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .victoryBadge {
   color: var(--accent-strong);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .doNowBand {
@@ -4013,7 +3907,7 @@ input[type="number"]::-webkit-inner-spin-button {
   margin: 0;
   color: var(--text);
   font-size: 15px;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .doNowAlternateButton {
@@ -4106,7 +4000,7 @@ input[type="number"]::-webkit-inner-spin-button {
   margin: 0;
   color: var(--project-color, var(--good));
   font-size: 12px;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .doNowStatusDot {
@@ -4137,15 +4031,14 @@ input[type="number"]::-webkit-inner-spin-button {
   display: none;
 }
 
+/* P10-05 (§4.1): the action is the headline: 32px, 700, wraps instead of clamping. */
 .doNowCopy > strong {
-  display: -webkit-box;
+  display: block;
   margin-inline-start: 3px;
-  overflow: hidden;
   overflow-wrap: anywhere;
-  font-size: 17px;
-  line-height: 1.38;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.25;
 }
 
 .doNowMeta {
@@ -4205,7 +4098,7 @@ input[type="number"]::-webkit-inner-spin-button {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 7px 11px;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .doNowActions .doNowStartPrimary {
@@ -4239,7 +4132,7 @@ input[type="number"]::-webkit-inner-spin-button {
   place-items: center;
   transform: translate(-50%, -50%);
   font-size: 11px;
-  font-weight: 850;
+  font-weight: 700;
   line-height: 1;
   white-space: nowrap;
 }
@@ -4315,7 +4208,7 @@ input[type="number"]::-webkit-inner-spin-button {
   color: var(--text);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
-  font-weight: 800;
+  font-weight: 700;
   text-align: center;
 }
 
@@ -4472,15 +4365,32 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .todayRowMenu {
-  position: absolute;
-  top: 4px;
-  right: 4px;
+  position: static;
   z-index: 1;
   width: 28px;
   height: 28px;
   border-color: transparent;
   border-radius: var(--radius);
   background: transparent;
+}
+
+.todayRow .todayItemCopy {
+  min-height: 20px;
+}
+
+.todayRowTopActions {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 20px;
+}
+
+.runningBadge {
+  line-height: normal;
 }
 
 .todayRowMenu:hover,
@@ -4742,7 +4652,7 @@ input[type="number"]::-webkit-inner-spin-button {
   min-height: 42px;
   background: var(--control-primary-bg);
   color: var(--control-primary-text);
-  font-weight: 800;
+  font-weight: 700;
 }
 .primaryButton:hover:not(:disabled) {
   border-color: var(--control-primary-hover-border);
@@ -4760,7 +4670,7 @@ input[type="number"]::-webkit-inner-spin-button {
   background: var(--control-positive-bg);
   color: var(--good);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 .secondaryButton:hover:not(:disabled) {
   border-color: var(--control-positive-hover-border);
@@ -4794,7 +4704,7 @@ input[type="number"]::-webkit-inner-spin-button {
   background: var(--control-danger-bg);
   color: #ffb4ad;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 .dangerButton:hover:not(:disabled) {
   border-color: var(--control-danger-hover-border);
@@ -4956,7 +4866,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .sectionHeading h2 {
   color: var(--muted);
   font-size: 13px;
-  font-weight: 850;
+  font-weight: 700;
   line-height: 1.2;
 }
 
@@ -5010,12 +4920,16 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .runningBadge {
   min-width: max-content;
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 2px 7px;
+  padding: 1px 7px;
   color: var(--muted);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
+  line-height: normal;
 }
 
 .runningBadge--running {
@@ -5030,6 +4944,20 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .projectNextStepPlaceholder {
   color: var(--muted) !important;
+}
+
+.projectNextStepPlaceholder--action {
+  cursor: pointer;
+  transition:
+    border-color 130ms ease,
+    background-color 130ms ease,
+    color 130ms ease;
+}
+
+.nextStepCard .nextStepActionRegion .projectNextStepPlaceholder--action:hover {
+  border-color: rgba(231, 185, 77, 0.6);
+  background-color: rgba(231, 185, 77, 0.06);
+  color: var(--accent-strong) !important;
 }
 
 .projectNextStepTrigger {
@@ -5048,7 +4976,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .nextStepStartDuration {
   opacity: 0;
   font-size: 12px;
-  font-weight: 850;
+  font-weight: 700;
   line-height: 1;
   pointer-events: none;
 }
@@ -5064,7 +4992,7 @@ input[type="number"]::-webkit-inner-spin-button {
   gap: 6px;
   border-radius: var(--radius);
   font-size: 13px;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .runningPauseButton {
@@ -5180,14 +5108,6 @@ input[type="number"]::-webkit-inner-spin-button {
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.18);
 }
 
-.doNowStartPrimary:hover:not(:disabled),
-.doNowStartPrimary:focus-visible,
-.doNowStartSecondary:hover:not(:disabled),
-.doNowStartSecondary:focus-visible {
-  transform: none;
-  box-shadow: none;
-}
-
 .runningStopButton:hover:not(:disabled) {
   border-color: var(--control-danger-hover-border);
   background: var(--control-danger-hover-bg);
@@ -5228,7 +5148,7 @@ input[type="number"]::-webkit-inner-spin-button {
   gap: 5px;
   color: var(--good);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   opacity: 0.82;
 }
 
@@ -5844,7 +5764,7 @@ body:has([aria-modal="true"]) .toastStack {
   color: var(--text);
   text-align: center;
   font-size: 12px;
-  font-weight: 820;
+  font-weight: 700;
 }
 
 .launcherTile:hover,
@@ -6064,7 +5984,7 @@ body:has([aria-modal="true"]) .toastStack {
 .helpGuideNav button > span:first-child {
   color: var(--accent-strong);
   font-variant-numeric: tabular-nums;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .helpGuideNav button strong {
@@ -6078,7 +5998,7 @@ body:has([aria-modal="true"]) .toastStack {
 .helpGuideNavCurrent {
   color: var(--text) !important;
   font-size: 9px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .helpGuideBody {
@@ -6125,7 +6045,7 @@ body:has([aria-modal="true"]) .toastStack {
   color: var(--accent-strong);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .helpGuideSection h3 {
@@ -6160,7 +6080,7 @@ body:has([aria-modal="true"]) .toastStack {
 
 .helpGuideSteps li::marker {
   color: var(--accent-strong);
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .helpGuideDefinitions {
@@ -6185,7 +6105,7 @@ body:has([aria-modal="true"]) .toastStack {
 .helpGuideDefinitions dt {
   color: var(--text);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .helpGuideDefinitions dd {
@@ -6221,7 +6141,7 @@ body:has([aria-modal="true"]) .toastStack {
   border-bottom: 1px solid var(--line-soft);
   color: var(--text);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .helpGuideCopyButton {
@@ -6284,7 +6204,7 @@ body:has([aria-modal="true"]) .toastStack {
 .helpGuideExamples dt {
   color: var(--muted);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .helpGuideExamples dd {
@@ -6541,13 +6461,13 @@ body:has([aria-modal="true"]) .toastStack {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 8px 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .confirmDialogActions button {
   min-height: 40px;
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .confirmDialogButton--normal {
@@ -6647,7 +6567,7 @@ body:has([aria-modal="true"]) .toastStack {
   margin: 0 0 2px;
   color: var(--text-muted-readable);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .launcherSearchScope small {
@@ -6734,6 +6654,14 @@ body:has([aria-modal="true"]) .toastStack {
   padding-top: 12px;
 }
 
+/* P10-01: Inter / Noto Sans JP make the rows a little taller, so on short windows the last
+   Settings rows fell just past the panel edge. Give the panel a few more pixels there. */
+@media (max-height: 760px) {
+  .settingsDialog {
+    height: min(92vh, 820px);
+  }
+}
+
 .settingsDialogActions > button {
   min-height: 42px;
 }
@@ -6807,7 +6735,7 @@ body:has([aria-modal="true"]) .toastStack {
   background: var(--surface);
   color: var(--muted);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .settingsTab--active {
@@ -6876,7 +6804,7 @@ body:has([aria-modal="true"]) .toastStack {
   color: var(--text);
   font-family: inherit;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -6941,7 +6869,7 @@ body:has([aria-modal="true"]) .toastStack {
 .projectTimerSetting > span {
   color: var(--text);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .projectTimerControl {
@@ -6957,7 +6885,7 @@ body:has([aria-modal="true"]) .toastStack {
   background: var(--surface);
   color: var(--text);
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .projectTimerStepButton:hover {
@@ -7020,7 +6948,7 @@ body:has([aria-modal="true"]) .toastStack {
   background: var(--surface);
   color: var(--text);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .settingsToggle input {
@@ -7093,6 +7021,26 @@ body:has([aria-modal="true"]) .toastStack {
   border-top: 1px solid var(--line-soft);
 }
 
+.settingsReleaseLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #b8b0a0;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.settingsReleaseLink:hover,
+.settingsReleaseLink:focus-visible {
+  color: #ffce5b;
+}
+
 .softwareResetButton {
   width: fit-content;
   min-width: 172px;
@@ -7116,7 +7064,7 @@ body:has([aria-modal="true"]) .toastStack {
   min-height: 40px;
   padding-inline: 10px;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .softwareResetProgressBackdrop {
@@ -7412,7 +7360,7 @@ body:has([aria-modal="true"]) .toastStack {
   background: var(--surface-soft);
   color: var(--text);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .projectWeeklyFocusToggle input {
@@ -7694,9 +7642,26 @@ body:has([aria-modal="true"]) .toastStack {
   max-width: 420px;
 }
 
+.timerCompleteDialog > div:first-child {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+}
+
 .timerCompleteText {
   color: var(--muted);
   font-size: 17px;
+}
+
+.timerResumeField {
+  margin-top: 4px;
+}
+
+.timerResumeHint {
+  margin: -4px 0 0;
+  color: #a39c8e;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .dialogActions {
@@ -7798,23 +7763,8 @@ body:has([aria-modal="true"]) .toastStack {
     justify-content: flex-start;
   }
 
-  .weeklyReviewFacts,
-  .weeklyFocusChecklist,
   .recordsStats {
     grid-template-columns: 1fr;
-  }
-
-  .freshnessReviewRow {
-    grid-template-columns: 1fr;
-  }
-
-  .freshnessReviewActions {
-    justify-content: flex-start;
-  }
-
-  .weeklyReviewFacts > div + div {
-    border-top: 1px solid var(--line-soft);
-    border-left: 0;
   }
 }
 
@@ -7866,6 +7816,29 @@ body:has([aria-modal="true"]) .toastStack {
   padding-left: 9px;
 }
 
+/* P10-01: Inter / Noto Sans JP are a little wider than the Windows faces, and at the narrowest
+   window the title and the date were squeezed onto two lines. Take the space back from the
+   gaps and the pill frame (no text size changes). */
+@media (max-width: 1120px) {
+  .topBar {
+    gap: 6px;
+  }
+
+  .topSummary {
+    gap: 6px;
+  }
+
+  .topPills {
+    padding: 0;
+    border-color: transparent;
+  }
+
+  .topPillGroup + .topPillGroup {
+    margin-left: 5px;
+    padding-left: 6px;
+  }
+}
+
 .topPillGroup + .topPillGroup::before {
   position: absolute;
   top: 5px;
@@ -7887,6 +7860,62 @@ body:has([aria-modal="true"]) .toastStack {
 
 .viewToggleButton {
   font-weight: 600;
+}
+
+/* P10-02 (D9): the auto-start button is icon-only. ON = green icon and a small green dot,
+   OFF = grey icon and no dot. */
+.viewToggleButton--autoStart {
+  position: relative;
+  width: 32px;
+  padding: 0;
+}
+
+.viewToggleButton--autoStart .uiIcon {
+  color: var(--muted);
+}
+
+.viewToggleButton--autoStart[aria-pressed="true"] .uiIcon {
+  color: var(--good);
+}
+
+.autoStartDot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--good);
+}
+
+/* P10-02: the guide lives inside Settings now (D5). It stays its own row at the top. */
+.settingsGuideRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  background: var(--surface-soft);
+}
+
+.settingsGuideRow h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.settingsGuideRow p {
+  margin: 2px 0 0;
+  color: var(--text-muted-readable);
+  font-size: 12px;
+}
+
+.settingsGuideButton {
+  flex: 0 0 auto;
+  min-width: 112px;
 }
 
 .viewToggleButtonLabel {
@@ -8369,8 +8398,16 @@ body:has([aria-modal="true"]) .toastStack {
   margin: 0;
   color: var(--text);
   font-size: var(--dashboard-font-section);
-  font-weight: 900; /* P9-14: same as the other bars' names (<strong> inside the 650 .disclosure = bolder = 900) */
+  font-weight: 700; /* P10-01: every Main section-bar name is 700 (D6: 400/500/700 only) */
   line-height: 1.35;
+}
+
+/* P10-01: the other three bars name themselves with <strong>, which would inherit bolder (=900)
+   from the 650 .disclosure. Pin them to 700 so the four bars share one text style. */
+.projectsBand .disclosureLabel strong,
+.inboxBand .disclosureLabel strong,
+.todayActivityBand .disclosureLabel strong {
+  font-weight: 700;
 }
 
 .todaySectionDisclosure {
@@ -8473,7 +8510,7 @@ body:has([aria-modal="true"]) .toastStack {
   background: rgba(231, 185, 77, 0.065);
   color: var(--accent);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   pointer-events: none;
 }
 
@@ -8520,7 +8557,6 @@ body:has([aria-modal="true"]) .toastStack {
 }
 
 .todayRow {
-  container: today-card / inline-size;
   min-height: 154px;
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr);
@@ -8669,10 +8705,17 @@ body:has([aria-modal="true"]) .toastStack {
   grid-column: 1 / -1;
   grid-row: 2;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   flex-wrap: nowrap;
   gap: 8px;
   min-width: 0;
+  min-height: 36px;
+}
+
+@container today-card (max-width: 340px) {
+  .todayCardFooter {
+    gap: 2px;
+  }
 }
 
 @container today-card (max-width: 300px) {
@@ -8686,7 +8729,7 @@ body:has([aria-modal="true"]) .toastStack {
   display: grid;
   justify-items: end;
   gap: 4px;
-  width: 210px;
+  width: 218px;
   max-width: 100%;
   margin-left: auto;
 }
@@ -8695,8 +8738,12 @@ body:has([aria-modal="true"]) .toastStack {
   width: 202px;
 }
 
+.todayRow--running .todayTimerCluster:has(.todayTimerActions--measure) {
+  width: 218px;
+}
+
 .todayTimerCluster .todayTimerActions:not(.todayTimerActions--running) {
-  grid-template-columns: 82px 82px 34px;
+  grid-template-columns: 82px 82px 36px;
   gap: 6px;
 }
 
@@ -8778,6 +8825,27 @@ body:has([aria-modal="true"]) .toastStack {
   padding-inline: 3px 5px;
 }
 
+.todayRow .todayRemoveButton {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.todayRow:hover .todayRemoveButton,
+.todayRow:focus-within .todayRemoveButton {
+  opacity: 1;
+}
+
+.todayRow:hover .todayRemoveButton:disabled,
+.todayRow:focus-within .todayRemoveButton:disabled {
+  opacity: 0.45;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .todayRow .todayRemoveButton {
+    transition: none;
+  }
+}
+
 .todayRow .todayInstructionButton:hover:not(:disabled),
 .todayRow .todayInstructionButton:focus-visible,
 .todayRow .todayRemoveButton:hover:not(:disabled),
@@ -8789,7 +8857,6 @@ body:has([aria-modal="true"]) .toastStack {
 
 .todayRow .todayRemoveButton:disabled {
   cursor: not-allowed;
-  opacity: 0.45;
 }
 
 .todayRow .todayRemoveButton.mainActionButton--neutral:hover:not(:disabled),
@@ -8807,7 +8874,8 @@ body:has([aria-modal="true"]) .toastStack {
   .todayRow .todayRemoveButton {
     gap: 2px;
     padding-inline: 2px 3px;
-    font-size: 10px;
+    font-size: 11px;
+    font-weight: 700;
   }
 
   .todayRow .todayRemoveButton .uiIcon {
@@ -8974,7 +9042,8 @@ body:has([aria-modal="true"]) .toastStack {
 
 .todayPickerEntry {
   width: 100%;
-  min-height: 154px;
+  /* P10-05 made the start button 48px, so a Today card is about 4.6px taller than 154px. */
+  min-height: 159px;
   display: grid;
   place-content: center;
   border: 1px dashed rgba(231, 185, 77, 0.44);
@@ -8998,7 +9067,7 @@ body:has([aria-modal="true"]) .toastStack {
   background: rgba(231, 185, 77, 0.1);
   color: var(--accent-strong);
   font-size: var(--dashboard-font-meta);
-  font-weight: 800;
+  font-weight: 700;
   transition:
     border-color 140ms ease,
     background 140ms ease,
@@ -9088,7 +9157,7 @@ body:has([aria-modal="true"]) .toastStack {
   margin-bottom: 3px;
   color: var(--muted);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.2;
 }
 
@@ -9132,7 +9201,7 @@ body:has([aria-modal="true"]) .toastStack {
   margin: 0;
   color: var(--text);
   font-size: var(--today-picker-font-body);
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.3;
 }
 
@@ -9187,7 +9256,7 @@ body:has([aria-modal="true"]) .toastStack {
   justify-self: end;
   padding: 0 9px;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1;
   white-space: nowrap;
 }
@@ -9335,7 +9404,7 @@ body:has([aria-modal="true"]) .toastStack {
 .todayPickerPanelHeading strong {
   color: var(--text);
   font-size: var(--today-picker-font-body);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .todayPickerPanelHeading span {
@@ -9771,12 +9840,16 @@ body:has([aria-modal="true"]) .toastStack {
 }
 
 .wishlistNextStepStatus {
-  min-height: 22px;
+  min-height: 20px;
   display: inline-flex;
   align-items: center;
+  border: 1px solid rgba(117, 196, 143, 0.34);
+  border-radius: 999px;
+  padding: 1px 7px;
   color: var(--good);
-  font-size: var(--dashboard-font-meta);
+  font-size: 11px;
   font-weight: 700;
+  line-height: normal;
   white-space: nowrap;
 }
 
@@ -9951,10 +10024,10 @@ body:has([aria-modal="true"]) .toastStack {
 }
 
 .todayTimerCluster .todayTimerActions--measure {
-  width: 200px;
+  width: 218px;
   height: 36px;
   justify-content: space-between;
-  gap: 5px;
+  gap: 4px;
   border: 0;
   padding: 0;
   background: transparent;
@@ -9962,6 +10035,7 @@ body:has([aria-modal="true"]) .toastStack {
 
 .todayTimerCluster .todayTimerActions--measure .measureElapsedClock {
   min-width: 44px;
+  font-size: 11px;
 }
 
 .todayTimerCluster .todayTimerActions--measure .runningPauseButton,
@@ -10008,14 +10082,14 @@ body:has([aria-modal="true"]) .toastStack {
   padding-left: 0;
 }
 
+/* P10-14 (§4.4): one horizontal row; the height follows the text. */
 .nextStepCard.nextStepRow.sourceListRow {
   position: relative;
-  height: 112px;
-  min-height: 112px;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0;
+  min-height: 56px;
+  display: grid;
+  grid-template-columns: minmax(110px, 150px) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -10059,7 +10133,7 @@ body:has([aria-modal="true"]) .toastStack {
   min-height: 20px;
   display: block;
   border: 0;
-  padding: 0 30px 0 0;
+  padding: 0;
   text-align: left;
 }
 
@@ -10071,7 +10145,7 @@ body:has([aria-modal="true"]) .toastStack {
 
 .nextStepCard .nextStepProjectRegion h3 .projectIdentity {
   width: auto;
-  max-width: min(180px, 55%);
+  max-width: 100%;
   flex: 0 1 auto;
   color: var(--muted);
   font-size: var(--dashboard-font-meta);
@@ -10107,11 +10181,10 @@ body:has([aria-modal="true"]) .toastStack {
 }
 
 .nextStepCardActions {
-  align-self: flex-end;
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-top: auto;
+  margin-top: 0;
 }
 
 .nextStepCard .nextStepTodayAdd {
@@ -10123,30 +10196,43 @@ body:has([aria-modal="true"]) .toastStack {
 }
 
 .nextStepTodayStatus {
-  min-height: 22px;
+  min-height: 20px;
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   border: 1px solid rgba(117, 196, 143, 0.34);
   border-radius: 999px;
-  padding-inline: 7px;
-  background: rgba(117, 196, 143, 0.07);
+  padding: 1px 7px;
+  background: transparent;
   color: var(--good);
-  font-size: var(--dashboard-font-meta);
+  font-size: 11px;
   font-weight: 700;
-  line-height: 1;
+  line-height: normal;
   white-space: nowrap;
 }
 
 .nextStepCard .nextStepActionRegion {
   min-height: 0;
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content 28px;
+  align-items: center;
+  gap: 10px;
   border: 0;
-  padding: 0 0 0 3px;
+  padding: 0;
+}
+
+.nextStepTextRegion {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 3px;
+}
+
+.nextStepRowMeta {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .nextStepCard .nextStepActionRegion:hover,
@@ -10156,17 +10242,13 @@ body:has([aria-modal="true"]) .toastStack {
 }
 
 .nextStepCard .nextStepActionRegion p {
-  min-height: 31px;
-  display: -webkit-box;
-  margin: 9px 0 0;
-  overflow: hidden;
+  margin: 0;
+  overflow-wrap: anywhere;
   color: var(--text);
   font-size: var(--dashboard-font-body);
   font-weight: 650;
   line-height: 1.45;
   white-space: normal;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
 }
 
 .nextStepCard .nextStepActionRegion .projectNextStepPlaceholder {
@@ -10189,9 +10271,8 @@ body:has([aria-modal="true"]) .toastStack {
   --main-action-hover-bg: var(--surface-strong);
   --main-action-hover-border: rgba(231, 185, 77, 0.48);
   --main-action-hover-color: var(--accent-strong);
-  align-self: flex-end;
   min-height: 28px;
-  margin-top: auto;
+  margin-top: 0;
   padding-inline: 8px;
   border-color: var(--line-strong);
   background: rgba(255, 255, 255, 0.018);
@@ -10207,9 +10288,7 @@ body:has([aria-modal="true"]) .toastStack {
 }
 
 .nextStepCard .nextStepRegionMenu {
-  position: absolute;
-  top: 4px;
-  right: 4px;
+  position: static;
   width: 28px;
   height: 28px;
   border-color: transparent;
@@ -10430,7 +10509,7 @@ body:has([aria-modal="true"]) .toastStack {
 
 .nextStepWishlistSelection > span:first-child {
   color: var(--good);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .nextStepWishlistSelectionCopy {
@@ -10475,49 +10554,110 @@ body:has([aria-modal="true"]) .toastStack {
 }
 
 .completionFollowupDialog {
-  width: min(560px, 100%);
+  width: min(580px, 100%);
+}
+
+/* P10-09 (§8.1): the completion dialog — ✓ header, finished step, then 4-5 radios. */
+.completionDoneHeader {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.completionDoneMark {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--good) 18%, transparent);
+  color: var(--good);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.completionDoneSubject {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  background: var(--surface);
+}
+
+.completionDoneSubject strong {
+  min-width: 0;
+  flex: 1;
+}
+
+.completionDoneMinutes {
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.completionFollowupQuestion {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
 }
 
 .completionFollowupChoices {
   display: grid;
-  border-block: 1px solid var(--line-soft);
+  max-height: 44vh;
+  gap: 4px;
+  overflow: auto;
 }
 
 .completionFollowupChoice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   min-width: 0;
   min-height: 44px;
-  display: grid;
-  grid-template-columns: 18px minmax(0, 1fr);
-  gap: 10px;
-  align-items: center;
-  border: 0;
-  border-bottom: 1px solid var(--line-soft);
-  border-radius: 0;
-  padding: 8px 6px;
-  background: transparent;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 0 12px;
+  background: var(--surface);
   color: var(--text);
+  font-size: 13px;
   text-align: left;
 }
 
-.completionFollowupChoice:last-child {
-  border-bottom: 0;
-}
-
 .completionFollowupChoice:hover,
-.completionFollowupChoice:focus-visible {
+.completionFollowupChoice:focus-within {
   background: var(--control-neutral-hover-bg);
 }
 
-.completionFollowupRadio {
-  width: 14px;
-  height: 14px;
-  border: 1px solid var(--muted);
-  border-radius: 50%;
+.completionFollowupChoice--selected {
+  border-color: var(--line);
+  background: var(--surface-strong);
 }
 
-.completionFollowupChoice--new {
-  color: var(--accent-strong);
-  font-weight: 700;
+.completionFollowupChoice input {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  accent-color: var(--accent-strong);
+}
+
+.completionFollowupChoice span {
+  min-width: 0;
+  flex: 1;
+}
+
+.completionFollowupChoice small {
+  color: var(--text-muted-readable);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.completionFollowupDecide {
+  min-width: 96px;
 }
 
 .nextStepFixedProject {
@@ -10746,8 +10886,16 @@ body:has([aria-modal="true"]) .toastStack {
 }
 
 .wishlistTodayStatus {
+  min-height: 20px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(117, 196, 143, 0.34);
+  border-radius: 999px;
+  padding: 1px 7px;
   color: var(--good);
-  font-size: var(--dashboard-font-meta);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: normal;
   white-space: nowrap;
 }
 
@@ -10765,7 +10913,7 @@ body:has([aria-modal="true"]) .toastStack {
   padding-inline: 4px;
   color: var(--accent-strong);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .legacyNextStepChoice p {
@@ -10950,7 +11098,7 @@ body:has([aria-modal="true"]) .toastStack {
   flex: 0 0 auto;
   color: var(--good);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
@@ -11154,7 +11302,7 @@ body:has([aria-modal="true"]) .toastStack {
   justify-self: end;
   color: var(--good);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .startEnvironmentNoResults {
@@ -11294,7 +11442,7 @@ body:has([aria-modal="true"]) .toastStack {
   border-radius: var(--radius);
   padding: 7px 12px;
   font-size: 12px;
-  font-weight: 850;
+  font-weight: 700;
   line-height: 1.2;
   white-space: nowrap;
   cursor: pointer;
@@ -11353,7 +11501,7 @@ body:has([aria-modal="true"]) .toastStack {
   background: rgba(231, 185, 77, 0.08);
   color: var(--accent-strong);
   font-size: var(--dashboard-font-body);
-  font-weight: 800;
+  font-weight: 700;
   pointer-events: none;
   animation: completion-label-in 480ms cubic-bezier(0.2, 1.2, 0.3, 1);
 }
@@ -11693,7 +11841,7 @@ body:has([aria-modal="true"]) .toastStack {
   background: transparent;
   color: var(--text-muted-readable);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -11831,7 +11979,7 @@ body:has([aria-modal="true"]) .toastStack {
   background: var(--surface);
   color: var(--text-muted-readable);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .recordsPagination button[aria-current="page"] {
@@ -11907,7 +12055,7 @@ body:has([aria-modal="true"]) .toastStack {
   color: var(--text-muted-readable);
   cursor: pointer;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .recordsOlderNotes[open] > summary {
@@ -11924,6 +12072,9 @@ body:has([aria-modal="true"]) .toastStack {
 
   .recordsTabs {
     width: 100%;
+    /* P10-01: with the wider bundled font the three greedy tabs rounded 0.02px past the
+       header edge; reserve that hair so they never spill outside the header box. */
+    padding-inline-end: 1px;
   }
 
   .recordsTab {
@@ -12352,68 +12503,7 @@ button.mainActionButton:is(
   overflow-wrap: anywhere;
 }
 
-.timerPanel--mini.timerPanel--active {
-  grid-template-rows: 18px 17px 26px 3px 26px;
-  grid-template-areas:
-    "identity state"
-    "action action"
-    "clock clock"
-    "progress progress"
-    "controls controls";
-  gap: 1px 8px;
-}
-
-.timerPanel--mini.timerPanel--active .timerMeta {
-  display: contents;
-}
-
-.timerPanel--mini.timerPanel--active .timerMeta > span:not(.projectIdentity) {
-  display: none;
-}
-
-.timerPanel--mini.timerPanel--active .timerMeta > .projectIdentity {
-  grid-area: identity;
-  min-height: 0;
-}
-
-.timerPanel--mini.timerPanel--active .timerMeta > strong.timerActionText {
-  display: block;
-  grid-area: action;
-  min-height: 0;
-  font-size: 14px;
-  line-height: 17px;
-  white-space: nowrap;
-}
-
-.timerPanel--mini.timerPanel--active .timerStateRow {
-  display: flex;
-  align-items: center;
-  min-height: 0;
-}
-
-.timerPanel--mini.timerPanel--active .timerStateBadge {
-  min-height: 18px;
-  padding-block: 0;
-  line-height: 1;
-  font-size: 11px;
-}
-
-.timerPanel--mini.timerPanel--active .timerClock {
-  font-size: 26px;
-}
-
-.timerPanel--mini.timerPanel--active .timerControls .secondaryButton {
-  min-height: 26px;
-  padding-block: 3px;
-}
-
-/* P9-03: the idle mini is a heading, a "waiting" badge and a hint. */
-.timerPanel--mini.timerPanel--idle {
-  grid-template-rows: 20px 28px;
-  grid-template-areas:
-    "meta state"
-    "controls controls";
-}
+/* P10-14e N1: the idle mini has no progress line, so its two rows share the height. */
 
 /*
  * P9-07: borders only where they carry a role (victory condition, cards, start buttons, inputs,
@@ -12527,7 +12617,8 @@ button.mainActionButton:is(
 /* P9-09: guide shown when an open sidebar group has no buttons (it is still part of the group drop target). */
 .quickGroupEmpty {
   margin: 0;
-  padding: 4px 8px 6px;
+  /* P10-01: Noto Sans JP is wider than the Windows faces; 8px side padding wrapped this one line. */
+  padding: 4px 5px 6px;
   color: var(--text-muted-readable);
   font-size: 12px;
   line-height: 1.4;
@@ -12564,7 +12655,7 @@ button.mainActionButton:is(
   transform: translateY(-50%);
   color: var(--muted);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   pointer-events: none;
 }
 
@@ -12816,10 +12907,6 @@ button.mainActionButton:is(
 
 /* 拡大タイマーの閉じるボタンも同じく窓のボタンの帯より左へ。
    今の右余白(16〜64px の段階)を下限にする。 */
-.expandedTimerHeader {
-  padding-right: max(clamp(16px, 4vw, 64px), calc(50% - 50vw + 143px));
-}
-
 @media (prefers-reduced-motion: reduce) {
   .windowControlsButtons,
   .windowControlButton {
@@ -13071,4 +13158,3666 @@ button.mainActionButton:is(
   color: var(--text-muted-readable);
   font-size: 11px;
   font-weight: 400;
+}
+
+/* P10-01 helper for text that only screen readers should read. */
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* P10-07: the sidebar meta row keeps its height. */
+.timerDock .timerMetaTop {
+  min-height: 26px;
+}
+
+/* P10-07 (D37): rolling digits in the idle clock. */
+.timerClockRolling {
+  display: inline-flex;
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+}
+
+.timerClockDigit {
+  position: relative;
+  display: inline-block;
+  width: 1ch;
+  overflow: hidden;
+  text-align: center;
+}
+
+.timerClockDigit > span {
+  display: block;
+}
+
+.timerClockUnit {
+  margin-left: 2px;
+}
+
+/* P10-03 (D4): the search field in the top bar and the search window. */
+.topSearchButton {
+  display: inline-flex;
+  min-width: 34px;
+  max-width: 420px;
+  height: 32px;
+  flex: 0 1 340px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 0 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 13px;
+  text-align: left;
+}
+
+.topSearchButton:hover {
+  border-color: var(--line);
+  color: var(--text-muted-readable);
+}
+
+.topSearchLabel {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topSearchButton .uiKey {
+  flex: 0 0 auto;
+}
+
+/* Narrow rows drop the hint text first, then the whole label. */
+.topBar[data-top-menu-labels="1"] .topSearchLabel,
+.topBar[data-top-menu-labels="2"] .topSearchLabel {
+  display: none;
+}
+
+.topBar[data-top-menu-labels="2"] .topSearchButton {
+  flex: 0 0 auto;
+  width: 32px;
+  justify-content: center;
+  justify-self: center;
+  padding: 0;
+}
+
+.topBar[data-top-menu-labels="2"] .topSearchButton .uiKey {
+  display: none;
+}
+
+.searchPaletteBackdrop {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  display: grid;
+  place-items: start center;
+  padding: 78px 16px 16px;
+  background: rgba(0, 0, 0, 0.42);
+}
+
+.searchPalette {
+  display: grid;
+  width: min(640px, 100%);
+  max-height: min(520px, 70vh);
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-strong);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+}
+
+.searchPaletteInputRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--muted);
+}
+
+.searchPaletteInput {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 15px;
+  outline: none;
+}
+
+.searchPaletteList {
+  overflow: auto;
+  padding: 6px;
+}
+
+.searchPaletteGroup {
+  display: grid;
+  gap: 2px;
+  padding: 4px 0 6px;
+}
+
+.searchPaletteGroupTitle {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0;
+  padding: 2px 8px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.searchPaletteItem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: 5px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.searchPaletteHighlight {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  border-radius: 5px;
+  background: var(--surface-soft);
+  pointer-events: none;
+}
+
+.searchPaletteItemText {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.searchPaletteItemTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.searchPaletteItemSubtitle,
+.searchPaletteItemMeta {
+  color: var(--text-muted-readable);
+  font-size: 11px;
+}
+
+.searchPaletteItemMeta {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+}
+
+/* P10-03 (D34): the band behind the selected dictionary search result. */
+.dictionarySearchResult {
+  position: relative;
+}
+
+.dictionarySearchHighlight {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  border-radius: 5px;
+  background: var(--surface-soft);
+  pointer-events: none;
+}
+
+.dictionarySearchResult > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Narrow rows: the field keeps only its icon so the title and the menu keep their room. */
+@media (max-width: 1120px) {
+  .topSearchLabel {
+    display: none;
+  }
+
+  .topSearchButton {
+    flex: 0 0 34px;
+    justify-content: center;
+    justify-self: center;
+    padding: 0;
+  }
+
+  .topSearchButton .uiKey {
+    display: none;
+  }
+}
+
+.topTitle {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* P10-05 (D1 exception): only the height of the start buttons changes (48px). */
+.doNowActions .doNowStartPrimary,
+.doNowActions .doNowStartSecondary,
+.doNowActions .doNowMeasureButton {
+  height: 48px;
+  min-height: 48px;
+}
+
+/* P10-05 (§4.3): the "here now" badge on the Today card linked to this moment's step. */
+/* P10-05 (§4.4): the next-step rows keep one shape and grow with the text. */
+.projectGrid .nextStepCard.nextStepRow {
+  min-height: 56px;
+}
+
+/* P10-05 (D11): the staleness notice under the action text. */
+.nextStepFreshness {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  color: var(--warn);
+  font-size: 12px;
+}
+
+.nextStepFreshnessActions {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.nextStepFreshnessButton {
+  min-height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* P10-05 (§4.1): the Next Step headline wins over the older 17px rule. */
+.doNowCopy > strong {
+  display: block;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+/* P10-05 (§4.4): one Project per row, always. */
+.projectsBand .projectGrid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* P10-06 (D25): the dashed "no Next Step yet" badge on a wishlist group. */
+.wishlistNextStepMissing {
+  padding: 1px 8px;
+  border: 1px dashed color-mix(in srgb, var(--project-color, var(--muted)) 55%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--project-color, var(--muted)) 12%, transparent);
+  color: color-mix(in srgb, var(--project-color, var(--muted)) 60%, var(--text));
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* P10-06 (D26): the closed header lists the groups. */
+.inboxGroupSummary {
+  display: flex;
+  min-width: 0;
+  gap: 10px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.inboxGroupSummaryItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inboxGroupSummaryDot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--project-color, var(--muted));
+}
+
+/* P10-08 (§7.2): the expanded timer header keeps the badge left and the buttons right. */
+.expandedTimerHeaderActions {
+  margin-right: 128px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.expandedTimerPlan {
+  margin: 2px 0 0;
+  color: var(--text-muted-readable);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* P10-08: the plan line never widens the overlay. */
+.expandedTimerPlan {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-height: 520px), (max-width: 560px) {
+  .expandedTimer {
+    padding: 0 0 12px;
+    gap: 8px;
+  }
+
+  .expandedTimerClock {
+    font-size: clamp(40px, 12vw, 64px);
+  }
+
+  .expandedTimerBody,
+  .expandedTimerHint {
+    padding-inline: 14px;
+  }
+
+  .expandedTimerHeaderActions {
+    gap: 4px;
+  }
+
+  .expandedTimerClose span {
+    display: none;
+  }
+}
+
+/* P10-08: the mini button shares the 戻る look. */
+.expandedTimerMiniButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.timerMetaMiniHead {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+
+/* P10-10 (§6.1): the Picker is candidates on the left, numbered Today3 slots on the right. */
+.todayPickerDialog {
+  width: min(980px, calc(100vw - 24px));
+  height: min(700px, calc(100vh - 24px));
+  max-height: min(calc(100vh - 24px), 700px);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.todayPickerBody {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 18px;
+  overflow: hidden;
+  padding: 12px 16px;
+}
+
+.todayPickerSource {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto auto auto;
+  align-content: start;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  /* P10-14d (P1): without tabs both groups are always present. The source column
+     scrolls so the second group and long lists stay reachable in short windows. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding-right: 4px;
+}
+
+.todayPickerSourceHeading {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding-block: 2px;
+  background: var(--dialog-surface);
+}
+
+.todayPickerSourcePanel {
+  padding-bottom: 6px;
+}
+
+.todayPickerDestination {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  overflow-y: auto;
+  border: 1px dashed rgba(231, 185, 77, 0.5);
+  border-radius: 14px;
+  padding: 14px;
+  background: rgba(241, 194, 76, 0.03);
+}
+
+.todayPickerDestinationHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+.todayPickerDestinationHeader h3 {
+  color: var(--accent-strong);
+  font-size: 15px;
+}
+
+.todayPickerProgress {
+  width: 84px;
+  flex: 0 1 84px;
+  margin-left: 0;
+}
+
+.todayPickerCounter {
+  margin-left: auto;
+}
+
+.todayPickerSlots {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-rows: minmax(72px, 1fr);
+  gap: 10px;
+  align-items: stretch;
+}
+
+.todayPickerSlot {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  padding: 8px 10px 8px 14px;
+}
+
+.todayPickerSlot.todayPickerRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "index copy remove";
+  align-items: center;
+  gap: 14px;
+}
+
+.todayPickerSlotIndex {
+  grid-area: index;
+  color: var(--text-muted-readable);
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.todayPickerSlotCopy {
+  grid-area: copy;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.todayPickerSlotCopy > .todayPickerSlotProject {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.todayPickerSlotCopy > .todayPickerSlotTask {
+  min-width: 0;
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.todayPickerSlot.todayPickerRow > .todayPickerRemoveButton {
+  grid-area: remove;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted-readable);
+}
+
+.todayPickerSlot.todayPickerRow > .todayPickerRemoveButton:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--control-neutral-hover-bg);
+}
+
+.todayPickerSlot--dragging {
+  border-color: var(--accent-strong);
+  opacity: 0.55;
+}
+
+.todayPickerSlot--empty {
+  height: auto;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  justify-items: start;
+  gap: 14px;
+  padding: 8px 10px 8px 14px;
+  color: var(--text-muted-readable);
+  font-size: 13px;
+}
+
+.todayPickerSlotEmptyLabel {
+  color: var(--text-muted-readable);
+  font-size: 13px;
+}
+
+.todayPickerSlot--empty .todayPickerSlotIndex {
+  grid-area: auto;
+}
+
+.todayPickerActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  align-items: center;
+  justify-content: initial;
+  padding: 10px 16px 12px;
+}
+
+.todayPickerActions > button {
+  min-height: 40px;
+  height: 40px;
+  font-size: 13px;
+}
+
+@media (max-width: 760px) {
+  .todayPickerBody {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .todayPickerDestination {
+    order: -1;
+    padding: 10px;
+  }
+
+  .todayPickerSlots {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-auto-rows: minmax(56px, auto);
+    gap: 6px;
+  }
+
+  .todayPickerSlot {
+    min-height: 56px;
+    padding: 6px 6px 6px 9px;
+  }
+
+  .todayPickerSlot.todayPickerRow {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 7px;
+  }
+
+  .todayPickerSlotIndex {
+    font-size: 16px;
+  }
+
+  .todayPickerSelectedStatus {
+    display: none;
+  }
+}
+
+/* P10-10 (§6.2): the Next Step editor's "opens together" chips. */
+.startEnvironmentPicker--chips,
+.instructionPicker--chips {
+  display: contents;
+}
+
+.nextStepOpenTogether {
+  display: grid;
+  gap: 8px;
+}
+
+.nextStepOpenChips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.nextStepOpenChip {
+  max-width: 100%;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0 4px 0 12px;
+  background: var(--surface);
+  font-size: 13px;
+}
+
+.nextStepOpenChipIcon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted-readable);
+}
+
+.nextStepOpenChipLabel {
+  min-width: 0;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nextStepOpenChip--missing {
+  border-color: rgba(242, 166, 90, 0.6);
+}
+
+.nextStepOpenChip--missing .nextStepOpenChipLabel {
+  color: #f2a65a;
+}
+
+.nextStepOpenChipMissing {
+  color: #f2a65a;
+  background: rgba(242, 166, 90, 0.12);
+}
+
+.nextStepOpenChipRemove {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted-readable);
+}
+
+.nextStepOpenChipRemove:hover,
+.nextStepOpenChipRemove:focus-visible {
+  background: var(--control-neutral-hover-bg);
+  color: var(--text);
+}
+
+.nextStepOpenChipAdd {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.nextStepOpenChipAdd:hover,
+.nextStepOpenChipAdd:focus-visible {
+  border-color: var(--line-strong);
+  background: var(--control-neutral-hover-bg);
+}
+
+.nextStepOpenMenu {
+  width: fit-content;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 6px;
+  background: var(--surface-strong);
+}
+
+.nextStepOpenMenu button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.nextStepOpenMenu button:hover,
+.nextStepOpenMenu button:focus-visible {
+  background: var(--control-neutral-hover-bg);
+}
+
+.projectTimerSettingLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.projectTimerDot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--good);
+}
+
+.projectTimerSetting:nth-of-type(2) .projectTimerDot {
+  background: #70a7ff;
+}
+
+/* P10-11 (§8.2): the first-run guide and the copy button (D36). */
+.firstRunBand {
+  width: 100%;
+  max-width: 620px;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  margin: 0 auto;
+  padding: 48px 24px 40px;
+}
+
+.firstRunHero h1 {
+  margin: 0 0 10px;
+  font-size: 34px;
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+.firstRunHero p {
+  margin: 0;
+  color: var(--text-muted-readable);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.firstRunField {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.firstRunFieldLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.firstRunStepNumber {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--surface-strong);
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.firstRunInput {
+  height: 52px;
+  padding: 0 16px;
+  font-size: 17px;
+}
+
+.firstRunExamples {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted-readable);
+  font-size: 12px;
+}
+
+.firstRunExample {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.firstRunExample:hover,
+.firstRunExample:focus-visible {
+  border-color: var(--line-strong);
+  background: var(--control-neutral-hover-bg);
+}
+
+.firstRunHint {
+  color: var(--text-muted-readable);
+  font-size: 12px;
+}
+
+.firstRunStartActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.firstRunStartButton {
+  min-height: 48px;
+  padding: 0 22px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.firstRunLaterButton {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted-readable);
+  font-size: 14px;
+}
+
+.firstRunLaterButton:hover,
+.firstRunLaterButton:focus-visible {
+  color: var(--text);
+}
+
+.firstRunImport {
+  margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+
+.firstRunImportCopy {
+  min-width: 0;
+  flex: 1 1 280px;
+  display: grid;
+  gap: 2px;
+}
+
+.firstRunImportCopy strong {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.firstRunImportCopy span {
+  color: var(--text-muted-readable);
+  font-size: 12px;
+}
+
+.firstRunImportOpen {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.firstRunImportOpen:hover,
+.firstRunImportOpen:focus-visible {
+  border-color: var(--line-strong);
+  background: var(--control-neutral-hover-bg);
+}
+
+.copyButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.copyButton:hover,
+.copyButton:focus-visible {
+  border-color: var(--line-strong);
+  background: var(--control-neutral-hover-bg);
+}
+
+.copyButton[data-copied="true"] {
+  border-color: rgba(117, 196, 143, 0.55);
+  color: var(--good);
+}
+
+/* P10-14: both labels share one cell and sit on the button's vertical center. */
+.copyButtonLabel {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  line-height: 1;
+}
+
+.copyButtonSizer,
+.copyButtonText {
+  grid-area: 1 / 1;
+  align-self: center;
+  white-space: nowrap;
+}
+
+.copyButtonSizer {
+  visibility: hidden;
+}
+
+/* P10-12 (D15): key badges in the context menu and the row focus hint. */
+.contextMenu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 9px;
+}
+
+.contextMenuItemLabel {
+  min-width: 0;
+  flex: 1;
+}
+
+.contextMenuShortcut {
+  flex: 0 0 auto;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.contextMenu button.contextMenuDanger .contextMenuShortcut {
+  border-color: rgba(240, 111, 104, 0.5);
+  background: rgba(240, 111, 104, 0.12);
+  color: #ffb4ad;
+}
+
+.sourceListRow,
+.todayRow {
+  position: relative;
+}
+
+.rowKeyHint {
+  display: none;
+  margin-right: 6px;
+  pointer-events: none;
+}
+
+.uiPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 20px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: normal;
+  white-space: nowrap;
+}
+
+.nextStepRow:focus-visible .rowKeyHint,
+.inboxRow:focus-visible .rowKeyHint,
+.todayRow:focus-visible .rowKeyHint {
+  display: inline-flex;
+}
+
+/* P10-12: the help guide's short key table. */
+.helpGuideKeys {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.helpGuideKeys th,
+.helpGuideKeys td {
+  border-bottom: 1px solid var(--line-soft);
+  padding: 7px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.helpGuideKeys th {
+  width: 34%;
+  white-space: nowrap;
+}
+
+.helpGuideKeys kbd {
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 1px 6px;
+  background: var(--surface-strong);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.helpGuideKeys td {
+  color: var(--text-muted-readable);
+}
+
+/* P10-12 (D36): copy buttons inside the import dialog. */
+.importPromptCopy {
+  min-height: 34px;
+  padding: 0 11px;
+  font-size: 12px;
+}
+
+/* P10-12 (D35): the drop frame while a file is over it. */
+.importDropZone.is-dragover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+/* P10-12 (D38): the sliding face behind the chosen records tab / date scope. */
+.recordsTabLabel,
+.segmentLabel {
+  position: relative;
+  z-index: 1;
+}
+
+.recordsTabFace {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--surface-soft);
+  pointer-events: none;
+}
+
+.recordsTab--active {
+  background: transparent;
+}
+
+.recordsTab:hover .recordsTabFace {
+  background: transparent;
+}
+
+.segmentButton {
+  position: relative;
+  overflow: hidden;
+}
+
+.segmentFace {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--surface-strong);
+  pointer-events: none;
+}
+
+.segmentButton--active {
+  background: transparent;
+}
+
+/* P10-14 (§4.1): the Do Now start buttons sit under the action text; 手順書 and 他の一手 at the right end. */
+.doNowContent--active {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 12px;
+}
+
+.doNowContent--active .doNowFooter {
+  justify-content: space-between;
+}
+
+.doNowContent--active .doNowActions {
+  justify-content: flex-start;
+}
+
+.doNowSecondaryActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+/* P10-14: keep the Do Now secondary buttons (手順書・他の一手) at the previous 38px height. */
+.doNowSecondaryActions .mainActionButton {
+  min-height: 38px;
+}
+
+/* P10-14d (M1): date and the victory band share one row at the top of the main content. */
+.topTitle--main {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.mainHeaderRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+}
+
+.mainHeaderDate {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.mainDateText {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.mainDateWeekday {
+  color: #a39c8e;
+  font-size: 13px;
+}
+
+.mainHeaderRow .victoryBarWrap {
+  position: relative;
+  display: flex;
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.mainHeaderRow .victoryBar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-height: 44px;
+  margin: 0;
+  border: 1px solid rgba(231, 185, 77, 0.5);
+  border-radius: 10px;
+  padding: 6px 12px;
+  background: rgba(231, 185, 77, 0.06);
+}
+
+/* P10-14d (M1): the header layout must not drop the existing hover / editing
+   reaction. These selectors outrank the plain .mainHeaderRow .victoryBar rule. */
+.mainHeaderRow .victoryBar:hover,
+.mainHeaderRow .victoryBar:has(.victoryInput:focus) {
+  border-color: var(--accent);
+  background: rgba(231, 185, 77, 0.08);
+  transform: translateY(-1px);
+}
+
+.mainHeaderRow .victoryBar--done:hover,
+.mainHeaderRow .victoryBar--done:has(.victoryInput:focus) {
+  background:
+    linear-gradient(
+      120deg,
+      rgba(231, 185, 77, 0.14),
+      rgba(231, 185, 77, 0.025) 48%,
+      transparent 75%
+    ),
+    var(--surface);
+}
+
+.mainHeaderRow .victoryBar .victoryIcon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent-strong);
+}
+
+.mainHeaderRow .victoryLabel {
+  color: var(--accent-strong);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.mainHeaderRow .victoryContent {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mainHeaderRow .victoryTextButton {
+  overflow: hidden;
+  color: var(--text);
+  /* E1/M1: 2px smaller than the action size, but still follows the display size. */
+  font-size: calc(var(--dashboard-font-action) - 2px);
+  font-weight: 700;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mainHeaderRow .victoryTextButton:hover {
+  color: var(--accent-strong);
+}
+
+.mainHeaderRow .victoryTextButton--empty {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.mainHeaderRow .victoryTextButton--empty:hover {
+  color: var(--muted);
+}
+
+.mainHeaderRow .victoryCheck {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  margin-left: 0;
+}
+
+.mainHeaderRow .victoryInput {
+  font-size: calc(var(--dashboard-font-action) - 2px);
+  font-weight: 700;
+}
+
+.mainHeaderRow .victorySuggestions {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 14px;
+  z-index: 5;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  background: var(--surface-strong);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+}
+
+.mainHeaderRow .victoryBadge {
+  flex: 0 0 auto;
+  margin-left: 0;
+  font-size: 12px;
+}
+
+.mainHeaderRow .victoryRewardSweep {
+  border-radius: 10px;
+}
+
+/* P10-14d (M2): the Do Now box, its three content rows and the chip row. */
+.doNowContent {
+  gap: 18px;
+  border: 1px solid #4a4639;
+  border-radius: 14px;
+  padding: 28px 32px 30px;
+  background: #211f1a;
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease,
+    transform 120ms ease;
+}
+
+.doNowContent[data-project-color],
+.doNowContent[data-project-color]:hover {
+  border: 1px solid #4a4639;
+  padding-left: 32px;
+  padding-right: 32px;
+  background: #211f1a;
+}
+
+.doNowContent:hover,
+.doNowContent:focus-within {
+  border-color: var(--project-color, var(--accent));
+  background: var(--surface-strong);
+  transform: translateY(-1px);
+}
+
+.doNowCopy {
+  gap: 18px;
+  padding-inline-start: 0;
+}
+
+.doNowKicker {
+  gap: 10px;
+}
+
+.doNowStatusDot {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--project-color, #70a7ff);
+}
+
+.doNowKicker h2 {
+  color: var(--project-color, #70a7ff);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.doNowProjectChip {
+  min-height: 20px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #4a4639;
+  border-radius: 999px;
+  padding: 1px 7px;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: normal;
+}
+
+.doNowReason {
+  margin-left: auto;
+  color: #a39c8e;
+  font-size: 12px;
+}
+
+.doNowCopy > strong {
+  font-size: 32px;
+  line-height: 1.35;
+}
+
+.doNowResume {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.doNowResumeLabel {
+  flex: none;
+  color: #a39c8e;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.doNowResumeText {
+  min-width: 0;
+  overflow: hidden;
+  color: #e8e2d6;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.doNowMeta {
+  gap: 8px 14px;
+  color: #b8b0a0;
+  font-size: 13px;
+}
+
+.doNowMetaLabel {
+  color: #b8b0a0;
+  font-size: 13px;
+}
+
+.doNowDivider {
+  width: 1px;
+  height: 14px;
+  background: #4a4639;
+}
+
+.doNowOpenChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 10px;
+  background: #26241e;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.doNowOpenChip--button:hover,
+.doNowOpenChip--button:focus-visible {
+  background: var(--control-neutral-hover-bg);
+}
+
+.doNowOpenChip--missing {
+  color: #f2a65a;
+  box-shadow: inset 0 0 0 1px rgba(242, 166, 90, 0.45);
+}
+
+.doNowMissingText {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.doNowContent--active .doNowActions {
+  gap: 10px;
+}
+
+.doNowActions .doNowStartPrimary,
+.doNowActions .doNowStartSecondary {
+  width: auto;
+  min-width: 0;
+  height: 48px;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.doNowActions .doNowStartPrimary {
+  padding: 0 26px 0 22px;
+  font-size: 15px;
+}
+
+.doNowActions .doNowStartSecondary {
+  padding: 0 22px 0 18px;
+  font-size: 15px;
+}
+
+.doNowActions .doNowStartPrimary .timerStartDuration,
+.doNowActions .doNowStartSecondary .timerStartDuration {
+  position: static;
+  display: inline-flex;
+  transform: none;
+  font-size: inherit;
+}
+
+.doNowActions .doNowStartPrimary .timerStartHoverGlyph,
+.doNowActions .doNowStartSecondary .timerStartHoverGlyph,
+.doNowActions .doNowStartPrimary:hover:not(:disabled) .timerStartHoverGlyph,
+.doNowActions .doNowStartSecondary:hover:not(:disabled) .timerStartHoverGlyph,
+.doNowActions .doNowStartPrimary:focus-visible .timerStartHoverGlyph,
+.doNowActions .doNowStartSecondary:focus-visible .timerStartHoverGlyph {
+  position: static;
+  order: -1;
+  display: inline-flex;
+  align-self: center;
+  transform: none;
+  opacity: 1;
+}
+
+.doNowMeasureButton {
+  height: 48px;
+  font-size: 14px;
+}
+
+/* P10-14d (M3): the main content is capped at 1200px and centered. */
+.mainScrollContent {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* P10-14d (M4): the four section headers lose their frame; the arrow and the toggle stay. */
+.todaySectionBar,
+.disclosureHeader {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.todaySectionBar .todaySectionDisclosure h2,
+.disclosureHeader .disclosure strong {
+  font-size: calc(var(--dashboard-font-section) + 1px);
+  font-weight: 700;
+}
+
+.todaySectionBar .todaySectionDisclosure,
+.disclosureHeader .disclosure {
+  font-size: calc(var(--dashboard-font-section) + 1px);
+}
+
+.todaySectionBar .todayCompletedCount,
+.todaySectionBar .todaySectionDescription,
+.disclosureHeader .disclosureCount,
+.disclosureHeader .disclosureDescription {
+  color: #a39c8e;
+  font-size: calc(var(--dashboard-font-meta) + 1px);
+  font-weight: 400;
+}
+
+/* P10-14d (M5): the Next Step row's text sizes; 編集 shows on hover/focus only. */
+.nextStepCard .nextStepProjectRegion h3 .projectIdentity {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.nextStepCard .nextStepActionRegion p {
+  font-size: 14px;
+}
+
+.nextStepCard .nextStepRowAction--change {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.nextStepCard:hover .nextStepRowAction--change,
+.nextStepCard:focus-within .nextStepRowAction--change {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .nextStepCard .nextStepRowAction--change {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nextStepCard .nextStepRowAction--change {
+    transition: none;
+  }
+}
+
+/* P10-14d (M6): sidebar buttons are frameless rows with a 22px letter/icon square. */
+.quickButton {
+  border: 0;
+  border-radius: 8px;
+  padding: 0 6px;
+  background: transparent;
+  gap: 10px;
+  min-height: 34px;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.quickButton:hover,
+.quickButton:focus-visible {
+  border: 0;
+  background: var(--control-neutral-hover-bg);
+}
+
+.quickButton .quickButtonIcon,
+.quickButton .quickButtonInitial {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  border-radius: 5px;
+}
+
+.quickButton .quickButtonInitial {
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--project-color, #a8b2c1) 18%, #2b2922);
+  color: var(--project-color, #a8b2c1);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.quickButton .quickButtonIcon img {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  object-fit: cover;
+}
+
+.quickGroupHeader {
+  font-size: 12px;
+  font-weight: 700;
+  color: #a39c8e;
+}
+
+.quickGroupHeader small {
+  margin-left: auto;
+  color: #a39c8e;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+/* P10-14d (C1): menu text 13px, key hints as gray text, danger items red. */
+.contextMenu {
+  padding: 6px;
+}
+
+.contextMenu button {
+  min-height: 34px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.contextMenuShortcut {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #a39c8e;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.contextMenuDanger,
+.contextMenu button.contextMenuDanger {
+  color: #f06f68;
+}
+
+.contextMenuDanger:hover:not(:disabled),
+.contextMenuDanger:focus-visible,
+.contextMenu button.contextMenuDanger:hover:not(:disabled),
+.contextMenu button.contextMenuDanger:focus-visible {
+  background: var(--control-danger-hover-bg) !important;
+  color: #ffd0cb !important;
+}
+
+/* P10-14d (M6) follow-up: make sure the frame is gone and the name is 14px. */
+.quickButton {
+  border: 0 !important;
+  background: transparent !important;
+  border-radius: 8px !important;
+  min-height: 34px;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 10px;
+  padding: 0 6px;
+}
+
+.quickButton:hover,
+.quickButton:focus-visible {
+  border: 0 !important;
+  background: var(--control-neutral-hover-bg) !important;
+}
+
+.quickButton span:last-child {
+  font-size: 14px;
+}
+
+.quickButton .quickIcon {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.quickButton .quickIcon img {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  object-fit: cover;
+}
+
+.quickButton .quickIcon svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* P10-14d (K1): one yellow ring (2px #ffce5b, 2px outside) for keyboard focus. */
+:where(button, a[href], [tabindex="0"]):focus-visible {
+  outline: 2px solid #ffce5b;
+  outline-offset: 2px;
+}
+
+/* P10-14d (R1): the expanded timer header is the app mark + "Life Launcher" + the
+   state badge on the left, and text-only 戻る / ミニ buttons on the right. The DOM
+   order stays ミニ → 戻る (the existing Tab / Shift+Tab path); row-reverse puts
+   戻る on the left on screen. The window buttons keep their own fixed band on the
+   right, so the header's padding-right reserve stays untouched. */
+.expandedTimerBrand {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 10px;
+}
+
+.expandedTimerBrandName {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.expandedTimerHeaderActions {
+  flex-direction: row-reverse;
+  gap: 0;
+}
+
+.expandedTimerHeader .expandedTimerClose,
+.expandedTimerHeader .expandedTimerMiniButton {
+  display: inline-flex;
+  width: auto;
+  min-width: 0;
+  height: 40px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #b8b0a0;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.expandedTimerHeader .expandedTimerClose:hover,
+.expandedTimerHeader .expandedTimerClose:focus-visible,
+.expandedTimerHeader .expandedTimerMiniButton:hover,
+.expandedTimerHeader .expandedTimerMiniButton:focus-visible {
+  border-color: transparent;
+  background: transparent;
+  color: var(--accent-strong);
+}
+
+/* The project name in the identity reuses the dot's --project-color. */
+.expandedTimerIdentity .projectIdentity,
+.expandedTimerIdentity .projectIdentityName {
+  color: var(--project-color, var(--text));
+}
+
+/* P10-14d (P1): the picker's two source groups stack; no tabs. */
+.todayPickerSource {
+  gap: 14px;
+}
+
+.todayPickerSourceGroup {
+  display: grid;
+  gap: 8px;
+}
+
+.todayPickerSourceGroup + .todayPickerSourceGroup {
+  border-top: 1px solid var(--line-soft);
+  padding-top: 14px;
+}
+
+.todayPickerSourceGroup .todayPickerPanelHeading strong {
+  color: #a39c8e;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.todayPickerSourceGroup .todayPickerPanelHeading span {
+  color: #a39c8e;
+  font-size: 12px;
+}
+
+/* P10-14d (P2): the chosen slot gets a 2px project color line on top. */
+.todayPickerSlot--selected[data-project-color] {
+  border-top: 2px solid var(--project-color);
+}
+
+/* P10-14d (P3): the carry-over note right of 決定. */
+.todayPickerNote {
+  margin-right: auto;
+  color: #a39c8e;
+  font-size: 12px;
+}
+/* P10-14d (S1/S2): the search window's rows take the mock's shape. Every row gets a
+   leading icon (project dot / file / plus / initial), the Project name moves above the
+   step text, and the hint moves to the right edge as 12px grey text. The row the Enter
+   key would run adds a 1px gold border on top of the existing sliding highlight, and
+   spells out what Enter does (no key badges). */
+.searchPaletteItem {
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.searchPaletteItem[data-kind="nextStep"],
+.searchPaletteItem[data-kind="wishlist"] {
+  min-height: 52px;
+}
+
+.searchPaletteItem--selected {
+  border-color: var(--accent);
+}
+
+/* The highlight still slides between rows (the same layoutId element). It is grown by
+   the 1px row border so its box keeps matching the row, and it paints the gold ring
+   above its own background because the row's border sits underneath it. */
+.searchPaletteHighlight {
+  inset: -1px;
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.searchPaletteItemIcon {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+}
+
+.searchPaletteItemIcon--dot {
+  width: 10px;
+  height: 10px;
+}
+
+.searchPaletteItemDot {
+  width: 10px;
+  height: 10px;
+  box-shadow: none;
+}
+
+.searchPaletteItemIcon--letter {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.searchPaletteItemIcon--glyph {
+  width: 22px;
+  height: 22px;
+}
+
+.searchPaletteItemIcon--file {
+  color: #9b8cf5;
+}
+
+.searchPaletteItemIcon--action {
+  color: var(--accent-strong);
+}
+
+.searchPaletteItemText {
+  flex: 1 1 auto;
+}
+
+.searchPaletteItemKicker {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.searchPaletteItemTitle {
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.searchPaletteItem[data-kind="nextStep"] .searchPaletteItemTitle {
+  font-weight: 700;
+}
+
+.searchPaletteItemRight {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.searchPaletteItemHint {
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.searchPaletteItemEnter {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.searchPaletteItemEnter--start {
+  color: var(--good);
+}
+
+/* P10-14d (S1): keep a long folder/page hint from pushing the row wider than the list;
+   the action text ("開く" and friends) never shrinks. */
+.searchPaletteItemRight {
+  min-width: 0;
+  max-width: 60%;
+}
+
+.searchPaletteItemHint {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.searchPaletteItemEnter,
+.searchPaletteItemEnter--start {
+  flex: 0 0 auto;
+}
+
+/* P10-14d (E1): the compact single-screen "一手を編集" form. */
+.nextStepEditDialog--edit {
+  width: min(600px, 100%);
+  /* E1: the compact form has to fit one screen at 620x900. 16px still reads as a
+     grouped form but keeps the last row inside the dialog at that height. */
+  gap: 16px;
+  /* E1: let the dialog use the free height instead of the long-form 760px cap. */
+  max-height: calc(100vh - 36px);
+}
+
+.nextStepEditDialog--edit .modalTitleRow {
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.nextStepEditDialog--edit .eyebrow {
+  color: var(--text-muted-readable);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.nextStepEditHeaderRight {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.nextStepEditProjectChip {
+  max-width: 240px;
+  min-width: 0;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0 12px;
+}
+
+.nextStepEditProjectChip .projectIdentity {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.nextStepEditProjectChip .projectIdentityDot {
+  width: 10px;
+  height: 10px;
+}
+
+.nextStepEditField > span,
+.nextStepEditSectionLabel,
+.nextStepEditSmallField > span {
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.nextStepEditField .textInput {
+  height: 44px;
+}
+
+.nextStepEditField .nextStepEditActionInput {
+  height: 48px;
+  font-size: 16px;
+}
+
+.nextStepEditHint {
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.nextStepEditSmallField > .textInput {
+  height: 40px;
+}
+
+.nextStepEditTimerGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.nextStepEditTimerGrid .projectTimerSetting {
+  gap: 8px;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.nextStepEditTimerGrid .projectTimerSetting > span {
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* P10-14d (E2): the shared minutes stepper (− / N分 / +). */
+.nextStepTimerStepper {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+}
+
+.nextStepTimerStepButton {
+  width: 44px;
+  height: 42px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.nextStepTimerStepButton:hover:not(:disabled),
+.nextStepTimerStepButton:focus-visible:not(:disabled) {
+  background: var(--control-neutral-hover-bg);
+}
+
+.nextStepTimerStepperValue {
+  min-width: 0;
+  height: 100%;
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  cursor: ns-resize;
+}
+
+.nextStepTimerValueInput {
+  width: 3.4ch;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  cursor: ns-resize;
+}
+
+.nextStepTimerStepperUnit {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+/* E1: at narrow widths the two minute fields stack, like the existing timer grid. */
+@media (max-width: 520px) {
+  .nextStepEditTimerGrid {
+    grid-template-columns: 1fr;
+  }
+}
+/* E1: keep the existing sticky save/cancel bar (the main window is 1200x680), now
+   that the compact form can use the full window height. */
+.nextStepEditDialog--edit.modalLongForm > .dialogActions {
+  position: sticky;
+  bottom: -18px;
+  margin: 0 -18px -18px;
+  padding: 12px 18px 18px;
+  background: var(--dialog-surface);
+}
+
+/* P10-14e (4): the Picker follows handoff/mocks/Picker.html. */
+.todayPickerDialog {
+  width: min(980px, calc(100vw - 24px));
+  height: min(620px, calc(100vh - 24px));
+  max-height: min(620px, calc(100vh - 24px));
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 20px;
+  border: 1px solid #4a4639;
+  border-radius: 16px;
+  padding: 26px 30px;
+  background: #211f1a;
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.48);
+}
+
+.todayPickerHead {
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+  padding-bottom: 16px;
+  border-bottom: 0;
+}
+
+.todayPickerHeadCopy {
+  display: grid;
+  gap: 2px;
+}
+
+.todayPickerHeadCopy .eyebrow {
+  margin: 0;
+  color: #a39c8e;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.todayPickerHeadCopy h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.todayPickerIntro {
+  margin: 0 0 2px auto;
+  color: #b8b0a0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.todayPickerHead > .iconButton {
+  flex: 0 0 auto;
+  align-self: flex-start;
+}
+
+.todayPickerBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.todayPickerSource {
+  display: grid;
+  grid-template-rows: auto auto;
+  align-content: start;
+  gap: 16px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding-right: 4px;
+}
+
+.todayPickerSourceGroup {
+  display: grid;
+  gap: 8px;
+}
+
+.todayPickerGroupTitle {
+  margin: 0;
+  color: #a39c8e;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.todayPickerSourceGroup + .todayPickerSourceGroup .todayPickerGroupTitle {
+  margin-top: 0;
+}
+
+.todayPickerList {
+  display: grid;
+  gap: 6px;
+}
+
+.todayPickerRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  border: 1px solid #4a4639;
+  border-left: 3px solid var(--project-color, #4a4639);
+  border-radius: 8px;
+  padding: 0 12px 0 12px;
+  background: #1b1a17;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    transform 120ms ease;
+}
+
+.todayPickerRow:hover {
+  border-color: var(--project-color, #4a4639);
+  background: #2b2922;
+  transform: translateY(-1px);
+}
+
+.todayPickerRow:not(.todayPickerSlot) {
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 48px;
+  padding: 0 12px 0 12px;
+  border-left: 3px solid var(--project-color, #4a4639);
+  border-radius: 8px;
+  background: #1b1a17;
+}
+
+.todayPickerCopy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.todayPickerProject {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  color: #a39c8e;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todayPickerDot {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--project-color, #a8b2c1);
+}
+
+.todayPickerTask {
+  display: -webkit-box;
+  overflow: hidden;
+  min-width: 0;
+  color: #f4f0e8;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.todayPickerAddButton {
+  height: 28px;
+  border: 1px solid rgba(231, 185, 77, 0.6);
+  border-radius: 8px;
+  padding: 0 8px;
+  background: rgba(231, 185, 77, 0.1);
+  color: #ffce5b;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.todayPickerAddButton:hover:not(:disabled),
+.todayPickerAddButton:focus-visible {
+  border-color: var(--accent);
+  background: rgba(231, 185, 77, 0.18);
+}
+
+.todayPickerSelectedStatus {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  border: 1px solid rgba(117, 196, 143, 0.42);
+  border-radius: 999px;
+  padding: 1px 7px;
+  color: var(--good);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: normal;
+  white-space: nowrap;
+}
+
+.todayPickerDestination {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border: 1px dashed rgba(231, 185, 77, 0.55);
+  border-radius: 14px;
+  padding: 18px;
+  background: transparent;
+}
+
+.todayPickerDestinationHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.todayPickerDestinationHeader h3 {
+  margin: 0;
+  color: #ffce5b;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.todayPickerCounter {
+  display: inline-flex;
+  align-items: baseline;
+  margin-left: 0;
+  color: #b8b0a0;
+  font-size: 12px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.todayPickerCounter strong {
+  font-weight: 700;
+}
+
+.todayPickerDragHint {
+  margin-left: auto;
+  overflow: hidden;
+  color: #a39c8e;
+  font-size: 12px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todayPickerSlots {
+  min-height: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.todayPickerSlot {
+  min-height: 0;
+  flex: 1 1 0;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid #4a4639;
+  border-radius: 8px;
+  padding: 0 16px;
+  background: #211f1a;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    transform 120ms ease;
+}
+
+.todayPickerSlot--selected {
+  border-top: 2px solid var(--project-color, #4a4639);
+}
+
+.todayPickerSlot--selected:hover {
+  border-color: var(--project-color, #4a4639);
+  background: #2b2922;
+  transform: translateY(-1px);
+}
+
+.todayPickerSlot--empty {
+  grid-template-columns: 34px minmax(0, 1fr);
+  border: 1px dashed #4a4639;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.todayPickerSlot--empty .todayPickerSlotIndex {
+  color: #4a4639;
+}
+
+.todayPickerSlotIndex {
+  color: #a39c8e;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.todayPickerSlotCopy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.todayPickerSlotProject {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  color: #b8b0a0;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todayPickerSlotProject .todayPickerDot {
+  width: 8px;
+  height: 8px;
+}
+
+.todayPickerSlotTask {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #f4f0e8;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.todayPickerSlotEmptyLabel {
+  color: #a39c8e;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.3;
+}
+
+.todayPickerRemoveButton {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  padding: 0;
+  background: transparent;
+  color: #b8b0a0;
+}
+
+.todayPickerRemoveButton:hover:not(:disabled) {
+  background: #2b2922;
+  color: var(--text);
+}
+
+.todayPickerActions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  margin-top: 20px;
+  border-top: 1px solid #4a4639;
+  padding: 18px 0 0;
+}
+
+.todayPickerActions > button {
+  height: 44px;
+  min-height: 44px;
+  font-size: 14px;
+}
+
+.todayPickerNote {
+  margin: 0;
+  color: #a39c8e;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.todayPickerCancelButton {
+  grid-column: auto;
+}
+
+.todayPickerDialog .formDialogActions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  width: calc((100% - 24px) / 2 - 16px);
+  margin: 0 16px 0 auto;
+  padding: 0;
+  border: 0;
+}
+
+.todayPickerDialog .formDialogActions > button {
+  width: 100%;
+  height: 42px;
+  min-height: 42px;
+  font-size: 14px;
+}
+
+.todayPickerProgress {
+  width: 100%;
+  flex: 0 0 auto;
+  height: 6px;
+  margin: -4px 0 0;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--line-soft);
+}
+
+.todayPickerProgress > span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--good);
+  box-shadow: 0 0 5px rgba(117, 196, 143, 0.24);
+  transform-origin: left center;
+  transition: transform 220ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .todayPickerProgress > span {
+    transition: none;
+  }
+}
+
+@media (min-width: 1000px) {
+  .topBar .topSearchLabel {
+    display: block;
+  }
+}
+
+.topBar[data-top-menu-labels="1"] [data-menu-label-secondary] .viewToggleButtonLabel,
+.topBar[data-top-menu-labels="2"] .viewToggleButtonLabel {
+  display: none;
+}
+
+.topBar[data-top-menu-labels="1"] .topSearchLabel {
+  display: block;
+}
+
+@media (max-width: 760px) {
+  .todayPickerDialog {
+    width: min(100%, calc(100vw - 16px));
+    height: min(620px, calc(100vh - 16px));
+    padding: 18px;
+  }
+
+  .todayPickerHead {
+    gap: 12px;
+  }
+
+  .todayPickerDestination {
+    order: 0;
+  }
+
+  .todayPickerIntro {
+    display: none;
+  }
+}
+
+/* P10-14e (10): the top row spans the window; the sidebar starts below it. */
+.appShell--dashboard {
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.topBar {
+  position: relative;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(200px, 380px) minmax(max-content, 1fr);
+  align-items: center;
+  column-gap: 16px;
+  height: 44px;
+  flex: 0 0 auto;
+  padding: 0 16px;
+  border-bottom: 1px solid #353126;
+  background: #1b1a17;
+  user-select: none;
+}
+
+.topBrand {
+  grid-column: 1;
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.topBrandIcon {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 7px;
+  background: #2b2922;
+  color: #ffce5b;
+}
+
+.topBrandIcon img {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+.topBrandName {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: #f4f0e8;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topBar .topSearchButton {
+  grid-column: 2;
+  width: 100%;
+  min-width: 0;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #4a4639;
+  border-radius: 8px;
+  padding: 0 12px;
+  background: #211f1a;
+  color: #a39c8e;
+}
+
+.topBar .topSearchButton:hover,
+.topBar .topSearchButton:focus-visible {
+  border-color: #4a4639;
+  background: #2b2922;
+  color: var(--accent-strong);
+}
+
+.topBar .topSearchLabel {
+  overflow: hidden;
+  flex: 1 1 auto;
+  color: #b8b0a0;
+  font-size: 13px;
+  font-weight: 400;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topBar .topSearchButton .uiKey {
+  flex: 0 0 auto;
+}
+
+.topBar .topPills {
+  grid-column: 3;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-right: 128px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.topBar .topPillGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topBar .viewToggleButton {
+  width: auto;
+  min-width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 5px;
+  background: transparent;
+  color: #a39c8e;
+}
+
+.topBar .viewToggleButtonLabel {
+  color: #b8b0a0;
+  font-size: 13px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.topBar .viewToggleButton:hover:not(:disabled):not(.viewToggleButton--active),
+.topBar .viewToggleButton:focus-visible:not(.viewToggleButton--active) {
+  background: #2b2922;
+  color: var(--accent-strong);
+}
+
+.topBar .viewToggleButton:hover:not(:disabled):not(.viewToggleButton--active) .uiIcon,
+.topBar .viewToggleButton:focus-visible:not(.viewToggleButton--active) .uiIcon {
+  color: var(--accent-strong);
+}
+
+.topBar .viewToggleButton--active {
+  color: #ffce5b;
+}
+
+.topPillsDivider {
+  width: 1px;
+  height: 20px;
+  flex: 0 0 auto;
+  background: #353126;
+}
+
+.appBody {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+}
+
+.appBody .sidebar {
+  position: relative;
+  top: auto;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  border-right: 1px solid #353126;
+  padding: 16px 12px 20px;
+  background: #161512;
+  overflow-y: auto;
+}
+
+.appBody .launcherOpenButton {
+  min-height: 40px;
+  border: 1px solid #4a4639;
+  border-radius: 8px;
+  padding: 0 6px;
+  background: #211f1a;
+}
+
+.appBody .launcherOpenButtonLabel {
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 4px;
+}
+
+.appBody .launcherOpenButtonIcon {
+  width: 28px;
+  height: 28px;
+}
+
+.appBody .launcherOpenButtonIcon .uiIcon {
+  width: 22px;
+  height: 22px;
+  transform: scaleX(1.1);
+}
+
+.appBody .launcherOpenButton > span {
+  color: #f4f0e8;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.appBody .quickList {
+  flex: 1 1 auto;
+}
+
+.appBody .mainPanel {
+  height: 100%;
+  grid-template-rows: minmax(0, 1fr);
+  padding: 16px 24px 0;
+}
+
+.appShell--dashboard > .windowControls--dashboard {
+  top: 6px;
+  height: 32px;
+}
+
+.appShell--dashboard > .windowControls--dashboard .windowControlButton {
+  height: 32px;
+}
+
+@media (max-width: 900px) {
+  .topBar {
+    column-gap: 10px;
+  }
+
+  .topBrand {
+    min-width: 0;
+  }
+
+  .topBar .topSearchButton {
+    min-width: 0;
+  }
+
+  .topBrandName {
+    display: none;
+  }
+
+  .topBar .topSearchLabel {
+    display: none;
+  }
+}
+
+.uiLetterIcon {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: #2b2922;
+  color: var(--project-color, #a8b2c1);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* P10-14e (12-1): one pill for the status badges of Phase 10. */
+.uiPill {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  min-height: 20px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 1px 7px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.uiPill--project {
+  border-color: color-mix(in srgb, var(--project-color, var(--accent)) 50%, transparent);
+  background: color-mix(in srgb, var(--project-color, var(--accent)) 8%, transparent);
+  color: var(--project-color, var(--accent));
+}
+
+.uiPill--good {
+  border-color: rgba(117, 196, 143, 0.34);
+  background: rgba(117, 196, 143, 0.07);
+  color: var(--good);
+}
+
+.uiPill--running {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.uiPill--paused {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.uiPill--complete {
+  border-color: var(--good);
+  color: var(--good);
+}
+
+.uiPill--muted {
+  border-color: #4a4639;
+  color: var(--muted);
+}
+
+/* P10-14e (12-2): one key cap for the shortcut hints. */
+.uiKey {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  max-width: 100px;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 1px 6px;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shortcutBadge--unavailable {
+  border-style: dashed;
+}
+
+/* P10-14e (12-3): one small button inside rows and cards. */
+.uiSmallButton {
+  min-height: 28px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  padding: 0 8px;
+  font-size: var(--dashboard-font-meta);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* P10-14e (12-3): the new base size wins over the old per-button sizes. */
+.nextStepCard .nextStepRowAction.uiSmallButton,
+.sectionHeading .sectionAddButton.uiSmallButton,
+.nextStepFreshnessButton.uiSmallButton,
+.doNowActions .doNowAlternateButton.uiSmallButton {
+  width: auto;
+  height: auto;
+  min-height: 28px;
+  border-radius: 8px;
+  padding: 0 8px;
+  font-size: var(--dashboard-font-meta);
+  font-weight: 700;
+}
+
+.todayRow .todayInstructionButton,
+.todayRow .todayRemoveButton,
+.todayRow .todayTriggerButton {
+  font-size: var(--dashboard-font-meta);
+  font-weight: 700;
+}
+
+.wishlistNextStepMissing.uiPill {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--project-color, var(--muted)) 52%, #4a4639);
+  background: color-mix(in srgb, var(--project-color, var(--muted)) 5%, transparent);
+  color: #b8b0a0;
+}
+
+.doNowProjectChip.uiPill {
+  border-color: #4a4639;
+  background: transparent;
+  color: #f4f0e8;
+}
+
+/* P10-14e (12-4): the weights that are not 400, 500 or 700. */
+.doNowMetaItem,
+.doNowTrigger,
+.doNowReason {
+  font-weight: 400;
+}
+
+.todayRow .projectIdentityName {
+  font-weight: 400;
+}
+
+.wishlistGroupHeader .projectIdentityName,
+.wishlistGroupHeader > strong {
+  font-weight: 700;
+}
+
+.wishlistGroupHeader small,
+.wishlistGroupHeader > span:last-child {
+  font-weight: 400;
+}
+
+.doNowMeasureButton,
+.doNowMeasureButton span,
+.runningPauseButton,
+.runningStopButton,
+.todayCompletedLabel,
+.todayTextButton {
+  font-weight: 700;
+}
+
+.nextStepTextRegion p,
+.nextStepCard .nextStepTextRegion p {
+  font-weight: 400;
+}
+
+.viewToggleButtonLabel {
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.quickButton,
+.quickButton span:last-child {
+  font-weight: 400;
+}
+
+.quickButton .uiLetterIcon {
+  font-weight: 700;
+}
+
+.quickGroupHeader strong {
+  color: #a39c8e;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* The Enter hint is only for the keyboard-focused row: this must come after .uiKey. */
+.rowKeyHint {
+  display: none;
+}
+
+.nextStepRow:focus-visible .rowKeyHint,
+.inboxRow:focus-visible .rowKeyHint,
+.todayRow:focus-visible .rowKeyHint {
+  display: inline-flex;
+}
+
+.todayPickerCopy strong,
+.todayPickerSlotCopy strong {
+  grid-column: auto;
+}
+
+/* F1 (P10-14f): restore the yellow hover on the small row and card buttons. */
+.uiSmallButton {
+  transition:
+    border-color 130ms ease,
+    background-color 130ms ease,
+    color 130ms ease,
+    transform 130ms ease,
+    box-shadow 130ms ease;
+}
+
+.uiSmallButton:hover:not(:disabled):not(:active),
+.uiSmallButton:focus-visible {
+  border-color: rgba(231, 185, 77, 0.48);
+  background: var(--surface-strong);
+  color: var(--accent-strong);
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.22);
+}
+
+.doNowAlternateButton.uiSmallButton:hover:not(:disabled):not(:active),
+.doNowAlternateButton.uiSmallButton:focus-visible {
+  border-color: transparent;
+  background: var(--surface-strong);
+  color: var(--accent-strong);
+  transform: none;
+  box-shadow: none;
+}
+
+.sectionAddButton.uiSmallButton:hover:not(:disabled):not(:active),
+.sectionAddButton.uiSmallButton:focus-visible {
+  border-color: rgba(231, 185, 77, 0.48);
+  background: var(--surface-strong);
+  color: var(--accent-strong);
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.22);
+}
+
+/* F3 (P10-14f): the dictionary button follows Main.html's .ll-dict. */
+.appBody .launcherOpenButton {
+  min-height: 44px;
+  gap: 10px;
+  border: 1px solid #4a4639;
+  border-radius: 8px;
+  padding: 0 8px;
+  background: #211f1a;
+  transition:
+    border-color 130ms ease,
+    background-color 130ms ease;
+}
+
+.appBody .launcherOpenButtonLabel {
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.appBody .launcherOpenButtonIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: #2b2922;
+  color: #ffce5b;
+}
+
+.appBody .launcherOpenButtonIcon .uiIcon {
+  width: 16px;
+  height: 16px;
+  color: #ffce5b;
+  transform: none;
+}
+
+.appBody .launcherOpenButton > span {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.appBody .launcherOpenButtonLabel > span:last-child {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.appBody .launcherOpenButton:hover {
+  border-color: #b8b0a0;
+  background: #2b2922;
+  color: #f4f0e8;
+}
+
+/* F4 (P10-14f): every key cap except the search Ctrl+F is yellow again. */
+.uiKey {
+  min-height: 19px;
+  line-height: 1.5;
+}
+
+.uiKey--accent {
+  border-color: rgba(231, 185, 77, 0.48);
+  background: rgba(231, 185, 77, 0.12);
+  color: var(--accent);
+}
+
+/* F8 (P10-14f): the top actions take their own third column. */
+.todayRow {
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+}
+
+.todayRowTopActions {
+  position: static;
+  grid-column: 3;
+  grid-row: 1;
+  align-self: start;
+  justify-self: end;
+  height: auto;
+  min-height: 20px;
+}
+
+.todayItemMeta {
+  min-width: 0;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.todayItemMeta .todayProjectIdentity {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.todayItemMeta .todayProjectIdentity .projectIdentityName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todayItemMeta .runningBadge {
+  position: static;
+  flex: 0 0 auto;
+}
+
+.doNowContent[data-project-color]:hover,
+.doNowContent[data-project-color]:focus-within {
+  border-color: var(--project-color, var(--accent));
+  background: var(--surface-strong);
+  transform: translateY(-1px);
+}
+
+.todayItemCopy {
+  flex-direction: column;
+  align-items: flex-start;
+  flex-wrap: nowrap;
+}
+
+.todayItemCopy--withoutIdentity {
+  padding-inline-end: 0;
+}
+
+.todayItemCopy .todayTextButton {
+  width: 100%;
+  flex-basis: auto;
+}
+
+/* F9 (P10-14f): the buttons beside each other share one size. */
+.doNowActions .doNowMeasureButton {
+  padding: 0 16px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.doNowActions .doNowStartPrimary,
+.doNowActions .doNowStartSecondary,
+.doNowActions .doNowMeasureButton,
+.doNowActions .runningPauseButton,
+.doNowActions .runningStopButton {
+  font-weight: 700;
+}
+
+.topBar .viewToggleButton:hover:not(:disabled):not(.viewToggleButton--active) .uiIcon,
+.topBar .viewToggleButton:focus-visible:not(.viewToggleButton--active) .uiIcon,
+.topBar .topSearchButton:hover .uiIcon,
+.topBar .topSearchButton:focus-visible .uiIcon {
+  color: var(--accent-strong);
+}
+
+.topBar .viewToggleButton:hover:not(:disabled):not(.viewToggleButton--active) .viewToggleButtonLabel,
+.topBar .viewToggleButton:focus-visible:not(.viewToggleButton--active) .viewToggleButtonLabel {
+  color: var(--accent-strong);
+}
+
+.doNowActions .runningPauseButton,
+.doNowActions .runningStopButton {
+  height: 48px;
+  min-height: 48px;
+  gap: 8px;
+  border-radius: 8px;
+  padding: 0 22px 0 18px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.doNowActions .runningPauseButton .uiIcon,
+.doNowActions .runningStopButton .uiIcon {
+  width: 16px;
+  height: 16px;
+}
+
+.todayRow .todayTimerActions .runningPauseButton,
+.todayRow .todayTimerActions .runningStopButton {
+  width: 82px;
+  min-width: 82px;
+  height: 36px;
+  min-height: 36px;
+  gap: 6px;
+  border-radius: 8px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.todayRow .todayTimerActions .runningPauseButton .uiIcon,
+.todayRow .todayTimerActions .runningStopButton .uiIcon {
+  width: 14px;
+  height: 14px;
+}
+
+.todayStartButton {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.todayStartButton .nextStepStartDuration {
+  font-weight: 700;
+}
+
+.victoryInput,
+.victoryTextButton,
+.suggestionChip {
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .uiSmallButton {
+    transition:
+      border-color 130ms ease,
+      background-color 130ms ease,
+      color 130ms ease;
+  }
+
+  .uiSmallButton:hover:not(:disabled):not(:active),
+  .uiSmallButton:focus-visible {
+    transform: none;
+    box-shadow: none;
+  }
+}
+
+.todayTimerCluster .todayMeasureButton {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  border-radius: 8px;
+}
+
+/* F10 (P10-14f): the drop hint is an opaque pill, not text over the rows. */
+.dropHintLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 12px;
+  border: 1px solid rgba(231, 185, 77, 0.48);
+  border-radius: 999px;
+  background: #211f1a;
+  color: var(--accent-strong);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 700;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.32);
+}
+
+@media (max-width: 600px) {
+  .topBar .topSearchButton,
+  .topBrand .uiKey {
+    display: none;
+  }
+}
+
+
+/* P10-15: the 今週を決める tab follows Review.html. */
+.weeklyPlanning {
+  width: 100%;
+  max-width: 1080px;
+  margin-inline: auto;
+  padding: 8px 0 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.weeklyPlanningIntro { display: grid; gap: 6px; }
+.weeklyPlanningTitle { margin: 0; color: #f4f0e8; font-size: 26px; font-weight: 700; line-height: 1.25; }
+.weeklyPlanningIntro p { margin: 0; color: #b8b0a0; font-size: 14px; font-weight: 400; line-height: 1.6; }
+.weeklyPlanningColumns { display: flex; flex-wrap: wrap; gap: 28px; }
+.weeklyPlanningColumn { flex: 1 1 440px; min-width: 0; display: flex; flex-direction: column; }
+.weeklyPlanningFacts { gap: 16px; }
+.weeklyPlanningPlan { gap: 24px; }
+.weeklyPlanningSection { display: grid; gap: 10px; }
+.weeklyPlanningKicker { margin: 0; color: #a39c8e; font-size: 12px; font-weight: 700; line-height: 1.4; }
+.weeklyPlanningStats { display: flex; flex-wrap: wrap; gap: 12px; }
+.weeklyPlanningStats > div { flex: 1 1 120px; display: grid; gap: 6px; padding: 14px 16px; border: 1px solid #353126; border-radius: 12px; }
+.weeklyPlanningStats > div > span { color: #a39c8e; font-size: 12px; font-weight: 400; }
+.weeklyPlanningStats strong {
+  color: #f4f0e8;
+  font-size: 24px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.weeklyPlanningProjectList { overflow: hidden; border: 1px solid #353126; border-radius: 12px; background: #1b1a17; }
+.weeklyPlanningProjectRow { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 16px; }
+.weeklyPlanningProjectRow + .weeklyPlanningProjectRow { border-top: 1px solid #353126; }
+.weeklyPlanningDot { width: 10px; height: 10px; flex: 0 0 auto; border-radius: 50%; background: var(--project-color, #a8b2c1); }
+.weeklyPlanningDot--missing { background: #a8b2c1; }
+.weeklyPlanningProjectName { flex: 1; min-width: 0; overflow: hidden; color: #f4f0e8; font-size: 14px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.weeklyPlanningProjectCount, .weeklyPlanningProjectMinutes { flex: 0 0 auto; color: #b8b0a0; font-size: 14px; font-weight: 400; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.weeklyPlanningProjectMinutes { width: 90px; color: #f4f0e8; text-align: right; }
+.weeklyPlanningCompleted { display: flex; flex-direction: column; gap: 8px; }
+.weeklyPlanningCompleted ul { margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; list-style: none; }
+.weeklyPlanningCompleted li { display: flex; align-items: center; gap: 10px; min-width: 0; color: #b8b0a0; font-size: 13px; font-weight: 400; }
+.weeklyPlanningCompleted li .uiIcon { flex: 0 0 auto; color: var(--good); }
+.weeklyPlanningCompleted li > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.weeklyPlanningCompleted .weeklyPlanningMore { color: #a39c8e; }
+.weeklyPlanningEmpty { margin: 0; color: #a39c8e; font-size: 13px; font-weight: 400; line-height: 1.5; }
+.weeklyPlanningFocus { display: flex; flex-direction: column; gap: 12px; }
+.weeklyPlanningFocusHead { display: flex; align-items: baseline; gap: 10px; }
+.weeklyPlanningFocusHead h3 { margin: 0; color: #ffce5b; font-size: 15px; font-weight: 700; }
+.weeklyPlanningFocusHead span { color: #b8b0a0; font-size: 12px; font-weight: 400; }
+.weeklyPlanningFocusButtons { display: flex; flex-wrap: wrap; gap: 8px; }
+.weeklyPlanningFocusButton { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border: 1px solid #4a4639; border-radius: 999px; background: transparent; color: #b8b0a0; font-size: 14px; font-weight: 400; transition: border-color 130ms ease, background-color 130ms ease, color 130ms ease; }
+.weeklyPlanningFocusButton[aria-pressed="true"] { border-color: #ffce5b; background: rgba(231, 185, 77, 0.1); color: #f4f0e8; font-weight: 700; }
+.weeklyPlanningFocusButton:hover, .weeklyPlanningFocusButton:focus-visible { border-color: #b8b0a0; background: #2b2922; color: #f4f0e8; }
+.weeklyPlanningFocusButton[aria-pressed="true"]:hover, .weeklyPlanningFocusButton[aria-pressed="true"]:focus-visible { background: rgba(231, 185, 77, 0.16); }
+.weeklyPlanningStale { display: flex; flex-direction: column; gap: 10px; }
+.weeklyPlanningStale h3 { margin: 0; color: #a39c8e; font-size: 12px; font-weight: 700; }
+.weeklyPlanningStaleList { display: flex; flex-direction: column; gap: 8px; }
+.weeklyPlanningStaleRow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 16px; border: 1px solid #353126; border-radius: 12px; }
+.weeklyPlanningStaleCopy { flex: 1 1 200px; min-width: 0; display: grid; gap: 4px; }
+.weeklyPlanningStaleCopy strong { color: #f4f0e8; font-size: 14px; font-weight: 700; }
+.weeklyPlanningStaleCopy span { color: #f2a65a; font-size: 12px; font-weight: 400; }
+.weeklyPlanningStaleActions { display: flex; gap: 8px; }
+.weeklyPlanningAi { display: flex; flex-direction: column; gap: 14px; padding: 20px; border: 1px solid #4a4639; border-radius: 14px; background: #211f1a; }
+.weeklyPlanningAiIntro { display: grid; gap: 4px; }
+.weeklyPlanningAiIntro h3 { margin: 0; color: #f4f0e8; font-size: 15px; font-weight: 700; }
+.weeklyPlanningAiIntro p { margin: 0; color: #a39c8e; font-size: 12px; font-weight: 400; line-height: 1.5; }
+.weeklyPlanningAiStep { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.weeklyPlanningAiStep p { margin: 0; color: #b8b0a0; font-size: 13px; font-weight: 400; }
+.weeklyPlanningStepNumber { display: inline-grid; place-items: center; width: 24px; height: 24px; flex: 0 0 auto; border-radius: 50%; background: #2b2922; color: #ffce5b; font-size: 12px; font-weight: 700; }
+.weeklyPlanningAi .copyButton, .weeklyPlanningImportButton { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 14px; border: 1px solid #4a4639; border-radius: 10px; background: #1b1a17; color: #f4f0e8; font-size: 13px; font-weight: 400; transition: border-color 130ms ease, background-color 130ms ease; }
+.weeklyPlanningAi .copyButton:hover, .weeklyPlanningAi .copyButton:focus-visible, .weeklyPlanningImportButton:hover, .weeklyPlanningImportButton:focus-visible { border-color: #b8b0a0; background: #2b2922; }
+.weeklyPlanningDone { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.weeklyPlanningDone span { color: #a39c8e; font-size: 12px; font-weight: 400; }
+@media (max-width: 720px) { .weeklyPlanningColumn { flex-basis: 100%; } }
+
+.weeklyPlanningDone .primaryButton {
+  min-height: 44px;
+  padding: 0 30px;
+  border-color: rgba(117, 196, 143, 0.7);
+  background: #27342b;
+  color: #9be0b6;
+  font-size: 14px;
+  font-weight: 700;
+}
+.weeklyPlanningDone .primaryButton:hover:not(:disabled) {
+  border-color: var(--good);
+  background: rgba(117, 196, 143, 0.16);
+  color: #9be0b6;
+}
+/* P10-15b H5: the sidebar row values decided by the user (案 B + C の色). */
+.sidebar .quickGroup {
+  gap: 10px;
+}
+
+.sidebar .quickGroupItems {
+  gap: 0;
+}
+
+.sidebar .quickButton {
+  min-height: 32px;
+  height: 32px;
+  padding: 0 6px;
+  gap: 10px;
+  border: 0 !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  grid-template-columns: 20px minmax(0, 1fr);
+}
+
+.sidebar .quickButton span:last-child {
+  color: #f4f0e8;
+  font-size: 13px;
+  font-weight: 500;
+  transition: color 130ms ease, background-color 130ms ease;
+}
+
+.sidebar .quickButton:hover:not(:disabled),
+.sidebar .quickButton:focus-visible {
+  background: rgba(190, 181, 164, 0.08) !important;
+}
+
+.sidebar .quickButton .quickButtonIcon,
+.sidebar .quickButton .quickButtonInitial,
+.sidebar .quickButton .quickIcon,
+.sidebar .quickButton .uiLetterIcon {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  flex: 0 0 20px;
+  border-radius: 6px;
+}
+
+.sidebar .quickButton .quickButtonIcon img,
+.sidebar .quickButton .quickIcon img {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+}
+
+.sidebar .quickButton .uiLetterIcon {
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.sidebar .quickGroupHeader {
+  min-height: 28px;
+  height: 28px;
+  padding: 0 6px;
+  gap: 6px;
+  grid-template-columns: 20px minmax(0, 1fr) 28px;
+}
+
+.sidebar .quickGroupHeader strong {
+  color: #a39c8e;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.sidebar .quickGroupHeader small {
+  color: #a39c8e;
+  font-size: 11px;
+  font-weight: 400;
+}
+/* P10-15b H2: the freshness buttons keep the main-screen yellow on hover. */
+.nextStepFreshnessButton:hover:not(:disabled),
+.nextStepFreshnessButton:focus-visible {
+  border-color: rgba(231, 185, 77, 0.55);
+  color: #ffce5b;
+}
+.sidebar .quickButton {
+  font-weight: 500;
+}
+/* P10-15c K1: menus fade out from where they open. */
+.uiMenuEnter {
+  animation: ui-menu-enter 140ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  transform-origin: top left;
+}
+
+@keyframes ui-menu-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* P10-15c K2: every dialog and the search palette open with one motion. */
+.modalBackdrop,
+.searchPaletteBackdrop {
+  animation: ui-backdrop-enter 140ms ease-out both;
+}
+
+.modalBackdrop > [role="dialog"],
+.searchPaletteBackdrop > [role="dialog"] {
+  animation: ui-dialog-enter 220ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+@keyframes ui-backdrop-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ui-dialog-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .uiMenuEnter {
+    animation: none;
+  }
+
+  .modalBackdrop,
+  .searchPaletteBackdrop,
+  .modalBackdrop > [role="dialog"],
+  .searchPaletteBackdrop > [role="dialog"] {
+    animation: none;
+  }
+}
+.nextStepFreshnessButton:hover:not(:disabled),
+.nextStepFreshnessButton:focus-visible {
+  border-color: rgba(231, 185, 77, 0.48);
+  color: #ffce5b;
+}
+.mainScrollArea .recordsViewHeader {
+  top: -6px;
+}
+
+/* P10-18d: settings weekly focus (restored; removed by P10-15) */
+.weeklyFocusChecklist {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.weeklyFocusChecklist label {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 7px 9px;
+  background: var(--surface-soft);
+  cursor: pointer;
+}
+
+.weeklyFocusChecklist input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.settingsWeeklyFocus {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  border-top: 1px solid var(--line-soft);
+  padding-top: 14px;
+}
+
+.settingsWeeklyFocusHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settingsWeeklyFocusHeading h4,
+.settingsWeeklyFocusHeading p {
+  margin: 0;
+}
+
+.settingsWeeklyFocusHeading p {
+  margin-top: 3px;
+  color: var(--text-muted-readable);
+  font-size: 12px;
+}
+
+.settingsWeeklyFocusHeading > span {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.settingsWeeklyFocusChecklist label:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+@media (max-width: 760px) {
+  .weeklyFocusChecklist {
+    grid-template-columns: 1fr;
+  }
 }

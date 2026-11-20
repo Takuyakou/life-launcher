@@ -17,16 +17,17 @@ use windows::Win32::Storage::FileSystem::{ReplaceFileW, REPLACE_FILE_FLAGS};
 #[cfg(windows)]
 use windows_core::PCWSTR;
 
+use super::actions::expand_env_path;
 use super::instructions::{
     normalize_instruction_folder_settings, reconcile_instruction_folder_settings,
 };
 use crate::models::{
     default_backup_keep, default_day_start_hour, default_focus_hotkey, default_timer_minutes,
-    initial_config, short_timer_minutes, today_date, AppConfig, InboxItem,
+    initial_config, short_timer_minutes, today_date, Action, AppConfig, InboxItem,
     InstructionReferenceUpdateResponse, LauncherButton, LegacyProjectV2, LoadConfigResponse,
-    NextStepFreshnessResponse, OverlayPage, Project, ProjectV3, SaveConfigResponse, Settings,
-    TodayVictory, UndoTodaySelectionInput, CONFIG_VERSION, EXECUTION_TRIGGER_MAX_CHARS,
-    OVERLAY_PAGE_NAME_MAX_CHARS, TODAY_ITEM_LIMIT, WEEKLY_FOCUS_LIMIT,
+    MissingLaunchTargetsResponse, NextStepFreshnessResponse, OverlayPage, Project, ProjectV3,
+    SaveConfigResponse, Settings, TodayVictory, UndoTodaySelectionInput, CONFIG_VERSION,
+    EXECUTION_TRIGGER_MAX_CHARS, OVERLAY_PAGE_NAME_MAX_CHARS, TODAY_ITEM_LIMIT, WEEKLY_FOCUS_LIMIT,
 };
 use crate::state::AppState;
 
@@ -38,6 +39,7 @@ const ICON_CACHE_DIR_NAME: &str = "icons";
 const ICON_BACKUP_PREFIX: &str = "icons/";
 const BACKUP_KEEP_COUNT: usize = 5;
 const PROJECT_NORTH_STAR_MAX_CHARS: usize = 60;
+const NEXT_STEP_RESUME_NOTE_MAX_CHARS: usize = 80;
 const OVERLAY_ALL_PAGE_NAME: &str = "すべて";
 const OVERLAY_UNCLASSIFIED_PAGE_NAME: &str = "未分類";
 const LEGACY_UNCLASSIFIED_GROUP_NAME: &str = "その他";
@@ -88,6 +90,118 @@ pub fn load_next_step_freshness(
     })
 }
 
+#[derive(Debug, Default, PartialEq, Eq)]
+struct LaunchTargetChecks {
+    buttons: Vec<(String, Vec<String>)>,
+    instructions: Vec<(String, String)>,
+}
+
+fn collect_launch_target_checks(config: &AppConfig) -> LaunchTargetChecks {
+    let referenced_button_ids: HashSet<&str> = config
+        .projects
+        .iter()
+        .filter_map(|project| project.next_step.as_ref())
+        .flat_map(|step| step.button_ids.iter().map(String::as_str))
+        .collect();
+
+    let mut seen_button_ids = HashSet::new();
+    let mut buttons = Vec::new();
+    for button in &config.buttons {
+        if !referenced_button_ids.contains(button.id.as_str())
+            || !seen_button_ids.insert(button.id.as_str())
+        {
+            continue;
+        }
+        let paths: Vec<String> = button
+            .actions
+            .iter()
+            .filter_map(|action| match action {
+                Action::OpenApp { path, .. }
+                | Action::OpenFolder { path }
+                | Action::OpenFile { path }
+                | Action::RunScript { path, .. } => Some(path.clone()),
+                Action::OpenUrl { .. } | Action::OpenShellSpecial { .. } => None,
+            })
+            .collect();
+        if !paths.is_empty() {
+            buttons.push((button.id.clone(), paths));
+        }
+    }
+
+    let mut seen_project_ids = HashSet::new();
+    let mut instructions = Vec::new();
+    for project in &config.projects {
+        if let Some(path) = project
+            .next_step
+            .as_ref()
+            .and_then(|step| step.instruction_path.as_ref())
+        {
+            if seen_project_ids.insert(project.id.as_str()) {
+                instructions.push((project.id.clone(), path.clone()));
+            }
+        }
+    }
+
+    LaunchTargetChecks {
+        buttons,
+        instructions,
+    }
+}
+
+fn is_missing_local_path(raw: &str) -> bool {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+    let expanded = expand_env_path(trimmed);
+    if expanded.is_empty()
+        || expanded.contains('%')
+        || expanded.starts_with(r"\\")
+        || expanded.starts_with("//")
+    {
+        return false;
+    }
+    matches!(Path::new(&expanded).try_exists(), Ok(false))
+}
+
+fn evaluate_missing_launch_targets(checks: LaunchTargetChecks) -> MissingLaunchTargetsResponse {
+    let missing_button_ids = checks
+        .buttons
+        .into_iter()
+        .filter(|(_, paths)| paths.iter().any(|path| is_missing_local_path(path)))
+        .map(|(id, _)| id)
+        .collect();
+    let missing_instruction_project_ids = checks
+        .instructions
+        .into_iter()
+        .filter(|(_, path)| is_missing_local_path(path))
+        .map(|(project_id, _)| project_id)
+        .collect();
+    MissingLaunchTargetsResponse {
+        missing_button_ids,
+        missing_instruction_project_ids,
+    }
+}
+
+#[tauri::command]
+pub async fn load_missing_launch_targets(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<MissingLaunchTargetsResponse, String> {
+    let checks = {
+        let _reset_guard = state.begin_app_write()?;
+        let _write_guard = state
+            .config_write_lock
+            .lock()
+            .map_err(|_| "failed to lock config writes".to_string())?;
+        let config = load_config_internal(&app)?.config;
+        collect_launch_target_checks(&config)
+    };
+    tauri::async_runtime::spawn_blocking(move || evaluate_missing_launch_targets(checks))
+        .await
+        .map_err(|error| format!("failed to check launch targets: {error}"))
+}
+
 #[tauri::command]
 pub fn save_config(
     app: AppHandle,
@@ -102,6 +216,8 @@ pub fn save_config(
     validate_project_v3_invariants(&config)?;
     let (mut config, _changed, _warnings) = sanitize_config(config);
     reconcile_config_instruction_roots(&mut config);
+    // P10-11: every ordinary save records that the first-run guide is no longer needed.
+    stamp_first_run_done_at(&mut config.settings);
     let path = config_path()?;
     validate_existing_config_before_save(&path)?;
     ensure_config_schema_file()?;
@@ -117,6 +233,17 @@ pub fn save_config(
         config,
         path: path.to_string_lossy().to_string(),
     })
+}
+
+/// P10-11 (§8.2): fills `firstRunDoneAt` on an ordinary save when it is still missing.
+/// The first-run guide itself writes it explicitly; this only covers users who set things up
+/// without finishing the guide (or who upgraded from a version without the field).
+fn stamp_first_run_done_at(settings: &mut Settings) -> bool {
+    if settings.first_run_done_at.is_some() {
+        return false;
+    }
+    settings.first_run_done_at = Some(chrono::Utc::now().to_rfc3339());
+    true
 }
 
 fn current_source_snapshot(config: &AppConfig, source_key: &str) -> Option<Value> {
@@ -2021,15 +2148,18 @@ pub(crate) fn config_schema_json() -> &'static str {
       "properties": {
         "text": { "type": "string" },
         "generationId": { "type": "string", "minLength": 1 },
+        "sourceWishlistId": { "type": "string", "minLength": 1 },
         "trigger": { "type": "string", "minLength": 1, "maxLength": 40 },
         "updatedAt": { "type": "string", "format": "date-time" },
         "reviewedAt": { "type": "string", "format": "date-time" },
+        "resumeNote": { "type": "string", "minLength": 1, "maxLength": 80 },
         "buttonIds": {
           "type": "array",
           "items": { "type": "string", "minLength": 1 }
         },
         "defaultTimerMinutes": { "type": "integer", "minimum": 1, "maximum": 240 },
         "shortTimerMinutes": { "type": "integer", "minimum": 1, "maximum": 240 },
+        "expandTimerOnStart": { "type": "boolean" },
         "startNoteTemplate": { "type": "string" },
         "instructionPath": {
           "type": "string",
@@ -2049,6 +2179,7 @@ pub(crate) fn config_schema_json() -> &'static str {
         },
         "defaultTimerMinutes": { "type": "integer", "minimum": 1, "maximum": 240 },
         "shortTimerMinutes": { "type": "integer", "minimum": 1, "maximum": 240 },
+        "expandTimerOnStart": { "type": "boolean" },
         "startNoteTemplate": { "type": "string" },
         "instructionPath": {
           "type": "string",
@@ -2198,6 +2329,7 @@ pub(crate) fn config_schema_json() -> &'static str {
           }
         },
         "instructionHotkey": { "type": ["string", "null"], "default": null },
+        "firstRunDoneAt": { "type": "string", "format": "date-time" },
         "miniWindowPosition": {
           "type": ["object", "null"],
           "default": null,
@@ -2330,6 +2462,35 @@ fn trim_empty_projects(
                 changed,
                 warnings,
             );
+            if next_step
+                .source_wishlist_id
+                .as_deref()
+                .is_some_and(|value| value.trim().is_empty())
+            {
+                next_step.source_wishlist_id = None;
+                *changed = true;
+            }
+            if let Some(raw_resume_note) = next_step.resume_note.clone() {
+                let trimmed = raw_resume_note.trim();
+                let normalized = if trimmed.is_empty() {
+                    None
+                } else {
+                    let cut: String = trimmed
+                        .chars()
+                        .take(NEXT_STEP_RESUME_NOTE_MAX_CHARS)
+                        .collect();
+                    let final_note = cut.trim_end().to_string();
+                    if final_note.is_empty() {
+                        None
+                    } else {
+                        Some(final_note)
+                    }
+                };
+                if normalized.as_deref() != Some(raw_resume_note.as_str()) {
+                    next_step.resume_note = normalized;
+                    *changed = true;
+                }
+            }
             normalize_project_timestamp(&mut next_step.updated_at, changed);
             normalize_project_timestamp(&mut next_step.reviewed_at, changed);
             if next_step.updated_at.is_none() && next_step.reviewed_at.is_none() {
@@ -2463,11 +2624,20 @@ fn project_is_stale_at(project: &Project, now: chrono::DateTime<chrono::FixedOff
     let Some(next_step) = project.next_step.as_ref() else {
         return false;
     };
-    let Some(basis) = next_step
+    // P10-05 (D11): the basis is the newer of "reviewed" and "updated". An unreadable side is
+    // ignored; when neither can be read the Project is not stale (same as before).
+    let reviewed = next_step
         .reviewed_at
         .as_ref()
-        .or(next_step.updated_at.as_ref())
-        .and_then(|value| chrono::DateTime::parse_from_rfc3339(value).ok())
+        .and_then(|value| chrono::DateTime::parse_from_rfc3339(value).ok());
+    let updated = next_step
+        .updated_at
+        .as_ref()
+        .and_then(|value| chrono::DateTime::parse_from_rfc3339(value).ok());
+    let Some(basis) = reviewed
+        .into_iter()
+        .chain(updated)
+        .max_by_key(|value| value.timestamp())
     else {
         return false;
     };
@@ -2756,6 +2926,18 @@ fn normalize_settings(settings: &mut Settings, changed: &mut bool) {
             settings.instruction_hotkey = Some(trimmed.to_string());
         }
     }
+    // P10-11 (§8.2): an unreadable timestamp is only dropped; it is never replaced here.
+    if let Some(stamp) = settings.first_run_done_at.take() {
+        let trimmed = stamp.trim();
+        if trimmed.is_empty() || chrono::DateTime::parse_from_rfc3339(trimmed).is_err() {
+            *changed = true;
+        } else {
+            if trimmed != stamp {
+                *changed = true;
+            }
+            settings.first_run_done_at = Some(trimmed.to_string());
+        }
+    }
 }
 
 #[cfg(test)]
@@ -2963,6 +3145,221 @@ mod tests {
             .expect("project required fields")
             .iter()
             .all(|field| field != "northStar" && field != "weeklyFocus" && field != "nextStep"));
+    }
+
+    #[test]
+    fn generated_config_schema_has_source_wishlist_id_and_expand_timer_on_start() {
+        let schema: serde_json::Value =
+            serde_json::from_str(config_schema_json()).expect("config schema must be valid JSON");
+        let next_step = &schema["$defs"]["nextStep"]["properties"];
+        assert_eq!(
+            next_step["sourceWishlistId"],
+            serde_json::json!({ "type": "string", "minLength": 1 })
+        );
+        assert_eq!(
+            next_step["expandTimerOnStart"],
+            serde_json::json!({ "type": "boolean" })
+        );
+        assert_eq!(
+            schema["$defs"]["nextStepExecutionSettings"]["properties"]["expandTimerOnStart"],
+            serde_json::json!({ "type": "boolean" })
+        );
+        assert_eq!(
+            schema["$defs"]["nextStep"]["additionalProperties"], false,
+            "nextStep must keep rejecting unknown keys"
+        );
+        assert_eq!(
+            schema["$defs"]["nextStepExecutionSettings"]["additionalProperties"], false,
+            "nextStepExecutionSettings must keep rejecting unknown keys"
+        );
+    }
+
+    fn config_json_with_source_wishlist_id(value: Option<&str>) -> serde_json::Value {
+        let mut json =
+            serde_json::to_value(sample_config()).expect("sample config must serialize to JSON");
+        let next_step = json["projects"][0]["nextStep"]
+            .as_object_mut()
+            .expect("sample project must have a next step");
+        match value {
+            Some(value) => {
+                next_step.insert(
+                    "sourceWishlistId".to_string(),
+                    serde_json::Value::String(value.to_string()),
+                );
+            }
+            None => {
+                next_step.remove("sourceWishlistId");
+            }
+        }
+        json
+    }
+
+    #[test]
+    fn source_wishlist_id_survives_a_read_sanitize_and_write_round_trip() {
+        let json = config_json_with_source_wishlist_id(Some("wish-list-1"));
+        let config: AppConfig =
+            serde_json::from_value(json).expect("config with sourceWishlistId must deserialize");
+        assert_eq!(
+            config.projects[0]
+                .next_step
+                .as_ref()
+                .and_then(|step| step.source_wishlist_id.as_deref()),
+            Some("wish-list-1")
+        );
+
+        let (config, _changed, _warnings) = sanitize_config(config);
+        let written = serde_json::to_value(&config).expect("config must serialize");
+        assert_eq!(
+            written["projects"][0]["nextStep"]["sourceWishlistId"],
+            serde_json::json!("wish-list-1")
+        );
+    }
+
+    #[test]
+    fn source_wishlist_id_is_omitted_when_absent() {
+        let json = config_json_with_source_wishlist_id(None);
+        let config: AppConfig =
+            serde_json::from_value(json).expect("config without sourceWishlistId must deserialize");
+        assert_eq!(
+            config.projects[0]
+                .next_step
+                .as_ref()
+                .and_then(|step| step.source_wishlist_id.clone()),
+            None
+        );
+
+        let (config, _changed, _warnings) = sanitize_config(config);
+        let written = serde_json::to_value(&config).expect("config must serialize");
+        assert!(
+            written["projects"][0]["nextStep"]
+                .get("sourceWishlistId")
+                .is_none(),
+            "sourceWishlistId must not be written when it is absent"
+        );
+    }
+
+    #[test]
+    fn source_wishlist_id_is_removed_when_empty() {
+        for value in ["", "   "] {
+            let json = config_json_with_source_wishlist_id(Some(value));
+            let config: AppConfig =
+                serde_json::from_value(json).expect("config with empty sourceWishlistId");
+            let (config, changed, _warnings) = sanitize_config(config);
+            assert!(changed, "empty sourceWishlistId must count as a change");
+            assert_eq!(
+                config.projects[0]
+                    .next_step
+                    .as_ref()
+                    .and_then(|step| step.source_wishlist_id.clone()),
+                None
+            );
+            let written = serde_json::to_value(&config).expect("config must serialize");
+            assert!(
+                written["projects"][0]["nextStep"]
+                    .get("sourceWishlistId")
+                    .is_none(),
+                "empty sourceWishlistId must not be written"
+            );
+        }
+    }
+
+    #[test]
+    fn source_wishlist_id_stays_when_the_wishlist_item_is_gone() {
+        let json = config_json_with_source_wishlist_id(Some("missing-wish"));
+        let config: AppConfig = serde_json::from_value(json).expect("config must deserialize");
+        assert!(config
+            .inbox
+            .iter()
+            .all(|item| item.id.as_deref() != Some("missing-wish")));
+
+        let (config, _changed, _warnings) = sanitize_config(config);
+        let written = serde_json::to_value(&config).expect("config must serialize");
+        assert_eq!(
+            written["projects"][0]["nextStep"]["sourceWishlistId"],
+            serde_json::json!("missing-wish"),
+            "an unknown wishlist id must not be dropped"
+        );
+    }
+
+    #[test]
+    fn first_run_done_at_is_stamped_once_and_kept_afterwards() {
+        let mut settings = sample_config().settings;
+        assert_eq!(settings.first_run_done_at, None);
+        assert!(stamp_first_run_done_at(&mut settings));
+        let stamp = settings
+            .first_run_done_at
+            .clone()
+            .expect("the first save must record the stamp");
+        assert!(
+            chrono::DateTime::parse_from_rfc3339(&stamp).is_ok(),
+            "the stamp must be an RFC 3339 instant: {stamp}"
+        );
+
+        assert!(!stamp_first_run_done_at(&mut settings));
+        assert_eq!(settings.first_run_done_at.as_deref(), Some(stamp.as_str()));
+    }
+
+    #[test]
+    fn first_run_done_at_survives_a_read_sanitize_and_write_round_trip() {
+        let mut config = sample_config();
+        config.settings.first_run_done_at = Some("2026-11-15T09:00:00+09:00".to_string());
+        let (config, _changed, _warnings) = sanitize_config(config);
+        assert_eq!(
+            config.settings.first_run_done_at.as_deref(),
+            Some("2026-11-15T09:00:00+09:00")
+        );
+        let written = serde_json::to_value(&config).expect("config must serialize");
+        assert_eq!(
+            written["settings"]["firstRunDoneAt"],
+            serde_json::json!("2026-11-15T09:00:00+09:00")
+        );
+    }
+
+    #[test]
+    fn unreadable_first_run_done_at_is_dropped_without_being_replaced() {
+        for value in ["", "   ", "not-a-date", "2026-11-15"] {
+            let mut config = sample_config();
+            config.settings.first_run_done_at = Some(value.to_string());
+            let (config, changed, _warnings) = sanitize_config(config);
+            assert!(changed, "{value:?} must count as a change");
+            assert_eq!(
+                config.settings.first_run_done_at, None,
+                "{value:?} must be dropped"
+            );
+            let written = serde_json::to_value(&config).expect("config must serialize");
+            assert!(
+                written["settings"].get("firstRunDoneAt").is_none(),
+                "{value:?} must not be written"
+            );
+        }
+    }
+
+    #[test]
+    fn loading_never_stamps_first_run_done_at() {
+        let mut config = sample_config();
+        config.settings.first_run_done_at = None;
+        let (config, _changed, _warnings) = sanitize_config(config);
+        assert_eq!(
+            config.settings.first_run_done_at, None,
+            "sanitize (the load path) must not create the stamp"
+        );
+    }
+
+    #[test]
+    fn generated_config_schema_has_first_run_done_at() {
+        let schema: serde_json::Value =
+            serde_json::from_str(config_schema_json()).expect("config schema must be valid JSON");
+        assert_eq!(
+            schema["$defs"]["settings"]["properties"]["firstRunDoneAt"],
+            serde_json::json!({ "type": "string", "format": "date-time" })
+        );
+        let required = schema["$defs"]["settings"]["required"]
+            .as_array()
+            .expect("settings required fields");
+        assert!(
+            required.iter().all(|field| field != "firstRunDoneAt"),
+            "firstRunDoneAt must stay optional"
+        );
     }
 
     #[test]
@@ -3193,6 +3590,57 @@ mod tests {
         project.next_step.as_mut().expect("next step").reviewed_at =
             Some("2026-07-10T12:00:00Z".to_string());
         assert!(!project_is_stale_at(&project, fourteen_days));
+    }
+
+    #[test]
+    fn p10_05_next_step_freshness_uses_the_newer_of_reviewed_and_updated() {
+        let now = chrono::DateTime::parse_from_rfc3339("2026-07-16T12:00:00Z").expect("datetime");
+        let stale_before = chrono::DateTime::parse_from_rfc3339("2026-07-02T12:00:00Z")
+            .expect("datetime")
+            .to_rfc3339();
+        let recent = chrono::DateTime::parse_from_rfc3339("2026-07-15T12:00:00Z")
+            .expect("datetime")
+            .to_rfc3339();
+
+        let mut project = sample_config().projects.remove(0);
+
+        // Reviewed 14 days ago, updated yesterday: the newer date wins, so not stale.
+        {
+            let step = project.next_step.as_mut().expect("next step");
+            step.reviewed_at = Some(stale_before.clone());
+            step.updated_at = Some(recent.clone());
+        }
+        assert!(!project_is_stale_at(&project, now));
+
+        // Updated 14 days ago, reviewed yesterday: same answer the other way round.
+        {
+            let step = project.next_step.as_mut().expect("next step");
+            step.reviewed_at = Some(recent.clone());
+            step.updated_at = Some(stale_before.clone());
+        }
+        assert!(!project_is_stale_at(&project, now));
+
+        // Both 14 days old: stale.
+        {
+            let step = project.next_step.as_mut().expect("next step");
+            step.reviewed_at = Some(stale_before.clone());
+            step.updated_at = Some(stale_before.clone());
+        }
+        assert!(project_is_stale_at(&project, now));
+
+        // Only one side readable: that side decides.
+        {
+            let step = project.next_step.as_mut().expect("next step");
+            step.reviewed_at = Some("not a date".to_string());
+            step.updated_at = Some(recent.clone());
+        }
+        assert!(!project_is_stale_at(&project, now));
+        {
+            let step = project.next_step.as_mut().expect("next step");
+            step.reviewed_at = Some(stale_before.clone());
+            step.updated_at = Some("not a date".to_string());
+        }
+        assert!(project_is_stale_at(&project, now));
     }
 
     #[test]
@@ -4822,6 +5270,246 @@ mod migration_tests {
         let error =
             decode_config_for_v3(&serde_json::json!([])).expect_err("array root must be rejected");
         assert!(error.contains("version") || error.contains("root"));
+    }
+
+    fn config_json_with_resume_note(value: Option<&str>) -> serde_json::Value {
+        let mut json =
+            serde_json::to_value(sample_config()).expect("sample config must serialize to JSON");
+        let next_step = json["projects"][0]["nextStep"]
+            .as_object_mut()
+            .expect("sample project must have a next step");
+        match value {
+            Some(value) => {
+                next_step.insert(
+                    "resumeNote".to_string(),
+                    serde_json::Value::String(value.to_string()),
+                );
+            }
+            None => {
+                next_step.remove("resumeNote");
+            }
+        }
+        json
+    }
+
+    #[test]
+    fn resume_note_survives_a_read_sanitize_and_write_round_trip() {
+        let json = config_json_with_resume_note(Some("  3章の途中から  "));
+        let config: AppConfig =
+            serde_json::from_value(json).expect("config with resumeNote must deserialize");
+        let (config, changed, _warnings) = sanitize_config(config);
+        assert!(changed, "trimmed resumeNote must count as a change");
+        assert_eq!(
+            config.projects[0]
+                .next_step
+                .as_ref()
+                .and_then(|step| step.resume_note.as_deref()),
+            Some("3章の途中から")
+        );
+
+        let written = serde_json::to_value(&config).expect("config must serialize");
+        assert_eq!(
+            written["projects"][0]["nextStep"]["resumeNote"],
+            serde_json::json!("3章の途中から")
+        );
+    }
+
+    #[test]
+    fn resume_note_is_removed_when_empty() {
+        for value in ["", "   ", "\t\n"] {
+            let json = config_json_with_resume_note(Some(value));
+            let config: AppConfig =
+                serde_json::from_value(json).expect("config with empty resumeNote");
+            let (config, changed, _warnings) = sanitize_config(config);
+            assert!(changed, "empty resumeNote must count as a change");
+            assert_eq!(
+                config.projects[0]
+                    .next_step
+                    .as_ref()
+                    .and_then(|step| step.resume_note.clone()),
+                None
+            );
+            let written = serde_json::to_value(&config).expect("config must serialize");
+            assert!(
+                written["projects"][0]["nextStep"]
+                    .get("resumeNote")
+                    .is_none(),
+                "empty resumeNote must not be written"
+            );
+        }
+    }
+
+    #[test]
+    fn resume_note_is_cut_to_80_chars() {
+        let long_note = "あ".repeat(95);
+        let json = config_json_with_resume_note(Some(&long_note));
+        let config: AppConfig = serde_json::from_value(json).expect("config with long resumeNote");
+        let (config, changed, _warnings) = sanitize_config(config);
+        assert!(changed, "over-length resumeNote must count as a change");
+        let saved = config.projects[0]
+            .next_step
+            .as_ref()
+            .and_then(|step| step.resume_note.as_deref())
+            .expect("truncated resumeNote must remain");
+        assert_eq!(saved.chars().count(), 80);
+        assert_eq!(saved, "あ".repeat(80));
+    }
+
+    #[test]
+    fn generated_config_schema_has_resume_note() {
+        let schema: serde_json::Value =
+            serde_json::from_str(config_schema_json()).expect("config schema must be valid JSON");
+        let next_step = &schema["$defs"]["nextStep"]["properties"];
+        assert_eq!(
+            next_step["resumeNote"],
+            serde_json::json!({ "type": "string", "minLength": 1, "maxLength": 80 })
+        );
+        let required = schema["$defs"]["nextStep"]["required"]
+            .as_array()
+            .expect("nextStep required fields");
+        assert!(
+            required.iter().all(|field| field != "resumeNote"),
+            "resumeNote must stay optional"
+        );
+    }
+
+    #[test]
+    fn missing_launch_targets_reports_only_missing_local_paths() {
+        let unique = format!(
+            "life-launcher-missing-test-{}-{}",
+            std::process::id(),
+            TEMP_FILE_SEQUENCE.fetch_add(1, Ordering::Relaxed)
+        );
+        let dir = std::env::temp_dir().join(unique);
+        fs::create_dir_all(&dir).expect("create temp test dir");
+        let existing_file = dir.join("present.txt");
+        fs::write(&existing_file, "ok").expect("write temp test file");
+        let missing_file = dir.join("gone.txt");
+        let missing_instruction = dir.join("missing-guide.md");
+
+        let mut config = sample_config();
+        config.buttons = vec![
+            LauncherButton {
+                id: "btn-existing".to_string(),
+                label: "あるファイル".to_string(),
+                icon: None,
+                icon_source: None,
+                group: None,
+                show_in_sidebar: true,
+                show_in_overlay: true,
+                overlay_page_id: None,
+                aliases: vec![],
+                description: None,
+                actions: vec![Action::OpenFile {
+                    path: existing_file.to_string_lossy().to_string(),
+                }],
+            },
+            LauncherButton {
+                id: "btn-missing".to_string(),
+                label: "ないファイル".to_string(),
+                icon: None,
+                icon_source: None,
+                group: None,
+                show_in_sidebar: true,
+                show_in_overlay: true,
+                overlay_page_id: None,
+                aliases: vec![],
+                description: None,
+                actions: vec![Action::OpenFile {
+                    path: missing_file.to_string_lossy().to_string(),
+                }],
+            },
+            LauncherButton {
+                id: "btn-url".to_string(),
+                label: "URL".to_string(),
+                icon: None,
+                icon_source: None,
+                group: None,
+                show_in_sidebar: true,
+                show_in_overlay: true,
+                overlay_page_id: None,
+                aliases: vec![],
+                description: None,
+                actions: vec![Action::OpenUrl {
+                    url: "https://example.com".to_string(),
+                }],
+            },
+            LauncherButton {
+                id: "btn-unexpanded".to_string(),
+                label: "未展開".to_string(),
+                icon: None,
+                icon_source: None,
+                group: None,
+                show_in_sidebar: true,
+                show_in_overlay: true,
+                overlay_page_id: None,
+                aliases: vec![],
+                description: None,
+                actions: vec![Action::OpenApp {
+                    path: "%LIFE_LAUNCHER_UNKNOWN_ENV_VAR_XYZ%\\app.exe".to_string(),
+                    args: vec![],
+                }],
+            },
+            LauncherButton {
+                id: "btn-unc".to_string(),
+                label: "ネットワーク".to_string(),
+                icon: None,
+                icon_source: None,
+                group: None,
+                show_in_sidebar: true,
+                show_in_overlay: true,
+                overlay_page_id: None,
+                aliases: vec![],
+                description: None,
+                actions: vec![Action::OpenFolder {
+                    path: r"\\server\share\x".to_string(),
+                }],
+            },
+            LauncherButton {
+                id: "btn-unreferenced-missing".to_string(),
+                label: "未使用のないファイル".to_string(),
+                icon: None,
+                icon_source: None,
+                group: None,
+                show_in_sidebar: true,
+                show_in_overlay: true,
+                overlay_page_id: None,
+                aliases: vec![],
+                description: None,
+                actions: vec![Action::OpenFile {
+                    path: missing_file.to_string_lossy().to_string(),
+                }],
+            },
+        ];
+
+        config.projects[0].next_step.as_mut().unwrap().button_ids = vec![
+            "btn-existing".to_string(),
+            "btn-missing".to_string(),
+            "btn-url".to_string(),
+            "btn-unexpanded".to_string(),
+            "btn-unc".to_string(),
+        ];
+        config.projects[0]
+            .next_step
+            .as_mut()
+            .unwrap()
+            .instruction_path = Some(missing_instruction.to_string_lossy().to_string());
+        config.projects[1]
+            .next_step
+            .as_mut()
+            .unwrap()
+            .instruction_path = Some(existing_file.to_string_lossy().to_string());
+
+        let checks = collect_launch_target_checks(&config);
+        let result = evaluate_missing_launch_targets(checks);
+
+        let _ = fs::remove_dir_all(&dir);
+
+        assert_eq!(result.missing_button_ids, vec!["btn-missing".to_string()]);
+        assert_eq!(
+            result.missing_instruction_project_ids,
+            vec![config.projects[0].id.clone()]
+        );
     }
 }
 

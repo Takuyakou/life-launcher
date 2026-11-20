@@ -7,17 +7,35 @@ type ContextMenuProps = {
   className?: string;
   opener: HTMLElement | null;
   onClose: () => void;
+  /** P10-12 (D15): a plain-key shortcut that only works while the menu is open (e.g. "t"). */
+  onShortcutKey?: (key: string) => boolean;
   x: number;
   y: number;
 };
 
 const EDGE_GUTTER = 8;
 
+type ContextMenuItemProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+  /** P10-12 (D15): key badge shown at the right edge; only for keys that really work. */
+  shortcut?: string;
+};
+
 export function ContextMenuItem({
+  children,
+  shortcut,
   type = "button",
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement>) {
-  return <button {...props} role="menuitem" type={type} />;
+}: ContextMenuItemProps) {
+  return (
+    <button {...props} role="menuitem" type={type}>
+      <span className="contextMenuItemLabel">{children}</span>
+      {shortcut ? (
+        <kbd aria-hidden="true" className="contextMenuShortcut shortcutBadge">
+          {shortcut}
+        </kbd>
+      ) : null}
+    </button>
+  );
 }
 
 export function ContextMenu({
@@ -26,6 +44,7 @@ export function ContextMenu({
   className = "contextMenu",
   opener,
   onClose,
+  onShortcutKey,
   x,
   y,
 }: ContextMenuProps) {
@@ -75,9 +94,27 @@ export function ContextMenu({
       if (!menuRef.current?.contains(event.target as Node)) dismiss();
     };
     const closeOnKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key !== "Escape" || event.defaultPrevented) return;
-      event.preventDefault();
-      dismiss();
+      if (event.defaultPrevented) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        dismiss();
+        return;
+      }
+      if (
+        !onShortcutKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        event.metaKey ||
+        event.shiftKey ||
+        event.isComposing
+      ) {
+        return;
+      }
+      if (event.key.length !== 1) return;
+      if (onShortcutKey(event.key.toLowerCase())) {
+        event.preventDefault();
+        dismiss();
+      }
     };
     const closeOnBlur = () => dismiss();
     document.addEventListener("pointerdown", closeOnPointerDown, true);
@@ -88,7 +125,7 @@ export function ContextMenu({
       document.removeEventListener("keydown", closeOnKeyDown);
       window.removeEventListener("blur", closeOnBlur);
     };
-  }, [dismiss]);
+  }, [dismiss, onShortcutKey]);
 
   const moveFocus = (direction: "first" | "last" | "next" | "previous") => {
     const items = Array.from(
@@ -114,7 +151,7 @@ export function ContextMenu({
   return (
     <div
       aria-label={ariaLabel}
-      className={className}
+      className={`${className} uiMenuEnter`}
       onClick={handleClick}
       onKeyDown={(event) => {
         if (event.key === "Escape") {
