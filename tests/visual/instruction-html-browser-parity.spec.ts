@@ -192,7 +192,11 @@ test("HTML preview keeps local assets but blocks active and remote content", asy
       .locator('a[href="./linked.html"]')
       .evaluate((anchor: HTMLAnchorElement) => anchor.href),
   ).toBe("http://asset.localhost/instructions/browser-parity/linked.html");
-  await page.waitForTimeout(100);
+  await expect(frame.locator("#toc-link")).toHaveAttribute("href", "#toc-target");
+  // A hidden iframe can throttle requestAnimationFrame, so wait for the document's own end state.
+  await expect
+    .poll(() => frame.locator("body").evaluate(() => document.readyState))
+    .toBe("complete");
   expect(remoteRequests).toEqual([]);
 });
 

@@ -231,7 +231,9 @@ async function expectCompleteHeading(page: Page) {
   await page.clock.fastForward(60_500);
   const dialog = page.getByRole("dialog", { name: "タイマー満了" });
   await expect(dialog).toBeVisible();
-  await page.waitForTimeout(300);
+  await dialog.evaluate((node) =>
+    Promise.allSettled(node.getAnimations().map((animation) => animation.finished)),
+  );
   // The heading is the action text; the Project is the small coloured label above it.
   await expect(dialog.getByRole("heading", { level: 2 })).toHaveText(NEXT_STEP);
   const identity = dialog.locator(".projectIdentity");

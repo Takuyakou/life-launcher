@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createFullTodayFixture, createPublicFixture, FIXTURE_NOW } from "./fixtures";
+import { waitForAnimations, waitForStableRects } from "./helpers";
 import { installTauriMock } from "./tauriMock";
 
 async function prepare(page: Page, fixture = createPublicFixture()) {
@@ -8,6 +9,7 @@ async function prepare(page: Page, fixture = createPublicFixture()) {
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
   await expect(page.locator(".doNowBand")).toBeVisible();
+  await page.evaluate(async () => document.fonts.ready);
   await page.mouse.move(1, 1);
 }
 
@@ -20,11 +22,9 @@ test("F1 the Do Now box keeps its Project border and lifts on hover", async ({ p
     .evaluate((node) => getComputedStyle(node).backgroundColor);
   expect(await box.evaluate((node) => getComputedStyle(node).borderTopColor)).toBe("rgb(74, 70, 57)");
   await box.hover();
-  await page.waitForTimeout(180);
-  expect(await box.evaluate((node) => getComputedStyle(node).borderTopColor)).toBe(dotColor);
-  expect(await box.evaluate((node) => getComputedStyle(node).backgroundColor)).toBe(
-    "rgb(43, 41, 34)",
-  );
+  await expect(box).toHaveCSS("border-top-color", dotColor);
+  await expect(box).toHaveCSS("background-color", "rgb(43, 41, 34)");
+  await waitForAnimations(box);
   expect(await box.evaluate((node) => getComputedStyle(node).transform)).not.toBe("none");
 });
 
@@ -34,24 +34,15 @@ test("F1 row buttons turn yellow on hover, and 他の一手 only changes its col
   await prepare(page);
   const edit = page.locator(".nextStepRowAction").first();
   await edit.hover();
-  await page.waitForTimeout(180);
-  expect(await edit.evaluate((node) => getComputedStyle(node).borderTopColor)).toBe(
-    "rgba(231, 185, 77, 0.48)",
-  );
-  expect(await edit.evaluate((node) => getComputedStyle(node).color)).toBe("rgb(255, 206, 91)");
+  await expect(edit).toHaveCSS("border-top-color", "rgba(231, 185, 77, 0.48)");
+  await expect(edit).toHaveCSS("color", "rgb(255, 206, 91)");
 
   const alternate = page.locator(".doNowAlternateButton");
   await alternate.hover();
-  await page.waitForTimeout(180);
-  expect(await alternate.evaluate((node) => getComputedStyle(node).borderTopColor)).toBe(
-    "rgba(0, 0, 0, 0)",
-  );
-  expect(await alternate.evaluate((node) => getComputedStyle(node).backgroundColor)).toBe(
-    "rgb(43, 41, 34)",
-  );
-  expect(await alternate.evaluate((node) => getComputedStyle(node).color)).toBe(
-    "rgb(255, 206, 91)",
-  );
+  await expect(alternate).toHaveCSS("border-top-color", "rgba(0, 0, 0, 0)");
+  await expect(alternate).toHaveCSS("background-color", "rgb(43, 41, 34)");
+  await expect(alternate).toHaveCSS("color", "rgb(255, 206, 91)");
+  await waitForAnimations(alternate);
   expect(await alternate.evaluate((node) => getComputedStyle(node).transform)).toBe("none");
   expect(await alternate.evaluate((node) => getComputedStyle(node).boxShadow)).toBe("none");
 });
@@ -71,28 +62,22 @@ test("F1 the freshness buttons turn yellow on hover", async ({ page }) => {
   );
   await prepare(page, fixture);
   const button = page.getByRole("button", { name: "小さくする" }).first();
+  // The bundled font swaps in after first paint and moves the freshness button sideways; settle
+  // the font and the layout before moving the pointer so it cannot slide out from under it.
+  await page.evaluate(async () => document.fonts.ready);
+  await waitForStableRects(page, [".nextStepFreshnessButton"]);
   await button.hover();
-  await page.waitForTimeout(180);
-  expect(await button.evaluate((node) => getComputedStyle(node).borderTopColor)).toBe(
-    "rgba(231, 185, 77, 0.48)",
-  );
-  expect(await button.evaluate((node) => getComputedStyle(node).color)).toBe("rgb(255, 206, 91)");
+  await expect(button).toHaveCSS("border-top-color", "rgba(231, 185, 77, 0.48)");
+  await expect(button).toHaveCSS("color", "rgb(255, 206, 91)");
 });
 
 test("F1 the dictionary and the top-bar buttons turn yellow on hover", async ({ page }) => {
   await prepare(page);
   const dictionary = page.locator(".launcherOpenButton");
   await dictionary.hover();
-  await page.waitForTimeout(180);
-  expect(await dictionary.evaluate((node) => getComputedStyle(node).borderTopColor)).toBe(
-    "rgb(184, 176, 160)",
-  );
-  expect(await dictionary.evaluate((node) => getComputedStyle(node).backgroundColor)).toBe(
-    "rgb(43, 41, 34)",
-  );
-  expect(await dictionary.evaluate((node) => getComputedStyle(node).color)).toBe(
-    "rgb(244, 240, 232)",
-  );
+  await expect(dictionary).toHaveCSS("border-top-color", "rgb(184, 176, 160)");
+  await expect(dictionary).toHaveCSS("background-color", "rgb(43, 41, 34)");
+  await expect(dictionary).toHaveCSS("color", "rgb(244, 240, 232)");
 
   for (const selector of [
     ".topPills .viewToggleButton:not(.viewToggleButton--active)",
@@ -100,17 +85,12 @@ test("F1 the dictionary and the top-bar buttons turn yellow on hover", async ({ 
   ]) {
     const button = page.locator(selector).first();
     await button.hover();
-    await page.waitForTimeout(180);
     const icon = button.locator("svg").first();
-    expect(await button.evaluate((node) => getComputedStyle(node).backgroundColor)).toBe(
-      "rgb(43, 41, 34)",
-    );
-    expect(await icon.evaluate((node) => getComputedStyle(node).color)).toBe("rgb(255, 206, 91)");
+    await expect(button).toHaveCSS("background-color", "rgb(43, 41, 34)");
+    await expect(icon).toHaveCSS("color", "rgb(255, 206, 91)");
     const label = button.locator(".viewToggleButtonLabel");
     if ((await label.count()) > 0) {
-      expect(await label.evaluate((node) => getComputedStyle(node).color)).toBe(
-        "rgb(255, 206, 91)",
-      );
+      await expect(label).toHaveCSS("color", "rgb(255, 206, 91)");
     }
   }
 });
@@ -199,13 +179,16 @@ test("P10-15c J1 the Do Now start buttons lift and cast the same shadow as the T
       return { boxShadow: style.boxShadow, transform: style.transform };
     });
   await todayStart.hover();
-  await page.waitForTimeout(180);
+  await expect
+    .poll(async () => (await read(todayStart)).boxShadow)
+    .not.toBe("none");
+  await waitForAnimations(todayStart);
   const today = await read(todayStart);
   expect(today.transform).not.toBe("none");
   expect(today.boxShadow).not.toBe("none");
   for (const button of [doNowShort, doNowNormal]) {
     await button.hover();
-    await page.waitForTimeout(180);
-    expect(await read(button)).toEqual(today);
+    await waitForAnimations(button);
+    await expect.poll(() => read(button)).toEqual(today);
   }
 });

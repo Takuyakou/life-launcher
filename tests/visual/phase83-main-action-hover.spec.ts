@@ -113,7 +113,9 @@ test("P83-03 reduced motion actions never move", async ({ page }) => {
 
   const enabled = page.locator(".nextStepRowAction").first();
   await enabled.hover();
-  await page.waitForTimeout(140);
+  await enabled.evaluate(async (node) => {
+    await Promise.allSettled(node.getAnimations().map((a) => a.finished));
+  });
   const reduced = await readStyle(enabled);
   expect(reduced.transform).toBe("none");
   expect(reduced.transitionProperty).not.toContain("transform");

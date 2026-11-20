@@ -95,7 +95,7 @@ async function prepare(page: Page, fixture = createFullTodayFixture()) {
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
   await expect(page.locator(".doNowBand")).toBeVisible();
-  await page.waitForTimeout(150);
+  await page.evaluate(async () => document.fonts.ready);
   return fixture;
 }
 

@@ -130,7 +130,7 @@ async function openNewViewer(page: Page, listDelayMs: number) {
     const invoke = internals.invoke;
     internals.invoke = async (command, args = {}) => {
       if (command === "list_instruction_roots" || command === "list_instruction_directory") {
-        await new Promise((resolve) => window.setTimeout(resolve, delay));
+        await new Promise((resolve) => window.setTimeout(resolve, delay)); // simulated-latency
       }
       return invoke(command, args);
     };

@@ -193,11 +193,11 @@ for (const [width, columns] of [
       (node) => getComputedStyle(node, "::after").transform,
     );
     await timerButton.hover();
-    await page.waitForTimeout(180);
-    const underlineAfter = await timerButton.evaluate(
-      (node) => getComputedStyle(node, "::after").transform,
-    );
-    expect(underlineAfter).not.toBe(underlineBefore);
+    await expect
+      .poll(() =>
+        timerButton.evaluate((node) => getComputedStyle(node, "::after").transform),
+      )
+      .not.toBe(underlineBefore);
 
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       await page.evaluate(() => document.documentElement.clientWidth),

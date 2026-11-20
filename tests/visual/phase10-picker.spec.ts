@@ -290,7 +290,9 @@ test("P10-15b H0 the picker progress line sits under the header and follows the 
   fixture.config.today.items = fixture.config.today.items.slice(0, 1);
   await prepare(page, fixture);
   const dialog = await openPicker(page);
-  await page.waitForTimeout(300);
+  await dialog.evaluate((node) =>
+    Promise.allSettled(node.getAnimations().map((animation) => animation.finished)),
+  );
   const progress = dialog.locator(".todayPickerProgress");
   const header = dialog.locator(".todayPickerDestinationHeader");
   const destination = dialog.locator(".todayPickerDestination");
@@ -315,10 +317,13 @@ test("P10-15b H0 the picker progress line sits under the header and follows the 
   const expected = async (count: number) => {
     await expect(progress).toHaveAttribute("aria-valuenow", String(count));
     const bar = progress.locator("span");
-    await page.waitForTimeout(260);
-    const barBox = (await bar.boundingBox())!;
-    const full = (await progress.boundingBox())!;
-    expect(Math.abs(barBox.width - (full.width * count) / 3)).toBeLessThanOrEqual(2);
+    await expect
+      .poll(async () => {
+        const barBox = (await bar.boundingBox())!;
+        const full = (await progress.boundingBox())!;
+        return Math.abs(barBox.width - (full.width * count) / 3);
+      })
+      .toBeLessThanOrEqual(2);
   };
   await expected(1);
   await addNextStepCandidate(dialog, "5分だけ体を動かす");
@@ -338,7 +343,9 @@ test("P10-15b H1 the picker footer lines up with the 今日の3件 frame and use
   const fixture = createPublicFixture();
   await prepare(page, fixture);
   const dialog = await openPicker(page);
-  await page.waitForTimeout(300);
+  await dialog.evaluate((node) =>
+    Promise.allSettled(node.getAnimations().map((animation) => animation.finished)),
+  );
   const frame = (await dialog.locator(".todayPickerDestination").boundingBox())!;
   const actions = (await dialog.locator(".formDialogActions").boundingBox())!;
   expect(Math.abs(actions.x - frame.x)).toBeLessThanOrEqual(1);
@@ -348,13 +355,16 @@ test("P10-15b H1 the picker footer lines up with the 今日の3件 frame and use
   expect(Math.round(decide.height)).toBe(42);
   expect(Math.round(cancel.height)).toBe(42);
   await page.setViewportSize({ width: 860, height: 560 });
-  await page.waitForTimeout(100);
-  const narrowFrame = (await dialog.locator(".todayPickerDestination").boundingBox())!;
-  const narrowActions = (await dialog.locator(".formDialogActions").boundingBox())!;
-  expect(Math.abs(narrowActions.x - narrowFrame.x)).toBeLessThanOrEqual(1);
-  expect(
-    Math.abs(narrowActions.x + narrowActions.width - (narrowFrame.x + narrowFrame.width)),
-  ).toBeLessThanOrEqual(1);
+  await expect
+    .poll(async () => {
+      const narrowFrame = (await dialog.locator(".todayPickerDestination").boundingBox())!;
+      const narrowActions = (await dialog.locator(".formDialogActions").boundingBox())!;
+      return Math.max(
+        Math.abs(narrowActions.x - narrowFrame.x),
+        Math.abs(narrowActions.x + narrowActions.width - (narrowFrame.x + narrowFrame.width)),
+      );
+    })
+    .toBeLessThanOrEqual(1);
   await dialog.getByRole("button", { name: "キャンセル" }).click();
   const card = page.locator(".nextStepCard").filter({ hasText: "ストレッチ" }).first();
   await card.hover();
@@ -386,6 +396,8 @@ test("P10-10 決定 pressed twice in one task still saves once (P10-14)", async 
 
   await expect(dialog).toHaveCount(0);
   await expect.poll(() => saveConfigCount(page)).toBe(before + 1);
-  await page.waitForTimeout(300);
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
   expect(await saveConfigCount(page)).toBe(before + 1);
 });

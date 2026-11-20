@@ -68,7 +68,7 @@ test("Wishlist self-drop does not duplicate or save, including after repeated dr
   const disclosure = page.locator(".inboxBand .disclosure");
   if ((await disclosure.getAttribute("aria-expanded")) !== "true") await disclosure.click();
   await expect(page.locator(".inboxBody")).toBeVisible();
-  await page.waitForTimeout(350);
+  await expect(page.locator(".inboxBody")).toHaveCSS("overflow", "visible");
   const source = page.locator('[data-inbox-id="same-wish"]');
   const target = page.locator(`.nextStepCard[data-project-id="${project.id}"]`);
   const saveCount = () => page.evaluate(() =>
@@ -107,7 +107,7 @@ test("Wishlist replacement uses identity, not display text", async ({ page }) =>
   const disclosure = page.locator(".inboxBand .disclosure");
   if ((await disclosure.getAttribute("aria-expanded")) !== "true") await disclosure.click();
   await expect(page.locator(".inboxBody")).toBeVisible();
-  await page.waitForTimeout(350);
+  await expect(page.locator(".inboxBody")).toHaveCSS("overflow", "visible");
   const source = page.locator('[data-inbox-id="new-wish"]');
   const target = page.locator(`.nextStepCard[data-project-id="${project.id}"]`);
   await source.scrollIntoViewIfNeeded();

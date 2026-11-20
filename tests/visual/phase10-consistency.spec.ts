@@ -242,7 +242,7 @@ test("P10-14e 7 / G3 every size shows the 外す label with room beside the time
     await page.setViewportSize({ width, height: 680 });
     for (const size of sizes) {
       await setDisplaySize(page, size);
-      await page.waitForTimeout(80);
+      await page.evaluate(async () => document.fonts.ready);
       const cards = page.locator(".todayRow");
       await expect(cards.first()).toBeVisible();
       const cardCount = await cards.count();

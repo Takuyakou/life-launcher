@@ -116,7 +116,9 @@ test("P84 Do Now keeps a neutral resting card and follows the Project colour on 
     .evaluate((node) => getComputedStyle(node).backgroundColor);
 
   await card.hover();
-  await page.waitForTimeout(140);
+  await expect(card).toHaveCSS("border-left-color", firstDot);
+  await expect(card).toHaveCSS("border-right-color", firstDot);
+  await expect(card).toHaveCSS("background-color", "rgb(43, 41, 34)");
   const hovered = await card.evaluate((node) => {
     const style = getComputedStyle(node);
     return {
@@ -140,7 +142,8 @@ test("P84 Do Now keeps a neutral resting card and follows the Project colour on 
     .evaluate((node) => getComputedStyle(node).backgroundColor);
   expect(secondDot).not.toBe(firstDot);
   await page.mouse.move(1, 1);
-  await page.waitForTimeout(140);
+  await expect(card).toHaveCSS("border-left-color", secondDot);
+  await expect(card).toHaveCSS("border-right-color", secondDot);
   const afterSwitch = await card.evaluate((node) => {
     const style = getComputedStyle(node);
     return {

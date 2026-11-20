@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { IMPORT_PROMPT_FIRST, IMPORT_PROMPT_REPEAT, IMPORT_JSON_FORMAT } from "../../src/content/importPrompt";
 import { formatDuration } from "../../src/weeklyPlanning";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
+import { waitForStableRects } from "./helpers";
 import { installTauriMock } from "./tauriMock";
 
 type QaWindow = Window & {
@@ -330,6 +331,11 @@ test("P10-15b H2 the stale buttons use the main-screen button colours", async ({
   await page.goto("/");
   const mainButton = page.locator(".nextStepFreshnessButton").first();
   await expect(mainButton).toBeVisible();
+  // The bundled font swaps in after first paint and moves the freshness button sideways.
+  // Settle the font and the layout before the pointer is moved, or the button can slide out
+  // from under the already-positioned pointer and never enter its hover state.
+  await page.evaluate(async () => document.fonts.ready);
+  await waitForStableRects(page, [".nextStepFreshnessButton"]);
   const read = (locator: typeof mainButton) =>
     locator.evaluate((element) => {
       const style = getComputedStyle(element);
@@ -345,7 +351,7 @@ test("P10-15b H2 the stale buttons use the main-screen button colours", async ({
     });
   const mainStyle = await read(mainButton);
   await mainButton.hover();
-  await page.waitForTimeout(200);
+  await expect(mainButton).toHaveCSS("color", "rgb(255, 206, 91)");
   const mainHover = (await mainButton.evaluate((element) => getComputedStyle(element).color)) ?? "";
   await page.getByRole("button", { name: "記録ビューを開く" }).click();
   await page.getByRole("tab", { name: "今週を決める" }).click();
@@ -355,11 +361,9 @@ test("P10-15b H2 the stale buttons use the main-screen button colours", async ({
     const weekly = weeklyButtons.nth(index);
     expect(await read(weekly)).toEqual(mainStyle);
     await weekly.hover();
-    await page.waitForTimeout(200);
     await expect(weekly).toHaveCSS("color", mainHover);
   }
   await weeklyButtons.first().hover();
-  await page.waitForTimeout(200);
   await expect(weeklyButtons.first()).toHaveCSS("color", "rgb(255, 206, 91)");
 });
 

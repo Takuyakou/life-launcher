@@ -187,14 +187,20 @@ test("P10-14e 1 the play icon sits left of the label on both start buttons", asy
   for (const selector of [".doNowStartPrimary", ".doNowStartSecondary"]) {
     const button = page.locator(selector);
     await button.hover();
-    await page.waitForTimeout(160);
-    const glyph = (await button.locator(".timerStartHoverGlyph").boundingBox())!;
-    const label = (await button.locator(".timerStartDuration").boundingBox())!;
-    expect(Math.abs(glyph.y + glyph.height / 2 - (label.y + label.height / 2))).toBeLessThanOrEqual(
-      2,
+    await button.evaluate((node) =>
+      Promise.allSettled(node.getAnimations().map((animation) => animation.finished)),
     );
+    await expect
+      .poll(async () => {
+        const glyph = (await button.locator(".timerStartHoverGlyph").boundingBox())!;
+        const label = (await button.locator(".timerStartDuration").boundingBox())!;
+        return Math.abs(glyph.y + glyph.height / 2 - (label.y + label.height / 2));
+      })
+      .toBeLessThanOrEqual(2);
     await page.mouse.move(1, 1);
-    await page.waitForTimeout(160);
+    await button.evaluate((node) =>
+      Promise.allSettled(node.getAnimations().map((animation) => animation.finished)),
+    );
   }
 });
 

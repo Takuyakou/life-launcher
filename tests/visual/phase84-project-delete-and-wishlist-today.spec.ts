@@ -1,6 +1,7 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import type { AppConfig } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
+import { waitForStableRects } from "./helpers";
 import { installTauriMock } from "./tauriMock";
 
 async function prepare(page: Page, fixture: VisualQaFixture, height = 1000) {
@@ -44,20 +45,22 @@ async function invokeCount(page: Page, command: string) {
   );
 }
 
-async function dragTo(page: Page, source: Locator, target: Locator) {
-  await source.scrollIntoViewIfNeeded();
-  const sourceBox = await source.boundingBox();
-  const targetBox = await target.boundingBox();
-  expect(sourceBox).not.toBeNull();
-  expect(targetBox).not.toBeNull();
-  const startX = sourceBox!.x + Math.min(80, sourceBox!.width * 0.35);
-  const startY = sourceBox!.y + sourceBox!.height / 2;
+async function dragTo(page: Page, sourceSelector: string, targetSelector: string) {
+  await page.locator(sourceSelector).scrollIntoViewIfNeeded();
+  await page.evaluate(async () => document.fonts.ready);
+  // Measure both boxes after the wishlist rows and the bundled font have stopped moving, so the
+  // press starts on the row and the drop ends on the Today grid.
+  const rects = await waitForStableRects(page, [sourceSelector, targetSelector]);
+  const sourceBox = rects[sourceSelector];
+  const targetBox = rects[targetSelector];
+  const startX = sourceBox.x + Math.min(80, sourceBox.width * 0.35);
+  const startY = sourceBox.y + sourceBox.height / 2;
   await page.mouse.move(startX, startY);
   await page.mouse.down();
   await page.mouse.move(startX + 10, startY, { steps: 2 });
   await page.mouse.move(
-    targetBox!.x + targetBox!.width / 2,
-    targetBox!.y + targetBox!.height / 2,
+    targetBox.x + targetBox.width / 2,
+    targetBox.y + targetBox.height / 2,
     { steps: 8 },
   );
 }
@@ -68,10 +71,11 @@ test("Wishlist rows drag to Today3 with gold guidance and use the shared adoptio
   const fixture = createPublicFixture();
   await prepare(page, fixture, 1200);
   await page.getByRole("button", { name: "やりたいこと", exact: true }).click();
-  await page.waitForTimeout(300);
   const row = page.locator('[data-inbox-id="sample-later"]');
+  await expect(row).toBeVisible();
+  await expect(page.locator(".inboxBody")).toHaveCSS("overflow", "visible");
   const grid = page.locator(".todayGrid");
-  await dragTo(page, row, grid);
+  await dragTo(page, '[data-inbox-id="sample-later"]', ".todayGrid");
   await expect(grid).toHaveClass(/todayGrid--dropGuidance/);
   await expect(grid).toHaveClass(/todayGrid--dropTarget/);
   await expect(page.locator(".todayDropGuidanceOverlay")).toContainText("今日の3件");
