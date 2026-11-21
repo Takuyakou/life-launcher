@@ -17079,11 +17079,22 @@ button.mainActionButton:is(
   font-size: 13px;
   cursor: pointer;
 }
+.bookSeg button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
 .bookSeg button[aria-pressed="true"] {
   background: #2b2922;
   color: #f4f0e8;
   font-weight: 700;
   box-shadow: inset 0 0 0 1px #4a4639;
+}
+.bookZoomReset {
+  min-width: 52px;
+  font-variant-numeric: tabular-nums;
+}
+.bookZoomSeg .bookZoomReset {
+  color: #f4f0e8;
 }
 .bookSeg button:focus-visible {
   outline: 1px solid #ffce5b;
@@ -17141,6 +17152,40 @@ button.mainActionButton:is(
   background: #0f0e0c;
   overflow: hidden;
   outline: none;
+}
+.bookStage--zoomed {
+  overflow: auto;
+  cursor: grab;
+  user-select: none;
+}
+.bookStage--zoomed[data-panning="true"] {
+  cursor: grabbing;
+}
+.bookStage--zoomed::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.bookStage--zoomed::-webkit-scrollbar-track,
+.bookStage--zoomed::-webkit-scrollbar-corner {
+  background: transparent;
+}
+.bookStage--zoomed::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: rgba(244, 240, 232, 0.38);
+}
+.bookStage--zoomed .bookPageLayer {
+  position: relative;
+  inset: auto;
+  width: max-content;
+  min-width: 100%;
+  min-height: 100%;
+  margin: auto;
+  box-sizing: border-box;
+}
+.bookStage--zoomed .bookPageImage {
+  max-width: none;
+  max-height: none;
+  flex: 0 0 auto;
 }
 .bookStage[data-focus-ring="true"] {
   box-shadow: inset 0 0 0 1px #ffce5b;

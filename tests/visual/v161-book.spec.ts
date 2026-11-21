@@ -8,6 +8,11 @@ import type { InstructionBookState } from "../../src/types";
 const ROOT = "C:\\PublicDemo\\Instructions";
 const BOOK_FOLDER = `${ROOT}\\教材`;
 const BOOK_PATH = `${BOOK_FOLDER}\\英単語ドリル.zip`;
+const SCREENSHOT_OPTIONS = {
+  animations: "disabled" as const,
+  caret: "hide" as const,
+  maxDiffPixelRatio: 0.001,
+};
 
 type QaControl = {
   invokeCalls: Array<{ command: string; args: Record<string, unknown> }>;
@@ -443,4 +448,204 @@ test("V161-B4 scrub bar jumps accurately in RTL and LTR and skips page reads whi
   await page.mouse.click(box.x + 2, box.y + box.height / 2);
   await expect(page.locator(".bookPageLabel")).toHaveText("1 / 120");
 });
+
+test("V161-B5 zoom steps via buttons, keys, and Ctrl+wheel, and persists zoomPercent", async ({
+  page,
+}) => {
+  await openBook(page, bookFixture({ state: { lastPage: 34 } }));
+  const zoomOut = page.getByRole("button", { name: "縮小", exact: true });
+  const zoomIn = page.getByRole("button", { name: "拡大", exact: true });
+  const zoomReset = page.locator(".bookZoomReset");
+
+  await expect(zoomReset).toHaveText("全体");
+  await expect(zoomOut).toBeDisabled();
+  await expect(zoomIn).toBeEnabled();
+
+  for (const label of ["125%", "150%", "200%", "300%", "400%"]) {
+    await zoomIn.click();
+    await expect(zoomReset).toHaveText(label);
+    await expect(zoomOut).toBeEnabled();
+  }
+  await expect(zoomIn).toBeDisabled();
+
+  await zoomOut.click();
+  await expect(zoomReset).toHaveText("300%");
+  await zoomReset.click();
+  await expect(zoomReset).toHaveText("全体");
+  await expect(zoomOut).toBeDisabled();
+
+  // Keyboard shortcuts: +, =, -, 0
+  await page.locator(".bookStage").focus();
+  await page.keyboard.press("=");
+  await expect(zoomReset).toHaveText("125%");
+  await page.keyboard.press("+");
+  await expect(zoomReset).toHaveText("150%");
+  await page.keyboard.press("-");
+  await expect(zoomReset).toHaveText("125%");
+  await page.keyboard.press("0");
+  await expect(zoomReset).toHaveText("全体");
+
+  // Ctrl+wheel with 120ms guard does not zoom the browser viewport.
+  const box = (await page.locator(".bookStage").boundingBox())!;
+  await page.mouse.move(box.x + box.width * 0.65, box.y + box.height * 0.35);
+  await page.keyboard.down("Control");
+  await page.mouse.wheel(0, -120);
+  await expect(zoomReset).toHaveText("125%");
+  await page.mouse.wheel(0, -120);
+  await expect(zoomReset).toHaveText("125%");
+  await page.clock.runFor(120);
+  await page.mouse.wheel(0, -120);
+  await expect(zoomReset).toHaveText("150%");
+  await page.clock.runFor(120);
+  await page.mouse.wheel(0, -120);
+  await expect(zoomReset).toHaveText("200%");
+  await page.keyboard.up("Control");
+  expect(await page.evaluate(() => window.visualViewport?.scale ?? 1)).toBe(1);
+
+  // Saved after 800ms and restored on reload; legacy state without zoomPercent opens at 全体.
+  await page.clock.runFor(800);
+  await page.reload();
+  await waitForBundledFonts(page);
+  await expect(page.locator(".bookZoomReset")).toHaveText("200%");
+
+  const legacyPage = await page.context().newPage();
+  try {
+    await openBook(
+      legacyPage,
+      bookFixture({ state: { direction: "rtl", spread: true, coverSingle: true, lastPage: 34 } }),
+    );
+    await expect(legacyPage.locator(".bookZoomReset")).toHaveText("全体");
+  } finally {
+    await legacyPage.close();
+  }
+});
+
+test("V161-B5 200% scales images 2x, supports drag pan, scroll, Space, and resets edge on turn", async ({
+  page,
+}) => {
+  await openBook(page, bookFixture({ state: { lastPage: 34 } }));
+  const stage = page.locator(".bookStage");
+  const img34 = page.locator('.bookPageLayer--current img[alt="34ページ"]');
+  const fitBox = (await img34.boundingBox())!;
+
+  await page.getByRole("button", { name: "拡大", exact: true }).click();
+  await page.getByRole("button", { name: "拡大", exact: true }).click();
+  await expect(page.locator(".bookZoomReset")).toHaveText("150%");
+  await page.getByRole("button", { name: "拡大", exact: true }).click();
+  await expect(page.locator(".bookZoomReset")).toHaveText("200%");
+
+  // Progress bar and click turn zones are hidden while zoomed.
+  await expect(page.locator(".bookProgress")).toHaveCount(0);
+  await expect(page.locator(".bookZone")).toHaveCount(0);
+
+  const zoomedBox = (await img34.boundingBox())!;
+  expect(Math.abs(zoomedBox.width - fitBox.width * 2)).toBeLessThanOrEqual(1);
+  expect(Math.abs(zoomedBox.height - fitBox.height * 2)).toBeLessThanOrEqual(1);
+
+  const scrollMetrics = await stage.evaluate((el) => ({
+    scrollWidth: el.scrollWidth,
+    clientWidth: el.clientWidth,
+    scrollHeight: el.scrollHeight,
+    clientHeight: el.clientHeight,
+  }));
+  expect(scrollMetrics.scrollWidth).toBeGreaterThan(scrollMetrics.clientWidth);
+  expect(scrollMetrics.scrollHeight).toBeGreaterThan(scrollMetrics.clientHeight);
+
+  // Clicking on the left/right edges does not turn pages while zoomed.
+  const stageBox = (await stage.boundingBox())!;
+  await page.mouse.click(stageBox.x + 20, stageBox.y + stageBox.height / 2);
+  await page.mouse.click(stageBox.x + stageBox.width - 20, stageBox.y + stageBox.height / 2);
+  await expect(page.locator(".bookPageLabel")).toHaveText("34–35 / 120");
+
+  // Wheel scrolls vertically instead of turning pages; Shift+wheel scrolls horizontally.
+  await page.mouse.move(stageBox.x + stageBox.width / 2, stageBox.y + stageBox.height / 2);
+  const beforeWheel = await stage.evaluate((el) => ({ top: el.scrollTop, left: el.scrollLeft }));
+  await page.mouse.wheel(0, 120);
+  await expect
+    .poll(() => stage.evaluate((el) => el.scrollTop))
+    .toBeGreaterThan(beforeWheel.top);
+  await expect(page.locator(".bookPageLabel")).toHaveText("34–35 / 120");
+
+  await page.keyboard.down("Shift");
+  await page.mouse.wheel(0, 80);
+  await page.keyboard.up("Shift");
+  expect(await stage.evaluate((el) => el.scrollLeft)).not.toBe(beforeWheel.left);
+
+  // Dragging pans the scrollable stage.
+  const beforeDrag = await stage.evaluate((el) => ({ top: el.scrollTop, left: el.scrollLeft }));
+  await page.mouse.move(stageBox.x + stageBox.width / 2, stageBox.y + stageBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(stageBox.x + stageBox.width / 2 - 80, stageBox.y + stageBox.height / 2 - 60, {
+    steps: 4,
+  });
+  await page.mouse.up();
+  const afterDrag = await stage.evaluate((el) => ({ top: el.scrollTop, left: el.scrollLeft }));
+  expect(afterDrag.left).toBeGreaterThan(beforeDrag.left);
+  expect(afterDrag.top).toBeGreaterThan(beforeDrag.top);
+  await expect(page.locator(".bookPageLabel")).toHaveText("34–35 / 120");
+
+  // ArrowDown / ArrowUp scroll vertically by 15% of clientHeight.
+  const beforeKeyScroll = await stage.evaluate((el) => ({
+    top: el.scrollTop,
+    step: el.clientHeight * 0.15,
+  }));
+  await page.keyboard.press("ArrowDown");
+  const afterDown = await stage.evaluate((el) => el.scrollTop);
+  expect(Math.abs(afterDown - (beforeKeyScroll.top + beforeKeyScroll.step))).toBeLessThanOrEqual(2);
+
+  // ArrowLeft turns the page while keeping 200% zoom and resets scroll to top + start edge (RTL right edge).
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.locator(".bookPageLabel")).toHaveText("36–37 / 120");
+  await expect(page.locator(".bookZoomReset")).toHaveText("200%");
+  const afterTurnRtl = await stage.evaluate((el) => ({
+    top: el.scrollTop,
+    left: el.scrollLeft,
+    maxLeft: el.scrollWidth - el.clientWidth,
+  }));
+  expect(afterTurnRtl.top).toBe(0);
+  expect(Math.abs(afterTurnRtl.left - afterTurnRtl.maxLeft)).toBeLessThanOrEqual(2);
+
+  // Space scrolls down by 85%, and at the bottom advances to the next opening's top; Shift+Space goes back to bottom.
+  await page.keyboard.press("Space");
+  const afterFirstSpace = await stage.evaluate((el) => el.scrollTop);
+  expect(afterFirstSpace).toBeGreaterThan(0);
+  await page.keyboard.press("Space");
+  await expect
+    .poll(() => stage.evaluate((el) => el.scrollTop + el.clientHeight >= el.scrollHeight - 2))
+    .toBe(true);
+  await page.keyboard.press("Space");
+  await expect(page.locator(".bookPageLabel")).toHaveText("38–39 / 120");
+  expect(await stage.evaluate((el) => el.scrollTop)).toBe(0);
+
+  await page.keyboard.press("Shift+Space");
+  await expect(page.locator(".bookPageLabel")).toHaveText("36–37 / 120");
+  const returnedBottom = await stage.evaluate((el) => ({
+    top: el.scrollTop,
+    maxTop: el.scrollHeight - el.clientHeight,
+  }));
+  expect(Math.abs(returnedBottom.top - returnedBottom.maxTop)).toBeLessThanOrEqual(2);
+
+  // LTR resets horizontal scroll to the left edge (0) when turning.
+  await page.getByRole("button", { name: "左から右", exact: true }).click();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator(".bookPageLabel")).toHaveText("38–39 / 120");
+  const afterTurnLtr = await stage.evaluate((el) => ({
+    top: el.scrollTop,
+    left: el.scrollLeft,
+  }));
+  expect(afterTurnLtr.top).toBe(0);
+  expect(afterTurnLtr.left).toBe(0);
+});
+
+test("V161-B5 baseline: zoomed 200%", async ({ page }) => {
+  await openBook(page, bookFixture({ state: { lastPage: 34, zoomPercent: 200 } }));
+  await expect(page.locator(".bookZoomReset")).toHaveText("200%");
+  await page.evaluate(() =>
+    Promise.all(
+      Array.from(document.images).map((image) => image.decode().catch(() => undefined)),
+    ),
+  );
+  await expect(page).toHaveScreenshot("book-zoom200.png", SCREENSHOT_OPTIONS);
+});
+
 

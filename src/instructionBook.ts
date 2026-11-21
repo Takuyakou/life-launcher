@@ -1,12 +1,43 @@
 // V160-B2: pure helpers for the image-book view. The page numbers here are 1-based.
 import type { InstructionBookState } from "./types";
 
+export const BOOK_ZOOM_STEPS = [100, 125, 150, 200, 300, 400] as const;
+export const DEFAULT_BOOK_ZOOM_PERCENT = 100;
+
 export const DEFAULT_INSTRUCTION_BOOK_STATE: InstructionBookState = {
   direction: "rtl",
   spread: true,
   coverSingle: true,
   lastPage: 1,
+  zoomPercent: DEFAULT_BOOK_ZOOM_PERCENT,
 };
+
+export function normalizeBookZoomPercent(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return DEFAULT_BOOK_ZOOM_PERCENT;
+  return (BOOK_ZOOM_STEPS as readonly number[]).includes(value) ? value : DEFAULT_BOOK_ZOOM_PERCENT;
+}
+
+export function stepBookZoomPercent(current: number, delta: 1 | -1): number {
+  const index = BOOK_ZOOM_STEPS.indexOf(normalizeBookZoomPercent(current) as (typeof BOOK_ZOOM_STEPS)[number]);
+  const nextIndex = Math.max(0, Math.min(BOOK_ZOOM_STEPS.length - 1, (index >= 0 ? index : 0) + delta));
+  return BOOK_ZOOM_STEPS[nextIndex];
+}
+
+export function fitBookPageSize(
+  naturalWidth: number,
+  naturalHeight: number,
+  slotWidth: number,
+  slotHeight: number,
+): { width: number; height: number } {
+  if (naturalWidth <= 0 || naturalHeight <= 0 || slotWidth <= 0 || slotHeight <= 0) {
+    return { width: 0, height: 0 };
+  }
+  const scale = Math.min(slotWidth / naturalWidth, slotHeight / naturalHeight);
+  return {
+    width: naturalWidth * scale,
+    height: naturalHeight * scale,
+  };
+}
 
 /** The groups of pages shown at once: an opening pair, one page, or the single cover. */
 export function bookPageGroups(

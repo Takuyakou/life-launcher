@@ -35,11 +35,39 @@ const MAX_BOOK_PAGES: usize = 5_000;
 const MAX_PAGE_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_COMPRESSION_RATIO: u64 = 200;
 const RATIO_MIN_BYTES: u64 = 1024 * 1024;
+const DEFAULT_ZOOM_PERCENT: u16 = 100;
+const ALLOWED_ZOOM_PERCENTS: [u16; 6] = [100, 125, 150, 200, 300, 400];
 
 const PAGE_TYPE_JPEG: u8 = 1;
 const PAGE_TYPE_PNG: u8 = 2;
 const PAGE_TYPE_GIF: u8 = 3;
 const PAGE_TYPE_WEBP: u8 = 4;
+
+fn default_zoom_percent() -> u16 {
+    DEFAULT_ZOOM_PERCENT
+}
+
+fn normalize_zoom_percent_i64(value: i64) -> u16 {
+    if ALLOWED_ZOOM_PERCENTS
+        .iter()
+        .any(|&allowed| i64::from(allowed) == value)
+    {
+        value as u16
+    } else {
+        DEFAULT_ZOOM_PERCENT
+    }
+}
+
+fn deserialize_zoom_percent<'de, D>(deserializer: D) -> Result<u16, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let raw = serde_json::Value::deserialize(deserializer)?;
+    Ok(raw
+        .as_i64()
+        .map(normalize_zoom_percent_i64)
+        .unwrap_or(DEFAULT_ZOOM_PERCENT))
+}
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -56,6 +84,11 @@ pub struct InstructionBookState {
     pub spread: bool,
     pub cover_single: bool,
     pub last_page: u32,
+    #[serde(
+        default = "default_zoom_percent",
+        deserialize_with = "deserialize_zoom_percent"
+    )]
+    pub zoom_percent: u16,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub updated_at: Option<String>,
 }
@@ -67,6 +100,7 @@ impl Default for InstructionBookState {
             spread: true,
             cover_single: true,
             last_page: 1,
+            zoom_percent: DEFAULT_ZOOM_PERCENT,
             updated_at: None,
         }
     }
@@ -486,6 +520,9 @@ fn sanitize_state(mut state: InstructionBookState) -> InstructionBookState {
     }
     if state.last_page == 0 {
         state.last_page = 1;
+    }
+    if !ALLOWED_ZOOM_PERCENTS.contains(&state.zoom_percent) {
+        state.zoom_percent = DEFAULT_ZOOM_PERCENT;
     }
     state
 }
@@ -929,17 +966,20 @@ mod tests {
                 spread: false,
                 cover_single: false,
                 last_page: 34,
+                zoom_percent: 200,
                 updated_at: None,
             },
             "2026-11-21T02:00:00.000Z",
         )
         .expect("save state");
         assert_eq!(saved.last_page, 34);
+        assert_eq!(saved.zoom_percent, 200);
         let loaded = load_state_in_dir(&dir, "C:\\Books\\a.zip");
         assert_eq!(loaded.direction, "ltr");
         assert!(!loaded.spread);
         assert!(!loaded.cover_single);
         assert_eq!(loaded.last_page, 34);
+        assert_eq!(loaded.zoom_percent, 200);
 
         rename_state_in_dir(&dir, "C:\\Books\\a.zip", Some("C:\\Books\\b.zip"));
         assert_eq!(load_state_in_dir(&dir, "C:\\Books\\b.zip").last_page, 34);
@@ -1071,5 +1111,57 @@ mod tests {
         assert!(!is_book_cached(&top));
         assert_eq!(cached_book_count(), 0);
         let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn zoom_percent_defaults_and_sanitizes_invalid_values() {
+        let dir = temp_root("state-zoom");
+        let write_cases = r#"{
+  "version": 1,
+  "books": {
+    "C:\\Books\\legacy.zip": { "direction": "rtl", "spread": true, "coverSingle": true, "lastPage": 5 },
+    "C:\\Books\\z175.zip": { "direction": "rtl", "spread": true, "coverSingle": true, "lastPage": 1, "zoomPercent": 175 },
+    "C:\\Books\\z0.zip": { "direction": "rtl", "spread": true, "coverSingle": true, "lastPage": 1, "zoomPercent": 0 },
+    "C:\\Books\\zneg.zip": { "direction": "rtl", "spread": true, "coverSingle": true, "lastPage": 1, "zoomPercent": -5 },
+    "C:\\Books\\z1000.zip": { "direction": "rtl", "spread": true, "coverSingle": true, "lastPage": 1, "zoomPercent": 1000 },
+    "C:\\Books\\z200.zip": { "direction": "rtl", "spread": true, "coverSingle": true, "lastPage": 1, "zoomPercent": 200 }
+  }
+}"#;
+        fs::write(state_file_path(&dir), write_cases).expect("write cases");
+        assert_eq!(
+            load_state_in_dir(&dir, "C:\\Books\\legacy.zip").zoom_percent,
+            100
+        );
+        assert_eq!(
+            load_state_in_dir(&dir, "C:\\Books\\z175.zip").zoom_percent,
+            100
+        );
+        assert_eq!(
+            load_state_in_dir(&dir, "C:\\Books\\z0.zip").zoom_percent,
+            100
+        );
+        assert_eq!(
+            load_state_in_dir(&dir, "C:\\Books\\zneg.zip").zoom_percent,
+            100
+        );
+        assert_eq!(
+            load_state_in_dir(&dir, "C:\\Books\\z1000.zip").zoom_percent,
+            100
+        );
+        assert_eq!(
+            load_state_in_dir(&dir, "C:\\Books\\z200.zip").zoom_percent,
+            200
+        );
+
+        let sanitized = sanitize_state(InstructionBookState {
+            direction: "rtl".to_string(),
+            spread: true,
+            cover_single: true,
+            last_page: 1,
+            zoom_percent: 175,
+            updated_at: None,
+        });
+        assert_eq!(sanitized.zoom_percent, 100);
+        let _ = fs::remove_dir_all(dir);
     }
 }

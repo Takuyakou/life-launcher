@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type {
   KeyboardEvent as ReactKeyboardEvent,
   PointerEvent as ReactPointerEvent,
-  WheelEvent as ReactWheelEvent,
 } from "react";
 import { lastInputWasKeyboard } from "../focusModality";
 import {
+  BOOK_ZOOM_STEPS,
+  DEFAULT_BOOK_ZOOM_PERCENT,
   DEFAULT_INSTRUCTION_BOOK_STATE,
   bookAnnouncement,
   bookGroupIndexForPage,
@@ -14,7 +15,10 @@ import {
   bookPageLabel,
   bookPageMime,
   bookProgressPercent,
+  fitBookPageSize,
+  normalizeBookZoomPercent,
   parseBookJumpPage,
+  stepBookZoomPercent,
 } from "../instructionBook";
 import {
   closeInstructionBook,
@@ -29,6 +33,8 @@ type PageEntry = {
   status: "loading" | "ready" | "error";
   url?: string;
   decoded?: boolean;
+  naturalWidth?: number;
+  naturalHeight?: number;
   error?: string;
 };
 
@@ -44,6 +50,10 @@ const PRELOAD_OPENINGS = 2;
 const SAVE_DELAY_MS = 800;
 const DECODE_HOLD_MS = 150;
 const WHEEL_THROTTLE_MS = 250;
+const ZOOM_WHEEL_THROTTLE_MS = 120;
+const STAGE_PADDING_X = 48;
+const STAGE_PADDING_Y = 46;
+const SPREAD_GAP_PX = 2;
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -60,7 +70,7 @@ function isPageSettled(entry: PageEntry | undefined): boolean {
   return (entry.status === "ready" && Boolean(entry.decoded)) || entry.status === "error";
 }
 
-async function decodeImageUrl(url: string): Promise<void> {
+async function decodeImageUrl(url: string): Promise<{ width: number; height: number }> {
   const image = new Image();
   image.src = url;
   try {
@@ -68,6 +78,7 @@ async function decodeImageUrl(url: string): Promise<void> {
   } catch {
     // Keep the entry ready if decode rejects so <img> renders whatever the browser supports.
   }
+  return { width: image.naturalWidth, height: image.naturalHeight };
 }
 
 export function InstructionBook({ path, name }: { path: string; name: string }) {
@@ -89,10 +100,34 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
   const [jumpOpen, setJumpOpen] = useState(false);
   const [jumpValue, setJumpValue] = useState("");
   const [scrub, setScrub] = useState<ScrubState | null>(null);
+  const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
+  const [panning, setPanning] = useState(false);
   const jumpInputRef = useRef<HTMLInputElement>(null);
   const jumpClosingRef = useRef(false);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const lastWheelRef = useRef(0);
+  const lastZoomWheelRef = useRef(0);
+  const stageSizeRef = useRef({ width: 0, height: 0 });
+  const pendingScrollResetRef = useRef<"start" | "bottom" | null>(null);
+  const scrollAnchorRef = useRef<{ rx: number; ry: number; vx: number; vy: number } | null>(null);
+  const wheelHandlersRef = useRef<{
+    zoomPercent: number;
+    stepZoom: (delta: 1 | -1, point?: { clientX: number; clientY: number }) => void;
+    showNext: () => void;
+    showPrevious: () => void;
+  }>({
+    zoomPercent: DEFAULT_BOOK_ZOOM_PERCENT,
+    stepZoom: () => undefined,
+    showNext: () => undefined,
+    showPrevious: () => undefined,
+  });
+  const panRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    startLeft: number;
+    startTop: number;
+  } | null>(null);
   const bookTokenRef = useRef(0);
   const inFlightRef = useRef<Map<number, Promise<void>>>(new Map());
   const holdTimerRef = useRef<number | null>(null);
@@ -128,17 +163,23 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
     setCache(new Map());
     setJumpOpen(false);
     setScrub(null);
+    setPanning(false);
+    panRef.current = null;
+    pendingScrollResetRef.current = null;
+    scrollAnchorRef.current = null;
     positionRef.current = 1;
     setPosition(1);
     setShownPosition(1);
     void Promise.all([openInstructionBook(path), loadInstructionBookState(path)])
       .then(([info, saved]) => {
         if (bookTokenRef.current !== token) return;
+        const zoomPercent = normalizeBookZoomPercent(saved.zoomPercent);
         const restored: InstructionBookState = {
           ...DEFAULT_INSTRUCTION_BOOK_STATE,
           ...saved,
           direction: saved.direction === "ltr" ? "ltr" : "rtl",
           lastPage: Math.max(1, Math.floor(saved.lastPage || 1)),
+          zoomPercent,
         };
         const initialGroups = bookPageGroups(
           info.pageCount,
@@ -146,6 +187,7 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
           restored.coverSingle,
         );
         const start = initialGroups[bookGroupIndexForPage(initialGroups, restored.lastPage)]?.[0] ?? 1;
+        pendingScrollResetRef.current = zoomPercent > 100 ? "start" : null;
         setBook(info);
         setBookState({ ...restored, lastPage: start });
         positionRef.current = start;
@@ -198,7 +240,15 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
       }).catch(() => undefined);
     }, SAVE_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [book, path, bookState.direction, bookState.spread, bookState.coverSingle, position]);
+  }, [
+    book,
+    path,
+    bookState.direction,
+    bookState.spread,
+    bookState.coverSingle,
+    bookState.zoomPercent,
+    position,
+  ]);
 
   useEffect(() => {
     if (!book) return;
@@ -273,7 +323,7 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
           const url = URL.createObjectURL(
             new Blob([bytes.subarray(1)], { type: mime }),
           );
-          await decodeImageUrl(url);
+          const dimensions = await decodeImageUrl(url);
           if (bookTokenRef.current !== token) {
             URL.revokeObjectURL(url);
             return;
@@ -286,7 +336,13 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
             const next = new Map(previous);
             const old = next.get(page);
             if (old?.url && old.url !== url) URL.revokeObjectURL(old.url);
-            next.set(page, { status: "ready", url, decoded: true });
+            next.set(page, {
+              status: "ready",
+              url,
+              decoded: true,
+              naturalWidth: dimensions.width,
+              naturalHeight: dimensions.height,
+            });
             while (next.size > MAX_CACHED_PAGES) {
               const oldest = Array.from(next.entries()).find(
                 ([key, entry]) =>
@@ -334,6 +390,136 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
       return entry !== undefined && entry.status !== "loading";
     });
 
+  const visibleSizesKey = visiblePages
+    .map((page) => {
+      const entry = cache.get(page);
+      return `${page}:${entry?.naturalWidth ?? 0}x${entry?.naturalHeight ?? 0}`;
+    })
+    .join(",");
+  const bookLoaded = Boolean(book);
+  const zoomPercent = normalizeBookZoomPercent(bookState.zoomPercent);
+  const isZoomed = zoomPercent > DEFAULT_BOOK_ZOOM_PERCENT;
+
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage || !bookLoaded) return;
+    const updateSize = () => {
+      const width = stage.offsetWidth;
+      const height = stage.offsetHeight;
+      if (width <= 0 || height <= 0) return;
+      const previous = stageSizeRef.current;
+      if (previous.width === width && previous.height === height) return;
+      if (
+        previous.width > 0 &&
+        previous.height > 0 &&
+        normalizeBookZoomPercent(stateRef.current.zoomPercent) > DEFAULT_BOOK_ZOOM_PERCENT
+      ) {
+        const sw = Math.max(1, stage.scrollWidth);
+        const sh = Math.max(1, stage.scrollHeight);
+        scrollAnchorRef.current = {
+          rx: (stage.scrollLeft + stage.clientWidth / 2) / sw,
+          ry: (stage.scrollTop + stage.clientHeight / 2) / sh,
+          vx: width / 2,
+          vy: height / 2,
+        };
+      }
+      stageSizeRef.current = { width, height };
+      setStageSize({ width, height });
+    };
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(stage);
+    return () => observer.disconnect();
+  }, [bookLoaded]);
+
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage || !bookLoaded) return;
+    const onNativeWheel = (event: WheelEvent) => {
+      const handlers = wheelHandlersRef.current;
+      if (event.ctrlKey) {
+        event.preventDefault();
+        if (event.deltaY === 0) return;
+        const now = Date.now();
+        if (now - lastZoomWheelRef.current < ZOOM_WHEEL_THROTTLE_MS) return;
+        lastZoomWheelRef.current = now;
+        handlers.stepZoom(event.deltaY < 0 ? 1 : -1, {
+          clientX: event.clientX,
+          clientY: event.clientY,
+        });
+        return;
+      }
+      if (handlers.zoomPercent > DEFAULT_BOOK_ZOOM_PERCENT) {
+        if (event.shiftKey && event.deltaY !== 0) {
+          event.preventDefault();
+          stage.scrollLeft += event.deltaY;
+        }
+        return;
+      }
+      if (event.deltaY === 0) return;
+      event.preventDefault();
+      const now = Date.now();
+      if (now - lastWheelRef.current < WHEEL_THROTTLE_MS) return;
+      lastWheelRef.current = now;
+      if (event.deltaY > 0) handlers.showNext();
+      else handlers.showPrevious();
+    };
+    stage.addEventListener("wheel", onNativeWheel, { passive: false });
+    return () => stage.removeEventListener("wheel", onNativeWheel);
+  }, [bookLoaded]);
+
+  useLayoutEffect(() => {
+    const stage = stageRef.current;
+    if (!stage || !book) return;
+    if (!isZoomed) {
+      pendingScrollResetRef.current = null;
+      scrollAnchorRef.current = null;
+      if (stage.scrollLeft !== 0) stage.scrollLeft = 0;
+      if (stage.scrollTop !== 0) stage.scrollTop = 0;
+      return;
+    }
+    const reset = pendingScrollResetRef.current;
+    if (reset) {
+      const allSized =
+        visiblePages.length > 0 &&
+        visiblePages.every((page) => {
+          const entry = cacheRef.current.get(page);
+          return (
+            entry?.status === "error" ||
+            (entry?.status === "ready" && (entry.naturalWidth ?? 0) > 0)
+          );
+        });
+      if (!allSized || stageSize.width <= 0) return;
+      pendingScrollResetRef.current = null;
+      scrollAnchorRef.current = null;
+      const maxLeft = Math.max(0, stage.scrollWidth - stage.clientWidth);
+      const maxTop = Math.max(0, stage.scrollHeight - stage.clientHeight);
+      stage.scrollLeft = bookState.direction === "rtl" ? maxLeft : 0;
+      stage.scrollTop = reset === "bottom" ? maxTop : 0;
+      return;
+    }
+    const anchor = scrollAnchorRef.current;
+    if (anchor) {
+      scrollAnchorRef.current = null;
+      const maxLeft = Math.max(0, stage.scrollWidth - stage.clientWidth);
+      const maxTop = Math.max(0, stage.scrollHeight - stage.clientHeight);
+      stage.scrollLeft = Math.min(maxLeft, Math.max(0, stage.scrollWidth * anchor.rx - anchor.vx));
+      stage.scrollTop = Math.min(maxTop, Math.max(0, stage.scrollHeight * anchor.ry - anchor.vy));
+    }
+  }, [
+    book,
+    isZoomed,
+    zoomPercent,
+    shownPosition,
+    stageSize.width,
+    stageSize.height,
+    bookState.direction,
+    bookState.spread,
+    bookState.coverSingle,
+    visibleSizesKey,
+    visiblePages,
+  ]);
+
   useEffect(() => {
     if (!jumpOpen) return;
     jumpInputRef.current?.focus({ preventScroll: true });
@@ -366,13 +552,16 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
 
   const canPrevious = groupIndex > 0;
   const canNext = groupIndex < groups.length - 1;
-  const goToOpening = (index: number) => {
+  const goToOpening = (index: number, scrollReset: "start" | "bottom" = "start") => {
     const currentGroups = groupsRef.current;
     const clamped = Math.max(0, Math.min(currentGroups.length - 1, index));
     const nextPages = currentGroups[clamped] ?? [];
     const start = nextPages[0];
     if (start === undefined || start === positionRef.current) return;
     clearHoldTimer();
+    if (normalizeBookZoomPercent(stateRef.current.zoomPercent) > DEFAULT_BOOK_ZOOM_PERCENT) {
+      pendingScrollResetRef.current = scrollReset;
+    }
     positionRef.current = start;
     setPosition(start);
     const settledNow =
@@ -389,13 +578,50 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
   };
   const currentTargetGroupIndex = () =>
     bookGroupIndexForPage(groupsRef.current, positionRef.current);
-  const showPrevious = () => {
+  const showPrevious = (scrollReset: "start" | "bottom" = "start") => {
     const idx = currentTargetGroupIndex();
-    if (idx > 0) goToOpening(idx - 1);
+    if (idx > 0) goToOpening(idx - 1, scrollReset);
   };
-  const showNext = () => {
+  const showNext = (scrollReset: "start" | "bottom" = "start") => {
     const idx = currentTargetGroupIndex();
-    if (idx < groupsRef.current.length - 1) goToOpening(idx + 1);
+    if (idx < groupsRef.current.length - 1) goToOpening(idx + 1, scrollReset);
+  };
+  const applyZoom = (nextRaw: number, clientPoint?: { clientX: number; clientY: number }) => {
+    const nextZoom = normalizeBookZoomPercent(nextRaw);
+    const currentZoom = normalizeBookZoomPercent(stateRef.current.zoomPercent);
+    if (nextZoom === currentZoom) return;
+    const stage = stageRef.current;
+    if (stage && nextZoom > DEFAULT_BOOK_ZOOM_PERCENT) {
+      const rect = stage.getBoundingClientRect();
+      const vx = clientPoint ? clientPoint.clientX - rect.left : stage.clientWidth / 2;
+      const vy = clientPoint ? clientPoint.clientY - rect.top : stage.clientHeight / 2;
+      const sw = Math.max(1, stage.scrollWidth);
+      const sh = Math.max(1, stage.scrollHeight);
+      scrollAnchorRef.current = {
+        rx: (stage.scrollLeft + vx) / sw,
+        ry: (stage.scrollTop + vy) / sh,
+        vx,
+        vy,
+      };
+    } else {
+      scrollAnchorRef.current = null;
+    }
+    pendingScrollResetRef.current = null;
+    setHoverSide(null);
+    setScrub(null);
+    setPanning(false);
+    panRef.current = null;
+    setBookState((current) => ({ ...current, zoomPercent: nextZoom }));
+  };
+  const stepZoom = (delta: 1 | -1, clientPoint?: { clientX: number; clientY: number }) => {
+    const currentZoom = normalizeBookZoomPercent(stateRef.current.zoomPercent);
+    applyZoom(stepBookZoomPercent(currentZoom, delta), clientPoint);
+  };
+  wheelHandlersRef.current = {
+    zoomPercent,
+    stepZoom,
+    showNext: () => showNext("start"),
+    showPrevious: () => showPrevious("start"),
   };
   const goToPage = (page: number) => {
     const clamped = Math.max(1, Math.min(book.pageCount, page));
@@ -465,12 +691,16 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
     const start =
       nextGroups[bookGroupIndexForPage(nextGroups, positionRef.current)]?.[0] ?? 1;
     clearHoldTimer();
+    if (normalizeBookZoomPercent(next.zoomPercent) > DEFAULT_BOOK_ZOOM_PERCENT) {
+      pendingScrollResetRef.current = "start";
+    }
     positionRef.current = start;
     setBookState({ ...next, lastPage: start });
     setPosition(start);
     setShownPosition(start);
   };
   const changeDirection = (direction: "rtl" | "ltr") => {
+    if (isZoomed) pendingScrollResetRef.current = "start";
     setBookState((current) => ({ ...current, direction }));
   };
   const changeSpread = (spread: boolean) => changeLayout({ spread });
@@ -480,6 +710,23 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
   const onKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (event.target !== event.currentTarget) return;
     const key = event.key;
+    if (!event.ctrlKey && !event.metaKey && !event.altKey) {
+      if (key === "+" || key === "=") {
+        event.preventDefault();
+        stepZoom(1);
+        return;
+      }
+      if (key === "-") {
+        event.preventDefault();
+        stepZoom(-1);
+        return;
+      }
+      if (key === "0") {
+        event.preventDefault();
+        applyZoom(DEFAULT_BOOK_ZOOM_PERCENT);
+        return;
+      }
+    }
     const forwardKey =
       key === "ArrowLeft"
         ? bookState.direction === "rtl"
@@ -488,77 +735,152 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
           : false;
     if (key === "ArrowLeft" || key === "ArrowRight") {
       event.preventDefault();
-      if (forwardKey) showNext();
-      else showPrevious();
+      if (forwardKey) showNext("start");
+      else showPrevious("start");
+      return;
+    }
+    if (isZoomed && (key === "ArrowUp" || key === "ArrowDown")) {
+      event.preventDefault();
+      const stage = event.currentTarget;
+      stage.scrollTop += (key === "ArrowDown" ? 1 : -1) * stage.clientHeight * 0.15;
       return;
     }
     if (key === "PageDown" || key === " ") {
       event.preventDefault();
-      if (key === " " && event.shiftKey) showPrevious();
-      else showNext();
+      const forward = !(key === " " && event.shiftKey);
+      if (isZoomed) {
+        const stage = event.currentTarget;
+        if (forward) {
+          if (stage.scrollTop + stage.clientHeight >= stage.scrollHeight - 2) {
+            showNext("start");
+          } else {
+            stage.scrollTop += stage.clientHeight * 0.85;
+          }
+        } else if (stage.scrollTop <= 2) {
+          showPrevious("bottom");
+        } else {
+          stage.scrollTop -= stage.clientHeight * 0.85;
+        }
+        return;
+      }
+      if (forward) showNext("start");
+      else showPrevious("start");
       return;
     }
     if (key === "PageUp") {
       event.preventDefault();
-      showPrevious();
+      if (isZoomed) {
+        const stage = event.currentTarget;
+        if (stage.scrollTop <= 2) {
+          showPrevious("bottom");
+        } else {
+          stage.scrollTop -= stage.clientHeight * 0.85;
+        }
+        return;
+      }
+      showPrevious("start");
       return;
     }
     if (key === "Home") {
       event.preventDefault();
-      goToOpening(0);
+      goToOpening(0, "start");
       return;
     }
     if (key === "End") {
       event.preventDefault();
-      goToOpening(groupsRef.current.length - 1);
+      goToOpening(groupsRef.current.length - 1, "start");
     }
   };
 
-  const onWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
-    if (event.ctrlKey || event.deltaY === 0) return;
-    const now = Date.now();
-    if (now - lastWheelRef.current < WHEEL_THROTTLE_MS) return;
-    lastWheelRef.current = now;
-    if (event.deltaY > 0) showNext();
-    else showPrevious();
+  const onStagePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    setFocusRing(false);
+    if (!jumpOpen) focusStage();
+    if (isZoomed && event.button === 0 && !jumpOpen) {
+      panRef.current = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        startLeft: event.currentTarget.scrollLeft,
+        startTop: event.currentTarget.scrollTop,
+      };
+      setPanning(true);
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
   };
 
-  const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+  const onStagePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (panRef.current && panRef.current.pointerId === event.pointerId) {
+      event.currentTarget.scrollLeft = panRef.current.startLeft - (event.clientX - panRef.current.startX);
+      event.currentTarget.scrollTop = panRef.current.startTop - (event.clientY - panRef.current.startY);
+      return;
+    }
+    if (isZoomed) {
+      if (hoverSide !== null) setHoverSide(null);
+      return;
+    }
     const rect = event.currentTarget.getBoundingClientRect();
     const ratio = (event.clientX - rect.left) / Math.max(1, rect.width);
     setHoverSide(ratio < 0.3 ? "left" : ratio > 0.7 ? "right" : null);
   };
 
-  const renderOpening = (pages: number[]) => (
-    <div
-      className={`bookPageLayer bookPageLayer--current${
-        bookState.direction === "rtl" ? " bookPageLayer--rtl" : ""
-      }${pages.length === 1 ? " bookPageLayer--one" : ""}`}
-    >
-      {pages.map((page) => {
-        const entry = cache.get(page);
-        if (!entry || entry.status === "loading") {
-          return <div className="bookPagePending" key={page} />;
-        }
-        if (entry.status === "error") {
+  const endPan = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!panRef.current || panRef.current.pointerId !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    panRef.current = null;
+    setPanning(false);
+  };
+
+  const availW = Math.max(1, stageSize.width - STAGE_PADDING_X);
+  const availH = Math.max(1, stageSize.height - STAGE_PADDING_Y);
+  const zoomedScale = zoomPercent / 100;
+
+  const renderOpening = (pages: number[]) => {
+    const slotW = pages.length <= 1 ? availW : Math.max(1, (availW - SPREAD_GAP_PX) / 2);
+    return (
+      <div
+        className={`bookPageLayer bookPageLayer--current${
+          bookState.direction === "rtl" ? " bookPageLayer--rtl" : ""
+        }${pages.length === 1 ? " bookPageLayer--one" : ""}`}
+      >
+        {pages.map((page) => {
+          const entry = cache.get(page);
+          if (!entry || entry.status === "loading") {
+            return <div className="bookPagePending" key={page} />;
+          }
+          if (entry.status === "error") {
+            return (
+              <div className="bookPageError" key={page} role="alert">
+                {entry.error}
+              </div>
+            );
+          }
+          const fit =
+            isZoomed && stageSize.width > 0 && (entry.naturalWidth ?? 0) > 0
+              ? fitBookPageSize(entry.naturalWidth!, entry.naturalHeight!, slotW, availH)
+              : null;
+          const imgStyle =
+            fit && fit.width > 0
+              ? {
+                  width: `${fit.width * zoomedScale}px`,
+                  height: `${fit.height * zoomedScale}px`,
+                }
+              : undefined;
           return (
-            <div className="bookPageError" key={page} role="alert">
-              {entry.error}
-            </div>
+            <img
+              alt={`${page}ページ`}
+              className="bookPageImage"
+              draggable={false}
+              key={page}
+              src={entry.url}
+              style={imgStyle}
+            />
           );
-        }
-        return (
-          <img
-            alt={`${page}ページ`}
-            className="bookPageImage"
-            draggable={false}
-            key={page}
-            src={entry.url}
-          />
-        );
-      })}
-    </div>
-  );
+        })}
+      </div>
+    );
+  };
 
   const previewPages = scrub?.dragging
     ? groups[bookGroupIndexForPage(groups, scrub.page)] ?? targetPages
@@ -688,6 +1010,44 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
           <span>表紙は1ページ</span>
         </label>
         <div className="bookSpacer" />
+        <div
+          aria-label="拡大と縮小"
+          className="bookSeg bookZoomSeg"
+          onMouseDown={(event) => {
+            if (!jumpOpen) event.preventDefault();
+          }}
+          role="group"
+        >
+          <button
+            aria-label="縮小"
+            disabled={zoomPercent <= BOOK_ZOOM_STEPS[0]}
+            onClick={() => stepZoom(-1)}
+            type="button"
+          >
+            −
+          </button>
+          <button
+            aria-label={
+              zoomPercent === DEFAULT_BOOK_ZOOM_PERCENT
+                ? "表示倍率 全体(押すと全体に戻す)"
+                : `表示倍率 ${zoomPercent}%(押すと全体に戻す)`
+            }
+            aria-pressed={isZoomed}
+            className="bookZoomReset"
+            onClick={() => applyZoom(DEFAULT_BOOK_ZOOM_PERCENT)}
+            type="button"
+          >
+            {zoomPercent === DEFAULT_BOOK_ZOOM_PERCENT ? "全体" : `${zoomPercent}%`}
+          </button>
+          <button
+            aria-label="拡大"
+            disabled={zoomPercent >= BOOK_ZOOM_STEPS[BOOK_ZOOM_STEPS.length - 1]}
+            onClick={() => stepZoom(1)}
+            type="button"
+          >
+            +
+          </button>
+        </div>
         </div>
         {book.truncated ? (
           <p className="bookNotice">5,000ページまで表示しています</p>
@@ -697,8 +1057,9 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
         aria-label={`${name}のページ`}
         className={`bookStage${bookState.direction === "rtl" ? " bookStage--rtl" : ""}${
           visiblePages.length === 1 ? " bookStage--one" : ""
-        }`}
+        }${isZoomed ? " bookStage--zoomed" : ""}`}
         data-focus-ring={focusRing ? "true" : undefined}
+        data-panning={isZoomed && panning ? "true" : undefined}
         onBlur={() => setFocusRing(false)}
         onFocus={() => setFocusRing(lastInputWasKeyboard())}
         onKeyDown={onKeyDown}
@@ -707,137 +1068,139 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
           setFocusRing(false);
           if (!jumpOpen) focusStage();
         }}
-        onPointerDown={() => {
-          setFocusRing(false);
-          if (!jumpOpen) focusStage();
-        }}
+        onPointerCancel={endPan}
+        onPointerDown={onStagePointerDown}
         onPointerLeave={() => setHoverSide(null)}
-        onPointerMove={onPointerMove}
-        onWheel={onWheel}
+        onPointerMove={onStagePointerMove}
+        onPointerUp={endPan}
         ref={stageRef}
         tabIndex={0}
       >
         {renderOpening(visiblePages)}
-        <button
-          aria-label={leftAria}
-          className="bookZone bookZone--left"
-          data-available={leftAvailable}
-          data-visible={!jumpOpen && hoverSide === "left" && leftAvailable}
-          onClick={() => {
-            if (jumpOpen) {
-              closeJumpInput(true);
-              return;
-            }
-            leftAction();
-          }}
-          onKeyDown={(event) => event.stopPropagation()}
-          onMouseDown={(event) => {
-            if (!jumpOpen) event.preventDefault();
-          }}
-          tabIndex={-1}
-          type="button"
-        >
-          <span>{leftArrow}</span>
-          <em>{leftLabel}</em>
-        </button>
-        <button
-          aria-label={rightAria}
-          className="bookZone bookZone--right"
-          data-available={rightAvailable}
-          data-visible={!jumpOpen && hoverSide === "right" && rightAvailable}
-          onClick={() => {
-            if (jumpOpen) {
-              closeJumpInput(true);
-              return;
-            }
-            rightAction();
-          }}
-          onKeyDown={(event) => event.stopPropagation()}
-          onMouseDown={(event) => {
-            if (!jumpOpen) event.preventDefault();
-          }}
-          tabIndex={-1}
-          type="button"
-        >
-          <span>{rightArrow}</span>
-          <em>{rightLabel}</em>
-        </button>
-        <div
-          className={`bookProgress${bookState.direction === "ltr" ? " bookProgress--ltr" : ""}${
-            visiblePages.length === 1 ? " bookProgress--single" : ""
-          }`}
-          data-active={scrub ? "true" : "false"}
-          onClick={(event) => event.stopPropagation()}
-          onMouseDown={(event) => {
-            event.stopPropagation();
-            if (!jumpOpen) event.preventDefault();
-          }}
-          onPointerCancel={() => setScrub(null)}
-          onPointerDown={(event) => {
-            event.stopPropagation();
-            if (event.button !== 0) return;
-            if (jumpOpen) {
-              closeJumpInput(true);
-              return;
-            }
-            setHoverSide(null);
-            event.currentTarget.setPointerCapture(event.pointerId);
-            const point = readScrubPoint(event.clientX, event.currentTarget);
-            setScrub({ ...point, dragging: true });
-          }}
-          onPointerEnter={(event) => {
-            setHoverSide(null);
-            const point = readScrubPoint(event.clientX, event.currentTarget);
-            setScrub((current) => ({ ...point, dragging: current?.dragging ?? false }));
-          }}
-          onPointerLeave={() => {
-            setScrub((current) => (current?.dragging ? current : null));
-          }}
-          onPointerMove={(event) => {
-            event.stopPropagation();
-            setHoverSide(null);
-            const point = readScrubPoint(event.clientX, event.currentTarget);
-            setScrub((current) => ({ ...point, dragging: current?.dragging ?? false }));
-          }}
-          onPointerUp={(event) => {
-            event.stopPropagation();
-            if (!scrub?.dragging) return;
-            if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-              event.currentTarget.releasePointerCapture(event.pointerId);
-            }
-            const point = readScrubPoint(event.clientX, event.currentTarget);
-            setScrub({ ...point, dragging: false });
-            goToPage(point.page);
-            focusStage();
-          }}
-        >
-          <div className="bookProgressTrack">
-            <b style={{ width: `${progress}%` }} />
-            {scrub ? (
-              <>
-                <span
-                  className="bookProgressMarker"
-                  style={{ left: `${scrub.ratio * 100}%` }}
-                />
-                <span
-                  className="bookProgressThumb"
-                  style={
-                    bookState.direction === "rtl"
-                      ? { right: `${progress}%` }
-                      : { left: `${progress}%` }
-                  }
-                />
-                <div
-                  className="bookProgressTooltip"
-                  ref={tooltipRef}
-                  style={{ left: `${scrubTooltipLeft}px` }}
-                >
-                  p.{scrub.page}
-                </div>
-              </>
-            ) : null}
-          </div>
-        </div>
+        {!isZoomed ? (
+          <>
+            <button
+              aria-label={leftAria}
+              className="bookZone bookZone--left"
+              data-available={leftAvailable}
+              data-visible={!jumpOpen && hoverSide === "left" && leftAvailable}
+              onClick={() => {
+                if (jumpOpen) {
+                  closeJumpInput(true);
+                  return;
+                }
+                leftAction();
+              }}
+              onKeyDown={(event) => event.stopPropagation()}
+              onMouseDown={(event) => {
+                if (!jumpOpen) event.preventDefault();
+              }}
+              tabIndex={-1}
+              type="button"
+            >
+              <span>{leftArrow}</span>
+              <em>{leftLabel}</em>
+            </button>
+            <button
+              aria-label={rightAria}
+              className="bookZone bookZone--right"
+              data-available={rightAvailable}
+              data-visible={!jumpOpen && hoverSide === "right" && rightAvailable}
+              onClick={() => {
+                if (jumpOpen) {
+                  closeJumpInput(true);
+                  return;
+                }
+                rightAction();
+              }}
+              onKeyDown={(event) => event.stopPropagation()}
+              onMouseDown={(event) => {
+                if (!jumpOpen) event.preventDefault();
+              }}
+              tabIndex={-1}
+              type="button"
+            >
+              <span>{rightArrow}</span>
+              <em>{rightLabel}</em>
+            </button>
+            <div
+              className={`bookProgress${bookState.direction === "ltr" ? " bookProgress--ltr" : ""}${
+                visiblePages.length === 1 ? " bookProgress--single" : ""
+              }`}
+              data-active={scrub ? "true" : "false"}
+              onClick={(event) => event.stopPropagation()}
+              onMouseDown={(event) => {
+                event.stopPropagation();
+                if (!jumpOpen) event.preventDefault();
+              }}
+              onPointerCancel={() => setScrub(null)}
+              onPointerDown={(event) => {
+                event.stopPropagation();
+                if (event.button !== 0) return;
+                if (jumpOpen) {
+                  closeJumpInput(true);
+                  return;
+                }
+                setHoverSide(null);
+                event.currentTarget.setPointerCapture(event.pointerId);
+                const point = readScrubPoint(event.clientX, event.currentTarget);
+                setScrub({ ...point, dragging: true });
+              }}
+              onPointerEnter={(event) => {
+                setHoverSide(null);
+                const point = readScrubPoint(event.clientX, event.currentTarget);
+                setScrub((current) => ({ ...point, dragging: current?.dragging ?? false }));
+              }}
+              onPointerLeave={() => {
+                setScrub((current) => (current?.dragging ? current : null));
+              }}
+              onPointerMove={(event) => {
+                event.stopPropagation();
+                setHoverSide(null);
+                const point = readScrubPoint(event.clientX, event.currentTarget);
+                setScrub((current) => ({ ...point, dragging: current?.dragging ?? false }));
+              }}
+              onPointerUp={(event) => {
+                event.stopPropagation();
+                if (!scrub?.dragging) return;
+                if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                  event.currentTarget.releasePointerCapture(event.pointerId);
+                }
+                const point = readScrubPoint(event.clientX, event.currentTarget);
+                setScrub({ ...point, dragging: false });
+                goToPage(point.page);
+                focusStage();
+              }}
+            >
+              <div className="bookProgressTrack">
+                <b style={{ width: `${progress}%` }} />
+                {scrub ? (
+                  <>
+                    <span
+                      className="bookProgressMarker"
+                      style={{ left: `${scrub.ratio * 100}%` }}
+                    />
+                    <span
+                      className="bookProgressThumb"
+                      style={
+                        bookState.direction === "rtl"
+                          ? { right: `${progress}%` }
+                          : { left: `${progress}%` }
+                      }
+                    />
+                    <div
+                      className="bookProgressTooltip"
+                      ref={tooltipRef}
+                      style={{ left: `${scrubTooltipLeft}px` }}
+                    >
+                      p.{scrub.page}
+                    </div>
+                  </>
+                ) : null}
+              </div>
+            </div>
+          </>
+        ) : null}
         <div aria-live="polite" className="srOnly">
           {bookAnnouncement(targetPages)}
         </div>

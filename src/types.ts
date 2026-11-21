@@ -363,6 +363,7 @@ export type InstructionBookState = {
   spread: boolean;
   coverSingle: boolean;
   lastPage: number;
+  zoomPercent?: number;
   updatedAt?: string;
 };
 

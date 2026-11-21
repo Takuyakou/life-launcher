@@ -809,6 +809,7 @@ export async function installTauriMock(
                   spread: true,
                   coverSingle: true,
                   lastPage: 1,
+                  zoomPercent: 100,
                   ...fixture.instructionBookState?.[path],
                   ...stored,
                 };
