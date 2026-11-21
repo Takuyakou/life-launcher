@@ -290,6 +290,12 @@ export async function installTauriMock(
         setLauncherPickerResult: (result: string | null) => {
           launcherPickerResult = result;
         },
+        setInstructionModifiedAt: (path: string, modifiedAt: number) => {
+          const entry = (fixture.instructionExtraEntries ?? []).find(
+            (item) => item.path.toLocaleLowerCase() === path.toLocaleLowerCase(),
+          );
+          if (entry) entry.modifiedAt = modifiedAt;
+        },
         setInstructionRootDelayed: (delayed: boolean) => {
           instructionRootDelayed = delayed;
         },
@@ -706,6 +712,9 @@ export async function installTauriMock(
                   throw new Error("MHTML instruction files must be read as bytes");
                 }
                 const name = path.split(/[\\/]/).filter(Boolean).at(-1) ?? path;
+                if (name.toLocaleLowerCase().endsWith(".zip")) {
+                  throw new Error("ZIP instruction files are read as a book");
+                }
                 const html = name.endsWith(".html");
                 const content =
                   fixture.instructionDocuments?.[path] ??

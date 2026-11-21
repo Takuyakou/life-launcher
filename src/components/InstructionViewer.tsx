@@ -391,7 +391,7 @@ export function InstructionViewer() {
       if (checking) return;
       checking = true;
       try {
-        if (isMhtmlInstructionName(selectedPath)) {
+        if (isMhtmlInstructionName(selectedPath) || isInstructionBookName(selectedPath)) {
           const info = await readInstructionInfo(selectedPath);
           externalCheckErrorRef.current = null;
           if (!disposed && info.modifiedAt !== instruction.modifiedAt) {
@@ -587,7 +587,10 @@ export function InstructionViewer() {
 
   const reloadExternalDocument = () => {
     if (!externalDocument) return;
-    if (isMhtmlInstructionName(externalDocument.name)) {
+    if (
+      isMhtmlInstructionName(externalDocument.name) ||
+      isInstructionBookName(externalDocument.name)
+    ) {
       setExternalDocument(null);
       void loadDocument(externalDocument.path);
       return;

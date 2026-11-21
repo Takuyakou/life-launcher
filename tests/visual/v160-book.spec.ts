@@ -478,3 +478,63 @@ test("V160-B2 baseline: spread, cover and single", async ({ page }) => {
   await page.clock.runFor(300);
   await expect(page).toHaveScreenshot("book-cover.png", SCREENSHOT_OPTIONS);
 });
+
+type QaControl = {
+  invokeCalls: Array<{ command: string; args: Record<string, unknown> }>;
+  setInstructionModifiedAt: (path: string, modifiedAt: number) => void;
+};
+
+test("V160-S9 an open ZIP is checked by its modified time and never read as a document", async ({
+  page,
+}) => {
+  await openBook(page);
+  await page.clock.runFor(10_000);
+
+  await expect(page.locator(".instructionEmptyState--error")).toHaveCount(0);
+  await expect(page.getByText("外部変更を確認できません")).toHaveCount(0);
+  await expect(page.locator(".instructionExternalBanner")).toHaveCount(0);
+  const calls = await page.evaluate(
+    () =>
+      (window as unknown as { __LIFE_LAUNCHER_VISUAL_QA__: QaControl }).__LIFE_LAUNCHER_VISUAL_QA__
+        .invokeCalls,
+  );
+  expect(calls.filter((call) => call.command === "read_instruction")).toEqual([]);
+  expect(
+    calls.filter((call) => call.command === "read_instruction_info" && call.args.path === BOOK_PATH)
+      .length,
+  ).toBeGreaterThan(1);
+});
+
+test("V160-S9 a changed ZIP shows the external notice and reload reopens the book", async ({
+  page,
+}) => {
+  await openBook(page);
+  await page.evaluate(
+    (path) =>
+      (
+        window as unknown as { __LIFE_LAUNCHER_VISUAL_QA__: QaControl }
+      ).__LIFE_LAUNCHER_VISUAL_QA__.setInstructionModifiedAt(path, 99),
+    BOOK_PATH,
+  );
+  await page.clock.runFor(5_000);
+
+  const banner = page.locator(".instructionExternalBanner");
+  await expect(banner).toBeVisible();
+  await expect(banner).toContainText("外部で更新されています");
+  await expect(page.getByText("外部変更を確認できません")).toHaveCount(0);
+
+  const before = await page.evaluate(
+    () =>
+      (window as unknown as { __LIFE_LAUNCHER_VISUAL_QA__: QaControl }).__LIFE_LAUNCHER_VISUAL_QA__
+        .invokeCalls.filter((call) => call.command === "open_instruction_book").length,
+  );
+  await banner.getByRole("button", { name: "再読み込み" }).click();
+  await expect(banner).toHaveCount(0);
+  await waitForBook(page);
+  const after = await page.evaluate(
+    () =>
+      (window as unknown as { __LIFE_LAUNCHER_VISUAL_QA__: QaControl }).__LIFE_LAUNCHER_VISUAL_QA__
+        .invokeCalls.filter((call) => call.command === "open_instruction_book").length,
+  );
+  expect(after).toBeGreaterThan(before);
+});
