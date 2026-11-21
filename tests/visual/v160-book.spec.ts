@@ -275,7 +275,10 @@ test("V160-B3 the tree and the search results mark the ZIP with the images icon"
   const zipRow = page.locator(".instructionTreeRow", { hasText: "英単語ドリル.zip" });
   await expect(zipRow).toBeVisible();
   await expect(zipRow.locator(".instructionFileIcon")).toHaveClass(/instructionFileIcon--images/);
-  await page.screenshot({ path: "dist/visual-qa/book-tree.png" });
+  await expect(page.locator(".instructionTreePanel")).toHaveScreenshot(
+    "book-tree.png",
+    SCREENSHOT_OPTIONS,
+  );
   await zipRow.click();
   await waitForBook(page);
   await expect(page.locator(".bookPageLabel")).toHaveText("1 / 120");
