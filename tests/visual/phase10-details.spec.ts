@@ -390,7 +390,9 @@ test("P10-14 the import and guide copy buttons are centered too", async ({ page 
   await page.getByRole("menuitem", { name: "まとめて取り込む" }).click();
   const importDialog = page.getByRole("dialog", { name: "まとめて取り込む" });
   await check(importDialog.locator(".importPromptActions .copyButton").first());
+  await expect(importDialog.locator("textarea")).toBeFocused();
   await page.keyboard.press("Escape");
+  await expect(importDialog).toBeHidden();
 
   await page.getByRole("button", { name: "設定を開く" }).click();
   await page.getByRole("button", { name: "使い方を開く" }).click();
