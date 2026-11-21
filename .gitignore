@@ -1,5 +1,6 @@
 node_modules/
 dist/
+dist-qa/
 target/
 src-tauri/target/
 release/

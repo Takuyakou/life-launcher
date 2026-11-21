@@ -9,6 +9,7 @@ const skippedDirectories = new Set([
   ".git",
   "node_modules",
   "dist",
+  "dist-qa",
   "target",
   "release",
   "release-candidate",

@@ -87,6 +87,8 @@ for (const [name, template] of [
 
     await page.clock.fastForward(61_000);
     await page.locator(".timerDock").getByRole("button", { name: "終了" }).click();
+    // Recording is asynchronous after the click: wait for the call instead of reading at once.
+    await expect.poll(async () => (await calls(page, "record_session")).length).toBe(1);
     const records = await calls(page, "record_session");
     expect(records).toHaveLength(1);
     // What is written to sessions.jsonl is unchanged: the template when there is one.

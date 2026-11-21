@@ -23,9 +23,9 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   webServer: {
-    command: "npm.cmd run dev -- --port 1437 --strictPort",
+    command: "npm.cmd run serve:qa",
     url: "http://127.0.0.1:1437",
     reuseExistingServer: false,
-    timeout: 30_000,
+    timeout: 180_000,
   },
 });

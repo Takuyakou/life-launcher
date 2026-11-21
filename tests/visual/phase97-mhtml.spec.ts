@@ -1,10 +1,46 @@
 import { expect, test, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { build } from "vite";
+import type { assembleMhtml as AssembleMhtmlFn } from "../../src/mhtml/assembleMhtml";
 import type { MhtmlLimits } from "../../src/mhtml/limits";
 import type { InstructionEntry } from "../../src/types";
 import { createPublicFixture, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+
+let assembleMhtmlScriptPromise: Promise<string> | null = null;
+
+async function getAssembleMhtmlScript(): Promise<string> {
+  if (!assembleMhtmlScriptPromise) {
+    assembleMhtmlScriptPromise = (async () => {
+      const result = await build({
+        configFile: false,
+        logLevel: "silent",
+        build: {
+          lib: {
+            entry: resolve("src/mhtml/assembleMhtml.ts"),
+            formats: ["iife"],
+            name: "__qaAssembleMhtml",
+            fileName: "assembleMhtml",
+          },
+          write: false,
+        },
+      });
+      const outputs = Array.isArray(result) ? result : [result];
+      for (const output of outputs) {
+        if ("output" in output) {
+          for (const item of output.output) {
+            if (item.type === "chunk") {
+              return item.code;
+            }
+          }
+        }
+      }
+      throw new Error("assembleMhtml bundle produced no chunk");
+    })();
+  }
+  return assembleMhtmlScriptPromise;
+}
 
 // P97-03: MHTML (Chrome/Edge "Webpage, Single File") opens in the instruction viewer,
 // read-only, with the same sanitizer and iframe as HTML.
@@ -318,8 +354,13 @@ test("assembly stops before outerHTML when the running size exceeds the limit", 
   page,
 }) => {
   await page.goto("/");
+  await page.addScriptTag({ content: await getAssembleMhtmlScript() });
   const result = await page.evaluate(async () => {
-    const { assembleMhtml } = await import("/src/mhtml/assembleMhtml.ts");
+    const { assembleMhtml } = (
+      window as unknown as {
+        __qaAssembleMhtml: { assembleMhtml: typeof AssembleMhtmlFn };
+      }
+    ).__qaAssembleMhtml;
     const descriptor = Object.getOwnPropertyDescriptor(Element.prototype, "outerHTML");
     let outerHtmlRead = false;
     Object.defineProperty(Element.prototype, "outerHTML", {
@@ -370,8 +411,13 @@ test("assembly stops before outerHTML when the running size exceeds the limit", 
 
 test("CSS url rewriting stops before building the whole string", async ({ page }) => {
   await page.goto("/");
+  await page.addScriptTag({ content: await getAssembleMhtmlScript() });
   const result = await page.evaluate(async () => {
-    const { assembleMhtml } = await import("/src/mhtml/assembleMhtml.ts");
+    const { assembleMhtml } = (
+      window as unknown as {
+        __qaAssembleMhtml: { assembleMhtml: typeof AssembleMhtmlFn };
+      }
+    ).__qaAssembleMhtml;
     const originalReplace = String.prototype.replace;
     let urlReplacements = 0;
     Object.defineProperty(String.prototype, "replace", {

@@ -142,9 +142,11 @@ for (const viewport of [
         width: Math.round(iframeBox.width),
         height: Math.round(iframeBox.height),
       });
+      // The QA server serves only the build, so the fixture files come through the same route.
+      await routeInstructionAssets(direct);
       const directHtml = readFileSync(HTML_PATH, "utf8").replace(
         "<head>",
-        '<head><base href="http://127.0.0.1:1437/tests/fixtures/instruction-html/browser-parity/">',
+        '<head><base href="http://asset.localhost/instructions/browser-parity/">',
       );
       await direct.setContent(directHtml, { waitUntil: "domcontentloaded" });
       await expect(direct.locator("#relative-image")).toHaveJSProperty("complete", true);
