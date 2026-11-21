@@ -1233,7 +1233,7 @@ export function InstructionTree({
         ) : roots.length === 0 ? (
           <div className="instructionTreeMessage">
             <strong>手順書フォルダが未登録です</strong>
-            <span>Markdown・Text・HTML・MHTMLをまとめたフォルダを読み込めます。</span>
+            <span>Markdown・Text・HTML・MHTML・画像のZIPをまとめたフォルダを読み込めます。</span>
           </div>
         ) : (
           <div aria-label="手順書フォルダ" role="tree">
