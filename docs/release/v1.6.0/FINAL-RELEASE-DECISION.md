@@ -2,6 +2,8 @@
 
 **READY FOR USER APPROVAL**（自動で確かめられるゲートはすべて通った。ネイティブ確認・公開は、オーナーの判断で行う）
 
+**実機の確認は 2026-11-22 に済んだ(native-checklist.md)。オーナーの承認で公開した。**
+
 - 日付: 2026-11-21（JST）
 - 候補のソース: ブランチ `v160/01-book`(`main` の `72ac4b0` から)、ビルドしたコミット `e616d66ec08bc7143746e4350a2e19be990d6eab`(X)。**GitHub Actions の CI(run `44907618261`、attempt 1)が確かめたコミットと同じ**。成果物をビルドした時点の作業ツリーはきれい（`git status --porcelain` が空）。ビルドの後も作業ツリーはきれいだった(`src-tauri/Cargo.toml` の改行も書き換わらなかった)。
 - X は、S7 のコミット `37d86f3` に、S8 の 3 コミット(テストの待ち 2 行・版の番号・CHANGELOG とリリースの文)、S9 の 4 コミット(`5137bde`〜`8ab596b`)、S9b の 1 コミット(`e616d66`、テストだけ)を足した物。前の X(`aa19a40`、S8 の最後)の CI・配布物・判定書は使っていない。`git diff --name-only aa19a40 e616d66` は 13 ファイル(`docs/release/v1.6.0/` の 3 つ、`src/styles.css`・`src/components/InstructionViewer.tsx`・`src/components/InstructionTree.tsx`、`CHANGELOG.md`、`docs/releases/v1.6.0.md`、`tests/visual/` の 5 つ)で、`Cargo.lock`・`package-lock.json` と `src-tauri/` は変わっていない。
