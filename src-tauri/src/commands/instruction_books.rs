@@ -570,21 +570,59 @@ fn save_state_in_dir(
     Ok(state)
 }
 
+fn normalize_state_path(path: &str) -> String {
+    path.replace('/', "\\").trim_end_matches('\\').to_string()
+}
+
+fn rewrite_state_key(key: &str, old_path: &str, new_path: Option<&str>) -> Option<Option<String>> {
+    let key_norm = normalize_state_path(key);
+    let old_norm = normalize_state_path(old_path);
+    if old_norm.is_empty() {
+        return None;
+    }
+    let key_parts: Vec<&str> = key_norm.split('\\').collect();
+    let old_parts: Vec<&str> = old_norm.split('\\').collect();
+    if key_parts.len() < old_parts.len()
+        || !key_parts[..old_parts.len()]
+            .iter()
+            .zip(&old_parts)
+            .all(|(left, right)| left.to_lowercase() == right.to_lowercase())
+    {
+        return None;
+    }
+    let rewritten = new_path.map(|next| {
+        if key_parts.len() == old_parts.len() {
+            next.to_string()
+        } else {
+            let next_norm = normalize_state_path(next);
+            format!("{}\\{}", next_norm, key_parts[old_parts.len()..].join("\\"))
+        }
+    });
+    Some(rewritten)
+}
+
 fn rename_state_in_dir(dir: &Path, old_path: &str, new_path: Option<&str>) {
     let (mut file, broken) = read_state_file(dir);
-    let old_key = file
+    let moves: Vec<(String, Option<String>)> = file
         .books
         .keys()
-        .find(|key| key.eq_ignore_ascii_case(old_path))
-        .cloned();
-    let Some(old_key) = old_key else {
+        .filter_map(|key| {
+            rewrite_state_key(key, old_path, new_path).map(|next_key| (key.clone(), next_key))
+        })
+        .collect();
+    if moves.is_empty() {
         return;
-    };
-    let Some(state) = file.books.remove(&old_key) else {
-        return;
-    };
-    if let Some(new_path) = new_path {
-        file.books.insert(new_path.to_string(), state);
+    }
+    let mut removed = Vec::with_capacity(moves.len());
+    for (old_key, next_key) in moves {
+        if let Some(state) = file.books.remove(&old_key) {
+            removed.push((next_key, state));
+        }
+    }
+    for (next_key, state) in removed {
+        if let Some(target_key) = next_key {
+            file.books.insert(target_key, state);
+        }
     }
     let _ = write_state_file(dir, &file, broken);
 }
@@ -992,6 +1030,50 @@ mod tests {
             load_state_in_dir(&dir, "C:\\Books\\b.zip"),
             InstructionBookState::default()
         );
+    }
+
+    #[test]
+    fn folder_rename_migrates_child_book_states_only() {
+        let dir = temp_root("state-folder-rename");
+        let first = "C:\\Books\\教材\\book1.zip";
+        let nested = "C:\\Books\\教材\\sub\\book2.zip";
+        let similar = "C:\\Books\\教材2\\other.zip";
+        for (path, page) in [(first, 12), (nested, 48), (similar, 77)] {
+            save_state_in_dir(
+                &dir,
+                path,
+                InstructionBookState {
+                    direction: "rtl".to_string(),
+                    spread: true,
+                    cover_single: true,
+                    last_page: page,
+                    zoom_percent: 150,
+                    updated_at: None,
+                },
+                "2026-11-21T02:00:00.000Z",
+            )
+            .expect("save state");
+        }
+
+        rename_state_in_dir(&dir, "c:\\books\\教材", Some("C:\\Books\\教材-renamed"));
+
+        assert_eq!(
+            load_state_in_dir(&dir, "C:\\Books\\教材-renamed\\book1.zip").last_page,
+            12
+        );
+        assert_eq!(
+            load_state_in_dir(&dir, "C:\\Books\\教材-renamed\\sub\\book2.zip").last_page,
+            48
+        );
+        assert_eq!(
+            load_state_in_dir(&dir, first),
+            InstructionBookState::default()
+        );
+        assert_eq!(
+            load_state_in_dir(&dir, nested),
+            InstructionBookState::default()
+        );
+        assert_eq!(load_state_in_dir(&dir, similar).last_page, 77);
     }
 
     #[test]

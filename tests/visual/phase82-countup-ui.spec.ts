@@ -234,14 +234,24 @@ for (const [width, columns] of [
     }
     await card.locator(".todayMeasureButton").focus();
     await expect(card.locator(".todayMeasureButton")).toBeFocused();
+    const pausedAt = await page.evaluate(() => Date.now() + 1_000);
+    await page.clock.pauseAt(pausedAt);
     await card.locator(".todayMeasureButton").press("Enter");
-    await page.clock.fastForward(5_000);
     const measureActions = card.locator(".todayTimerActions--measure");
+    await expect(measureActions).toBeVisible();
+    await page.clock.runFor(5_000);
     const pause = card.getByRole("button", { name: "このセッションを一時停止" });
     const stop = card.getByRole("button", { name: "終了", exact: true });
+    await expect(card.locator(".measureElapsedClock")).toHaveText("00:05");
+    const snapshot = await card.evaluate((el) => ({
+      pauseText:
+        el.querySelector('button[aria-label="このセッションを一時停止"]')?.textContent?.trim() ?? "",
+      stopText: el.querySelector(".todayTimerActions--measure button:last-child")?.textContent?.trim() ?? "",
+      clockText: el.querySelector(".measureElapsedClock")?.textContent?.trim() ?? "",
+    }));
+    expect(snapshot).toEqual({ pauseText: "停止", stopText: "終了", clockText: "00:05" });
     await expect(pause).toHaveText("停止");
     await expect(stop).toHaveText("終了");
-    await expect(card.locator(".measureElapsedClock")).toHaveText("00:05");
     await expect(measureActions).toBeVisible();
     await expectControlsFit(card);
     const activeHeight = await card.evaluate((node) => (node as HTMLElement).offsetHeight);
