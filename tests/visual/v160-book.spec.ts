@@ -103,7 +103,7 @@ async function openBookFromTree(page: Page, fixture = bookFixture()) {
   await page.keyboard.press("ArrowRight");
   const folder = page.locator(".instructionTreeRow", { hasText: "教材" });
   await expect(folder).toBeVisible();
-  await folder.dblclick();
+  await folder.click();
   const zipRow = page.locator(".instructionTreeRow", { hasText: "英単語ドリル.zip" });
   await expect(zipRow).toBeVisible();
   await zipRow.click();
@@ -285,7 +285,7 @@ test("V160-B3 the tree and the search results mark the ZIP with the images icon"
   await page.keyboard.press("ArrowRight");
   const folder = page.locator(".instructionTreeRow", { hasText: "教材" });
   await expect(folder).toBeVisible();
-  await folder.dblclick();
+  await folder.click();
   const zipRow = page.locator(".instructionTreeRow", { hasText: "英単語ドリル.zip" });
   await expect(zipRow).toBeVisible();
   await expect(zipRow.locator(".instructionFileIcon")).toHaveClass(/instructionFileIcon--images/);
@@ -411,7 +411,7 @@ test("V160-S7 a keyboard-opened ZIP shows the focus ring", async ({ page }) => {
   await page.keyboard.press("ArrowRight");
   const folder = page.locator(".instructionTreeRow", { hasText: "教材" });
   await expect(folder).toBeVisible();
-  await folder.dblclick();
+  await folder.click();
   const zipRow = page.locator(".instructionTreeRow", { hasText: "英単語ドリル.zip" });
   await expect(zipRow).toBeVisible();
   await zipRow.focus();

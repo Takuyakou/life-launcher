@@ -1355,6 +1355,10 @@ body {
   line-height: 1.5;
 }
 
+.instructionTreeGroup {
+  min-width: 0;
+}
+
 .instructionTreeRow {
   position: relative;
   display: grid;
