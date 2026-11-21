@@ -82,6 +82,7 @@ import {
   softwareReset,
   suspendDashboardShortcuts,
   loadSoftwareResetRecovery,
+  loadInstructionBookState,
   updateSessionEntry,
   updateInstructionReferences,
   undoImport,
@@ -207,6 +208,7 @@ import {
   searchOverlayButtons,
 } from "./overlayPages";
 import {
+  INSTRUCTION_BOOK_STATE_CHANGED_EVENT,
   INSTRUCTION_RELOAD_TREE_EVENT,
   INSTRUCTION_WINDOW_SHOW_EVENT,
   openInstructionWindow,
@@ -214,6 +216,7 @@ import {
   resetInstructionWindowPosition,
   type InstructionWindowOpenOptions,
 } from "./instructionWindow";
+import { isInstructionBookName } from "./instructionBook";
 import {
   DICTIONARY_VISIBILITY_EVENT,
   openDictionaryWindow,
@@ -2264,6 +2267,8 @@ function DashboardApp() {
   const [missingInstructionProjectIds, setMissingInstructionProjectIds] = useState<Set<string>>(
     () => new Set(),
   );
+  // V160-B4: the remembered page of the ZIP used by the current Do Now step.
+  const [doNowBookPage, setDoNowBookPage] = useState<number | null>(null);
   const missingTargetsRequestRef = useRef(0);
   const [nextStepReviewBusy, setNextStepReviewBusy] = useState<string | null>(null);
   const [doNowResponse, setDoNowResponse] = useState<DoNowResponse | null>(null);
@@ -3159,6 +3164,40 @@ function DashboardApp() {
   useEffect(() => {
     setDoNowExcludedProjectId(null);
   }, [config?.today.date]);
+
+  // V160-B4: keep the Do Now chip's page in step with the chosen ZIP and with saves from the
+  // instruction window (the Rust save command emits this event).
+  useEffect(() => {
+    const picked = doNowPickedProjectId;
+    const offer =
+      doNowResponse?.candidates.find((candidate) => candidate.projectId === picked) ??
+      doNowResponse?.candidates[0];
+    const project = offer
+      ? config?.projects.find((entry) => entry.id === offer.projectId)
+      : undefined;
+    const path = project?.nextStep?.instructionPath?.trim() ?? "";
+    const fileName = path.split(/[\\/]/).pop() ?? "";
+    if (!path || !isInstructionBookName(fileName)) {
+      setDoNowBookPage(null);
+      return;
+    }
+    let disposed = false;
+    const refresh = () => {
+      void loadInstructionBookState(path)
+        .then((state) => {
+          if (!disposed) setDoNowBookPage(state.lastPage >= 2 ? state.lastPage : null);
+        })
+        .catch(() => {
+          if (!disposed) setDoNowBookPage(null);
+        });
+    };
+    refresh();
+    const unlisten = listen(INSTRUCTION_BOOK_STATE_CHANGED_EVENT, () => refresh());
+    return () => {
+      disposed = true;
+      void unlisten.then((stop) => stop());
+    };
+  }, [config, doNowResponse, doNowPickedProjectId]);
 
   const refreshSessions = useCallback(async () => {
     try {
@@ -11803,6 +11842,11 @@ function DashboardApp() {
                                       );
                                     });
                                   }}
+                                  aria-label={
+                                    doNowBookPage !== null && !instructionMissing
+                                      ? `${instructionName || "手順書"}、${doNowBookPage}ページから`
+                                      : undefined
+                                  }
                                   title={
                                     instructionMissing
                                       ? "見つかりません。次の一手の編集で選び直してください"
@@ -11812,6 +11856,9 @@ function DashboardApp() {
                                 >
                                   <UiIcon name={instructionMissing ? "alert" : "book"} size={12} />
                                   {instructionName || "手順書"}
+                                  {doNowBookPage !== null && !instructionMissing ? (
+                                    <span className="doNowOpenChipPage">p.{doNowBookPage}</span>
+                                  ) : null}
                                   {instructionMissing && (
                                     <span className="doNowMissingText">見つかりません</span>
                                   )}

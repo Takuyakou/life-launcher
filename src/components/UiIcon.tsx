@@ -102,10 +102,10 @@ export function UiIcon({ name, size = 18, className, ...props }: UiIconProps) {
       </>
     ) : name === "fileImages" ? (
       <>
-        <path {...common} d="M6 3.5h8l4 4V21H6V3.5Z" />
-        <path {...common} d="M14 3.5V8h4" />
-        <rect {...common} height="6" rx="1" width="7" x="8.5" y="11" />
-        <path {...common} d="m9 16 2-2 1.5 1.5L14 14l1.5 2" />
+        <path {...common} d="M8.5 3.5h9.5a1.5 1.5 0 0 1 1.5 1.5v11.5" />
+        <rect {...common} height="13.5" rx="1.5" width="12" x="4.5" y="7" />
+        <path {...common} d="m6.5 18.5 3.2-3.6 2.3 2.3 1.4-1.4 1.6 2.7" />
+        <circle {...common} cx="9" cy="11" r="1.2" />
       </>
     ) : name === "fileText" ? (
       <>

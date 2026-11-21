@@ -10,6 +10,8 @@ export const INSTRUCTION_OPEN_EVENT = "instruction-open-requested";
 export const INSTRUCTION_READY_EVENT = "instruction-ready";
 export const INSTRUCTION_WINDOW_SHOW_EVENT = "instruction-window-show";
 export const INSTRUCTION_RELOAD_TREE_EVENT = "instruction-reload-tree";
+/** V160-B4: sent between windows after a book remembers a new page. */
+export const INSTRUCTION_BOOK_STATE_CHANGED_EVENT = "instruction-book-state-changed";
 export const INSTRUCTION_ALWAYS_ON_TOP_KEY = "life-launcher-instruction-always-on-top";
 export const INSTRUCTION_LAST_OPENED_PATH_KEY = "life-launcher-instruction-last-opened-path";
 

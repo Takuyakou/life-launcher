@@ -17247,4 +17247,13 @@ button.mainActionButton:is(
 }.instructionFileIcon--images,
 .instructionTreeFileIcon--images {
   color: #e985b5;
+}.doNowOpenChipPage {
+  margin-left: 2px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(255, 206, 91, 0.14);
+  color: #ffce5b;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 18px;
 }
