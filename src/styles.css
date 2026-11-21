@@ -11865,11 +11865,19 @@ body:has([aria-modal="true"]) .toastStack {
   display: flex;
   align-items: stretch;
   gap: 2px;
-  overflow-x: auto;
+  overflow: visible;
+}
+
+/* The app window never gets narrower than 860px; this keeps the narrow-viewport test usable. */
+@media (max-width: 859px) {
+  .recordsTabs {
+    overflow-x: auto;
+  }
 }
 
 .recordsTab {
   position: relative;
+  overflow: hidden;
   min-width: 112px;
   min-height: 34px;
   border: 0;

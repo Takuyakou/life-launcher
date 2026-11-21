@@ -209,12 +209,26 @@ test("mouse-free arrows traverse Sidebar, Dictionary, Main, toolbar, Settings an
   await page.goto("/?view=dictionary");
   await waitForBundledFonts(page);
   await expect(page.locator(".dictionaryWindowShell")).toBeVisible();
+  // The window restores focus in a rAF after its data arrives; let that settle before the
+  // manual traversal, otherwise the restore can steal focus from the title actions.
+  await page.clock.runFor(32);
+  await expect
+    .poll(() =>
+      page.evaluate(() => Boolean(document.activeElement?.closest(".dictionaryWindowShell"))),
+    )
+    .toBe(true);
+  await page.clock.runFor(32);
   const titleAction = page.locator(".dictionaryWindowTitleActions button").first();
+  const lock = page.locator(".dictionaryWindowLock");
+  const firstPageTab = page.locator(".dictionaryPageTabs [role=tab]").first();
+  await expect(titleAction).toBeVisible();
+  await expect(lock).toBeVisible();
+  await expect(firstPageTab).toBeVisible();
   await titleAction.focus();
   await page.keyboard.press("ArrowRight");
-  await expect(page.locator(".dictionaryWindowLock")).toBeFocused();
+  await expect(lock).toBeFocused();
   await page.keyboard.press("ArrowDown");
-  await expect(page.locator(".dictionaryPageTabs [role=tab]").first()).toBeFocused();
+  await expect(firstPageTab).toBeFocused();
   await page.locator(".dictionarySearchInput").focus();
   await page.keyboard.type("サンプル");
   await page.keyboard.press("ArrowDown");
@@ -222,6 +236,7 @@ test("mouse-free arrows traverse Sidebar, Dictionary, Main, toolbar, Settings an
   await page.keyboard.press("Escape");
   await page.goto("/");
   await waitForBundledFonts(page);
+  await expect(page.locator(".sidebar")).toBeVisible();
   await page.evaluate(() => (document.activeElement as HTMLElement).blur());
   await page.keyboard.press("ArrowDown");
   await expect(dictionaryButton).toBeFocused();
@@ -241,6 +256,9 @@ test("mouse-free arrows traverse Sidebar, Dictionary, Main, toolbar, Settings an
   await page.keyboard.press("Enter");
   const settings = page.getByRole("dialog", { name: "設定" });
   await expect(settings).toBeVisible();
+  await expect.poll(() =>
+    page.evaluate(() => Boolean(document.activeElement?.closest('[role="dialog"]'))),
+  ).toBe(true);
   await page.keyboard.press("ArrowDown");
   await expect(settings.getByRole("tab", { name: "基本" })).toBeFocused();
   await page.keyboard.press("ArrowRight");
@@ -254,6 +272,9 @@ test("mouse-free arrows traverse Sidebar, Dictionary, Main, toolbar, Settings an
   await dictionaryButton.focus();
   await page.keyboard.press("Shift+F10");
   await expect(page.getByRole("menuitem")).toHaveText(["グループを追加", "ボタンを追加"]);
+  await expect(page.getByRole("menuitem", { name: "グループを追加" })).toBeFocused();
+  // Let the menu's passive focus effect and open frame settle before the second arrow.
+  await page.clock.runFor(32);
   await expect(page.getByRole("menuitem", { name: "グループを追加" })).toBeFocused();
   await page.keyboard.press("ArrowDown");
   await expect(page.getByRole("menuitem", { name: "ボタンを追加" })).toBeFocused();
