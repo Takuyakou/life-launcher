@@ -11,6 +11,7 @@ import { UiIcon } from "./UiIcon";
 import { WindowControls } from "./WindowControls";
 import { InstructionBook } from "./InstructionBook";
 import { isInstructionBookName } from "../instructionBook";
+import { installFocusModalityTracking } from "../focusModality";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   INSTRUCTION_ALWAYS_ON_TOP_KEY,
@@ -117,6 +118,9 @@ async function loadBookInstructionDocument(path: string): Promise<InstructionDoc
 
 export function InstructionViewer() {
   const tauriRuntime = isTauri();
+  useEffect(() => {
+    installFocusModalityTracking();
+  }, []);
   const instructionWindow = useMemo(
     () => (tauriRuntime ? WebviewWindow.getCurrent() : null),
     [tauriRuntime],

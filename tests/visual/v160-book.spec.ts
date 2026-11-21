@@ -398,6 +398,57 @@ test("V160-S6 typing in the search field keeps the focus there", async ({ page }
   await expect(search).toBeFocused();
 });
 
+test("V160-S7 a mouse-opened ZIP has no focus ring", async ({ page }) => {
+  await openBookFromTree(page);
+  const stage = page.locator(".bookStage");
+  await expect(stage).toBeFocused();
+  await expect(stage).not.toHaveAttribute("data-focus-ring");
+});
+
+test("V160-S7 a keyboard-opened ZIP shows the focus ring", async ({ page }) => {
+  await openViewer(page, bookFixture(), `${ROOT}\\guide.md`);
+  await page.locator(".instructionTreeRow").first().focus();
+  await page.keyboard.press("ArrowRight");
+  const folder = page.locator(".instructionTreeRow", { hasText: "教材" });
+  await expect(folder).toBeVisible();
+  await folder.dblclick();
+  const zipRow = page.locator(".instructionTreeRow", { hasText: "英単語ドリル.zip" });
+  await expect(zipRow).toBeVisible();
+  await zipRow.focus();
+  await page.keyboard.press("Enter");
+  await waitForBook(page);
+  const stage = page.locator(".bookStage");
+  await expect(stage).toBeFocused();
+  await expect(stage).toHaveAttribute("data-focus-ring", "true");
+});
+
+test("V160-S7 Tab into the pages shows the ring and clicking removes it", async ({ page }) => {
+  await openBook(page, bookFixture({ state: { lastPage: 34 } }));
+  const stage = page.locator(".bookStage");
+  await expect(stage).toBeFocused();
+  await expect(stage).not.toHaveAttribute("data-focus-ring");
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Tab");
+  await expect(stage).toBeFocused();
+  await expect(stage).toHaveAttribute("data-focus-ring", "true");
+  await stage.click({ position: { x: 100, y: 100 } });
+  await expect(stage).not.toHaveAttribute("data-focus-ring");
+});
+
+test("V160-S7 the ring uses the gold inset shadow and stays while turning", async ({ page }) => {
+  await openBook(page, bookFixture({ state: { lastPage: 34 } }));
+  const stage = page.locator(".bookStage");
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Tab");
+  await expect(stage).toHaveAttribute("data-focus-ring", "true");
+  expect(await stage.evaluate((element) => getComputedStyle(element).boxShadow)).toBe(
+    "rgb(255, 206, 91) 0px 0px 0px 1px inset",
+  );
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.locator(".bookPageLabel")).toHaveText("36–37 / 120");
+  await expect(stage).toHaveAttribute("data-focus-ring", "true");
+});
+
 test("V160-B2 baseline: spread, cover and single", async ({ page }) => {
   await openViewer(page, bookFixture({ state: { lastPage: 34 } }), BOOK_PATH, {
     reduce: true,

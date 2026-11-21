@@ -5,6 +5,7 @@ import type {
   WheelEvent as ReactWheelEvent,
 } from "react";
 import { useReducedMotion } from "motion/react";
+import { lastInputWasKeyboard } from "../focusModality";
 import {
   DEFAULT_INSTRUCTION_BOOK_STATE,
   bookAnnouncement,
@@ -53,6 +54,7 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
   const reducedMotion = useReducedMotion() ?? false;
   const stageRef = useRef<HTMLDivElement>(null);
   const focusedOnOpenRef = useRef(false);
+  const [focusRing, setFocusRing] = useState(false);
   const focusStage = useCallback(() => {
     stageRef.current?.focus({ preventScroll: true });
   }, []);
@@ -488,12 +490,17 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
         className={`bookStage${bookState.direction === "rtl" ? " bookStage--rtl" : ""}${
           visiblePages.length === 1 ? " bookStage--one" : ""
         }`}
+        data-focus-ring={focusRing ? "true" : undefined}
+        onBlur={() => setFocusRing(false)}
+        onFocus={() => setFocusRing(lastInputWasKeyboard())}
         onKeyDown={onKeyDown}
         onMouseDown={(event) => {
           event.preventDefault();
+          setFocusRing(false);
           focusStage();
         }}
         onPointerDown={() => {
+          setFocusRing(false);
           focusStage();
         }}
         onPointerLeave={() => setHoverSide(null)}
