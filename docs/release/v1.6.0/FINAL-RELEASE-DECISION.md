@@ -3,8 +3,8 @@
 **READY FOR USER APPROVAL**（自動で確かめられるゲートはすべて通った。ネイティブ確認・公開は、オーナーの判断で行う）
 
 - 日付: 2026-11-21（JST）
-- 候補のソース: ブランチ `v160/01-book`(`main` の `72ac4b0` から)、ビルドしたコミット `aa19a40e1b9bab9f3e54bdfeeb04370597dced40`(X)。**GitHub Actions の CI(run `44879987037`、attempt 1)が確かめたコミットと同じ**。成果物をビルドした時点の作業ツリーはきれい（`git status --porcelain` が空）。ビルドの後も作業ツリーはきれいだった(今回は `src-tauri/Cargo.toml` の改行も書き換わらなかった)。
-- X は、S7 のコミット `37d86f3` に S8 の 3 コミット(テストの待ち 2 行・版の番号・CHANGELOG とリリースの文)を足した物。`git diff --name-only 37d86f3 aa19a40` は 8 ファイルで、`Cargo.lock`・`package-lock.json` の差分は版の番号の行だけ。
+- 候補のソース: ブランチ `v160/01-book`(`main` の `72ac4b0` から)、ビルドしたコミット `e616d66ec08bc7143746e4350a2e19be990d6eab`(X)。**GitHub Actions の CI(run `44907618261`、attempt 1)が確かめたコミットと同じ**。成果物をビルドした時点の作業ツリーはきれい（`git status --porcelain` が空）。ビルドの後も作業ツリーはきれいだった(`src-tauri/Cargo.toml` の改行も書き換わらなかった)。
+- X は、S7 のコミット `37d86f3` に、S8 の 3 コミット(テストの待ち 2 行・版の番号・CHANGELOG とリリースの文)、S9 の 4 コミット(`5137bde`〜`8ab596b`)、S9b の 1 コミット(`e616d66`、テストだけ)を足した物。前の X(`aa19a40`、S8 の最後)の CI・配布物・判定書は使っていない。`git diff --name-only aa19a40 e616d66` は 13 ファイル(`docs/release/v1.6.0/` の 3 つ、`src/styles.css`・`src/components/InstructionViewer.tsx`・`src/components/InstructionTree.tsx`、`CHANGELOG.md`、`docs/releases/v1.6.0.md`、`tests/visual/` の 5 つ)で、`Cargo.lock`・`package-lock.json` と `src-tauri/` は変わっていない。
 - config schema: 3(v1.5.1 から変更なし)。新しいファイル `instruction-books.json` を足した。教材ごとの覚え(向き・見開き・表紙・最後のページ。500 冊まで)を、`config.json` と同じフォルダに置く。前の版はこのファイルを読まないので、前の版に戻しても困らない。
 - 公開（tag・GitHub Release・アセットのアップロード）は**行っていない**。オーナーの明示承認を待つ。
 - ビルドの環境: Node v24.14.1、npm 11.11.0、Windows 11 Home 10.0.26200（x64）、`@tauri-apps/cli` 2.11.4、`@tauri-apps/api` 2.11.1、`rustc 1.96.1 (31fca3adb 2026-06-26)`、`cargo 1.96.1 (356927216 2026-06-26)`。
@@ -13,7 +13,7 @@
 
 - バージョン情報は、すべて 1.6.0 で一致している(2.)。
 - 成果物 3 つと `SHA256SUMS.txt` を正式スクリプトで作り、ハッシュは独立した再計算と一致した(4.、5.)。
-- CI(GitHub Actions、`windows-latest`)は X で 1 回、すべての手順が通った。`test:visual` 925 件、`cargo test` 205 件(5. #1)。
+- CI(GitHub Actions、`windows-latest`)は X で 1 回、すべての手順が通った。`test:visual` 937 件、`cargo test` 205 件(5. #1)。
 - `npm audit` は開発用の `minimatch` の 9 件 moderate だけで、v1.5.1 と同じ。`--omit=dev` は 0 件。
 - Rust は脆弱性 0 件。情報警告は 14 件で、v1.5.1 と同じ助言・同じ crate と版。`zip` を足した事で新しい警告は出ていない(5. #3)。
 - Windows Defender のスキャンは、成果物のコピーで新しい検出 0 件(5. #8)。
@@ -47,6 +47,7 @@
 | S6 | リードの確かめで見つかった 3 件:`Cargo.lock` の 2 つを公開から 14 日たった版に戻した(`crc32fast` 1.5.4・`nix` 0.31.3)。記録のタブの帯が滑って見える形に戻した。本を開いた後・押した後に ← → でめくれるようにした |
 | S7 | リードの 2 回目の確かめで見つかった 2 件:`ignore` を 7.0.14 に戻した(`package-lock.json` の 3 行)。本のページの輪を、キーで来た時だけ出す |
 | S8 | 公開の前の最後の段:取り込みの窓へフォーカスが入ってから Esc を押すテストの待ち(2 行)、版の番号 1.6.0、CHANGELOG とリリースの文 |
+| S9 | リードの実機の確かめで見つかった件(4 コミット):記録のタブの列を横にスクロールできる箱に戻し右に 4px のすき間を足した(一番狭い窓で「すべての記録」へ切り替える時のスクロールバーの出入り)。ZIP を開いている間の外の変更の確かめを、更新日時だけにした(英語の赤い帯が出ていた)。手順書の窓の空の説明に「画像のZIP」を足した。手順書の一覧のフォルダを、名前を 1 回押すだけで開け閉めでき、メインのサイドバーと同じ滑らかな動き(ばねの高さ・行の順の遅れ)にした。S9b:テストの待ち方だけを直した(`v160-book` と `phase10-motion` の K3。製品のファイルは変えていない) |
 
 ## 4. 成果物とハッシュ
 
@@ -54,37 +55,37 @@
 
 | ファイル | サイズ(バイト) | SHA-256 |
 | --- | --- | --- |
-| `Life-Launcher-v1.6.0-windows-x64-setup.exe` | 9,771,606 | `F5A9F2B6630DAB3960196345A415AA8399FFB9ECA4C5D2F879AEA9653D7556DE` |
-| `Life-Launcher-v1.6.0-windows-x64.exe` | 22,484,992 | `9249C898E34A3E7B947F1FBC2443240F496B573FAF86F4C212C619A26406DAFB` |
-| `Life-Launcher-v1.6.0-windows-x64-portable.zip` | 11,128,607 | `1B91D72DDD2CABC1F195B71A6063FB0CC56FA274BD187242E348F881477C31E4` |
-| `release-notes.md` | 2,392 | `0859E8917B536BF2786D0544B4B1B4D9A00E9D68A524008F703C240FECAECEF5`（`docs/releases/v1.6.0.md` と同じ） |
+| `Life-Launcher-v1.6.0-windows-x64-setup.exe` | 9,771,478 | `8561B7348C7CCA43CDB57E3CFF5C3284DFC5DB72E4D3DC7D44E2206A7F35FA9C` |
+| `Life-Launcher-v1.6.0-windows-x64.exe` | 22,486,016 | `BBD37C5B1A19C7B4CCB8BD6EB8C18F2AE4BBD85570B145D07E41CF683A6EDC1C` |
+| `Life-Launcher-v1.6.0-windows-x64-portable.zip` | 11,130,318 | `4B634EE3B522DFC554D827166F08F589E7517EDD464768A6D4F23C27CF140399` |
+| `release-notes.md` | 2,605 | `322EEE2702D6A213228BABB9BA95A303414C37D1E3541DBAE3BDF4DFCD7C975D`（`docs/releases/v1.6.0.md` と同じ） |
 | `SHA256SUMS.txt` | 327 | 上の 3 つのハッシュを記録 |
 
 v1.5.1 と比べて、大きさは増えた。
 
 | ファイル | v1.5.1 | v1.6.0 | 差(バイト) |
 | --- | ---: | ---: | ---: |
-| インストーラー | 9,645,895 | 9,771,606 | +125,711 |
-| 単体 EXE | 22,164,480 | 22,484,992 | +320,512 |
-| ポータブル ZIP | 10,972,084 | 11,128,607 | +156,523 |
+| インストーラー | 9,645,895 | 9,771,478 | +125,583 |
+| 単体 EXE | 22,164,480 | 22,486,016 | +321,536 |
+| ポータブル ZIP | 10,972,084 | 11,130,318 | +158,234 |
 
 主な理由は、`zip`(deflate)とその下の依存、本の画面を足した事と見ている(内訳は測っていない)。
 
-`SHA256SUMS.txt` の 3 行を、`Get-FileHash` で独立に計算した値と照合し、一致した。ZIP を一時フォルダに展開した中身は `Life-Launcher-v1.6.0-windows-x64.exe`(22,484,992 バイト)と `README.txt`(283 バイト)の 2 つで、ZIP 内 EXE の SHA-256 は単体 EXE と一致した。
+`SHA256SUMS.txt` の 3 行を、`Get-FileHash` で独立に計算した値と照合し、一致した。ZIP を一時フォルダに展開した中身は `Life-Launcher-v1.6.0-windows-x64.exe`(22,486,016 バイト)と `README.txt`(283 バイト)の 2 つで、ZIP 内 EXE の SHA-256 は単体 EXE と一致した。
 
 ## 5. リリースゲート
 
 すべて 2026-11-21 に、X で測った値(6. の作業者のゲートは、その段のコミットで測った値)。
 
-1. **CI**: GitHub Actions run `44879987037`(attempt 1、`windows-latest`)。
-   - 確かめたコミット:`aa19a40e1b9bab9f3e54bdfeeb04370597dced40`(X)
-   - 時刻:2026-11-21T07:22:55Z 〜 07:43:55Z
+1. **CI**: GitHub Actions run `44907618261`(attempt 1、`windows-latest`)。
+   - 確かめたコミット:`e616d66ec08bc7143746e4350a2e19be990d6eab`(X)
+   - 時刻:2026-11-21T13:11:30Z 〜 13:36:36Z
    - 結果:success
-   - 通った手順:`npm ci`・`public:check`・`lint`・`build`・`test:visual`(**925 passed**、16.0 分)・`cargo fmt --check`・`cargo check`・`cargo clippy --all-targets -- -D warnings`・`cargo test`(204 + 1 = 205 passed)・`npm audit`(`continue-on-error`)・`npm audit --omit=dev`(0 件)
-   - このブランチの CI はこの 1 回だけ。
-2. **手元のゲート**(push の前に、X で):`npm ci`・`public:check`(3,739 ファイル、0 blockers)・`lint`(警告 0)・`build`・`cargo fmt --check`・`cargo check`・`clippy -D warnings`・`cargo test`(205 passed)が通った。`test:visual` は、作業者が S8 で作業ツリーが空の X で FULL 925/925 を通している。
+   - 通った手順:`npm ci`・`public:check`・`lint`・`build`・`test:visual`(**937 passed**、21.9 分)・`cargo fmt --check`・`cargo check`・`cargo clippy --all-targets -- -D warnings`・`cargo test`(204 + 1 = 205 passed)・`npm audit`(`continue-on-error`)・`npm audit --omit=dev`(0 件)
+   - 前の X(`aa19a40`)の run `44879987037`(success、925 passed)は数えない。このブランチの、X の CI はこの 1 回だけ。
+2. **手元のゲート**(push の前に、X で):`npm ci`・`public:check`(3,740 ファイル、0 blockers)・`lint`(警告 0)・`build`・`cargo fmt --check`・`cargo check`・`clippy -D warnings`・`cargo test`(205 passed)が通った。`test:visual` は、作業者が S9b で作業ツリーが空の X で FULL 937/937 を通している。
 3. **cargo audit**(2026-11-21):
-   - 脆弱性 0 件。情報警告 14 件(すべて設定で許した物)。v1.5.1 のタグの `Cargo.lock` で回した結果と、助言の ID・crate・版がすべて同じ。`zip` とその下の依存による新しい警告はない。
+   - 脆弱性 0 件。情報警告 14 件(すべて設定で許した物)。前の X との間で `Cargo.lock` は変わっていないので、v1.5.1 のタグの `Cargo.lock` で回した比較(助言の ID・crate・版がすべて同じ)のままである。`zip` とその下の依存による新しい警告はない。
    - `RUSTSEC-2026-0543`(`chrono 0.4.45` / unmaintained)は lock に残る。`cargo tree --manifest-path src-tauri/Cargo.toml --target all -i chrono` は `warning: nothing to print.` で、どの対象の依存の木にも入らず、配布物に含まれない(v1.5.1 と同じ)。
    - `RUSTSEC-2026-0486`(`rustix`)と `RUSTSEC-2024-0429`(`glib`)は、v1.5.1 と同じく Windows の依存の木に入らない。
 4. **npm audit**(2026-11-21):9 件 moderate。すべて開発用の `minimatch`(GHSA-g3hv-75wg-m249)と、それを使う `eslint`・`typescript-eslint` の系統。v1.5.1 と同じ件数・同じ助言。`npm audit --omit=dev` は 0 件。
@@ -95,18 +96,20 @@ v1.5.1 と比べて、大きさは増えた。
    - S5(`bd9c02b`):`ci.yml` の手順すべて。FULL 916 passed。`cargo test` 205 passed。足した 18 本 × 20 は 2・4 並列とも 360 passed。
    - S6(`3737f49`):FULL 921 passed。変えたテスト 20 本 × 20 は 2・4 並列とも 400 passed。
    - S7(`37d86f3`):FULL 1 回目は 924 passed・1 failed(`phase10-details` P10-14、取り込みの窓が閉じる前に次を押した)、2 回目は 925 passed。`v160-book` 23 本 × 20 は 2・4 並列とも 460 passed。この揺れは S8 でテストの待ち方を直した。
-   - S8(X):FULL 925 passed(1 回目で全部。失敗・揺れ 0)。`phase10-details` 18 本 × 20 は 2・4 並列とも 360 passed。
-7. **公開安全**: `public:check` は 3,739 ファイル、0 blockers。
-8. **Windows Defender**: 成果物のコピー 3 ファイルを CustomScan。スキャン前後で検出数は 1 のまま(新しい検出 0)。**署名 `1.463.397.0`**(2026-11-21 に測った値)。
+   - S8(`aa19a40`):FULL 925 passed(1 回目で全部。失敗・揺れ 0)。`phase10-details` 18 本 × 20 は 2・4 並列とも 360 passed。
+   - S9(`8ab596b`):FULL 937 passed(作業ツリーが空)。`v160-tree`・`v160-book` 33 本 × 20 は 2・4 並列とも 660 passed。途中で、FULL の 1 回目に `css-class-contract`(CSS の規則の不足)・`v160-tree` 2 本・`phase10-motion` K3 が落ちた。前の 3 つは直した。K3 は S9 で変えた物と関わらず、再現しなかったので直していない(`V160.md` の S9)。
+   - S9b(X):テストだけの直し。FULL 937 passed(作業ツリーが空)。`v160-book`・`phase10-motion` 40 本 × 20 は 2・4・14 並列とも 800 passed。
+7. **公開安全**: `public:check` は 3,740 ファイル、0 blockers。
+8. **Windows Defender**: 成果物のコピー 3 ファイルを CustomScan。スキャン前後で検出数は 1 のまま(新しい検出 0)。**署名 `1.463.398.0`**(2026-11-21 に測った値)。
 9. **秘密情報の走査**: 単体 EXE、インストーラー、ZIP、ZIP 内 EXE、`dist/`(138 ファイル、`.map` 0 件)を、ASCII と UTF-16LE(偶数・奇数の位置)で走査した。走査した語は、v1.5.1 と同じ 16 語(ユーザーパス、リポジトリの場所、ローカルユーザー名、トークン接頭辞、秘密鍵、source map)。インストーラーと ZIP は圧縮されているため、生のバイト列の走査である。当たった物は v1.5.1 と同じ 3 か所で、どれも公開してよい物と判断した:
    - 単体 EXE と ZIP 内 EXE の ASCII・UTF-16LE の `Takuyakou`:
      - 1 つは、設定の「メンテナンス」の「リリースページを開く」が開く `https://github.com/Takuyakou/life-launcher/releases`(公開の URL。v1.5.0 からある)。
      - もう 1 つは、EXE の版の情報の CompanyName `takuyakou`(公開のアカウント名。走査は大文字小文字を区別しない)。
-   - `dist/assets/index-qtzBwZV3.js` の ASCII の `Takuyakou`:上と同じリリースページの URL。
+   - `dist/assets/index-CV9vfZBU.js` の ASCII の `Takuyakou`:上と同じリリースページの URL。
    - インストーラーと ZIP は 0 件。ユーザーパス・ローカルユーザー名・トークン・秘密鍵・source map は 0 件。
 10. **権限と画面の許可**:
-    - `git diff v1.5.1 aa19a40e1b9bab9f3e54bdfeeb04370597dced40 -- src-tauri/capabilities src-tauri/gen/schemas` は差分なし。
-    - `git diff v1.5.1 aa19a40e1b9bab9f3e54bdfeeb04370597dced40 -- src-tauri/tauri.conf.json` は、`version`(1.5.1 → 1.6.0)と、CSP の `img-src` の末尾に ` blob:` を足した 1 か所だけ。
+    - `git diff v1.5.1 e616d66ec08bc7143746e4350a2e19be990d6eab -- src-tauri/capabilities src-tauri/gen/schemas` は差分なし。
+    - `git diff v1.5.1 e616d66ec08bc7143746e4350a2e19be990d6eab -- src-tauri/tauri.conf.json` は、`version`(1.5.1 → 1.6.0)と、CSP の `img-src` の末尾に ` blob:` を足した 1 か所だけ。
     - 新しい Rust の命令は、ZIP の本を開く・ページを読む・覚えを読み書きする物(S1)。本を開く・ページを読む命令は登録した手順書のフォルダの中だけを読み、ページを読むたびにフォルダの中かを確かめ直す。覚えは `config.json` と同じフォルダの `instruction-books.json` だけを読み書きする。
 11. **バージョン情報**: 単体 EXE・インストーラー・ZIP 内 EXE の FileVersion / ProductVersion は 1.6.0。ProductName は Life Launcher。
 12. **環境変数なしの起動**: 成果物の単体 EXE を、`APPDATA`(および `LOCALAPPDATA`)を一時フォルダへ向け、`LIFE_LAUNCHER_TEST_PROFILE` を渡さずに起動した。窓のタイトルは「Life Launcher」で、「テスト」は出なかった。確認の後にその起動だけを閉じた。
@@ -115,12 +118,13 @@ v1.5.1 と比べて、大きさは増えた。
 
 ## 6. ネイティブ確認
 
-`native-checklist.md` に書いた(8 件)。オーナー確認待ち。
+`native-checklist.md` に書いた(10 件)。オーナー確認待ち。
 
 ## 7. レビュー
 
 - 各段の変更は、リード(Claude)がコードと基準画像を見て確かめた(`LEAD-OK-v1.6.0.md`)。
 - S8 は、`37d86f3` との差分が 8 ファイルで、`Cargo.lock`・`package-lock.json` が版の番号の行だけである事を、Claude Code が確かめた。
+- S9・S9b は、`aa19a40` との差分が 13 ファイル(上)だけである事を、リードと Claude Code が確かめた(`LEAD-OK-v1.6.0.md`)。S9b は `8ab596b` との差分が `tests/visual/` の 2 ファイルだけ。
 - 公開の前の確認と公開は、Claude Code が行う。
 
 ## 8. 既知の制限
