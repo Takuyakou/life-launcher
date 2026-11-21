@@ -430,6 +430,11 @@ pub fn update_instruction_references(
         write_config(&path, &config)?;
         let _ = app.emit("config-changed", ());
     }
+    // V160-B1: a renamed, moved, or removed ZIP keeps (or drops) its remembered page.
+    crate::commands::instruction_books::rename_instruction_book_state(
+        &old_path,
+        new_path.as_deref(),
+    );
     Ok(InstructionReferenceUpdateResponse {
         project_names,
         changed,

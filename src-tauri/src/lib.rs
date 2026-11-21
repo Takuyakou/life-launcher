@@ -17,6 +17,10 @@ use commands::drop::{choose_launcher_target, resolve_drop_item};
 use commands::explorer::reveal_launcher_item;
 use commands::icons::{delete_button_icon_cache, ensure_button_icon_cache};
 use commands::import::{commit_import, preview_import, read_import_json, undo_import};
+use commands::instruction_books::{
+    load_instruction_book_state, open_instruction_book, read_instruction_book_page,
+    save_instruction_book_state,
+};
 use commands::instructions::{
     choose_instruction_root, create_instruction_file, create_instruction_folder,
     inspect_instruction_folder, list_instruction_directory, list_instruction_roots,
@@ -329,6 +333,10 @@ pub fn run() {
             read_instruction,
             read_instruction_info,
             read_instruction_bytes,
+            open_instruction_book,
+            read_instruction_book_page,
+            load_instruction_book_state,
+            save_instruction_book_state,
             write_instruction,
             create_instruction_file,
             create_instruction_folder,
