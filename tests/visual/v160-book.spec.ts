@@ -484,25 +484,46 @@ type QaControl = {
   setInstructionModifiedAt: (path: string, modifiedAt: number) => void;
 };
 
-test("V160-S9 an open ZIP is checked by its modified time and never read as a document", async ({
-  page,
-}) => {
-  await openBook(page);
-  await page.clock.runFor(10_000);
-
-  await expect(page.locator(".instructionEmptyState--error")).toHaveCount(0);
-  await expect(page.getByText("外部変更を確認できません")).toHaveCount(0);
-  await expect(page.locator(".instructionExternalBanner")).toHaveCount(0);
-  const calls = await page.evaluate(
+const invokeCalls = (page: Page) =>
+  page.evaluate(
     () =>
       (window as unknown as { __LIFE_LAUNCHER_VISUAL_QA__: QaControl }).__LIFE_LAUNCHER_VISUAL_QA__
         .invokeCalls,
   );
+
+// Runs the 2.5 s check timer `ticks` times; after each tick it waits until the ZIP's
+// read_instruction_info answer was requested one more time (the failure message lists the calls).
+async function expectInfoChecks(page: Page, ticks: number) {
+  for (let tick = 1; tick <= ticks; tick += 1) {
+    await page.clock.runFor(2_500);
+    await expect
+      .poll(
+        async () => {
+          const calls = await invokeCalls(page);
+          const count = calls.filter(
+            (call) => call.command === "read_instruction_info" && call.args.path === BOOK_PATH,
+          ).length;
+          return count >= tick ? count : `${count} of ${tick}: ${calls.map((call) => call.command).join(",")}`;
+        },
+        { message: `read_instruction_info after tick ${tick}` },
+      )
+      .toEqual(expect.any(Number));
+  }
+}
+
+test("V160-S9 an open ZIP is checked by its modified time and never read as a document", async ({
+  page,
+}) => {
+  await openBook(page);
+  // The check runs every 2.5 s and skips a tick while the previous answer is still pending, so
+  // advance one tick at a time and wait for each answer to arrive before the next tick.
+  await expectInfoChecks(page, 4);
+
+  await expect(page.locator(".instructionEmptyState--error")).toHaveCount(0);
+  await expect(page.getByText("外部変更を確認できません")).toHaveCount(0);
+  await expect(page.locator(".instructionExternalBanner")).toHaveCount(0);
+  const calls = await invokeCalls(page);
   expect(calls.filter((call) => call.command === "read_instruction")).toEqual([]);
-  expect(
-    calls.filter((call) => call.command === "read_instruction_info" && call.args.path === BOOK_PATH)
-      .length,
-  ).toBeGreaterThan(1);
 });
 
 test("V160-S9 a changed ZIP shows the external notice and reload reopens the book", async ({
@@ -516,7 +537,7 @@ test("V160-S9 a changed ZIP shows the external notice and reload reopens the boo
       ).__LIFE_LAUNCHER_VISUAL_QA__.setInstructionModifiedAt(path, 99),
     BOOK_PATH,
   );
-  await page.clock.runFor(5_000);
+  await expectInfoChecks(page, 2);
 
   const banner = page.locator(".instructionExternalBanner");
   await expect(banner).toBeVisible();

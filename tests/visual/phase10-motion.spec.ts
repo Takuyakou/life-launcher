@@ -265,16 +265,30 @@ test("K3 the Do Now copy enters from the side when the selection changes", async
     await Promise.all(animations.map((animation) => animation.finished));
   });
   await expect(copy).toHaveCSS("opacity", "1");
+  // The spring that slides the copy in (x) can start just after the fade ends. One evaluate waits
+  // for every animation on the copy, then two frames, and reads the transform before and after:
+  // both must be the identity and equal (rule 4: one measurement, not separate reads).
   await expect
-    .poll(async () => copy.evaluate((node) => getComputedStyle(node).transform))
-    .toMatch(/none|matrix\(1, 0, 0, 1, 0, 0\)/);
+    .poll(
+      () =>
+        copy.evaluate(async (node) => {
+          await Promise.allSettled(node.getAnimations().map((animation) => animation.finished));
+          const identity = (value: string) =>
+            value === "none" || value.includes("matrix(1, 0, 0, 1, 0, 0)");
+          const before = getComputedStyle(node).transform;
+          await new Promise((resolve) => requestAnimationFrame(resolve));
+          await new Promise((resolve) => requestAnimationFrame(resolve));
+          const after = getComputedStyle(node).transform;
+          return identity(before) && identity(after) && before === after;
+        }),
+      { message: "the copy's transform settles to the identity" },
+    )
+    .toBe(true);
   expect(
     samples.some((value) => value > 0 && value < 1),
     `expected an intermediate opacity in [${samples.join(", ")}]`,
   ).toBe(true);
   expect(await copy.evaluate((node) => Number(getComputedStyle(node).opacity))).toBe(1);
-  const transform = await copy.evaluate((node) => getComputedStyle(node).transform);
-  expect(transform === "none" || transform.includes("matrix(1, 0, 0, 1, 0, 0)")).toBe(true);
 });
 
 test("K3 reduced motion changes the copy without motion", async ({ page }) => {
