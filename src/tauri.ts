@@ -10,6 +10,8 @@ import {
   AppConfigSchema,
   DropButtonDraft,
   DropResolveInput,
+  InstructionBookOpenResult,
+  InstructionBookState,
   InstructionDocument,
   InstructionEntry,
   InstructionFileInfo,
@@ -342,6 +344,39 @@ export async function readInstructionBytes(path: string): Promise<ArrayBuffer> {
     result.byteOffset,
     result.byteOffset + result.byteLength,
   ) as ArrayBuffer;
+}
+
+function asArrayBuffer(result: ArrayBuffer | Uint8Array): ArrayBuffer {
+  if (result instanceof ArrayBuffer) return result;
+  return result.buffer.slice(
+    result.byteOffset,
+    result.byteOffset + result.byteLength,
+  ) as ArrayBuffer;
+}
+
+/** V160-B1: open an instruction ZIP and return its page count. */
+export async function openInstructionBook(path: string): Promise<InstructionBookOpenResult> {
+  return invoke<InstructionBookOpenResult>("open_instruction_book", { path });
+}
+
+/** V160-B1: one page as `[type byte][image bytes]`; the type is decided in Rust from the head. */
+export async function readInstructionBookPage(path: string, index: number): Promise<ArrayBuffer> {
+  const result = await invoke<ArrayBuffer | Uint8Array>("read_instruction_book_page", {
+    path,
+    index,
+  });
+  return asArrayBuffer(result);
+}
+
+export async function loadInstructionBookState(path: string): Promise<InstructionBookState> {
+  return invoke<InstructionBookState>("load_instruction_book_state", { path });
+}
+
+export async function saveInstructionBookState(
+  path: string,
+  state: InstructionBookState,
+): Promise<InstructionBookState> {
+  return invoke<InstructionBookState>("save_instruction_book_state", { path, state });
 }
 
 export async function writeInstruction(

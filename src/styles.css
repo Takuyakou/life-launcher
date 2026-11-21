@@ -16945,3 +16945,306 @@ button.mainActionButton:is(
     grid-template-columns: 1fr;
   }
 }
+
+/* V160-B2: the image-book pane. Values follow inbox/v1.6.0/book-mock/book-mock.spec.ts.txt. */
+.bookPane {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+}
+.bookHeader {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.bookToolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 20px;
+  border-bottom: 1px solid #353126;
+}
+.bookPageLabel {
+  min-width: 112px;
+  color: #f4f0e8;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.bookPageLabel span {
+  color: #a39c8e;
+  font-weight: 400;
+}
+.bookSeg {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid #353126;
+  border-radius: 10px;
+  background: #15140f;
+}
+.bookSeg button {
+  min-height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #a39c8e;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.bookSeg button[aria-pressed="true"] {
+  background: #2b2922;
+  color: #f4f0e8;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px #4a4639;
+}
+.bookSeg button:focus-visible {
+  outline: 1px solid #ffce5b;
+  outline-offset: 1px;
+}
+.bookCheck {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid #353126;
+  border-radius: 10px;
+  color: #b8b0a0;
+  font-size: 13px;
+  cursor: pointer;
+}
+.bookCheck input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+}
+.bookCheck i {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: #ffce5b;
+  box-shadow: inset 0 0 0 2px #1b1a17;
+}
+.bookCheck input:not(:checked) + i {
+  background: #1b1a17;
+  box-shadow: inset 0 0 0 1px #4a4639;
+}
+.bookCheck input:focus-visible + i {
+  outline: 1px solid #ffce5b;
+  outline-offset: 2px;
+}
+.bookSpacer {
+  flex: 1;
+}
+.bookNotice {
+  margin: 0;
+  padding: 6px 20px;
+  color: #a39c8e;
+  border-bottom: 1px solid #353126;
+  font-size: 12px;
+}
+.bookStage {
+  position: relative;
+  min-height: 0;
+  padding: 0;
+  background: #0f0e0c;
+  overflow: hidden;
+  outline: none;
+}
+.bookStage:focus-visible {
+  box-shadow: inset 0 0 0 1px #ffce5b;
+}
+.bookPageLayer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 0;
+  padding: 20px 24px 26px;
+}
+.bookPageLayer--rtl {
+  flex-direction: row-reverse;
+}
+.bookPageLayer--current {
+  animation: book-page-in 120ms ease-out both;
+}
+.bookPageLayer--outgoing {
+  animation: book-page-out 120ms ease-in both;
+  pointer-events: none;
+}
+.bookPageImage,
+.bookPagePending,
+.bookPageError {
+  display: block;
+  max-height: 100%;
+  max-width: calc(50% - 1px);
+  width: auto;
+  height: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+.bookPagePending {
+  height: 100%;
+  width: 36%;
+  max-width: calc(50% - 1px);
+  background: #1b1a17;
+}
+.bookPageError {
+  padding: 16px;
+  color: #ffb4ad;
+  background: #1b1a17;
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+.bookPageLayer--one .bookPageImage,
+.bookPageLayer--one .bookPagePending,
+.bookPageLayer--one .bookPageError {
+  max-width: 100%;
+}
+.bookStage--one .bookPageImage,
+.bookStage--one .bookPagePending,
+.bookStage--one .bookPageError {
+  max-width: 100%;
+}
+.bookPageLayer--one .bookPagePending {
+  width: 60%;
+}
+.bookZone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 30%;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: rgba(244, 240, 232, 0);
+  font: inherit;
+  opacity: 0;
+  transition: opacity 120ms ease;
+  cursor: pointer;
+  z-index: 3;
+}
+.bookZone--left {
+  left: 0;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.28), transparent);
+  background-size: 53.3333% 100%;
+  background-repeat: no-repeat;
+  color: rgba(244, 240, 232, 0.75);
+}
+.bookZone--right {
+  right: 0;
+}
+.bookZone[data-available="false"] {
+  cursor: default;
+}
+.bookZone[data-visible="true"] {
+  opacity: 1;
+}
+.bookZone span {
+  position: absolute;
+  top: 50%;
+  left: 26.6667%;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(27, 26, 23, 0.85);
+  border: 1px solid #4a4639;
+  font-size: 20px;
+  transform: translate(-50%, -50%);
+}
+.bookZone--right span {
+  left: auto;
+  right: 26.6667%;
+  transform: translate(50%, -50%);
+}
+.bookZone em {
+  position: absolute;
+  top: calc(50% + 32px);
+  left: 26.6667%;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(27, 26, 23, 0.9);
+  color: #f4f0e8;
+  font-size: 12px;
+  font-style: normal;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+.bookZone--right em {
+  left: auto;
+  right: 26.6667%;
+  transform: translateX(50%);
+}
+.bookProgress {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 10px;
+  height: 3px;
+  border-radius: 2px;
+  background: #2b2922;
+  z-index: 4;
+}
+.bookProgress b {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: 2px;
+  background: #ffce5b;
+}
+.bookProgress--ltr b {
+  left: 0;
+  right: auto;
+}
+.bookStatus {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 24px;
+  color: #a39c8e;
+  font-size: 13px;
+  text-align: center;
+}
+.bookStatus--error {
+  color: #ffb4ad;
+}
+@keyframes book-page-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes book-page-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bookPageLayer {
+    animation: none !important;
+  }
+  .bookZone {
+    transition: none;
+  }
+}.instructionFileIcon--images,
+.instructionTreeFileIcon--images {
+  color: #e985b5;
+}

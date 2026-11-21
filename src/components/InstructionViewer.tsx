@@ -9,6 +9,8 @@ import type {
 } from "react";
 import { UiIcon } from "./UiIcon";
 import { WindowControls } from "./WindowControls";
+import { InstructionBook } from "./InstructionBook";
+import { isInstructionBookName } from "../instructionBook";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   INSTRUCTION_ALWAYS_ON_TOP_KEY,
@@ -99,6 +101,20 @@ async function loadMhtmlInstructionDocument(path: string): Promise<InstructionDo
   };
 }
 
+async function loadBookInstructionDocument(path: string): Promise<InstructionDocument> {
+  const info = await readInstructionInfo(path);
+  return {
+    name: info.name,
+    path: info.path,
+    content: "",
+    assetBaseUrl: instructionAssetBaseUrl(info.path),
+    size: info.size,
+    modifiedAt: info.modifiedAt,
+    extension: "zip",
+    readOnly: true,
+  };
+}
+
 export function InstructionViewer() {
   const tauriRuntime = isTauri();
   const instructionWindow = useMemo(
@@ -139,6 +155,8 @@ export function InstructionViewer() {
     error: string | null;
     code: MhtmlErrorCode | null;
   }>({ status: "idle", html: null, error: null, code: null });
+  // V160-B2: the reload button remounts the book so it opens the ZIP again.
+  const [bookReloadToken, setBookReloadToken] = useState(0);
   // P97-02 F: 窓の大きさが変わった直後は、マウスが動くまで乗せた色を出さない。
   useHoverSuppressionAfterResize();
   const dirty = Boolean(editing && instruction && draft !== instruction.content);
@@ -166,6 +184,13 @@ export function InstructionViewer() {
     };
   }, [tauriRuntime]);
 
+  const focusMainDocument = () => {
+    const target =
+      contentRef.current ??
+      document.querySelector<HTMLElement>(".instructionContentBody .bookStage");
+    target?.focus();
+  };
+
   useEffect(() => {
     if (!instruction) document.title = "Life Launcher 手順書ビューアー";
   }, [instruction]);
@@ -174,15 +199,20 @@ export function InstructionViewer() {
     setLoading(true);
     setStatus(null);
     try {
-      const nextDocument = isMhtmlInstructionName(path)
-        ? await loadMhtmlInstructionDocument(path)
-        : await readInstruction(path);
+      const nextDocument = isInstructionBookName(path)
+        ? await loadBookInstructionDocument(path)
+        : isMhtmlInstructionName(path)
+          ? await loadMhtmlInstructionDocument(path)
+          : await readInstruction(path);
       setInstruction(nextDocument);
       setSelectedPath(nextDocument.path);
       writeLastInstructionPath(nextDocument.path);
       setDraft(nextDocument.content);
       setEditing(openForEdit && !nextDocument.readOnly);
       setExternalDocument(null);
+      if (isInstructionBookName(nextDocument.name)) {
+        setBookReloadToken((token) => token + 1);
+      }
       if (openForEdit && nextDocument.readOnly) {
         setStatus({ tone: "error", message: "この手順書は読み取り専用です" });
       }
@@ -416,6 +446,7 @@ export function InstructionViewer() {
     instruction &&
       (instruction.name.toLocaleLowerCase().endsWith(".html") || isMhtmlInstruction),
   );
+  const isBookInstruction = Boolean(instruction && isInstructionBookName(instruction.name));
 
   useEffect(() => {
     if (!instruction || !isMhtmlInstructionName(instruction.name) || !instruction.mhtmlBytes) {
@@ -701,13 +732,13 @@ export function InstructionViewer() {
       focusBodyAfterLoadRef.current = true;
       return;
     }
-    contentRef.current?.focus();
+    focusMainDocument();
   };
 
   useEffect(() => {
     if (!focusBodyAfterLoadRef.current || loading) return;
     focusBodyAfterLoadRef.current = false;
-    contentRef.current?.focus();
+    focusMainDocument();
   }, [instruction, loading]);
 
   /**
@@ -975,6 +1006,12 @@ export function InstructionViewer() {
                 value={draft}
               />
               </div>
+            ) : instruction && isBookInstruction ? (
+              <InstructionBook
+                key={`${instruction.path}#${bookReloadToken}`}
+                name={instruction.name}
+                path={instruction.path}
+              />
             ) : instruction ? (
               <div
                 aria-label="手順書本文"

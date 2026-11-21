@@ -1,5 +1,7 @@
+import { crc32, deflateSync } from "node:zlib";
 import type {
   AppConfig,
+  InstructionBookState,
   InstructionEntry,
   RecentSessionEntry,
   SessionEntriesResponse,
@@ -9,6 +11,13 @@ import type {
 
 export const FIXTURE_DATE = "2026-08-13";
 export const FIXTURE_NOW = "2026-08-13T09:30:00+09:00";
+
+export type InstructionBookFixture = {
+  /** PNG pages, base64-encoded (the mock builds the ZIP's page list from this). */
+  pages: string[];
+  truncated?: boolean;
+  skippedCount?: number;
+};
 
 export type VisualQaFixture = {
   name: "public" | "phase9-full" | "phase9-picker" | "phase9-running";
@@ -35,6 +44,10 @@ export type VisualQaFixture = {
   instructionExtraEntries?: InstructionEntry[];
   /** Paths whose byte read reports the 20 MiB limit, for the UI message test. */
   instructionTooLargePaths?: string[];
+  /** V160-B2: page images for instruction ZIPs (path → pages). */
+  instructionBookPages?: Record<string, InstructionBookFixture>;
+  /** V160-B2: the remembered state the mock returns for a book before anything is saved. */
+  instructionBookState?: Record<string, InstructionBookState>;
 };
 
 const INSTRUCTION_ROOT = "C:\\PublicDemo\\Instructions";
@@ -371,4 +384,74 @@ export function createRunningFixture(): VisualQaFixture {
   const fixture = createFullTodayFixture();
   fixture.name = "phase9-running";
   return fixture;
+}
+
+/** V160-B2: a small solid-color PNG, base64-encoded, so book tests render real images. */
+function pngChunk(type: string, data: Uint8Array): Uint8Array {
+  const typeBytes = new TextEncoder().encode(type);
+  const body = new Uint8Array(typeBytes.length + data.length);
+  body.set(typeBytes, 0);
+  body.set(data, typeBytes.length);
+  const chunk = new Uint8Array(12 + data.length);
+  const view = new DataView(chunk.buffer);
+  view.setUint32(0, data.length);
+  chunk.set(body, 4);
+  view.setUint32(8 + data.length, crc32(body) >>> 0);
+  return chunk;
+}
+
+export function bookPagePng(
+  width: number,
+  height: number,
+  rgb: [number, number, number],
+): string {
+  const signature = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  const header = new Uint8Array(13);
+  const headerView = new DataView(header.buffer);
+  headerView.setUint32(0, width);
+  headerView.setUint32(4, height);
+  header[8] = 8;
+  header[9] = 2;
+  const raw = new Uint8Array((width * 3 + 1) * height);
+  for (let y = 0; y < height; y += 1) {
+    const row = y * (width * 3 + 1);
+    for (let x = 0; x < width; x += 1) {
+      const offset = row + 1 + x * 3;
+      raw[offset] = rgb[0];
+      raw[offset + 1] = rgb[1];
+      raw[offset + 2] = rgb[2];
+    }
+  }
+  const parts = [
+    signature,
+    pngChunk("IHDR", header),
+    pngChunk("IDAT", new Uint8Array(deflateSync(raw))),
+    pngChunk("IEND", new Uint8Array(0)),
+  ];
+  const total = parts.reduce((sum, part) => sum + part.length, 0);
+  const png = new Uint8Array(total);
+  let offset = 0;
+  for (const part of parts) {
+    png.set(part, offset);
+    offset += part.length;
+  }
+  return Buffer.from(png).toString("base64");
+}
+
+const BOOK_PAGE_COLORS: Array<[number, number, number]> = [
+  [244, 236, 214],
+  [225, 236, 248],
+  [233, 246, 231],
+  [248, 233, 233],
+  [243, 236, 251],
+  [250, 244, 225],
+  [226, 243, 244],
+  [246, 232, 240],
+];
+
+/** V160-B2: a deterministic page set with a portrait ratio (the mock pages are portrait too). */
+export function bookPages(count: number, width = 600, height = 840): string[] {
+  return Array.from({ length: count }, (_, index) =>
+    bookPagePng(width, height, BOOK_PAGE_COLORS[index % BOOK_PAGE_COLORS.length]),
+  );
 }

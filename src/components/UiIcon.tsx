@@ -16,6 +16,7 @@ export type UiIconName =
   | "edit"
   | "external"
   | "fileCode"
+  | "fileImages"
   | "fileText"
   | "flag"
   | "fileWeb"
@@ -98,6 +99,13 @@ export function UiIcon({ name, size = 18, className, ...props }: UiIconProps) {
       <>
         <path {...common} d="M6 3.5h8l4 4V21H6V3.5Z" />
         <path {...common} d="M14 3.5V8h4M11 12l-2 2 2 2M15 12l2 2-2 2" />
+      </>
+    ) : name === "fileImages" ? (
+      <>
+        <path {...common} d="M6 3.5h8l4 4V21H6V3.5Z" />
+        <path {...common} d="M14 3.5V8h4" />
+        <rect {...common} height="6" rx="1" width="7" x="8.5" y="11" />
+        <path {...common} d="m9 16 2-2 1.5 1.5L14 14l1.5 2" />
       </>
     ) : name === "fileText" ? (
       <>

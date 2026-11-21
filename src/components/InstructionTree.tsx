@@ -2,6 +2,7 @@ import type { CSSProperties, KeyboardEvent } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { INSTRUCTION_RELOAD_TREE_EVENT } from "../instructionWindow";
+import { isInstructionBookName } from "../instructionBook";
 import {
   createInstructionFile,
   createInstructionFolder,
@@ -148,13 +149,17 @@ function fileStem(name: string): string {
 }
 
 function instructionFileIcon(name: string): UiIconName {
+  if (isInstructionBookName(name)) return "fileImages";
   if (isMhtmlInstruction(name)) return "fileWeb";
   if (isHtmlLikeInstruction(name)) return "fileCode";
   if (name.toLocaleLowerCase().endsWith(".txt")) return "fileText";
   return "book";
 }
 
-function instructionFileTone(name: string): "html" | "mhtml" | "markdown" | "text" {
+function instructionFileTone(
+  name: string,
+): "html" | "mhtml" | "markdown" | "text" | "images" {
+  if (isInstructionBookName(name)) return "images";
   if (isMhtmlInstruction(name)) return "mhtml";
   if (isHtmlLikeInstruction(name)) return "html";
   if (name.toLocaleLowerCase().endsWith(".txt")) return "text";
