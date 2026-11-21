@@ -11877,7 +11877,6 @@ body:has([aria-modal="true"]) .toastStack {
 
 .recordsTab {
   position: relative;
-  overflow: hidden;
   min-width: 112px;
   min-height: 34px;
   border: 0;
