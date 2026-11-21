@@ -11865,14 +11865,8 @@ body:has([aria-modal="true"]) .toastStack {
   display: flex;
   align-items: stretch;
   gap: 2px;
-  overflow: visible;
-}
-
-/* The app window never gets narrower than 860px; this keeps the narrow-viewport test usable. */
-@media (max-width: 859px) {
-  .recordsTabs {
-    overflow-x: auto;
-  }
+  overflow-x: auto;
+  padding-inline-end: 4px;
 }
 
 .recordsTab {
@@ -12116,9 +12110,9 @@ body:has([aria-modal="true"]) .toastStack {
 
   .recordsTabs {
     width: 100%;
-    /* P10-01: with the wider bundled font the three greedy tabs rounded 0.02px past the
-       header edge; reserve that hair so they never spill outside the header box. */
-    padding-inline-end: 1px;
+    /* Keep the spring tab face's overshoot (about 2.4px) and the font's width fraction
+       inside this gap. */
+    padding-inline-end: 4px;
   }
 
   .recordsTab {
