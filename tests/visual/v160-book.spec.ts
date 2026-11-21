@@ -122,7 +122,7 @@ test("V160-B2 the cover is one page and a spread opens at the remembered page", 
   await expect(page.locator(".bookPageLayer--current img")).toHaveCount(2);
   await expect(page.locator(".bookStage")).toHaveClass(/bookStage--rtl/);
   await expect(page.locator(".bookStage [aria-live='polite']")).toHaveText("34、35ページ");
-  await expect(page.locator(".bookProgress b")).toHaveAttribute("style", /28\.33/);
+  await expect(page.locator(".bookProgress b")).toHaveAttribute("style", /28\.57/);
   const rtlBoxes = await page.evaluate(() =>
     Array.from(document.querySelectorAll<HTMLImageElement>(".bookPageLayer--current img")).map(
       (image) => ({ alt: image.alt, x: image.getBoundingClientRect().x }),

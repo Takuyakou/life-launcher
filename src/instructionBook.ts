@@ -53,10 +53,36 @@ export function bookAnnouncement(pages: number[]): string {
   return `${pages.join("、")}ページ`;
 }
 
-/** The progress bar fills up to the first page of the opening (the mock's 28% at 34/120). */
-export function bookProgressPercent(firstPage: number, pageCount: number): number {
+/** V161-B4: `(page - 1) / (pageCount - 1) * 100` (0% at page 1, 100% at the end or single page). */
+export function bookProgressPercent(page: number, pageCount: number): number {
   if (pageCount <= 0) return 0;
-  return Math.min(100, Math.max(0, (firstPage / pageCount) * 100));
+  if (pageCount === 1) return 100;
+  const clamped = Math.max(1, Math.min(pageCount, page));
+  return Math.min(100, Math.max(0, ((clamped - 1) / (pageCount - 1)) * 100));
+}
+
+/** Inverse of `bookProgressPercent` for scrub clicks/drags along the progress bar. */
+export function bookPageFromRatio(
+  ratio: number,
+  pageCount: number,
+  direction: "rtl" | "ltr",
+): number {
+  if (pageCount <= 1) return 1;
+  const clamped = Math.min(1, Math.max(0, ratio));
+  const effective = direction === "rtl" ? 1 - clamped : clamped;
+  return 1 + Math.round(effective * (pageCount - 1));
+}
+
+/** Parse a jump input string, normalizing full-width digits `０`–`９` and clamping to `1..pageCount`. */
+export function parseBookJumpPage(raw: string, pageCount: number): number | null {
+  if (pageCount <= 0) return null;
+  const normalized = raw
+    .replace(/[０-９]/g, (digit) => String.fromCharCode(digit.charCodeAt(0) - 0xfee0))
+    .trim();
+  if (!/^\d+$/.test(normalized)) return null;
+  const parsed = Number.parseInt(normalized, 10);
+  if (!Number.isFinite(parsed)) return null;
+  return Math.max(1, Math.min(pageCount, parsed));
 }
 
 export function bookPageMime(type: number): string | null {

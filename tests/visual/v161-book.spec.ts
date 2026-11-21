@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { waitForBundledFonts } from "./bundledFonts";
 import { bookPages, createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
+import { measureRects } from "./helpers";
 import { installTauriMock } from "./tauriMock";
 import type { InstructionBookState } from "../../src/types";
 
@@ -270,3 +271,176 @@ test("V161-B2 rapid turns never leave preloaded pages stuck in loading state", a
   await expect(page.locator(".bookPageLabel")).toHaveText("40–41 / 120");
   await expect(page.locator('.bookPageLayer--current img[alt="40ページ"]')).toBeVisible();
 });
+
+test("V161-B4 clicking the page label jumps cleanly without moving toolbar controls", async ({
+  page,
+}) => {
+  await openBook(page, bookFixture({ state: { lastPage: 34 } }));
+  const pageButton = page.locator(".bookPageLabel");
+  await expect(pageButton).toHaveAttribute(
+    "aria-label",
+    "ページを指定して移る(今 34–35 / 120)",
+  );
+
+  const beforeRects = await measureRects(page, [
+    '.bookToolbar [aria-label="ページの出し方"]',
+    '.bookToolbar [aria-label="めくる向き"]',
+    ".bookCheck",
+  ]);
+
+  await pageButton.click();
+  const input = page.locator(".bookJumpInput");
+  await expect(input).toBeFocused();
+  await expect(input).toHaveValue("34");
+  expect(
+    await input.evaluate(
+      (node) => (node as HTMLInputElement).selectionStart === 0 && (node as HTMLInputElement).selectionEnd === 2,
+    ),
+  ).toBe(true);
+  await expect(page.locator(".bookJumpHint")).toHaveText("Enter で移動・Esc でやめる");
+
+  const duringRects = await measureRects(page, [
+    '.bookToolbar [aria-label="ページの出し方"]',
+    '.bookToolbar [aria-label="めくる向き"]',
+    ".bookCheck",
+  ]);
+  for (const selector of Object.keys(beforeRects)) {
+    expect(Math.abs(duringRects[selector].x - beforeRects[selector].x)).toBe(0);
+    expect(Math.abs(duringRects[selector].y - beforeRects[selector].y)).toBe(0);
+  }
+
+  // IME composing Enter is ignored.
+  await input.fill("78");
+  await input.evaluate((node) => {
+    node.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", isComposing: true, bubbles: true }),
+    );
+  });
+  await expect(input).toBeVisible();
+  await expect(pageButton).toHaveAttribute(
+    "aria-label",
+    "ページを指定して移る(今 34–35 / 120)",
+  );
+
+  await input.press("Enter");
+  await expect(page.locator(".bookPageLabel")).toHaveText("78–79 / 120");
+  await expect(page.locator(".bookStage")).toBeFocused();
+
+  // Esc cancels without moving and returns focus to the stage.
+  await pageButton.click();
+  await expect(input).toBeFocused();
+  await input.fill("12");
+  await input.press("Escape");
+  await expect(input).toHaveCount(0);
+  await expect(page.locator(".bookPageLabel")).toHaveText("78–79 / 120");
+  await expect(page.locator(".bookStage")).toBeFocused();
+
+  // Full-width digits work and out-of-range numbers clamp to 1..120.
+  await pageButton.click();
+  await input.fill("１０");
+  await input.press("Enter");
+  await expect(page.locator(".bookPageLabel")).toHaveText("10–11 / 120");
+
+  await pageButton.click();
+  await input.fill("999");
+  await input.press("Enter");
+  await expect(page.locator(".bookPageLabel")).toHaveText("120 / 120");
+
+  await pageButton.click();
+  await input.fill("0");
+  await input.press("Enter");
+  await expect(page.locator(".bookPageLabel")).toHaveText("1 / 120");
+
+  // Non-numeric input closes without changing the page.
+  await pageButton.click();
+  await input.fill("abc");
+  await input.press("Enter");
+  await expect(page.locator(".bookPageLabel")).toHaveText("1 / 120");
+});
+
+test("V161-B4 Ctrl+G opens the jump input only when not typing in a field", async ({
+  page,
+}) => {
+  await openBook(page, bookFixture({ state: { lastPage: 34 } }));
+  const search = page.locator(".instructionSearchField input");
+  await search.click();
+  await page.keyboard.press("Control+g");
+  await expect(page.locator(".bookJumpInput")).toHaveCount(0);
+
+  await page.locator(".bookStage").click();
+  await page.keyboard.press("Control+g");
+  const input = page.locator(".bookJumpInput");
+  await expect(input).toBeFocused();
+  await expect(input).toHaveValue("34");
+
+  // Clicking outside the input cancels and restores stage focus.
+  await page.locator(".bookStage").click({ position: { x: 400, y: 200 } });
+  await expect(input).toHaveCount(0);
+  await expect(page.locator(".bookStage")).toBeFocused();
+});
+
+test("V161-B4 scrub bar jumps accurately in RTL and LTR and skips page reads while dragging", async ({
+  page,
+}) => {
+  await openBook(page, bookFixture({ state: { lastPage: 1 } }));
+  const progress = page.locator(".bookProgress");
+  const box = (await progress.boundingBox())!;
+  expect(box.height).toBeGreaterThanOrEqual(24);
+
+  // RTL: x closer to the left corresponds to later pages, closer to the right is earlier.
+  await page.mouse.move(box.x + box.width * 0.25, box.y + box.height / 2);
+  await expect(page.locator(".bookProgressTooltip")).toBeVisible();
+  await expect(page.locator(".bookProgressMarker")).toBeVisible();
+  await expect(page.locator(".bookProgressThumb")).toBeVisible();
+
+  const countBeforeDrag = await page.evaluate(
+    () =>
+      (window as unknown as { __LIFE_LAUNCHER_VISUAL_QA__: QaControl }).__LIFE_LAUNCHER_VISUAL_QA__
+        .invokeCalls.filter((call) => call.command === "read_instruction_book_page").length,
+  );
+
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.35, box.y - 30, { steps: 3 });
+  const dragTooltipText = await page.locator(".bookProgressTooltip").textContent();
+  expect(dragTooltipText).toMatch(/^p\.\d+$/);
+  const expectedDragPage = Number(dragTooltipText!.replace("p.", ""));
+  expect(expectedDragPage).toBeGreaterThanOrEqual(75);
+  expect(expectedDragPage).toBeLessThanOrEqual(85);
+  await expect(page.locator(".bookPageLabel")).toContainText(String(expectedDragPage));
+
+  const countDuringDrag = await page.evaluate(
+    () =>
+      (window as unknown as { __LIFE_LAUNCHER_VISUAL_QA__: QaControl }).__LIFE_LAUNCHER_VISUAL_QA__
+        .invokeCalls.filter((call) => call.command === "read_instruction_book_page").length,
+  );
+  expect(countDuringDrag).toBe(countBeforeDrag);
+
+  await page.mouse.up();
+  await expect(page.locator(`.bookPageLayer--current img[alt="${expectedDragPage}ページ"]`)).toBeVisible();
+  const countAfterDrop = await page.evaluate(
+    () =>
+      (window as unknown as { __LIFE_LAUNCHER_VISUAL_QA__: QaControl }).__LIFE_LAUNCHER_VISUAL_QA__
+        .invokeCalls.filter((call) => call.command === "read_instruction_book_page").length,
+  );
+  expect(countAfterDrop).toBeGreaterThan(countBeforeDrag);
+
+  // Hovering near both edges keeps the tooltip inside the scrub bar bounds.
+  for (const edgeX of [box.x + 2, box.x + box.width - 2]) {
+    await page.mouse.move(edgeX, box.y + box.height / 2);
+    const bounds = await measureRects(page, [".bookProgress", ".bookProgressTooltip"]);
+    expect(bounds[".bookProgressTooltip"].left).toBeGreaterThanOrEqual(
+      bounds[".bookProgress"].left - 1,
+    );
+    expect(bounds[".bookProgressTooltip"].right).toBeLessThanOrEqual(
+      bounds[".bookProgress"].right + 1,
+    );
+  }
+
+  // LTR direction: clicking near the left jumps near page 1, near the right jumps near 120.
+  await page.getByRole("button", { name: "左から右", exact: true }).click();
+  await page.mouse.click(box.x + box.width * 0.9, box.y + box.height / 2);
+  await expect(page.locator(".bookPageLabel")).toHaveText("108–109 / 120");
+  await page.mouse.click(box.x + 2, box.y + box.height / 2);
+  await expect(page.locator(".bookPageLabel")).toHaveText("1 / 120");
+});
+

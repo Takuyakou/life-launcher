@@ -16971,16 +16971,95 @@ button.mainActionButton:is(
   padding: 0 20px;
   border-bottom: 1px solid #353126;
 }
-.bookPageLabel {
+.bookPageJump {
+  position: relative;
+  display: inline-grid;
+  align-items: center;
   min-width: 112px;
+}
+.bookPageLabel {
+  grid-area: 1 / 1;
+  display: block;
+  min-width: 112px;
+  height: 30px;
+  line-height: 30px;
+  padding: 0 8px;
+  margin-left: -8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
   color: #f4f0e8;
+  font: inherit;
   font-size: 14px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.bookPageLabel:hover {
+  background: #24221c;
+  box-shadow: inset 0 0 0 1px #3d392e;
+}
+.bookPageLabel:focus-visible {
+  outline: 1px solid #ffce5b;
+  outline-offset: 1px;
+}
+.bookPageLabel[data-hidden="true"] {
+  visibility: hidden;
+  pointer-events: none;
 }
 .bookPageLabel span {
   color: #a39c8e;
   font-weight: 400;
+}
+.bookPageJumpForm {
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 20;
+}
+.bookJumpInput {
+  width: 58px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid #ffce5b;
+  border-radius: 8px;
+  background: #16150f;
+  box-shadow: 0 0 0 3px rgba(255, 206, 91, 0.18);
+  color: #f4f0e8;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  outline: none;
+}
+.bookJumpTotal {
+  color: #a39c8e;
+  font-size: 14px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.bookJumpHint {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  padding: 5px 10px;
+  border: 1px solid #3d392e;
+  border-radius: 7px;
+  background: #24221c;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+  color: #f4f0e8;
+  font-size: 12px;
+  font-weight: 400;
+  white-space: nowrap;
+  pointer-events: none;
 }
 .bookSeg {
   display: inline-flex;
@@ -17189,23 +17268,75 @@ button.mainActionButton:is(
   position: absolute;
   left: 24px;
   right: 24px;
-  bottom: 10px;
-  height: 3px;
-  border-radius: 2px;
-  background: #2b2922;
+  bottom: 0;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
   z-index: 4;
+  touch-action: none;
+}
+.bookProgressTrack {
+  position: relative;
+  width: 100%;
+  height: 3px;
+  border-radius: 999px;
+  background: #2b2922;
+  transition: height 80ms ease;
+}
+.bookProgress[data-active="true"] .bookProgressTrack {
+  height: 8px;
 }
 .bookProgress b {
   position: absolute;
   right: 0;
   top: 0;
   bottom: 0;
-  border-radius: 2px;
+  border-radius: 999px;
   background: #ffce5b;
 }
 .bookProgress--ltr b {
   left: 0;
   right: auto;
+}
+.bookProgressThumb {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ffce5b;
+  box-shadow: 0 0 0 3px rgba(15, 14, 12, 0.9);
+  transform: translate(50%, -50%);
+  pointer-events: none;
+}
+.bookProgress--ltr .bookProgressThumb {
+  transform: translate(-50%, -50%);
+}
+.bookProgressMarker {
+  position: absolute;
+  top: 50%;
+  width: 2px;
+  height: 16px;
+  border-radius: 1px;
+  background: rgba(255, 206, 91, 0.55);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.bookProgressTooltip {
+  position: absolute;
+  bottom: calc(100% + 2px);
+  padding: 2px 8px;
+  border-radius: 7px;
+  background: #ffce5b;
+  color: #16150f;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 18px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 .bookStatus {
   display: grid;
