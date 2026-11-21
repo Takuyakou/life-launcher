@@ -264,15 +264,15 @@ test("V160-B2 reduced motion replaces the opening without a fade layer", async (
   await expect(page.locator(".bookPageLayer--outgoing")).toHaveCount(0);
 });
 
-test("V160-B2 the normal motion cross-fades the previous opening for 120ms", async ({ page }) => {
+test("V160-B2 the normal motion replaces the opening without a fade layer", async ({
+  page,
+}) => {
   await openBook(page, bookFixture({ state: { lastPage: 34 } }), false);
   expect(
     await page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches),
   ).toBe(false);
   await page.getByRole("button", { name: "次のページ" }).click();
   await expect(page.locator(".bookPageLabel")).toHaveText("36–37 / 120");
-  await expect(page.locator(".bookPageLayer--outgoing")).toHaveCount(1);
-  await page.clock.runFor(120);
   await expect(page.locator(".bookPageLayer--outgoing")).toHaveCount(0);
 });
 

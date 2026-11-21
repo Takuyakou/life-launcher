@@ -359,6 +359,16 @@ export async function openInstructionBook(path: string): Promise<InstructionBook
   return invoke<InstructionBookOpenResult>("open_instruction_book", { path });
 }
 
+/** V161-B3: release a cached ZIP file handle when leaving or reloading a book. */
+export async function closeInstructionBook(path: string): Promise<void> {
+  return invoke<void>("close_instruction_book", { path });
+}
+
+/** V161-B3: release every cached ZIP file handle when closing the instruction window. */
+export async function releaseInstructionBooks(): Promise<void> {
+  return invoke<void>("release_instruction_books");
+}
+
 /** V160-B1: one page as `[type byte][image bytes]`; the type is decided in Rust from the head. */
 export async function readInstructionBookPage(path: string, index: number): Promise<ArrayBuffer> {
   const result = await invoke<ArrayBuffer | Uint8Array>("read_instruction_book_page", {

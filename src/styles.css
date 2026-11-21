@@ -17079,13 +17079,6 @@ button.mainActionButton:is(
 .bookPageLayer--rtl {
   flex-direction: row-reverse;
 }
-.bookPageLayer--current {
-  animation: book-page-in 120ms ease-out both;
-}
-.bookPageLayer--outgoing {
-  animation: book-page-out 120ms ease-in both;
-  pointer-events: none;
-}
 .bookPageImage,
 .bookPagePending,
 .bookPageError {
@@ -17226,26 +17219,7 @@ button.mainActionButton:is(
 .bookStatus--error {
   color: #ffb4ad;
 }
-@keyframes book-page-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-@keyframes book-page-out {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
-}
 @media (prefers-reduced-motion: reduce) {
-  .bookPageLayer {
-    animation: none !important;
-  }
   .bookZone {
     transition: none;
   }

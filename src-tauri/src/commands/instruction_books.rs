@@ -18,7 +18,9 @@ use tauri::{AppHandle, Emitter};
 use zip::{CompressionMethod, ZipArchive};
 
 use super::config::{atomic_write_bytes, config_dir_path};
-use super::instructions::{configured_instruction_roots, validate_instruction_book_path};
+use super::instructions::{
+    configured_instruction_roots, path_is_within, validate_instruction_book_path,
+};
 use crate::datetime;
 
 /// The webview listens for this so a `p.N` chip refreshes after the book saves.
@@ -221,7 +223,7 @@ fn zip_size_allowed(size: u64) -> bool {
     size <= MAX_ZIP_BYTES
 }
 
-fn open_book_for_roots(
+pub(crate) fn open_book_for_roots(
     path: &Path,
     roots: &[String],
 ) -> Result<(PathBuf, InstructionBookOpenResponse), String> {
@@ -370,18 +372,32 @@ fn read_page_for_roots(path: &Path, index: usize, roots: &[String]) -> Result<Ve
     if file.size() > MAX_PAGE_BYTES {
         return Err("このページは大きすぎるため表示しません(64MB まで)".to_string());
     }
-    let mut bytes = Vec::new();
+    let declared = file.size().min(MAX_PAGE_BYTES) as usize;
+    let mut bytes = Vec::with_capacity(declared.saturating_add(1));
+    bytes.push(0);
     file.by_ref()
         .take(MAX_PAGE_BYTES + 1)
         .read_to_end(&mut bytes)
         .map_err(|error| format!("failed to decompress ZIP page: {error}"))?;
-    if bytes.len() as u64 > MAX_PAGE_BYTES {
+    if bytes.len().saturating_sub(1) as u64 > MAX_PAGE_BYTES {
         return Err("このページは大きすぎるため表示しません(64MB まで)".to_string());
     }
-    let page_type = detect_page_type(&bytes)
+    let page_type = detect_page_type(&bytes[1..])
         .ok_or_else(|| "このページは画像ではないため表示しません".to_string())?;
-    bytes.insert(0, page_type);
+    bytes[0] = page_type;
     Ok(bytes)
+}
+
+pub(crate) fn evict_books_under_path(path: &Path) {
+    if let Ok(mut cache) = book_cache().lock() {
+        cache.retain(|entry| !path_is_within(&entry.path, path));
+    }
+}
+
+pub(crate) fn release_all_books() {
+    if let Ok(mut cache) = book_cache().lock() {
+        cache.clear();
+    }
 }
 
 #[tauri::command]
@@ -389,6 +405,26 @@ pub fn open_instruction_book(path: String) -> Result<InstructionBookOpenResponse
     let roots = configured_instruction_roots()?;
     let (_, response) = open_book_for_roots(Path::new(&path), &roots)?;
     Ok(response)
+}
+
+#[tauri::command]
+pub fn close_instruction_book(path: String) -> Result<(), String> {
+    let trimmed = path.trim();
+    if trimmed.is_empty() {
+        return Ok(());
+    }
+    let target = Path::new(trimmed);
+    if let Ok(canonical) = fs::canonicalize(target) {
+        evict_books_under_path(&canonical);
+    }
+    evict_books_under_path(target);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn release_instruction_books() -> Result<(), String> {
+    release_all_books();
+    Ok(())
 }
 
 #[tauri::command]
@@ -634,6 +670,30 @@ mod tests {
         vec![root.to_string_lossy().to_string()]
     }
 
+    fn test_cache_guard() -> std::sync::MutexGuard<'static, ()> {
+        static TEST_CACHE_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        TEST_CACHE_LOCK
+            .get_or_init(|| Mutex::new(()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
+    fn cached_book_count() -> usize {
+        book_cache().lock().map(|cache| cache.len()).unwrap_or(0)
+    }
+
+    fn is_book_cached(path: &Path) -> bool {
+        let canonical = fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+        book_cache()
+            .lock()
+            .map(|cache| {
+                cache
+                    .iter()
+                    .any(|entry| path_is_within(&entry.path, &canonical) && entry.path == canonical)
+            })
+            .unwrap_or(false)
+    }
+
     #[test]
     fn natural_order_compares_numbers_and_ignores_case() {
         let mut names = vec!["10.jpg", "2.jpg", "1.JPG", "A.jpg"];
@@ -713,6 +773,7 @@ mod tests {
 
     #[test]
     fn opens_only_images_and_reports_skipped_items() {
+        let _guard = test_cache_guard();
         let root = temp_root("open");
         let path = write_book_file(
             &root,
@@ -769,6 +830,7 @@ mod tests {
 
     #[test]
     fn reads_the_requested_page_and_decides_the_type_from_the_head() {
+        let _guard = test_cache_guard();
         let root = temp_root("read");
         let path = write_book_file(
             &root,
@@ -803,6 +865,7 @@ mod tests {
 
     #[test]
     fn deflated_pages_are_read_normally() {
+        let _guard = test_cache_guard();
         let root = temp_root("deflate");
         let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
         let path = write_book_file(
@@ -821,6 +884,7 @@ mod tests {
 
     #[test]
     fn truncates_after_five_thousand_pages() {
+        let _guard = test_cache_guard();
         let root = temp_root("truncated");
         let entries = (0..MAX_BOOK_PAGES + 5)
             .map(|index| (format!("{index:05}.png"), PNG))
@@ -942,5 +1006,70 @@ mod tests {
             })
             .count();
         assert_eq!(broken, 1);
+    }
+
+    #[test]
+    fn close_instruction_book_evicts_only_that_book() {
+        let _guard = test_cache_guard();
+        release_all_books();
+        let root = temp_root("close-one");
+        let a = write_book_file(&root, "a.zip", &make_zip(&[("1.jpg", JPEG)]));
+        let b = write_book_file(&root, "b.zip", &make_zip(&[("1.jpg", PNG)]));
+        let roots = roots_for(&root);
+        open_book_for_roots(&a, &roots).expect("open a");
+        open_book_for_roots(&b, &roots).expect("open b");
+        assert!(is_book_cached(&a));
+        assert!(is_book_cached(&b));
+
+        close_instruction_book(a.to_string_lossy().to_string()).expect("close a");
+        assert!(!is_book_cached(&a));
+        assert!(is_book_cached(&b));
+        release_all_books();
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn release_instruction_books_clears_every_cached_book() {
+        let _guard = test_cache_guard();
+        release_all_books();
+        let root = temp_root("release-all");
+        let a = write_book_file(&root, "a.zip", &make_zip(&[("1.jpg", JPEG)]));
+        let b = write_book_file(&root, "b.zip", &make_zip(&[("1.jpg", PNG)]));
+        let roots = roots_for(&root);
+        open_book_for_roots(&a, &roots).expect("open a");
+        open_book_for_roots(&b, &roots).expect("open b");
+        assert_eq!(cached_book_count(), 2);
+
+        release_instruction_books().expect("release all");
+        assert_eq!(cached_book_count(), 0);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn renaming_instruction_file_or_folder_evicts_cached_books() {
+        let _guard = test_cache_guard();
+        release_all_books();
+        let root = temp_root("rename-evict");
+        let folder = root.join("教材");
+        fs::create_dir_all(&folder).expect("create folder");
+        let sub = write_book_file(&folder, "sub.zip", &make_zip(&[("1.jpg", JPEG)]));
+        let top = write_book_file(&root, "top.zip", &make_zip(&[("1.jpg", PNG)]));
+        let roots = roots_for(&root);
+        open_book_for_roots(&sub, &roots).expect("open sub");
+        open_book_for_roots(&top, &roots).expect("open top");
+        assert!(is_book_cached(&sub));
+        assert!(is_book_cached(&top));
+
+        super::super::instructions::rename_instruction_for_roots(&folder, "教材-new", true, &roots)
+            .expect("rename folder");
+        assert!(!is_book_cached(&sub));
+        assert!(is_book_cached(&top));
+
+        super::super::instructions::rename_instruction_for_roots(&top, "top-new", false, &roots)
+            .expect("rename file");
+        assert!(!is_book_cached(&top));
+        assert_eq!(cached_book_count(), 0);
+        let _ = fs::remove_dir_all(root);
     }
 }

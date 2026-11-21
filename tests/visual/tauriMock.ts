@@ -229,6 +229,8 @@ export async function installTauriMock(
       let launcherPickerResult: string | null = null;
       let instructionRootDelayed = false;
       const pendingInstructionRootChoices: Array<(choice: InstructionRootChoice) => void> = [];
+      const heldBookPages = new Set<number>();
+      const pendingBookPageResolvers = new Map<number, Array<() => void>>();
       const invokeCalls: Array<{ command: string; args: Record<string, unknown> }> = [];
       const callbacks = new Map<number, (event: unknown) => void>();
       const eventListeners = new Map<string, Map<number, number>>();
@@ -301,6 +303,17 @@ export async function installTauriMock(
         },
         resolveInstructionRootChoice: () => {
           pendingInstructionRootChoices.shift()?.(instructionRootChoices.shift() ?? null);
+        },
+        holdBookPage: (page: number) => {
+          heldBookPages.add(page);
+        },
+        releaseBookPage: (page: number) => {
+          heldBookPages.delete(page);
+          const waiting = pendingBookPageResolvers.get(page);
+          if (waiting) {
+            pendingBookPageResolvers.delete(page);
+            for (const resolve of waiting) resolve();
+          }
         },
         currentConfig: () => currentConfig,
         resolveExecuteActions: () => {
@@ -766,9 +779,20 @@ export async function installTauriMock(
                   skippedCount: book.skippedCount ?? 0,
                 };
               }
+              case "close_instruction_book":
+              case "release_instruction_books":
+                return null;
               case "read_instruction_book_page": {
                 const path = String(args.path ?? "");
                 const index = Number(args.index ?? -1);
+                const pageNumber = index + 1;
+                if (heldBookPages.has(pageNumber)) {
+                  await new Promise<void>((resolve) => {
+                    const queue = pendingBookPageResolvers.get(pageNumber) ?? [];
+                    queue.push(resolve);
+                    pendingBookPageResolvers.set(pageNumber, queue);
+                  });
+                }
                 const encoded = fixture.instructionBookPages?.[path]?.pages[index];
                 if (!encoded) throw new Error("page index is out of range");
                 const image = new Uint8Array(decodeBase64(encoded));

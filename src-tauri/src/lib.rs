@@ -18,8 +18,8 @@ use commands::explorer::reveal_launcher_item;
 use commands::icons::{delete_button_icon_cache, ensure_button_icon_cache};
 use commands::import::{commit_import, preview_import, read_import_json, undo_import};
 use commands::instruction_books::{
-    load_instruction_book_state, open_instruction_book, read_instruction_book_page,
-    save_instruction_book_state,
+    close_instruction_book, load_instruction_book_state, open_instruction_book,
+    read_instruction_book_page, release_instruction_books, save_instruction_book_state,
 };
 use commands::instructions::{
     choose_instruction_root, create_instruction_file, create_instruction_folder,
@@ -289,6 +289,15 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
+            if window.label() == "life-launcher-instruction" {
+                if matches!(
+                    event,
+                    WindowEvent::CloseRequested { .. } | WindowEvent::Destroyed
+                ) {
+                    commands::instruction_books::release_all_books();
+                }
+                return;
+            }
             if window.label() != "main" {
                 return;
             }
@@ -334,6 +343,8 @@ pub fn run() {
             read_instruction_info,
             read_instruction_bytes,
             open_instruction_book,
+            close_instruction_book,
+            release_instruction_books,
             read_instruction_book_page,
             load_instruction_book_state,
             save_instruction_book_state,

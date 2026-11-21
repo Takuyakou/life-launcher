@@ -4,7 +4,6 @@ import type {
   PointerEvent as ReactPointerEvent,
   WheelEvent as ReactWheelEvent,
 } from "react";
-import { useReducedMotion } from "motion/react";
 import { lastInputWasKeyboard } from "../focusModality";
 import {
   DEFAULT_INSTRUCTION_BOOK_STATE,
@@ -16,6 +15,7 @@ import {
   bookProgressPercent,
 } from "../instructionBook";
 import {
+  closeInstructionBook,
   loadInstructionBookState,
   openInstructionBook,
   readInstructionBookPage,
@@ -26,18 +26,14 @@ import type { InstructionBookOpenResult, InstructionBookState } from "../types";
 type PageEntry = {
   status: "loading" | "ready" | "error";
   url?: string;
+  decoded?: boolean;
   error?: string;
-};
-
-type OutgoingOpening = {
-  pages: number[];
-  nonce: number;
 };
 
 const MAX_CACHED_PAGES = 12;
 const PRELOAD_OPENINGS = 2;
 const SAVE_DELAY_MS = 800;
-const TURN_DURATION_MS = 120;
+const DECODE_HOLD_MS = 150;
 const WHEEL_THROTTLE_MS = 250;
 
 function errorText(error: unknown): string {
@@ -50,8 +46,22 @@ function isTypingTarget(element: Element | null): boolean {
   return element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement;
 }
 
+function isPageSettled(entry: PageEntry | undefined): boolean {
+  if (!entry) return false;
+  return (entry.status === "ready" && Boolean(entry.decoded)) || entry.status === "error";
+}
+
+async function decodeImageUrl(url: string): Promise<void> {
+  const image = new Image();
+  image.src = url;
+  try {
+    await image.decode();
+  } catch {
+    // Keep the entry ready if decode rejects so <img> renders whatever the browser supports.
+  }
+}
+
 export function InstructionBook({ path, name }: { path: string; name: string }) {
-  const reducedMotion = useReducedMotion() ?? false;
   const stageRef = useRef<HTMLDivElement>(null);
   const focusedOnOpenRef = useRef(false);
   const [focusRing, setFocusRing] = useState(false);
@@ -64,10 +74,15 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
   );
   const [loadError, setLoadError] = useState<string | null>(null);
   const [position, setPosition] = useState(1);
+  const [shownPosition, setShownPosition] = useState(1);
   const [cache, setCache] = useState<Map<number, PageEntry>>(new Map());
   const [hoverSide, setHoverSide] = useState<"left" | "right" | null>(null);
-  const [outgoing, setOutgoing] = useState<OutgoingOpening | null>(null);
   const lastWheelRef = useRef(0);
+  const bookTokenRef = useRef(0);
+  const inFlightRef = useRef<Map<number, Promise<void>>>(new Map());
+  const holdTimerRef = useRef<number | null>(null);
+  const protectedPagesRef = useRef<Set<number>>(new Set());
+  const groupsRef = useRef<number[][]>([]);
   const cacheRef = useRef(cache);
   const stateRef = useRef(bookState);
   const positionRef = useRef(position);
@@ -75,40 +90,65 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
   stateRef.current = bookState;
   positionRef.current = position;
 
+  const clearHoldTimer = useCallback(() => {
+    if (holdTimerRef.current !== null) {
+      window.clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+  }, []);
+
   useEffect(() => {
-    let disposed = false;
+    bookTokenRef.current += 1;
+    const token = bookTokenRef.current;
+    const inFlight = inFlightRef.current;
+    inFlight.clear();
+    clearHoldTimer();
+    for (const entry of cacheRef.current.values()) {
+      if (entry.url) URL.revokeObjectURL(entry.url);
+    }
+    cacheRef.current = new Map();
     focusedOnOpenRef.current = false;
     setBook(null);
     setLoadError(null);
     setCache(new Map());
-    setOutgoing(null);
+    positionRef.current = 1;
     setPosition(1);
+    setShownPosition(1);
     void Promise.all([openInstructionBook(path), loadInstructionBookState(path)])
       .then(([info, saved]) => {
-        if (disposed) return;
+        if (bookTokenRef.current !== token) return;
         const restored: InstructionBookState = {
           ...DEFAULT_INSTRUCTION_BOOK_STATE,
           ...saved,
           direction: saved.direction === "ltr" ? "ltr" : "rtl",
           lastPage: Math.max(1, Math.floor(saved.lastPage || 1)),
         };
-        const groups = bookPageGroups(
+        const initialGroups = bookPageGroups(
           info.pageCount,
           restored.spread,
           restored.coverSingle,
         );
-        const start = groups[bookGroupIndexForPage(groups, restored.lastPage)]?.[0] ?? 1;
+        const start = initialGroups[bookGroupIndexForPage(initialGroups, restored.lastPage)]?.[0] ?? 1;
         setBook(info);
         setBookState({ ...restored, lastPage: start });
+        positionRef.current = start;
         setPosition(start);
+        setShownPosition(start);
       })
       .catch((error) => {
-        if (!disposed) setLoadError(errorText(error));
+        if (bookTokenRef.current === token) setLoadError(errorText(error));
       });
     return () => {
-      disposed = true;
+      bookTokenRef.current += 1;
+      inFlight.clear();
+      clearHoldTimer();
+      for (const entry of cacheRef.current.values()) {
+        if (entry.url) URL.revokeObjectURL(entry.url);
+      }
+      cacheRef.current = new Map();
+      void closeInstructionBook(path).catch(() => undefined);
     };
-  }, [path]);
+  }, [path, clearHoldTimer]);
 
   const groups = useMemo(
     () =>
@@ -117,11 +157,20 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
         : [],
     [book, bookState.spread, bookState.coverSingle],
   );
+  groupsRef.current = groups;
   const groupIndex = useMemo(
     () => bookGroupIndexForPage(groups, position),
     [groups, position],
   );
-  const visiblePages = groups[groupIndex] ?? [];
+  const targetPages = useMemo(() => groups[groupIndex] ?? [], [groups, groupIndex]);
+  const shownGroupIndex = useMemo(
+    () => bookGroupIndexForPage(groups, shownPosition),
+    [groups, shownPosition],
+  );
+  const visiblePages = useMemo(
+    () => groups[shownGroupIndex] ?? [],
+    [groups, shownGroupIndex],
+  );
 
   useEffect(() => {
     if (!book) return;
@@ -158,15 +207,6 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
     };
   }, [book, path]);
 
-  useEffect(
-    () => () => {
-      for (const entry of cacheRef.current.values()) {
-        if (entry.url) URL.revokeObjectURL(entry.url);
-      }
-    },
-    [],
-  );
-
   // Keep the current opening and two on each side ready.
   const neededPages = useMemo(() => {
     const pages = new Set<number>();
@@ -181,78 +221,94 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
   }, [groups, groupIndex]);
   const neededKey = neededPages.join(",");
 
+  protectedPagesRef.current = new Set([
+    ...visiblePages,
+    ...targetPages,
+    ...neededPages,
+  ]);
+
+  // V161-B2: keep in-flight page loads alive across rapid turns; discard only when the book changes.
   useEffect(() => {
     if (!book) return;
-    let cancelled = false;
-    const needed = new Set(
-      neededKey
-        .split(",")
-        .filter(Boolean)
-        .map((value) => Number(value)),
-    );
+    const token = bookTokenRef.current;
+    const needed = neededKey
+      .split(",")
+      .filter(Boolean)
+      .map((value) => Number(value));
     for (const page of needed) {
-      if (cacheRef.current.has(page)) continue;
-      setCache((previous) => {
-        const next = new Map(previous);
-        next.set(page, { status: "loading" });
-        return next;
-      });
-      void readInstructionBookPage(path, page - 1)
-        .then((buffer) => {
-          if (cancelled) return;
+      const existing = cacheRef.current.get(page);
+      if (existing && existing.status !== "loading") continue;
+      if (inFlightRef.current.has(page)) continue;
+      if (!existing) {
+        setCache((previous) => {
+          if (previous.has(page)) return previous;
+          const next = new Map(previous);
+          next.set(page, { status: "loading" });
+          return next;
+        });
+      }
+      const promise = readInstructionBookPage(path, page - 1)
+        .then(async (buffer) => {
+          if (bookTokenRef.current !== token) return;
           const bytes = new Uint8Array(buffer);
           const mime = bookPageMime(bytes[0]);
           if (!mime) throw new Error("このページは画像ではないため表示しません");
           const url = URL.createObjectURL(
             new Blob([bytes.subarray(1)], { type: mime }),
           );
+          await decodeImageUrl(url);
+          if (bookTokenRef.current !== token) {
+            URL.revokeObjectURL(url);
+            return;
+          }
           setCache((previous) => {
+            if (bookTokenRef.current !== token) {
+              URL.revokeObjectURL(url);
+              return previous;
+            }
             const next = new Map(previous);
-            next.set(page, { status: "ready", url });
+            const old = next.get(page);
+            if (old?.url && old.url !== url) URL.revokeObjectURL(old.url);
+            next.set(page, { status: "ready", url, decoded: true });
             while (next.size > MAX_CACHED_PAGES) {
               const oldest = Array.from(next.entries()).find(
                 ([key, entry]) =>
-                  !needed.has(key) && entry.status === "ready",
+                  !protectedPagesRef.current.has(key) &&
+                  entry.status === "ready" &&
+                  entry.decoded,
               );
               if (!oldest) break;
-              if (oldest[1].url) URL.revokeObjectURL(oldest[1].url!);
+              if (oldest[1].url) URL.revokeObjectURL(oldest[1].url);
               next.delete(oldest[0]);
             }
             return next;
           });
         })
         .catch((error) => {
-          if (cancelled) return;
+          if (bookTokenRef.current !== token) return;
           setCache((previous) => {
             const next = new Map(previous);
             next.set(page, { status: "error", error: errorText(error) });
             return next;
           });
+        })
+        .finally(() => {
+          if (inFlightRef.current.get(page) === promise) {
+            inFlightRef.current.delete(page);
+          }
         });
+      inFlightRef.current.set(page, promise);
     }
-    return () => {
-      cancelled = true;
-    };
   }, [book, path, neededKey]);
 
-  // Cross-fade the previous opening out for 120 ms (skipped when motion is reduced).
-  const previousOpeningRef = useRef<{ position: number; pages: number[] } | null>(null);
+  // V161-B1: once every page of the target opening is decoded within 150 ms, switch immediately.
   useEffect(() => {
-    if (!book) {
-      previousOpeningRef.current = null;
-      return;
+    if (!book || shownPosition === position) return;
+    if (targetPages.length > 0 && targetPages.every((page) => isPageSettled(cache.get(page)))) {
+      clearHoldTimer();
+      setShownPosition(position);
     }
-    const previous = previousOpeningRef.current;
-    const pages = groups[groupIndex] ?? [];
-    previousOpeningRef.current = { position, pages };
-    if (!previous || previous.position === position || reducedMotion) {
-      setOutgoing(null);
-      return;
-    }
-    setOutgoing({ pages: previous.pages, nonce: Date.now() });
-    const timer = window.setTimeout(() => setOutgoing(null), TURN_DURATION_MS);
-    return () => window.clearTimeout(timer);
-  }, [book, groups, groupIndex, position, reducedMotion]);
+  }, [book, cache, targetPages, position, shownPosition, clearHoldTimer]);
 
   const openingSettled =
     visiblePages.length > 0 &&
@@ -288,17 +344,35 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
   const canPrevious = groupIndex > 0;
   const canNext = groupIndex < groups.length - 1;
   const goToOpening = (index: number) => {
-    const clamped = Math.max(0, Math.min(groups.length - 1, index));
-    const start = groups[clamped]?.[0];
-    if (start !== undefined && start !== positionRef.current) {
-      setPosition(start);
+    const currentGroups = groupsRef.current;
+    const clamped = Math.max(0, Math.min(currentGroups.length - 1, index));
+    const nextPages = currentGroups[clamped] ?? [];
+    const start = nextPages[0];
+    if (start === undefined || start === positionRef.current) return;
+    clearHoldTimer();
+    positionRef.current = start;
+    setPosition(start);
+    const settledNow =
+      nextPages.length > 0 &&
+      nextPages.every((page) => isPageSettled(cacheRef.current.get(page)));
+    if (settledNow) {
+      setShownPosition(start);
+    } else {
+      holdTimerRef.current = window.setTimeout(() => {
+        holdTimerRef.current = null;
+        setShownPosition(positionRef.current);
+      }, DECODE_HOLD_MS);
     }
   };
+  const currentTargetGroupIndex = () =>
+    bookGroupIndexForPage(groupsRef.current, positionRef.current);
   const showPrevious = () => {
-    if (canPrevious) goToOpening(groupIndex - 1);
+    const idx = currentTargetGroupIndex();
+    if (idx > 0) goToOpening(idx - 1);
   };
   const showNext = () => {
-    if (canNext) goToOpening(groupIndex + 1);
+    const idx = currentTargetGroupIndex();
+    if (idx < groupsRef.current.length - 1) goToOpening(idx + 1);
   };
   const leftIsNext = bookState.direction === "rtl";
   const leftAction = leftIsNext ? showNext : showPrevious;
@@ -321,8 +395,11 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
     );
     const start =
       nextGroups[bookGroupIndexForPage(nextGroups, positionRef.current)]?.[0] ?? 1;
+    clearHoldTimer();
+    positionRef.current = start;
     setBookState({ ...next, lastPage: start });
     setPosition(start);
+    setShownPosition(start);
   };
   const changeDirection = (direction: "rtl" | "ltr") => {
     setBookState((current) => ({ ...current, direction }));
@@ -364,7 +441,7 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
     }
     if (key === "End") {
       event.preventDefault();
-      goToOpening(groups.length - 1);
+      goToOpening(groupsRef.current.length - 1);
     }
   };
 
@@ -383,12 +460,11 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
     setHoverSide(ratio < 0.3 ? "left" : ratio > 0.7 ? "right" : null);
   };
 
-  const renderOpening = (pages: number[], extraClass: string, current: boolean) => (
+  const renderOpening = (pages: number[]) => (
     <div
-      className={`bookPageLayer ${extraClass}${bookState.direction === "rtl" ? " bookPageLayer--rtl" : ""}${
-        pages.length === 1 ? " bookPageLayer--one" : ""
-      }`}
-      key={current ? `current-${position}` : `outgoing-${outgoing?.nonce ?? 0}`}
+      className={`bookPageLayer bookPageLayer--current${
+        bookState.direction === "rtl" ? " bookPageLayer--rtl" : ""
+      }${pages.length === 1 ? " bookPageLayer--one" : ""}`}
     >
       {pages.map((page) => {
         const entry = cache.get(page);
@@ -397,7 +473,7 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
         }
         if (entry.status === "error") {
           return (
-            <div className="bookPageError" key={page} role={current ? "alert" : undefined}>
+            <div className="bookPageError" key={page} role="alert">
               {entry.error}
             </div>
           );
@@ -415,8 +491,8 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
     </div>
   );
 
-  const label = bookPageLabel(visiblePages);
-  const progress = bookProgressPercent(visiblePages[0] ?? 1, book.pageCount);
+  const label = bookPageLabel(targetPages);
+  const progress = bookProgressPercent(targetPages[0] ?? 1, book.pageCount);
   return (
     <div className="bookPane">
       <div className="bookHeader">
@@ -509,8 +585,7 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
         ref={stageRef}
         tabIndex={0}
       >
-        {outgoing ? renderOpening(outgoing.pages, "bookPageLayer--outgoing", false) : null}
-        {renderOpening(visiblePages, "bookPageLayer--current", true)}
+        {renderOpening(visiblePages)}
         <button
           aria-label={leftAria}
           className="bookZone bookZone--left"
@@ -547,7 +622,7 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
           <b style={{ width: `${progress}%` }} />
         </div>
         <div aria-live="polite" className="srOnly">
-          {bookAnnouncement(visiblePages)}
+          {bookAnnouncement(targetPages)}
         </div>
       </div>
     </div>
