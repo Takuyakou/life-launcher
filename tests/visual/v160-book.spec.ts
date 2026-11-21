@@ -96,6 +96,20 @@ async function openBook(page: Page, fixture = bookFixture(), reduce = true) {
   await waitForBook(page);
 }
 
+async function openBookFromTree(page: Page, fixture = bookFixture()) {
+  await openViewer(page, fixture, `${ROOT}\\guide.md`);
+  await expect(page.locator(".instructionTreeRow").first()).toBeVisible();
+  await page.locator(".instructionTreeRow").first().focus();
+  await page.keyboard.press("ArrowRight");
+  const folder = page.locator(".instructionTreeRow", { hasText: "教材" });
+  await expect(folder).toBeVisible();
+  await folder.dblclick();
+  const zipRow = page.locator(".instructionTreeRow", { hasText: "英単語ドリル.zip" });
+  await expect(zipRow).toBeVisible();
+  await zipRow.click();
+  await waitForBook(page);
+}
+
 const pageImage = (page: Page, number: number) =>
   page.locator(`.bookPageLayer--current img[alt="${number}ページ"]`);
 
@@ -335,6 +349,53 @@ test("V160-B2 a ZIP without readable images shows the reason inside the pane", a
     "この ZIP には開ける画像がありません",
   );
   await expect(page.locator(".bookPane")).toHaveCount(0);
+});
+
+test("V160-S6 opening the book focuses the pages and ← turns them", async ({ page }) => {
+  await openBook(page, bookFixture({ state: { lastPage: 34 } }));
+  const stage = page.locator(".bookStage");
+  await expect(stage).toBeFocused();
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.locator(".bookPageLabel")).toHaveText("36–37 / 120");
+});
+
+test("V160-S6 a ZIP opened from the tree focuses the pages", async ({ page }) => {
+  await openBookFromTree(page);
+  const stage = page.locator(".bookStage");
+  await expect(stage).toBeFocused();
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.locator(".bookPageLabel")).toHaveText("2–3 / 120");
+});
+
+test("V160-S6 clicking a turn zone keeps the pages focused", async ({ page }) => {
+  await openBook(page, bookFixture({ state: { lastPage: 34 } }));
+  const stage = page.locator(".bookStage");
+  await page.getByRole("button", { name: "次のページ" }).click();
+  await expect(page.locator(".bookPageLabel")).toHaveText("36–37 / 120");
+  await expect(stage).toBeFocused();
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.locator(".bookPageLabel")).toHaveText("38–39 / 120");
+});
+
+test("V160-S6 a toolbar click keeps the pages focused", async ({ page }) => {
+  await openBook(page, bookFixture({ state: { lastPage: 34 } }));
+  const stage = page.locator(".bookStage");
+  await page.getByRole("button", { name: "1ページ", exact: true }).click();
+  await expect(page.locator(".bookPageLabel")).toHaveText("34 / 120");
+  await expect(stage).toBeFocused();
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.locator(".bookPageLabel")).toHaveText("35 / 120");
+});
+
+test("V160-S6 typing in the search field keeps the focus there", async ({ page }) => {
+  await openBook(page, bookFixture({ state: { lastPage: 34 } }));
+  const search = page.locator(".instructionSearchField input");
+  await search.click();
+  await search.pressSequentially("英単語");
+  await expect(search).toBeFocused();
+  await page.clock.runFor(200);
+  await expect(page.locator(".instructionSearchResult").first()).toBeVisible();
+  await expect(search).toBeFocused();
 });
 
 test("V160-B2 baseline: spread, cover and single", async ({ page }) => {

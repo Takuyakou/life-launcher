@@ -17065,9 +17065,6 @@ button.mainActionButton:is(
   overflow: hidden;
   outline: none;
 }
-.bookStage:focus-visible {
-  box-shadow: inset 0 0 0 1px #ffce5b;
-}
 .bookPageLayer {
   position: absolute;
   inset: 0;

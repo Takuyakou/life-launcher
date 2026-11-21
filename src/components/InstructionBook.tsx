@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   KeyboardEvent as ReactKeyboardEvent,
   PointerEvent as ReactPointerEvent,
@@ -43,9 +43,19 @@ function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+function isTypingTarget(element: Element | null): boolean {
+  if (!(element instanceof HTMLElement)) return false;
+  if (element.isContentEditable) return true;
+  return element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement;
+}
+
 export function InstructionBook({ path, name }: { path: string; name: string }) {
   const reducedMotion = useReducedMotion() ?? false;
   const stageRef = useRef<HTMLDivElement>(null);
+  const focusedOnOpenRef = useRef(false);
+  const focusStage = useCallback(() => {
+    stageRef.current?.focus({ preventScroll: true });
+  }, []);
   const [book, setBook] = useState<InstructionBookOpenResult | null>(null);
   const [bookState, setBookState] = useState<InstructionBookState>(
     DEFAULT_INSTRUCTION_BOOK_STATE,
@@ -65,6 +75,7 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
 
   useEffect(() => {
     let disposed = false;
+    focusedOnOpenRef.current = false;
     setBook(null);
     setLoadError(null);
     setCache(new Map());
@@ -241,6 +252,22 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
     return () => window.clearTimeout(timer);
   }, [book, groups, groupIndex, position, reducedMotion]);
 
+  const openingSettled =
+    visiblePages.length > 0 &&
+    visiblePages.every((page) => {
+      const entry = cache.get(page);
+      return entry !== undefined && entry.status !== "loading";
+    });
+
+  // V160-S6: when a book opens (including reload, list, search and Do Now), put the keyboard
+  // on the pages so the arrow keys work without clicking first. Never steal focus from a field.
+  useEffect(() => {
+    if (!book || !openingSettled || focusedOnOpenRef.current) return;
+    focusedOnOpenRef.current = true;
+    if (isTypingTarget(document.activeElement)) return;
+    focusStage();
+  }, [book, openingSettled, focusStage]);
+
   if (loadError) {
     return (
       <div className="bookStatus bookStatus--error" role="alert">
@@ -396,7 +423,12 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
           {label}
           <span> / {book.pageCount}</span>
         </div>
-        <div className="bookSeg" role="group" aria-label="ページの出し方">
+        <div
+          className="bookSeg"
+          onMouseDown={(event) => event.preventDefault()}
+          role="group"
+          aria-label="ページの出し方"
+        >
           <button
             aria-pressed={bookState.spread}
             onClick={() => changeSpread(true)}
@@ -412,7 +444,12 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
             1ページ
           </button>
         </div>
-        <div className="bookSeg" role="group" aria-label="めくる向き">
+        <div
+          className="bookSeg"
+          onMouseDown={(event) => event.preventDefault()}
+          role="group"
+          aria-label="めくる向き"
+        >
           <button
             aria-pressed={bookState.direction === "rtl"}
             onClick={() => changeDirection("rtl")}
@@ -428,7 +465,10 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
             左から右
           </button>
         </div>
-        <label className="bookCheck">
+        <label
+          className="bookCheck"
+          onMouseDown={(event) => event.preventDefault()}
+        >
           <input
             checked={bookState.coverSingle}
             onChange={(event) => changeCoverSingle(event.currentTarget.checked)}
@@ -449,8 +489,12 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
           visiblePages.length === 1 ? " bookStage--one" : ""
         }`}
         onKeyDown={onKeyDown}
-        onPointerDown={(event) => {
-          if (event.target === event.currentTarget) stageRef.current?.focus();
+        onMouseDown={(event) => {
+          event.preventDefault();
+          focusStage();
+        }}
+        onPointerDown={() => {
+          focusStage();
         }}
         onPointerLeave={() => setHoverSide(null)}
         onPointerMove={onPointerMove}
