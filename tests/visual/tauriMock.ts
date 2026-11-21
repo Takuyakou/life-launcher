@@ -63,6 +63,17 @@ export async function installTauriMock(
       const persistCurrentConfig = () => {
         window.sessionStorage.setItem(configStorageKey, JSON.stringify(currentConfig));
       };
+      const bookStateStorageKey = "life-launcher-visual-qa-book-state";
+      const readBookStates = (): Record<string, Record<string, unknown>> => {
+        try {
+          return JSON.parse(window.sessionStorage.getItem(bookStateStorageKey) ?? "{}");
+        } catch {
+          return {};
+        }
+      };
+      const writeBookStates = (states: Record<string, Record<string, unknown>>) => {
+        window.sessionStorage.setItem(bookStateStorageKey, JSON.stringify(states));
+      };
       type CleanStartState = {
         sessions: typeof fixture.sessionEntries.entries;
         notes: string[];
@@ -278,6 +289,12 @@ export async function installTauriMock(
         },
         setLauncherPickerResult: (result: string | null) => {
           launcherPickerResult = result;
+        },
+        setInstructionModifiedAt: (path: string, modifiedAt: number) => {
+          const entry = (fixture.instructionExtraEntries ?? []).find(
+            (item) => item.path.toLocaleLowerCase() === path.toLocaleLowerCase(),
+          );
+          if (entry) entry.modifiedAt = modifiedAt;
         },
         setInstructionRootDelayed: (delayed: boolean) => {
           instructionRootDelayed = delayed;
@@ -615,8 +632,15 @@ export async function installTauriMock(
               case "list_instruction_directory": {
                 const path = String(args.path ?? "");
                 const folders = currentConfig.settings.instructionFolders ?? [];
+                const normalizedPath = path.toLocaleLowerCase();
                 if (
-                  !folders.some((folder) => folder.toLocaleLowerCase() === path.toLocaleLowerCase())
+                  !folders.some((folder) => {
+                    const normalized = folder.toLocaleLowerCase();
+                    return (
+                      normalized === normalizedPath ||
+                      normalizedPath.startsWith(`${normalized}\\`)
+                    );
+                  })
                 ) {
                   return [];
                 }
@@ -624,7 +648,11 @@ export async function installTauriMock(
                   (entry) =>
                     parentDirectory(entry.path).toLocaleLowerCase() === path.toLocaleLowerCase(),
                 );
-                return [
+                const isRoot = folders.some(
+                  (folder) => folder.toLocaleLowerCase() === normalizedPath,
+                );
+                const baseEntries = isRoot
+                  ? [
                   {
                     name: "guide.md",
                     path: `${path}\\guide.md`,
@@ -652,8 +680,9 @@ export async function installTauriMock(
                     modifiedAt: 3,
                     readOnly: true,
                   },
-                  ...clone(extraEntries),
-                ];
+                    ]
+                  : [];
+                return [...baseEntries, ...clone(extraEntries)];
               }
               case "search_instruction_files": {
                 const query = String(args.query ?? "").toLocaleLowerCase();
@@ -683,6 +712,9 @@ export async function installTauriMock(
                   throw new Error("MHTML instruction files must be read as bytes");
                 }
                 const name = path.split(/[\\/]/).filter(Boolean).at(-1) ?? path;
+                if (name.toLocaleLowerCase().endsWith(".zip")) {
+                  throw new Error("ZIP instruction files are read as a book");
+                }
                 const html = name.endsWith(".html");
                 const content =
                   fixture.instructionDocuments?.[path] ??
@@ -716,8 +748,55 @@ export async function installTauriMock(
                   size: entry?.size ?? (encoded ? decodeBase64(encoded).byteLength : 0),
                   readOnly:
                     entry?.readOnly ??
-                    (extension === "html" || extension === "mhtml" || extension === "mht"),
+                    (extension === "html" ||
+                      extension === "mhtml" ||
+                      extension === "mht" ||
+                      extension === "zip"),
                 };
+              }
+              case "open_instruction_book": {
+                const path = String(args.path ?? "");
+                const book = fixture.instructionBookPages?.[path];
+                if (!book || book.pages.length === 0) {
+                  throw new Error("この ZIP には開ける画像がありません");
+                }
+                return {
+                  pageCount: book.pages.length,
+                  truncated: book.truncated ?? false,
+                  skippedCount: book.skippedCount ?? 0,
+                };
+              }
+              case "read_instruction_book_page": {
+                const path = String(args.path ?? "");
+                const index = Number(args.index ?? -1);
+                const encoded = fixture.instructionBookPages?.[path]?.pages[index];
+                if (!encoded) throw new Error("page index is out of range");
+                const image = new Uint8Array(decodeBase64(encoded));
+                const page = new Uint8Array(image.byteLength + 1);
+                page[0] = 2;
+                page.set(image, 1);
+                return page.buffer;
+              }
+              case "load_instruction_book_state": {
+                const path = String(args.path ?? "");
+                const stored = readBookStates()[path];
+                return {
+                  direction: "rtl",
+                  spread: true,
+                  coverSingle: true,
+                  lastPage: 1,
+                  ...fixture.instructionBookState?.[path],
+                  ...stored,
+                };
+              }
+              case "save_instruction_book_state": {
+                const path = String(args.path ?? "");
+                const state = args.state as Record<string, unknown>;
+                const states = readBookStates();
+                states[path] = { ...state, updatedAt: "2026-11-21T02:00:00.000Z" };
+                writeBookStates(states);
+                dispatchEvent("instruction-book-state-changed", { path });
+                return states[path];
               }
               case "read_instruction_bytes": {
                 const path = String(args.path ?? "");

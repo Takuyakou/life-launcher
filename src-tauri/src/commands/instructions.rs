@@ -443,7 +443,8 @@ pub fn move_instruction_to_recycle_bin(path: String) -> Result<InstructionRecycl
     }
     if target.metadata.is_file() && !is_instruction_file(&target.path) {
         return Err(
-            "only .md, .txt, .html, .mhtml, and .mht instruction files are supported".to_string(),
+            "only .md, .txt, .html, .mhtml, .mht, and .zip instruction files are supported"
+                .to_string(),
         );
     }
     if !target.metadata.is_file() && !target.metadata.is_dir() {
@@ -550,7 +551,8 @@ pub fn reveal_instruction_in_explorer(path: String) -> Result<String, String> {
     let target = validate_existing_target(Path::new(&path), &roots)?;
     if target.metadata.is_file() && !is_instruction_file(&target.path) {
         return Err(
-            "only .md, .txt, .html, .mhtml, and .mht instruction files are supported".to_string(),
+            "only .md, .txt, .html, .mhtml, .mht, and .zip instruction files are supported"
+                .to_string(),
         );
     }
     validate_existing_target(&target.path, &roots)?;
@@ -939,10 +941,28 @@ fn validate_instruction_file(path: &Path, roots: &[String]) -> Result<ValidatedT
     }
     if !is_instruction_file(&target.path) {
         return Err(
-            "only .md, .txt, .html, .mhtml, and .mht instruction files are supported".to_string(),
+            "only .md, .txt, .html, .mhtml, .mht, and .zip instruction files are supported"
+                .to_string(),
         );
     }
     Ok(target)
+}
+
+/// V160-B1: the configured roots, for the ZIP book commands (same read as the other commands).
+pub(crate) fn configured_instruction_roots() -> Result<Vec<String>, String> {
+    read_configured_root_strings()
+}
+
+/// V160-B1: validate a book path exactly like the other instruction files and require `.zip`.
+pub(crate) fn validate_instruction_book_path(
+    path: &Path,
+    roots: &[String],
+) -> Result<PathBuf, String> {
+    let target = validate_instruction_file(path, roots)?;
+    if instruction_extension(&target.path).as_deref() != Some("zip") {
+        return Err("instruction file is not a ZIP".to_string());
+    }
+    Ok(target.path)
 }
 
 fn read_instruction_for_roots(
@@ -950,6 +970,9 @@ fn read_instruction_for_roots(
     roots: &[String],
 ) -> Result<InstructionReadResponse, String> {
     let mut target = validate_instruction_file(path, roots)?;
+    if instruction_extension(&target.path).as_deref() == Some("zip") {
+        return Err("ZIP instruction files are read as a book".to_string());
+    }
     if is_mhtml_instruction(&target.path) {
         return Err("MHTML instruction files must be read as bytes".to_string());
     }
@@ -1025,7 +1048,7 @@ fn instruction_read_only(path: &Path, metadata: &Metadata) -> bool {
     metadata.permissions().readonly()
         || matches!(
             instruction_extension(path).as_deref(),
-            Some("html" | "mhtml" | "mht")
+            Some("html" | "mhtml" | "mht" | "zip")
         )
 }
 
@@ -1114,7 +1137,8 @@ fn rename_instruction(
     }
     if !expect_directory && !is_instruction_file(&target.path) {
         return Err(
-            "only .md, .txt, .html, .mhtml, and .mht instruction files are supported".to_string(),
+            "only .md, .txt, .html, .mhtml, .mht, and .zip instruction files are supported"
+                .to_string(),
         );
     }
 
@@ -1214,7 +1238,11 @@ fn is_editable_instruction_file(path: &Path) -> bool {
 
 fn instruction_extension(path: &Path) -> Option<String> {
     let extension = path.extension()?.to_string_lossy().to_ascii_lowercase();
-    matches!(extension.as_str(), "md" | "txt" | "html" | "mhtml" | "mht").then_some(extension)
+    matches!(
+        extension.as_str(),
+        "md" | "txt" | "html" | "mhtml" | "mht" | "zip"
+    )
+    .then_some(extension)
 }
 
 fn is_mhtml_instruction(path: &Path) -> bool {
@@ -1531,7 +1559,7 @@ fn paths_equal(left: &Path, right: &Path) -> bool {
     path_key(&left.to_string_lossy()) == path_key(&right.to_string_lossy())
 }
 
-fn path_for_response(path: &Path) -> String {
+pub(crate) fn path_for_response(path: &Path) -> String {
     normalize_local_drive_path_text(&path.to_string_lossy())
         .unwrap_or_else(|| path.to_string_lossy().to_string())
 }

@@ -134,6 +134,9 @@ export const HELP_GUIDE_SECTIONS: HelpGuideSection[] = [
           { keys: "T", action: "メニューを開いている間だけ: その項目を今日の3件に入れる" },
           { keys: "Ctrl + Z", action: "元に戻す(出ている「元に戻す」のうち、一番新しい物)" },
           { keys: "メニューキー / Shift + F10", action: "選んでいる行のメニューを開く" },
+          { keys: "← →", action: "本の画面で: 右から左なら ← が次・→ が前、左から右なら逆" },
+          { keys: "PageUp / PageDown / Space / Shift + Space", action: "本の画面で: 前 / 次 / 次 / 前" },
+          { keys: "Home / End", action: "本の画面で: 最初 / 最後" },
           { keys: "設定で決めたキー", action: "表示/隠す・ミニ・手順書(設定で変えられます)" },
         ],
       },
@@ -304,7 +307,11 @@ export const HELP_GUIDE_SECTIONS: HelpGuideSection[] = [
       },
       {
         type: "paragraph",
-        text: "手順書ビューアーには、Markdown・テキスト・HTML・MHTMLのファイルを入れたPC内のフォルダを登録できます。Markdownとテキストは編集でき、HTMLとMHTMLは見るだけです。次の一手で「開始時に手順書を開く」をオンにすると、タイマーを始めたときに手順書も開きます。",
+        text: "手順書ビューアーには、Markdown・テキスト・HTML・MHTML・ZIPのファイルを入れたPC内のフォルダを登録できます。Markdownとテキストは編集でき、HTMLとMHTMLとZIPは見るだけです。次の一手で「開始時に手順書を開く」をオンにすると、タイマーを始めたときに手順書も開きます。",
+      },
+      {
+        type: "paragraph",
+        text: "画像の入った ZIP を手順書のフォルダに置くと、本のように開けます。見開きと1ページ、右から左と左から右を切り替えられ、教材ごとに覚えます。最後に見たページから開き、今やる一手の手順書の札に「p.34」のように出ます。中の画像(JPEG・PNG・WebP・GIF)だけを開き、それ以外は開きません。",
       },
     ],
   },
@@ -423,6 +430,10 @@ export const HELP_GUIDE_SECTIONS: HelpGuideSection[] = [
           {
             term: "手順書フォルダを追加するには？",
             description: "手順書ビューアーを開き、左上の「読み込み」を押します。",
+          },
+          {
+            term: "ZIP のページが出ないときは？",
+            description: "中の画像が JPEG・PNG・WebP・GIF でない、中身が画像でない、1枚が64MBより大きい、ZIP が4GBより大きい、のどれかです。RAR には対応していません。",
           },
           {
             term: "バックアップから戻すには？",

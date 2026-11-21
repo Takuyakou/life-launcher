@@ -55,6 +55,7 @@ Note: it is not a complete port of the Windows product. The Web Demo has a separ
 
 - **View instructions**
   Read Markdown, text, sanitized HTML, and MHTML (`.mhtml` / `.mht`) files from registered folders in a separate window.
+- Read a ZIP of images as a book in the instruction viewer (two-page spread, right-to-left, resume where you left off)
 
 - **Keys**
   `Ctrl+K` dictionary / `Ctrl+F` search / `F1` guide / `Ctrl+W` close / on a row `Enter` start (Other ideas: make it the Next Step), `F2` edit, `Delete` remove (Today's Three: remove from today) / while a menu is open `T` add to Today's Three / `Ctrl+Z` undo / `Menu` or `Shift+F10` menu. Configure the show/hide, mini, and instructions keys in Settings.

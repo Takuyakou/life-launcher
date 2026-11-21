@@ -350,6 +350,22 @@ export type InstructionWriteResult = {
   size: number;
 };
 
+/** V160-B1: what the Rust side sees in a ZIP's central directory. */
+export type InstructionBookOpenResult = {
+  pageCount: number;
+  truncated: boolean;
+  skippedCount: number;
+};
+
+/** V160-B1: the remembered state of one book (stored in instruction-books.json). */
+export type InstructionBookState = {
+  direction: "rtl" | "ltr";
+  spread: boolean;
+  coverSingle: boolean;
+  lastPage: number;
+  updatedAt?: string;
+};
+
 export type InstructionPathChange = {
   oldPath: string;
   newPath: string;

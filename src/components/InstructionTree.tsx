@@ -1,7 +1,10 @@
 import type { CSSProperties, KeyboardEvent } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { springCollapse, staggerMax, staggerStep } from "../motion";
 import { INSTRUCTION_RELOAD_TREE_EVENT } from "../instructionWindow";
+import { isInstructionBookName } from "../instructionBook";
 import {
   createInstructionFile,
   createInstructionFolder,
@@ -148,13 +151,17 @@ function fileStem(name: string): string {
 }
 
 function instructionFileIcon(name: string): UiIconName {
+  if (isInstructionBookName(name)) return "fileImages";
   if (isMhtmlInstruction(name)) return "fileWeb";
   if (isHtmlLikeInstruction(name)) return "fileCode";
   if (name.toLocaleLowerCase().endsWith(".txt")) return "fileText";
   return "book";
 }
 
-function instructionFileTone(name: string): "html" | "mhtml" | "markdown" | "text" {
+function instructionFileTone(
+  name: string,
+): "html" | "mhtml" | "markdown" | "text" | "images" {
+  if (isInstructionBookName(name)) return "images";
   if (isMhtmlInstruction(name)) return "mhtml";
   if (isHtmlLikeInstruction(name)) return "html";
   if (name.toLocaleLowerCase().endsWith(".txt")) return "text";
@@ -1115,6 +1122,218 @@ export function InstructionTree({
     projectLinkDialog?.projects.find((project) => project.id === projectLinkDialog.projectId) ??
     null;
 
+  const reducedMotion = useReducedMotion() ?? false;
+
+  const renderTreeRow = (node: VisibleTreeNode) => {
+      const key = pathKey(node.path);
+      const expandable = node.kind !== "file" && node.available;
+      const isExpanded = Boolean(expanded[key]);
+      const isSelected = node.kind === "file" && pathKey(selectedPath ?? "") === key;
+      const isLoading = loadingPaths.has(key);
+      return (
+        <div
+          aria-expanded={expandable ? isExpanded : undefined}
+          aria-level={node.level}
+          aria-selected={isSelected}
+          className={`instructionTreeRow${isSelected ? " instructionTreeRow--selected" : ""}${!node.available ? " instructionTreeRow--unavailable" : ""}${draggedPath && pathKey(draggedPath) === key ? " instructionTreeRow--dragging" : ""}${dropPath && pathKey(dropPath) === key && pathKey(draggedPath ?? "") !== key ? " instructionTreeRow--dropTarget" : ""}`}
+          draggable={node.available}
+          key={node.path}
+          onClick={() => {
+            if (suppressTreeClickRef.current) return;
+            setActivePath(node.path);
+            if (node.kind === "file") onSelectFile(node.path);
+            else if (expandable) void setFolderExpanded(node.path, !isExpanded);
+          }}
+          onDragEnd={() => {
+            setDraggedPath(null);
+            setDropPath(null);
+            window.setTimeout(() => {
+              suppressTreeClickRef.current = false;
+            }, 0);
+          }}
+          onDragOver={(event) => {
+            if (!draggedPath) return;
+            const source = visibleNodes.find(
+              (entry) => pathKey(entry.path) === pathKey(draggedPath),
+            );
+            if (
+              !source ||
+              pathKey(source.parentPath ?? "") !== pathKey(node.parentPath ?? "")
+            ) {
+              return;
+            }
+            event.preventDefault();
+            event.dataTransfer.dropEffect = "move";
+            setDropPath(node.path);
+          }}
+          onDragStart={(event) => {
+            event.dataTransfer.effectAllowed = "move";
+            event.dataTransfer.setData("text/plain", node.path);
+            suppressTreeClickRef.current = true;
+            setDraggedPath(node.path);
+            setDropPath(node.path);
+          }}
+          onDrop={(event) => {
+            event.preventDefault();
+            if (draggedPath) moveInstructionNode(draggedPath, node.path);
+            setDraggedPath(null);
+            setDropPath(null);
+          }}
+          onContextMenu={(event) => {
+            event.preventDefault();
+            openContextMenu(node, event.clientX, event.clientY);
+          }}
+          onKeyDown={(event) => void handleTreeKeyDown(event, node)}
+          ref={(element) => {
+            if (element) rowRefs.current.set(key, element);
+            else rowRefs.current.delete(key);
+          }}
+          role="treeitem"
+          style={
+            {
+              "--instruction-tree-level": Math.min(node.level, 8),
+            } as CSSProperties
+          }
+          tabIndex={activePath && pathKey(activePath) === key ? 0 : -1}
+          title={node.error ?? node.path}
+        >
+          {expandable ? (
+            <button
+              aria-label={
+                isExpanded ? `${node.name}を折りたたむ` : `${node.name}を展開する`
+              }
+              className="instructionTreeDisclosure"
+              onClick={(event) => {
+                event.stopPropagation();
+                void setFolderExpanded(node.path, !isExpanded);
+              }}
+              tabIndex={-1}
+              type="button"
+            >
+              {isLoading ? (
+                <span aria-hidden="true">·</span>
+              ) : (
+                <UiIcon name={isExpanded ? "chevronDown" : "chevronRight"} size={16} />
+              )}
+            </button>
+          ) : (
+            <span className="instructionTreeDisclosure" aria-hidden="true" />
+          )}
+          <span
+            className={`instructionTreeKind${
+              node.kind === "file"
+                ? ` instructionFileIcon instructionFileIcon--${instructionFileTone(node.name)}`
+                : ""
+            }`}
+            aria-hidden="true"
+          >
+            <UiIcon
+              name={node.kind === "file" ? instructionFileIcon(node.name) : "folder"}
+              size={16}
+            />
+          </span>
+          <span className="instructionTreeName">{node.name}</span>
+          {!node.available ? <span className="instructionTreeUnavailable">!</span> : null}
+          {node.available ? (
+            <button
+              aria-label={`${node.name}のメニューを開く`}
+              className="instructionTreeMore"
+              onClick={(event) => {
+                event.stopPropagation();
+                const bounds = event.currentTarget.getBoundingClientRect();
+                openContextMenu(node, bounds.right, bounds.bottom + 3);
+              }}
+              tabIndex={-1}
+              type="button"
+            >
+              <span aria-hidden="true">…</span>
+            </button>
+          ) : null}
+        </div>
+      );
+  };
+
+  const makeTreeNode = (
+    entry: InstructionEntry,
+    level: number,
+    parent: string,
+  ): VisibleTreeNode => ({
+    path: entry.path,
+    name: entry.name,
+    kind: entry.kind,
+    level,
+    parentPath: parent,
+    available: true,
+  });
+
+  // Each folder's children sit in one box that opens and closes like the main sidebar's groups.
+  const renderTreeChildren = (node: VisibleTreeNode) => {
+    const key = pathKey(node.path);
+    const entries = childrenByPath[key];
+    const open =
+      node.available && Boolean(expanded[key]) && (node.kind === "root" || node.kind === "folder");
+    const rows = entries
+      ? orderEntries(entries, instructionOrder[key] ?? []).map((entry) =>
+          makeTreeNode(entry, node.level + 1, node.path),
+        )
+      : [];
+    return (
+      <AnimatePresence initial={false}>
+        {open && entries ? (
+          <motion.div
+            animate={{ height: "auto", opacity: 1, transitionEnd: { overflow: "visible" } }}
+            className="instructionTreeGroup"
+            exit={reducedMotion ? { height: 0, opacity: 0 } : { height: 0, opacity: 0, overflow: "hidden" }}
+            initial={
+              reducedMotion ? false : { height: 0, opacity: 0, overflow: "hidden" }
+            }
+            key="items"
+            role="group"
+            transition={reducedMotion ? { duration: 0 } : springCollapse}
+          >
+            {rows.map((row, index) => (
+              <motion.div
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                initial={reducedMotion ? false : { opacity: 0, y: -4 }}
+                key={row.path}
+                transition={
+                  reducedMotion
+                    ? { duration: 0 }
+                    : { delay: Math.min(index * staggerStep, staggerMax), duration: 0.12 }
+                }
+              >
+                {renderTreeRow(row)}
+                {row.kind === "folder" ? renderTreeChildren(row) : null}
+              </motion.div>
+            ))}
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    );
+  };
+
+  const renderTreeLevel = () => {
+    const orderedRoots = orderEntries(roots, instructionOrder[ROOT_ORDER_KEY] ?? []);
+    return orderedRoots.map((root) => {
+      const node: VisibleTreeNode = {
+        path: root.path,
+        name: root.name,
+        kind: "root",
+        level: 1,
+        parentPath: null,
+        available: root.available,
+        error: root.error,
+      };
+      return (
+        <div key={root.path}>
+          {renderTreeRow(node)}
+          {renderTreeChildren(node)}
+        </div>
+      );
+    });
+  };
+
   return (
     <div className="instructionTreePanel">
       <div className="instructionTreeTools">
@@ -1228,140 +1447,11 @@ export function InstructionTree({
         ) : roots.length === 0 ? (
           <div className="instructionTreeMessage">
             <strong>手順書フォルダが未登録です</strong>
-            <span>Markdown・Text・HTML・MHTMLをまとめたフォルダを読み込めます。</span>
+            <span>Markdown・Text・HTML・MHTML・画像のZIPをまとめたフォルダを読み込めます。</span>
           </div>
         ) : (
           <div aria-label="手順書フォルダ" role="tree">
-            {visibleNodes.map((node) => {
-              const key = pathKey(node.path);
-              const expandable = node.kind !== "file" && node.available;
-              const isExpanded = Boolean(expanded[key]);
-              const isSelected = node.kind === "file" && pathKey(selectedPath ?? "") === key;
-              const isLoading = loadingPaths.has(key);
-              return (
-                <div
-                  aria-expanded={expandable ? isExpanded : undefined}
-                  aria-level={node.level}
-                  aria-selected={isSelected}
-                  className={`instructionTreeRow${isSelected ? " instructionTreeRow--selected" : ""}${!node.available ? " instructionTreeRow--unavailable" : ""}${draggedPath && pathKey(draggedPath) === key ? " instructionTreeRow--dragging" : ""}${dropPath && pathKey(dropPath) === key && pathKey(draggedPath ?? "") !== key ? " instructionTreeRow--dropTarget" : ""}`}
-                  draggable={node.available}
-                  key={node.path}
-                  onClick={() => {
-                    if (suppressTreeClickRef.current) return;
-                    setActivePath(node.path);
-                    if (node.kind === "file") onSelectFile(node.path);
-                  }}
-                  onDragEnd={() => {
-                    setDraggedPath(null);
-                    setDropPath(null);
-                    window.setTimeout(() => {
-                      suppressTreeClickRef.current = false;
-                    }, 0);
-                  }}
-                  onDragOver={(event) => {
-                    if (!draggedPath) return;
-                    const source = visibleNodes.find(
-                      (entry) => pathKey(entry.path) === pathKey(draggedPath),
-                    );
-                    if (
-                      !source ||
-                      pathKey(source.parentPath ?? "") !== pathKey(node.parentPath ?? "")
-                    ) {
-                      return;
-                    }
-                    event.preventDefault();
-                    event.dataTransfer.dropEffect = "move";
-                    setDropPath(node.path);
-                  }}
-                  onDragStart={(event) => {
-                    event.dataTransfer.effectAllowed = "move";
-                    event.dataTransfer.setData("text/plain", node.path);
-                    suppressTreeClickRef.current = true;
-                    setDraggedPath(node.path);
-                    setDropPath(node.path);
-                  }}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    if (draggedPath) moveInstructionNode(draggedPath, node.path);
-                    setDraggedPath(null);
-                    setDropPath(null);
-                  }}
-                  onDoubleClick={() => {
-                    if (expandable) void setFolderExpanded(node.path, !isExpanded);
-                  }}
-                  onContextMenu={(event) => {
-                    event.preventDefault();
-                    openContextMenu(node, event.clientX, event.clientY);
-                  }}
-                  onKeyDown={(event) => void handleTreeKeyDown(event, node)}
-                  ref={(element) => {
-                    if (element) rowRefs.current.set(key, element);
-                    else rowRefs.current.delete(key);
-                  }}
-                  role="treeitem"
-                  style={
-                    {
-                      "--instruction-tree-level": Math.min(node.level, 8),
-                    } as CSSProperties
-                  }
-                  tabIndex={activePath && pathKey(activePath) === key ? 0 : -1}
-                  title={node.error ?? node.path}
-                >
-                  {expandable ? (
-                    <button
-                      aria-label={
-                        isExpanded ? `${node.name}を折りたたむ` : `${node.name}を展開する`
-                      }
-                      className="instructionTreeDisclosure"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        void setFolderExpanded(node.path, !isExpanded);
-                      }}
-                      tabIndex={-1}
-                      type="button"
-                    >
-                      {isLoading ? (
-                        <span aria-hidden="true">·</span>
-                      ) : (
-                        <UiIcon name={isExpanded ? "chevronDown" : "chevronRight"} size={16} />
-                      )}
-                    </button>
-                  ) : (
-                    <span className="instructionTreeDisclosure" aria-hidden="true" />
-                  )}
-                  <span
-                    className={`instructionTreeKind${
-                      node.kind === "file"
-                        ? ` instructionFileIcon instructionFileIcon--${instructionFileTone(node.name)}`
-                        : ""
-                    }`}
-                    aria-hidden="true"
-                  >
-                    <UiIcon
-                      name={node.kind === "file" ? instructionFileIcon(node.name) : "folder"}
-                      size={16}
-                    />
-                  </span>
-                  <span className="instructionTreeName">{node.name}</span>
-                  {!node.available ? <span className="instructionTreeUnavailable">!</span> : null}
-                  {node.available ? (
-                    <button
-                      aria-label={`${node.name}のメニューを開く`}
-                      className="instructionTreeMore"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        const bounds = event.currentTarget.getBoundingClientRect();
-                        openContextMenu(node, bounds.right, bounds.bottom + 3);
-                      }}
-                      tabIndex={-1}
-                      type="button"
-                    >
-                      <span aria-hidden="true">…</span>
-                    </button>
-                  ) : null}
-                </div>
-              );
-            })}
+            {renderTreeLevel()}
             {treeError ? (
               <div className="instructionTreeInlineError" role="status">
                 {treeError}
