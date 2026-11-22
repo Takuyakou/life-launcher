@@ -12308,8 +12308,11 @@ function DashboardApp() {
                   className="todayPickerProgress"
                   role="progressbar"
                 >
-                  <span
-                    style={{ transform: `scaleX(${todayPickerDraftItems.length / TODAY_ITEM_LIMIT})` }}
+                  {/* V163-M3: the fill springs to the new count (scaleX, as before, so it rests the same). */}
+                  <motion.span
+                    animate={{ scaleX: todayPickerDraftItems.length / TODAY_ITEM_LIMIT }}
+                    initial={false}
+                    transition={springSnappy}
                   />
                 </div>
                 <div className="todayPickerSlots">

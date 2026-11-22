@@ -214,3 +214,57 @@ test("V163-M2 the book spread and direction faces slide only while they move", a
   expect((await movingFaces(page, ".bookSegFace")).every((face) => !face.moving)).toBe(true);
   await expect(page.getByRole("button", { name: "左から右", exact: true })).toHaveAttribute("aria-pressed", "true");
 });
+
+// ---- V163-M3: the Today3 picker progress fill springs to the new count.
+// The scaleX move is run by the browser (Web Animations) on real time, so this test does not
+// replace the page clock: it records the fill on every frame inside one evaluate.
+
+async function openMainRealTime(page: Page, reducedMotion: "reduce" | "no-preference") {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.emulateMedia({ reducedMotion });
+  const fixture = createPublicFixture();
+  fixture.config.today.items = [];
+  await installTauriMock(page, fixture, "main");
+  await page.goto("/");
+  await waitForBundledFonts(page);
+  await expect(page.locator(".doNowBand")).toBeVisible();
+}
+
+for (const reducedMotion of ["no-preference", "reduce"] as const) {
+  test(`V163-M3 the picker progress fill moves to the new count (${reducedMotion})`, async ({ page }) => {
+    await openMainRealTime(page, reducedMotion);
+    await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
+    const dialog = page.getByRole("dialog", { name: "今日やるものを選ぶ" });
+    const progress = dialog.locator(".todayPickerProgress");
+    await expect(progress).toHaveAttribute("aria-valuenow", "0");
+    await expect(progress.locator("> span")).toHaveCount(1);
+
+    expect(
+      await progress.locator("> span").evaluate((span) => getComputedStyle(span).transform),
+    ).toBe("matrix(0, 0, 0, 1, 0, 0)");
+    await dialog.getByRole("button", { name: "今日へ" }).first().click();
+    const samples = await page.evaluate(async () => {
+      const span = document.querySelector<HTMLElement>(".todayPickerProgress > span")!;
+      const scale = () => {
+        const transform = getComputedStyle(span).transform;
+        return transform === "none" ? 1 : new DOMMatrixReadOnly(transform).a;
+      };
+      const values = [scale()];
+      const started = performance.now();
+      while (performance.now() - started < 700) {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        values.push(scale());
+      }
+      return values;
+    });
+    await expect(progress).toHaveAttribute("aria-valuenow", "1");
+    expect(samples.at(-1)!).toBeCloseTo(1 / 3, 3);
+    const between = samples.filter((value) => value > 0.01 && value < 1 / 3 - 0.01);
+    if (reducedMotion === "reduce") {
+      expect(between).toEqual([]);
+    } else {
+      // Frames in between: the fill grows instead of jumping.
+      expect(between.length).toBeGreaterThan(0);
+    }
+  });
+}
