@@ -102,11 +102,14 @@ import {
 import { ConfirmDialog, type ConfirmDialogRequest } from "./components/ConfirmDialog";
 import { GroupNameDialog } from "./components/GroupNameDialog";
 import { ImportDialog } from "./components/ImportDialog";
+import { InboxAddDialog } from "./components/InboxAddDialog";
 import { OverlayPageDialog } from "./components/OverlayPageDialog";
+import { ManualSessionDialog, SessionEditDialog } from "./components/SessionDialogs";
 import {
   SoftwareResetChoiceDialog,
   SoftwareResetProgressDialog,
 } from "./components/SoftwareResetDialogs";
+import { TimerCompletionDialog } from "./components/TimerCompletionDialog";
 import { TodayActivitySection } from "./components/TodayActivitySection";
 import { ToastStack } from "./components/ToastStack";
 import { useToasts } from "./hooks/useToasts";
@@ -12988,253 +12991,25 @@ function DashboardApp() {
       )}
 
       {manualSessionDraft && (
-        <div className="modalBackdrop" role="presentation">
-          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
-          <section
-            aria-label="実行記録を追加"
-            aria-modal="true"
-            className="dropDialog modalLongForm"
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div>
-              <p className="eyebrow">Session</p>
-              <h2>実行記録を追加</h2>
-            </div>
-
-            <label className="fieldStack">
-              <span>プロジェクト</span>
-              <select
-                className="textInput"
-                onChange={(event) =>
-                  setManualSessionDraft({
-                    ...manualSessionDraft,
-                    projectId: event.target.value || null,
-                  })
-                }
-                value={manualSessionDraft.projectId ?? ""}
-              >
-                <option value="">未分類</option>
-                {config.projects.map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {manualSessionDraft.projectId && projectsById.has(manualSessionDraft.projectId) && (
-              <div
-                className="sessionProjectIdentity"
-                data-project-color={resolveProjectColorId(
-                  manualSessionDraft.projectId,
-                  projectsById.get(manualSessionDraft.projectId)?.colorId,
-                )}
-              >
-                <ProjectIdentity
-                  colorId={projectsById.get(manualSessionDraft.projectId)?.colorId}
-                  name={projectsById.get(manualSessionDraft.projectId)?.name ?? ""}
-                  projectId={manualSessionDraft.projectId}
-                />
-              </div>
-            )}
-
-            <div className="editGrid">
-              <label className="fieldStack">
-                <span>日付</span>
-                <input
-                  className="textInput"
-                  onChange={(event) =>
-                    setManualSessionDraft({ ...manualSessionDraft, date: event.target.value })
-                  }
-                  type="date"
-                  value={manualSessionDraft.date}
-                />
-              </label>
-              <label className="fieldStack">
-                <span>開始時刻</span>
-                <input
-                  className="textInput"
-                  onChange={(event) =>
-                    setManualSessionDraft({
-                      ...manualSessionDraft,
-                      startedAt: event.target.value,
-                    })
-                  }
-                  step={60}
-                  type="time"
-                  value={manualSessionDraft.startedAt}
-                />
-              </label>
-              <label className="fieldStack">
-                <span>分数</span>
-                <input
-                  className="textInput"
-                  min={1}
-                  onChange={(event) =>
-                    setManualSessionDraft({ ...manualSessionDraft, minutes: event.target.value })
-                  }
-                  type="number"
-                  value={manualSessionDraft.minutes}
-                />
-              </label>
-            </div>
-
-            <label className="fieldStack">
-              <span>実行内容</span>
-              <input
-                className="textInput"
-                onChange={(event) =>
-                  setManualSessionDraft({ ...manualSessionDraft, note: event.target.value })
-                }
-                value={manualSessionDraft.note}
-              />
-            </label>
-
-            <div className="dialogActions formDialogActions">
-              <button className="primaryButton" onClick={saveManualSession} type="button">
-                追加
-              </button>
-              <button
-                className="secondaryButton dialogCancelButton"
-                onClick={() => setManualSessionDraft(null)}
-                type="button"
-              >
-                キャンセル
-              </button>
-            </div>
-          </section>
-        </div>
+        <ManualSessionDialog
+          draft={manualSessionDraft}
+          onCancel={() => setManualSessionDraft(null)}
+          onDraftChange={setManualSessionDraft}
+          onSave={saveManualSession}
+          projects={config.projects}
+          projectsById={projectsById}
+        />
       )}
 
       {sessionEditDraft && (
-        <div className="modalBackdrop" role="presentation">
-          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
-          <section
-            aria-label="実行記録を編集"
-            aria-modal="true"
-            className="dropDialog editDialog"
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div>
-              <p className="eyebrow">Session</p>
-              <h2>実行記録を編集</h2>
-            </div>
-
-            <label className="fieldStack">
-              <span>プロジェクト</span>
-              <select
-                className="textInput"
-                onChange={(event) => {
-                  const project = config.projects.find((item) => item.id === event.target.value);
-                  setSessionEditDraft({
-                    ...sessionEditDraft,
-                    projectId: project?.id ?? null,
-                    label: project?.name ?? sessionEditDraft.label,
-                  });
-                }}
-                value={sessionEditDraft.projectId ?? ""}
-              >
-                <option value="">未分類</option>
-                {config.projects.map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {sessionEditDraft.projectId && projectsById.has(sessionEditDraft.projectId) && (
-              <div
-                className="sessionProjectIdentity"
-                data-project-color={resolveProjectColorId(
-                  sessionEditDraft.projectId,
-                  projectsById.get(sessionEditDraft.projectId)?.colorId,
-                )}
-              >
-                <ProjectIdentity
-                  colorId={projectsById.get(sessionEditDraft.projectId)?.colorId}
-                  name={
-                    projectsById.get(sessionEditDraft.projectId)?.name ?? sessionEditDraft.label
-                  }
-                  projectId={sessionEditDraft.projectId}
-                />
-              </div>
-            )}
-
-            <label className="fieldStack">
-              <span>ラベル</span>
-              <input
-                className="textInput"
-                maxLength={80}
-                onChange={(event) =>
-                  setSessionEditDraft({ ...sessionEditDraft, label: event.target.value })
-                }
-                value={sessionEditDraft.label}
-              />
-            </label>
-
-            <div className="editGrid">
-              <label className="fieldStack">
-                <span>日付</span>
-                <input
-                  className="textInput"
-                  onChange={(event) =>
-                    setSessionEditDraft({ ...sessionEditDraft, date: event.target.value })
-                  }
-                  type="date"
-                  value={sessionEditDraft.date}
-                />
-              </label>
-              <label className="fieldStack">
-                <span>開始</span>
-                <input
-                  className="textInput"
-                  maxLength={16}
-                  onChange={(event) =>
-                    setSessionEditDraft({ ...sessionEditDraft, startedAt: event.target.value })
-                  }
-                  value={sessionEditDraft.startedAt}
-                />
-              </label>
-              <label className="fieldStack">
-                <span>分数</span>
-                <input
-                  className="textInput"
-                  min={1}
-                  onChange={(event) =>
-                    setSessionEditDraft({ ...sessionEditDraft, minutes: event.target.value })
-                  }
-                  type="number"
-                  value={sessionEditDraft.minutes}
-                />
-              </label>
-            </div>
-
-            <label className="fieldStack">
-              <span>実行内容</span>
-              <input
-                className="textInput"
-                onChange={(event) =>
-                  setSessionEditDraft({ ...sessionEditDraft, note: event.target.value })
-                }
-                value={sessionEditDraft.note}
-              />
-            </label>
-
-            <div className="dialogActions formDialogActions">
-              <button className="primaryButton" onClick={saveSessionEdit} type="button">
-                保存
-              </button>
-              <button
-                className="secondaryButton dialogCancelButton"
-                onClick={() => setSessionEditDraft(null)}
-                type="button"
-              >
-                キャンセル
-              </button>
-            </div>
-          </section>
-        </div>
+        <SessionEditDialog
+          draft={sessionEditDraft}
+          onCancel={() => setSessionEditDraft(null)}
+          onDraftChange={setSessionEditDraft}
+          onSave={saveSessionEdit}
+          projects={config.projects}
+          projectsById={projectsById}
+        />
       )}
 
       {buttonEditDraft && (
@@ -13541,108 +13316,20 @@ function DashboardApp() {
       )}
 
       {inboxAddOpen && (
-        <div className="modalBackdrop" role="presentation">
-          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
-          <section
-            aria-label="やりたいことを追加"
-            aria-modal="true"
-            className="dropDialog wishlistAddDialog"
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div className="wishlistAddHeader modalTitleRow">
-              <div>
-                <p className="eyebrow">Wishlist</p>
-                <h2>やりたいことを追加</h2>
-                <p>あとでやりたいことを、ひとまず残しておきます。</p>
-              </div>
-              <button
-                aria-label="やりたいことを追加を閉じる"
-                className="iconButton"
-                disabled={inboxAddSaving}
-                onClick={() => closeInboxAddDialog()}
-                title="閉じる"
-                type="button"
-              >
-                <UiIcon name="close" size={16} />
-              </button>
-            </div>
-
-            <form
-              className="wishlistAddForm"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void addInboxItem();
-              }}
-            >
-              <label className="fieldStack">
-                <span>やりたいこと</span>
-                <input
-                  aria-describedby={
-                    inboxAddError ? "wishlist-add-hint wishlist-add-error" : "wishlist-add-hint"
-                  }
-                  aria-invalid={Boolean(inboxAddError)}
-                  autoFocus
-                  className="textInput"
-                  maxLength={120}
-                  onChange={(event) => {
-                    setInboxDraft(event.target.value);
-                    if (inboxAddError) setInboxAddError(null);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" && event.nativeEvent.isComposing) {
-                      event.preventDefault();
-                    }
-                  }}
-                  placeholder="気になっていた本を読む"
-                  value={inboxDraft}
-                />
-                <small className="fieldHint" id="wishlist-add-hint">
-                  120文字まで
-                </small>
-                {inboxAddError && (
-                  <small className="fieldError" id="wishlist-add-error" role="alert">
-                    {inboxAddError}
-                  </small>
-                )}
-              </label>
-
-              <label className="fieldStack">
-                <span>プロジェクト（任意）</span>
-                <select
-                  className="textInput"
-                  onChange={(event) => setInboxAddProjectId(event.target.value)}
-                  value={inboxAddProjectId}
-                >
-                  <option value="">プロジェクトなし</option>
-                  {config.projects.map((project) => (
-                    <option key={project.id} value={project.id}>
-                      {project.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <div className="dialogActions formDialogActions">
-                <button
-                  className="primaryButton"
-                  disabled={inboxAddSaving || !inboxDraft.trim()}
-                  type="submit"
-                >
-                  {inboxAddSaving ? "保存中…" : "保存"}
-                </button>
-                <button
-                  className="secondaryButton dialogCancelButton"
-                  disabled={inboxAddSaving}
-                  onClick={() => closeInboxAddDialog()}
-                  type="button"
-                >
-                  キャンセル
-                </button>
-              </div>
-            </form>
-          </section>
-        </div>
+        <InboxAddDialog
+          draft={inboxDraft}
+          error={inboxAddError}
+          onClose={() => closeInboxAddDialog()}
+          onDraftChange={(value) => {
+            setInboxDraft(value);
+            if (inboxAddError) setInboxAddError(null);
+          }}
+          onProjectIdChange={setInboxAddProjectId}
+          onSubmit={() => void addInboxItem()}
+          projectId={inboxAddProjectId}
+          projects={config.projects}
+          saving={inboxAddSaving}
+        />
       )}
 
       {completionFollowup?.source.kind === "nextStep" &&
@@ -14798,89 +14485,16 @@ function DashboardApp() {
       )}
 
       {completionPrompt && (
-        <div className="modalBackdrop" role="presentation">
-          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
-          <section
-            aria-label="タイマー満了"
-            aria-modal="true"
-            className="dropDialog timerCompleteDialog"
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div className="timerCompleteHeader">
-              <span aria-hidden="true" className="timerCompleteMark">
-                <UiIcon name="clock" size={20} />
-              </span>
-              <div>
-                <p className="eyebrow">Timer</p>
-                <h2 className="timerCompleteText">予定時間になりました</h2>
-              </div>
-            </div>
-
-            <div className="timerCompleteSubject">
-              {completionProject && (
-                <ProjectIdentity
-                  colorId={completionProject.colorId}
-                  compact
-                  name={completionProject.name}
-                  projectId={completionProject.id}
-                />
-              )}
-              <span className="timerCompleteMinutes">予定 {completionPrompt.targetMinutes}分</span>
-              <strong className="timerCompleteHeading">{timerActionText(completionPrompt)}</strong>
-            </div>
-
-            {completionCanEditResume && (
-              <>
-                <label className="fieldStack timerResumeField">
-                  <span>次はここから(任意)</span>
-                  <input
-                    aria-label="次はここから(任意)"
-                    className="textInput"
-                    disabled={completionResumeSaving}
-                    maxLength={80}
-                    onChange={(event) => setTimerResumeDraft(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (
-                        event.key === "Enter" &&
-                        !event.nativeEvent.isComposing &&
-                        event.keyCode !== 229
-                      ) {
-                        event.preventDefault();
-                        void submitCompletedTimer();
-                      }
-                    }}
-                    placeholder="例: 3章の途中から"
-                    value={timerResumeDraft}
-                  />
-                </label>
-                <p className="timerResumeHint">
-                  書くと、次に「今やる一手」に出たときに、行動の下に出ます。
-                </p>
-              </>
-            )}
-
-            <div className="dialogActions">
-              <button
-                className="secondaryButton"
-                data-initial-focus=""
-                disabled={completionResumeSaving}
-                onClick={continueCompletedTimer}
-                type="button"
-              >
-                続ける(+15分)
-              </button>
-              <button
-                className="secondaryButton secondaryButton--finish"
-                disabled={completionResumeSaving}
-                onClick={() => void submitCompletedTimer()}
-                type="button"
-              >
-                終わる
-              </button>
-            </div>
-          </section>
-        </div>
+        <TimerCompletionDialog
+          canEditResume={completionCanEditResume}
+          onContinue={continueCompletedTimer}
+          onFinish={() => void submitCompletedTimer()}
+          onResumeDraftChange={setTimerResumeDraft}
+          project={completionProject}
+          prompt={completionPrompt}
+          resumeDraft={timerResumeDraft}
+          saving={completionResumeSaving}
+        />
       )}
 
       {dropDraft && (
