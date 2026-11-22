@@ -46,6 +46,9 @@ test("P82-03 Measure ticks, pauses, resumes, records and emits elapsed mini stat
   await prepare(page);
   const measure = page.locator(".doNowMeasureButton");
   await expect(measure).toHaveAttribute("title", "時間を決めずに計測");
+  // The clock only moves when the test moves it: a live clock under load can pass 01:05 between polls.
+  const pausedAt = await page.evaluate(() => Date.now() + 1_000);
+  await page.clock.pauseAt(pausedAt);
   await measure.click();
   const dock = page.locator(".timerDock");
   await expect(dock.locator(".timerClock")).toHaveText("00:00");
