@@ -69,9 +69,11 @@ export async function installTauriMock(
         return dot >= 0 ? value.slice(dot + 1).toLocaleLowerCase() : "";
       };
       let doNowCandidates = fixture.doNowCandidates;
+      // V163-C8: the saved config lives in localStorage so that a second page of the same test
+      // (the main window and the Dictionary window) sees one save, like the real config file.
       let currentConfig = (() => {
         try {
-          const stored = window.sessionStorage.getItem(configStorageKey);
+          const stored = window.localStorage.getItem(configStorageKey);
           return stored ? (JSON.parse(stored) as typeof fixture.config) : fixture.config;
         } catch {
           return fixture.config;
@@ -85,7 +87,7 @@ export async function installTauriMock(
           }
         : { testProfile: false, profilePath: null, webviewDataDir: null };
       const persistCurrentConfig = () => {
-        window.sessionStorage.setItem(configStorageKey, JSON.stringify(currentConfig));
+        window.localStorage.setItem(configStorageKey, JSON.stringify(currentConfig));
       };
       const bookStateStorageKey = "life-launcher-visual-qa-book-state";
       const readBookStates = (): Record<string, Record<string, unknown>> => {
@@ -358,6 +360,11 @@ export async function installTauriMock(
           persistCurrentConfig();
           dispatchEvent("config-changed");
         },
+        /** V163-C8: change the stored config without telling this window (another window saved). */
+        setConfigSilently: (nextConfig: typeof currentConfig) => {
+          currentConfig = nextConfig;
+          persistCurrentConfig();
+        },
         setDoNowCandidates: (candidates: typeof fixture.doNowCandidates) => {
           doNowCandidates = candidates;
         },
@@ -406,6 +413,18 @@ export async function installTauriMock(
               case "test_profile_info":
           return testProfileInfo;
         case "load_config":
+                {
+                  // V163-C8: read the shared store again, like the real app reads the file, so a
+                  // second window (the Dictionary) sees what the other window saved.
+                  const stored = window.localStorage.getItem(configStorageKey);
+                  if (stored) {
+                    try {
+                      currentConfig = JSON.parse(stored);
+                    } catch {
+                      // Keep the value this window already has.
+                    }
+                  }
+                }
                 if (options.rolloverOnLoadConfig) {
                   const date = new Date();
                   if (date.getHours() < currentConfig.settings.dayStartHour) {

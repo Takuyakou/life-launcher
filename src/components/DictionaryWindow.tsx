@@ -380,6 +380,17 @@ export function DictionaryWindow() {
     void setDictionaryMainLocked(next);
   }, []);
 
+  // V163-C8: read the config again (the main window may have saved it).
+  const refreshConfig = useCallback(async () => {
+    try {
+      const response = await loadConfig();
+      setConfig(response.config);
+      setConfigError(response.error ?? null);
+    } catch (error) {
+      setConfigError(error instanceof Error ? error.message : String(error));
+    }
+  }, []);
+
   useEffect(() => {
     if (!dictionaryWindow) return;
 
@@ -438,20 +449,7 @@ export function DictionaryWindow() {
   }, [dictionaryWindow, hideWindow]);
 
   useEffect(() => {
-    let disposed = false;
     let reloadTimer: number | null = null;
-
-    const refreshConfig = async () => {
-      try {
-        const response = await loadConfig();
-        if (disposed) return;
-        setConfig(response.config);
-        setConfigError(response.error ?? null);
-      } catch (error) {
-        if (disposed) return;
-        setConfigError(error instanceof Error ? error.message : String(error));
-      }
-    };
 
     void refreshConfig();
     const unlistenPromise = listenForConfigChanges(() => {
@@ -460,11 +458,10 @@ export function DictionaryWindow() {
     });
 
     return () => {
-      disposed = true;
       if (reloadTimer !== null) window.clearTimeout(reloadTimer);
       void unlistenPromise.then((unlisten) => unlisten()).catch(() => undefined);
     };
-  }, []);
+  }, [refreshConfig]);
 
   useEffect(() => {
     if (!config) return;
@@ -1249,6 +1246,8 @@ export function DictionaryWindow() {
       resetSearchAndFocus();
       // V163-C4: every time the dictionary comes forward, tell the main window the lock state.
       void setDictionaryMainLocked(focusLockedRef.current);
+      // V163-C8: and read the config again, in case the main window saved while hidden.
+      void refreshConfig();
     });
     return () => {
       disposed = true;
@@ -1261,7 +1260,7 @@ export function DictionaryWindow() {
         })
         .catch(() => undefined);
     };
-  }, [dictionaryWindow, resetSearchAndFocus]);
+  }, [dictionaryWindow, refreshConfig, resetSearchAndFocus]);
 
   useEffect(() => {
     if (searchQuery || selectedButtons.length === 0 || parity.blocking) return;

@@ -72,6 +72,7 @@ import {
   recordSession,
   resolveDropItem,
   restoreBackup,
+  notifyDictionaryConfigChanged,
   saveConfig,
   saveNotesForDate,
   setDisplayAwake,
@@ -1407,6 +1408,8 @@ function DashboardApp() {
         configRef.current = response.config;
         setConfig(response.config);
         setBanner(null);
+        // V163-C8: the Dictionary window keeps its own copy, so it is told about every save here.
+        void notifyDictionaryConfigChanged();
         // P10-05 (D11): a successful save can change which Next Steps are stale, so the
         // list is read again from the saved config.
         void loadNextStepFreshness()

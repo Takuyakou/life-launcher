@@ -120,6 +120,12 @@ export async function saveConfigAndNotifyDashboard(
   return response;
 }
 
+/** V163-C8: tell the Dictionary window that the main window saved the config. */
+export async function notifyDictionaryConfigChanged(): Promise<void> {
+  // Nothing to tell when the Dictionary window is not open.
+  await emitTo("dictionary", "config-changed").catch(() => undefined);
+}
+
 export async function executeActions(actions: LauncherAction[]): Promise<ActionResult[]> {
   return invoke<ActionResult[]>("execute_actions", { actions });
 }
