@@ -14,6 +14,8 @@ export const INSTRUCTION_RELOAD_TREE_EVENT = "instruction-reload-tree";
 export const INSTRUCTION_BOOK_STATE_CHANGED_EVENT = "instruction-book-state-changed";
 export const INSTRUCTION_ALWAYS_ON_TOP_KEY = "life-launcher-instruction-always-on-top";
 export const INSTRUCTION_LAST_OPENED_PATH_KEY = "life-launcher-instruction-last-opened-path";
+export const INSTRUCTION_SIDEBAR_COLLAPSED_KEY = "life-launcher-instruction-sidebar-collapsed";
+export const INSTRUCTION_SIDEBAR_WIDTH_KEY = "life-launcher-instruction-sidebar-width";
 
 const INITIAL_WIDTH = 960;
 const INITIAL_HEIGHT = 680;
@@ -57,6 +59,41 @@ export function readLastInstructionPath(): string | null {
 
 export function writeLastInstructionPath(path: string) {
   window.localStorage.setItem(INSTRUCTION_LAST_OPENED_PATH_KEY, path);
+}
+
+export function readInstructionSidebarCollapsed(): boolean {
+  try {
+    return window.localStorage.getItem(INSTRUCTION_SIDEBAR_COLLAPSED_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+export function writeInstructionSidebarCollapsed(collapsed: boolean) {
+  try {
+    window.localStorage.setItem(INSTRUCTION_SIDEBAR_COLLAPSED_KEY, String(collapsed));
+  } catch {
+    // Ignore storage quota or private mode restrictions.
+  }
+}
+
+export function readInstructionSidebarWidth(fallback: number): number {
+  try {
+    const raw = window.localStorage.getItem(INSTRUCTION_SIDEBAR_WIDTH_KEY);
+    if (!raw) return fallback;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+export function writeInstructionSidebarWidth(width: number) {
+  try {
+    window.localStorage.setItem(INSTRUCTION_SIDEBAR_WIDTH_KEY, String(Math.round(width)));
+  } catch {
+    // Ignore storage quota or private mode restrictions.
+  }
 }
 
 function monitorBounds(monitor: Monitor) {

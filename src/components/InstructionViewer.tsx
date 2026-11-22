@@ -12,7 +12,7 @@ import { WindowControls } from "./WindowControls";
 import { InstructionBook } from "./InstructionBook";
 import { isInstructionBookName } from "../instructionBook";
 import { installFocusModalityTracking } from "../focusModality";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   INSTRUCTION_ALWAYS_ON_TOP_KEY,
   INSTRUCTION_OPEN_EVENT,
@@ -20,8 +20,12 @@ import {
   cycleInstructionWindowSize,
   type InstructionOpenRequest,
   readInstructionAlwaysOnTop,
+  readInstructionSidebarCollapsed,
+  readInstructionSidebarWidth,
   writeLastInstructionPath,
   writeInstructionAlwaysOnTop,
+  writeInstructionSidebarCollapsed,
+  writeInstructionSidebarWidth,
 } from "../instructionWindow";
 import { renderSafeHtml, renderSafeMarkdown } from "../markdown";
 import { currentMhtmlLimits } from "../mhtml/limits";
@@ -54,7 +58,7 @@ type PendingTransition = {
 };
 
 const DEFAULT_SIDEBAR_WIDTH = 248;
-const MIN_SIDEBAR_WIDTH = 180;
+const MIN_SIDEBAR_WIDTH = 140;
 const MAX_SIDEBAR_WIDTH = 440;
 const MIN_CONTENT_WIDTH = 320;
 const DIVIDER_WIDTH = 7;
@@ -131,6 +135,9 @@ export function InstructionViewer() {
   const headerRef = useRef<HTMLElement>(null);
   const htmlFrameRef = useRef<HTMLIFrameElement>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
+  const sidebarCloseButtonRef = useRef<HTMLButtonElement>(null);
+  const sidebarOpenButtonRef = useRef<HTMLButtonElement>(null);
+  const pendingSidebarFocusRef = useRef<"open" | "close" | null>(null);
   const splitDragRef = useRef<{ pointerId: number; startX: number; startWidth: number } | null>(null);
   const dirtyRef = useRef(false);
   const allowCloseRef = useRef(false);
@@ -149,7 +156,10 @@ export function InstructionViewer() {
   const [pendingTransitionError, setPendingTransitionError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [closeShortcutDisabled, setCloseShortcutDisabled] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
+  const [sidebarWidth, setSidebarWidth] = useState(() =>
+    readInstructionSidebarWidth(DEFAULT_SIDEBAR_WIDTH),
+  );
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(readInstructionSidebarCollapsed);
   const [resizingSidebar, setResizingSidebar] = useState(false);
   // P96-03: 開いたとき・窓が前に出たときに、一覧の行へフォーカスを置く合図。
   const [treeFocusToken, setTreeFocusToken] = useState(0);
@@ -694,6 +704,29 @@ export function InstructionViewer() {
     }
   };
 
+  useEffect(() => {
+    writeInstructionSidebarWidth(sidebarWidth);
+  }, [sidebarWidth]);
+
+  useLayoutEffect(() => {
+    const target = pendingSidebarFocusRef.current;
+    if (!target) return;
+    pendingSidebarFocusRef.current = null;
+    if (target === "open" && sidebarCollapsed) {
+      sidebarOpenButtonRef.current?.focus();
+    } else if (target === "close" && !sidebarCollapsed) {
+      sidebarCloseButtonRef.current?.focus();
+    }
+  }, [sidebarCollapsed]);
+
+  const toggleSidebar = useCallback((collapsed: boolean, moveFocus = true) => {
+    if (moveFocus) {
+      pendingSidebarFocusRef.current = collapsed ? "open" : "close";
+    }
+    setSidebarCollapsed(collapsed);
+    writeInstructionSidebarCollapsed(collapsed);
+  }, []);
+
   // P96-03: 開いた直後と、窓が前に出たときに、どこにもフォーカスが無ければ一覧へ置く。
   // P97-02 A: 初めて開いたときは、一覧の読み込みと窓が前に出る順番の都合で
   // 置いたフォーカスが効かないことがあるため、少し遅らせてもう一度確かめる。
@@ -709,7 +742,11 @@ export function InstructionViewer() {
             document.querySelector<HTMLElement>('.instructionTreeRow[aria-selected="true"]') ??
             document.querySelector<HTMLElement>('.instructionTreeRow[tabindex="0"]') ??
             document.querySelector<HTMLElement>(".instructionTreeRow");
-          row?.focus();
+          if (row && !row.closest("[hidden]")) {
+            row.focus();
+          } else {
+            sidebarOpenButtonRef.current?.focus();
+          }
         }
       }, 180);
     };
@@ -725,6 +762,10 @@ export function InstructionViewer() {
 
   /** 一覧の、開いているファイルの行(なければ先頭の行)へフォーカスを戻す。 */
   const focusTreeRow = () => {
+    if (sidebarCollapsed) {
+      sidebarOpenButtonRef.current?.focus();
+      return;
+    }
     const row =
       document.querySelector<HTMLElement>('.instructionTreeRow[aria-selected="true"]') ??
       document.querySelector<HTMLElement>('.instructionTreeRow[tabindex="0"]') ??
@@ -833,7 +874,9 @@ export function InstructionViewer() {
   const cycleViewerSize = async () => {
     const documentScroll = contentRef.current?.scrollTop ?? 0;
     const editorScroll = editorRef.current?.scrollTop ?? 0;
-    setSidebarWidth(DEFAULT_SIDEBAR_WIDTH);
+    if (!sidebarCollapsed) {
+      setSidebarWidth(DEFAULT_SIDEBAR_WIDTH);
+    }
     try {
       if (instructionWindow) await cycleInstructionWindowSize(instructionWindow);
     } catch (error) {
@@ -926,9 +969,49 @@ export function InstructionViewer() {
         <WindowControls variant="instruction" closeShortcutDisabled={closeShortcutDisabled} />
       </header>
 
-      <div className="instructionWorkspace" ref={workspaceRef} style={workspaceStyle}>
-        <aside className="instructionSidebar" aria-label="手順書一覧">
-          <div className="instructionSidebarHeading">手順書</div>
+      <div
+        className={`instructionWorkspace${sidebarCollapsed ? " instructionWorkspace--collapsed" : ""}`}
+        ref={workspaceRef}
+        style={workspaceStyle}
+      >
+        {sidebarCollapsed ? (
+          <div className="instructionSidebarCollapsedBar">
+            <button
+              aria-controls="instruction-sidebar"
+              aria-expanded={false}
+              aria-label="手順書一覧を開く"
+              className="instructionSidebarToggle"
+              onClick={() => toggleSidebar(false)}
+              ref={sidebarOpenButtonRef}
+              title="手順書一覧を開く"
+              type="button"
+            >
+              <UiIcon name="chevronRight" size={16} />
+            </button>
+          </div>
+        ) : null}
+
+        <aside
+          aria-label="手順書一覧"
+          className="instructionSidebar"
+          hidden={sidebarCollapsed}
+          id="instruction-sidebar"
+        >
+          <div className="instructionSidebarHeading">
+            <span>手順書</span>
+            <button
+              aria-controls="instruction-sidebar"
+              aria-expanded={!sidebarCollapsed}
+              aria-label="手順書一覧を閉じる"
+              className="instructionSidebarToggle"
+              onClick={() => toggleSidebar(true)}
+              ref={sidebarCloseButtonRef}
+              title="手順書一覧を閉じる"
+              type="button"
+            >
+              <UiIcon name="chevronLeft" size={16} />
+            </button>
+          </div>
           <InstructionTree
             focusToken={treeFocusToken}
             onChooseInstructionRoot={chooseInstructionRootForViewer}
@@ -948,6 +1031,8 @@ export function InstructionViewer() {
           aria-valuemin={MIN_SIDEBAR_WIDTH}
           aria-valuenow={Math.round(clampSidebarWidth(sidebarWidth))}
           className="instructionSidebarDivider"
+          hidden={sidebarCollapsed}
+          onDoubleClick={() => toggleSidebar(true, false)}
           onKeyDown={resizeSidebarFromKeyboard}
           onPointerCancel={stopSidebarResize}
           onPointerDown={startSidebarResize}
