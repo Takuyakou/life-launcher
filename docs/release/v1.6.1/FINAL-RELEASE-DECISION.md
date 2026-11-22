@@ -2,6 +2,8 @@
 
 **READY FOR USER APPROVAL**（自動で確かめられるゲートはすべて通った。ネイティブ確認・公開は、オーナーの判断で行う）
 
+**実機の確認は 2026-11-22 に済んだ(native-checklist.md)。オーナーの承認で公開した。**
+
 - 日付: 2026-11-22（JST）
 - 候補のソース: ブランチ `v161/01-book`(タグ `v1.6.0` の後の `main` の `7f75546` から。タグとの違いは v1.6.0 の公開の報告の文書だけ)、ビルドしたコミット `c18d1814aa87931ebc4e72f16a8c65106e48d0de`(X)。**GitHub Actions の CI(run `44994220760`、attempt 1)が確かめたコミットと同じ**。成果物をビルドした時点の作業ツリーはきれい（`git status --porcelain` が空）。ビルドの後も作業ツリーはきれいだった(`src-tauri/Cargo.toml` の改行も書き換わらなかった)。
 - X は、S6 の最後のコミット `504b70b` に、S7 の 5 コミット(`0d7fdd6`〜`c18d181`)を足した物。`git diff --name-only 504b70b c18d181` は 6 ファイル(`.github/workflows/ci.yml`、`tests/visual/` の 3 つ、`CHANGELOG.md`、`docs/releases/v1.6.1.md`)だけ。`git diff v1.6.0 c18d181 -- package-lock.json src-tauri/Cargo.lock` は版の番号の行(3 か所)だけ。
