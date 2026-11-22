@@ -1,0 +1,2147 @@
+/* P10-09 (§8.1): the completion dialog — ✓ header, finished step, then 4-5 radios. */
+.completionDoneHeader {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.completionDoneMark {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--good) 18%, transparent);
+  color: var(--good);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.completionDoneSubject {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  background: var(--surface);
+}
+
+.completionDoneSubject strong {
+  min-width: 0;
+  flex: 1;
+}
+
+.completionDoneMinutes {
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.completionFollowupQuestion {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.completionFollowupChoices {
+  display: grid;
+  max-height: 44vh;
+  gap: 4px;
+  overflow: auto;
+}
+
+.completionFollowupChoice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 44px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 0 12px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  text-align: left;
+}
+
+.completionFollowupChoice:hover,
+.completionFollowupChoice:focus-within {
+  background: var(--control-neutral-hover-bg);
+}
+
+.completionFollowupChoice--selected {
+  border-color: var(--line);
+  background: var(--surface-strong);
+}
+
+.completionFollowupChoice input {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  accent-color: var(--accent-strong);
+}
+
+.completionFollowupChoice span {
+  min-width: 0;
+  flex: 1;
+}
+
+.completionFollowupChoice small {
+  color: var(--text-muted-readable);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.completionFollowupDecide {
+  min-width: 96px;
+}
+
+.nextStepFixedProject {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 9px 11px;
+  background: var(--surface-soft);
+}
+
+.nextStepFixedProject > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.inboxGroups {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.inboxBand .inboxList {
+  border-left: 0;
+  padding-left: 0;
+}
+
+.wishlistGroup {
+  min-width: 0;
+}
+
+.wishlistGroup .inboxList {
+  margin-left: 0;
+  padding-left: 10px;
+  border-left: 0;
+}
+
+.wishlistGroupHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 30px;
+  padding: 3px 8px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted);
+  font-size: var(--dashboard-font-body);
+  font-weight: 600;
+  text-align: left;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.wishlistGroupHeader--fixed {
+  cursor: default;
+}
+
+.wishlistGroupHeader:hover {
+  background: var(--control-neutral-hover-bg);
+}
+
+.wishlistGroupHeader .projectIdentity {
+  min-width: 0;
+  color: var(--text);
+  font-size: var(--dashboard-font-body);
+  font-weight: 600;
+}
+
+.wishlistGroupHeader > strong {
+  color: var(--text);
+  font-size: var(--dashboard-font-body);
+  font-weight: 600;
+}
+
+.wishlistGroupHeader > span:last-child {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: var(--dashboard-font-meta);
+}
+
+.wishlistGroup .inboxRow.sourceListRow {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  min-height: 40px;
+  border-left: 3px solid var(--project-color, var(--line));
+  border-radius: 0;
+  padding-left: 12px;
+}
+
+.wishlistGroup--unassigned .inboxRow.sourceListRow {
+  border-left-color: var(--line);
+}
+
+.wishlistGroup .inboxItemText {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text);
+  font-size: var(--dashboard-font-body);
+  font-weight: 500;
+}
+
+.sourceLockBadge--wishlist {
+  width: 20px;
+  height: 26px;
+  margin-inline: 0 2px;
+}
+
+.wishlistGroup .inboxRow.sourceListRow {
+  padding-right: 0;
+}
+
+.todayRow .todayRowMenu {
+  opacity: 1;
+}
+
+.wishlistGroup--dragging {
+  opacity: 0.5;
+}
+
+.wishlistGroupDropIndicator {
+  position: fixed;
+  z-index: 80;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 6px rgba(231, 185, 77, 0.4);
+  pointer-events: none;
+}
+
+.doNowStartPrimary::after,
+.doNowStartSecondary::after,
+.doNowMeasureButton::after,
+.todayStartButton::after,
+.todayMeasureButton::after {
+  position: absolute;
+  right: 12px;
+  bottom: 0;
+  left: 12px;
+  height: 2px;
+  background: currentColor;
+  content: "";
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 150ms ease;
+}
+
+.doNowStartPrimary:hover:not(:disabled)::after,
+.doNowStartPrimary:focus-visible::after,
+.doNowStartSecondary:hover:not(:disabled)::after,
+.doNowStartSecondary:focus-visible::after,
+.doNowMeasureButton:hover:not(:disabled)::after,
+.doNowMeasureButton:focus-visible::after,
+.todayStartButton:hover:not(:disabled)::after,
+.todayStartButton:focus-visible::after,
+.todayMeasureButton:hover:not(:disabled)::after,
+.todayMeasureButton:focus-visible::after {
+  transform: scaleX(1);
+}
+
+.todayMeasureButton::after {
+  right: 6px;
+  left: 6px;
+}
+
+.wishlistGroupDragGhost {
+  position: fixed;
+  z-index: 90;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  background: var(--surface-strong);
+  color: var(--text);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 700;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.34);
+  pointer-events: none;
+}
+
+.projectsBand,
+.inboxBand {
+  position: relative;
+}
+
+.sourceReturnBand--target {
+  border-radius: var(--radius);
+  outline: 2px solid rgba(231, 185, 77, 0.58);
+  outline-offset: 3px;
+  background: rgba(231, 185, 77, 0.055);
+}
+
+.sourceReturnBand--active {
+  outline-color: var(--accent);
+  background: rgba(231, 185, 77, 0.09);
+}
+
+.sourceReturnDropZone {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px dashed var(--accent);
+  border-radius: var(--radius);
+  background: rgba(231, 185, 77, 0.065);
+  color: var(--accent-strong);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 650;
+  pointer-events: none;
+}
+
+.sourceReturnDropZone--active {
+  background: rgba(231, 185, 77, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(231, 185, 77, 0.16);
+}
+
+.wishlistTodayStatus {
+  min-height: 20px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(117, 196, 143, 0.34);
+  border-radius: 999px;
+  padding: 1px 7px;
+  color: var(--good);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: normal;
+  white-space: nowrap;
+}
+
+.legacyNextStepChoice {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  border: 1px solid rgba(231, 185, 77, 0.42);
+  border-radius: var(--radius);
+  padding: 10px 12px 12px;
+  background: rgba(231, 185, 77, 0.055);
+}
+
+.legacyNextStepChoice legend {
+  padding-inline: 4px;
+  color: var(--accent-strong);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.legacyNextStepChoice p {
+  margin: 0;
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.legacyNextStepChoice > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.legacyNextStepChoice--selected {
+  border-color: var(--accent);
+  background: rgba(231, 185, 77, 0.13);
+  color: var(--accent-strong);
+}
+
+@media (max-width: 620px) {
+  .nextStepRow.sourceListRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .nextStepActionRegion {
+    grid-template-columns: minmax(0, 1fr) 32px;
+  }
+
+  .nextStepActionRegion p {
+    grid-column: 1 / -1;
+  }
+
+  .nextStepActionRegion .sourceRowMenu {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .nextStepRowAction {
+    justify-self: start;
+  }
+
+  .nextStepFixedProject {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (hover: none) {
+  .sourceRowMenu {
+    opacity: 1;
+  }
+}
+
+.nextStepRow .projectNextStepPlaceholder {
+  color: var(--text) !important;
+  font-size: var(--dashboard-font-body);
+  font-weight: 600;
+}
+
+.nextStepRow--dragging {
+  background: transparent;
+}
+
+.nextStepRow--dragging > * {
+  visibility: hidden;
+}
+
+.projectDropIndicator {
+  width: auto;
+  height: 3px;
+}
+
+@container (max-width: 820px) {
+  .todayGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (max-width: 520px) {
+  .todayGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .todayGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .projectsBand .disclosureDescription,
+  .inboxBand .disclosureDescription {
+    display: none;
+  }
+}
+
+@media (max-width: 820px) {
+  .projectsBand .disclosureDescription, .inboxBand .disclosureDescription, .todayActivityBand .disclosureDescription {
+    display: none;
+  }
+}
+
+@media (max-width: 620px) {
+
+  .todayNextBatch {
+    align-items: flex-end;
+    flex-direction: column;
+  }
+}
+
+.sourceCompletionList {
+  display: grid;
+  gap: 6px;
+}
+
+.sourceCompletionRow {
+  display: grid;
+  gap: 4px;
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.sourceCompletionMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--text-muted-readable);
+  font-size: var(--dashboard-font-meta);
+}
+
+.sourceCompletionRow > strong {
+  overflow-wrap: anywhere;
+  font-size: var(--dashboard-font-body);
+}
+
+/* P62-03 start environment picker */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.startEnvironmentPicker {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid var(--line-soft);
+  padding-top: 14px;
+}
+
+.startEnvironmentHeader,
+.startEnvironmentDialogHeader {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.startEnvironmentHeader > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.startEnvironmentHeader strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.startEnvironmentHeader span:not(.startEnvironmentCount) {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.startEnvironmentCount {
+  flex: 0 0 auto;
+  color: var(--good);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.startEnvironmentCount--over,
+.startEnvironmentWarning {
+  color: var(--warn);
+}
+
+.startEnvironmentSelected {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.startEnvironmentSelectedItem {
+  min-width: 0;
+  min-height: 42px;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 5px 5px 5px 9px;
+  background: var(--surface-soft);
+}
+
+.startEnvironmentSelectedItem > span:nth-child(2) {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.startEnvironmentIcon,
+.startEnvironmentOptionIcon {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  object-fit: contain;
+  color: var(--accent);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.startEnvironmentRemove {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius);
+  padding: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+.startEnvironmentRemove:hover,
+.startEnvironmentRemove:focus-visible {
+  background: var(--surface-strong);
+  color: var(--text);
+}
+
+.startEnvironmentEmpty,
+.startEnvironmentWarning {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.startEnvironmentEmpty {
+  color: var(--muted);
+}
+
+.startEnvironmentOpen {
+  justify-self: start;
+}
+
+.startEnvironmentBackdrop {
+  z-index: 60;
+}
+
+.startEnvironmentDialog {
+  width: min(720px, 100%);
+  grid-template-rows: auto auto auto minmax(160px, 1fr) auto;
+  overflow: hidden;
+}
+
+.startEnvironmentDialogHeader h2 {
+  margin: 2px 0 0;
+  font-size: 20px;
+}
+
+.startEnvironmentTabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 4px;
+  background: var(--surface-soft);
+}
+
+.startEnvironmentTab {
+  min-width: 0;
+  min-height: 36px;
+  border: 0;
+  border-radius: 5px;
+  padding: 6px 10px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.startEnvironmentTab:hover,
+.startEnvironmentTab:focus-visible {
+  color: var(--text);
+}
+
+.startEnvironmentTab--active {
+  background: var(--surface-strong);
+  color: var(--accent-strong);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.startEnvironmentSearch {
+  min-width: 0;
+}
+
+.startEnvironmentSearch input {
+  width: 100%;
+}
+
+.startEnvironmentOptions {
+  min-height: 160px;
+  max-height: min(44vh, 360px);
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.startEnvironmentOption {
+  min-width: 0;
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 46px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 7px 10px;
+  background: var(--surface-soft);
+  color: var(--text);
+  text-align: left;
+}
+
+.startEnvironmentOption:hover,
+.startEnvironmentOption:focus-visible {
+  border-color: var(--muted);
+  background: var(--surface-strong);
+}
+
+.startEnvironmentOption--selected {
+  border-color: rgba(111, 207, 151, 0.65);
+  background: rgba(111, 207, 151, 0.08);
+}
+
+.startEnvironmentOption[aria-disabled="true"]:not(.startEnvironmentOption--selected) {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.startEnvironmentOptionCopy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.startEnvironmentOptionCopy strong,
+.startEnvironmentOptionCopy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.startEnvironmentOptionCopy strong {
+  font-size: 13px;
+}
+
+.startEnvironmentOptionCopy small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.startEnvironmentOptionState {
+  justify-self: end;
+  color: var(--good);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.startEnvironmentNoResults {
+  margin: 20px 0;
+  color: var(--muted);
+  text-align: center;
+}
+
+@media (max-width: 560px) {
+  .startEnvironmentSelected {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .startEnvironmentDialog {
+    gap: 12px;
+  }
+}
+
+/* P62-04 records explanations */
+.recordsInlineHeading {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 3px 10px;
+}
+
+.recordsInlineHeading h2,
+.recordsInlineHeading h3 {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.recordsInlineHeading > span {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+.weeklyReviewBlockHeading > .recordsInlineHeading,
+.sectionHeading > .recordsInlineHeading {
+  flex: 1 1 auto;
+}
+
+@media (max-width: 920px) {
+  .weeklyReviewBlockHeading,
+  .sectionHeading {
+    align-items: flex-start;
+  }
+}
+
+/* P72-05 completion feedback: transient only; saved completion state remains above. */
+.victoryBar {
+  position: relative;
+  overflow: hidden;
+}
+
+.victoryBar--reward {
+  border-color: rgba(231, 185, 77, 0.78);
+  background: rgba(231, 185, 77, 0.1);
+  animation: completion-gold-pulse 850ms ease-out;
+}
+
+/* P9-13 / P9-14 / P95-01: like the Main cards, the victory bar strengthens its border, brightens and lifts 1px on hover,
+   or while the input is being edited (the input shows no ring). This holds for an empty victory too (the frame only: the
+   empty text stays muted, see .victoryTextButton--empty). Keyboard focus on the text button, the checkbox or a
+   suggestion chip keeps the bar as it is: their own ring is the only square. */
+.victoryBar {
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    transform 120ms ease;
+}
+
+.victoryBar:hover,
+.victoryBar:has(.victoryInput:focus) {
+  border-color: var(--accent);
+  background: rgba(231, 185, 77, 0.08);
+  transform: translateY(-1px);
+}
+
+.victoryBar--done:hover,
+.victoryBar--done:has(.victoryInput:focus) {
+  background:
+    linear-gradient(
+      120deg,
+      rgba(231, 185, 77, 0.14),
+      rgba(231, 185, 77, 0.025) 48%,
+      transparent 75%
+    ),
+    var(--surface);
+}
+
+.doNowContent--hold,
+.doNowContent--hold:hover {
+  border-color: rgba(111, 207, 151, 0.58);
+  border-left: 3px solid var(--good);
+  padding-left: 12px;
+  background: rgba(111, 207, 151, 0.07);
+  transform: none;
+}
+
+.doNowCopy > .doNowHoldTitle {
+  color: var(--good);
+}
+
+.doNowHoldTask {
+  min-width: 0;
+  margin-inline-start: 3px;
+  overflow-wrap: anywhere;
+  font-size: var(--dashboard-font-body);
+}
+
+.doNowHoldMinutes {
+  margin-inline-start: 3px;
+  color: var(--muted);
+  font-size: var(--dashboard-font-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+.mainActionButton.doNowHoldButton {
+  --main-action-bg: var(--surface);
+  --main-action-hover-bg: var(--surface-strong);
+  --main-action-active-bg: var(--surface);
+  --main-action-border: var(--line);
+  --main-action-hover-border: rgba(231, 185, 77, 0.48);
+  --main-action-active-border: rgba(231, 185, 77, 0.48);
+  --main-action-color: var(--muted);
+  --main-action-hover-color: var(--accent-strong);
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: var(--radius);
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.victoryRewardSweep {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 20%,
+    rgba(255, 226, 132, 0.18) 48%,
+    transparent 73%
+  );
+  transform: translateX(-110%);
+  animation: completion-sweep 850ms ease-out forwards;
+}
+
+.victoryBar--reward > :not(.victoryRewardSweep) {
+  position: relative;
+  z-index: 1;
+}
+
+.victoryBadge--reward {
+  color: var(--accent-strong);
+  opacity: 1;
+  transform-origin: center;
+  animation: completion-victory-label-pop 240ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.todayRow--justCompleted {
+  border-color: rgba(111, 207, 151, 0.58);
+  background: rgba(111, 207, 151, 0.07);
+  animation: completion-card-pop 460ms cubic-bezier(0.2, 1.35, 0.35, 1);
+}
+
+.todayRow--justCompleted .todayCompletionStatus--complete {
+  animation: completion-check-pop 420ms cubic-bezier(0.2, 1.45, 0.35, 1);
+}
+
+.todayGrid--allCompleteReward {
+  animation: completion-grid-glow 1000ms ease-out;
+}
+
+.todayAllCompletionReward {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: 9px 10px 0 0;
+  border: 1px solid rgba(231, 185, 77, 0.42);
+  border-radius: var(--radius);
+  background: rgba(231, 185, 77, 0.08);
+  color: var(--accent-strong);
+  font-size: var(--dashboard-font-body);
+  font-weight: 700;
+  pointer-events: none;
+  animation: completion-label-in 480ms cubic-bezier(0.2, 1.2, 0.3, 1);
+}
+
+.completionParticleLayer {
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.completionParticle {
+  position: absolute;
+  left: 50%;
+  top: 20%;
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+  background: var(--accent-strong);
+  opacity: 0;
+  animation: completion-particle 900ms ease-out forwards;
+}
+
+.completionParticle:nth-child(1) {
+  --completion-x: -96px;
+  --completion-y: -38px;
+}
+.completionParticle:nth-child(2) {
+  --completion-x: -62px;
+  --completion-y: 42px;
+  animation-delay: 35ms;
+}
+.completionParticle:nth-child(3) {
+  --completion-x: -24px;
+  --completion-y: -58px;
+  animation-delay: 60ms;
+}
+.completionParticle:nth-child(4) {
+  --completion-x: 28px;
+  --completion-y: -52px;
+  animation-delay: 25ms;
+}
+.completionParticle:nth-child(5) {
+  --completion-x: 68px;
+  --completion-y: 38px;
+  animation-delay: 70ms;
+}
+.completionParticle:nth-child(6) {
+  --completion-x: 102px;
+  --completion-y: -30px;
+  animation-delay: 45ms;
+}
+
+@keyframes completion-sweep {
+  to {
+    transform: translateX(110%);
+  }
+}
+
+@keyframes completion-gold-pulse {
+  0%,
+  100% {
+    box-shadow: none;
+  }
+  42% {
+    box-shadow: 0 0 16px rgba(231, 185, 77, 0.13);
+  }
+}
+
+@keyframes completion-card-pop {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  42% {
+    transform: scale(1.012);
+  }
+}
+
+@keyframes completion-check-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes completion-grid-glow {
+  0%,
+  100% {
+    filter: none;
+  }
+  40% {
+    filter: drop-shadow(0 0 12px rgba(231, 185, 77, 0.14));
+  }
+}
+
+@keyframes completion-victory-label-pop {
+  0% {
+    opacity: 1;
+    transform: translateY(1px) scale(0.96);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(0) scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes completion-label-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes completion-particle {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0deg) scale(0.65);
+  }
+  14% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--completion-x), var(--completion-y)) rotate(170deg) scale(0.8);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .victoryBar--reward,
+  .victoryRewardSweep,
+  .victoryBadge--reward,
+  .todayRow--justCompleted,
+  .todayRow--justCompleted .todayCompletionStatus--complete,
+  .todayGrid--allCompleteReward,
+  .todayAllCompletionReward,
+  .completionParticle {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .victoryRewardSweep,
+  .completionParticleLayer {
+    display: none;
+  }
+
+  .doNowStartPrimary,
+  .doNowStartSecondary,
+  .todayStartButton,
+  .timerStartHoverGlyph,
+  .doNowStartPrimary::after,
+  .doNowStartSecondary::after,
+  .todayStartButton::after,
+  .todayStartButton .nextStepStartGlyph {
+    transition: none !important;
+  }
+
+  .doNowStartPrimary:hover:not(:disabled),
+  .doNowStartPrimary:focus-visible,
+  .doNowStartSecondary:hover:not(:disabled),
+  .doNowStartSecondary:focus-visible,
+  .todayStartButton:hover:not(:disabled),
+  .todayStartButton:focus-visible,
+  .doNowStartPrimary:active:not(:disabled),
+  .doNowStartSecondary:active:not(:disabled),
+  .todayStartButton:active:not(:disabled) {
+    transform: none;
+  }
+}
+
+.formSectionDescription {
+  margin: -4px 0 2px;
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.formDialogActions .primaryButton {
+  border-color: var(--good);
+  background: var(--control-positive-bg);
+  color: var(--good);
+}
+
+.formDialogActions .primaryButton:hover:not(:disabled) {
+  border-color: var(--control-positive-hover-border);
+  background: var(--control-positive-hover-bg);
+}
+
+.formDialogActions .primaryButton:active:not(:disabled) {
+  border-color: var(--control-positive-active-border);
+  background: var(--control-positive-active-bg);
+  box-shadow: var(--control-press-shadow);
+}
+
+.formDialogActions .dialogCancelButton {
+  border-color: rgba(255, 128, 120, 0.42);
+  background: var(--control-danger-bg);
+  color: #ffb4ad;
+}
+
+.formDialogActions .dialogCancelButton:hover:not(:disabled) {
+  border-color: var(--control-danger-hover-border);
+  background: var(--control-danger-hover-bg);
+  color: #ffb4ad;
+}
+
+.formDialogActions .dialogCancelButton:active:not(:disabled) {
+  border-color: var(--control-danger-active-border);
+  background: var(--control-danger-active-bg);
+  box-shadow: var(--control-danger-press-shadow);
+}
+
+.instructionPicker {
+  display: grid;
+  gap: 9px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 11px;
+  background: var(--surface-soft);
+}
+
+.instructionPickerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.instructionPickerHeader > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.instructionPickerHeader strong {
+  font-size: 13px;
+}
+
+.instructionPickerHeader span {
+  color: var(--text-muted-readable);
+  font-size: 11px;
+}
+
+.instructionPickerOpen {
+  min-width: 116px;
+}
+
+.instructionPickerSelection {
+  min-width: 0;
+  min-height: 36px;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 4px 5px 4px 9px;
+  color: var(--text-muted-readable);
+}
+
+.instructionPickerSelection > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.instructionPickerSelection > button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+.instructionPickerSelection > button:hover,
+.instructionPickerSelection > button:focus-visible {
+  color: var(--text);
+}
+
+.instructionPickerDialog {
+  width: min(620px, 100%);
+  max-height: min(76vh, 660px);
+  grid-template-rows: auto auto minmax(120px, 1fr) auto;
+}
+
+@media (max-width: 620px) {
+  .instructionPickerHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+/* P8-03 records redesign */
+.recordsViewHeader {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+  border-bottom: 1px solid var(--line-soft);
+  padding: 3px 0 8px;
+  background: var(--app-background);
+}
+
+.recordsTabs {
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  overflow-x: auto;
+  padding-inline-end: 4px;
+}
+
+.recordsTab {
+  position: relative;
+  min-width: 112px;
+  min-height: 34px;
+  border: 0;
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 6px 12px 8px;
+  background: transparent;
+  color: var(--text-muted-readable);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.recordsTab:hover,
+.recordsTab:focus-visible {
+  background: var(--surface-soft);
+  color: var(--text);
+}
+
+.recordsTab--active {
+  background: var(--surface-soft);
+  color: var(--text);
+}
+
+.recordsTab--active::after {
+  position: absolute;
+  right: 8px;
+  bottom: 0;
+  left: 8px;
+  height: 2px;
+  background: var(--accent);
+  content: "";
+}
+
+.recordsTabPanel {
+  min-width: 0;
+  display: grid;
+  gap: 16px;
+}
+
+.recordsAccordionList {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.recordsAccordion + .recordsAccordion {
+  border-top: 1px solid var(--line-soft);
+}
+
+.recordsAccordionSummary {
+  width: 100%;
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 0;
+  padding: 8px 12px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.recordsAccordionSummary:hover,
+.recordsAccordionSummary:focus-visible,
+.recordsAccordionSummary[aria-expanded="true"] {
+  background: var(--surface-soft);
+}
+
+.recordsAccordionSummary > span,
+.recordsAccordionSummary > strong {
+  white-space: nowrap;
+}
+
+.recordsAccordionSummary > span {
+  color: var(--text-muted-readable);
+  font-size: 12px;
+}
+
+.recordsAccordionBody {
+  display: grid;
+  border-top: 1px solid var(--line-soft);
+  background: var(--surface-soft);
+}
+
+.recordsActionHistoryRow {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) 56px;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 6px 12px 6px 42px;
+  color: var(--text-muted-readable);
+  font-size: 12px;
+}
+
+.recordsActionHistoryRow + .recordsActionHistoryRow {
+  border-top: 1px solid var(--line-soft);
+}
+
+.recordsActionHistoryRow > span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recordsActionHistoryRow > strong {
+  color: var(--text);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.recordsAccordionBody > footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--line-soft);
+  padding: 7px 12px 7px 42px;
+  color: var(--text-muted-readable);
+  font-size: 11px;
+}
+
+.recordsPagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border-top: 1px solid var(--line-soft);
+  padding: 8px 12px;
+}
+
+.recordsPagination button {
+  min-width: 30px;
+  min-height: 30px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 4px 8px;
+  background: var(--surface);
+  color: var(--text-muted-readable);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.recordsPagination button[aria-current="page"] {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.recordsCompactList {
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.recordsCompactRow {
+  min-width: 0;
+  min-height: 42px;
+  display: grid;
+  grid-template-columns: 88px 62px minmax(110px, 0.45fr) minmax(160px, 1fr) 56px 30px;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 0;
+  padding: 5px 7px 5px 11px;
+  color: var(--text-muted-readable);
+  font-size: 12px;
+}
+
+.recordsCompactRow + .recordsCompactRow {
+  border-top: 1px solid var(--line-soft);
+}
+
+.recordsCompactRow:hover,
+.recordsCompactRow:focus-visible {
+  background: var(--surface-strong);
+}
+
+.recordsCompactRow > time,
+.recordsCompactRow > strong {
+  white-space: nowrap;
+}
+
+.recordsCompactAction {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recordsSessionMenuButton {
+  width: 28px;
+  height: 28px;
+  opacity: 0;
+}
+
+.recordsCompactRow:hover .recordsSessionMenuButton,
+.recordsCompactRow:focus-within .recordsSessionMenuButton,
+.recordsSessionMenuButton:focus-visible {
+  opacity: 1;
+}
+
+.recordsOlderNotes {
+  padding-bottom: 4px;
+}
+
+.recordsOlderNotes > summary {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  list-style: none;
+  color: var(--text-muted-readable);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.recordsOlderNotes[open] > summary {
+  margin-bottom: 10px;
+  color: var(--text);
+}
+
+@media (max-width: 860px) {
+  .recordsViewHeader {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .recordsTabs {
+    width: 100%;
+    /* Keep the spring tab face's overshoot (about 2.4px) and the font's width fraction
+       inside this gap. */
+    padding-inline-end: 4px;
+  }
+
+  .recordsTab {
+    flex: 1 0 auto;
+  }
+
+  .recordsCompactRow {
+    grid-template-columns: 82px 52px minmax(96px, 0.45fr) minmax(110px, 1fr) 48px 30px;
+    gap: 6px;
+  }
+}
+
+@media (max-width: 620px) {
+  .recordsStats {
+    gap: 6px;
+  }
+
+  .recordsStats div {
+    padding: 9px;
+  }
+
+  .recordsStats strong {
+    font-size: 19px;
+  }
+
+  .recordsAccordionSummary {
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+    gap: 7px;
+    padding-inline: 8px;
+  }
+
+  .recordsAccordionSummary > span:not(.projectIdentity) {
+    display: none;
+  }
+
+  .recordsActionHistoryRow {
+    grid-template-columns: 78px minmax(0, 1fr) 46px;
+    gap: 6px;
+    padding-inline: 8px;
+  }
+
+  .recordsAccordionBody > footer {
+    padding-inline: 8px;
+  }
+
+  .recordsCompactRow {
+    grid-template-columns: 76px minmax(0, 1fr) 44px 28px;
+    min-height: 48px;
+    padding-inline: 7px;
+  }
+
+  .recordsCompactRow > span:nth-child(2),
+  .recordsCompactRow > .projectIdentity,
+  .recordsCompactRow > strong:not(:last-of-type) {
+    display: none;
+  }
+
+  .recordsSessionMenuButton {
+    opacity: 1;
+  }
+}
+
+/* P83-03: explicit actions in Main content only. */
+.mainActionButton {
+  --main-action-bg: var(--control-neutral-bg);
+  --main-action-hover-bg: var(--control-neutral-hover-bg);
+  --main-action-active-bg: var(--control-neutral-active-bg);
+  --main-action-border: var(--line);
+  --main-action-hover-border: var(--muted);
+  --main-action-active-border: var(--line);
+  --main-action-color: var(--text-muted-readable);
+  --main-action-hover-color: var(--text);
+  border-color: var(--main-action-border);
+  background: var(--main-action-bg);
+  color: var(--main-action-color);
+  transition:
+    transform 120ms ease,
+    background 120ms ease,
+    border-color 120ms ease,
+    box-shadow 120ms ease,
+    filter 120ms ease;
+}
+
+.mainActionButton.mainActionButton--neutral,
+.mainActionButton.mainActionButton--gold,
+.mainActionButton.mainActionButton--positive {
+  border-width: 1px;
+  border-style: solid;
+}
+
+.mainActionButton--gold {
+  --main-action-bg: rgba(231, 185, 77, 0.1);
+  --main-action-hover-bg: rgba(231, 185, 77, 0.18);
+  --main-action-active-bg: rgba(231, 185, 77, 0.08);
+  --main-action-border: rgba(231, 185, 77, 0.58);
+  --main-action-hover-border: var(--accent);
+  --main-action-active-border: rgba(231, 185, 77, 0.7);
+  --main-action-color: var(--accent-strong);
+  --main-action-hover-color: var(--accent-strong);
+}
+
+.mainActionButton--positive {
+  --main-action-bg: var(--control-positive-bg);
+  --main-action-hover-bg: var(--control-positive-hover-bg);
+  --main-action-active-bg: var(--control-positive-active-bg);
+  --main-action-border: rgba(111, 207, 151, 0.45);
+  --main-action-hover-border: var(--control-positive-hover-border);
+  --main-action-active-border: var(--control-positive-active-border);
+  --main-action-color: var(--good);
+  --main-action-hover-color: var(--good);
+}
+
+button.mainActionButton:is(
+    .mainActionButton--neutral,
+    .mainActionButton--gold,
+    .mainActionButton--positive
+  ):not([aria-disabled="true"]) {
+  border-color: var(--main-action-border);
+  background: var(--main-action-bg);
+  color: var(--main-action-color);
+}
+
+.mainActionButton:focus-visible:not(:disabled):not([aria-disabled="true"]) {
+  border-color: var(--main-action-hover-border);
+  background: var(--main-action-hover-bg);
+  color: var(--main-action-hover-color);
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.22);
+  filter: brightness(1.04);
+  transform: translateY(-1px);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .mainActionButton:hover:not(:disabled):not([aria-disabled="true"]) {
+    border-color: var(--main-action-hover-border);
+    background: var(--main-action-hover-bg);
+    color: var(--main-action-hover-color);
+    box-shadow: 0 5px 14px rgba(0, 0, 0, 0.22);
+    filter: brightness(1.04);
+    transform: translateY(-1px);
+  }
+}
+
+.mainActionButton:active:not(:disabled):not([aria-disabled="true"]) {
+  border-color: var(--main-action-active-border);
+  background: var(--main-action-active-bg);
+  box-shadow: var(--control-neutral-press-shadow);
+  filter: none;
+  transform: translateY(0) scale(0.985);
+}
+
+.mainActionButton:disabled,
+.mainActionButton[aria-disabled="true"] {
+  box-shadow: none;
+  filter: none;
+  transform: none;
+}
+
+.sectionLinkButton.mainActionButton {
+  min-height: 30px;
+  border-radius: var(--radius);
+  padding: 4px 8px;
+  text-decoration: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mainActionButton {
+    transition:
+      background 120ms ease,
+      border-color 120ms ease,
+      box-shadow 120ms ease,
+      filter 120ms ease;
+  }
+
+  .mainActionButton:focus-visible:not(:disabled):not([aria-disabled="true"]),
+  .mainActionButton:hover:not(:disabled):not([aria-disabled="true"]),
+  .mainActionButton:active:not(:disabled):not([aria-disabled="true"]) {
+    transform: none;
+  }
+}
+
+/* P8.9: Main-only visual alignment and display presets. */
+.mainScrollContent .doNowHeading h2 {
+  margin-inline-start: 34px;
+}
+
+.mainScrollContent .todaySectionDisclosure h2,
+.mainScrollContent .projectsBand .disclosureLabel strong,
+.mainScrollContent .inboxBand .disclosureLabel strong,
+.mainScrollContent .todayActivityBand .disclosureLabel strong {
+  position: relative;
+  left: -4px;
+}
+
+.mainScrollContent .todayActivityIdentity .projectIdentityName,
+.mainScrollContent .todayActivityIdentity > span:last-child {
+  margin-inline-start: 10px;
+}
+
+.settingsDisplay {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  border-top: 1px solid var(--line-soft);
+  padding-top: 14px;
+}
+
+.settingsDisplay h4,
+.settingsDisplay p {
+  margin: 0;
+}
+
+.settingsDisplay p {
+  color: var(--text-muted-readable);
+  font-size: 12px;
+}
+
+.settingsDisplayFieldset {
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.settingsDisplayFieldset legend {
+  margin-bottom: 7px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.settingsDisplayChoices {
+  display: inline-grid;
+  grid-template-columns: repeat(3, minmax(72px, 1fr));
+  max-width: 320px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.settingsDisplayChoices label {
+  position: relative;
+  display: grid;
+  min-height: 34px;
+  place-items: center;
+  cursor: pointer;
+}
+
+.settingsDisplayChoices label + label {
+  border-left: 1px solid var(--line);
+}
+
+.settingsDisplayChoices input {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.settingsDisplayChoices span {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.settingsDisplayChoices input:checked + span {
+  background: var(--control-positive-bg);
+  color: var(--good);
+}
+
+.settingsDisplayChoices label:hover span {
+  background: var(--control-positive-hover-bg);
+  color: var(--text);
+}
+
+.settingsDisplayChoices input:focus-visible + span {
+  outline: 2px solid var(--good);
+  outline-offset: -2px;
+}
+
+.mainScrollContent[data-main-display-size="large"] {
+  width: min(100%, 1298px);
+  --dashboard-font-action: 19px;
+  --dashboard-font-section: 16px;
+  --dashboard-font-body: 14px;
+  --dashboard-font-project: 15px;
+  --dashboard-font-meta: 12px;
+  --main-control-height: 34px;
+  --main-row-height: 53px;
+  --main-band-spacing: 15px;
+  --main-card-padding: 17px;
+}
+
+.mainScrollContent[data-main-display-size="xlarge"] {
+  width: min(100%, 1400px);
+  --dashboard-font-action: 20px;
+  --dashboard-font-section: 17px;
+  --dashboard-font-body: 16px;
+  --dashboard-font-project: 17px;
+  --dashboard-font-meta: 13px;
+  --main-control-height: 38px;
+  --main-row-height: 57px;
+  --main-band-spacing: 18px;
+  --main-card-padding: 19px;
+}
+
+.mainScrollContent:is([data-main-display-size="large"], [data-main-display-size="xlarge"])
+  :is(.doNowBand, .focusBand, .projectsBand, .inboxBand, .todayActivityBand) {
+  padding-block: var(--main-band-spacing);
+}
+
+.mainScrollContent:is([data-main-display-size="large"], [data-main-display-size="xlarge"])
+  :is(.todaySectionBar, .disclosureHeader) {
+  min-height: var(--main-row-height);
+}
+
+.mainScrollContent:is([data-main-display-size="large"], [data-main-display-size="xlarge"])
+  :is(.doNowEmpty, .doNowContent) {
+  padding: var(--main-card-padding);
+}
+
+.mainScrollContent:is([data-main-display-size="large"], [data-main-display-size="xlarge"])
+  :is(.todayRow, .nextStepRow.sourceListRow, .inboxRow.sourceListRow, .todayActivityRow) {
+  min-height: var(--main-row-height);
+}
+
+.mainScrollContent:is([data-main-display-size="large"], [data-main-display-size="xlarge"])
+  .wishlistGroup .inboxRow.sourceListRow {
+  min-height: 40px;
+}
+
+.mainScrollContent:is([data-main-display-size="large"], [data-main-display-size="xlarge"])
+  .mainActionButton {
+  min-height: var(--main-control-height);
+  padding-inline: 12px;
+  font-size: var(--dashboard-font-meta);
+}
+
+.mainScrollContent:is([data-main-display-size="large"], [data-main-display-size="xlarge"])
+  :is(.todayTextButton) {
+  font-size: var(--dashboard-font-body);
+}
+
+.mainScrollContent:is([data-main-display-size="large"], [data-main-display-size="xlarge"])
+  :is(.todayActivityRow, .projectIdentity--compact) {
+  font-size: var(--dashboard-font-body);
+}
+
+.mainScrollContent:is([data-main-display-size="large"], [data-main-display-size="xlarge"])
+  .todayGrid {
+  gap: 12px;
+}
+
+@media (max-width: 700px) {
+  .mainScrollContent:is([data-main-display-size="large"], [data-main-display-size="xlarge"])
+    .todayGrid {
+    gap: 8px;
+  }
+}
+/* P9-14: the four Main section bars place the count right after the name (no fixed name column), at every display size. */
+
+/* P8.9 review refinement: balance the Main toolbar with enlarged content. */
+.mainPanel[data-main-display-size="large"] > .topBar {
+  width: min(100%, 1298px);
+}
+
+.mainPanel[data-main-display-size="xlarge"] > .topBar {
+  width: min(100%, 1400px);
+}
+
+@media (min-width: 1051px) {
+  .mainPanel[data-main-display-size="large"] .topPills .viewToggleButton {
+    min-width: 35px;
+    height: 35px;
+    gap: 6px;
+    padding-inline: 9px;
+  }
+
+  .mainPanel[data-main-display-size="large"] .topPills .viewToggleButtonLabel {
+    font-size: 12px;
+  }
+
+  .mainPanel[data-main-display-size="xlarge"] .topPills .viewToggleButton {
+    min-width: 40px;
+    height: 40px;
+    gap: 7px;
+    padding-inline: 10px;
+  }
+
+  .mainPanel[data-main-display-size="xlarge"] .topPills .viewToggleButtonLabel {
+    font-size: 14px;
+  }
+
+  .mainPanel[data-main-display-size="xlarge"] .topPills .viewToggleButton svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .mainPanel[data-main-display-size="xlarge"] .topPills {
+    padding: 3px;
+  }
+
+  .mainPanel[data-main-display-size="xlarge"] .topPillGroup {
+    gap: 4px;
+  }
+}
+
+/* P9-02: running Timer shows the action text in the sidebar, expanded and mini views. */
+.timerPanel--active .timerMeta strong.timerActionText {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.expandedTimerBody .expandedTimerTask {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* P10-14e N1: the idle mini has no progress line, so its two rows share the height. */
+
+/*
+ * P9-07: borders only where they carry a role (victory condition, cards, start buttons, inputs,
+ * dialogs, menus, toasts). Grouping is done with spacing and section headings. A border that goes
+ * away keeps its width and turns transparent, so no box, hit area or layout changes size.
+ */
+.topPills {
+  border-color: transparent;
+  background: transparent;
+}
+
+.topPills .viewToggleButton:hover:not(:disabled):not(.viewToggleButton--active),
+.topPills .viewToggleButton:focus-visible:not(.viewToggleButton--active) {
+  border-color: transparent;
+  background: var(--control-neutral-hover-bg);
+  color: var(--text);
+}
+
+.topPills .viewToggleButton:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+
+.doNowBand,
+.focusBand,
+.projectsBand,
+.inboxBand,
+.todayActivityBand {
+  border-top-color: transparent;
+}
+
+/* P9-14: the four section bars get their v1.3.4 frame back (1px var(--line), var(--muted) on hover); the rest of
+   P9-07 (no top lines between sections, etc.) stays. When the bar's own toggle has keyboard focus, the bar shows the
+   ring and the toggle shows none (one square, not two). */
+.todaySectionBar:has(.todaySectionDisclosure:focus-visible),
+.disclosureHeader:has(.disclosure:focus-visible) {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: -2px;
+}
+
+.todaySectionDisclosure:focus-visible,
+.disclosureHeader .disclosure:focus-visible {
+  outline: none;
+}
+
+/* Text buttons: "手順書", "今日の3件から外す", "他の一手", "＋ きっかけ". */
+.doNowAlternateButton,
+.doNowContent .doNowInstructionButton,
+.todayRow .todayInstructionButton,
+.todayRow .todayRemoveButton {
+  --main-action-bg: transparent;
+  --main-action-border: transparent;
+  --main-action-hover-border: transparent;
+  --main-action-active-border: transparent;
+  --main-action-hover-color: var(--text);
+}
+
+.doNowAlternateButton:hover,
+.doNowAlternateButton:focus-visible,
+.doNowContent .doNowInstructionButton:hover:not(:disabled),
+.doNowContent .doNowInstructionButton:focus-visible,
+.todayRow .todayInstructionButton:hover:not(:disabled),
+.todayRow .todayInstructionButton:focus-visible,
+.todayRow .todayRemoveButton:hover:not(:disabled),
+.todayRow .todayRemoveButton:focus-visible,
+.todayRow .todayRemoveButton.mainActionButton--neutral:hover:not(:disabled),
+.todayRow .todayRemoveButton.mainActionButton--neutral:focus-visible {
+  border-color: transparent;
+  background: var(--control-neutral-hover-bg);
+  color: var(--text);
+}
+
+.doNowAlternateButton:focus-visible,
+.doNowContent .doNowInstructionButton:focus-visible,
+.todayRow .todayInstructionButton:focus-visible,
+.todayRow .todayRemoveButton:focus-visible,
+.todayTriggerButton--empty:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+
+.todayTriggerButton--empty {
+  border-color: transparent;
+  background: transparent;
+}
+
+.todayTriggerButton--empty:hover,
+.todayTriggerButton--empty:focus-visible {
+  border-color: transparent;
+  background: var(--control-neutral-hover-bg);
+  color: var(--text);
+}
+
+/* "今日やるものを選ぶ": the dashed outer frame stays; the inner chip loses its border. */
+.todayPickerEntryVisual,
+.todayPickerEntry:hover .todayPickerEntryVisual,
+.todayPickerEntry:focus-visible .todayPickerEntryVisual {
+  border-color: transparent;
+}
+
+.todayPickerEntry:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+
+/* P9-09: the waiting sidebar Timer shows the minutes in a neutral colour; running and paused keep theirs. */
+.timerDock .timerClock--adjustable:not(.timerClock--dragging) {
+  color: var(--text-muted-readable);
+}
+
+/* P9-09: guide shown when an open sidebar group has no buttons (it is still part of the group drop target). */
+.quickGroupEmpty {
+  margin: 0;
+  /* P10-01: Noto Sans JP is wider than the Windows faces; 8px side padding wrapped this one line. */
+  padding: 4px 5px 6px;
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* P9-09: the completion dialog heading is the action text, so long text wraps and stops at three lines. */
+.timerCompleteHeading {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+/* P9-09: with only one of the count / completion displays shown, place each in its own column. */
+.todaySectionBar > .todaySectionCount {
+  grid-column: 2;
+  justify-self: start;
+}
+
+.todaySectionBar > .todayCompletionSummary {
+  grid-column: 2;
+}
+
+.todaySectionBar > .todaySectionDescription {
+  grid-column: 3;
+}
+
+/* P9-10: unit shown to the right of a number input, left of the spin affordance (same look as the sidebar Timer "分"). */
+.numberDragInput .numberDragUnit {
+  position: absolute;
+  top: 50%;
+  right: 30px;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+/* P9-10: the primary (save / add) button in a dialog's action row has the same text size as its cancel button
+   (the global .primaryButton has no font-size and fell back to 16px). :where() keeps specificity low so the
+   Today Picker's own 11px override still applies to both of its buttons. */
+:where(.dialogActions, .dictionarySettingsActions, .instructionUnsavedActions) .primaryButton {
+  font-size: 12px;
+}
+
+/* P95-01: the counts of the four Main section bars start at the same x, 18px (P9-14) after "やりたいこと". Each name cell is
+   exactly as wide as a zero-height hidden copy of "やりたいこと" set in the same font (no fixed px width, no script); the
+   real name sits in a 0-width first track and overflows it, so a longer name (e.g. "今日の実行") does not push its count. */
+.todaySectionBar h2,
+.projectsBand .disclosureLabel strong,
+.inboxBand .disclosureLabel strong,
+.todayActivityBand .disclosureLabel strong {
+  display: inline-grid;
+  grid-template-columns: 0 auto;
+  align-content: center;
+  white-space: nowrap;
+}
+
+.todaySectionBar h2::after,
+.projectsBand .disclosureLabel strong::after,
+.inboxBand .disclosureLabel strong::after,
+.todayActivityBand .disclosureLabel strong::after {
+  content: "やりたいこと";
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+}
+
+/* P95-01: right-hand text of a Records heading ends where the text inside the frame below it ends (that frame's own
+   padding, plus its 1px border for the bordered accordion list / checklist chips). Left side unchanged. */
+.recordsSection > .sectionHeading:not(:has(> .sectionLinkButton)) {
+  padding-inline-end: 13px;
+}
+
+.recordsSection.sourceCompletionSection > .sectionHeading {
+  padding-inline-end: 10px;
+}
+
+.weeklyReviewBlockHeading {
+  padding-inline-end: 10px;
+}
+

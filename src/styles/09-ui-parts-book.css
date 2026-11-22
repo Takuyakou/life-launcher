@@ -1,0 +1,1336 @@
+/* P10-14e (12-1): one pill for the status badges of Phase 10. */
+.uiPill {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  min-height: 20px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 1px 7px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.uiPill--project {
+  border-color: color-mix(in srgb, var(--project-color, var(--accent)) 50%, transparent);
+  background: color-mix(in srgb, var(--project-color, var(--accent)) 8%, transparent);
+  color: var(--project-color, var(--accent));
+}
+
+.uiPill--good {
+  border-color: rgba(117, 196, 143, 0.34);
+  background: rgba(117, 196, 143, 0.07);
+  color: var(--good);
+}
+
+.uiPill--running {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.uiPill--paused {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.uiPill--complete {
+  border-color: var(--good);
+  color: var(--good);
+}
+
+.uiPill--muted {
+  border-color: #4a4639;
+  color: var(--muted);
+}
+
+/* P10-14e (12-2): one key cap for the shortcut hints. */
+.uiKey {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  max-width: 100px;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 1px 6px;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shortcutBadge--unavailable {
+  border-style: dashed;
+}
+
+/* P10-14e (12-3): one small button inside rows and cards. */
+.uiSmallButton {
+  min-height: 28px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  padding: 0 8px;
+  font-size: var(--dashboard-font-meta);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* P10-14e (12-3): the new base size wins over the old per-button sizes. */
+.nextStepCard .nextStepRowAction.uiSmallButton,
+.sectionHeading .sectionAddButton.uiSmallButton,
+.nextStepFreshnessButton.uiSmallButton,
+.doNowActions .doNowAlternateButton.uiSmallButton {
+  width: auto;
+  height: auto;
+  min-height: 28px;
+  border-radius: 8px;
+  padding: 0 8px;
+  font-size: var(--dashboard-font-meta);
+  font-weight: 700;
+}
+
+.todayRow .todayInstructionButton,
+.todayRow .todayRemoveButton,
+.todayRow .todayTriggerButton {
+  font-size: var(--dashboard-font-meta);
+  font-weight: 700;
+}
+
+.wishlistNextStepMissing.uiPill {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--project-color, var(--muted)) 52%, #4a4639);
+  background: color-mix(in srgb, var(--project-color, var(--muted)) 5%, transparent);
+  color: #b8b0a0;
+}
+
+.doNowProjectChip.uiPill {
+  border-color: #4a4639;
+  background: transparent;
+  color: #f4f0e8;
+}
+
+/* P10-14e (12-4): the weights that are not 400, 500 or 700. */
+.doNowMetaItem,
+.doNowTrigger,
+.doNowReason {
+  font-weight: 400;
+}
+
+.todayRow .projectIdentityName {
+  font-weight: 400;
+}
+
+.wishlistGroupHeader .projectIdentityName,
+.wishlistGroupHeader > strong {
+  font-weight: 700;
+}
+
+.wishlistGroupHeader small,
+.wishlistGroupHeader > span:last-child {
+  font-weight: 400;
+}
+
+.doNowMeasureButton,
+.doNowMeasureButton span,
+.runningPauseButton,
+.runningStopButton,
+.todayCompletedLabel,
+.todayTextButton {
+  font-weight: 700;
+}
+
+.nextStepTextRegion p,
+.nextStepCard .nextStepTextRegion p {
+  font-weight: 400;
+}
+
+.viewToggleButtonLabel {
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.quickButton,
+.quickButton span:last-child {
+  font-weight: 400;
+}
+
+.quickButton .uiLetterIcon {
+  font-weight: 700;
+}
+
+.quickGroupHeader strong {
+  color: #a39c8e;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* The Enter hint is only for the keyboard-focused row: this must come after .uiKey. */
+.rowKeyHint {
+  display: none;
+}
+
+.nextStepRow:focus-visible .rowKeyHint,
+.inboxRow:focus-visible .rowKeyHint,
+.todayRow:focus-visible .rowKeyHint {
+  display: inline-flex;
+}
+
+.todayPickerCopy strong,
+.todayPickerSlotCopy strong {
+  grid-column: auto;
+}
+
+/* F1 (P10-14f): restore the yellow hover on the small row and card buttons. */
+.uiSmallButton {
+  transition:
+    border-color 130ms ease,
+    background-color 130ms ease,
+    color 130ms ease,
+    transform 130ms ease,
+    box-shadow 130ms ease;
+}
+
+.uiSmallButton:hover:not(:disabled):not(:active),
+.uiSmallButton:focus-visible {
+  border-color: rgba(231, 185, 77, 0.48);
+  background: var(--surface-strong);
+  color: var(--accent-strong);
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.22);
+}
+
+.doNowAlternateButton.uiSmallButton:hover:not(:disabled):not(:active),
+.doNowAlternateButton.uiSmallButton:focus-visible {
+  border-color: transparent;
+  background: var(--surface-strong);
+  color: var(--accent-strong);
+  transform: none;
+  box-shadow: none;
+}
+
+.sectionAddButton.uiSmallButton:hover:not(:disabled):not(:active),
+.sectionAddButton.uiSmallButton:focus-visible {
+  border-color: rgba(231, 185, 77, 0.48);
+  background: var(--surface-strong);
+  color: var(--accent-strong);
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.22);
+}
+
+/* F3 (P10-14f): the dictionary button follows Main.html's .ll-dict. */
+.appBody .launcherOpenButton {
+  min-height: 44px;
+  gap: 10px;
+  border: 1px solid #4a4639;
+  border-radius: 8px;
+  padding: 0 8px;
+  background: #211f1a;
+  transition:
+    border-color 130ms ease,
+    background-color 130ms ease;
+}
+
+.appBody .launcherOpenButtonLabel {
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.appBody .launcherOpenButtonIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: #2b2922;
+  color: #ffce5b;
+}
+
+.appBody .launcherOpenButtonIcon .uiIcon {
+  width: 16px;
+  height: 16px;
+  color: #ffce5b;
+  transform: none;
+}
+
+.appBody .launcherOpenButton > span {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.appBody .launcherOpenButtonLabel > span:last-child {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.appBody .launcherOpenButton:hover {
+  border-color: #b8b0a0;
+  background: #2b2922;
+  color: #f4f0e8;
+}
+
+/* F4 (P10-14f): every key cap except the search Ctrl+F is yellow again. */
+.uiKey {
+  min-height: 19px;
+  line-height: 1.5;
+}
+
+.uiKey--accent {
+  border-color: rgba(231, 185, 77, 0.48);
+  background: rgba(231, 185, 77, 0.12);
+  color: var(--accent);
+}
+
+/* F8 (P10-14f): the top actions take their own third column. */
+.todayRow {
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+}
+
+.todayRowTopActions {
+  position: static;
+  grid-column: 3;
+  grid-row: 1;
+  align-self: start;
+  justify-self: end;
+  height: auto;
+  min-height: 20px;
+}
+
+.todayItemMeta {
+  min-width: 0;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.todayItemMeta .todayProjectIdentity {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.todayItemMeta .todayProjectIdentity .projectIdentityName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todayItemMeta .runningBadge {
+  position: static;
+  flex: 0 0 auto;
+}
+
+.doNowContent[data-project-color]:hover,
+.doNowContent[data-project-color]:focus-within {
+  border-color: var(--project-color, var(--accent));
+  background: var(--surface-strong);
+  transform: translateY(-1px);
+}
+
+.todayItemCopy {
+  flex-direction: column;
+  align-items: flex-start;
+  flex-wrap: nowrap;
+}
+
+.todayItemCopy--withoutIdentity {
+  padding-inline-end: 0;
+}
+
+.todayItemCopy .todayTextButton {
+  width: 100%;
+  flex-basis: auto;
+}
+
+/* F9 (P10-14f): the buttons beside each other share one size. */
+.doNowActions .doNowMeasureButton {
+  padding: 0 16px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.doNowActions .doNowStartPrimary,
+.doNowActions .doNowStartSecondary,
+.doNowActions .doNowMeasureButton,
+.doNowActions .runningPauseButton,
+.doNowActions .runningStopButton {
+  font-weight: 700;
+}
+
+.topBar .viewToggleButton:hover:not(:disabled):not(.viewToggleButton--active) .uiIcon,
+.topBar .viewToggleButton:focus-visible:not(.viewToggleButton--active) .uiIcon,
+.topBar .topSearchButton:hover .uiIcon,
+.topBar .topSearchButton:focus-visible .uiIcon {
+  color: var(--accent-strong);
+}
+
+.topBar .viewToggleButton:hover:not(:disabled):not(.viewToggleButton--active) .viewToggleButtonLabel,
+.topBar .viewToggleButton:focus-visible:not(.viewToggleButton--active) .viewToggleButtonLabel {
+  color: var(--accent-strong);
+}
+
+.doNowActions .runningPauseButton,
+.doNowActions .runningStopButton {
+  height: 48px;
+  min-height: 48px;
+  gap: 8px;
+  border-radius: 8px;
+  padding: 0 22px 0 18px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.doNowActions .runningPauseButton .uiIcon,
+.doNowActions .runningStopButton .uiIcon {
+  width: 16px;
+  height: 16px;
+}
+
+/* V151: the base rule's fixed 90px left no room for the 15px label. Let both grow with the text;
+   the pause button keeps the width of 「一時停止」 so 「再開」 does not make the row jump. */
+.doNowActions .runningPauseButton,
+.doNowActions .runningStopButton {
+  width: auto;
+  min-width: 0;
+}
+
+.doNowActions .runningPauseButton {
+  min-width: 128px;
+}
+
+/* V151: the running buttons move like the start buttons — lift, shadow, the bottom line, and the
+   small press. Only in the Do Now band; the Today card's small buttons keep their own look. */
+.doNowActions .runningPauseButton,
+.doNowActions .runningStopButton {
+  position: relative;
+  overflow: hidden;
+  transition:
+    background-color 130ms ease,
+    border-color 130ms ease,
+    transform 130ms ease,
+    box-shadow 130ms ease;
+}
+
+.doNowActions .runningPauseButton::after,
+.doNowActions .runningStopButton::after {
+  position: absolute;
+  right: 12px;
+  bottom: 0;
+  left: 12px;
+  height: 2px;
+  background: currentColor;
+  content: "";
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 150ms ease;
+}
+
+.doNowActions .runningPauseButton:hover:not(:disabled),
+.doNowActions .runningPauseButton:focus-visible,
+.doNowActions .runningStopButton:hover:not(:disabled),
+.doNowActions .runningStopButton:focus-visible {
+  transform: translateY(-1px);
+  box-shadow:
+    0 7px 16px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.doNowActions .runningPauseButton:hover:not(:disabled)::after,
+.doNowActions .runningPauseButton:focus-visible::after,
+.doNowActions .runningStopButton:hover:not(:disabled)::after,
+.doNowActions .runningStopButton:focus-visible::after {
+  transform: scaleX(1);
+}
+
+.doNowActions .runningPauseButton:active:not(:disabled),
+.doNowActions .runningStopButton:active:not(:disabled) {
+  transform: translateY(0) scale(0.985);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.18);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .doNowActions .runningPauseButton,
+  .doNowActions .runningStopButton,
+  .doNowActions .runningPauseButton::after,
+  .doNowActions .runningStopButton::after {
+    transition: none !important;
+  }
+
+  .doNowActions .runningPauseButton:hover:not(:disabled),
+  .doNowActions .runningPauseButton:focus-visible,
+  .doNowActions .runningStopButton:hover:not(:disabled),
+  .doNowActions .runningStopButton:focus-visible,
+  .doNowActions .runningPauseButton:active:not(:disabled),
+  .doNowActions .runningStopButton:active:not(:disabled) {
+    transform: none;
+  }
+}
+
+.todayRow .todayTimerActions .runningPauseButton,
+.todayRow .todayTimerActions .runningStopButton {
+  width: 82px;
+  min-width: 82px;
+  height: 36px;
+  min-height: 36px;
+  gap: 6px;
+  border-radius: 8px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.todayRow .todayTimerActions .runningPauseButton .uiIcon,
+.todayRow .todayTimerActions .runningStopButton .uiIcon {
+  width: 14px;
+  height: 14px;
+}
+
+.todayStartButton {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.todayStartButton .nextStepStartDuration {
+  font-weight: 700;
+}
+
+.victoryInput,
+.victoryTextButton,
+.suggestionChip {
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .uiSmallButton {
+    transition:
+      border-color 130ms ease,
+      background-color 130ms ease,
+      color 130ms ease;
+  }
+
+  .uiSmallButton:hover:not(:disabled):not(:active),
+  .uiSmallButton:focus-visible {
+    transform: none;
+    box-shadow: none;
+  }
+}
+
+.todayTimerCluster .todayMeasureButton {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  border-radius: 8px;
+}
+
+/* F10 (P10-14f): the drop hint is an opaque pill, not text over the rows. */
+.dropHintLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 12px;
+  border: 1px solid rgba(231, 185, 77, 0.48);
+  border-radius: 999px;
+  background: #211f1a;
+  color: var(--accent-strong);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 700;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.32);
+}
+
+@media (max-width: 600px) {
+  .topBar .topSearchButton,
+  .topBrand .uiKey {
+    display: none;
+  }
+}
+
+
+/* P10-15: the 今週を決める tab follows Review.html. */
+.weeklyPlanning {
+  width: 100%;
+  max-width: 1080px;
+  margin-inline: auto;
+  padding: 8px 0 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.weeklyPlanningIntro { display: grid; gap: 6px; }
+.weeklyPlanningTitle { margin: 0; color: #f4f0e8; font-size: 26px; font-weight: 700; line-height: 1.25; }
+.weeklyPlanningIntro p { margin: 0; color: #b8b0a0; font-size: 14px; font-weight: 400; line-height: 1.6; }
+.weeklyPlanningColumns { display: flex; flex-wrap: wrap; gap: 28px; }
+.weeklyPlanningColumn { flex: 1 1 440px; min-width: 0; display: flex; flex-direction: column; }
+.weeklyPlanningFacts { gap: 16px; }
+.weeklyPlanningPlan { gap: 24px; }
+.weeklyPlanningSection { display: grid; gap: 10px; }
+.weeklyPlanningKicker { margin: 0; color: #a39c8e; font-size: 12px; font-weight: 700; line-height: 1.4; }
+.weeklyPlanningStats { display: flex; flex-wrap: wrap; gap: 12px; }
+.weeklyPlanningStats > div { flex: 1 1 120px; display: grid; gap: 6px; padding: 14px 16px; border: 1px solid #353126; border-radius: 12px; }
+.weeklyPlanningStats > div > span { color: #a39c8e; font-size: 12px; font-weight: 400; }
+.weeklyPlanningStats strong {
+  color: #f4f0e8;
+  font-size: 24px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.weeklyPlanningProjectList { overflow: hidden; border: 1px solid #353126; border-radius: 12px; background: #1b1a17; }
+.weeklyPlanningProjectRow { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 16px; }
+.weeklyPlanningProjectRow + .weeklyPlanningProjectRow { border-top: 1px solid #353126; }
+.weeklyPlanningDot { width: 10px; height: 10px; flex: 0 0 auto; border-radius: 50%; background: var(--project-color, #a8b2c1); }
+.weeklyPlanningDot--missing { background: #a8b2c1; }
+.weeklyPlanningProjectName { flex: 1; min-width: 0; overflow: hidden; color: #f4f0e8; font-size: 14px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.weeklyPlanningProjectCount, .weeklyPlanningProjectMinutes { flex: 0 0 auto; color: #b8b0a0; font-size: 14px; font-weight: 400; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.weeklyPlanningProjectMinutes { width: 90px; color: #f4f0e8; text-align: right; }
+.weeklyPlanningCompleted { display: flex; flex-direction: column; gap: 8px; }
+.weeklyPlanningCompleted ul { margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; list-style: none; }
+.weeklyPlanningCompleted li { display: flex; align-items: center; gap: 10px; min-width: 0; color: #b8b0a0; font-size: 13px; font-weight: 400; }
+.weeklyPlanningCompleted li .uiIcon { flex: 0 0 auto; color: var(--good); }
+.weeklyPlanningCompleted li > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.weeklyPlanningCompleted .weeklyPlanningMore { color: #a39c8e; }
+.weeklyPlanningEmpty { margin: 0; color: #a39c8e; font-size: 13px; font-weight: 400; line-height: 1.5; }
+.weeklyPlanningFocus { display: flex; flex-direction: column; gap: 12px; }
+.weeklyPlanningFocusHead { display: flex; align-items: baseline; gap: 10px; }
+.weeklyPlanningFocusHead h3 { margin: 0; color: #ffce5b; font-size: 15px; font-weight: 700; }
+.weeklyPlanningFocusHead span { color: #b8b0a0; font-size: 12px; font-weight: 400; }
+.weeklyPlanningFocusButtons { display: flex; flex-wrap: wrap; gap: 8px; }
+.weeklyPlanningFocusButton { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border: 1px solid #4a4639; border-radius: 999px; background: transparent; color: #b8b0a0; font-size: 14px; font-weight: 400; transition: border-color 130ms ease, background-color 130ms ease, color 130ms ease; }
+.weeklyPlanningFocusButton[aria-pressed="true"] { border-color: #ffce5b; background: rgba(231, 185, 77, 0.1); color: #f4f0e8; font-weight: 700; }
+.weeklyPlanningFocusButton:hover, .weeklyPlanningFocusButton:focus-visible { border-color: #b8b0a0; background: #2b2922; color: #f4f0e8; }
+.weeklyPlanningFocusButton[aria-pressed="true"]:hover, .weeklyPlanningFocusButton[aria-pressed="true"]:focus-visible { background: rgba(231, 185, 77, 0.16); }
+.weeklyPlanningStale { display: flex; flex-direction: column; gap: 10px; }
+.weeklyPlanningStale h3 { margin: 0; color: #a39c8e; font-size: 12px; font-weight: 700; }
+.weeklyPlanningStaleList { display: flex; flex-direction: column; gap: 8px; }
+.weeklyPlanningStaleRow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 16px; border: 1px solid #353126; border-radius: 12px; }
+.weeklyPlanningStaleCopy { flex: 1 1 200px; min-width: 0; display: grid; gap: 4px; }
+.weeklyPlanningStaleCopy strong { color: #f4f0e8; font-size: 14px; font-weight: 700; }
+.weeklyPlanningStaleCopy span { color: #f2a65a; font-size: 12px; font-weight: 400; }
+.weeklyPlanningStaleActions { display: flex; gap: 8px; }
+.weeklyPlanningAi { display: flex; flex-direction: column; gap: 14px; padding: 20px; border: 1px solid #4a4639; border-radius: 14px; background: #211f1a; }
+.weeklyPlanningAiIntro { display: grid; gap: 4px; }
+.weeklyPlanningAiIntro h3 { margin: 0; color: #f4f0e8; font-size: 15px; font-weight: 700; }
+.weeklyPlanningAiIntro p { margin: 0; color: #a39c8e; font-size: 12px; font-weight: 400; line-height: 1.5; }
+.weeklyPlanningAiStep { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.weeklyPlanningAiStep p { margin: 0; color: #b8b0a0; font-size: 13px; font-weight: 400; }
+.weeklyPlanningStepNumber { display: inline-grid; place-items: center; width: 24px; height: 24px; flex: 0 0 auto; border-radius: 50%; background: #2b2922; color: #ffce5b; font-size: 12px; font-weight: 700; }
+.weeklyPlanningAi .copyButton, .weeklyPlanningImportButton { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 14px; border: 1px solid #4a4639; border-radius: 10px; background: #1b1a17; color: #f4f0e8; font-size: 13px; font-weight: 400; transition: border-color 130ms ease, background-color 130ms ease; }
+.weeklyPlanningAi .copyButton:hover, .weeklyPlanningAi .copyButton:focus-visible, .weeklyPlanningImportButton:hover, .weeklyPlanningImportButton:focus-visible { border-color: #b8b0a0; background: #2b2922; }
+.weeklyPlanningDone { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.weeklyPlanningDone span { color: #a39c8e; font-size: 12px; font-weight: 400; }
+@media (max-width: 720px) { .weeklyPlanningColumn { flex-basis: 100%; } }
+
+.weeklyPlanningDone .primaryButton {
+  min-height: 44px;
+  padding: 0 30px;
+  border-color: rgba(117, 196, 143, 0.7);
+  background: #27342b;
+  color: #9be0b6;
+  font-size: 14px;
+  font-weight: 700;
+}
+.weeklyPlanningDone .primaryButton:hover:not(:disabled) {
+  border-color: var(--good);
+  background: rgba(117, 196, 143, 0.16);
+  color: #9be0b6;
+}
+/* P10-15b H5: the sidebar row values decided by the user (案 B + C の色). */
+.sidebar .quickGroup {
+  gap: 0;
+}
+
+.sidebar .quickGroupItems {
+  gap: 0;
+}
+
+/* V151: the 10px between a heading and its buttons sits inside the collapsing box, so it shrinks
+   and grows with the box instead of appearing or vanishing in one frame. */
+.sidebar .quickGroupItems::before {
+  height: 10px;
+  content: "";
+}
+
+.sidebar .quickButton {
+  min-height: 32px;
+  height: 32px;
+  padding: 0 6px;
+  gap: 10px;
+  border: 0 !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  grid-template-columns: 20px minmax(0, 1fr);
+}
+
+.sidebar .quickButton span:last-child {
+  color: #f4f0e8;
+  font-size: 13px;
+  font-weight: 500;
+  transition: color 130ms ease, background-color 130ms ease;
+}
+
+.sidebar .quickButton:hover:not(:disabled),
+.sidebar .quickButton:focus-visible {
+  background: rgba(190, 181, 164, 0.08) !important;
+}
+
+.sidebar .quickButton .quickButtonIcon,
+.sidebar .quickButton .quickButtonInitial,
+.sidebar .quickButton .quickIcon,
+.sidebar .quickButton .uiLetterIcon {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  flex: 0 0 20px;
+  border-radius: 6px;
+}
+
+.sidebar .quickButton .quickButtonIcon img,
+.sidebar .quickButton .quickIcon img {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+}
+
+.sidebar .quickButton .uiLetterIcon {
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.sidebar .quickGroupHeader {
+  min-height: 28px;
+  height: 28px;
+  padding: 0 6px;
+  gap: 6px;
+  grid-template-columns: 20px minmax(0, 1fr) 28px;
+}
+
+.sidebar .quickGroupHeader strong {
+  color: #a39c8e;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.sidebar .quickGroupHeader small {
+  color: #a39c8e;
+  font-size: 11px;
+  font-weight: 400;
+}
+/* P10-15b H2: the freshness buttons keep the main-screen yellow on hover. */
+.nextStepFreshnessButton:hover:not(:disabled),
+.nextStepFreshnessButton:focus-visible {
+  border-color: rgba(231, 185, 77, 0.55);
+  color: #ffce5b;
+}
+.sidebar .quickButton {
+  font-weight: 500;
+}
+/* P10-15c K1: menus fade out from where they open. */
+.uiMenuEnter {
+  animation: ui-menu-enter 140ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  transform-origin: top left;
+}
+
+@keyframes ui-menu-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* P10-15c K2: every dialog and the search palette open with one motion. */
+.modalBackdrop,
+.searchPaletteBackdrop {
+  animation: ui-backdrop-enter 140ms ease-out both;
+}
+
+.modalBackdrop > [role="dialog"],
+.searchPaletteBackdrop > [role="dialog"] {
+  animation: ui-dialog-enter 220ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+@keyframes ui-backdrop-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ui-dialog-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .uiMenuEnter {
+    animation: none;
+  }
+
+  .modalBackdrop,
+  .searchPaletteBackdrop,
+  .modalBackdrop > [role="dialog"],
+  .searchPaletteBackdrop > [role="dialog"] {
+    animation: none;
+  }
+}
+.nextStepFreshnessButton:hover:not(:disabled),
+.nextStepFreshnessButton:focus-visible {
+  border-color: rgba(231, 185, 77, 0.48);
+  color: #ffce5b;
+}
+.mainScrollArea .recordsViewHeader {
+  top: -6px;
+}
+
+/* P10-18d: settings weekly focus (restored; removed by P10-15) */
+.weeklyFocusChecklist {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.weeklyFocusChecklist label {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 7px 9px;
+  background: var(--surface-soft);
+  cursor: pointer;
+}
+
+.weeklyFocusChecklist input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.settingsWeeklyFocus {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  border-top: 1px solid var(--line-soft);
+  padding-top: 14px;
+}
+
+.settingsWeeklyFocusHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settingsWeeklyFocusHeading h4,
+.settingsWeeklyFocusHeading p {
+  margin: 0;
+}
+
+.settingsWeeklyFocusHeading p {
+  margin-top: 3px;
+  color: var(--text-muted-readable);
+  font-size: 12px;
+}
+
+.settingsWeeklyFocusHeading > span {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.settingsWeeklyFocusChecklist label:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+@media (max-width: 760px) {
+  .weeklyFocusChecklist {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* V160-B2: the image-book pane. Values follow inbox/v1.6.0/book-mock/book-mock.spec.ts.txt. */
+.bookPane {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+}
+.bookHeader {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.bookToolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 20px;
+  border-bottom: 1px solid #353126;
+}
+.bookPageJump {
+  position: relative;
+  display: inline-grid;
+  align-items: center;
+  min-width: 112px;
+}
+.bookPageLabel {
+  grid-area: 1 / 1;
+  display: block;
+  min-width: 112px;
+  height: 30px;
+  line-height: 30px;
+  padding: 0 8px;
+  margin-left: -8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #f4f0e8;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.bookPageLabel:hover {
+  background: #24221c;
+  box-shadow: inset 0 0 0 1px #3d392e;
+}
+.bookPageLabel:focus-visible {
+  outline: 1px solid #ffce5b;
+  outline-offset: 1px;
+}
+.bookPageLabel[data-hidden="true"] {
+  visibility: hidden;
+  pointer-events: none;
+}
+.bookPageLabel span {
+  color: #a39c8e;
+  font-weight: 400;
+}
+.bookPageJumpForm {
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 20;
+}
+.bookJumpInput {
+  width: 58px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid #ffce5b;
+  border-radius: 8px;
+  background: #16150f;
+  box-shadow: 0 0 0 3px rgba(255, 206, 91, 0.18);
+  color: #f4f0e8;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  outline: none;
+}
+.bookJumpTotal {
+  color: #a39c8e;
+  font-size: 14px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.bookJumpHint {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  padding: 5px 10px;
+  border: 1px solid #3d392e;
+  border-radius: 7px;
+  background: #24221c;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+  color: #f4f0e8;
+  font-size: 12px;
+  font-weight: 400;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.bookSeg {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid #353126;
+  border-radius: 10px;
+  background: #15140f;
+}
+.bookSeg button {
+  min-height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #a39c8e;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.bookSeg button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.bookSeg button[aria-pressed="true"] {
+  background: #2b2922;
+  color: #f4f0e8;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px #4a4639;
+}
+.bookZoomReset {
+  min-width: 52px;
+  font-variant-numeric: tabular-nums;
+}
+.bookZoomSeg .bookZoomReset {
+  color: #f4f0e8;
+}
+.bookSeg button:focus-visible {
+  outline: 1px solid #ffce5b;
+  outline-offset: 1px;
+}
+.bookCheck {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid #353126;
+  border-radius: 10px;
+  color: #b8b0a0;
+  font-size: 13px;
+  cursor: pointer;
+}
+.bookCheck input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+}
+.bookCheck i {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: #ffce5b;
+  box-shadow: inset 0 0 0 2px #1b1a17;
+}
+.bookCheck input:not(:checked) + i {
+  background: #1b1a17;
+  box-shadow: inset 0 0 0 1px #4a4639;
+}
+.bookCheck input:focus-visible + i {
+  outline: 1px solid #ffce5b;
+  outline-offset: 2px;
+}
+.bookSpacer {
+  flex: 1;
+}
+.bookNotice {
+  margin: 0;
+  padding: 6px 20px;
+  color: #a39c8e;
+  border-bottom: 1px solid #353126;
+  font-size: 12px;
+}
+.bookStage {
+  position: relative;
+  min-height: 0;
+  padding: 0;
+  background: #0f0e0c;
+  overflow: hidden;
+  outline: none;
+}
+.bookStage--zoomed {
+  overflow: auto;
+  cursor: grab;
+  user-select: none;
+}
+.bookStage--zoomed[data-panning="true"] {
+  cursor: grabbing;
+}
+.bookStage--zoomed::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.bookStage--zoomed::-webkit-scrollbar-track,
+.bookStage--zoomed::-webkit-scrollbar-corner {
+  background: transparent;
+}
+.bookStage--zoomed::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: rgba(244, 240, 232, 0.38);
+}
+.bookStage--zoomed .bookPageLayer {
+  position: relative;
+  inset: auto;
+  width: max-content;
+  min-width: 100%;
+  min-height: 100%;
+  margin: auto;
+  box-sizing: border-box;
+}
+.bookStage--zoomed .bookPageImage {
+  max-width: none;
+  max-height: none;
+  flex: 0 0 auto;
+}
+.bookStage[data-focus-ring="true"] {
+  box-shadow: inset 0 0 0 1px #ffce5b;
+}
+.bookPageLayer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 0;
+  padding: 20px 24px 26px;
+}
+.bookPageLayer--rtl {
+  flex-direction: row-reverse;
+}
+.bookPageImage,
+.bookPagePending,
+.bookPageError {
+  display: block;
+  max-height: 100%;
+  max-width: calc(50% - 1px);
+  width: auto;
+  height: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+.bookPagePending {
+  height: 100%;
+  width: 36%;
+  max-width: calc(50% - 1px);
+  background: #1b1a17;
+}
+.bookPageError {
+  padding: 16px;
+  color: #ffb4ad;
+  background: #1b1a17;
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+.bookPageLayer--one .bookPageImage,
+.bookPageLayer--one .bookPagePending,
+.bookPageLayer--one .bookPageError {
+  max-width: 100%;
+}
+.bookStage--one .bookPageImage,
+.bookStage--one .bookPagePending,
+.bookStage--one .bookPageError {
+  max-width: 100%;
+}
+.bookPageLayer--one .bookPagePending {
+  width: 60%;
+}
+.bookZone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 30%;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: rgba(244, 240, 232, 0);
+  font: inherit;
+  opacity: 0;
+  transition: opacity 120ms ease;
+  cursor: pointer;
+  z-index: 3;
+}
+.bookZone--left {
+  left: 0;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.28), transparent);
+  background-size: 53.3333% 100%;
+  background-repeat: no-repeat;
+  color: rgba(244, 240, 232, 0.75);
+}
+.bookZone--right {
+  right: 0;
+}
+.bookZone[data-available="false"] {
+  cursor: default;
+}
+.bookZone[data-visible="true"] {
+  opacity: 1;
+}
+.bookZone span {
+  position: absolute;
+  top: 50%;
+  left: 26.6667%;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(27, 26, 23, 0.85);
+  border: 1px solid #4a4639;
+  font-size: 20px;
+  transform: translate(-50%, -50%);
+}
+.bookZone--right span {
+  left: auto;
+  right: 26.6667%;
+  transform: translate(50%, -50%);
+}
+.bookZone em {
+  position: absolute;
+  top: calc(50% + 32px);
+  left: 26.6667%;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(27, 26, 23, 0.9);
+  color: #f4f0e8;
+  font-size: 12px;
+  font-style: normal;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+.bookZone--right em {
+  left: auto;
+  right: 26.6667%;
+  transform: translateX(50%);
+}
+.bookProgress {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 0;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  z-index: 4;
+  touch-action: none;
+}
+.bookProgressTrack {
+  position: relative;
+  width: 100%;
+  height: 3px;
+  border-radius: 999px;
+  background: #2b2922;
+  transition: height 80ms ease;
+}
+.bookProgress[data-active="true"] .bookProgressTrack {
+  height: 8px;
+}
+.bookProgress b {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: 999px;
+  background: #ffce5b;
+}
+.bookProgress--ltr b {
+  left: 0;
+  right: auto;
+}
+.bookProgressThumb {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ffce5b;
+  box-shadow: 0 0 0 3px rgba(15, 14, 12, 0.9);
+  transform: translate(50%, -50%);
+  pointer-events: none;
+}
+.bookProgress--ltr .bookProgressThumb {
+  transform: translate(-50%, -50%);
+}
+.bookProgressMarker {
+  position: absolute;
+  top: 50%;
+  width: 2px;
+  height: 16px;
+  border-radius: 1px;
+  background: rgba(255, 206, 91, 0.55);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.bookProgressTooltip {
+  position: absolute;
+  bottom: calc(100% + 2px);
+  padding: 2px 8px;
+  border-radius: 7px;
+  background: #ffce5b;
+  color: #16150f;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 18px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.bookStatus {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 24px;
+  color: #a39c8e;
+  font-size: 13px;
+  text-align: center;
+}
+.bookStatus--error {
+  color: #ffb4ad;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bookZone {
+    transition: none;
+  }
+}.instructionFileIcon--images,
+.instructionTreeFileIcon--images {
+  color: #e985b5;
+}.doNowOpenChipPage {
+  margin-left: 2px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(255, 206, 91, 0.14);
+  color: #ffce5b;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 18px;
+}
