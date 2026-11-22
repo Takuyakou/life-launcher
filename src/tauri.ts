@@ -74,8 +74,13 @@ export async function previewImport(json: string): Promise<ImportPreviewResponse
 export async function commitImport(
   json: string,
   fingerprint: string,
+  excluded: string[],
 ): Promise<ImportCommitResponse> {
-  const response = await invoke<ImportCommitResponse>("commit_import", { json, fingerprint });
+  const response = await invoke<ImportCommitResponse>("commit_import", {
+    json,
+    fingerprint,
+    excluded,
+  });
   return {
     ...response,
     config: AppConfigSchema.parse(response.config),

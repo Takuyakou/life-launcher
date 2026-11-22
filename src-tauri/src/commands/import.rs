@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -105,6 +106,8 @@ pub struct RejectedItem {
 #[derive(Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PreviewProject {
+    /// V163-B6: `p{i}`, the position in the answer's project list (not renumbered when rows are left out).
+    pub key: String,
     pub name: String,
     pub color: Option<String>,
     pub goal: Option<String>,
@@ -114,6 +117,7 @@ pub struct PreviewProject {
 #[derive(Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PreviewExistingProject {
+    pub key: String,
     pub name: String,
     pub fill_color: Option<String>,
     pub fill_goal: Option<String>,
@@ -125,15 +129,24 @@ pub struct PreviewExistingProject {
 #[derive(Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PreviewNextStep {
+    /// `p{i}.step`.
+    pub key: String,
+    pub project_key: String,
     pub project: String,
     pub text: String,
     pub action: String,
     pub reason: Option<String>,
+    /// The values written in the answer (None when it gave none).
+    pub minutes: Option<u32>,
+    pub short_minutes: Option<u32>,
 }
 
 #[derive(Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PreviewWish {
+    /// `p{i}.w{j}`, `w{j}` (no project), or `p{i}.step` for a next step that goes to the wishlist.
+    pub key: String,
+    pub project_key: Option<String>,
     pub text: String,
     pub project: Option<String>,
 }
@@ -572,6 +585,8 @@ fn add_wish(
     config: &mut AppConfig,
     project_id: Option<String>,
     text: String,
+    key: String,
+    project_key: Option<String>,
     preview: &mut ImportPreview,
 ) {
     let text = text.trim().to_string();
@@ -600,10 +615,21 @@ fn add_wish(
         instruction_path: None,
         instruction_open_on_start: None,
     });
-    preview.wishes.push(PreviewWish { text, project });
+    preview.wishes.push(PreviewWish {
+        key,
+        project_key,
+        text,
+        project,
+    });
 }
 
-fn build_import_plan(current: &AppConfig, parsed: ParsedImport) -> Result<ImportPlan, String> {
+/// Builds the result of an import. `excluded` holds keys the user left out: `p{i}` (a whole
+/// project), `p{i}.step` (its next step), `p{i}.w{j}` and `w{j}` (one wish). Unknown keys are ignored.
+fn build_import_plan(
+    current: &AppConfig,
+    parsed: ParsedImport,
+    excluded: &HashSet<String>,
+) -> Result<ImportPlan, String> {
     let mut config = current.clone();
     let mut preview = ImportPreview {
         ignored: parsed.ignored,
@@ -612,7 +638,24 @@ fn build_import_plan(current: &AppConfig, parsed: ParsedImport) -> Result<Import
         ..ImportPreview::default()
     };
 
-    for project in parsed.projects {
+    for (index, mut project) in parsed.projects.into_iter().enumerate() {
+        let project_key = format!("p{index}");
+        if excluded.contains(&project_key) {
+            continue;
+        }
+        let step_key = format!("{project_key}.step");
+        if excluded.contains(&step_key) {
+            project.next_step = None;
+        }
+        let wishes: Vec<(String, String)> = project
+            .wishes
+            .iter()
+            .enumerate()
+            .filter_map(|(wish_index, text)| {
+                let key = format!("{project_key}.w{wish_index}");
+                (!excluded.contains(&key)).then(|| (key, text.clone()))
+            })
+            .collect();
         let existing_index = config
             .projects
             .iter()
@@ -675,21 +718,35 @@ fn build_import_plan(current: &AppConfig, parsed: ParsedImport) -> Result<Import
                     add_wish(
                         &mut config,
                         Some(existing_id.clone()),
-                        next_step.text,
+                        next_step.text.clone(),
+                        step_key.clone(),
+                        Some(project_key.clone()),
                         &mut preview,
                     );
                 }
                 preview.next_steps.push(PreviewNextStep {
+                    key: step_key.clone(),
+                    project_key: project_key.clone(),
                     project: existing_name.clone(),
                     text: next_step_text.clone().unwrap_or_default(),
                     action: next_step_action.clone(),
                     reason: next_step_reason.clone(),
+                    minutes: next_step.minutes,
+                    short_minutes: next_step.short_minutes,
                 });
             }
-            for wish in project.wishes {
-                add_wish(&mut config, Some(existing_id.clone()), wish, &mut preview);
+            for (key, wish) in wishes {
+                add_wish(
+                    &mut config,
+                    Some(existing_id.clone()),
+                    wish,
+                    key,
+                    Some(project_key.clone()),
+                    &mut preview,
+                );
             }
             preview.existing_projects.push(PreviewExistingProject {
+                key: project_key.clone(),
                 name: existing_name,
                 fill_color,
                 fill_goal,
@@ -699,6 +756,10 @@ fn build_import_plan(current: &AppConfig, parsed: ParsedImport) -> Result<Import
             });
         } else {
             let id = new_id("project");
+            let next_step_values = project
+                .next_step
+                .as_ref()
+                .map(|step| (step.minutes, step.short_minutes));
             let next_step = project.next_step.map(build_next_step);
             let next_step_text = next_step.as_ref().map(|step| step.text.clone());
             config.projects.push(Project {
@@ -711,27 +772,44 @@ fn build_import_plan(current: &AppConfig, parsed: ParsedImport) -> Result<Import
                 legacy_next_step_settings: None,
             });
             preview.new_projects.push(PreviewProject {
+                key: project_key.clone(),
                 name: project.name.clone(),
                 color: project.color.clone(),
                 goal: project.goal.clone(),
                 next_step: next_step_text.clone(),
             });
             if let Some(text) = next_step_text {
+                let (minutes, short_minutes) = next_step_values.unwrap_or((None, None));
                 preview.next_steps.push(PreviewNextStep {
+                    key: step_key.clone(),
+                    project_key: project_key.clone(),
                     project: project.name.clone(),
                     text,
                     action: "insert".to_string(),
                     reason: None,
+                    minutes,
+                    short_minutes,
                 });
             }
-            for wish in project.wishes {
-                add_wish(&mut config, Some(id.clone()), wish, &mut preview);
+            for (key, wish) in wishes {
+                add_wish(
+                    &mut config,
+                    Some(id.clone()),
+                    wish,
+                    key,
+                    Some(project_key.clone()),
+                    &mut preview,
+                );
             }
         }
     }
 
-    for wish in parsed.wishes {
-        add_wish(&mut config, None, wish, &mut preview);
+    for (wish_index, wish) in parsed.wishes.into_iter().enumerate() {
+        let key = format!("w{wish_index}");
+        if excluded.contains(&key) {
+            continue;
+        }
+        add_wish(&mut config, None, wish, key, None, &mut preview);
     }
 
     preview.counts = PreviewCounts {
@@ -750,7 +828,7 @@ pub fn preview_import(app: AppHandle, json: String) -> Result<ImportPreviewRespo
     let current_response = load_config_internal(&app)?;
     ensure_import_preview_allowed(&current_response)?;
     let parsed = parse_import(&json)?;
-    let plan = build_import_plan(&current_response.config, parsed)?;
+    let plan = build_import_plan(&current_response.config, parsed, &HashSet::new())?;
     Ok(ImportPreviewResponse {
         preview: plan.preview,
         fingerprint: config_fingerprint(&current_response.config),
@@ -763,6 +841,7 @@ pub fn commit_import(
     state: State<'_, AppState>,
     json: String,
     fingerprint: String,
+    excluded: Vec<String>,
 ) -> Result<ImportCommitResponse, String> {
     let _reset_guard = state.begin_app_write()?;
     let _write_guard = state
@@ -775,7 +854,8 @@ pub fn commit_import(
         return Err("stale:設定が変わったため、もう一度確かめてください".to_string());
     }
     let parsed = parse_import(&json)?;
-    let plan = build_import_plan(&current_response.config, parsed)?;
+    let excluded: HashSet<String> = excluded.into_iter().collect();
+    let plan = build_import_plan(&current_response.config, parsed, &excluded)?;
     let ImportPlan { config, preview } = plan;
     validate_project_v3_invariants(&config)?;
     let (mut config, _changed, _warnings) = sanitize_config(config);
@@ -966,7 +1046,18 @@ mod tests {
 
     fn parse_and_plan(config: &AppConfig, json: &str) -> (AppConfig, ImportPreview) {
         let parsed = parse_import(json).expect("parse");
-        let plan = build_import_plan(config, parsed).expect("plan");
+        let plan = build_import_plan(config, parsed, &HashSet::new()).expect("plan");
+        (plan.config, plan.preview)
+    }
+
+    fn parse_and_plan_excluding(
+        config: &AppConfig,
+        json: &str,
+        excluded: &[&str],
+    ) -> (AppConfig, ImportPreview) {
+        let parsed = parse_import(json).expect("parse");
+        let excluded: HashSet<String> = excluded.iter().map(|key| key.to_string()).collect();
+        let plan = build_import_plan(config, parsed, &excluded).expect("plan");
         (plan.config, plan.preview)
     }
 
@@ -1260,5 +1351,172 @@ mod tests {
         assert!(read_import_json(invalid_path.to_string_lossy().to_string()).is_err());
         assert!(read_import_json(dir.to_string_lossy().to_string()).is_err());
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    fn existing_project_with_step(step_text: &str) -> Project {
+        let mut config = base_config();
+        config.projects.push(Project {
+            id: "p1".to_string(),
+            name: "英語".to_string(),
+            north_star: None,
+            weekly_focus: None,
+            color_id: None,
+            next_step: Some(NextStepV3 {
+                text: step_text.to_string(),
+                generation_id: Some("generation-1".to_string()),
+                source_wishlist_id: None,
+                trigger: None,
+                updated_at: None,
+                reviewed_at: None,
+                resume_note: None,
+                button_ids: Vec::new(),
+                default_timer_minutes: None,
+                short_timer_minutes: None,
+                expand_timer_on_start: None,
+                start_note_template: None,
+                instruction_path: None,
+                instruction_open_on_start: None,
+            }),
+            legacy_next_step_settings: None,
+        });
+        config.projects.remove(0)
+    }
+
+    const TWO_PROJECTS_JSON: &str = r#"{
+      "lifeLauncherImport": 1,
+      "projects": [
+        {"name": "英語", "color": "lime", "goal": "目標",
+         "nextStep": {"text": "音声で話す", "minutes": 20, "shortMinutes": 5},
+         "wishes": ["歌詞を訳す", "単語を10個"]},
+        {"name": "部屋", "nextStep": {"text": "紙を2山に分ける"}, "wishes": ["本棚を直す"]}
+      ],
+      "wishes": ["ひとつ目", "ふたつ目"]
+    }"#;
+
+    #[test]
+    fn preview_rows_carry_stable_keys_and_the_values_written_in_the_answer() {
+        let (_, preview) = parse_and_plan(&base_config(), TWO_PROJECTS_JSON);
+        let project_keys: Vec<&str> = preview
+            .new_projects
+            .iter()
+            .map(|p| p.key.as_str())
+            .collect();
+        assert_eq!(project_keys, ["p0", "p1"]);
+        let step_keys: Vec<(&str, &str)> = preview
+            .next_steps
+            .iter()
+            .map(|step| (step.key.as_str(), step.project_key.as_str()))
+            .collect();
+        assert_eq!(step_keys, [("p0.step", "p0"), ("p1.step", "p1")]);
+        assert_eq!(preview.next_steps[0].minutes, Some(20));
+        assert_eq!(preview.next_steps[0].short_minutes, Some(5));
+        assert_eq!(preview.next_steps[1].minutes, None);
+        assert_eq!(preview.next_steps[1].short_minutes, None);
+        let wish_keys: Vec<(&str, Option<&str>)> = preview
+            .wishes
+            .iter()
+            .map(|wish| (wish.key.as_str(), wish.project_key.as_deref()))
+            .collect();
+        assert_eq!(
+            wish_keys,
+            [
+                ("p0.w0", Some("p0")),
+                ("p0.w1", Some("p0")),
+                ("p1.w0", Some("p1")),
+                ("w0", None),
+                ("w1", None),
+            ]
+        );
+    }
+
+    #[test]
+    fn an_empty_excluded_set_gives_the_same_result_as_before() {
+        let (with_none, preview_none) = parse_and_plan(&base_config(), TWO_PROJECTS_JSON);
+        let (with_empty, preview_empty) =
+            parse_and_plan_excluding(&base_config(), TWO_PROJECTS_JSON, &[]);
+        assert_eq!(with_none.projects.len(), with_empty.projects.len());
+        assert_eq!(with_none.inbox.len(), with_empty.inbox.len());
+        assert_eq!(preview_none.counts.wishes, preview_empty.counts.wishes);
+        assert_eq!(
+            preview_none.counts.next_steps,
+            preview_empty.counts.next_steps
+        );
+    }
+
+    #[test]
+    fn excluding_a_project_skips_it_whole_and_keeps_the_other_keys() {
+        let (next, preview) = parse_and_plan_excluding(&base_config(), TWO_PROJECTS_JSON, &["p0"]);
+        assert_eq!(next.projects.len(), 1);
+        assert_eq!(next.projects[0].name, "部屋");
+        assert_eq!(preview.new_projects.len(), 1);
+        // The numbers are not closed up: the second project is still p1.
+        assert_eq!(preview.new_projects[0].key, "p1");
+        assert_eq!(preview.next_steps.len(), 1);
+        assert!(next.inbox.iter().all(|item| item.text != "歌詞を訳す"));
+        assert_eq!(next.inbox.len(), 3);
+    }
+
+    #[test]
+    fn excluding_a_step_or_a_wish_skips_only_that_row() {
+        let (next, preview) =
+            parse_and_plan_excluding(&base_config(), TWO_PROJECTS_JSON, &["p0.step"]);
+        assert!(next.projects[0].next_step.is_none());
+        assert!(next.projects[1].next_step.is_some());
+        assert_eq!(preview.next_steps.len(), 1);
+        assert_eq!(next.projects.len(), 2);
+
+        let (next, preview) =
+            parse_and_plan_excluding(&base_config(), TWO_PROJECTS_JSON, &["p0.w1", "w0"]);
+        let texts: Vec<&str> = next.inbox.iter().map(|item| item.text.as_str()).collect();
+        assert!(!texts.contains(&"単語を10個"));
+        assert!(!texts.contains(&"ひとつ目"));
+        assert!(texts.contains(&"歌詞を訳す"));
+        assert!(texts.contains(&"ふたつ目"));
+        assert_eq!(preview.wishes.len(), 3);
+        assert_eq!(preview.next_steps.len(), 2);
+    }
+
+    #[test]
+    fn a_step_that_goes_to_the_wishlist_uses_the_step_key_and_leaves_with_it() {
+        let mut config = base_config();
+        config.projects.push(existing_project_with_step("今の一手"));
+        let json = r#"{"lifeLauncherImport":1,"projects":[{"name":"英語","nextStep":{"text":"新しい一手"},"wishes":["もう一つ"]}]}"#;
+        let (next, preview) = parse_and_plan(&config, json);
+        assert_eq!(preview.next_steps[0].action, "wishlist");
+        assert_eq!(preview.next_steps[0].key, "p0.step");
+        let wish_keys: Vec<&str> = preview
+            .wishes
+            .iter()
+            .map(|wish| wish.key.as_str())
+            .collect();
+        // The wish that took the step's place has the step's key; the screen shows them as one row.
+        assert_eq!(wish_keys, ["p0.step", "p0.w0"]);
+        assert_eq!(next.inbox.len(), 2);
+
+        let (next, preview) = parse_and_plan_excluding(&config, json, &["p0.step"]);
+        assert!(preview.next_steps.is_empty());
+        assert_eq!(next.inbox.len(), 1);
+        assert_eq!(next.inbox[0].text, "もう一つ");
+        // The step stays as it was.
+        assert_eq!(
+            next.projects[0].next_step.as_ref().unwrap().text,
+            "今の一手"
+        );
+    }
+
+    #[test]
+    fn an_excluded_existing_project_gets_no_color_or_goal_and_unknown_keys_are_ignored() {
+        let mut config = base_config();
+        config.projects.push(existing_project_with_step("今の一手"));
+        let json = r#"{"lifeLauncherImport":1,"projects":[{"name":"英語","color":"coral","goal":"目標"}]}"#;
+        let (next, preview) = parse_and_plan_excluding(&config, json, &["p0", "p9", "zzz", "w99"]);
+        assert!(next.projects[0].color_id.is_none());
+        assert!(next.projects[0].north_star.is_none());
+        assert!(preview.existing_projects.is_empty());
+
+        let (next, preview) = parse_and_plan_excluding(&config, json, &["p9", "zzz"]);
+        assert_eq!(next.projects[0].color_id.as_deref(), Some("coral"));
+        assert_eq!(preview.existing_projects.len(), 1);
+        assert_eq!(preview.existing_projects[0].key, "p0");
     }
 }

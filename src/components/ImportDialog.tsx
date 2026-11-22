@@ -104,7 +104,7 @@ export function ImportDialog({
     setBusy(true);
     setError(null);
     try {
-      const response = await commitImport(json, preview.fingerprint);
+      const response = await commitImport(json, preview.fingerprint, []);
       onImported(response);
     } catch (commitError) {
       const message = errorMessage(commitError);
