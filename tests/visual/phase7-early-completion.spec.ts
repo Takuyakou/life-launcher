@@ -53,6 +53,7 @@ async function prepare(page: Page, fixture = fixtureForEarly()) {
   await page.goto("/");
   await waitForBundledFonts(page);
   await expect(page.locator(".doNowBand")).toBeVisible();
+  await pauseClock(page);
 }
 
 async function state(page: Page) {
@@ -74,6 +75,7 @@ async function stopAtThreshold(page: Page, index = 0) {
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await card.getByRole("button", { name: "終了", exact: true }).click();
   await expect(page.getByRole("dialog", { name: dialogName })).toBeVisible();
+  await page.clock.runFor(32);
 }
 
 test("threshold uses validated snapshot minutes and defensive fallback, never a ratio", () => {
@@ -393,7 +395,6 @@ test("extension uses the current planned duration instead of the original snapsh
 
 test("paused time cannot cross the early threshold, resume can", async ({ page }) => {
   await prepare(page);
-  await pauseClock(page);
   const card = page.locator(".todayRow").first();
   await card.getByRole("button", { name: "通常タイマー25分で開始" }).click();
   await page.clock.fastForward(179_000);
@@ -415,7 +416,6 @@ test("missing runtime short snapshot uses five minutes, not the live Project sho
   fixture.config.today.items[0].shortTimerMinutes = undefined;
   fixture.config.projects[0].nextStep!.shortTimerMinutes = 1;
   await prepare(page, fixture);
-  await pauseClock(page);
   const card = page.locator(".todayRow").first();
   await card.getByRole("button", { name: "通常タイマー25分で開始" }).click();
   await page.clock.fastForward(299_000);
@@ -445,6 +445,8 @@ test("mini finish opens the topmost dialog and repeated mini commands cannot res
     ),
   );
   const dialog = page.getByRole("dialog", { name: dialogName });
+  await expect(dialog).toBeVisible();
+  await page.clock.runFor(32);
   await expect(dialog.getByRole("button", { name: "未完了のまま終了" })).toBeFocused();
   await page.evaluate(() => {
     const c = (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: Control })
