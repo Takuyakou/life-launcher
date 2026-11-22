@@ -118,19 +118,6 @@ test("P10-14d M6 sidebar buttons are frameless rows", async ({ page }) => {
   expect(sidebarBox.width).toBeLessThanOrEqual(232);
 });
 
-test("P10-14d P1 the picker shows both groups without tabs", async ({ page }) => {
-  await prepare(page);
-  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
-  const dialog = page.getByRole("dialog", { name: "今日やるものを選ぶ" });
-  await expect(dialog.getByRole("tab")).toHaveCount(0);
-  await expect(dialog.locator('[data-today-picker-section="next-step"]')).toBeVisible();
-  await expect(dialog.locator('[data-today-picker-section="wishlist"]')).toBeVisible();
-  await expect(dialog.getByRole("heading", { name: "次の一手", exact: true })).toBeVisible();
-  await expect(dialog.getByRole("heading", { name: "やりたいこと", exact: true })).toBeVisible();
-  await expect(dialog.getByRole("button", { name: "決定", exact: true })).toBeVisible();
-  await expect(dialog.getByRole("button", { name: "キャンセル", exact: true })).toBeVisible();
-});
-
 test("P10-14d P2 the chosen slot has the project color line", async ({ page }) => {
   await prepare(page);
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();

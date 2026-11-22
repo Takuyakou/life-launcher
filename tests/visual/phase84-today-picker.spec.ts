@@ -512,6 +512,10 @@ test("P84 Picker shows both source groups without tabs on every open", async ({ 
   await expect(dialog.locator('[data-today-picker-section="next-step"]')).toBeVisible();
   await expect(dialog.locator('[data-today-picker-section="wishlist"]')).toBeVisible();
   await expect(dialog.locator('[data-today-picker-section="selected"]')).toBeVisible();
+  await expect(dialog.getByRole("heading", { name: "次の一手", exact: true })).toBeVisible();
+  await expect(dialog.getByRole("heading", { name: "やりたいこと", exact: true })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "決定", exact: true })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "キャンセル", exact: true })).toBeVisible();
 
   await dialog.getByRole("button", { name: "今日やるものを選ぶを閉じる" }).click();
   await entry.click();
