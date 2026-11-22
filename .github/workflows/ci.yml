@@ -53,7 +53,14 @@ jobs:
       - run: npm.cmd run test:visual -- --shard=${{ matrix.shard }}/3
 
   visual:
+    if: ${{ always() }}
     needs: visual-shard
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
-      - run: echo "All visual test shards passed."
+      - name: Check every visual test shard
+        run: |
+          if [ "${{ needs.visual-shard.result }}" != "success" ]; then
+            echo "A visual test shard did not pass: ${{ needs.visual-shard.result }}"
+            exit 1
+          fi
+          echo "All visual test shards passed."
