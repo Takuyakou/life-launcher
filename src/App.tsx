@@ -104,7 +104,13 @@ import {
   TodayItem,
 } from "./types";
 import { ConfirmDialog, type ConfirmDialogRequest } from "./components/ConfirmDialog";
+import { GroupNameDialog } from "./components/GroupNameDialog";
 import { ImportDialog } from "./components/ImportDialog";
+import { OverlayPageDialog } from "./components/OverlayPageDialog";
+import {
+  SoftwareResetChoiceDialog,
+  SoftwareResetProgressDialog,
+} from "./components/SoftwareResetDialogs";
 import { FirstRunBand } from "./components/FirstRunBand";
 import { IMPORT_PROMPT_FIRST } from "./content/importPrompt";
 import { earlyCompletionItem } from "./earlyCompletion";
@@ -12612,179 +12618,33 @@ function DashboardApp() {
       )}
 
       {overlayPageDraft && (
-        <div className="modalBackdrop" role="presentation">
-          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
-          <section
-            aria-label={overlayPageDraft.mode === "add" ? "辞書ページ追加" : "辞書ページ名変更"}
-            aria-modal="true"
-            className="dropDialog"
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div>
-              <p className="eyebrow">Dictionary page</p>
-              <h2>{overlayPageDraft.mode === "add" ? "ページを追加" : "名前を変更"}</h2>
-            </div>
-
-            <label className="fieldStack">
-              <span>ページ名</span>
-              <input
-                autoFocus
-                className="textInput"
-                maxLength={OVERLAY_PAGE_NAME_MAX_CHARS}
-                onChange={(event) =>
-                  setOverlayPageDraft({ ...overlayPageDraft, name: event.target.value })
-                }
-                onKeyDown={(event) => {
-                  if (
-                    event.key === "Enter" &&
-                    !overlayPageNameError(overlayPageDraft.name, overlayPageDraft.pageId)
-                  ) {
-                    void saveOverlayPageDraft();
-                  }
-                  if (event.key === "Escape") closeOverlayPageDialog();
-                }}
-                placeholder="例: プロジェクト名"
-                value={overlayPageDraft.name}
-              />
-              {overlayPageDraft.name.trim() &&
-                overlayPageNameError(overlayPageDraft.name, overlayPageDraft.pageId) && (
-                  <small className="fieldError">
-                    {overlayPageNameError(overlayPageDraft.name, overlayPageDraft.pageId)}
-                  </small>
-                )}
-            </label>
-
-            <div className="dialogActions">
-              <button className="secondaryButton" onClick={closeOverlayPageDialog} type="button">
-                キャンセル
-              </button>
-              <button
-                className="primaryButton"
-                disabled={Boolean(
-                  overlayPageNameError(overlayPageDraft.name, overlayPageDraft.pageId),
-                )}
-                onClick={() => void saveOverlayPageDraft()}
-                type="button"
-              >
-                {overlayPageDraft.mode === "add" ? "追加" : "保存"}
-              </button>
-            </div>
-          </section>
-        </div>
+        <OverlayPageDialog
+          draft={overlayPageDraft}
+          nameError={overlayPageNameError(overlayPageDraft.name, overlayPageDraft.pageId)}
+          onClose={closeOverlayPageDialog}
+          onDraftChange={setOverlayPageDraft}
+          onSave={() => void saveOverlayPageDraft()}
+        />
       )}
 
       {groupDraft !== null && (
-        <div className="modalBackdrop" role="presentation">
-          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
-          <section
-            aria-label="グループ追加"
-            aria-modal="true"
-            className="dropDialog"
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div>
-              <p className="eyebrow">Group</p>
-              <h2>グループを追加</h2>
-            </div>
-
-            <label className="fieldStack">
-              <span>グループ名</span>
-              <input
-                autoFocus
-                className="textInput"
-                maxLength={40}
-                onChange={(event) => setGroupDraft(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    confirmGroupAddition();
-                  }
-                  if (event.key === "Escape") {
-                    setGroupDraft(null);
-                  }
-                }}
-                placeholder="例: 仕事"
-                value={groupDraft}
-              />
-            </label>
-
-            <div className="dialogActions formDialogActions">
-              <button
-                className="primaryButton"
-                disabled={!groupDraft.trim()}
-                onClick={confirmGroupAddition}
-                type="button"
-              >
-                追加
-              </button>
-              <button
-                className="secondaryButton dialogCancelButton"
-                onClick={() => setGroupDraft(null)}
-                type="button"
-              >
-                キャンセル
-              </button>
-            </div>
-          </section>
-        </div>
+        <GroupNameDialog
+          mode="add"
+          onCancel={() => setGroupDraft(null)}
+          onChange={setGroupDraft}
+          onConfirm={confirmGroupAddition}
+          value={groupDraft}
+        />
       )}
 
       {groupRenameDraft && (
-        <div className="modalBackdrop" role="presentation">
-          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
-          <section
-            aria-label="グループ名変更"
-            aria-modal="true"
-            className="dropDialog"
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div>
-              <p className="eyebrow">Group</p>
-              <h2>名前を変更</h2>
-            </div>
-
-            <label className="fieldStack">
-              <span>グループ名</span>
-              <input
-                autoFocus
-                className="textInput"
-                maxLength={40}
-                onChange={(event) =>
-                  setGroupRenameDraft({ ...groupRenameDraft, to: event.target.value })
-                }
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    confirmGroupRename();
-                  }
-                  if (event.key === "Escape") {
-                    setGroupRenameDraft(null);
-                  }
-                }}
-                value={groupRenameDraft.to}
-              />
-            </label>
-
-            <div className="dialogActions formDialogActions">
-              <button
-                className="primaryButton"
-                disabled={!groupRenameDraft.to.trim()}
-                onClick={confirmGroupRename}
-                type="button"
-              >
-                保存
-              </button>
-              <button
-                className="secondaryButton dialogCancelButton"
-                onClick={() => setGroupRenameDraft(null)}
-                type="button"
-              >
-                キャンセル
-              </button>
-            </div>
-          </section>
-        </div>
+        <GroupNameDialog
+          mode="rename"
+          onCancel={() => setGroupRenameDraft(null)}
+          onChange={(to) => setGroupRenameDraft({ ...groupRenameDraft, to })}
+          onConfirm={confirmGroupRename}
+          value={groupRenameDraft.to}
+        />
       )}
 
       {settingsDraft && (
@@ -15547,93 +15407,18 @@ function DashboardApp() {
       )}
 
       {softwareResetChoiceOpen && (
-        <div
-          className="modalBackdrop confirmBackdrop softwareResetChoiceBackdrop"
-          role="presentation"
-        >
-          <section
-            aria-describedby="software-reset-choice-description"
-            aria-labelledby="software-reset-choice-title"
-            aria-modal="true"
-            className="dropDialog confirmDialog softwareResetChoiceDialog"
-            role="dialog"
-          >
-            <div className="confirmDialogHeader">
-              <h2 id="software-reset-choice-title">リセット前にバックアップしますか？</h2>
-              <button
-                aria-label="確認を閉じる"
-                className="confirmDialogClose"
-                disabled={softwareResetChoiceBusy}
-                onClick={() => closeSoftwareResetChoice()}
-                title="閉じる"
-                type="button"
-              >
-                <UiIcon name="close" size={16} />
-              </button>
-            </div>
-            <div className="confirmDialogBody" id="software-reset-choice-description">
-              <p>
-                現在のデータをバックアップしておくと、
-                <br />
-                必要になった場合に元へ戻せます。
-              </p>
-            </div>
-            <div className="dialogActions softwareResetChoiceActions">
-              <button
-                className="confirmDialogButton mainActionButton mainActionButton--gold"
-                disabled={softwareResetChoiceBusy}
-                onClick={() => void continueSoftwareReset(true)}
-                type="button"
-              >
-                {softwareResetChoiceBusy ? "バックアップしています…" : "バックアップして続行"}
-              </button>
-              <button
-                className="dangerButton"
-                disabled={softwareResetChoiceBusy}
-                onClick={() => void continueSoftwareReset(false)}
-                type="button"
-              >
-                バックアップせず続行
-              </button>
-              <button
-                autoFocus
-                className="secondaryButton settingsButton--neutral"
-                disabled={softwareResetChoiceBusy}
-                onClick={() => closeSoftwareResetChoice()}
-                type="button"
-              >
-                キャンセル
-              </button>
-            </div>
-          </section>
-        </div>
+        <SoftwareResetChoiceDialog
+          busy={softwareResetChoiceBusy}
+          onClose={() => closeSoftwareResetChoice()}
+          onContinue={(withBackup) => void continueSoftwareReset(withBackup)}
+        />
       )}
       {confirmDialog && <ConfirmDialog {...confirmDialog} onCancel={closeConfirmDialog} open />}
       {softwareResetStage !== "idle" && (
-        <div className="modalBackdrop softwareResetProgressBackdrop" role="presentation">
-          <section
-            aria-labelledby="software-reset-progress-title"
-            aria-live="assertive"
-            aria-modal="true"
-            className="dropDialog softwareResetProgressDialog"
-            onKeyDown={(event) => {
-              if (event.key === "Tab") event.preventDefault();
-            }}
-            ref={softwareResetProgressRef}
-            role="dialog"
-            tabIndex={-1}
-          >
-            <span aria-hidden="true" className="softwareResetProgressIndicator" />
-            <div>
-              <h2 id="software-reset-progress-title">
-                {softwareResetStage === "restart"
-                  ? "Life Launcherを再起動しています"
-                  : "ソフトウェアリセットを実行しています"}
-              </h2>
-              <p>この画面を閉じずにお待ちください。</p>
-            </div>
-          </section>
-        </div>
+        <SoftwareResetProgressDialog
+          progressRef={softwareResetProgressRef}
+          stage={softwareResetStage}
+        />
       )}
       {searchOpen && (
         <SearchPalette
