@@ -457,12 +457,23 @@ test("P84 Picker keeps both columns and a scrollable candidate list in a small w
   const panel = dialog.locator(".todayPickerSource");
   expect(await panel.evaluate((node) => node.scrollHeight > node.clientHeight)).toBe(true);
 
-  const [destinationBox, sourceBox, cancelBox, dialogBox] = await Promise.all([
-    dialog.locator(".todayPickerDestination").boundingBox(),
-    dialog.locator(".todayPickerSource").boundingBox(),
-    dialog.getByRole("button", { name: "キャンセル", exact: true }).boundingBox(),
-    dialog.boundingBox(),
-  ]);
+  // The dialog still moves while it opens: read every box in the same frame.
+  const [destinationBox, sourceBox, cancelBox, dialogBox] = await dialog.evaluate((node) => {
+    const rect = (element: Element | null) => {
+      if (!element) return null;
+      const { x, y, width, height } = element.getBoundingClientRect();
+      return { x, y, width, height };
+    };
+    const cancel = Array.from(node.querySelectorAll("button")).find(
+      (button) => button.textContent?.trim() === "キャンセル",
+    );
+    return [
+      rect(node.querySelector(".todayPickerDestination")),
+      rect(node.querySelector(".todayPickerSource")),
+      rect(cancel ?? null),
+      rect(node),
+    ];
+  });
   expect(destinationBox && sourceBox && cancelBox && dialogBox).toBeTruthy();
   expect(destinationBox!.x).toBeGreaterThan(sourceBox!.x + sourceBox!.width);
   expect(Math.abs(destinationBox!.y - sourceBox!.y)).toBeLessThanOrEqual(2);
