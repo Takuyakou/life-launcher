@@ -10,6 +10,30 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(packageJson.version),
   },
   clearScreen: false,
+  // V163-S3: split the external libraries into react / motion / vendor chunks so the main chunk
+  // stays under the 500 kB warning. Only the chunking changes; the drawing order does not.
+  build: {
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            {
+              name: "react",
+              test: /[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/,
+            },
+            {
+              name: "motion",
+              test: /[\\/]node_modules[\\/](motion|framer-motion|motion-dom|motion-utils)[\\/]/,
+            },
+            {
+              name: "vendor",
+              test: /[\\/]node_modules[\\/]/,
+            },
+          ],
+        },
+      },
+    },
+  },
   server: {
     host: "127.0.0.1",
     port: 1420,
