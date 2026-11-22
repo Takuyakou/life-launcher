@@ -10609,6 +10609,18 @@ function DashboardApp() {
                     </span>
                     <div className="disclosureHeaderActions">
                       <button
+                        className="sectionGhostButton"
+                        onPointerDown={(event) => event.stopPropagation()}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          openImportDialog("", null, event.currentTarget);
+                        }}
+                        title="ChatGPTやClaudeに作ってもらった内容を、まとめて足します"
+                        type="button"
+                      >
+                        まとめて取り込む
+                      </button>
+                      <button
                         aria-label="プロジェクトを追加"
                         className="uiSmallButton sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd nextStepHeaderAdd--project mainActionButton mainActionButton--neutral"
                         onPointerDown={(event) => event.stopPropagation()}

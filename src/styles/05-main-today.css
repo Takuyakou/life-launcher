@@ -1363,6 +1363,26 @@
   color: var(--accent-strong);
 }
 
+.sectionGhostButton {
+  align-self: center;
+  min-height: 28px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding-inline: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--dashboard-font-meta);
+  white-space: nowrap;
+}
+
+.sectionGhostButton:hover,
+.sectionGhostButton:focus-visible {
+  border-color: var(--line);
+  background: var(--control-neutral-hover-bg);
+  color: var(--accent-strong);
+}
+
 .projectGrid, .inboxList {
   border-left: 2px solid transparent;
   padding-left: 8px;
