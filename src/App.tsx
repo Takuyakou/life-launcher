@@ -112,6 +112,7 @@ import {
 } from "./components/SoftwareResetDialogs";
 import { TimerCompletionDialog } from "./components/TimerCompletionDialog";
 import { TimerMinutesStepper } from "./components/TimerMinutesStepper";
+import { SlidingFace } from "./components/SlidingFace";
 import { TodayActivitySection } from "./components/TodayActivitySection";
 import { ToastStack } from "./components/ToastStack";
 import { useToasts } from "./hooks/useToasts";
@@ -12442,7 +12443,10 @@ function DashboardApp() {
                   role="tab"
                   type="button"
                 >
-                  {label}
+                  {settingsSection === key && (
+                    <SlidingFace className="settingsTabFace" layoutId="settings-tab-face" />
+                  )}
+                  <span className="settingsTabLabel">{label}</span>
                 </button>
               ))}
             </div>
@@ -13914,7 +13918,10 @@ function DashboardApp() {
                       role="tab"
                       type="button"
                     >
-                      ＋ やりたいことから選ぶ
+                      {wishlistMode && (
+                        <SlidingFace className="nextStepModeFace" layoutId="nextstep-mode-face" />
+                      )}
+                      <span className="nextStepModeLabel">＋ やりたいことから選ぶ</span>
                     </button>
                     <button
                       aria-selected={!wishlistMode}
@@ -13928,7 +13935,10 @@ function DashboardApp() {
                       role="tab"
                       type="button"
                     >
-                      ＋ 新しく入力
+                      {!wishlistMode && (
+                        <SlidingFace className="nextStepModeFace" layoutId="nextstep-mode-face" />
+                      )}
+                      <span className="nextStepModeLabel">＋ 新しく入力</span>
                     </button>
                   </div>
 

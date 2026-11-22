@@ -2013,6 +2013,36 @@
   font-weight: 750;
 }
 
+/* V163-M2: a face in the chosen mode's colors slides between the two modes while it moves. */
+.nextStepDecisionModeButton {
+  position: relative;
+}
+
+.nextStepModeLabel {
+  position: relative;
+  z-index: 1;
+}
+
+.nextStepModeFace {
+  position: absolute;
+  inset: -1px;
+  border: 1px solid var(--main-action-border);
+  border-radius: inherit;
+  background: var(--main-action-bg);
+  /* Not drawn at rest (still measured for layoutId); opacity 0 changed the frame's corners. */
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.nextStepModeFace[data-moving] {
+  visibility: visible;
+}
+
+button.mainActionButton.nextStepDecisionModeButton--active:has(> .nextStepModeFace[data-moving]) {
+  border-color: transparent;
+  background: transparent;
+}
+
 .nextStepDecisionModeButton--active {
   --main-action-bg: var(--control-positive-bg);
   --main-action-hover-bg: var(--control-positive-hover-bg);

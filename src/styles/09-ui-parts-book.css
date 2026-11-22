@@ -1011,6 +1011,31 @@
   font-weight: 700;
   box-shadow: inset 0 0 0 1px #4a4639;
 }
+/* V163-M2: a face slides to the chosen side of the spread and direction toggles while it moves. */
+.bookSeg button {
+  position: relative;
+}
+.bookSegLabel {
+  position: relative;
+  z-index: 1;
+}
+.bookSegFace {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: #2b2922;
+  box-shadow: inset 0 0 0 1px #4a4639;
+  /* Not drawn at rest (still measured for layoutId); opacity 0 changed the frame's corners. */
+  visibility: hidden;
+  pointer-events: none;
+}
+.bookSegFace[data-moving] {
+  visibility: visible;
+}
+.bookSeg button[aria-pressed="true"]:has(> .bookSegFace[data-moving]) {
+  background: transparent;
+  box-shadow: none;
+}
 .bookZoomReset {
   min-width: 52px;
   font-variant-numeric: tabular-nums;

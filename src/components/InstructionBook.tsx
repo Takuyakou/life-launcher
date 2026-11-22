@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { SlidingFace } from "./SlidingFace";
 import type {
   KeyboardEvent as ReactKeyboardEvent,
   PointerEvent as ReactPointerEvent,
@@ -1026,14 +1027,16 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
             onClick={() => changeSpread(true)}
             type="button"
           >
-            見開き
+            {bookState.spread && <SlidingFace className="bookSegFace" layoutId="book-spread-face" />}
+            <span className="bookSegLabel">見開き</span>
           </button>
           <button
             aria-pressed={!bookState.spread}
             onClick={() => changeSpread(false)}
             type="button"
           >
-            1ページ
+            {!bookState.spread && <SlidingFace className="bookSegFace" layoutId="book-spread-face" />}
+            <span className="bookSegLabel">1ページ</span>
           </button>
         </div>
         <div
@@ -1049,14 +1052,20 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
             onClick={() => changeDirection("rtl")}
             type="button"
           >
-            右から左
+            {bookState.direction === "rtl" && (
+              <SlidingFace className="bookSegFace" layoutId="book-direction-face" />
+            )}
+            <span className="bookSegLabel">右から左</span>
           </button>
           <button
             aria-pressed={bookState.direction === "ltr"}
             onClick={() => changeDirection("ltr")}
             type="button"
           >
-            左から右
+            {bookState.direction === "ltr" && (
+              <SlidingFace className="bookSegFace" layoutId="book-direction-face" />
+            )}
+            <span className="bookSegLabel">左から右</span>
           </button>
         </div>
         <label
