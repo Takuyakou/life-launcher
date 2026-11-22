@@ -86,7 +86,7 @@ export function TimerCompletionDialog({
           <>
             <label className="fieldStack timerResumeField">
               <span>次はここから(任意)</span>
-              <input
+              <input autoComplete="off"
                 aria-label="次はここから(任意)"
                 className="textInput"
                 disabled={saving}

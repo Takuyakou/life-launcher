@@ -464,7 +464,7 @@ export function ImportDialog({
                   </button>
                 </div>
               ) : (
-                <textarea
+                <textarea autoComplete="off"
                   aria-label="取り込みのJSON"
                   className="textInput importTextarea"
                   onChange={(event) => {

@@ -73,7 +73,7 @@ export function InboxEditDialog(props: InboxEditDialogProps) {
 
         <label className="fieldStack">
           <span>やりたいこと</span>
-          <input
+          <input autoComplete="off"
             autoFocus
             className="textInput"
             maxLength={120}

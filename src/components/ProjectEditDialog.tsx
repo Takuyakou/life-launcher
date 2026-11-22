@@ -62,7 +62,7 @@ export function ProjectEditDialog(props: ProjectEditDialogProps) {
         <h3 className="formSectionHeading">基本</h3>
         <label className="fieldStack">
           <span>プロジェクト名</span>
-          <input
+          <input autoComplete="off"
             autoFocus={projectEditDraft.isNew}
             className="textInput"
             maxLength={48}
@@ -75,7 +75,7 @@ export function ProjectEditDialog(props: ProjectEditDialogProps) {
 
         <label className="fieldStack">
           <span>目標（任意）</span>
-          <input
+          <input autoComplete="off"
             className="textInput"
             maxLength={60}
             onChange={(event) =>

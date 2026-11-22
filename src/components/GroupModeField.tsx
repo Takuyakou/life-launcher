@@ -52,7 +52,7 @@ export function GroupModeField({
           ))}
         </select>
       ) : (
-        <input
+        <input autoComplete="off"
           aria-label="新しいグループ名"
           className="textInput"
           onChange={(event) => onNewGroupChange(event.target.value)}

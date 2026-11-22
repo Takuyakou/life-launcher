@@ -5,6 +5,7 @@ export const FAST_SPECS = [
   "config-validation.spec.ts",
   "css-class-contract.spec.ts",
   "dictionary-window-position.spec.ts",
+  "input-autocomplete-contract.spec.ts",
   "phase72-public-safety.spec.ts",
   "phase82-countup-core.spec.ts",
   "phase96-topmenu-labels.spec.ts",

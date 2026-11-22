@@ -94,7 +94,7 @@ export function DropRegisterDialog(props: DropRegisterDialogProps) {
                 {builderKind === "file" ? "ファイル" : builderKind === "folder" ? "フォルダ" : "URL"}
               </label>
               <div className="builderSourceInputRow">
-                <input
+                <input autoComplete="off"
                   className="textInput"
                   id="builder-source-input"
                   onChange={(event) => updateBuilderSource(event.target.value)}
@@ -117,7 +117,7 @@ export function DropRegisterDialog(props: DropRegisterDialogProps) {
 
         <label className="fieldStack">
           <span>ラベル</span>
-          <input
+          <input autoComplete="off"
             className="textInput"
             onChange={(event) => {
               if (builderKind) setBuilderLabelTouched(true);

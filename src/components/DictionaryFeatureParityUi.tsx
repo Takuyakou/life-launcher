@@ -229,7 +229,7 @@ export function DictionaryFeatureParityUi({ c }: { c: DictionaryFeatureParityCon
             </div>
             <label className="fieldStack">
               <span>ページ名</span>
-              <input
+              <input autoComplete="off"
                 autoFocus
                 className="textInput"
                 maxLength={OVERLAY_PAGE_NAME_MAX_CHARS}
@@ -295,7 +295,7 @@ export function DictionaryFeatureParityUi({ c }: { c: DictionaryFeatureParityCon
             </div>
             <label className="fieldStack">
               <span>ラベル</span>
-              <input
+              <input autoComplete="off"
                 autoFocus
                 className="textInput"
                 maxLength={48}
@@ -305,7 +305,7 @@ export function DictionaryFeatureParityUi({ c }: { c: DictionaryFeatureParityCon
             </label>
             <label className="fieldStack">
               <span>グループ</span>
-              <input
+              <input autoComplete="off"
                 className="textInput"
                 list="dictionary-groups"
                 onChange={(event) => setDropDraft({ ...dropDraft, group: event.target.value })}
@@ -414,7 +414,7 @@ export function DictionaryFeatureParityUi({ c }: { c: DictionaryFeatureParityCon
                 <h3>基本</h3>
                 <label className="fieldStack">
                   <span>ラベル</span>
-                  <input
+                  <input autoComplete="off"
                     autoFocus
                     className="textInput"
                     maxLength={48}
@@ -494,7 +494,7 @@ export function DictionaryFeatureParityUi({ c }: { c: DictionaryFeatureParityCon
                 <div className="buttonEditOptionalBody">
                   <label className="fieldStack">
                     <span>検索キーワード</span>
-                    <textarea
+                    <textarea autoComplete="off"
                       className="textInput aliasesInput"
                       onChange={(event) =>
                         setButtonDraft({ ...buttonDraft, aliasesInput: event.target.value })
@@ -504,7 +504,7 @@ export function DictionaryFeatureParityUi({ c }: { c: DictionaryFeatureParityCon
                   </label>
                   <label className="fieldStack">
                     <span>説明</span>
-                    <textarea
+                    <textarea autoComplete="off"
                       className="textInput aliasesInput"
                       onChange={(event) =>
                         setButtonDraft({ ...buttonDraft, description: event.target.value })
@@ -541,7 +541,7 @@ export function DictionaryFeatureParityUi({ c }: { c: DictionaryFeatureParityCon
                         <option value="run_script">スクリプト</option>
                         <option value="open_shell_special">Windows特殊項目</option>
                       </select>
-                      <input
+                      <input autoComplete="off"
                         className="textInput"
                         disabled={action.type === "open_shell_special"}
                         onChange={(event) =>

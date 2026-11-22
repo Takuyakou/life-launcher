@@ -148,7 +148,7 @@ export function TodayPickerDialog(props: TodayPickerDialogProps) {
                   addTodayPickerQuickWish();
                 }}
               >
-                <input
+                <input autoComplete="off"
                   aria-label={
                     todayPickerQuickProject
                       ? `「${todayPickerQuickProject.name}」のやりたいことを追加`

@@ -199,7 +199,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
             >
               <span>短時間タイマー分数</span>
               <span className="numberDragInput">
-                <input
+                <input autoComplete="off"
                   className="textInput"
                   max={240}
                   min={1}
@@ -235,7 +235,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
             >
               <span>通常タイマー分数</span>
               <span className="numberDragInput">
-                <input
+                <input autoComplete="off"
                   className="textInput"
                   max={240}
                   min={1}
@@ -272,7 +272,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
             >
               <span>延長タイマー分数</span>
               <span className="numberDragInput">
-                <input
+                <input autoComplete="off"
                   className="textInput"
                   max={240}
                   min={1}
@@ -308,7 +308,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
             >
               <span>日付切替時刻</span>
               <span className="numberDragInput">
-                <input
+                <input autoComplete="off"
                   className="textInput"
                   max={23}
                   min={0}
@@ -585,7 +585,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
           <label className="fieldStack">
             <span>保存先フォルダ</span>
             <div className="folderPickerRow">
-              <input
+              <input autoComplete="off"
                 className="textInput"
                 placeholder="未設定"
                 readOnly
@@ -607,7 +607,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
           )}
           <label className="fieldStack">
             <span>保持世代数</span>
-            <input
+            <input autoComplete="off"
               className="textInput"
               min={1}
               onChange={(event) =>

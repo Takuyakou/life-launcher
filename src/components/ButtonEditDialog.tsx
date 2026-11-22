@@ -69,7 +69,7 @@ export function ButtonEditDialog(props: ButtonEditDialogProps) {
             <h3>基本</h3>
             <label className="fieldStack">
               <span>ラベル</span>
-              <input
+              <input autoComplete="off"
                 className="textInput"
                 maxLength={48}
                 onChange={(event) =>
@@ -176,7 +176,7 @@ export function ButtonEditDialog(props: ButtonEditDialogProps) {
             <div className="buttonEditOptionalBody">
               <label className="fieldStack">
                 <span>検索キーワード</span>
-                <textarea
+                <textarea autoComplete="off"
                   className="textInput aliasesInput"
                   onChange={(event) =>
                     setButtonEditDraft({ ...buttonEditDraft, aliasesInput: event.target.value })
@@ -187,7 +187,7 @@ export function ButtonEditDialog(props: ButtonEditDialogProps) {
               </label>
               <label className="fieldStack">
                 <span>説明</span>
-                <textarea
+                <textarea autoComplete="off"
                   className="textInput aliasesInput"
                   onChange={(event) =>
                     setButtonEditDraft({ ...buttonEditDraft, description: event.target.value })
@@ -253,7 +253,7 @@ export function ButtonEditDialog(props: ButtonEditDialogProps) {
                       <option value="run_script">スクリプト</option>
                       <option value="open_shell_special">Windows特殊項目</option>
                     </select>
-                    <input
+                    <input autoComplete="off"
                       className="textInput"
                       disabled={action.type === "open_shell_special"}
                       onChange={(event) =>

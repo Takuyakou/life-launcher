@@ -45,7 +45,7 @@ export function FirstRunBand({
           </span>
           続けたいこと
         </label>
-        <input
+        <input autoComplete="off"
           autoFocus
           className="textInput firstRunInput"
           id="first-run-project"
@@ -77,7 +77,7 @@ export function FirstRunBand({
           </span>
           最初の一手
         </label>
-        <input
+        <input autoComplete="off"
           className="textInput firstRunInput"
           disabled={!projectName.trim()}
           id="first-run-step"

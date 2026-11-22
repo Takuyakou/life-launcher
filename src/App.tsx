@@ -8807,7 +8807,7 @@ function DashboardApp() {
                   onPointerUp={finishNumberInputDrag}
                   title="上下にドラッグして分数を調整"
                 >
-                  <input
+                  <input autoComplete="off"
                     aria-label="通常タイマーの分数"
                     inputMode="numeric"
                     max={240}
@@ -8944,7 +8944,7 @@ function DashboardApp() {
                   <div className="victoryContent">
                     {victoryEditing ? (
                       <>
-                        <input
+                        <input autoComplete="off"
                           aria-label="今日の勝利条件"
                           className={
                             victoryDone ? "victoryInput victoryInput--done" : "victoryInput"
@@ -9701,7 +9701,7 @@ function DashboardApp() {
                                   <div className="todayTimerCluster">
                                     <div className="todayTriggerZone">
                                       {todayTriggerEditingIndex === index ? (
-                                        <input
+                                        <input autoComplete="off"
                                           aria-label="いつ・何の後にやる？"
                                           autoFocus
                                           className="todayTriggerInput"

@@ -100,7 +100,7 @@ export function ManualSessionDialog({
         <div className="editGrid">
           <label className="fieldStack">
             <span>日付</span>
-            <input
+            <input autoComplete="off"
               className="textInput"
               onChange={(event) => onDraftChange({ ...draft, date: event.target.value })}
               type="date"
@@ -109,7 +109,7 @@ export function ManualSessionDialog({
           </label>
           <label className="fieldStack">
             <span>開始時刻</span>
-            <input
+            <input autoComplete="off"
               className="textInput"
               onChange={(event) =>
                 onDraftChange({
@@ -124,7 +124,7 @@ export function ManualSessionDialog({
           </label>
           <label className="fieldStack">
             <span>分数</span>
-            <input
+            <input autoComplete="off"
               className="textInput"
               min={1}
               onChange={(event) => onDraftChange({ ...draft, minutes: event.target.value })}
@@ -136,7 +136,7 @@ export function ManualSessionDialog({
 
         <label className="fieldStack">
           <span>実行内容</span>
-          <input
+          <input autoComplete="off"
             className="textInput"
             onChange={(event) => onDraftChange({ ...draft, note: event.target.value })}
             value={draft.note}
@@ -210,7 +210,7 @@ export function SessionEditDialog({
 
         <label className="fieldStack">
           <span>ラベル</span>
-          <input
+          <input autoComplete="off"
             className="textInput"
             maxLength={80}
             onChange={(event) => onDraftChange({ ...draft, label: event.target.value })}
@@ -221,7 +221,7 @@ export function SessionEditDialog({
         <div className="editGrid">
           <label className="fieldStack">
             <span>日付</span>
-            <input
+            <input autoComplete="off"
               className="textInput"
               onChange={(event) => onDraftChange({ ...draft, date: event.target.value })}
               type="date"
@@ -230,7 +230,7 @@ export function SessionEditDialog({
           </label>
           <label className="fieldStack">
             <span>開始</span>
-            <input
+            <input autoComplete="off"
               className="textInput"
               maxLength={16}
               onChange={(event) => onDraftChange({ ...draft, startedAt: event.target.value })}
@@ -239,7 +239,7 @@ export function SessionEditDialog({
           </label>
           <label className="fieldStack">
             <span>分数</span>
-            <input
+            <input autoComplete="off"
               className="textInput"
               min={1}
               onChange={(event) => onDraftChange({ ...draft, minutes: event.target.value })}
@@ -251,7 +251,7 @@ export function SessionEditDialog({
 
         <label className="fieldStack">
           <span>実行内容</span>
-          <input
+          <input autoComplete="off"
             className="textInput"
             onChange={(event) => onDraftChange({ ...draft, note: event.target.value })}
             value={draft.note}

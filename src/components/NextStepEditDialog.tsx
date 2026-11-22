@@ -230,7 +230,7 @@ export function NextStepEditDialog(props: NextStepEditDialogProps) {
         return (
           <label className={compact ? "fieldStack nextStepEditField" : "fieldStack"}>
             <span>行動</span>
-            <input
+            <input autoComplete="off"
               aria-label="行動"
               autoFocus={compact || nextStepEditDraft.projectLocked}
               className={compact ? "textInput nextStepEditActionInput" : "textInput"}
@@ -258,7 +258,7 @@ export function NextStepEditDialog(props: NextStepEditDialogProps) {
       const renderTriggerField = (compact: boolean) => (
         <label className={compact ? "fieldStack nextStepEditField" : "fieldStack"}>
           <span>{compact ? "きっかけ（いつ・どこで）" : "始めるきっかけ（任意）"}</span>
-          <input
+          <input autoComplete="off"
             aria-label="始めるきっかけ（任意）"
             className="textInput"
             maxLength={EXECUTION_TRIGGER_MAX_CHARS}
@@ -325,7 +325,7 @@ export function NextStepEditDialog(props: NextStepEditDialogProps) {
                 {renderTriggerField(true)}
                 <label className="fieldStack nextStepEditField">
                   <span>次はここから(任意)</span>
-                  <input
+                  <input autoComplete="off"
                     aria-label="次はここから(任意)"
                     className="textInput"
                     maxLength={80}
@@ -792,7 +792,7 @@ export function NextStepEditDialog(props: NextStepEditDialogProps) {
               }
             >
               <span>開始noteテンプレート（任意）</span>
-              <input
+              <input autoComplete="off"
                 className="textInput"
                 maxLength={120}
                 onChange={(event) =>
