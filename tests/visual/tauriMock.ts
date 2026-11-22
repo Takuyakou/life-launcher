@@ -245,6 +245,8 @@ export async function installTauriMock(
       };
       // V163-C4: the tests can tell the main window that a Dictionary window exists.
       let dictionaryWindowExists = false;
+      // V163-C5: the tests can make the config save slower to look for frames that flicker.
+      let saveConfigDelayMs = 0;
       type InstructionRootChoice = {
         name: string;
         path: string;
@@ -313,6 +315,9 @@ export async function installTauriMock(
         },
         setDictionaryWindowExists: (exists: boolean) => {
           dictionaryWindowExists = exists;
+        },
+        setSaveConfigDelay: (ms: number) => {
+          saveConfigDelayMs = ms;
         },
         mainWindowState: () => ({ ...mainWindowState }),
         setInstructionRootChoices: (choices: typeof instructionRootChoices) => {
@@ -443,6 +448,11 @@ export async function installTauriMock(
                 };
               case "save_config":
                 if (failSaveConfig) throw new Error("Public demo mock: config save failed");
+                if (saveConfigDelayMs > 0) {
+                  await new Promise((resolve) =>
+                    setTimeout(resolve, saveConfigDelayMs), // simulated-latency
+                  );
+                }
                 currentConfig = args.config as typeof currentConfig;
                 persistCurrentConfig();
                 return { config: currentConfig, path: paths.config };

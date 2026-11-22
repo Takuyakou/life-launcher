@@ -673,6 +673,15 @@ body {
   opacity: 0;
 }
 
+/* V163-C5: while the drag preview shows the dashed slot, the dragged tile itself is hidden too.
+   Without this, the 「dragging」 state (opacity 0.82) wins over this rule while the pointer is
+   down, so the tile only disappears once the pointer is released — and then blinks back when
+   the save finishes. Both states now agree, so nothing changes at the drop. */
+.dictionaryTileItem--placeholder .dictionaryTile[data-pointer-state="dragging"],
+.dictionaryTileItem--placeholder .dictionaryTile {
+  opacity: 0;
+}
+
 .dictionaryTileGhost {
   position: fixed;
   z-index: 60;
