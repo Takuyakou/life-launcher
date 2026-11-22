@@ -1016,6 +1016,19 @@
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+
+/* V163-C3: while no number is typed, the unit dims with the placeholder number.
+   rgb(117, 117, 117) is the placeholder colour WebView2 gave the field before this change
+   (measured 2026-11-23), written here so the dim value does not depend on the browser default. */
+.nextStepTimerValueInput::placeholder {
+  color: rgb(117, 117, 117);
+  opacity: 1;
+}
+
+.nextStepTimerStepperValue:has(.nextStepTimerValueInput:placeholder-shown)
+  .nextStepTimerStepperUnit {
+  color: rgb(117, 117, 117);
+}
 /* E1: at narrow widths the two minute fields stack, like the existing timer grid. */
 @media (max-width: 520px) {
   .nextStepEditTimerGrid {

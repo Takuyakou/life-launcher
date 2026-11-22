@@ -157,3 +157,38 @@ test("V163-B4 5 the Next step edit steppers still move by 1 minute", async ({ pa
   await dialog.getByRole("button", { name: "短時間タイマーを1分減らす" }).click();
   await expect(short).toHaveValue(String(before));
 });
+
+test("V163-C3 6 an empty minutes field dims 分 together with the placeholder number", async ({
+  page,
+}) => {
+  await open(page);
+  await page.locator("[data-project-id]").first().click({ button: "right" });
+  await page.getByRole("menuitem", { name: "次の一手を編集", exact: true }).click();
+  await page.clock.runFor(100);
+  const dialog = page.getByRole("dialog", { name: "次の一手を編集" });
+  const field = dialog.locator(".nextStepTimerStepperValue").first();
+  const input = field.locator(".nextStepTimerValueInput");
+  const read = () =>
+    field.evaluate((element) => {
+      const value = element.querySelector(".nextStepTimerValueInput")!;
+      const unit = element.querySelector(".nextStepTimerStepperUnit")!;
+      return {
+        placeholder: getComputedStyle(value, "::placeholder").color,
+        unit: getComputedStyle(unit).color,
+        number: getComputedStyle(value).color,
+        shown: value.matches(":placeholder-shown"),
+      };
+    });
+
+  await input.fill("");
+  const empty = await read();
+  expect(empty.shown).toBe(true);
+  expect(empty.unit).toBe(empty.placeholder);
+  expect(empty.unit).not.toBe(empty.number);
+
+  await input.fill("20");
+  const typed = await read();
+  expect(typed.shown).toBe(false);
+  expect(typed.unit).toBe(typed.number);
+  expect(typed.unit).not.toBe(empty.placeholder);
+});
