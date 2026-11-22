@@ -275,6 +275,22 @@ test("V161-B2 rapid turns never leave preloaded pages stuck in loading state", a
   await page.keyboard.press("ArrowRight");
   await expect(page.locator(".bookPageLabel")).toHaveText("40–41 / 120");
   await expect(page.locator('.bookPageLayer--current img[alt="40ページ"]')).toBeVisible();
+
+  // The old preload either lost a held page or asked for it twice: each held page is read exactly once.
+  const heldReads = await page.evaluate((bookPath) => {
+    const qa = (window as unknown as { __LIFE_LAUNCHER_VISUAL_QA__: QaControl })
+      .__LIFE_LAUNCHER_VISUAL_QA__;
+    return [40, 42, 44].map(
+      (held) =>
+        qa.invokeCalls.filter(
+          (call) =>
+            call.command === "read_instruction_book_page" &&
+            call.args.path === bookPath &&
+            Number(call.args.index) === held - 1,
+        ).length,
+    );
+  }, BOOK_PATH);
+  expect(heldReads).toEqual([1, 1, 1]);
 });
 
 test("V161-B4 clicking the page label jumps cleanly without moving toolbar controls", async ({
