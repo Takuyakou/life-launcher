@@ -155,14 +155,6 @@ export async function enableMainShellDrop(): Promise<void> {
   await invoke("enable_main_shell_drop");
 }
 
-export async function startShellDropPoc(): Promise<void> {
-  await invoke("start_shell_drop_poc");
-}
-
-export async function stopShellDropPoc(): Promise<void> {
-  await invoke("stop_shell_drop_poc");
-}
-
 export async function loadTodaySessionTotal(): Promise<SessionTotalResponse> {
   return invoke<SessionTotalResponse>("load_today_session_total");
 }
