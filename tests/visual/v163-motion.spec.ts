@@ -1,0 +1,100 @@
+import { expect, test, type Page } from "@playwright/test";
+import { waitForBundledFonts } from "./bundledFonts";
+import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
+import { installTauriMock } from "./tauriMock";
+
+// V163-M1〜M3: the moves run with motion; with reduced motion they finish at once. The page clock
+// is paused, so requestAnimationFrame (and motion) only moves when the test runs the clock.
+
+const DOC_PATH = "C:\\PublicDemo\\Instructions\\welcome.md";
+
+async function openViewer(page: Page, reducedMotion: "reduce" | "no-preference") {
+  await page.setViewportSize({ width: 1180, height: 780 });
+  await page.emulateMedia({ reducedMotion });
+  await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
+  await installTauriMock(page, createPublicFixture(), "life-launcher-instruction");
+  await page.goto(`/?view=instruction&path=${encodeURIComponent(DOC_PATH)}`);
+  await waitForBundledFonts(page);
+  const pausedAt = await page.evaluate(() => Date.now() + 1_000);
+  await page.clock.pauseAt(pausedAt);
+  await expect(page.locator(".instructionSidebar")).toBeVisible();
+}
+
+const sidebarState = (page: Page) =>
+  page.evaluate(() => {
+    const frame = document.querySelector<HTMLElement>(".instructionSidebarFrame")!;
+    const aside = document.querySelector<HTMLElement>(".instructionSidebar")!;
+    return {
+      frame: frame.getBoundingClientRect().width,
+      hidden: aside.hidden,
+      ariaHidden: aside.getAttribute("aria-hidden"),
+      inert: aside.hasAttribute("inert"),
+      bar: Boolean(document.querySelector(".instructionSidebarCollapsedBar")),
+    };
+  });
+
+test("V163-M1 the list frame springs shut and open, then rests like before", async ({ page }) => {
+  await openViewer(page, "no-preference");
+  const open = await sidebarState(page);
+  expect(open).toMatchObject({ hidden: false, ariaHidden: null, inert: false, bar: false });
+
+  await page.getByRole("button", { name: "手順書一覧を閉じる" }).click();
+  await page.clock.runFor(60);
+  const middle = await sidebarState(page);
+  // Half way: narrower than the list, wider than the bar; the list is still drawn but inert.
+  expect(middle.frame).toBeLessThan(open.frame - 1);
+  expect(middle.frame).toBeGreaterThan(28 + 1);
+  expect(middle).toMatchObject({ hidden: false, ariaHidden: "true", inert: true, bar: true });
+
+  await page.clock.runFor(500);
+  const closed = await sidebarState(page);
+  expect(Math.round(closed.frame)).toBe(28);
+  expect(closed).toMatchObject({ hidden: true, ariaHidden: "true", inert: true, bar: true });
+  await expect(page.getByRole("button", { name: "手順書一覧を開く" })).toBeFocused();
+
+  await page.getByRole("button", { name: "手順書一覧を開く" }).click();
+  await page.clock.runFor(60);
+  const opening = await sidebarState(page);
+  expect(opening.frame).toBeGreaterThan(28 + 1);
+  expect(opening.frame).toBeLessThan(open.frame - 1);
+  await page.clock.runFor(500);
+  const reopened = await sidebarState(page);
+  expect(Math.round(reopened.frame)).toBe(Math.round(open.frame));
+  expect(reopened).toMatchObject({ hidden: false, ariaHidden: null, inert: false, bar: false });
+  await expect(page.getByRole("button", { name: "手順書一覧を閉じる" })).toBeFocused();
+});
+
+test("V163-M1 with reduced motion the list opens and closes at once", async ({ page }) => {
+  await openViewer(page, "reduce");
+  const open = await sidebarState(page);
+  await page.getByRole("button", { name: "手順書一覧を閉じる" }).click();
+  await page.clock.runFor(20);
+  const closed = await sidebarState(page);
+  expect(Math.round(closed.frame)).toBe(28);
+  expect(closed).toMatchObject({ hidden: true, ariaHidden: "true", inert: true, bar: true });
+  await expect(page.getByRole("button", { name: "手順書一覧を開く" })).toBeFocused();
+
+  await page.getByRole("button", { name: "手順書一覧を開く" }).click();
+  await page.clock.runFor(20);
+  const reopened = await sidebarState(page);
+  expect(Math.round(reopened.frame)).toBe(Math.round(open.frame));
+  expect(reopened).toMatchObject({ hidden: false, ariaHidden: null, inert: false, bar: false });
+  await expect(page.getByRole("button", { name: "手順書一覧を閉じる" })).toBeFocused();
+});
+
+test("V163-M1 resizing with the keys follows on the next frame (no spring)", async ({ page }) => {
+  await openViewer(page, "no-preference");
+  const divider = page.locator(".instructionSidebarDivider");
+  await divider.focus();
+  await divider.press("Home");
+  const width = await page
+    .locator(".instructionSidebar")
+    .evaluate((aside) => aside.getBoundingClientRect().width);
+  expect(Math.round(width)).toBe(140);
+  // The frame follows on the next animation frame (no spring).
+  await page.clock.runFor(20);
+  const frame = await page
+    .locator(".instructionSidebarFrame")
+    .evaluate((element) => element.getBoundingClientRect().width);
+  expect(Math.round(frame)).toBe(147);
+});

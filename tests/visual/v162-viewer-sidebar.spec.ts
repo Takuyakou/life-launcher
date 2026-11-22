@@ -50,6 +50,8 @@ test("V162-U3 sidebar close/open buttons toggle cleanly on Markdown, persist acr
   const closeBtn = page.getByRole("button", { name: "手順書一覧を閉じる" });
   await closeBtn.focus();
   await closeBtn.press("Enter");
+  // V163-M1: opening and closing spring for 0.2 s; the paused page clock has to move past it.
+  await page.clock.runFor(500);
 
   await expect(page.locator(".instructionSidebar")).toBeHidden();
   await expect(page.locator(".instructionSidebarCollapsedBar")).toBeVisible();
@@ -73,6 +75,8 @@ test("V162-U3 sidebar close/open buttons toggle cleanly on Markdown, persist acr
   await expect(page.locator(".instructionSidebar")).toBeHidden();
 
   await page.getByRole("button", { name: "手順書一覧を開く" }).press("Enter");
+  // V163-M1: opening and closing spring for 0.2 s; the paused page clock has to move past it.
+  await page.clock.runFor(500);
   await expect(page.locator(".instructionSidebar")).toBeVisible();
   await expect(page.getByRole("button", { name: "手順書一覧を閉じる" })).toBeFocused();
 });
@@ -86,11 +90,15 @@ test("V162-U3 collapsing the sidebar widens the ZIP book stage, divider dblclick
 
   const beforeStage = await measureRects(page, [".bookStage"]);
   await page.getByRole("button", { name: "手順書一覧を閉じる" }).click();
+  // V163-M1: opening and closing spring for 0.2 s; the paused page clock has to move past it.
+  await page.clock.runFor(500);
   await expect(page.locator(".instructionSidebar")).toBeHidden();
   const afterStage = await measureRects(page, [".bookStage"]);
   expect(afterStage[".bookStage"].width).toBeGreaterThan(beforeStage[".bookStage"].width + 180);
 
   await page.getByRole("button", { name: "手順書一覧を開く" }).click();
+  // V163-M1: opening and closing spring for 0.2 s; the paused page clock has to move past it.
+  await page.clock.runFor(500);
   await expect(page.locator(".instructionSidebar")).toBeVisible();
 
   // Minimum sidebar width can be narrowed to 140px and divider dblclick collapses it.
@@ -101,5 +109,7 @@ test("V162-U3 collapsing the sidebar widens the ZIP book stage, divider dblclick
   expect(Math.round(narrowed[".instructionSidebar"].width)).toBe(140);
 
   await divider.dblclick();
+  // V163-M1: opening and closing spring for 0.2 s; the paused page clock has to move past it.
+  await page.clock.runFor(500);
   await expect(page.locator(".instructionSidebar")).toBeHidden();
 });
