@@ -392,6 +392,9 @@ pub struct Settings {
     /// P10-11: when the first-run guide was finished (or any save happened).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub first_run_done_at: Option<String>,
+    /// V163-B4: minutes added by "続ける" when a timer reaches its planned time (None = 15).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub extend_timer_minutes: Option<u16>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -829,6 +832,7 @@ fn default_settings() -> Settings {
         instruction_folder_identities: None,
         instruction_hotkey: None,
         first_run_done_at: None,
+        extend_timer_minutes: None,
     }
 }
 

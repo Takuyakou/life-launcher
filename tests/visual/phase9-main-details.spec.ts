@@ -249,7 +249,11 @@ async function expectCompleteHeading(page: Page) {
   expect(identityBox.bottom).toBeLessThanOrEqual(headingBox.top + 1);
   expect(identityBox.height).toBeLessThan(headingBox.height);
   // Buttons and behaviour are unchanged.
-  await expect(dialog.getByRole("button")).toHaveText(["続ける(+15分)", "終わる"]);
+  // V163-B4: the extend stepper adds − / ＋ buttons, so look at the action row only.
+  await expect(dialog.locator(".dialogActions").getByRole("button")).toHaveText([
+    "続ける(+15分)",
+    "終わる",
+  ]);
   return dialog;
 }
 

@@ -99,6 +99,24 @@
   gap: 10px;
 }
 
+/* V163-B4: the basic tab's four number fields (short / normal / extend / day start) in a 2 x 2 grid. */
+.settingsGrid--timers {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* V163-B4: the 「続ける」 minutes on the timer prompt, right above the actions. */
+.timerCompleteExtendRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.timerCompleteExtendLabel {
+  color: var(--muted);
+  font-size: var(--dashboard-font-meta);
+}
+
 .shortcutCaptureField {
   min-width: 0;
   /* P9-10: a field without the line below must not stretch its rows; inputs in one grid row share the same top. */

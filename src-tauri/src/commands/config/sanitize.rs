@@ -870,6 +870,18 @@ pub(super) fn normalize_settings(settings: &mut Settings, changed: &mut bool) {
         settings.short_timer_minutes = 240;
         *changed = true;
     }
+    // V163-B4: the extend minutes are optional; 0 falls back to 15 and anything over 240 is 240.
+    match settings.extend_timer_minutes {
+        Some(0) => {
+            settings.extend_timer_minutes = Some(15);
+            *changed = true;
+        }
+        Some(minutes) if minutes > 240 => {
+            settings.extend_timer_minutes = Some(240);
+            *changed = true;
+        }
+        _ => {}
+    }
     if settings.day_start_hour > 23 {
         settings.day_start_hour = default_day_start_hour();
         *changed = true;

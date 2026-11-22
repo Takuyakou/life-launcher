@@ -297,7 +297,7 @@ test("P10-17 N3-5 8, 9 & 10 Next Step edit updates/clears resumeNote, maxLength 
   expect(savedStep).toBeUndefined();
 });
 
-test("P10-18 O1 initial focus lands on Continue (+15 min) with or without resume input, Enter continues, and Shift+Tab moves to input", async ({
+test("P10-18 O1 initial focus lands on Continue (+15 min) with or without resume input, Enter continues, and Shift+Tab goes through the extend minutes to the input", async ({
   page,
 }) => {
   // With resume input (standalone Next Step).
@@ -307,12 +307,17 @@ test("P10-18 O1 initial focus lands on Continue (+15 min) with or without resume
   const input = dialogWithInput.getByLabel("次はここから(任意)");
   await expect(continueButton).toBeFocused();
 
-  // Shift+Tab moves focus to the resume input.
+  // V163-B4: the extend minutes sit right before Continue. Shift+Tab goes to its ＋ first,
+  // then three more (the number, −) reach the resume input.
+  await page.keyboard.press("Shift+Tab");
+  await expect(dialogWithInput.getByRole("button", { name: "延長タイマーを5分増やす" })).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Shift+Tab");
   await page.keyboard.press("Shift+Tab");
   await expect(input).toBeFocused();
 
-  // Tab returns focus to Continue (+15 min), and pressing Enter extends the timer by +15 min.
-  await page.keyboard.press("Tab");
+  // Tab goes forward again to Continue (+15 min), and pressing Enter extends the timer by +15 min.
+  for (let step = 0; step < 4; step += 1) await page.keyboard.press("Tab");
   await expect(continueButton).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(dialogWithInput).toHaveCount(0);

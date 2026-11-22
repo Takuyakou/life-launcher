@@ -2287,3 +2287,47 @@ fn unique_atomic_write_ignores_a_locked_legacy_temp_file() {
 
     let _ = fs::remove_dir_all(root);
 }
+
+#[test]
+fn extend_timer_minutes_is_optional_with_a_default_of_fifteen() {
+    // An older config.json has no extendTimerMinutes: it still reads, and the value stays unset.
+    let mut value =
+        serde_json::to_value(sample_config()).expect("sample config must serialize to JSON");
+    value["settings"]
+        .as_object_mut()
+        .expect("settings object")
+        .remove("extendTimerMinutes");
+    let config: crate::models::AppConfig =
+        serde_json::from_value(value).expect("a config without extendTimerMinutes must read");
+    assert_eq!(config.settings.extend_timer_minutes, None);
+    let written = serde_json::to_value(&config.settings).expect("settings serialize");
+    assert!(written.get("extendTimerMinutes").is_none());
+
+    let schema: serde_json::Value =
+        serde_json::from_str(config_schema_json()).expect("config schema must be valid JSON");
+    let property = &schema["$defs"]["settings"]["properties"]["extendTimerMinutes"];
+    assert_eq!(property["default"], 15);
+    assert_eq!(property["minimum"], 1);
+    assert_eq!(property["maximum"], 240);
+    let required = schema["$defs"]["settings"]["required"]
+        .as_array()
+        .expect("required list");
+    assert!(!required.iter().any(|name| name == "extendTimerMinutes"));
+}
+
+#[test]
+fn extend_timer_minutes_is_clamped_when_normalized() {
+    for (stored, expected) in [
+        (Some(0), Some(15)),
+        (Some(241), Some(240)),
+        (Some(999), Some(240)),
+        (Some(10), Some(10)),
+        (None, None),
+    ] {
+        let mut settings = sample_config().settings;
+        settings.extend_timer_minutes = stored;
+        let mut changed = false;
+        normalize_settings(&mut settings, &mut changed);
+        assert_eq!(settings.extend_timer_minutes, expected, "stored {stored:?}");
+    }
+}
