@@ -293,6 +293,59 @@ test("V161-B2 rapid turns never leave preloaded pages stuck in loading state", a
   expect(heldReads).toEqual([1, 1, 1]);
 });
 
+test("V162-F1 turning right after a page finishes loading never reads a page twice", async ({
+  page,
+}) => {
+  await openBook(page, bookFixture({ state: { lastPage: 34 } }));
+  await page.evaluate(() => {
+    const qa = (window as unknown as { __LIFE_LAUNCHER_VISUAL_QA__: QaControl })
+      .__LIFE_LAUNCHER_VISUAL_QA__;
+    qa.holdBookPage(40);
+  });
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.locator(".bookPageLabel")).toHaveText("36–37 / 120");
+
+  // Turn in the same moment a page finishes: after its image decodes, before React draws it.
+  // The old preload forgot the read at that point and asked for the page a second time.
+  await page.evaluate(() => {
+    const originalDecode = HTMLImageElement.prototype.decode;
+    let armed = true;
+    HTMLImageElement.prototype.decode = function decodeThenTurn(this: HTMLImageElement) {
+      const result = originalDecode.call(this);
+      if (armed) {
+        armed = false;
+        void result.then(async () => {
+          for (let step = 0; step < 6; step += 1) await null;
+          (document.activeElement ?? document.body).dispatchEvent(
+            new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }),
+          );
+        });
+      }
+      return result;
+    };
+    const qa = (window as unknown as { __LIFE_LAUNCHER_VISUAL_QA__: QaControl })
+      .__LIFE_LAUNCHER_VISUAL_QA__;
+    qa.releaseBookPage(40);
+  });
+  await expect(page.locator(".bookPageLabel")).toHaveText("38–39 / 120");
+  await page.clock.runFor(500);
+
+  const readTwice = await page.evaluate((bookPath) => {
+    const qa = (window as unknown as { __LIFE_LAUNCHER_VISUAL_QA__: QaControl })
+      .__LIFE_LAUNCHER_VISUAL_QA__;
+    const counts = new Map<number, number>();
+    for (const call of qa.invokeCalls) {
+      if (call.command !== "read_instruction_book_page" || call.args.path !== bookPath) continue;
+      const pageNumber = Number(call.args.index) + 1;
+      counts.set(pageNumber, (counts.get(pageNumber) ?? 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .filter(([, count]) => count > 1)
+      .map(([pageNumber]) => pageNumber);
+  }, BOOK_PATH);
+  expect(readTwice).toEqual([]);
+});
+
 test("V161-B4 clicking the page label jumps cleanly without moving toolbar controls", async ({
   page,
 }) => {

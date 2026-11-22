@@ -129,7 +129,8 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
     startTop: number;
   } | null>(null);
   const bookTokenRef = useRef(0);
-  const inFlightRef = useRef<Map<number, Promise<void>>>(new Map());
+  // Pages read for the open book; a page is read again only after it leaves the cache.
+  const requestedPagesRef = useRef<Set<number>>(new Set());
   const holdTimerRef = useRef<number | null>(null);
   const protectedPagesRef = useRef<Set<number>>(new Set());
   const groupsRef = useRef<number[][]>([]);
@@ -150,8 +151,8 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
   useEffect(() => {
     bookTokenRef.current += 1;
     const token = bookTokenRef.current;
-    const inFlight = inFlightRef.current;
-    inFlight.clear();
+    const requestedPages = requestedPagesRef.current;
+    requestedPages.clear();
     clearHoldTimer();
     for (const entry of cacheRef.current.values()) {
       if (entry.url) URL.revokeObjectURL(entry.url);
@@ -199,7 +200,7 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
       });
     return () => {
       bookTokenRef.current += 1;
-      inFlight.clear();
+      requestedPages.clear();
       clearHoldTimer();
       for (const entry of cacheRef.current.values()) {
         if (entry.url) URL.revokeObjectURL(entry.url);
@@ -303,18 +304,15 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
       .filter(Boolean)
       .map((value) => Number(value));
     for (const page of needed) {
-      const existing = cacheRef.current.get(page);
-      if (existing && existing.status !== "loading") continue;
-      if (inFlightRef.current.has(page)) continue;
-      if (!existing) {
-        setCache((previous) => {
-          if (previous.has(page)) return previous;
-          const next = new Map(previous);
-          next.set(page, { status: "loading" });
-          return next;
-        });
-      }
-      const promise = readInstructionBookPage(path, page - 1)
+      if (requestedPagesRef.current.has(page)) continue;
+      requestedPagesRef.current.add(page);
+      setCache((previous) => {
+        if (previous.has(page)) return previous;
+        const next = new Map(previous);
+        next.set(page, { status: "loading" });
+        return next;
+      });
+      void readInstructionBookPage(path, page - 1)
         .then(async (buffer) => {
           if (bookTokenRef.current !== token) return;
           const bytes = new Uint8Array(buffer);
@@ -353,6 +351,7 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
               if (!oldest) break;
               if (oldest[1].url) URL.revokeObjectURL(oldest[1].url);
               next.delete(oldest[0]);
+              requestedPagesRef.current.delete(oldest[0]);
             }
             return next;
           });
@@ -364,13 +363,7 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
             next.set(page, { status: "error", error: errorText(error) });
             return next;
           });
-        })
-        .finally(() => {
-          if (inFlightRef.current.get(page) === promise) {
-            inFlightRef.current.delete(page);
-          }
         });
-      inFlightRef.current.set(page, promise);
     }
   }, [book, path, neededKey]);
 
