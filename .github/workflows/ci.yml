@@ -28,7 +28,6 @@ jobs:
       - run: npm.cmd run public:check
       - run: npm.cmd run lint
       - run: npm.cmd run build
-      - run: npm.cmd run test:visual
       - run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
       - run: cargo check --manifest-path src-tauri/Cargo.toml
       - run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
@@ -36,3 +35,25 @@ jobs:
       - run: npm.cmd audit
         continue-on-error: true
       - run: npm.cmd audit --omit=dev
+
+  visual-shard:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm.cmd ci
+      - run: npx.cmd playwright install chromium
+      - run: npm.cmd run test:visual -- --shard=${{ matrix.shard }}/3
+
+  visual:
+    needs: visual-shard
+    runs-on: windows-latest
+    steps:
+      - run: echo "All visual test shards passed."
