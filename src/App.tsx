@@ -11,9 +11,7 @@ import {
   enable as enableAutostart,
 } from "@tauri-apps/plugin-autostart";
 import type {
-  CSSProperties,
   DragEvent,
-  FocusEvent as ReactFocusEvent,
   KeyboardEvent,
   PointerEvent,
 } from "react";
@@ -27,8 +25,6 @@ import {
   OVERLAY_PAGE_NAME_MAX_CHARS,
   TIMER_TICK_MS,
   TODAY_ITEM_LIMIT,
-  TOAST_TIMEOUT_MS,
-  TOAST_UNDO_TIMEOUT_MS,
   WEEKLY_FOCUS_LIMIT,
 } from "./constants";
 import {
@@ -104,7 +100,19 @@ import {
   TodayItem,
 } from "./types";
 import { ConfirmDialog, type ConfirmDialogRequest } from "./components/ConfirmDialog";
+import { GroupNameDialog } from "./components/GroupNameDialog";
 import { ImportDialog } from "./components/ImportDialog";
+import { InboxAddDialog } from "./components/InboxAddDialog";
+import { OverlayPageDialog } from "./components/OverlayPageDialog";
+import { ManualSessionDialog, SessionEditDialog } from "./components/SessionDialogs";
+import {
+  SoftwareResetChoiceDialog,
+  SoftwareResetProgressDialog,
+} from "./components/SoftwareResetDialogs";
+import { TimerCompletionDialog } from "./components/TimerCompletionDialog";
+import { TodayActivitySection } from "./components/TodayActivitySection";
+import { ToastStack } from "./components/ToastStack";
+import { useToasts } from "./hooks/useToasts";
 import { FirstRunBand } from "./components/FirstRunBand";
 import { IMPORT_PROMPT_FIRST } from "./content/importPrompt";
 import { earlyCompletionItem } from "./earlyCompletion";
@@ -211,7 +219,7 @@ import {
   toggleDictionaryWindow,
 } from "./dictionaryWindow";
 import { ACTION_DRAG_TYPE, MINI_READY_EVENT, MINI_RETURN_EVENT, MINI_TIMER_COMMAND_EVENT, MINI_TIMER_SNAPSHOT_EVENT, MINI_WINDOW_HEIGHT_PX, MINI_WINDOW_LABEL, MINI_WINDOW_WIDTH_PX, NUMBER_INPUT_DRAG_PIXELS_PER_STEP, NUMBER_INPUT_DRAG_THRESHOLD_PX, OVERLAY_PAGE_DRAG_TYPE, PROJECT_CARD_COMPACT_LIMIT, SIDEBAR_DRAG_THRESHOLD_PX, SOURCE_LIST_COMPACT_LIMIT, SOURCE_LIST_PAGE_SIZE, SOURCE_LIST_PAGINATION_THRESHOLD } from "./app/constants";
-import { type ActionDraft, type ActiveTimer, type ActiveView, type ButtonEditDraft, type ButtonGroup, type CompletionFeedback, type CompletionFollowup, type ContextMenuState, type ContextMenuTarget, type DoNowCompletionHold, type DropDialogState, type InboxDragPreview, type InboxPointerDrag, type InstructionChoice, type InternalButtonDrag, type LauncherOverlayItem, type LauncherOverlayPageTab, type LegacyNextStepChoice, type MainShellDropEvent, type ManualSessionDraft, type MiniTimerCommand, type MiniTimerSnapshot, type NextStepDecisionMode, type NextStepEditDraft, type NotesSaveStatus, type NumberInputDrag, type NumberInputDragField, type OverlayPageDraft, type ProjectDragPreview, type ProjectEditDraft, type ProjectPointerDrag, type RecordsDateScope, SHORTCUT_DRAFT_FIELDS, type SessionEditDraft, type SettingsCenterDraft, type SettingsSectionKey, type ShortcutDraftField, type SidebarDragPreview, type SidebarGroupDragPreview, type SidebarGroupPointerDrag, type SidebarPointerDrag, TOP_MENU_GROUP_LABELS, TOP_MENU_LABELS, type TimerCompletionPrompt, type Toast, type ToastOptions, type ToastTimerState, type ToastTone, type TodayDragPreview, type TodayPointerDrag, type WishlistGroupDragPreview, type WishlistGroupPointerDrag, type WishlistGroupView } from "./app/dashboardTypes";
+import { type ActionDraft, type ActiveTimer, type ActiveView, type ButtonEditDraft, type ButtonGroup, type CompletionFeedback, type CompletionFollowup, type ContextMenuState, type ContextMenuTarget, type DoNowCompletionHold, type DropDialogState, type InboxDragPreview, type InboxPointerDrag, type InstructionChoice, type InternalButtonDrag, type LauncherOverlayItem, type LauncherOverlayPageTab, type LegacyNextStepChoice, type MainShellDropEvent, type ManualSessionDraft, type MiniTimerCommand, type MiniTimerSnapshot, type NextStepDecisionMode, type NextStepEditDraft, type NotesSaveStatus, type NumberInputDrag, type NumberInputDragField, type OverlayPageDraft, type ProjectDragPreview, type ProjectEditDraft, type ProjectPointerDrag, type RecordsDateScope, SHORTCUT_DRAFT_FIELDS, type SessionEditDraft, type SettingsCenterDraft, type SettingsSectionKey, type ShortcutDraftField, type SidebarDragPreview, type SidebarGroupDragPreview, type SidebarGroupPointerDrag, type SidebarPointerDrag, TOP_MENU_GROUP_LABELS, TOP_MENU_LABELS, type TimerCompletionPrompt, type TodayDragPreview, type TodayPointerDrag, type WishlistGroupDragPreview, type WishlistGroupPointerDrag, type WishlistGroupView } from "./app/dashboardTypes";
 import { MiniModeApp } from "./components/MiniModeApp";
 import { SOFTWARE_RESET_TIMER_MESSAGE, captureSoftwareResetStorage, clearSoftwareResetStorage, getSoftwareResetRecoveryForBoot, restoreSoftwareResetStorage } from "./app/softwareReset";
 import { SectionCollapse } from "./components/SectionCollapse";
@@ -272,9 +280,7 @@ function DashboardApp() {
   const doNowInitialCopyKeyRef = useRef<string | null>(null);
   const [activeView, setActiveView] = useState<ActiveView>("main");
   const [pendingActionId, setPendingActionId] = useState<string | null>(null);
-  const [toasts, setToasts] = useState<Toast[]>([]);
-  const toastsRef = useRef<Toast[]>([]);
-  toastsRef.current = toasts;
+  const { toasts, showToast, dismissToast, pauseToast, runToastAction } = useToasts();
   const [todayTriggerEditingIndex, setTodayTriggerEditingIndex] = useState<number | null>(null);
   const [todayTriggerDraft, setTodayTriggerDraft] = useState("");
   // テスト用の起動（普段のデータから切り離した起動）かどうか。
@@ -565,9 +571,6 @@ function DashboardApp() {
   const projectAutoScrollFrameRef = useRef<number | null>(null);
   const projectAutoScrollSpeedRef = useRef(0);
   const numberInputDragRef = useRef<NumberInputDrag | null>(null);
-  const toastIdRef = useRef(0);
-  const toastTimersRef = useRef<Map<number, ToastTimerState>>(new Map());
-  const toastActionLocksRef = useRef<Set<number>>(new Set());
   const completionFeedbackTimerRef = useRef<number | null>(null);
   const completionFollowupTimerRef = useRef<number | null>(null);
   const seenCompletionFeedbackRef = useRef<Set<string>>(new Set());
@@ -1034,192 +1037,6 @@ function DashboardApp() {
   }, [activeTimer, config?.projects, now]);
   miniSnapshotRef.current = miniSnapshot;
 
-  const dismissToast = useCallback((id: number) => {
-    const timers = toastTimersRef.current.get(id);
-    if (timers?.dismissTimer !== null && timers?.dismissTimer !== undefined) {
-      window.clearTimeout(timers.dismissTimer);
-      timers.dismissTimer = null;
-    }
-    setToasts((current) =>
-      current.map((toast) => (toast.id === id ? { ...toast, leaving: true } : toast)),
-    );
-    const removeTimer = window.setTimeout(() => {
-      toastTimersRef.current.delete(id);
-      toastActionLocksRef.current.delete(id);
-      setToasts((current) => {
-        const remaining = current.filter((toast) => toast.id !== id);
-        const visibleCount = remaining.filter((toast) => !toast.queued && !toast.leaving).length;
-        let available = Math.max(0, 3 - visibleCount);
-        return remaining.map((toast) => {
-          if (!toast.queued || available <= 0) return toast;
-          available -= 1;
-          return { ...toast, queued: false };
-        });
-      });
-    }, 180);
-    if (timers) timers.removeTimer = removeTimer;
-  }, []);
-
-  useEffect(() => {
-    for (const toast of toasts) {
-      if (toast.queued || toast.leaving || toastTimersRef.current.has(toast.id)) continue;
-      const timerState: ToastTimerState = {
-        dismissTimer: null,
-        removeTimer: null,
-        remainingMs: toast.durationMs,
-        startedAt: Date.now(),
-        pointerInside: false,
-        focusInside: false,
-        documentHidden: document.hidden,
-      };
-      // P10-12 (D15): failures stay until their × is pressed; they never lose a time line.
-      const sticky = toast.tone === "error";
-      if (!document.hidden && !sticky) {
-        timerState.dismissTimer = window.setTimeout(() => dismissToast(toast.id), toast.durationMs);
-      } else {
-        timerState.startedAt = null;
-      }
-      toastTimersRef.current.set(toast.id, timerState);
-      if (document.hidden) {
-        setToasts((current) =>
-          current.map((item) => (item.id === toast.id ? { ...item, paused: true } : item)),
-        );
-      }
-    }
-  }, [dismissToast, toasts]);
-
-  const pauseToast = useCallback(
-    (id: number, reason: "pointer" | "focus" | "document", paused: boolean) => {
-      const timers = toastTimersRef.current.get(id);
-      if (!timers) return;
-      if (reason === "pointer") timers.pointerInside = paused;
-      if (reason === "focus") timers.focusInside = paused;
-      if (reason === "document") timers.documentHidden = paused;
-      const shouldPause = timers.pointerInside || timers.focusInside || timers.documentHidden;
-      if (shouldPause && timers.startedAt !== null) {
-        timers.remainingMs = Math.max(0, timers.remainingMs - (Date.now() - timers.startedAt));
-        timers.startedAt = null;
-        if (timers.dismissTimer !== null) window.clearTimeout(timers.dismissTimer);
-        timers.dismissTimer = null;
-      } else if (!shouldPause && timers.startedAt === null && timers.remainingMs > 0) {
-        timers.startedAt = Date.now();
-        timers.dismissTimer = window.setTimeout(() => dismissToast(id), timers.remainingMs);
-      }
-      setToasts((current) =>
-        current.map((toast) => (toast.id === id ? { ...toast, paused: shouldPause } : toast)),
-      );
-    },
-    [dismissToast],
-  );
-
-  useEffect(() => {
-    const handleVisibility = () => {
-      toastTimersRef.current.forEach((_timers, id) => pauseToast(id, "document", document.hidden));
-    };
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
-  }, [pauseToast]);
-
-  const showToast = useCallback((tone: ToastTone, message: string, options: ToastOptions = {}) => {
-    toastIdRef.current += 1;
-    const id = toastIdRef.current;
-    const durationMs =
-      options.durationMs ??
-      (options.onAction ? TOAST_UNDO_TIMEOUT_MS : tone === "error" ? 8000 : TOAST_TIMEOUT_MS);
-    setToasts((current) => {
-      if (
-        !options.onAction &&
-        current.some(
-          (toast) =>
-            !toast.leaving && !toast.onAction && toast.tone === tone && toast.message === message,
-        )
-      ) {
-        return current;
-      }
-      const visibleCount = current.filter((toast) => !toast.queued && !toast.leaving).length;
-      const next: Toast = {
-        id,
-        tone,
-        message,
-        detail: options.detail,
-        actionLabel: options.actionLabel,
-        onAction: options.onAction,
-        actionPending: false,
-        durationMs,
-        queued: visibleCount >= 3,
-        paused: false,
-        leaving: false,
-      };
-      const combined = [...current, next];
-      if (combined.length <= 24) return combined;
-      const removableIndex = combined.findIndex((toast) => toast.queued && !toast.onAction);
-      return removableIndex >= 0
-        ? combined.filter((_, index) => index !== removableIndex)
-        : combined;
-    });
-    return id;
-  }, []);
-
-  const runToastAction = useCallback(
-    async (id: number) => {
-      const toast = toastsRef.current.find((item) => item.id === id);
-      if (!toast?.onAction || toastActionLocksRef.current.has(id)) return;
-      toastActionLocksRef.current.add(id);
-      pauseToast(id, "focus", true);
-      setToasts((current) =>
-        current.map((item) => (item.id === id ? { ...item, actionPending: true } : item)),
-      );
-      const succeeded = await toast.onAction();
-      if (succeeded) {
-        dismissToast(id);
-        showToast("neutral", "元に戻しました");
-        return;
-      }
-      toastActionLocksRef.current.delete(id);
-      setToasts((current) =>
-        current.map((item) => (item.id === id ? { ...item, actionPending: false } : item)),
-      );
-      window.requestAnimationFrame(() => {
-        const toastElement = document.querySelector<HTMLElement>(`[data-toast-id="${id}"]`);
-        pauseToast(id, "focus", Boolean(toastElement?.contains(document.activeElement)));
-      });
-    },
-    [dismissToast, pauseToast, showToast],
-  );
-
-  // P10-12 (D15): Ctrl+Z presses the newest visible "元に戻す" toast. No badge (D30).
-  useEffect(() => {
-    const onUndoKey = (event: globalThis.KeyboardEvent) => {
-      if (
-        event.defaultPrevented ||
-        event.isComposing ||
-        event.key.toLowerCase() !== "z" ||
-        !event.ctrlKey ||
-        event.altKey ||
-        event.metaKey ||
-        event.shiftKey
-      ) {
-        return;
-      }
-      const target = event.target;
-      if (
-        target instanceof HTMLElement &&
-        target.closest("input, textarea, select, [contenteditable='true']")
-      ) {
-        return;
-      }
-      if (document.querySelector('[aria-modal="true"], [role="menu"]')) return;
-      const newest = [...toastsRef.current]
-        .filter((toast) => toast.onAction && !toast.leaving && !toast.actionPending)
-        .sort((left, right) => right.id - left.id)[0];
-      if (!newest) return;
-      event.preventDefault();
-      void runToastAction(newest.id);
-    };
-    document.addEventListener("keydown", onUndoKey);
-    return () => document.removeEventListener("keydown", onUndoKey);
-  }, [runToastAction]);
-
   const refreshButtonIcon = useCallback(async (button: LauncherButton, force = false) => {
     const generation = iconRefreshGenerationRef.current;
     if (!buttonHasIconCacheSource(button)) return;
@@ -1511,16 +1328,10 @@ function DashboardApp() {
       window.setTimeout(() => void refreshConfig(), 250);
     });
     const notesSaveTimers = notesSaveTimersRef.current;
-    const toastTimers = toastTimersRef.current;
 
     return () => {
       active = false;
       unlisten.then((dispose) => dispose()).catch(() => undefined);
-      toastTimers.forEach(({ dismissTimer, removeTimer }) => {
-        if (dismissTimer !== null) window.clearTimeout(dismissTimer);
-        if (removeTimer !== null) window.clearTimeout(removeTimer);
-      });
-      toastTimers.clear();
       notesSaveTimers.forEach((timer) => window.clearTimeout(timer));
       notesSaveTimers.clear();
     };
@@ -11744,66 +11555,14 @@ function DashboardApp() {
                   </SectionCollapse>
                 </section>
 
-                <section className="todayActivityBand">
-                  <div
-                    className="disclosureHeader"
-                    onClick={(event) =>
-                      toggleDisclosureFromBar(event, () => setTodayActivityOpen((open) => !open))
-                    }
-                  >
-                    <button
-                      aria-expanded={todayActivityOpen}
-                      className="disclosure"
-                      onClick={() => setTodayActivityOpen((open) => !open)}
-                      type="button"
-                    >
-                      <UiIcon name={todayActivityOpen ? "chevronDown" : "chevronRight"} size={16} />
-                      <span className="disclosureLabel">
-                        <strong>今日の実行</strong>
-                      </span>
-                    </button>
-                    <span className="disclosureCount">{todayActivityCount}件</span>
-                    <span className="disclosureDescription">タイマーで実行した内容</span>
-                    <span className="uiPill uiPill--good todayActivityAutoBadge">自動</span>
-                  </div>
-
-                  <SectionCollapse open={todayActivityOpen} dragActive={dragActive}>
-                    <div className="todayActivityBody">
-                      {todayActivityCount > 0 ? (
-                        <div className="todayActivityList">
-                          {todayActivityEntries.map((session) => {
-                            const project = session.projectId
-                              ? config.projects.find((item) => item.id === session.projectId)
-                              : undefined;
-                            return (
-                              <div className="todayActivityRow" key={session.rowKey}>
-                                <div className="todayActivityIdentity">
-                                  {project ? (
-                                    <ProjectIdentity
-                                      colorId={project.colorId}
-                                      compact
-                                      name={session.label || project.name}
-                                      projectId={project.id}
-                                    />
-                                  ) : (
-                                    <>
-                                      <span aria-hidden="true" className="todayActivityDot" />
-                                      <span>{session.label || "記録"}</span>
-                                    </>
-                                  )}
-                                </div>
-                                <span className="todayActivityStartedAt">{session.startedAt}</span>
-                                <strong>{session.minutes}分</strong>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <p className="quietText">今日はまだ実行記録がありません。</p>
-                      )}
-                    </div>
-                  </SectionCollapse>
-                </section>
+                <TodayActivitySection
+                  count={todayActivityCount}
+                  dragActive={dragActive}
+                  entries={todayActivityEntries}
+                  onToggle={() => setTodayActivityOpen((open) => !open)}
+                  open={todayActivityOpen}
+                  projects={config.projects}
+                />
               </>
             )}
           </div>
@@ -11823,67 +11582,12 @@ function DashboardApp() {
         </div>
       )}
 
-      {toasts.some((toast) => !toast.queued) && (
-        <div aria-live="polite" aria-relevant="additions text" className="toastStack">
-          {toasts
-            .filter((toast) => !toast.queued)
-            .map((toast) => (
-              <div
-                className={`toast toast--${toast.tone}${toast.leaving ? " toast--leaving" : ""}${toast.paused ? " toast--paused" : ""}`}
-                data-toast-id={toast.id}
-                key={toast.id}
-                onBlurCapture={(event: ReactFocusEvent<HTMLDivElement>) => {
-                  if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-                    pauseToast(toast.id, "focus", false);
-                  }
-                }}
-                onFocusCapture={() => pauseToast(toast.id, "focus", true)}
-                onPointerEnter={() => pauseToast(toast.id, "pointer", true)}
-                onPointerLeave={() => pauseToast(toast.id, "pointer", false)}
-                role="status"
-                style={{ "--toast-duration": `${toast.durationMs}ms` } as CSSProperties}
-              >
-                <span aria-hidden="true" className="toastAccent" />
-                <span aria-hidden="true" className="toastIconBadge">
-                  <UiIcon
-                    name={
-                      toast.tone === "ok"
-                        ? "play"
-                        : toast.tone === "error" || toast.tone === "danger"
-                          ? "close"
-                          : "clock"
-                    }
-                    size={16}
-                  />
-                </span>
-                <div className="toastCopy">
-                  <strong>{toast.message}</strong>
-                  {toast.detail && <span>{toast.detail}</span>}
-                </div>
-                {toast.onAction && (
-                  <button
-                    className="toastAction"
-                    disabled={toast.actionPending}
-                    onClick={() => void runToastAction(toast.id)}
-                    type="button"
-                  >
-                    <UiIcon name="back" size={16} />
-                    {toast.actionPending ? "処理中…" : (toast.actionLabel ?? "元に戻す")}
-                  </button>
-                )}
-                <button
-                  aria-label="通知を閉じる"
-                  className="toastClose"
-                  onClick={() => dismissToast(toast.id)}
-                  type="button"
-                >
-                  <UiIcon name="close" size={16} />
-                </button>
-                <span aria-hidden="true" className="toastLifetime" hidden={toast.tone === "error"} />
-              </div>
-            ))}
-        </div>
-      )}
+      <ToastStack
+        onAction={(id) => void runToastAction(id)}
+        onDismiss={dismissToast}
+        onPause={pauseToast}
+        toasts={toasts}
+      />
 
       {contextMenu && (
         <ContextMenu
@@ -12612,179 +12316,33 @@ function DashboardApp() {
       )}
 
       {overlayPageDraft && (
-        <div className="modalBackdrop" role="presentation">
-          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
-          <section
-            aria-label={overlayPageDraft.mode === "add" ? "辞書ページ追加" : "辞書ページ名変更"}
-            aria-modal="true"
-            className="dropDialog"
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div>
-              <p className="eyebrow">Dictionary page</p>
-              <h2>{overlayPageDraft.mode === "add" ? "ページを追加" : "名前を変更"}</h2>
-            </div>
-
-            <label className="fieldStack">
-              <span>ページ名</span>
-              <input
-                autoFocus
-                className="textInput"
-                maxLength={OVERLAY_PAGE_NAME_MAX_CHARS}
-                onChange={(event) =>
-                  setOverlayPageDraft({ ...overlayPageDraft, name: event.target.value })
-                }
-                onKeyDown={(event) => {
-                  if (
-                    event.key === "Enter" &&
-                    !overlayPageNameError(overlayPageDraft.name, overlayPageDraft.pageId)
-                  ) {
-                    void saveOverlayPageDraft();
-                  }
-                  if (event.key === "Escape") closeOverlayPageDialog();
-                }}
-                placeholder="例: プロジェクト名"
-                value={overlayPageDraft.name}
-              />
-              {overlayPageDraft.name.trim() &&
-                overlayPageNameError(overlayPageDraft.name, overlayPageDraft.pageId) && (
-                  <small className="fieldError">
-                    {overlayPageNameError(overlayPageDraft.name, overlayPageDraft.pageId)}
-                  </small>
-                )}
-            </label>
-
-            <div className="dialogActions">
-              <button className="secondaryButton" onClick={closeOverlayPageDialog} type="button">
-                キャンセル
-              </button>
-              <button
-                className="primaryButton"
-                disabled={Boolean(
-                  overlayPageNameError(overlayPageDraft.name, overlayPageDraft.pageId),
-                )}
-                onClick={() => void saveOverlayPageDraft()}
-                type="button"
-              >
-                {overlayPageDraft.mode === "add" ? "追加" : "保存"}
-              </button>
-            </div>
-          </section>
-        </div>
+        <OverlayPageDialog
+          draft={overlayPageDraft}
+          nameError={overlayPageNameError(overlayPageDraft.name, overlayPageDraft.pageId)}
+          onClose={closeOverlayPageDialog}
+          onDraftChange={setOverlayPageDraft}
+          onSave={() => void saveOverlayPageDraft()}
+        />
       )}
 
       {groupDraft !== null && (
-        <div className="modalBackdrop" role="presentation">
-          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
-          <section
-            aria-label="グループ追加"
-            aria-modal="true"
-            className="dropDialog"
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div>
-              <p className="eyebrow">Group</p>
-              <h2>グループを追加</h2>
-            </div>
-
-            <label className="fieldStack">
-              <span>グループ名</span>
-              <input
-                autoFocus
-                className="textInput"
-                maxLength={40}
-                onChange={(event) => setGroupDraft(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    confirmGroupAddition();
-                  }
-                  if (event.key === "Escape") {
-                    setGroupDraft(null);
-                  }
-                }}
-                placeholder="例: 仕事"
-                value={groupDraft}
-              />
-            </label>
-
-            <div className="dialogActions formDialogActions">
-              <button
-                className="primaryButton"
-                disabled={!groupDraft.trim()}
-                onClick={confirmGroupAddition}
-                type="button"
-              >
-                追加
-              </button>
-              <button
-                className="secondaryButton dialogCancelButton"
-                onClick={() => setGroupDraft(null)}
-                type="button"
-              >
-                キャンセル
-              </button>
-            </div>
-          </section>
-        </div>
+        <GroupNameDialog
+          mode="add"
+          onCancel={() => setGroupDraft(null)}
+          onChange={setGroupDraft}
+          onConfirm={confirmGroupAddition}
+          value={groupDraft}
+        />
       )}
 
       {groupRenameDraft && (
-        <div className="modalBackdrop" role="presentation">
-          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
-          <section
-            aria-label="グループ名変更"
-            aria-modal="true"
-            className="dropDialog"
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div>
-              <p className="eyebrow">Group</p>
-              <h2>名前を変更</h2>
-            </div>
-
-            <label className="fieldStack">
-              <span>グループ名</span>
-              <input
-                autoFocus
-                className="textInput"
-                maxLength={40}
-                onChange={(event) =>
-                  setGroupRenameDraft({ ...groupRenameDraft, to: event.target.value })
-                }
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    confirmGroupRename();
-                  }
-                  if (event.key === "Escape") {
-                    setGroupRenameDraft(null);
-                  }
-                }}
-                value={groupRenameDraft.to}
-              />
-            </label>
-
-            <div className="dialogActions formDialogActions">
-              <button
-                className="primaryButton"
-                disabled={!groupRenameDraft.to.trim()}
-                onClick={confirmGroupRename}
-                type="button"
-              >
-                保存
-              </button>
-              <button
-                className="secondaryButton dialogCancelButton"
-                onClick={() => setGroupRenameDraft(null)}
-                type="button"
-              >
-                キャンセル
-              </button>
-            </div>
-          </section>
-        </div>
+        <GroupNameDialog
+          mode="rename"
+          onCancel={() => setGroupRenameDraft(null)}
+          onChange={(to) => setGroupRenameDraft({ ...groupRenameDraft, to })}
+          onConfirm={confirmGroupRename}
+          value={groupRenameDraft.to}
+        />
       )}
 
       {settingsDraft && (
@@ -13433,253 +12991,25 @@ function DashboardApp() {
       )}
 
       {manualSessionDraft && (
-        <div className="modalBackdrop" role="presentation">
-          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
-          <section
-            aria-label="実行記録を追加"
-            aria-modal="true"
-            className="dropDialog modalLongForm"
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div>
-              <p className="eyebrow">Session</p>
-              <h2>実行記録を追加</h2>
-            </div>
-
-            <label className="fieldStack">
-              <span>プロジェクト</span>
-              <select
-                className="textInput"
-                onChange={(event) =>
-                  setManualSessionDraft({
-                    ...manualSessionDraft,
-                    projectId: event.target.value || null,
-                  })
-                }
-                value={manualSessionDraft.projectId ?? ""}
-              >
-                <option value="">未分類</option>
-                {config.projects.map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {manualSessionDraft.projectId && projectsById.has(manualSessionDraft.projectId) && (
-              <div
-                className="sessionProjectIdentity"
-                data-project-color={resolveProjectColorId(
-                  manualSessionDraft.projectId,
-                  projectsById.get(manualSessionDraft.projectId)?.colorId,
-                )}
-              >
-                <ProjectIdentity
-                  colorId={projectsById.get(manualSessionDraft.projectId)?.colorId}
-                  name={projectsById.get(manualSessionDraft.projectId)?.name ?? ""}
-                  projectId={manualSessionDraft.projectId}
-                />
-              </div>
-            )}
-
-            <div className="editGrid">
-              <label className="fieldStack">
-                <span>日付</span>
-                <input
-                  className="textInput"
-                  onChange={(event) =>
-                    setManualSessionDraft({ ...manualSessionDraft, date: event.target.value })
-                  }
-                  type="date"
-                  value={manualSessionDraft.date}
-                />
-              </label>
-              <label className="fieldStack">
-                <span>開始時刻</span>
-                <input
-                  className="textInput"
-                  onChange={(event) =>
-                    setManualSessionDraft({
-                      ...manualSessionDraft,
-                      startedAt: event.target.value,
-                    })
-                  }
-                  step={60}
-                  type="time"
-                  value={manualSessionDraft.startedAt}
-                />
-              </label>
-              <label className="fieldStack">
-                <span>分数</span>
-                <input
-                  className="textInput"
-                  min={1}
-                  onChange={(event) =>
-                    setManualSessionDraft({ ...manualSessionDraft, minutes: event.target.value })
-                  }
-                  type="number"
-                  value={manualSessionDraft.minutes}
-                />
-              </label>
-            </div>
-
-            <label className="fieldStack">
-              <span>実行内容</span>
-              <input
-                className="textInput"
-                onChange={(event) =>
-                  setManualSessionDraft({ ...manualSessionDraft, note: event.target.value })
-                }
-                value={manualSessionDraft.note}
-              />
-            </label>
-
-            <div className="dialogActions formDialogActions">
-              <button className="primaryButton" onClick={saveManualSession} type="button">
-                追加
-              </button>
-              <button
-                className="secondaryButton dialogCancelButton"
-                onClick={() => setManualSessionDraft(null)}
-                type="button"
-              >
-                キャンセル
-              </button>
-            </div>
-          </section>
-        </div>
+        <ManualSessionDialog
+          draft={manualSessionDraft}
+          onCancel={() => setManualSessionDraft(null)}
+          onDraftChange={setManualSessionDraft}
+          onSave={saveManualSession}
+          projects={config.projects}
+          projectsById={projectsById}
+        />
       )}
 
       {sessionEditDraft && (
-        <div className="modalBackdrop" role="presentation">
-          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
-          <section
-            aria-label="実行記録を編集"
-            aria-modal="true"
-            className="dropDialog editDialog"
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div>
-              <p className="eyebrow">Session</p>
-              <h2>実行記録を編集</h2>
-            </div>
-
-            <label className="fieldStack">
-              <span>プロジェクト</span>
-              <select
-                className="textInput"
-                onChange={(event) => {
-                  const project = config.projects.find((item) => item.id === event.target.value);
-                  setSessionEditDraft({
-                    ...sessionEditDraft,
-                    projectId: project?.id ?? null,
-                    label: project?.name ?? sessionEditDraft.label,
-                  });
-                }}
-                value={sessionEditDraft.projectId ?? ""}
-              >
-                <option value="">未分類</option>
-                {config.projects.map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {sessionEditDraft.projectId && projectsById.has(sessionEditDraft.projectId) && (
-              <div
-                className="sessionProjectIdentity"
-                data-project-color={resolveProjectColorId(
-                  sessionEditDraft.projectId,
-                  projectsById.get(sessionEditDraft.projectId)?.colorId,
-                )}
-              >
-                <ProjectIdentity
-                  colorId={projectsById.get(sessionEditDraft.projectId)?.colorId}
-                  name={
-                    projectsById.get(sessionEditDraft.projectId)?.name ?? sessionEditDraft.label
-                  }
-                  projectId={sessionEditDraft.projectId}
-                />
-              </div>
-            )}
-
-            <label className="fieldStack">
-              <span>ラベル</span>
-              <input
-                className="textInput"
-                maxLength={80}
-                onChange={(event) =>
-                  setSessionEditDraft({ ...sessionEditDraft, label: event.target.value })
-                }
-                value={sessionEditDraft.label}
-              />
-            </label>
-
-            <div className="editGrid">
-              <label className="fieldStack">
-                <span>日付</span>
-                <input
-                  className="textInput"
-                  onChange={(event) =>
-                    setSessionEditDraft({ ...sessionEditDraft, date: event.target.value })
-                  }
-                  type="date"
-                  value={sessionEditDraft.date}
-                />
-              </label>
-              <label className="fieldStack">
-                <span>開始</span>
-                <input
-                  className="textInput"
-                  maxLength={16}
-                  onChange={(event) =>
-                    setSessionEditDraft({ ...sessionEditDraft, startedAt: event.target.value })
-                  }
-                  value={sessionEditDraft.startedAt}
-                />
-              </label>
-              <label className="fieldStack">
-                <span>分数</span>
-                <input
-                  className="textInput"
-                  min={1}
-                  onChange={(event) =>
-                    setSessionEditDraft({ ...sessionEditDraft, minutes: event.target.value })
-                  }
-                  type="number"
-                  value={sessionEditDraft.minutes}
-                />
-              </label>
-            </div>
-
-            <label className="fieldStack">
-              <span>実行内容</span>
-              <input
-                className="textInput"
-                onChange={(event) =>
-                  setSessionEditDraft({ ...sessionEditDraft, note: event.target.value })
-                }
-                value={sessionEditDraft.note}
-              />
-            </label>
-
-            <div className="dialogActions formDialogActions">
-              <button className="primaryButton" onClick={saveSessionEdit} type="button">
-                保存
-              </button>
-              <button
-                className="secondaryButton dialogCancelButton"
-                onClick={() => setSessionEditDraft(null)}
-                type="button"
-              >
-                キャンセル
-              </button>
-            </div>
-          </section>
-        </div>
+        <SessionEditDialog
+          draft={sessionEditDraft}
+          onCancel={() => setSessionEditDraft(null)}
+          onDraftChange={setSessionEditDraft}
+          onSave={saveSessionEdit}
+          projects={config.projects}
+          projectsById={projectsById}
+        />
       )}
 
       {buttonEditDraft && (
@@ -13986,108 +13316,20 @@ function DashboardApp() {
       )}
 
       {inboxAddOpen && (
-        <div className="modalBackdrop" role="presentation">
-          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
-          <section
-            aria-label="やりたいことを追加"
-            aria-modal="true"
-            className="dropDialog wishlistAddDialog"
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div className="wishlistAddHeader modalTitleRow">
-              <div>
-                <p className="eyebrow">Wishlist</p>
-                <h2>やりたいことを追加</h2>
-                <p>あとでやりたいことを、ひとまず残しておきます。</p>
-              </div>
-              <button
-                aria-label="やりたいことを追加を閉じる"
-                className="iconButton"
-                disabled={inboxAddSaving}
-                onClick={() => closeInboxAddDialog()}
-                title="閉じる"
-                type="button"
-              >
-                <UiIcon name="close" size={16} />
-              </button>
-            </div>
-
-            <form
-              className="wishlistAddForm"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void addInboxItem();
-              }}
-            >
-              <label className="fieldStack">
-                <span>やりたいこと</span>
-                <input
-                  aria-describedby={
-                    inboxAddError ? "wishlist-add-hint wishlist-add-error" : "wishlist-add-hint"
-                  }
-                  aria-invalid={Boolean(inboxAddError)}
-                  autoFocus
-                  className="textInput"
-                  maxLength={120}
-                  onChange={(event) => {
-                    setInboxDraft(event.target.value);
-                    if (inboxAddError) setInboxAddError(null);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" && event.nativeEvent.isComposing) {
-                      event.preventDefault();
-                    }
-                  }}
-                  placeholder="気になっていた本を読む"
-                  value={inboxDraft}
-                />
-                <small className="fieldHint" id="wishlist-add-hint">
-                  120文字まで
-                </small>
-                {inboxAddError && (
-                  <small className="fieldError" id="wishlist-add-error" role="alert">
-                    {inboxAddError}
-                  </small>
-                )}
-              </label>
-
-              <label className="fieldStack">
-                <span>プロジェクト（任意）</span>
-                <select
-                  className="textInput"
-                  onChange={(event) => setInboxAddProjectId(event.target.value)}
-                  value={inboxAddProjectId}
-                >
-                  <option value="">プロジェクトなし</option>
-                  {config.projects.map((project) => (
-                    <option key={project.id} value={project.id}>
-                      {project.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <div className="dialogActions formDialogActions">
-                <button
-                  className="primaryButton"
-                  disabled={inboxAddSaving || !inboxDraft.trim()}
-                  type="submit"
-                >
-                  {inboxAddSaving ? "保存中…" : "保存"}
-                </button>
-                <button
-                  className="secondaryButton dialogCancelButton"
-                  disabled={inboxAddSaving}
-                  onClick={() => closeInboxAddDialog()}
-                  type="button"
-                >
-                  キャンセル
-                </button>
-              </div>
-            </form>
-          </section>
-        </div>
+        <InboxAddDialog
+          draft={inboxDraft}
+          error={inboxAddError}
+          onClose={() => closeInboxAddDialog()}
+          onDraftChange={(value) => {
+            setInboxDraft(value);
+            if (inboxAddError) setInboxAddError(null);
+          }}
+          onProjectIdChange={setInboxAddProjectId}
+          onSubmit={() => void addInboxItem()}
+          projectId={inboxAddProjectId}
+          projects={config.projects}
+          saving={inboxAddSaving}
+        />
       )}
 
       {completionFollowup?.source.kind === "nextStep" &&
@@ -15243,89 +14485,16 @@ function DashboardApp() {
       )}
 
       {completionPrompt && (
-        <div className="modalBackdrop" role="presentation">
-          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
-          <section
-            aria-label="タイマー満了"
-            aria-modal="true"
-            className="dropDialog timerCompleteDialog"
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div className="timerCompleteHeader">
-              <span aria-hidden="true" className="timerCompleteMark">
-                <UiIcon name="clock" size={20} />
-              </span>
-              <div>
-                <p className="eyebrow">Timer</p>
-                <h2 className="timerCompleteText">予定時間になりました</h2>
-              </div>
-            </div>
-
-            <div className="timerCompleteSubject">
-              {completionProject && (
-                <ProjectIdentity
-                  colorId={completionProject.colorId}
-                  compact
-                  name={completionProject.name}
-                  projectId={completionProject.id}
-                />
-              )}
-              <span className="timerCompleteMinutes">予定 {completionPrompt.targetMinutes}分</span>
-              <strong className="timerCompleteHeading">{timerActionText(completionPrompt)}</strong>
-            </div>
-
-            {completionCanEditResume && (
-              <>
-                <label className="fieldStack timerResumeField">
-                  <span>次はここから(任意)</span>
-                  <input
-                    aria-label="次はここから(任意)"
-                    className="textInput"
-                    disabled={completionResumeSaving}
-                    maxLength={80}
-                    onChange={(event) => setTimerResumeDraft(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (
-                        event.key === "Enter" &&
-                        !event.nativeEvent.isComposing &&
-                        event.keyCode !== 229
-                      ) {
-                        event.preventDefault();
-                        void submitCompletedTimer();
-                      }
-                    }}
-                    placeholder="例: 3章の途中から"
-                    value={timerResumeDraft}
-                  />
-                </label>
-                <p className="timerResumeHint">
-                  書くと、次に「今やる一手」に出たときに、行動の下に出ます。
-                </p>
-              </>
-            )}
-
-            <div className="dialogActions">
-              <button
-                className="secondaryButton"
-                data-initial-focus=""
-                disabled={completionResumeSaving}
-                onClick={continueCompletedTimer}
-                type="button"
-              >
-                続ける(+15分)
-              </button>
-              <button
-                className="secondaryButton secondaryButton--finish"
-                disabled={completionResumeSaving}
-                onClick={() => void submitCompletedTimer()}
-                type="button"
-              >
-                終わる
-              </button>
-            </div>
-          </section>
-        </div>
+        <TimerCompletionDialog
+          canEditResume={completionCanEditResume}
+          onContinue={continueCompletedTimer}
+          onFinish={() => void submitCompletedTimer()}
+          onResumeDraftChange={setTimerResumeDraft}
+          project={completionProject}
+          prompt={completionPrompt}
+          resumeDraft={timerResumeDraft}
+          saving={completionResumeSaving}
+        />
       )}
 
       {dropDraft && (
@@ -15547,93 +14716,18 @@ function DashboardApp() {
       )}
 
       {softwareResetChoiceOpen && (
-        <div
-          className="modalBackdrop confirmBackdrop softwareResetChoiceBackdrop"
-          role="presentation"
-        >
-          <section
-            aria-describedby="software-reset-choice-description"
-            aria-labelledby="software-reset-choice-title"
-            aria-modal="true"
-            className="dropDialog confirmDialog softwareResetChoiceDialog"
-            role="dialog"
-          >
-            <div className="confirmDialogHeader">
-              <h2 id="software-reset-choice-title">リセット前にバックアップしますか？</h2>
-              <button
-                aria-label="確認を閉じる"
-                className="confirmDialogClose"
-                disabled={softwareResetChoiceBusy}
-                onClick={() => closeSoftwareResetChoice()}
-                title="閉じる"
-                type="button"
-              >
-                <UiIcon name="close" size={16} />
-              </button>
-            </div>
-            <div className="confirmDialogBody" id="software-reset-choice-description">
-              <p>
-                現在のデータをバックアップしておくと、
-                <br />
-                必要になった場合に元へ戻せます。
-              </p>
-            </div>
-            <div className="dialogActions softwareResetChoiceActions">
-              <button
-                className="confirmDialogButton mainActionButton mainActionButton--gold"
-                disabled={softwareResetChoiceBusy}
-                onClick={() => void continueSoftwareReset(true)}
-                type="button"
-              >
-                {softwareResetChoiceBusy ? "バックアップしています…" : "バックアップして続行"}
-              </button>
-              <button
-                className="dangerButton"
-                disabled={softwareResetChoiceBusy}
-                onClick={() => void continueSoftwareReset(false)}
-                type="button"
-              >
-                バックアップせず続行
-              </button>
-              <button
-                autoFocus
-                className="secondaryButton settingsButton--neutral"
-                disabled={softwareResetChoiceBusy}
-                onClick={() => closeSoftwareResetChoice()}
-                type="button"
-              >
-                キャンセル
-              </button>
-            </div>
-          </section>
-        </div>
+        <SoftwareResetChoiceDialog
+          busy={softwareResetChoiceBusy}
+          onClose={() => closeSoftwareResetChoice()}
+          onContinue={(withBackup) => void continueSoftwareReset(withBackup)}
+        />
       )}
       {confirmDialog && <ConfirmDialog {...confirmDialog} onCancel={closeConfirmDialog} open />}
       {softwareResetStage !== "idle" && (
-        <div className="modalBackdrop softwareResetProgressBackdrop" role="presentation">
-          <section
-            aria-labelledby="software-reset-progress-title"
-            aria-live="assertive"
-            aria-modal="true"
-            className="dropDialog softwareResetProgressDialog"
-            onKeyDown={(event) => {
-              if (event.key === "Tab") event.preventDefault();
-            }}
-            ref={softwareResetProgressRef}
-            role="dialog"
-            tabIndex={-1}
-          >
-            <span aria-hidden="true" className="softwareResetProgressIndicator" />
-            <div>
-              <h2 id="software-reset-progress-title">
-                {softwareResetStage === "restart"
-                  ? "Life Launcherを再起動しています"
-                  : "ソフトウェアリセットを実行しています"}
-              </h2>
-              <p>この画面を閉じずにお待ちください。</p>
-            </div>
-          </section>
-        </div>
+        <SoftwareResetProgressDialog
+          progressRef={softwareResetProgressRef}
+          stage={softwareResetStage}
+        />
       )}
       {searchOpen && (
         <SearchPalette

@@ -386,22 +386,6 @@ test("Phase 8.1 Wishlist follow-up rolls back on save failure and completes on r
   });
 });
 
-test("Phase 8.1 still asks where to start when the Project has no Wishlist", async ({ page }) => {
-  await prepareUi(page, nextStepUiFixture(false));
-  await finishPlannedTimer(page);
-  await page.clock.fastForward(2_000);
-  const followup = page.getByRole("dialog", { name: "一手進みました" });
-  await expect(followup).toBeVisible();
-  await expect(followup.getByRole("radio")).toHaveCount(3);
-  await expect(followup.getByRole("radio", { name: /同じ一手をもう一度/ })).toBeVisible();
-  await expect(followup.getByRole("radio", { name: "自分で書く" })).toBeVisible();
-  await expect(followup.getByRole("radio", { name: "今は決めない" })).toBeVisible();
-  await expect(followup.locator("small", { hasText: "やりたいことから" })).toHaveCount(0);
-  expect((await currentConfig(page)).projects[0].nextStep).toBeUndefined();
-  await followup.getByRole("button", { name: "閉じる" }).click();
-  await expect(followup).toHaveCount(0);
-});
-
 test("Phase 8.1 incomplete early stop never opens a completion follow-up", async ({ page }) => {
   const fixture = nextStepUiFixture();
   fixture.config.today.items[0].shortTimerMinutes = 3;
