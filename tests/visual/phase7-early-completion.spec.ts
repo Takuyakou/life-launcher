@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { earlyCompletionItem, earlyCompletionThresholdSeconds } from "../../src/earlyCompletion";
 import type { AppConfig } from "../../src/types";
+import { pauseClock } from "./clock";
 import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 import { waitForBundledFonts } from "./bundledFonts";
@@ -370,7 +371,7 @@ test("switch skips early confirmation and a delayed mini-window stop cannot stop
     staleFinish();
   });
   await expect(first.getByText("実行中", { exact: true })).toBeVisible();
-  expect((await state(page)).records).toHaveLength(1);
+  await expect.poll(async () => (await state(page)).records).toHaveLength(1);
 });
 
 test("extension uses the current planned duration instead of the original snapshot", async ({
@@ -392,6 +393,7 @@ test("extension uses the current planned duration instead of the original snapsh
 
 test("paused time cannot cross the early threshold, resume can", async ({ page }) => {
   await prepare(page);
+  await pauseClock(page);
   const card = page.locator(".todayRow").first();
   await card.getByRole("button", { name: "通常タイマー25分で開始" }).click();
   await page.clock.fastForward(179_000);
@@ -413,6 +415,7 @@ test("missing runtime short snapshot uses five minutes, not the live Project sho
   fixture.config.today.items[0].shortTimerMinutes = undefined;
   fixture.config.projects[0].nextStep!.shortTimerMinutes = 1;
   await prepare(page, fixture);
+  await pauseClock(page);
   const card = page.locator(".todayRow").first();
   await card.getByRole("button", { name: "通常タイマー25分で開始" }).click();
   await page.clock.fastForward(299_000);

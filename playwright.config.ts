@@ -21,7 +21,6 @@ export default defineConfig({
     colorScheme: "dark",
     locale: "ja-JP",
     timezoneId: "Asia/Tokyo",
-    reducedMotion: "reduce",
     screenshot: "only-on-failure",
   },
   webServer: {

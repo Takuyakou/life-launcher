@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { pauseClock } from "./clock";
 import { createFullTodayFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 import { waitForBundledFonts } from "./bundledFonts";
@@ -162,6 +163,7 @@ test("P9-04 Measure shows 計測中 and the elapsed time only beside the buttons
   page,
 }) => {
   await prepare(page);
+  await pauseClock(page);
   await doNowCard(page).locator(".doNowMeasureButton").click();
   await page.clock.fastForward(65_000);
   await expect(doNowCard(page).locator(".runningBadge")).toHaveText("計測中");

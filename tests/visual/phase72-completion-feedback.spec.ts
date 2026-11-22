@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { AppConfig } from "../../src/types";
+import { pauseClock } from "./clock";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 
@@ -83,6 +84,7 @@ test("P72-05 Victory feedback fires for every saved false-to-true transition", a
 }) => {
   const fixture = createPublicFixture();
   await prepare(page, fixture);
+  await pauseClock(page);
   const checkbox = page.getByRole("checkbox", { name: "勝利条件を達成" });
   await checkbox.focus();
   await checkbox.check();

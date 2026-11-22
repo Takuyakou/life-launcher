@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { pauseClock } from "./clock";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 import { waitForBundledFonts } from "./bundledFonts";
@@ -50,9 +51,11 @@ test("P8.10 TX-01 manual expand shares timer state and Esc keeps it running", as
     await expectExpandedTimerFits(page);
   }
   await page.setViewportSize({ width: 1920, height: 1080 });
+  await pauseClock(page);
   await expect(overlay.locator(".expandedTimerClock")).toHaveText(await page.locator(".timerDock .timerClock").innerText());
   await page.clock.runFor(5_000);
   await expect(overlay.locator(".expandedTimerClock")).toHaveText(await page.locator(".timerDock .timerClock").innerText());
+  await page.clock.resume();
   await overlay.getByRole("button", { name: "一時停止" }).click();
   await expect(overlay.getByText("一時停止中")).toBeVisible();
   await expect(page.locator(".timerDock .timerStateBadge")).toHaveText("一時停止");
@@ -112,6 +115,7 @@ test("P8.10 TX-01 overlay traps Tab, closes without backdrop click, and can end 
 test("P8.10 TX-01 measure mode has no progress bar and fits narrow window", async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 380 });
   await prepare(page);
+  await pauseClock(page);
   await page.locator(".doNowMeasureButton").click();
   await page.getByRole("button", { name: "タイマーを大きく表示" }).click();
   const overlay = page.getByRole("dialog", { name: "拡大タイマー" });
@@ -288,6 +292,7 @@ for (const state of [
 ]) {
 test(`P8.10 TX-04 ${state.visible ? "minimizing" : "hiding"} Main releases display request`, async ({ page }) => {
   await prepare(page);
+  await pauseClock(page);
   await page.locator(".doNowStartPrimary").click();
   await page.getByRole("button", { name: "タイマーを大きく表示" }).click();
   await expect(page.getByRole("dialog", { name: "拡大タイマー" })).toBeVisible();

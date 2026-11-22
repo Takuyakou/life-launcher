@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import type { AppConfig, LauncherNextStep } from "../../src/types";
+import { pauseClock } from "./clock";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 
@@ -118,6 +119,7 @@ async function setNextStepExternally(page: Page, projectId: string, text: string
     },
     { projectId, text },
   );
+  await page.clock.runFor(250);
   await expect(page.locator(`.nextStepRow[data-project-id="${projectId}"]`)).toContainText(text);
 }
 
@@ -332,6 +334,7 @@ test("P10-09 does not ask when the Next Step is set while the 1100ms wait runs",
 }) => {
   const fixture = completionFixture();
   await prepare(page, fixture);
+  await pauseClock(page);
   await finishPlannedTimer(page);
   await expect(page.locator(".todayRow")).toHaveClass(/todayRow--justCompleted/);
 

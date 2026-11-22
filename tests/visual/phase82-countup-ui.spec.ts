@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import type { AppConfig } from "../../src/types";
+import { pauseClock } from "./clock";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 import { waitForBundledFonts } from "./bundledFonts";
@@ -88,6 +89,7 @@ test("P82-03 sub-minute Measure does not record and immediately releases its sou
   page,
 }) => {
   await prepare(page);
+  await pauseClock(page);
   const card = page.locator(".todayRow").first();
   await card.locator(".todayMeasureButton").click();
   await page.clock.fastForward(59_000);
@@ -101,6 +103,7 @@ test("P82-03 sub-minute Measure switch skips recording and starts the clicked Ti
   page,
 }) => {
   await prepare(page);
+  await pauseClock(page);
   const cards = page.locator(".todayRow");
   await cards.nth(0).locator(".todayMeasureButton").click();
   await page.clock.fastForward(59_000);
@@ -116,6 +119,7 @@ test("P82-03 Measure and countdown switch in every direction with one active Tim
   page,
 }) => {
   await prepare(page);
+  await pauseClock(page);
   const cards = page.locator(".todayRow");
   await cards.nth(0).locator(".todayMeasureButton").click();
   await page.clock.fastForward(61_000);
