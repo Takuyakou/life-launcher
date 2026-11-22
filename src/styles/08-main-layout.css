@@ -1012,7 +1012,7 @@
   width: min(980px, calc(100vw - 24px));
   height: min(620px, calc(100vh - 24px));
   max-height: min(620px, calc(100vh - 24px));
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   gap: 20px;
   border: 1px solid #4a4639;
   border-radius: 16px;
@@ -1060,6 +1060,95 @@
 .todayPickerHead > .iconButton {
   flex: 0 0 auto;
   align-self: flex-start;
+}
+
+/* V163-B7: one compact row of project pills, right under the heading (the mock tightens the
+   20px grid gap by 8px above and 6px below it). */
+.todayPickerFilterBar {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 26px;
+  margin-top: -8px;
+  margin-bottom: -6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.todayPickerFilterPill {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  padding: 0 10px;
+  background: none;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.todayPickerFilterPill:hover,
+.todayPickerFilterPill:focus-visible {
+  border-color: var(--line);
+  color: var(--text);
+}
+
+.todayPickerFilterPill--active {
+  border-color: var(--line);
+  background: var(--surface-strong);
+  color: var(--text);
+  font-weight: 700;
+}
+
+.todayPickerFilterDot {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--project-color, var(--muted));
+}
+
+/* V163-B7: the one-line quick add, under the wishlist list (it stays out of the 4-row budget
+   at the top of the column). */
+.todayPickerQuickAdd {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.todayPickerQuickAddInput {
+  width: 100%;
+  height: 32px;
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1;
+  outline: none;
+}
+
+.todayPickerQuickAddInput:focus {
+  border-color: var(--muted);
+}
+
+.todayPickerQuickAddButton {
+  height: 32px;
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .todayPickerBody {

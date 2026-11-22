@@ -85,6 +85,7 @@ import {
   DropResolveInput,
   DoNowResponse,
   ImportCommitResponse,
+  InboxItem,
   LauncherAction,
   LauncherButton,
   LauncherNextStep,
@@ -388,6 +389,11 @@ function DashboardApp() {
   const todayPickerSavingRef = useRef(false);
   // P10-10 (§6.1): which draft slot is being dragged (HTML5 drag keeps it inside the Picker).
   const [todayPickerDragIndex, setTodayPickerDragIndex] = useState<number | null>(null);
+  // V163-B7: the filter pills ("all" / a project id / "unassigned") reset on every open.
+  const [todayPickerFilter, setTodayPickerFilter] = useState<string>("all");
+  // V163-B7: wishes added in the Picker stay here until 決定 saves them with Today3 (one save point).
+  const [todayPickerAddedWishes, setTodayPickerAddedWishes] = useState<InboxItem[]>([]);
+  const [todayPickerQuickText, setTodayPickerQuickText] = useState("");
   const [todayActivityOpen, setTodayActivityOpen] = useState(false);
   const [, setNotesSaveStatus] = useState<NotesSaveStatus>("saved");
   const [launcherOverlayOpen, setLauncherOverlayOpen] = useState(false);
@@ -2077,6 +2083,9 @@ function DashboardApp() {
     setTodayPickerDraftItems([]);
     setTodayPickerSaving(false);
     setTodayPickerDragIndex(null);
+    setTodayPickerFilter("all");
+    setTodayPickerAddedWishes([]);
+    setTodayPickerQuickText("");
     window.requestAnimationFrame(() => {
       // Never steal focus from a dialog that opened while the Picker was closing.
       const active = document.activeElement;
@@ -2086,10 +2095,13 @@ function DashboardApp() {
   }, []);
 
   // P10-10 (§6.1): closing never saves; a changed draft only asks before discarding it.
+  // V163-B7: wishes added in the Picker and an unsent quick-add line count as unsaved too.
   const requestCloseTodayPicker = useCallback(() => {
     if (todayPickerSaving) return;
     const dirty =
-      JSON.stringify(todayPickerDraftItems) !== JSON.stringify(todayPickerInitialItemsRef.current);
+      JSON.stringify(todayPickerDraftItems) !== JSON.stringify(todayPickerInitialItemsRef.current) ||
+      todayPickerAddedWishes.length > 0 ||
+      todayPickerQuickText.trim().length > 0;
     if (dirty) {
       requestDiscardConfirmation(() => {
         closeTodayPicker();
@@ -2101,7 +2113,9 @@ function DashboardApp() {
   }, [
     closeTodayPicker,
     requestDiscardConfirmation,
+    todayPickerAddedWishes,
     todayPickerDraftItems,
+    todayPickerQuickText,
     todayPickerSaving,
   ]);
 
@@ -2115,6 +2129,10 @@ function DashboardApp() {
     todayPickerInitialItemsRef.current = initialItems;
     setTodayPickerDraftItems(initialItems);
     setTodayPickerDragIndex(null);
+    // V163-B7: every open starts on すべて with no quick-added wishes and an empty quick-add line.
+    setTodayPickerFilter("all");
+    setTodayPickerAddedWishes([]);
+    setTodayPickerQuickText("");
     setTodayPickerOpen(true);
   }, []);
 
@@ -6472,6 +6490,7 @@ function DashboardApp() {
   const saveTodayPickerDraft = async (items = todayPickerDraftItems) => {
     const current = configRef.current;
     if (!current || todayPickerSavingRef.current) return false;
+    const addedWishes = todayPickerAddedWishes;
     if (
       JSON.stringify(current.today.items) !== JSON.stringify(todayPickerInitialItemsRef.current)
     ) {
@@ -6485,14 +6504,19 @@ function DashboardApp() {
       showToast("warn", "今日の3件がほかの所で変わりました。もう一度選んでください");
       return false;
     }
-    if (JSON.stringify(items) === JSON.stringify(current.today.items)) {
+    if (
+      addedWishes.length === 0 &&
+      JSON.stringify(items) === JSON.stringify(current.today.items)
+    ) {
       closeTodayPicker();
       return true;
     }
     todayPickerSavingRef.current = true;
     setTodayPickerSaving(true);
+    // V163-B7: the quick-added wishes and Today3 are saved together, in this one write.
     const saved = await persistConfig({
       ...current,
+      ...(addedWishes.length > 0 ? { inbox: [...current.inbox, ...addedWishes] } : {}),
       today: {
         ...current.today,
         items,
@@ -6519,6 +6543,41 @@ function DashboardApp() {
     ) {
       return;
     }
+    setTodayPickerDraftItems([...todayPickerDraftItems, todayItemFromCandidate(candidate)]);
+  };
+
+  // V163-B7: one line of quick add inside the Picker. The wish is only a draft until 決定
+  // (P10-10 §6.1: one save point); when Today3 has room it also joins the draft at once.
+  const addTodayPickerQuickWish = () => {
+    if (todayPickerSaving) return;
+    const text = todayPickerQuickText.trim().slice(0, 120);
+    if (!text) return;
+    const current = configRef.current;
+    if (!current) return;
+    const projectId =
+      todayPickerFilter !== "all" && todayPickerFilter !== "unassigned"
+        ? todayPickerFilter
+        : undefined;
+    const wish: InboxItem = {
+      id: createStableId(),
+      text,
+      ...(projectId ? { projectId } : {}),
+      buttonIds: [],
+    };
+    const nextAdded = [...todayPickerAddedWishes, wish];
+    setTodayPickerAddedWishes(nextAdded);
+    setTodayPickerQuickText("");
+    const candidate = buildTodayCandidates({
+      ...current,
+      inbox: [...current.inbox, ...nextAdded],
+    }).find((entry) => entry.sourceKey === wishlistSourceKey(wish, 0));
+    if (!candidate) return;
+    const hasRoom = todayPickerDraftItems.length < TODAY_ITEM_LIMIT;
+    if (!hasRoom) {
+      showToast("warn", "今日の3件は3件埋まっています。候補に追加しました");
+      return;
+    }
+    if (todayPickerCandidateSelected(candidate)) return;
     setTodayPickerDraftItems([...todayPickerDraftItems, todayItemFromCandidate(candidate)]);
   };
 
@@ -7702,10 +7761,20 @@ function DashboardApp() {
     void addCandidateToToday(candidate);
     return true;
   };
-  const todayPickerNextStepCandidates = rawTodayBuilderCandidates.filter(
+  // V163-B7: quick-added wishes join the candidates at once, and the filter pills narrow the two
+  // source groups to one project (or to 未分類). The two source groups always stay.
+  const todayPickerInbox =
+    todayPickerAddedWishes.length > 0
+      ? [...config.inbox, ...todayPickerAddedWishes]
+      : config.inbox;
+  const todayPickerCandidates =
+    todayPickerAddedWishes.length > 0
+      ? buildTodayCandidates({ ...config, inbox: todayPickerInbox })
+      : rawTodayBuilderCandidates;
+  const todayPickerNextStepCandidates = todayPickerCandidates.filter(
     (candidate) => candidate.source === "次の一手",
   );
-  const todayPickerWishlistCandidates = rawTodayBuilderCandidates.filter(
+  const todayPickerWishlistCandidates = todayPickerCandidates.filter(
     (candidate) => candidate.source === "やりたいこと",
   );
   const todayPickerWishlistCandidatesBySourceKey = new Map(
@@ -7722,9 +7791,45 @@ function DashboardApp() {
       }),
     }))
     .filter((group) => group.candidates.length > 0);
-  const todayPickerWishlistFlatCandidates = todayPickerWishlistGroups.flatMap(
-    (group) => group.candidates,
+  const todayPickerWishlistFlatCandidates = [
+    ...todayPickerWishlistGroups.flatMap((group) => group.candidates),
+    // Wishes added in the Picker are not in the settings yet: they come after the grouped list.
+    ...todayPickerAddedWishes.flatMap((item) => {
+      const candidate = todayPickerWishlistCandidatesBySourceKey.get(wishlistSourceKey(item, 0));
+      return candidate ? [candidate] : [];
+    }),
+  ];
+  const todayPickerFilterProjectId =
+    todayPickerFilter !== "all" && todayPickerFilter !== "unassigned" ? todayPickerFilter : null;
+  const todayPickerFilterMatches = (candidate: TodayCandidate) => {
+    if (todayPickerFilter === "all") return true;
+    if (todayPickerFilter === "unassigned") return !candidate.projectId;
+    return candidate.projectId === todayPickerFilterProjectId;
+  };
+  const todayPickerVisibleNextSteps =
+    todayPickerFilter === "unassigned"
+      ? []
+      : todayPickerNextStepCandidates.filter(todayPickerFilterMatches);
+  const todayPickerVisibleWishlist = todayPickerWishlistFlatCandidates.filter(
+    todayPickerFilterMatches,
   );
+  const todayPickerHasUnassignedWish = todayPickerInbox.some(
+    (item) => item.text.trim().length > 0 && !item.projectId,
+  );
+  const todayPickerPills = [
+    { key: "all", label: "すべて", color: null as string | null },
+    ...config.projects.map((project) => ({
+      key: project.id,
+      label: project.name,
+      color: resolveProjectColorId(project.id, project.colorId) as string | null,
+    })),
+    ...(todayPickerHasUnassignedWish
+      ? [{ key: "unassigned", label: "未分類", color: null as string | null }]
+      : []),
+  ];
+  const todayPickerQuickProject = todayPickerFilterProjectId
+    ? projectsById.get(todayPickerFilterProjectId)
+    : undefined;
   const wishlistItemIsCurrentNextStep = (item: AppConfig["inbox"][number]) => {
     if (!item.id || !item.projectId) return false;
     const nextStep = projectsById.get(item.projectId)?.nextStep;
@@ -12252,6 +12357,36 @@ function DashboardApp() {
               </button>
             </div>
 
+            {/* V163-B7: the filter pills sit between the heading and the two columns. */}
+            <div
+              aria-label="プロジェクトで絞り込む"
+              className="todayPickerFilterBar"
+              role="group"
+            >
+              {todayPickerPills.map((pill) => (
+                <button
+                  aria-pressed={todayPickerFilter === pill.key}
+                  className={
+                    todayPickerFilter === pill.key
+                      ? "todayPickerFilterPill todayPickerFilterPill--active"
+                      : "todayPickerFilterPill"
+                  }
+                  key={pill.key}
+                  onClick={() => setTodayPickerFilter(pill.key)}
+                  type="button"
+                >
+                  {pill.color !== null && (
+                    <span
+                      aria-hidden="true"
+                      className="todayPickerFilterDot"
+                      data-project-color={pill.color}
+                    />
+                  )}
+                  {pill.label}
+                </button>
+              ))}
+            </div>
+
             <div className="todayPickerBody">
               <section className="todayPickerSource">
                 <div
@@ -12260,10 +12395,10 @@ function DashboardApp() {
                 >
                   <h3 className="todayPickerGroupTitle">次の一手</h3>
                   <div className="todayPickerList">
-                    {todayPickerNextStepCandidates.length === 0 ? (
+                    {todayPickerVisibleNextSteps.length === 0 ? (
                       <p className="todayPickerEmpty">追加できる次の一手はありません</p>
                     ) : (
-                      todayPickerNextStepCandidates.map((candidate) =>
+                      todayPickerVisibleNextSteps.map((candidate) =>
                         renderTodayPickerCandidate(candidate),
                       )
                     )}
@@ -12275,14 +12410,57 @@ function DashboardApp() {
                 >
                   <h3 className="todayPickerGroupTitle">やりたいこと</h3>
                   <div className="todayPickerList">
-                    {todayPickerWishlistFlatCandidates.length === 0 ? (
+                    {todayPickerVisibleWishlist.length === 0 ? (
                       <p className="todayPickerEmpty">追加できるやりたいことはありません</p>
                     ) : (
-                      todayPickerWishlistFlatCandidates.map((candidate) =>
+                      todayPickerVisibleWishlist.map((candidate) =>
                         renderTodayPickerCandidate(candidate),
                       )
                     )}
                   </div>
+                  {/* V163-B7: one compact line of quick add, under the wishlist list. */}
+                  <form
+                    className="todayPickerQuickAdd"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      addTodayPickerQuickWish();
+                    }}
+                  >
+                    <input
+                      aria-label={
+                        todayPickerQuickProject
+                          ? `「${todayPickerQuickProject.name}」のやりたいことを追加`
+                          : "やりたいことを追加"
+                      }
+                      className="todayPickerQuickAddInput"
+                      disabled={todayPickerSaving}
+                      maxLength={120}
+                      onChange={(event) => setTodayPickerQuickText(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key !== "Enter") return;
+                        if (event.nativeEvent.isComposing || event.keyCode === 229) {
+                          event.preventDefault();
+                          return;
+                        }
+                        event.preventDefault();
+                        addTodayPickerQuickWish();
+                      }}
+                      placeholder={
+                        todayPickerQuickProject
+                          ? `「${todayPickerQuickProject.name}」のやりたいことを足して今日へ`
+                          : "やりたいことを足して今日へ"
+                      }
+                      type="text"
+                      value={todayPickerQuickText}
+                    />
+                    <button
+                      className="secondaryButton todayPickerQuickAddButton"
+                      disabled={todayPickerSaving}
+                      type="submit"
+                    >
+                      ＋ 追加
+                    </button>
+                  </form>
                 </div>
               </section>
 
