@@ -15,7 +15,16 @@ import type {
   KeyboardEvent,
   PointerEvent,
 } from "react";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";import { AnimatePresence, motion } from "motion/react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";import { AnimatePresence, motion } from "motion/react";
 import { springCollapse, springSnappy, staggerMax, staggerStep } from "./motion";
 import { SEARCH_GROUP_LIMIT, matchesSearchQuery } from "./searchMatch";
 import { nextStepStaleDays } from "./nextStepFreshness";
@@ -7345,6 +7354,48 @@ function DashboardApp() {
     };
   }, []);
 
+  // V163-C7: the closed 「やりたいこと」 header shows every group without shrinking them; when the
+  // row does not fit, its right edge fades and hovering the header scrolls it slowly in a loop.
+  // The measurement runs again whenever the row resizes (ResizeObserver), so it does not need
+  // the group list in its dependencies.
+  const inboxSummaryRef = useRef<HTMLSpanElement | null>(null);
+  const [inboxSummaryOverflow, setInboxSummaryOverflow] = useState(false);
+  useLayoutEffect(() => {
+    const summary = inboxSummaryRef.current;
+    if (!summary) return;
+    const measure = () => {
+      const track = summary.querySelector<HTMLElement>(".inboxGroupSummaryTrack");
+      if (!track) return;
+      const items = Array.from(track.children).filter(
+        (child): child is HTMLElement =>
+          child instanceof HTMLElement && !child.classList.contains("inboxGroupSummaryItem--copy"),
+      );
+      const ownWidth = items.reduce(
+        (sum, item) => sum + item.getBoundingClientRect().width,
+        Math.max(0, items.length - 1) * 10,
+      );
+      // A hidden row (narrow windows) never shows the copy and never fades.
+      const available = summary.clientWidth;
+      const overflow = available > 0 && ownWidth > available + 0.5;
+      setInboxSummaryOverflow(overflow);
+      summary.style.setProperty("--inbox-summary-loop", `${Math.round(ownWidth + 10)}px`);
+      summary.style.setProperty("--inbox-summary-duration", `${(ownWidth + 10) / 30}s`);
+    };
+    measure();
+    // The first layout (and the bundled fonts) can change the widths after the effect runs, so
+    // measure once more after paint and watch the header too.
+    const frame = window.requestAnimationFrame(measure);
+    const observer = new ResizeObserver(measure);
+    observer.observe(summary);
+    if (summary.parentElement) observer.observe(summary.parentElement);
+    const track = summary.querySelector<HTMLElement>(".inboxGroupSummaryTrack");
+    if (track) observer.observe(track);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [config, inboxOpen, loading]);
+
   if (loading) {
     return (
       <main className="appShell appShell--loading">
@@ -7366,6 +7417,33 @@ function DashboardApp() {
     ? config.projects
     : config.projects.slice(0, PROJECT_CARD_COMPACT_LIMIT);
   const wishlistGroups = groupWishlistForDisplay(config);
+  const inboxSummaryTitle = wishlistGroups
+    .map((group) => `${group.name} ${group.items.length}件`)
+    .join("、");
+  const renderInboxGroupSummaryItems = (copy: boolean) =>
+    wishlistGroups.map((group) => (
+      <span
+        aria-hidden={copy ? "true" : undefined}
+        className={
+          copy ? "inboxGroupSummaryItem inboxGroupSummaryItem--copy" : "inboxGroupSummaryItem"
+        }
+        key={`${copy ? "copy:" : ""}${group.key}`}
+      >
+        <span
+          aria-hidden="true"
+          className="inboxGroupSummaryDot"
+          data-project-color={
+            group.projectId
+              ? resolveProjectColorId(
+                  group.projectId,
+                  projectsById.get(group.projectId)?.colorId ?? null,
+                )
+              : undefined
+          }
+        />
+        {group.name} {group.items.length}件
+      </span>
+    ));
   const inboxNeighborIndex = (index: number, offset: -1 | 1) => {
     const item = config.inbox[index];
     if (!item) return undefined;
@@ -10523,24 +10601,14 @@ function DashboardApp() {
                       <span
                         aria-hidden="true"
                         className="disclosureDescription inboxGroupSummary"
+                        data-overflow={inboxSummaryOverflow ? "true" : "false"}
+                        ref={inboxSummaryRef}
+                        title={inboxSummaryTitle}
                       >
-                        {wishlistGroups.map((group) => (
-                          <span className="inboxGroupSummaryItem" key={group.key}>
-                            <span
-                              aria-hidden="true"
-                              className="inboxGroupSummaryDot"
-                              data-project-color={
-                                group.projectId
-                                  ? resolveProjectColorId(
-                                      group.projectId,
-                                      projectsById.get(group.projectId)?.colorId ?? null,
-                                    )
-                                  : undefined
-                              }
-                            />
-                            {group.name} {group.items.length}件
-                          </span>
-                        ))}
+                        <span className="inboxGroupSummaryTrack">
+                          {renderInboxGroupSummaryItems(false)}
+                          {inboxSummaryOverflow ? renderInboxGroupSummaryItems(true) : null}
+                        </span>
                       </span>
                     )}
                     <span className="visuallyHidden" id="wishlist-group-summary">

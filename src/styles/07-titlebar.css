@@ -959,9 +959,45 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  flex: 0 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex: none;
+}
+
+/* V163-C7: the groups never shrink. When the row does not fit, its right edge fades and hovering
+   (or focusing) the header scrolls the row slowly in a loop, with the same row repeated after it. */
+.inboxGroupSummaryTrack {
+  min-width: 0;
+  display: inline-flex;
+  gap: 10px;
+  white-space: nowrap;
+  transition: transform 300ms ease;
+}
+
+.inboxGroupSummary[data-overflow="true"] {
+  mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+}
+
+@keyframes inboxGroupSummaryLoop {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-1 * var(--inbox-summary-loop, 0px)));
+  }
+}
+
+[data-inbox-header]:hover .inboxGroupSummary[data-overflow="true"] .inboxGroupSummaryTrack,
+[data-inbox-header]:focus-within .inboxGroupSummary[data-overflow="true"] .inboxGroupSummaryTrack {
+  animation: inboxGroupSummaryLoop var(--inbox-summary-duration, 10s) linear 1.5s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-inbox-header]:hover .inboxGroupSummary[data-overflow="true"] .inboxGroupSummaryTrack,
+  [data-inbox-header]:focus-within
+    .inboxGroupSummary[data-overflow="true"]
+    .inboxGroupSummaryTrack {
+    animation: none;
+  }
 }
 
 .inboxGroupSummaryDot {
