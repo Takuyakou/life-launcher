@@ -6,6 +6,7 @@ import {
 } from "../../src/completionFollowup";
 import type { AppConfig } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
+import { pauseClock } from "./clock";
 import { waitForStableRects } from "./helpers";
 import { installTauriMock } from "./tauriMock";
 
@@ -283,6 +284,7 @@ test("Phase 8.1 shows reward before NextStep follow-up and does not replay after
   page,
 }) => {
   await prepareUi(page, nextStepUiFixture());
+  await pauseClock(page);
   await finishPlannedTimer(page);
   await expect(page.locator(".todayRow")).toHaveClass(/todayRow--justCompleted/);
   await expect(page.getByRole("dialog", { name: "一手進みました" })).toHaveCount(0);
@@ -299,6 +301,7 @@ test("Phase 8.1 shows reward before NextStep follow-up and does not replay after
   expect((await currentConfig(page)).projects[0].nextStep).toBeUndefined();
 
   await page.reload();
+  await pauseClock(page);
   await page.clock.fastForward(2_000);
   expect((await currentConfig(page)).today.items[0].done).toBe(true);
   await expect(page.locator(".todayRow")).not.toHaveClass(/todayRow--justCompleted/);
@@ -307,6 +310,7 @@ test("Phase 8.1 shows reward before NextStep follow-up and does not replay after
 
 test("Phase 8.1 Wishlist follow-up can keep the source", async ({ page }) => {
   await prepareUi(page, wishlistUiFixture());
+  await pauseClock(page);
   await finishPlannedTimer(page);
   await expect(page.locator(".todayRow")).toHaveClass(/todayRow--justCompleted/);
   await expect(
@@ -402,6 +406,7 @@ test("Phase 8.1 incomplete early stop never opens a completion follow-up", async
   const fixture = nextStepUiFixture();
   fixture.config.today.items[0].shortTimerMinutes = 3;
   await prepareUi(page, fixture);
+  await pauseClock(page);
   const row = page.locator(".todayRow");
   await row.getByRole("button", { name: "通常タイマー25分で開始" }).click();
   await page.clock.fastForward(180_000);

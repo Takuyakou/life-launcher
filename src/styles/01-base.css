@@ -1153,6 +1153,20 @@ body {
   min-height: 0;
 }
 
+.instructionWorkspace--collapsed {
+  grid-template-columns: 28px minmax(0, 1fr);
+}
+
+.instructionSidebarCollapsedBar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 0;
+  padding: 11px 2px;
+  background: #191815;
+  border-right: 1px solid var(--line-soft);
+}
+
 .instructionSidebar {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
@@ -1161,6 +1175,11 @@ body {
   padding: 14px 12px;
   background: #191815;
   container-type: inline-size;
+}
+
+.instructionSidebar[hidden],
+.instructionSidebarDivider[hidden] {
+  display: none;
 }
 
 .instructionSidebarDivider {
@@ -1200,10 +1219,41 @@ body {
 }
 
 .instructionSidebarHeading {
-  padding: 0 4px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 0 0 12px 4px;
   color: var(--muted);
   font-size: 12px;
   font-weight: 700;
+}
+
+.instructionSidebarToggle {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  margin: -5px 0;
+  padding: 0;
+  place-items: center;
+  flex: 0 0 auto;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.instructionSidebarToggle:hover,
+.instructionSidebarToggle:focus-visible {
+  color: var(--text);
+  background: var(--surface-strong);
+  border-color: var(--line);
+}
+
+.instructionSidebarToggle:active {
+  background: var(--surface-soft);
+  box-shadow: var(--control-neutral-press-shadow);
 }
 
 .instructionTreePanel {

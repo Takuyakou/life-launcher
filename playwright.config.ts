@@ -1,10 +1,12 @@
 import { defineConfig } from "@playwright/test";
 import { availableParallelism } from "node:os";
+import { FAST_SPECS } from "./playwright.fast.config";
 
 const localWorkers = Math.max(1, Math.min(8, Math.floor(availableParallelism() / 2)));
 
 export default defineConfig({
   testDir: "./tests/visual",
+  testIgnore: FAST_SPECS,
   globalSetup: "./tests/visual/global-setup.ts",
   outputDir: "dist/visual-qa/test-results",
   fullyParallel: true,
@@ -19,7 +21,6 @@ export default defineConfig({
     colorScheme: "dark",
     locale: "ja-JP",
     timezoneId: "Asia/Tokyo",
-    reducedMotion: "reduce",
     screenshot: "only-on-failure",
   },
   webServer: {

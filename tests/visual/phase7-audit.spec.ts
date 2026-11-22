@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { AppConfig } from "../../src/types";
+import { pauseClock } from "./clock";
 import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 
@@ -34,6 +35,7 @@ async function prepare(page: Page, short: number, planned: number) {
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
   await expect(page.locator(".todayRow")).toHaveCount(1);
+  await pauseClock(page);
   return fixture;
 }
 

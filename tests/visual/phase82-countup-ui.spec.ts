@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import type { AppConfig } from "../../src/types";
+import { pauseClock } from "./clock";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 import { waitForBundledFonts } from "./bundledFonts";
@@ -88,6 +89,7 @@ test("P82-03 sub-minute Measure does not record and immediately releases its sou
   page,
 }) => {
   await prepare(page);
+  await pauseClock(page);
   const card = page.locator(".todayRow").first();
   await card.locator(".todayMeasureButton").click();
   await page.clock.fastForward(59_000);
@@ -101,6 +103,7 @@ test("P82-03 sub-minute Measure switch skips recording and starts the clicked Ti
   page,
 }) => {
   await prepare(page);
+  await pauseClock(page);
   const cards = page.locator(".todayRow");
   await cards.nth(0).locator(".todayMeasureButton").click();
   await page.clock.fastForward(59_000);
@@ -116,6 +119,7 @@ test("P82-03 Measure and countdown switch in every direction with one active Tim
   page,
 }) => {
   await prepare(page);
+  await pauseClock(page);
   const cards = page.locator(".todayRow");
   await cards.nth(0).locator(".todayMeasureButton").click();
   await page.clock.fastForward(61_000);
@@ -135,10 +139,13 @@ test("P82-03 Measure and countdown switch in every direction with one active Tim
 
 test("P82-03 Measure manual end reuses Today3 early completion", async ({ page }) => {
   await prepare(page);
+  await pauseClock(page);
   const card = page.locator(".todayRow").first();
   await card.locator(".todayMeasureButton").click();
   await page.clock.fastForward(300_000);
   await card.locator(".runningStopButton").click();
+  await expect(page.getByRole("dialog", { name: "今日の分は完了にしますか？" })).toBeVisible();
+  await page.clock.runFor(32);
   await expect(page.getByRole("button", { name: "未完了のまま終了" })).toBeFocused();
   expect(await calls(page, "record_session")).toHaveLength(0);
   await page.getByRole("button", { name: "未完了のまま終了" }).click();

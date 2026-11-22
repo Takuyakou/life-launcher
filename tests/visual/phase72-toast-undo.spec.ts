@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { AppConfig } from "../../src/types";
+import { pauseClock } from "./clock";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 
@@ -121,21 +122,22 @@ test("P72-02 Undo lifetime pauses while either hover or focus remains", async ({
 test("P72-02 document hidden pauses the remaining Undo time", async ({ page }) => {
   const fixture = createPublicFixture();
   await prepare(page, fixture);
+  await pauseClock(page);
   const toast = await removeFirstToday(page);
-  await page.clock.fastForward(2_000);
+  await page.clock.runFor(2_000);
   await page.evaluate(() => {
     Object.defineProperty(document, "hidden", { configurable: true, value: true });
     document.dispatchEvent(new Event("visibilitychange"));
   });
-  await page.clock.fastForward(12_000);
+  await page.clock.runFor(12_000);
   await expect(toast).toBeVisible();
   await page.evaluate(() => {
     Object.defineProperty(document, "hidden", { configurable: true, value: false });
     document.dispatchEvent(new Event("visibilitychange"));
   });
-  await page.clock.fastForward(2_900);
+  await page.clock.runFor(2_900);
   await expect(toast).toBeVisible();
-  await page.clock.fastForward(400);
+  await page.clock.runFor(400);
   await expect(toast).toHaveCount(0);
 });
 

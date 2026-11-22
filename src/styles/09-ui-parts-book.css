@@ -1120,7 +1120,7 @@
   justify-content: center;
   gap: 2px;
   min-height: 0;
-  padding: 20px 24px 26px;
+  padding: 8px 12px 24px;
 }
 .bookPageLayer--rtl {
   flex-direction: row-reverse;
@@ -1171,7 +1171,7 @@
   padding: 0;
   border: 0;
   background: none;
-  color: rgba(244, 240, 232, 0);
+  color: rgba(244, 240, 232, 0.88);
   font: inherit;
   opacity: 0;
   transition: opacity 120ms ease;
@@ -1180,10 +1180,6 @@
 }
 .bookZone--left {
   left: 0;
-  background: linear-gradient(90deg, rgba(0, 0, 0, 0.28), transparent);
-  background-size: 53.3333% 100%;
-  background-repeat: no-repeat;
-  color: rgba(244, 240, 232, 0.75);
 }
 .bookZone--right {
   right: 0;

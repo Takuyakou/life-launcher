@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { earlyCompletionItem, earlyCompletionThresholdSeconds } from "../../src/earlyCompletion";
 import type { AppConfig } from "../../src/types";
+import { pauseClock } from "./clock";
 import { createPublicFixture, FIXTURE_NOW } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 import { waitForBundledFonts } from "./bundledFonts";
@@ -52,6 +53,7 @@ async function prepare(page: Page, fixture = fixtureForEarly()) {
   await page.goto("/");
   await waitForBundledFonts(page);
   await expect(page.locator(".doNowBand")).toBeVisible();
+  await pauseClock(page);
 }
 
 async function state(page: Page) {
@@ -73,6 +75,7 @@ async function stopAtThreshold(page: Page, index = 0) {
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await card.getByRole("button", { name: "終了", exact: true }).click();
   await expect(page.getByRole("dialog", { name: dialogName })).toBeVisible();
+  await page.clock.runFor(32);
 }
 
 test("threshold uses validated snapshot minutes and defensive fallback, never a ratio", () => {
@@ -370,7 +373,7 @@ test("switch skips early confirmation and a delayed mini-window stop cannot stop
     staleFinish();
   });
   await expect(first.getByText("実行中", { exact: true })).toBeVisible();
-  expect((await state(page)).records).toHaveLength(1);
+  await expect.poll(async () => (await state(page)).records).toHaveLength(1);
 });
 
 test("extension uses the current planned duration instead of the original snapshot", async ({
@@ -442,6 +445,8 @@ test("mini finish opens the topmost dialog and repeated mini commands cannot res
     ),
   );
   const dialog = page.getByRole("dialog", { name: dialogName });
+  await expect(dialog).toBeVisible();
+  await page.clock.runFor(32);
   await expect(dialog.getByRole("button", { name: "未完了のまま終了" })).toBeFocused();
   await page.evaluate(() => {
     const c = (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__: Control })
