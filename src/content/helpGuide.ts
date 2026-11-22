@@ -233,7 +233,7 @@ export const HELP_GUIDE_SECTIONS: HelpGuideSection[] = [
     blocks: [
       {
         type: "paragraph",
-        text: "「次の一手」の「…」メニューから「まとめて取り込む」を開きます。取り込むときは、はじめてか、2回目以降かでプロンプトを選びます。",
+        text: "「次の一手」か「やりたいこと」の「…」メニュー(または右クリック)から「まとめて取り込む」を開きます。はじめてか、2回目以降かでプロンプトを選びます。",
       },
       {
         type: "paragraph",
@@ -242,8 +242,8 @@ export const HELP_GUIDE_SECTIONS: HelpGuideSection[] = [
       {
         type: "steps",
         items: [
-          "「次の一手」の「…」→「まとめて取り込む」を開きます。",
-          "「はじめて用をコピー」を押し、ChatGPTやClaudeに「私の状況」を足して送ります。",
+          "「次の一手」か「やりたいこと」の「…」→「まとめて取り込む」を開きます。",
+          "「初回作成用をコピー」を押し、ChatGPTやClaudeにそのまま貼って送ります。書き足したいことがあれば、最後に足してもかまいません。",
           "返ってきたJSONを貼り付けるか、.jsonで保存してメイン画面に落とします。",
           "プレビューで、新しく足すもの・すでにあるもの・取り込めないものを確かめます。",
           "「取り込む」を押すと、プロジェクト・次の一手・やりたいことが入ります。",
@@ -256,8 +256,8 @@ export const HELP_GUIDE_SECTIONS: HelpGuideSection[] = [
       {
         type: "steps",
         items: [
-          "「今の内容を付けてコピー」を押すと、今のプロジェクト名・目標・次の一手・やりたいことが入った文をコピーできます。",
-          "ChatGPTやClaudeに「最近の状況」を足して送ります。",
+          "「追加・見直し用をコピー」を押すと、今のプロジェクト名・目標・次の一手・やりたいことが入った文をコピーできます。",
+          "ChatGPTやClaudeにそのまま貼って送ります。週に1回など、定期的な見直しにも使えます。",
           "返ってきたJSONを貼り付けるか、.jsonで保存してメイン画面に落とします。",
           "プレビューで、今あるプロジェクトに足されるものと、新しく増えるものを確かめます。",
           "「取り込む」を押すと、今の内容に足されます。",
@@ -266,24 +266,24 @@ export const HELP_GUIDE_SECTIONS: HelpGuideSection[] = [
       {
         type: "code",
         id: "import-prompt-first",
-        label: "はじめて用のプロンプト",
+        label: "初回作成用のプロンプト",
         content: IMPORT_PROMPT_FIRST,
         copyable: true,
       },
       {
         type: "code",
         id: "import-prompt-repeat",
-        label: "2回目以降用のプロンプト",
+        label: "追加・見直し用のプロンプト",
         content: IMPORT_PROMPT_REPEAT.replace(
           "{CURRENT_STATE}",
-          "(「今の内容を付けてコピー」で、ここに今のアプリの内容が自動で入ります)",
+          "(「追加・見直し用をコピー」で、ここに今のアプリの内容が自動で入ります)",
         ),
         copyable: true,
       },
       {
         type: "code",
         id: "import-prompt-example",
-        label: "「私の状況」の例",
+        label: "書き足すときの例",
         content:
           "英語を話せるようになりたい。平日の夜に30分くらい使える。運動の習慣もつけたい。部屋の片付けもしたいが、何から手を付けるか決まっていない。",
         copyable: false,

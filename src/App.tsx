@@ -11011,12 +11011,22 @@ function DashboardApp() {
                   ]
                     .filter(Boolean)
                     .join(" ")}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    openContextMenu(
+                      { kind: "inboxes" },
+                      event.clientX,
+                      event.clientY,
+                      event.currentTarget,
+                    );
+                  }}
                 >
                   <div
                     className="disclosureHeader"
                     data-inbox-header
                     onContextMenu={(event) => {
                       event.preventDefault();
+                      event.stopPropagation();
                       openContextMenu(
                         { kind: "inboxes" },
                         event.clientX,
@@ -11982,9 +11992,14 @@ function DashboardApp() {
               </ContextMenuItem>
             </>
           ) : contextMenu.kind === "inboxes" ? (
-            <ContextMenuItem onClick={() => openInboxAddDialog()} type="button">
-              やりたいことを追加
-            </ContextMenuItem>
+            <>
+              <ContextMenuItem onClick={() => openInboxAddDialog()} type="button">
+                やりたいことを追加
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => openImportDialog("")} type="button">
+                まとめて取り込む
+              </ContextMenuItem>
+            </>
           ) : contextMenu.kind === "session" ? (
             <>
               <ContextMenuItem

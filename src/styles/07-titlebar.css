@@ -347,18 +347,6 @@
   gap: 8px;
 }
 
-.importPromptRepeat {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  max-width: 460px;
-}
-
-.importPromptRepeat small {
-  line-height: 1.5;
-}
-
 .importPreview {
   display: flex;
   flex-direction: column;

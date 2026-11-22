@@ -171,7 +171,7 @@ test("P10-11 the copy button swaps its label and keeps the failure path", async 
   const copied = await page.evaluate(
     () => (window as Window & { __copiedText?: string }).__copiedText ?? "",
   );
-  expect(copied).toContain("あなたは、私が");
+  expect(copied).toContain("あなたは、私の人生・目標・やりたいことを前に進めるための行動設計パートナーです。");
   expect(await page.locator(".toast").count()).toBe(0);
 
   await page.clock.fastForward(1_500);

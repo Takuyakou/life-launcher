@@ -185,6 +185,93 @@ test("extracts one import JSON from prose, code fences, and strings", () => {
   });
 });
 
+test("V163-B2 reads an answer whose Markdown copy broke the lines and spaces", () => {
+  const expected = {
+    lifeLauncherImport: 1,
+    projects: [
+      {
+        name: "英語",
+        nextStep: { text: "単語帳を開いて10個読む", minutes: 20, shortMinutes: 5 },
+        wishes: ["音声を1本聞く"],
+      },
+    ],
+    wishes: ["机の上を片付ける"],
+  };
+  // A copied Markdown answer: a hard line break "\" at each line end, &#x20; for the indent,
+  // and "\[" "\]" for brackets.
+  const br = "\\";
+  const broken = [
+    `{${br}`,
+    `&#x20; "lifeLauncherImport": 1,${br}`,
+    `&#x20; "projects": ${br}[${br}`,
+    `&#x20;   {${br}`,
+    `&#x20;     "name": "英語",${br}`,
+    `&#x20;     "nextStep": { "text": "単語帳を開いて10個読む", "minutes": 20, "shortMinutes": 5 },${br}`,
+    `&#x20;     "wishes": ${br}["音声を1本聞く"${br}]${br}`,
+    `&#x20;   }${br}`,
+    `&#x20; ${br}],${br}`,
+    `&#x20; "wishes": ${br}["机の上を片付ける"${br}]${br}`,
+    "}",
+  ].join("\n");
+  const result = extractImportJson(broken);
+  expect(result.ok).toBe(true);
+  if (result.ok) expect(JSON.parse(result.json)).toEqual(expected);
+
+  for (const space of ["&nbsp;", "&NBSP;", "&#32;", "&#160;", "&#xA0;", " ", "﻿"]) {
+    const text = `{\n${space}"lifeLauncherImport": 1,\n${space}"wishes": ["机の上を片付ける"]\n}`;
+    const read = extractImportJson(text);
+    expect(read.ok, JSON.stringify(space)).toBe(true);
+    if (read.ok) {
+      expect(JSON.parse(read.json)).toEqual({ lifeLauncherImport: 1, wishes: ["机の上を片付ける"] });
+    }
+  }
+});
+
+test("V163-B2 never rewrites the text inside JSON strings", () => {
+  // The fallback runs (the JSON is broken outside strings), but the strings keep
+  // &#x20; and backslashes exactly as written.
+  const br = "\\";
+  const text = `{${br}\n&#x20;"lifeLauncherImport": 1,${br}\n&#x20;"wishes": ["a&#x20;b", "c${br}${br}d", "e${br}${br}${br}n"]\n}`;
+  const result = extractImportJson(text);
+  expect(result.ok).toBe(true);
+  if (result.ok) {
+    expect(JSON.parse(result.json).wishes).toEqual(["a&#x20;b", `c${br}d`, `e${br}\n`]);
+  }
+  // A correct answer is read as it is, entities in strings included.
+  const clean = '{"lifeLauncherImport":1,"wishes":["&nbsp;そのまま"]}';
+  expect(extractImportJson(clean)).toEqual({ ok: true, json: clean });
+});
+
+test("V163-B2 opens the import from the wishlist header, band, and menu", async ({ page }) => {
+  await prepare(page);
+  const dialog = page.getByRole("dialog", { name: "まとめて取り込む" });
+
+  await page.locator("[data-inbox-header]").click({ button: "right" });
+  await expect(page.getByRole("menuitem")).toHaveCount(2);
+  await page.getByRole("menuitem", { name: "まとめて取り込む" }).click();
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "キャンセル" }).click();
+  await expect(dialog).toHaveCount(0);
+
+  await page.getByRole("button", { name: "やりたいことの操作", exact: true }).click();
+  await page.getByRole("menuitem", { name: "まとめて取り込む" }).click();
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "キャンセル" }).click();
+
+  // The band itself (its padding above the header): not the header and not a row.
+  await page.locator(".inboxBand").click({ button: "right", position: { x: 8, y: 4 } });
+  await page.getByRole("menuitem", { name: "まとめて取り込む" }).click();
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "キャンセル" }).click();
+
+  const disclosure = page.locator(".inboxBand .disclosureHeader button[aria-expanded]").first();
+  if ((await disclosure.getAttribute("aria-expanded")) === "false") await disclosure.click();
+  await expect(page.locator(".inboxBody")).toBeVisible();
+  // A wishlist row keeps its own menu (no section items).
+  await page.locator(".inboxRow").first().click({ button: "right" });
+  await expect(page.getByRole("menuitem", { name: "まとめて取り込む" })).toHaveCount(0);
+});
+
 test("previews, imports, and undoes from the section menu", async ({ page }) => {
   const fixture = await prepare(page);
   await stubImport(page, {
@@ -349,7 +436,7 @@ test("copies the first-time prompt exactly", async ({ page }) => {
 
   await page.getByRole("button", { name: "次の一手の操作", exact: true }).click();
   await page.getByRole("menuitem", { name: "まとめて取り込む" }).click();
-  await page.getByRole("button", { name: "はじめて用をコピー" }).click();
+  await page.getByRole("button", { name: "初回作成用をコピー" }).click();
   // P10-12 (D36): the button swaps its own label instead of showing a success toast.
   await expect(page.getByRole("button", { name: "コピーしました" })).toBeVisible();
   await expect(
@@ -359,6 +446,8 @@ test("copies the first-time prompt exactly", async ({ page }) => {
     () => (window as typeof window & { __copiedPrompt?: string }).__copiedPrompt ?? "",
   );
   expect(copied).toBe(IMPORT_PROMPT_FIRST);
+  // V163-B2: the prompt asks for one ```json code block (the backticks survive the template string).
+  expect(copied).toContain("JSON は必ず ```json のコードブロック1つだけで出力し");
 });
 
 test("copies the current app state with the 2nd-and-later prompt", async ({ page }) => {
@@ -378,12 +467,9 @@ test("copies the current app state with the 2nd-and-later prompt", async ({ page
   await page.getByRole("button", { name: "次の一手の操作", exact: true }).click();
   await page.getByRole("menuitem", { name: "まとめて取り込む" }).click();
   const dialog = page.getByRole("dialog", { name: "まとめて取り込む" });
-  await expect(
-    dialog.getByText(
-      "コピーする文には、今のプロジェクト名・目標・次の一手・やりたいことが入ります。",
-    ),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "今の内容を付けてコピー" }).click();
+  // V163-B2: the note under the button was removed; the button name says what it is for.
+  await expect(dialog.getByText("コピーする文には", { exact: false })).toHaveCount(0);
+  await page.getByRole("button", { name: "追加・見直し用をコピー" }).click();
   await expect(page.getByRole("button", { name: "コピーしました" })).toBeVisible();
 
   const copied = await page.evaluate(
@@ -398,7 +484,9 @@ test("copies the current app state with the 2nd-and-later prompt", async ({ page
   expect(copied).toContain("プロジェクトなしのやりたいこと: あとで確認するサンプル");
   expect(copied).not.toContain("sample-documents");
   expect(copied).not.toContain("C:\\");
-  expect(copied).not.toContain("完了");
+  // The app state part has no finished items (the prompt's own rules may use the word).
+  const statePart = copied.slice(IMPORT_PROMPT_REPEAT.indexOf("{CURRENT_STATE}"));
+  expect(statePart).not.toContain("完了");
   expect(copied).not.toContain("今日の3件");
 });
 
@@ -456,7 +544,7 @@ test("uses (まだ何もありません) when the app has no projects or wishes"
 
   await page.getByRole("button", { name: "次の一手の操作", exact: true }).click();
   await page.getByRole("menuitem", { name: "まとめて取り込む" }).click();
-  await page.getByRole("button", { name: "今の内容を付けてコピー" }).click();
+  await page.getByRole("button", { name: "追加・見直し用をコピー" }).click();
 
   const copied = await page.evaluate(
     () => (window as typeof window & { __copiedPrompt?: string }).__copiedPrompt ?? "",
