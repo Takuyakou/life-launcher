@@ -1,0 +1,2188 @@
+/* Phase 6.1: Main decision flow */
+.focusBand {
+  container-type: inline-size;
+}
+
+.todaySectionBar {
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: max-content max-content minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 8px 12px 8px 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.todaySectionBar:hover,
+.todaySectionBar:has(.todaySectionDisclosure:focus-visible) {
+  border-color: var(--muted);
+  background: var(--control-neutral-hover-bg);
+}
+
+.todaySectionBar h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--dashboard-font-section);
+  font-weight: 700; /* P10-01: every Main section-bar name is 700 (D6: 400/500/700 only) */
+  line-height: 1.35;
+}
+
+/* P10-01: the other three bars name themselves with <strong>, which would inherit bolder (=900)
+   from the 650 .disclosure. Pin them to 700 so the four bars share one text style. */
+.projectsBand .disclosureLabel strong,
+.inboxBand .disclosureLabel strong,
+.todayActivityBand .disclosureLabel strong {
+  font-weight: 700;
+}
+
+.todaySectionDisclosure {
+  width: 100%;
+  min-width: 0;
+  min-height: 30px;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  padding: 2px 6px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.todaySectionDisclosure:hover h2,
+.todaySectionDisclosure:focus-visible h2 {
+  color: var(--text);
+}
+
+.projectsBand .disclosureLabel strong,
+.inboxBand .disclosureLabel strong,
+.todayActivityBand .disclosureLabel strong,
+.projectsBand .disclosureCount,
+.inboxBand .disclosureCount,
+.todayActivityBand .disclosureCount,
+.projectsBand .disclosureDescription,
+.inboxBand .disclosureDescription,
+.todayActivityBand .disclosureDescription {
+  min-height: 18px;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1.35;
+}
+
+.todaySectionCount,
+.todayCompletionSummary,
+.todaySectionDescription {
+  font-size: var(--dashboard-font-meta);
+}
+
+.todaySectionCount {
+  min-width: 22px;
+  justify-self: end;
+  color: var(--text);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.todayCompletionSummary {
+  color: var(--text-muted-readable);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.todaySectionDescription {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted-readable);
+  font-weight: 450;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todayGrid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.todayGridRegion {
+  position: relative;
+}
+
+.todayGrid--dropGuidance {
+  border-radius: var(--radius);
+  outline: 2px solid rgba(231, 185, 77, 0.58);
+  outline-offset: 3px;
+  background: rgba(231, 185, 77, 0.055);
+}
+
+.todayGrid--dropTarget {
+  outline-color: var(--accent);
+  background: rgba(231, 185, 77, 0.09);
+}
+
+.todayDropGuidanceOverlay {
+  position: absolute;
+  inset: 0 10px 0 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  border: 1px dashed var(--accent);
+  border-radius: var(--radius);
+  background: rgba(231, 185, 77, 0.065);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.todayRemoveDropZone {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  left: 0;
+  z-index: 10;
+  width: 100%;
+  min-height: 76px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0;
+  border: 1px dashed rgba(231, 185, 77, 0.7);
+  border-radius: 8px;
+  background: rgba(231, 185, 77, 0.055);
+  color: var(--accent-strong);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 700;
+  pointer-events: none;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    box-shadow 120ms ease,
+    opacity 120ms ease;
+}
+
+.todayRemoveDropZone--active {
+  border-color: var(--accent);
+  background: rgba(231, 185, 77, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(231, 185, 77, 0.16);
+}
+
+.todayRemoveDropZone[aria-disabled="true"] {
+  opacity: 0.5;
+}
+
+.todayGrid > .quietText {
+  grid-column: 1 / -1;
+}
+
+.todayRow {
+  min-height: 154px;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 9px 10px;
+  background: var(--surface);
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    transform 120ms ease;
+}
+
+.todayRow:not(.todayRow--dragging):hover,
+.todayRow:not(.todayRow--dragging):focus-within {
+  border-color: var(--accent);
+  background: var(--control-neutral-hover-bg);
+  transform: translateY(-1px);
+}
+
+.todayRow--running:not(.todayRow--dragging):hover,
+.todayRow--running:not(.todayRow--dragging):focus-within {
+  border-color: var(--accent);
+}
+
+.todayRow--complete:not(.todayRow--dragging):hover,
+.todayRow--complete:not(.todayRow--dragging):focus-within {
+  border-color: rgba(117, 196, 143, 0.48);
+}
+
+.todayRow[data-project-color]:not(.todayRow--dragging):hover,
+.todayRow[data-project-color]:not(.todayRow--dragging):focus-within {
+  border-color: var(--project-color);
+}
+
+.todayRow--running {
+  border-color: var(--accent);
+}
+
+.todayRow--complete {
+  border-color: rgba(117, 196, 143, 0.32);
+  background: var(--surface-soft);
+}
+
+.todayRow[data-project-color] {
+  border-top: 2px solid var(--project-color);
+}
+.todayRow--dragging {
+  border-color: transparent !important;
+  background: transparent;
+  box-shadow: none;
+  opacity: 1;
+  cursor: grabbing;
+}
+
+.todayRow--dragging > * {
+  visibility: hidden;
+}
+
+.todayDropIndicator {
+  position: fixed;
+}
+
+.todayCompletionStatus {
+  grid-column: 1;
+  grid-row: 1;
+  color: var(--muted);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 22px;
+  text-align: center;
+}
+
+.todayCompletionStatus--complete {
+  color: var(--good);
+}
+
+.todayItemCopy {
+  grid-column: 2;
+  grid-row: 1;
+  min-height: 46px;
+  display: flex;
+  align-content: start;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 4px 7px;
+}
+
+.todayProjectIdentity {
+  max-width: 100%;
+  padding-block: 2px;
+  transform: none;
+}
+
+.todayItemCopy--withoutIdentity {
+  padding-inline-end: 64px;
+}
+
+.todayItemCopy--withoutIdentity .runningBadge {
+  position: absolute;
+  top: 1px;
+  right: 0;
+}
+
+.todayTextButton {
+  min-height: 32px;
+  flex-basis: 100%;
+  padding-block: 2px;
+  font-size: var(--dashboard-font-body);
+  font-weight: 650;
+}
+
+.todayTextButton {
+  display: -webkit-box;
+  overflow: hidden;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  cursor: grab;
+}
+
+.todayTriggerButton--empty {
+  position: static;
+  order: 3;
+  transform: none;
+}
+
+.todayTimerActions,
+.todayCompletedLabel {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  justify-self: end;
+}
+
+.todayCompletedLabel {
+  align-self: center;
+  color: var(--good);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 650;
+}
+
+.todayCardFooter {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 8px;
+  min-width: 0;
+  min-height: 36px;
+}
+
+@container today-card (max-width: 340px) {
+  .todayCardFooter {
+    gap: 2px;
+  }
+}
+
+@container today-card (max-width: 300px) {
+  .todayCardFooter {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.todayTimerCluster {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+  width: 218px;
+  max-width: 100%;
+  margin-left: auto;
+}
+
+.todayRow--running .todayTimerCluster {
+  width: 202px;
+}
+
+.todayRow--running .todayTimerCluster:has(.todayTimerActions--measure) {
+  width: 218px;
+}
+
+.todayTimerCluster .todayTimerActions:not(.todayTimerActions--running) {
+  grid-template-columns: 82px 82px 36px;
+  gap: 6px;
+}
+
+.todayTimerCluster .todayStartButton {
+  width: 82px;
+  height: 36px;
+  min-height: 36px;
+}
+
+.todayTimerCluster .todayMeasureButton {
+  width: 34px;
+  min-width: 34px;
+  height: 36px;
+  min-height: 36px;
+  border-color: rgba(190, 181, 164, 0.32);
+  background: rgba(190, 181, 164, 0.08);
+  box-shadow: none;
+  color: var(--muted);
+}
+
+.todayTimerCluster .todayMeasureButton:hover:not(:disabled),
+.todayTimerCluster .todayMeasureButton:focus-visible {
+  border-color: rgba(209, 201, 187, 0.62);
+  background: rgba(190, 181, 164, 0.14);
+  box-shadow: none;
+  color: #d1c9bb;
+  transform: none;
+}
+
+.todayTriggerZone {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 34px;
+}
+
+.todayTriggerZone .todayTriggerButton,
+.todayTriggerZone .todayTriggerInput {
+  max-width: 100%;
+}
+
+.todayTriggerZone .todayTriggerInput {
+  width: 100%;
+}
+
+.todayTimerCluster .todayTimerActions,
+.todayTimerCluster .todayCompletedLabel {
+  grid-column: auto;
+  grid-row: auto;
+}
+
+.todayCardSecondaryActions {
+  min-width: 0;
+  display: grid;
+  align-content: end;
+  justify-items: start;
+  gap: 4px;
+}
+
+.todayRow .todayInstructionButton,
+.todayRow .todayRemoveButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 34px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.todayRow .todayRemoveButton {
+  padding-inline: 3px 5px;
+}
+
+.todayRow .todayRemoveButton {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.todayRow:hover .todayRemoveButton,
+.todayRow:focus-within .todayRemoveButton {
+  opacity: 1;
+}
+
+.todayRow:hover .todayRemoveButton:disabled,
+.todayRow:focus-within .todayRemoveButton:disabled {
+  opacity: 0.45;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .todayRow .todayRemoveButton {
+    transition: none;
+  }
+}
+
+.todayRow .todayInstructionButton:hover:not(:disabled),
+.todayRow .todayInstructionButton:focus-visible,
+.todayRow .todayRemoveButton:hover:not(:disabled),
+.todayRow .todayRemoveButton:focus-visible {
+  border-color: rgba(231, 185, 77, 0.48);
+  background: var(--surface-strong);
+  color: var(--accent-strong);
+}
+
+.todayRow .todayRemoveButton:disabled {
+  cursor: not-allowed;
+}
+
+.todayRow .todayRemoveButton.mainActionButton--neutral:hover:not(:disabled),
+.todayRow .todayRemoveButton.mainActionButton--neutral:focus-visible {
+  border-color: rgba(231, 185, 77, 0.48);
+  background: var(--surface-strong);
+  color: var(--accent-strong);
+}
+
+@container today-card (min-width: 301px) and (max-width: 370px) {
+  .todayCardFooter {
+    gap: 2px;
+  }
+
+  .todayRow .todayRemoveButton {
+    gap: 2px;
+    padding-inline: 2px 3px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .todayRow .todayRemoveButton .uiIcon {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+.todayNextBatch {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.todayNextBatch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 34px;
+}
+
+.todayNextBatch span {
+  color: var(--muted);
+  font-size: var(--dashboard-font-meta);
+}
+
+.sourceListControls,
+.sourceListPagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 6px 10px 2px;
+}
+
+.sourceListControls button,
+.sourceListPagination button {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 4px 9px;
+  background: var(--surface-soft);
+  color: var(--text-muted-readable);
+  font-size: var(--dashboard-font-meta);
+}
+
+.sourceListControls button:hover,
+.sourceListControls button:focus-visible,
+.sourceListPagination button:hover:not(:disabled),
+.sourceListPagination button:focus-visible {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.sourceListPagination button:disabled {
+  opacity: 0.4;
+}
+
+.sourceListPagination span {
+  min-width: 50px;
+  color: var(--muted);
+  font-size: var(--dashboard-font-meta);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.projectsBand .disclosureHeader, .inboxBand .disclosureHeader, .todayActivityBand .disclosureHeader {
+  grid-template-columns: max-content auto auto minmax(0, 1fr);
+  gap: 8px;
+  padding-right: 10px;
+}
+
+.projectsBand .disclosureHeader .disclosure, .inboxBand .disclosureHeader .disclosure, .todayActivityBand .disclosureHeader .disclosure {
+  min-width: 0;
+  width: auto;
+}
+
+.todayActivityBand .disclosureHeader {
+  grid-template-columns: max-content auto minmax(0, 1fr) max-content 32px;
+}
+
+.todayActivityBand .todayActivityAutoBadge {
+  grid-column: 4;
+}
+
+.todayGrid--empty,
+.todayEmptyState {
+  min-height: 124px;
+}
+
+.todayEmptyState {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  background: var(--surface);
+}
+
+.todayEmptyStateContent {
+  width: min(520px, 100%);
+  display: grid;
+  justify-items: start;
+  gap: 5px;
+  margin-inline-start: 14px;
+}
+
+.todayEmptyStateContent > button {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 7px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0 12px;
+  background: var(--surface-soft);
+  color: var(--accent-strong);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 700;
+}
+
+.todayEmptyStateContent > button:hover,
+.todayEmptyStateContent > button:focus-visible {
+  border-color: var(--accent);
+  background: var(--surface-strong);
+}
+
+.sectionEmptyState {
+  min-height: 124px;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  background: var(--surface);
+}
+
+.sectionEmptyStateContent {
+  width: min(520px, 100%);
+  display: grid;
+  justify-items: start;
+  gap: 5px;
+  margin-inline-start: 14px;
+}
+
+.sectionEmptyStateContent > button {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 7px;
+  border-radius: var(--radius);
+  padding-inline: 12px;
+  font-size: var(--dashboard-font-meta);
+  font-weight: 700;
+}
+
+.todayPickerEntry {
+  width: 100%;
+  /* P10-05 made the start button 48px, so a Today card is about 4.6px taller than 154px. */
+  min-height: 159px;
+  display: grid;
+  place-content: center;
+  border: 1px dashed rgba(231, 185, 77, 0.44);
+  border-radius: var(--radius);
+  background: rgba(241, 194, 76, 0.035);
+  color: var(--accent-strong);
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease;
+}
+
+.todayPickerEntryVisual {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgba(231, 185, 77, 0.58);
+  border-radius: var(--radius);
+  padding: 0 12px;
+  background: rgba(231, 185, 77, 0.1);
+  color: var(--accent-strong);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 700;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.todayPickerEntry:hover,
+.todayPickerEntry:focus-visible {
+  border-color: rgba(231, 185, 77, 0.72);
+  background: rgba(241, 194, 76, 0.055);
+}
+
+.todayPickerEntry:hover .todayPickerEntryVisual,
+.todayPickerEntry:focus-visible .todayPickerEntryVisual {
+  border-color: var(--accent);
+  background: rgba(231, 185, 77, 0.18);
+  transform: translateY(-1px);
+}
+
+.todayPickerEntry:active .todayPickerEntryVisual {
+  transform: scale(0.985);
+}
+
+.todayPickerDialog {
+  --today-picker-font-body: 13px;
+  --today-picker-font-meta: 11px;
+  width: min(720px, 100%);
+  height: min(720px, calc(100vh - 24px));
+  max-height: min(calc(100vh - 24px), 720px);
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+.todayPickerDialog .modalTitleRow {
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.todayPickerDialog .modalTitleRow > div {
+  min-width: 0;
+}
+
+.todayPickerDialog .modalTitleRow > .iconButton {
+  flex: 0 0 auto;
+}
+
+.todayPickerCounter {
+  margin-left: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.todayPickerCounter strong {
+  color: var(--text);
+  font-size: var(--today-picker-font-body);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.todayPickerCounter span {
+  color: var(--text-muted-readable);
+  font-size: var(--today-picker-font-meta);
+  line-height: 1.2;
+}
+
+.todayPickerDialog .modalTitleRow h2,
+.todayPickerDialog .modalTitleRow p {
+  margin: 0;
+}
+
+.todayPickerDialog .modalTitleRow h2 {
+  font-size: 20px;
+}
+
+.todayPickerDialog .modalTitleRow .todayPickerIntro {
+  margin-top: 4px;
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.todayPickerDialog .modalTitleRow .eyebrow {
+  margin-bottom: 3px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.todayPickerDestination {
+  display: grid;
+  gap: 6px;
+  padding: 10px 14px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-soft);
+}
+
+.todayPickerDestinationHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.todayPickerProgress {
+  width: min(230px, 34vw);
+  flex: 0 1 230px;
+  height: 6px;
+  margin-left: auto;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--line-soft);
+}
+
+.todayPickerProgress > span {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  background: var(--good);
+  box-shadow: 0 0 5px rgba(117, 196, 143, 0.24);
+  transform-origin: left center;
+  transition: transform 220ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.todayPickerDestinationHeader h3,
+.todayPickerSourceHeading h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--today-picker-font-body);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.todayPickerDestinationHelp {
+  margin: 0;
+  color: var(--text-muted-readable);
+  font-size: var(--today-picker-font-meta);
+  line-height: 1.35;
+}
+
+/* P9-08: the slot band keeps the height of a filled slot, so adding a candidate does not move the list. */
+.todayPickerSlots {
+  min-height: 61px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: 7px;
+}
+
+.todayPickerSlot {
+  min-width: 0;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 7px 9px 4px;
+  background: var(--surface);
+}
+
+.todayPickerSlot.todayPickerRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "project project"
+    "task remove";
+  align-items: center;
+  gap: 6px;
+}
+
+.todayPickerSlot.todayPickerRow > .todayPickerSlotProject {
+  min-height: 18px;
+  grid-area: project;
+}
+
+.todayPickerSlot.todayPickerRow > .todayPickerSlotTask {
+  grid-area: task;
+}
+
+.todayPickerRemoveButton {
+  width: auto;
+  min-width: 0;
+  min-height: 24px;
+  height: 24px;
+  justify-self: end;
+  padding: 0 9px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.todayPickerSlot.todayPickerRow > .todayPickerRemoveButton {
+  grid-area: remove;
+  width: auto;
+}
+
+.todayPickerSlot--empty {
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-style: dashed;
+  background: transparent;
+  color: color-mix(in srgb, var(--muted) 68%, transparent);
+  font-size: var(--today-picker-font-meta);
+}
+
+.todayPickerSlotProject {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.todayPickerSlotProject .projectIdentity,
+.todayPickerSlotProject .sourceProjectNone {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted-readable);
+  font-size: var(--today-picker-font-body);
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todayPickerSlotTask {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: var(--today-picker-font-body);
+  font-weight: 700;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todayPickerSelectedStatus {
+  margin-left: auto;
+  color: var(--good);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.todayPickerSource {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 8px;
+  padding: 10px 14px 0;
+}
+
+.todayPickerSourceHeading > span {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.todayPickerSourceTabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.todayPickerSourceTab {
+  min-width: 0;
+  min-height: 40px;
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 5px 10px;
+  background: var(--surface-soft);
+  color: var(--text-muted-readable);
+  text-align: left;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+}
+
+.todayPickerSourceTab:hover,
+.todayPickerSourceTab:focus-visible {
+  border-color: var(--line-strong);
+  background: var(--control-neutral-hover-bg);
+}
+
+.todayPickerSourceTab[aria-selected="true"] {
+  border-color: rgba(231, 185, 77, 0.42);
+  background: rgba(231, 185, 77, 0.07);
+}
+
+.todayPickerSourceTab strong {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.todayPickerSourceTab[aria-selected="true"] strong {
+  color: var(--accent-strong);
+}
+
+.todayPickerSourceTab span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todayPickerSourcePanel {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  border-top: 1px solid var(--line);
+  padding: 4px 4px 0 0;
+}
+
+.todayPickerPanelHeading {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 3px;
+}
+
+.todayPickerPanelHeading strong {
+  color: var(--text);
+  font-size: var(--today-picker-font-body);
+  font-weight: 700;
+}
+
+.todayPickerPanelHeading span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.todayPickerList {
+  display: grid;
+}
+
+.todayPickerRow:not(.todayPickerSlot) {
+  min-height: 52px;
+  display: grid;
+  grid-template-columns: minmax(130px, 170px) minmax(0, 1fr) 96px;
+  align-items: center;
+  gap: 14px;
+  border-top: 1px solid var(--line-soft);
+  padding: 6px 4px;
+}
+
+.todayPickerCopy {
+  display: contents;
+}
+
+.todayPickerCopy .projectIdentity,
+.todayPickerCopy .sourceProjectNone {
+  grid-column: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted-readable);
+  font-size: var(--today-picker-font-body);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todayPickerCopy strong {
+  grid-column: 2;
+  min-width: 0;
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--text);
+  font-size: var(--today-picker-font-body);
+  font-weight: 700;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.todayPickerRow--groupedWishlist {
+  grid-template-columns: minmax(0, 1fr) 96px !important;
+  padding-left: 28px !important;
+}
+
+.todayPickerRow--groupedWishlist .todayPickerCopy {
+  display: contents;
+}
+
+.todayPickerRow--groupedWishlist .todayPickerCopy strong {
+  grid-column: 1;
+}
+
+.todayPickerRow--groupedWishlist > button {
+  grid-column: 2;
+}
+
+.todayPickerRow > button {
+  grid-column: 3;
+  width: 96px;
+  min-width: 0;
+}
+
+.todayPickerRow > .todayPickerAddButton {
+  min-height: 30px;
+  border-radius: var(--radius);
+  padding: 0 11px;
+  font-size: var(--today-picker-font-meta);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.todayPickerWishlistGroups {
+  display: grid;
+}
+
+.todayPickerWishlistGroup {
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.todayPickerWishlistGroupHeader {
+  width: 100%;
+  min-height: 38px;
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  padding: 0 7px;
+  background: transparent;
+  color: var(--text-muted-readable);
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.todayPickerWishlistGroupHeader:hover,
+.todayPickerWishlistGroupHeader:focus-visible {
+  background: var(--surface-soft);
+}
+
+.todayPickerWishlistGroupHeader .projectIdentity,
+.todayPickerWishlistGroupHeader .sourceProjectNone {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted-readable);
+  font-size: var(--today-picker-font-body);
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todayPickerWishlistGroupCount {
+  grid-column: 3;
+  justify-self: end;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.todayPickerWishlistGroupBody .todayPickerRow:last-child {
+  border-bottom: 0;
+}
+
+.todayPickerEmpty {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding-inline: 4px;
+  color: var(--text-muted-readable);
+  font-size: var(--today-picker-font-meta);
+}
+
+.todayPickerActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 8px calc(24px + var(--scrollbar-size)) 8px 14px;
+  border-top: 1px solid var(--line);
+}
+
+.todayPickerConfirmButton {
+  border-color: rgba(117, 196, 143, 0.45);
+  background: var(--control-positive-bg);
+  color: var(--good);
+}
+
+.todayPickerConfirmButton:hover:not(:disabled),
+.todayPickerConfirmButton:focus-visible {
+  border-color: var(--good);
+  background: var(--control-positive-hover-bg);
+  color: #92e5ae;
+}
+
+.todayPickerActions > button {
+  min-height: 30px;
+  height: 30px;
+  min-width: 94px;
+  padding-inline: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.todayPickerActions > span {
+  margin-right: auto;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+@media (max-width: 560px) {
+  .todayPickerActions > span {
+    display: none;
+  }
+
+  .todayPickerDialog .modalTitleRow,
+  .todayPickerDestination,
+  .todayPickerSource {
+    padding-inline: 12px;
+  }
+
+  .todayPickerActions {
+    padding-right: calc(22px + var(--scrollbar-size));
+    padding-left: 12px;
+  }
+
+  .todayPickerSlots {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .todayPickerRow:not(.todayPickerSlot) {
+    grid-template-columns: minmax(0, 1fr) 96px;
+    gap: 10px;
+  }
+
+  .todayPickerWishlistGroupHeader {
+    grid-template-columns: 16px minmax(0, 1fr) auto;
+  }
+
+  .todayPickerWishlistGroupCount {
+    grid-column: 3;
+  }
+
+  .todayPickerCopy,
+  .todayPickerRow--groupedWishlist .todayPickerCopy {
+    grid-column: 1;
+    display: grid;
+    gap: 3px;
+  }
+
+  .todayPickerCopy .projectIdentity,
+  .todayPickerCopy .sourceProjectNone,
+  .todayPickerCopy strong {
+    grid-column: 1;
+  }
+
+  .todayPickerRow > button,
+  .todayPickerRow--groupedWishlist {
+    grid-template-columns: minmax(0, 1fr) 96px;
+    padding-left: 18px;
+  }
+}
+
+@media (max-width: 620px) {
+  .doNowEmptyContent,
+  .todayEmptyStateContent,
+  .sectionEmptyStateContent {
+    margin-inline-start: 2px;
+  }
+
+  .todayPickerCopy {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3px;
+  }
+
+  .todayPickerRow {
+    align-items: end;
+  }
+}
+
+.projectsBand .disclosureDescription, .inboxBand .disclosureDescription, .todayActivityBand .disclosureDescription {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  justify-self: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nextStepBody {
+  display: grid;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+.projectGrid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+}
+
+.nextStepRow {
+  min-height: 46px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 70px;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--line-soft);
+  padding: 5px 6px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.projectsBand .disclosureHeader,
+.inboxBand .disclosureHeader {
+  grid-template-columns: max-content max-content minmax(0, 1fr) max-content;
+  min-height: 48px;
+}
+
+.projectsBand .disclosureHeader .disclosure,
+.inboxBand .disclosureHeader .disclosure,
+.todayActivityBand .disclosureHeader .disclosure {
+  width: 100%;
+}
+
+.todayActivityBand .disclosureHeader {
+  grid-template-columns: max-content max-content minmax(0, 1fr) max-content;
+  padding-inline-end: var(--today-activity-end-inset);
+}
+
+.disclosureHeaderActions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.sectionMenuButton {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  padding: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 18px;
+}
+
+.sectionMenuButton:hover,
+.sectionMenuButton:focus-visible {
+  border-color: var(--line);
+  background: var(--control-neutral-hover-bg);
+  color: var(--accent-strong);
+}
+
+.projectGrid, .inboxList {
+  border-left: 2px solid transparent;
+  padding-left: 8px;
+}
+
+.nextStepRow.sourceListRow, .inboxRow.sourceListRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  min-height: 48px;
+  padding: 5px 10px;
+  border: 0;
+  border-bottom: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  background: transparent;
+}
+
+.sourceListRow .inboxItemText {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: var(--dashboard-font-body);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.sourceProjectNone {
+  color: var(--muted);
+  font-size: var(--dashboard-font-meta);
+}
+
+.sourceListRow:not(.nextStepRow--dragging):not(.inboxRow--dragging):not(
+    .todayBuilderRow--dragging
+  ):hover,
+.sourceListRow:not(.nextStepRow--dragging):not(.inboxRow--dragging):not(
+    .todayBuilderRow--dragging
+  ):focus-within {
+  background: var(--control-neutral-hover-bg);
+  border-bottom-color: var(--line);
+}
+
+.sourceRowMenu {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: 20px;
+  opacity: 0;
+}
+
+.sourceListRow:hover .sourceRowMenu,
+.sourceListRow:focus-within .sourceRowMenu {
+  opacity: 1;
+}
+
+.sourceRowMenu:hover,
+.sourceRowMenu:focus-visible {
+  color: var(--accent);
+  border-color: var(--line);
+}
+
+.wishlistRowActions {
+  min-width: 190px;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.wishlistNextStepSlot {
+  width: 120px;
+  min-width: 120px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.inboxRow .wishlistNextStepAction {
+  --main-action-hover-bg: var(--surface-strong);
+  --main-action-hover-border: rgba(231, 185, 77, 0.48);
+  --main-action-hover-color: var(--accent-strong);
+  width: 120px;
+  min-width: 120px;
+  min-height: 30px;
+  border-radius: var(--radius);
+  padding-inline: 8px;
+  font-size: var(--dashboard-font-meta);
+  font-weight: 700;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 100ms ease,
+    transform 120ms ease,
+    background 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.wishlistNextStepStatus {
+  min-height: 20px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(117, 196, 143, 0.34);
+  border-radius: 999px;
+  padding: 1px 7px;
+  color: var(--good);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: normal;
+  white-space: nowrap;
+}
+
+.inboxRow:hover .wishlistNextStepAction,
+.inboxRow:focus-within .wishlistNextStepAction,
+.wishlistNextStepAction:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.inboxRow .sourceRowMenu {
+  flex: 0 0 32px;
+  opacity: 1;
+}
+
+@media (max-width: 620px) {
+  .wishlistNextStepSlot,
+  .inboxRow .wishlistNextStepAction {
+    width: 112px;
+    min-width: 112px;
+  }
+}
+
+@media (max-width: 520px) {
+  .wishlistNextStepSlot {
+    display: none;
+  }
+}
+
+.nextStepHeaderAdd--project {
+  align-self: center;
+  min-height: 28px;
+  border: 1px solid rgba(231, 185, 77, 0.58);
+  border-radius: var(--radius);
+  padding-inline: 10px;
+  background: rgba(231, 185, 77, 0.1);
+  color: var(--accent-strong);
+}
+
+.nextStepHeaderAdd--wishlist {
+  align-self: center;
+  min-height: 28px;
+  border: 1px solid rgba(231, 185, 77, 0.58);
+  padding-inline: 9px;
+  background: rgba(231, 185, 77, 0.1);
+  color: var(--accent-strong);
+}
+
+.nextStepHeaderAdd--wishlist:hover:not(:disabled),
+.nextStepHeaderAdd--wishlist:focus-visible {
+  border-color: var(--accent);
+  background: rgba(231, 185, 77, 0.18);
+  color: var(--accent-strong);
+}
+
+.nextStepHeaderAdd--project:hover:not(:disabled),
+.nextStepHeaderAdd--project:focus-visible {
+  border-color: var(--accent);
+  background: rgba(231, 185, 77, 0.18);
+  color: var(--accent-strong);
+}
+
+.nextStepRow.sourceListRow {
+  grid-template-columns: minmax(150px, 220px) minmax(0, 1fr);
+  gap: 4px;
+  padding: 3px 4px;
+}
+
+.nextStepRow.sourceListRow:hover,
+.nextStepRow.sourceListRow:focus-within {
+  background: transparent;
+  border-bottom-color: var(--line-soft);
+}
+
+.nextStepProjectRegion,
+.nextStepActionRegion {
+  min-width: 0;
+  min-height: 40px;
+  display: grid;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 4px 7px;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
+}
+
+.nextStepProjectRegion {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.nextStepProjectRegion h3 {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+.nextStepProjectRegion h3 .projectIdentity {
+  width: 100%;
+  max-width: 100%;
+}
+
+.nextStepActionRegion {
+  grid-template-columns: minmax(0, 1fr) max-content 32px;
+  gap: 8px;
+}
+
+.nextStepActionRegion p {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: var(--dashboard-font-body);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.nextStepProjectRegion:hover,
+.nextStepProjectRegion:focus-visible,
+.nextStepProjectRegion:focus-within,
+.nextStepActionRegion:hover,
+.nextStepActionRegion:focus-visible,
+.nextStepActionRegion:focus-within {
+  border-color: var(--line-soft);
+  background: var(--control-neutral-hover-bg);
+}
+
+.nextStepRow .sourceRowMenu {
+  opacity: 1;
+}
+
+.nextStepProjectRegion:hover .sourceRowMenu,
+.nextStepProjectRegion:focus-within .sourceRowMenu {
+  opacity: 1;
+}
+
+.nextStepRowAction {
+  position: relative;
+  min-height: 30px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0 9px;
+  background: var(--surface-soft);
+  color: var(--text-muted-readable);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.nextStepRowAction::before {
+  position: absolute;
+  inset: -8px 0;
+  content: "";
+}
+
+.nextStepRowAction--set {
+  border-color: rgba(117, 196, 143, 0.42);
+  background: var(--control-positive-bg);
+  color: var(--good);
+}
+
+.nextStepRowAction--set:hover:not(:disabled),
+.nextStepRowAction--set:focus-visible {
+  border-color: var(--good);
+  background: rgba(117, 196, 143, 0.16);
+  color: #92e5ae;
+}
+
+.todayTimerCluster .todayTimerActions--measure {
+  width: 218px;
+  height: 36px;
+  justify-content: space-between;
+  gap: 4px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.todayTimerCluster .todayTimerActions--measure .measureElapsedClock {
+  min-width: 44px;
+  font-size: 11px;
+}
+
+.todayTimerCluster .todayTimerActions--measure .runningPauseButton,
+.todayTimerCluster .todayTimerActions--measure .runningStopButton {
+  width: 68px;
+  min-width: 68px;
+  height: 36px;
+  min-height: 36px;
+  padding-inline: 7px;
+  font-size: var(--dashboard-font-meta);
+}
+
+.nextStepRowAction--change {
+  border-color: rgba(231, 185, 77, 0.3);
+  background: rgba(231, 185, 77, 0.055);
+  color: var(--accent-strong);
+}
+
+.nextStepRowAction--change:hover:not(:disabled),
+.nextStepRowAction--change:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.nextStepRowAction:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.projectsBand {
+  container-type: inline-size;
+}
+
+.projectsBand .nextStepBody {
+  gap: 9px;
+  padding: 10px 0 2px;
+}
+
+.projectsBand .projectGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  border-left: 0;
+  padding-left: 0;
+}
+
+/* P10-14 (§4.4): one horizontal row; the height follows the text. */
+.nextStepCard.nextStepRow.sourceListRow {
+  position: relative;
+  min-height: 56px;
+  display: grid;
+  grid-template-columns: minmax(110px, 150px) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 9px 9px 7px 12px;
+  background: var(--surface-soft);
+  cursor: grab;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    transform 120ms ease;
+}
+
+.nextStepCard::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--project-color);
+  content: "";
+}
+
+.nextStepCard.nextStepRow.sourceListRow:not(.nextStepRow--dragging):hover,
+.nextStepCard.nextStepRow.sourceListRow:not(.nextStepRow--dragging):focus-within {
+  border-color: var(--project-color);
+  border-bottom-color: var(--project-color);
+  background: var(--control-neutral-hover-bg);
+  transform: translateY(-1px);
+}
+
+.nextStepCard.nextStepRow.sourceListRow:focus-visible {
+  outline: 2px solid var(--project-color);
+  outline-offset: 2px;
+}
+
+.nextStepCard--dropTarget.nextStepRow.sourceListRow {
+  border-color: var(--accent);
+  background: rgba(231, 185, 77, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(231, 185, 77, 0.18);
+}
+
+.nextStepCard .nextStepProjectRegion {
+  min-height: 20px;
+  display: block;
+  border: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.nextStepCard .nextStepProjectRegion:hover,
+.nextStepCard .nextStepProjectRegion:focus-within {
+  border-color: transparent;
+  background: transparent;
+}
+
+.nextStepCard .nextStepProjectRegion h3 .projectIdentity {
+  width: auto;
+  max-width: 100%;
+  flex: 0 1 auto;
+  color: var(--muted);
+  font-size: var(--dashboard-font-meta);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.nextStepCard .nextStepProjectRegion h3 {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.sourceLockBadge {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--accent-strong);
+  opacity: 1;
+  line-height: 1;
+  align-self: center;
+  margin-inline-start: 2px;
+}
+
+.sourceLockBadge:focus-visible {
+  border-radius: 3px;
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.nextStepCardActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 0;
+}
+
+.nextStepCard .nextStepTodayAdd {
+  min-height: 28px;
+  border-radius: var(--radius);
+  padding-inline: 8px;
+  font-size: var(--dashboard-font-meta);
+  font-weight: 700;
+}
+
+.nextStepTodayStatus {
+  min-height: 20px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(117, 196, 143, 0.34);
+  border-radius: 999px;
+  padding: 1px 7px;
+  background: transparent;
+  color: var(--good);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: normal;
+  white-space: nowrap;
+}
+
+.nextStepCard .nextStepActionRegion {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content 28px;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  padding: 0;
+}
+
+.nextStepTextRegion {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 3px;
+}
+
+.nextStepRowMeta {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nextStepCard .nextStepActionRegion:hover,
+.nextStepCard .nextStepActionRegion:focus-within {
+  border-color: transparent;
+  background: transparent;
+}
+
+.nextStepCard .nextStepActionRegion p {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-size: var(--dashboard-font-body);
+  font-weight: 650;
+  line-height: 1.45;
+  white-space: normal;
+}
+
+.nextStepCard .nextStepActionRegion .projectNextStepPlaceholder {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 7px;
+  border: 1px dashed color-mix(in srgb, var(--project-color) 52%, var(--line));
+  border-radius: var(--radius);
+  padding: 0 9px;
+  background: color-mix(in srgb, var(--project-color) 5%, transparent);
+  color: var(--text-muted-readable) !important;
+  font-size: var(--dashboard-font-meta);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.nextStepCard .nextStepRowAction {
+  --main-action-hover-bg: var(--surface-strong);
+  --main-action-hover-border: rgba(231, 185, 77, 0.48);
+  --main-action-hover-color: var(--accent-strong);
+  min-height: 28px;
+  margin-top: 0;
+  padding-inline: 8px;
+  border-color: var(--line-strong);
+  background: rgba(255, 255, 255, 0.018);
+  color: var(--muted);
+  font-size: var(--dashboard-font-meta);
+}
+
+.nextStepCard .nextStepRowAction:hover:not(:disabled),
+.nextStepCard .nextStepRowAction:focus-visible {
+  border-color: rgba(231, 185, 77, 0.48);
+  background: var(--surface-strong);
+  color: var(--accent-strong);
+}
+
+.nextStepCard .nextStepRegionMenu {
+  position: static;
+  width: 28px;
+  height: 28px;
+  border-color: transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  opacity: 1;
+  z-index: 2;
+}
+
+.nextStepCard .nextStepRegionMenu:hover,
+.nextStepCard .nextStepRegionMenu:focus-visible {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.nextStepCardControls {
+  padding: 1px 0 7px;
+}
+
+.nextStepCardControls button {
+  min-height: 30px;
+}
+
+@container (max-width: 900px) {
+  .projectsBand .projectGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (max-width: 680px) {
+  .projectsBand .projectGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.nextStepEditDialog {
+  width: min(720px, 100%);
+}
+
+.nextStepDecisionBlock {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  border-top: 1px solid var(--line-soft);
+  padding-top: 14px;
+}
+
+.nextStepDecisionBlock > h3,
+.nextStepDecisionBlock > p {
+  margin: 0;
+}
+
+.nextStepDecisionBlock > h3 {
+  font-size: 14px;
+}
+
+.nextStepDecisionBlock > p,
+.nextStepDecisionHint {
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.nextStepDecisionModes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.nextStepDecisionModeButton {
+  min-height: 42px;
+  border-radius: var(--radius);
+  font-weight: 750;
+}
+
+.nextStepDecisionModeButton--active {
+  --main-action-bg: var(--control-positive-bg);
+  --main-action-hover-bg: var(--control-positive-hover-bg);
+  --main-action-active-bg: var(--control-positive-active-bg);
+  --main-action-border: rgba(111, 207, 151, 0.45);
+  --main-action-hover-border: var(--control-positive-hover-border);
+  --main-action-active-border: var(--control-positive-active-border);
+  --main-action-color: var(--good);
+  --main-action-hover-color: var(--good);
+}
+
+.nextStepDecisionModeButton--wishlistActive {
+  --main-action-bg: rgba(231, 185, 77, 0.1);
+  --main-action-hover-bg: rgba(231, 185, 77, 0.18);
+  --main-action-active-bg: rgba(231, 185, 77, 0.08);
+  --main-action-border: rgba(231, 185, 77, 0.58);
+  --main-action-hover-border: var(--accent);
+  --main-action-active-border: rgba(231, 185, 77, 0.7);
+  --main-action-color: var(--accent-strong);
+  --main-action-hover-color: var(--accent-strong);
+}
+
+.nextStepDecisionPanel {
+  min-width: 0;
+  display: grid;
+  gap: 9px;
+}
+
+.nextStepWishlistPickerHeading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.nextStepWishlistPickerHeading strong {
+  font-size: 13px;
+}
+
+.nextStepWishlistPickerHeading span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.nextStepWishlistPickerList {
+  display: grid;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface-soft);
+}
+
+.nextStepWishlistCandidate {
+  min-width: 0;
+  min-height: 46px;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  border-bottom: 1px solid var(--line-soft);
+  border-radius: 0;
+  padding: 8px 10px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.nextStepWishlistCandidate:last-child {
+  border-bottom: 0;
+}
+
+.nextStepWishlistCandidate:hover:not(:disabled),
+.nextStepWishlistCandidate:focus-visible {
+  background: var(--control-neutral-hover-bg);
+}
+
+.nextStepWishlistCandidate[aria-checked="true"] {
+  background: rgba(117, 196, 143, 0.07);
+}
+
+.nextStepWishlistCandidate:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.nextStepWishlistRadio {
+  width: 15px;
+  height: 15px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--muted);
+  border-radius: 50%;
+}
+
+.nextStepWishlistCandidate[aria-checked="true"] .nextStepWishlistRadio {
+  border-color: var(--good);
+}
+
+.nextStepWishlistCandidate[aria-checked="true"] .nextStepWishlistRadio::after {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--good);
+  content: "";
+}
+
+.nextStepWishlistCandidateText {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nextStepWishlistLock {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.nextStepWishlistEmpty {
+  margin: 0;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  padding: 18px 12px;
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  text-align: center;
+}
+
+.nextStepWishlistSelection {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid rgba(111, 207, 151, 0.45);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  background: rgba(117, 196, 143, 0.05);
+}
+
+.nextStepWishlistSelection > span:first-child {
+  color: var(--good);
+  font-weight: 700;
+}
+
+.nextStepWishlistSelectionCopy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.nextStepWishlistSelectionCopy small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.nextStepWishlistSelectionCopy strong {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nextStepWishlistSelection button {
+  min-height: 29px;
+  border-radius: 7px;
+  padding-inline: 9px;
+}
+
+.nextStepSwapSummary {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  border: 1px solid rgba(231, 185, 77, 0.42);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  background: rgba(231, 185, 77, 0.07);
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.nextStepSwapSummary strong {
+  color: var(--text);
+}
+
+.completionFollowupDialog {
+  width: min(580px, 100%);
+}
+

@@ -1,0 +1,1588 @@
+/* ============================================================
+   Phase 9.6 (P96-01): 一体型タイトルバー
+   標準のタイトルバーをやめ、上部メニューの行の右端に窓のボタンを置く。
+   窓のボタンは窓の右上(右端から 8px)に固定し、上部メニューの行と
+   縦の中心をそろえる。ドラッグできる範囲と、ダイアログの幕の上端の
+   帯もここで定める。
+   ============================================================ */
+
+/* 上部メニューと窓のボタンが重なる幅のときだけ、行の右に空きを取る。
+   窓のボタンの帯は幅 127px で窓の右端から 8px に固定されるため、
+   行の右端(窓の右端 - 24px)が帯に入る分(111px)を右余白に上乗せする。
+   行が最大幅で中央寄せになる幅では、中央寄せの分だけ空きを減らし、
+   重ならなくなったら 0 に戻す(最大幅・中央寄せは変えない)。 */
+.mainPanel > .topBar {
+  min-width: 0; /* 内容の最小幅で行が膨らみ、窓のボタンが窓の外に出ないように */
+  padding-right: max(0px, 111px - max(0px, (100% - 1180px) / 2));
+}
+
+.mainPanel[data-main-display-size="large"] > .topBar {
+  padding-right: max(0px, 111px - max(0px, (100% - 1298px) / 2));
+}
+
+.mainPanel[data-main-display-size="xlarge"] > .topBar {
+  padding-right: max(0px, 111px - max(0px, (100% - 1400px) / 2));
+}
+
+/* 文字を出したときに必要な幅を測るための複製。行に影響を与えないよう
+   画面の外に置き、幅は内容の幅(max-content)にする。 */
+.layoutMeasure {
+  position: absolute;
+  top: 0;
+  left: -10000px;
+  width: max-content;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* 窓のボタン(仕切り線 + 最小化・最大化・閉じる) */
+.windowControls {
+  position: fixed;
+  right: 8px;
+  z-index: 140; /* ダイアログの暗い幕(最大 z-index 130)より手前。幕で暗くしない */
+  display: flex;
+  align-items: center;
+}
+
+.windowControls--dashboard {
+  --window-controls-close-top-offset: 24px;
+  top: 22px; /* .mainPanel の padding-top にそろえる */
+  height: 36px; /* 標準表示の上部メニューの行の高さ */
+}
+
+.windowControls--instruction {
+  --window-controls-close-top-offset: 13px;
+  top: 0;
+  height: 58px; /* .instructionHeader の行の高さ */
+}
+
+@media (min-width: 1051px) {
+  .mainPanel[data-main-display-size="large"] .windowControls--dashboard {
+    --window-controls-close-top-offset: 25.5px;
+    height: 39px;
+  }
+
+  .mainPanel[data-main-display-size="xlarge"] .windowControls--dashboard {
+    --window-controls-close-top-offset: 29px;
+    height: 46px;
+  }
+}
+
+@media (max-width: 760px) {
+  /* 上部メニューが縦積みになる幅。最初の行(見出し)と縦の中心をそろえる */
+  .windowControls--dashboard {
+    --window-controls-close-top-offset: 18px;
+    top: 16px;
+    height: 36px;
+  }
+}
+
+.windowControlsDivider {
+  width: 1px;
+  height: 20px;
+  margin-left: 4px;
+  margin-right: 2px;
+  background: var(--line-soft);
+}
+
+.windowControlsButtons {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  transition: opacity 120ms ease;
+}
+
+.windowControlButton {
+  display: grid;
+  width: 36px;
+  height: 32px;
+  padding: 0;
+  place-items: center;
+  color: var(--control-primary-bg);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius);
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.windowControlButton--close {
+  position: relative;
+  width: 44px;
+}
+
+/* 閉じるボタンの押せる範囲を、見た目を変えずに窓の右端まで広げる。
+   最大化しているときだけ、上端まで広げる(右上の角でも閉じられる)。 */
+.windowControlButton--close::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: -8px;
+  bottom: 0;
+  width: 8px;
+}
+
+.windowControls--maximized .windowControlButton--close::before {
+  top: calc(-1 * var(--window-controls-close-top-offset, 24px));
+}
+
+/* P96-01 追加修正: 乗せたとき・キーボードで移ったときは背景 --line、アイコン --text。
+   押したときは背景 --line-soft。閉じるに乗せたときの --error は今までどおり。 */
+.windowControlButton:hover,
+.windowControlButton:focus-visible {
+  color: var(--text);
+  background: var(--line);
+}
+
+.windowControlButton--close:hover,
+.windowControlButton--close:focus-visible {
+  color: var(--control-primary-text);
+  background: var(--error);
+}
+
+.windowControlButton--close:hover svg path,
+.windowControlButton--close:focus-visible svg path {
+  stroke-width: 1.4px;
+}
+
+/* 押した状態は閉じるボタンの乗せた色より優先する */
+.windowControlButton:active {
+  color: var(--text);
+  background: var(--line-soft);
+}
+
+/* P96-01 追加修正: 窓を最小化やタスクトレイから戻したとき、直前にマウスを乗せていた
+   ボタンの色が残る(実機確認で発見)。戻った直後は乗せた色を出さず、次にマウスが
+   動いたら元に戻す(WindowControls がこのクラスを外す)。 */
+.windowControls--hover-suppressed .windowControlButton:hover {
+  color: var(--control-primary-bg);
+  background: transparent;
+}
+
+.windowControls--hover-suppressed .windowControlButton--close:hover {
+  color: var(--control-primary-bg);
+  background: transparent;
+}
+
+/* キーボードのフォーカスと押した状態は抑止しない */
+.windowControls--hover-suppressed .windowControlButton:focus-visible {
+  color: var(--text);
+  background: var(--line);
+}
+
+.windowControls--hover-suppressed .windowControlButton--close:focus-visible {
+  color: var(--control-primary-text);
+  background: var(--error);
+}
+
+.windowControls--hover-suppressed .windowControlButton:active {
+  color: var(--text);
+  background: var(--line-soft);
+}
+
+/* 窓が裏にある(フォーカスを失った)ときは窓のボタン3つだけ薄くする */
+.windowControls--unfocused .windowControlsButtons {
+  opacity: 0.45;
+}
+
+/* ダイアログの右上の × が窓のボタンの帯(窓の右端から 8px・幅 127px)と
+   重なる幅では、× を帯より左へ置く(オーナー決定 2026-11-05、「今日やるもの
+   を選ぶ」の × についての決定を、同じ形の右上の × を持つダイアログに適用)。
+   重ならない幅では今の余白のまま。143px は帯の左端+8px の間隔。 */
+.modalTitleRow,
+.confirmDialogHeader {
+  padding-right: max(0px, calc(50% - 50vw + 143px));
+}
+
+/* 「今日やるものを選ぶ」の × は今の右余白 16px を下限にする。 */
+.todayPickerDialog .modalTitleRow {
+  padding-right: max(16px, calc(50% - 50vw + 143px));
+}
+
+/* 拡大タイマーの閉じるボタンも同じく窓のボタンの帯より左へ。
+   今の右余白(16〜64px の段階)を下限にする。 */
+@media (prefers-reduced-motion: reduce) {
+  .windowControlsButtons,
+  .windowControlButton {
+    transition-duration: 0s;
+  }
+}
+
+/* P96-02: 窓の上端のタイマーの線。窓のボタン(z-index 140)・ダイアログの幕より手前に重ね、
+   クリックやドラッグを受けない(下の窓のボタン・ドラッグできる範囲を邪魔しない)。
+   色は今ある変数だけを使い、溝は同じ色を 12% にする。 */
+.windowTimerLine {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 150;
+  pointer-events: none;
+}
+
+.windowTimerLineGroove {
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  opacity: 0.12;
+}
+
+.windowTimerLineFill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background: var(--accent);
+  transition: width 1s linear;
+}
+
+/* 一時停止はその位置で止める(長さの変化を動きでつながない) */
+.windowTimerLine--paused .windowTimerLineGroove {
+  background: var(--warn);
+}
+
+.windowTimerLine--paused .windowTimerLineFill {
+  background: var(--warn);
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .windowTimerLineFill {
+    transition: none;
+  }
+}
+
+/* ドラッグできる範囲: サイドバーのブランド表示と、手順書ビューアーのヘッダー */
+.brandBlock {
+  user-select: none;
+}
+
+.instructionHeader {
+  padding: 10px 143px 10px 18px; /* 右は窓のボタンの帯(127px+右8px+間8px)を避ける */
+  user-select: none;
+}
+
+/* ダイアログの幕の上端の帯(上部メニューの行と同じ高さ)。ドラッグで窓を動かす。
+   z-index: -1 で幕の背景より上・ダイアログの中身より下に置き、
+   ダイアログの押せる部品を塞がない。 */
+.modalDragBand {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 58px; /* 上部メニューの行の下端(.mainPanel の padding-top 22px + 行 36px) */
+  z-index: -1;
+}
+
+@media (max-width: 760px) {
+  .modalDragBand {
+    height: 52px; /* padding-top 16px + 行 36px */
+  }
+}
+
+@media (min-width: 1051px) {
+  .appShell--dashboard[data-main-display-size="large"] .modalDragBand {
+    height: 61px;
+  }
+
+  .appShell--dashboard[data-main-display-size="xlarge"] .modalDragBand {
+    height: 68px;
+  }
+}
+
+.importDialog {
+  width: min(760px, calc(100vw - 32px));
+  max-height: min(86vh, 820px);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--dialog-surface);
+  box-shadow: var(--dialog-shadow);
+  overflow: hidden;
+}
+
+.importDialogHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.importDialogHeader h2 {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+
+.importDialogBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 20px;
+  overflow: auto;
+}
+
+.importTextarea {
+  min-height: 150px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.importDialogActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.importPromptActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.importPromptRepeat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  max-width: 460px;
+}
+
+.importPromptRepeat small {
+  line-height: 1.5;
+}
+
+.importPreview {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px solid var(--line-soft);
+  padding-top: 12px;
+}
+
+.importSummary {
+  margin: 0;
+  color: var(--text-muted-readable);
+  font-size: 13px;
+}
+
+.importPreviewSection {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.importPreviewSection h3,
+.importPreviewSection summary {
+  margin: 0;
+  font-size: 13px;
+}
+
+.importPreviewSection summary {
+  cursor: pointer;
+}
+
+.importPreviewSection--rejected {
+  color: var(--warn);
+}
+
+.importPreviewList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.importDialogFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.importDropOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 12px;
+  padding: 18px;
+  background: color-mix(in srgb, var(--app-background) 55%, transparent);
+  pointer-events: none;
+}
+
+.importDropZone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted-readable);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.importDropZone--main {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.importDropZone--active {
+  border-width: 2px;
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--text);
+}
+
+.importDropZone small {
+  color: var(--text-muted-readable);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+/* P10-01 helper for text that only screen readers should read. */
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* P10-07: the sidebar meta row keeps its height. */
+.timerDock .timerMetaTop {
+  min-height: 26px;
+}
+
+/* P10-07 (D37): rolling digits in the idle clock. */
+.timerClockRolling {
+  display: inline-flex;
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+}
+
+.timerClockDigit {
+  position: relative;
+  display: inline-block;
+  width: 1ch;
+  overflow: hidden;
+  text-align: center;
+}
+
+.timerClockDigit > span {
+  display: block;
+}
+
+.timerClockUnit {
+  margin-left: 2px;
+}
+
+/* P10-03 (D4): the search field in the top bar and the search window. */
+.topSearchButton {
+  display: inline-flex;
+  min-width: 34px;
+  max-width: 420px;
+  height: 32px;
+  flex: 0 1 340px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 0 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 13px;
+  text-align: left;
+}
+
+.topSearchButton:hover {
+  border-color: var(--line);
+  color: var(--text-muted-readable);
+}
+
+.topSearchLabel {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topSearchButton .uiKey {
+  flex: 0 0 auto;
+}
+
+/* Narrow rows drop the hint text first, then the whole label. */
+.topBar[data-top-menu-labels="1"] .topSearchLabel,
+.topBar[data-top-menu-labels="2"] .topSearchLabel {
+  display: none;
+}
+
+.topBar[data-top-menu-labels="2"] .topSearchButton {
+  flex: 0 0 auto;
+  width: 32px;
+  justify-content: center;
+  justify-self: center;
+  padding: 0;
+}
+
+.topBar[data-top-menu-labels="2"] .topSearchButton .uiKey {
+  display: none;
+}
+
+.searchPaletteBackdrop {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  display: grid;
+  place-items: start center;
+  padding: 78px 16px 16px;
+  background: rgba(0, 0, 0, 0.42);
+}
+
+.searchPalette {
+  display: grid;
+  width: min(640px, 100%);
+  max-height: min(520px, 70vh);
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-strong);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+}
+
+.searchPaletteInputRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--muted);
+}
+
+.searchPaletteInput {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 15px;
+  outline: none;
+}
+
+.searchPaletteList {
+  overflow: auto;
+  padding: 6px;
+}
+
+.searchPaletteGroup {
+  display: grid;
+  gap: 2px;
+  padding: 4px 0 6px;
+}
+
+.searchPaletteGroupTitle {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0;
+  padding: 2px 8px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.searchPaletteItem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: 5px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.searchPaletteHighlight {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  border-radius: 5px;
+  background: var(--surface-soft);
+  pointer-events: none;
+}
+
+.searchPaletteItemText {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.searchPaletteItemTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.searchPaletteItemSubtitle,
+.searchPaletteItemMeta {
+  color: var(--text-muted-readable);
+  font-size: 11px;
+}
+
+.searchPaletteItemMeta {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+}
+
+/* P10-03 (D34): the band behind the selected dictionary search result. */
+.dictionarySearchResult {
+  position: relative;
+}
+
+.dictionarySearchHighlight {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  border-radius: 5px;
+  background: var(--surface-soft);
+  pointer-events: none;
+}
+
+.dictionarySearchResult > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Narrow rows: the field keeps only its icon so the title and the menu keep their room. */
+@media (max-width: 1120px) {
+  .topSearchLabel {
+    display: none;
+  }
+
+  .topSearchButton {
+    flex: 0 0 34px;
+    justify-content: center;
+    justify-self: center;
+    padding: 0;
+  }
+
+  .topSearchButton .uiKey {
+    display: none;
+  }
+}
+
+.topTitle {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* P10-05 (D1 exception): only the height of the start buttons changes (48px). */
+.doNowActions .doNowStartPrimary,
+.doNowActions .doNowStartSecondary,
+.doNowActions .doNowMeasureButton {
+  height: 48px;
+  min-height: 48px;
+}
+
+/* P10-05 (§4.3): the "here now" badge on the Today card linked to this moment's step. */
+/* P10-05 (§4.4): the next-step rows keep one shape and grow with the text. */
+.projectGrid .nextStepCard.nextStepRow {
+  min-height: 56px;
+}
+
+/* P10-05 (D11): the staleness notice under the action text. */
+.nextStepFreshness {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  color: var(--warn);
+  font-size: 12px;
+}
+
+.nextStepFreshnessActions {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.nextStepFreshnessButton {
+  min-height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* P10-05 (§4.1): the Next Step headline wins over the older 17px rule. */
+.doNowCopy > strong {
+  display: block;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+/* P10-05 (§4.4): one Project per row, always. */
+.projectsBand .projectGrid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* P10-06 (D25): the dashed "no Next Step yet" badge on a wishlist group. */
+.wishlistNextStepMissing {
+  padding: 1px 8px;
+  border: 1px dashed color-mix(in srgb, var(--project-color, var(--muted)) 55%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--project-color, var(--muted)) 12%, transparent);
+  color: color-mix(in srgb, var(--project-color, var(--muted)) 60%, var(--text));
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* P10-06 (D26): the closed header lists the groups. */
+.inboxGroupSummary {
+  display: flex;
+  min-width: 0;
+  gap: 10px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.inboxGroupSummaryItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inboxGroupSummaryDot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--project-color, var(--muted));
+}
+
+/* P10-08 (§7.2): the expanded timer header keeps the badge left and the buttons right. */
+.expandedTimerHeaderActions {
+  margin-right: 128px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.expandedTimerPlan {
+  margin: 2px 0 0;
+  color: var(--text-muted-readable);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* P10-08: the plan line never widens the overlay. */
+.expandedTimerPlan {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-height: 520px), (max-width: 560px) {
+  .expandedTimer {
+    padding: 0 0 12px;
+    gap: 8px;
+  }
+
+  .expandedTimerClock {
+    font-size: clamp(40px, 12vw, 64px);
+  }
+
+  .expandedTimerBody,
+  .expandedTimerHint {
+    padding-inline: 14px;
+  }
+
+  .expandedTimerHeaderActions {
+    gap: 4px;
+  }
+
+  .expandedTimerClose span {
+    display: none;
+  }
+}
+
+/* P10-08: the mini button shares the 戻る look. */
+.expandedTimerMiniButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.timerMetaMiniHead {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+
+/* P10-10 (§6.1): the Picker is candidates on the left, numbered Today3 slots on the right. */
+.todayPickerDialog {
+  width: min(980px, calc(100vw - 24px));
+  height: min(700px, calc(100vh - 24px));
+  max-height: min(calc(100vh - 24px), 700px);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.todayPickerBody {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 18px;
+  overflow: hidden;
+  padding: 12px 16px;
+}
+
+.todayPickerSource {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto auto auto;
+  align-content: start;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  /* P10-14d (P1): without tabs both groups are always present. The source column
+     scrolls so the second group and long lists stay reachable in short windows. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding-right: 4px;
+}
+
+.todayPickerSourceHeading {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding-block: 2px;
+  background: var(--dialog-surface);
+}
+
+.todayPickerSourcePanel {
+  padding-bottom: 6px;
+}
+
+.todayPickerDestination {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  overflow-y: auto;
+  border: 1px dashed rgba(231, 185, 77, 0.5);
+  border-radius: 14px;
+  padding: 14px;
+  background: rgba(241, 194, 76, 0.03);
+}
+
+.todayPickerDestinationHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+.todayPickerDestinationHeader h3 {
+  color: var(--accent-strong);
+  font-size: 15px;
+}
+
+.todayPickerProgress {
+  width: 84px;
+  flex: 0 1 84px;
+  margin-left: 0;
+}
+
+.todayPickerCounter {
+  margin-left: auto;
+}
+
+.todayPickerSlots {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-rows: minmax(72px, 1fr);
+  gap: 10px;
+  align-items: stretch;
+}
+
+.todayPickerSlot {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  padding: 8px 10px 8px 14px;
+}
+
+.todayPickerSlot.todayPickerRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "index copy remove";
+  align-items: center;
+  gap: 14px;
+}
+
+.todayPickerSlotIndex {
+  grid-area: index;
+  color: var(--text-muted-readable);
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.todayPickerSlotCopy {
+  grid-area: copy;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.todayPickerSlotCopy > .todayPickerSlotProject {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.todayPickerSlotCopy > .todayPickerSlotTask {
+  min-width: 0;
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.todayPickerSlot.todayPickerRow > .todayPickerRemoveButton {
+  grid-area: remove;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted-readable);
+}
+
+.todayPickerSlot.todayPickerRow > .todayPickerRemoveButton:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--control-neutral-hover-bg);
+}
+
+.todayPickerSlot--dragging {
+  border-color: var(--accent-strong);
+  opacity: 0.55;
+}
+
+.todayPickerSlot--empty {
+  height: auto;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  justify-items: start;
+  gap: 14px;
+  padding: 8px 10px 8px 14px;
+  color: var(--text-muted-readable);
+  font-size: 13px;
+}
+
+.todayPickerSlotEmptyLabel {
+  color: var(--text-muted-readable);
+  font-size: 13px;
+}
+
+.todayPickerSlot--empty .todayPickerSlotIndex {
+  grid-area: auto;
+}
+
+.todayPickerActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  align-items: center;
+  justify-content: initial;
+  padding: 10px 16px 12px;
+}
+
+.todayPickerActions > button {
+  min-height: 40px;
+  height: 40px;
+  font-size: 13px;
+}
+
+@media (max-width: 760px) {
+  .todayPickerBody {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .todayPickerDestination {
+    order: -1;
+    padding: 10px;
+  }
+
+  .todayPickerSlots {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-auto-rows: minmax(56px, auto);
+    gap: 6px;
+  }
+
+  .todayPickerSlot {
+    min-height: 56px;
+    padding: 6px 6px 6px 9px;
+  }
+
+  .todayPickerSlot.todayPickerRow {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 7px;
+  }
+
+  .todayPickerSlotIndex {
+    font-size: 16px;
+  }
+
+  .todayPickerSelectedStatus {
+    display: none;
+  }
+}
+
+/* P10-10 (§6.2): the Next Step editor's "opens together" chips. */
+.startEnvironmentPicker--chips,
+.instructionPicker--chips {
+  display: contents;
+}
+
+.nextStepOpenTogether {
+  display: grid;
+  gap: 8px;
+}
+
+.nextStepOpenChips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.nextStepOpenChip {
+  max-width: 100%;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0 4px 0 12px;
+  background: var(--surface);
+  font-size: 13px;
+}
+
+.nextStepOpenChipIcon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted-readable);
+}
+
+.nextStepOpenChipLabel {
+  min-width: 0;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nextStepOpenChip--missing {
+  border-color: rgba(242, 166, 90, 0.6);
+}
+
+.nextStepOpenChip--missing .nextStepOpenChipLabel {
+  color: #f2a65a;
+}
+
+.nextStepOpenChipMissing {
+  color: #f2a65a;
+  background: rgba(242, 166, 90, 0.12);
+}
+
+.nextStepOpenChipRemove {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted-readable);
+}
+
+.nextStepOpenChipRemove:hover,
+.nextStepOpenChipRemove:focus-visible {
+  background: var(--control-neutral-hover-bg);
+  color: var(--text);
+}
+
+.nextStepOpenChipAdd {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.nextStepOpenChipAdd:hover,
+.nextStepOpenChipAdd:focus-visible {
+  border-color: var(--line-strong);
+  background: var(--control-neutral-hover-bg);
+}
+
+.nextStepOpenMenu {
+  width: fit-content;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 6px;
+  background: var(--surface-strong);
+}
+
+.nextStepOpenMenu button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.nextStepOpenMenu button:hover,
+.nextStepOpenMenu button:focus-visible {
+  background: var(--control-neutral-hover-bg);
+}
+
+.projectTimerSettingLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.projectTimerDot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--good);
+}
+
+.projectTimerSetting:nth-of-type(2) .projectTimerDot {
+  background: #70a7ff;
+}
+
+/* P10-11 (§8.2): the first-run guide and the copy button (D36). */
+.firstRunBand {
+  width: 100%;
+  max-width: 620px;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  margin: 0 auto;
+  padding: 48px 24px 40px;
+}
+
+.firstRunHero h1 {
+  margin: 0 0 10px;
+  font-size: 34px;
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+.firstRunHero p {
+  margin: 0;
+  color: var(--text-muted-readable);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.firstRunField {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.firstRunFieldLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.firstRunStepNumber {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--surface-strong);
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.firstRunInput {
+  height: 52px;
+  padding: 0 16px;
+  font-size: 17px;
+}
+
+.firstRunExamples {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted-readable);
+  font-size: 12px;
+}
+
+.firstRunExample {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.firstRunExample:hover,
+.firstRunExample:focus-visible {
+  border-color: var(--line-strong);
+  background: var(--control-neutral-hover-bg);
+}
+
+.firstRunHint {
+  color: var(--text-muted-readable);
+  font-size: 12px;
+}
+
+.firstRunStartActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.firstRunStartButton {
+  min-height: 48px;
+  padding: 0 22px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.firstRunLaterButton {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted-readable);
+  font-size: 14px;
+}
+
+.firstRunLaterButton:hover,
+.firstRunLaterButton:focus-visible {
+  color: var(--text);
+}
+
+.firstRunImport {
+  margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+
+.firstRunImportCopy {
+  min-width: 0;
+  flex: 1 1 280px;
+  display: grid;
+  gap: 2px;
+}
+
+.firstRunImportCopy strong {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.firstRunImportCopy span {
+  color: var(--text-muted-readable);
+  font-size: 12px;
+}
+
+.firstRunImportOpen {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.firstRunImportOpen:hover,
+.firstRunImportOpen:focus-visible {
+  border-color: var(--line-strong);
+  background: var(--control-neutral-hover-bg);
+}
+
+.copyButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.copyButton:hover,
+.copyButton:focus-visible {
+  border-color: var(--line-strong);
+  background: var(--control-neutral-hover-bg);
+}
+
+.copyButton[data-copied="true"] {
+  border-color: rgba(117, 196, 143, 0.55);
+  color: var(--good);
+}
+
+/* P10-14: both labels share one cell and sit on the button's vertical center. */
+.copyButtonLabel {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  line-height: 1;
+}
+
+.copyButtonSizer,
+.copyButtonText {
+  grid-area: 1 / 1;
+  align-self: center;
+  white-space: nowrap;
+}
+
+.copyButtonSizer {
+  visibility: hidden;
+}
+
+/* P10-12 (D15): key badges in the context menu and the row focus hint. */
+.contextMenu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 9px;
+}
+
+.contextMenuItemLabel {
+  min-width: 0;
+  flex: 1;
+}
+
+.contextMenuShortcut {
+  flex: 0 0 auto;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.contextMenu button.contextMenuDanger .contextMenuShortcut {
+  border-color: rgba(240, 111, 104, 0.5);
+  background: rgba(240, 111, 104, 0.12);
+  color: #ffb4ad;
+}
+
+.sourceListRow,
+.todayRow {
+  position: relative;
+}
+
+.rowKeyHint {
+  display: none;
+  margin-right: 6px;
+  pointer-events: none;
+}
+
+.uiPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 20px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: normal;
+  white-space: nowrap;
+}
+
+.nextStepRow:focus-visible .rowKeyHint,
+.inboxRow:focus-visible .rowKeyHint,
+.todayRow:focus-visible .rowKeyHint {
+  display: inline-flex;
+}
+
+/* P10-12: the help guide's short key table. */
+.helpGuideKeys {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.helpGuideKeys th,
+.helpGuideKeys td {
+  border-bottom: 1px solid var(--line-soft);
+  padding: 7px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.helpGuideKeys th {
+  width: 34%;
+  white-space: nowrap;
+}
+
+.helpGuideKeys kbd {
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 1px 6px;
+  background: var(--surface-strong);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.helpGuideKeys td {
+  color: var(--text-muted-readable);
+}
+
+/* P10-12 (D36): copy buttons inside the import dialog. */
+.importPromptCopy {
+  min-height: 34px;
+  padding: 0 11px;
+  font-size: 12px;
+}
+
+/* P10-12 (D35): the drop frame while a file is over it. */
+.importDropZone.is-dragover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+/* P10-12 (D38): the sliding face behind the chosen records tab / date scope. */
+.recordsTabLabel,
+.segmentLabel {
+  position: relative;
+  z-index: 1;
+}
+
+.recordsTabFace {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--surface-soft);
+  pointer-events: none;
+}
+
+.recordsTab--active {
+  background: transparent;
+}
+
+.recordsTab:hover .recordsTabFace {
+  background: transparent;
+}
+
+.segmentButton {
+  position: relative;
+  overflow: hidden;
+}
+
+.segmentFace {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--surface-strong);
+  pointer-events: none;
+}
+
+.segmentButton--active {
+  background: transparent;
+}
+

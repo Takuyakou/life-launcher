@@ -1,12 +1,43 @@
 // V160-B2: pure helpers for the image-book view. The page numbers here are 1-based.
 import type { InstructionBookState } from "./types";
 
+export const BOOK_ZOOM_STEPS = [100, 125, 150, 200, 300, 400] as const;
+export const DEFAULT_BOOK_ZOOM_PERCENT = 100;
+
 export const DEFAULT_INSTRUCTION_BOOK_STATE: InstructionBookState = {
   direction: "rtl",
   spread: true,
   coverSingle: true,
   lastPage: 1,
+  zoomPercent: DEFAULT_BOOK_ZOOM_PERCENT,
 };
+
+export function normalizeBookZoomPercent(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return DEFAULT_BOOK_ZOOM_PERCENT;
+  return (BOOK_ZOOM_STEPS as readonly number[]).includes(value) ? value : DEFAULT_BOOK_ZOOM_PERCENT;
+}
+
+export function stepBookZoomPercent(current: number, delta: 1 | -1): number {
+  const index = BOOK_ZOOM_STEPS.indexOf(normalizeBookZoomPercent(current) as (typeof BOOK_ZOOM_STEPS)[number]);
+  const nextIndex = Math.max(0, Math.min(BOOK_ZOOM_STEPS.length - 1, (index >= 0 ? index : 0) + delta));
+  return BOOK_ZOOM_STEPS[nextIndex];
+}
+
+export function fitBookPageSize(
+  naturalWidth: number,
+  naturalHeight: number,
+  slotWidth: number,
+  slotHeight: number,
+): { width: number; height: number } {
+  if (naturalWidth <= 0 || naturalHeight <= 0 || slotWidth <= 0 || slotHeight <= 0) {
+    return { width: 0, height: 0 };
+  }
+  const scale = Math.min(slotWidth / naturalWidth, slotHeight / naturalHeight);
+  return {
+    width: naturalWidth * scale,
+    height: naturalHeight * scale,
+  };
+}
 
 /** The groups of pages shown at once: an opening pair, one page, or the single cover. */
 export function bookPageGroups(
@@ -53,10 +84,36 @@ export function bookAnnouncement(pages: number[]): string {
   return `${pages.join("、")}ページ`;
 }
 
-/** The progress bar fills up to the first page of the opening (the mock's 28% at 34/120). */
-export function bookProgressPercent(firstPage: number, pageCount: number): number {
+/** V161-B4: `(page - 1) / (pageCount - 1) * 100` (0% at page 1, 100% at the end or single page). */
+export function bookProgressPercent(page: number, pageCount: number): number {
   if (pageCount <= 0) return 0;
-  return Math.min(100, Math.max(0, (firstPage / pageCount) * 100));
+  if (pageCount === 1) return 100;
+  const clamped = Math.max(1, Math.min(pageCount, page));
+  return Math.min(100, Math.max(0, ((clamped - 1) / (pageCount - 1)) * 100));
+}
+
+/** Inverse of `bookProgressPercent` for scrub clicks/drags along the progress bar. */
+export function bookPageFromRatio(
+  ratio: number,
+  pageCount: number,
+  direction: "rtl" | "ltr",
+): number {
+  if (pageCount <= 1) return 1;
+  const clamped = Math.min(1, Math.max(0, ratio));
+  const effective = direction === "rtl" ? 1 - clamped : clamped;
+  return 1 + Math.round(effective * (pageCount - 1));
+}
+
+/** Parse a jump input string, normalizing full-width digits `０`–`９` and clamping to `1..pageCount`. */
+export function parseBookJumpPage(raw: string, pageCount: number): number | null {
+  if (pageCount <= 0) return null;
+  const normalized = raw
+    .replace(/[０-９]/g, (digit) => String.fromCharCode(digit.charCodeAt(0) - 0xfee0))
+    .trim();
+  if (!/^\d+$/.test(normalized)) return null;
+  const parsed = Number.parseInt(normalized, 10);
+  if (!Number.isFinite(parsed)) return null;
+  return Math.max(1, Math.min(pageCount, parsed));
 }
 
 export function bookPageMime(type: number): string | null {

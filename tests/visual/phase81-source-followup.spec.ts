@@ -325,8 +325,13 @@ test("Phase 8.1 Wishlist follow-up waits while another confirm dialog is busy", 
   page,
 }) => {
   await prepareUi(page, wishlistUiFixture());
+  // The follow-up opens 1.1 s after the finish: hold the clock so it only opens when the test moves it.
+  const pausedAt = await page.evaluate(() => Date.now() + 1_000);
+  await page.clock.pauseAt(pausedAt);
   await finishPlannedTimer(page);
   await page.locator(".inboxBand .disclosure").click();
+  // Let the 0.2 s section spring finish (still well before the 1.1 s follow-up).
+  await page.clock.runFor(400);
   const otherWishlist = page.locator(".inboxRow", { hasText: "あとで確認するサンプル" });
   await expect(otherWishlist).toBeVisible();
   // The section opens with a height spring; wait for the row to hold still before right-clicking

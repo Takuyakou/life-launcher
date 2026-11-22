@@ -18,7 +18,9 @@ use tauri::{AppHandle, Emitter};
 use zip::{CompressionMethod, ZipArchive};
 
 use super::config::{atomic_write_bytes, config_dir_path};
-use super::instructions::{configured_instruction_roots, validate_instruction_book_path};
+use super::instructions::{
+    configured_instruction_roots, path_is_within, validate_instruction_book_path,
+};
 use crate::datetime;
 
 /// The webview listens for this so a `p.N` chip refreshes after the book saves.
@@ -33,11 +35,39 @@ const MAX_BOOK_PAGES: usize = 5_000;
 const MAX_PAGE_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_COMPRESSION_RATIO: u64 = 200;
 const RATIO_MIN_BYTES: u64 = 1024 * 1024;
+const DEFAULT_ZOOM_PERCENT: u16 = 100;
+const ALLOWED_ZOOM_PERCENTS: [u16; 6] = [100, 125, 150, 200, 300, 400];
 
 const PAGE_TYPE_JPEG: u8 = 1;
 const PAGE_TYPE_PNG: u8 = 2;
 const PAGE_TYPE_GIF: u8 = 3;
 const PAGE_TYPE_WEBP: u8 = 4;
+
+fn default_zoom_percent() -> u16 {
+    DEFAULT_ZOOM_PERCENT
+}
+
+fn normalize_zoom_percent_i64(value: i64) -> u16 {
+    if ALLOWED_ZOOM_PERCENTS
+        .iter()
+        .any(|&allowed| i64::from(allowed) == value)
+    {
+        value as u16
+    } else {
+        DEFAULT_ZOOM_PERCENT
+    }
+}
+
+fn deserialize_zoom_percent<'de, D>(deserializer: D) -> Result<u16, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let raw = serde_json::Value::deserialize(deserializer)?;
+    Ok(raw
+        .as_i64()
+        .map(normalize_zoom_percent_i64)
+        .unwrap_or(DEFAULT_ZOOM_PERCENT))
+}
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -54,6 +84,11 @@ pub struct InstructionBookState {
     pub spread: bool,
     pub cover_single: bool,
     pub last_page: u32,
+    #[serde(
+        default = "default_zoom_percent",
+        deserialize_with = "deserialize_zoom_percent"
+    )]
+    pub zoom_percent: u16,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub updated_at: Option<String>,
 }
@@ -65,6 +100,7 @@ impl Default for InstructionBookState {
             spread: true,
             cover_single: true,
             last_page: 1,
+            zoom_percent: DEFAULT_ZOOM_PERCENT,
             updated_at: None,
         }
     }
@@ -221,7 +257,7 @@ fn zip_size_allowed(size: u64) -> bool {
     size <= MAX_ZIP_BYTES
 }
 
-fn open_book_for_roots(
+pub(crate) fn open_book_for_roots(
     path: &Path,
     roots: &[String],
 ) -> Result<(PathBuf, InstructionBookOpenResponse), String> {
@@ -370,18 +406,32 @@ fn read_page_for_roots(path: &Path, index: usize, roots: &[String]) -> Result<Ve
     if file.size() > MAX_PAGE_BYTES {
         return Err("このページは大きすぎるため表示しません(64MB まで)".to_string());
     }
-    let mut bytes = Vec::new();
+    let declared = file.size().min(MAX_PAGE_BYTES) as usize;
+    let mut bytes = Vec::with_capacity(declared.saturating_add(1));
+    bytes.push(0);
     file.by_ref()
         .take(MAX_PAGE_BYTES + 1)
         .read_to_end(&mut bytes)
         .map_err(|error| format!("failed to decompress ZIP page: {error}"))?;
-    if bytes.len() as u64 > MAX_PAGE_BYTES {
+    if bytes.len().saturating_sub(1) as u64 > MAX_PAGE_BYTES {
         return Err("このページは大きすぎるため表示しません(64MB まで)".to_string());
     }
-    let page_type = detect_page_type(&bytes)
+    let page_type = detect_page_type(&bytes[1..])
         .ok_or_else(|| "このページは画像ではないため表示しません".to_string())?;
-    bytes.insert(0, page_type);
+    bytes[0] = page_type;
     Ok(bytes)
+}
+
+pub(crate) fn evict_books_under_path(path: &Path) {
+    if let Ok(mut cache) = book_cache().lock() {
+        cache.retain(|entry| !path_is_within(&entry.path, path));
+    }
+}
+
+pub(crate) fn release_all_books() {
+    if let Ok(mut cache) = book_cache().lock() {
+        cache.clear();
+    }
 }
 
 #[tauri::command]
@@ -389,6 +439,26 @@ pub fn open_instruction_book(path: String) -> Result<InstructionBookOpenResponse
     let roots = configured_instruction_roots()?;
     let (_, response) = open_book_for_roots(Path::new(&path), &roots)?;
     Ok(response)
+}
+
+#[tauri::command]
+pub fn close_instruction_book(path: String) -> Result<(), String> {
+    let trimmed = path.trim();
+    if trimmed.is_empty() {
+        return Ok(());
+    }
+    let target = Path::new(trimmed);
+    if let Ok(canonical) = fs::canonicalize(target) {
+        evict_books_under_path(&canonical);
+    }
+    evict_books_under_path(target);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn release_instruction_books() -> Result<(), String> {
+    release_all_books();
+    Ok(())
 }
 
 #[tauri::command]
@@ -451,6 +521,9 @@ fn sanitize_state(mut state: InstructionBookState) -> InstructionBookState {
     if state.last_page == 0 {
         state.last_page = 1;
     }
+    if !ALLOWED_ZOOM_PERCENTS.contains(&state.zoom_percent) {
+        state.zoom_percent = DEFAULT_ZOOM_PERCENT;
+    }
     state
 }
 
@@ -497,21 +570,59 @@ fn save_state_in_dir(
     Ok(state)
 }
 
+fn normalize_state_path(path: &str) -> String {
+    path.replace('/', "\\").trim_end_matches('\\').to_string()
+}
+
+fn rewrite_state_key(key: &str, old_path: &str, new_path: Option<&str>) -> Option<Option<String>> {
+    let key_norm = normalize_state_path(key);
+    let old_norm = normalize_state_path(old_path);
+    if old_norm.is_empty() {
+        return None;
+    }
+    let key_parts: Vec<&str> = key_norm.split('\\').collect();
+    let old_parts: Vec<&str> = old_norm.split('\\').collect();
+    if key_parts.len() < old_parts.len()
+        || !key_parts[..old_parts.len()]
+            .iter()
+            .zip(&old_parts)
+            .all(|(left, right)| left.to_lowercase() == right.to_lowercase())
+    {
+        return None;
+    }
+    let rewritten = new_path.map(|next| {
+        if key_parts.len() == old_parts.len() {
+            next.to_string()
+        } else {
+            let next_norm = normalize_state_path(next);
+            format!("{}\\{}", next_norm, key_parts[old_parts.len()..].join("\\"))
+        }
+    });
+    Some(rewritten)
+}
+
 fn rename_state_in_dir(dir: &Path, old_path: &str, new_path: Option<&str>) {
     let (mut file, broken) = read_state_file(dir);
-    let old_key = file
+    let moves: Vec<(String, Option<String>)> = file
         .books
         .keys()
-        .find(|key| key.eq_ignore_ascii_case(old_path))
-        .cloned();
-    let Some(old_key) = old_key else {
+        .filter_map(|key| {
+            rewrite_state_key(key, old_path, new_path).map(|next_key| (key.clone(), next_key))
+        })
+        .collect();
+    if moves.is_empty() {
         return;
-    };
-    let Some(state) = file.books.remove(&old_key) else {
-        return;
-    };
-    if let Some(new_path) = new_path {
-        file.books.insert(new_path.to_string(), state);
+    }
+    let mut removed = Vec::with_capacity(moves.len());
+    for (old_key, next_key) in moves {
+        if let Some(state) = file.books.remove(&old_key) {
+            removed.push((next_key, state));
+        }
+    }
+    for (next_key, state) in removed {
+        if let Some(target_key) = next_key {
+            file.books.insert(target_key, state);
+        }
     }
     let _ = write_state_file(dir, &file, broken);
 }
@@ -634,6 +745,30 @@ mod tests {
         vec![root.to_string_lossy().to_string()]
     }
 
+    fn test_cache_guard() -> std::sync::MutexGuard<'static, ()> {
+        static TEST_CACHE_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        TEST_CACHE_LOCK
+            .get_or_init(|| Mutex::new(()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
+    fn cached_book_count() -> usize {
+        book_cache().lock().map(|cache| cache.len()).unwrap_or(0)
+    }
+
+    fn is_book_cached(path: &Path) -> bool {
+        let canonical = fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+        book_cache()
+            .lock()
+            .map(|cache| {
+                cache
+                    .iter()
+                    .any(|entry| path_is_within(&entry.path, &canonical) && entry.path == canonical)
+            })
+            .unwrap_or(false)
+    }
+
     #[test]
     fn natural_order_compares_numbers_and_ignores_case() {
         let mut names = vec!["10.jpg", "2.jpg", "1.JPG", "A.jpg"];
@@ -713,6 +848,7 @@ mod tests {
 
     #[test]
     fn opens_only_images_and_reports_skipped_items() {
+        let _guard = test_cache_guard();
         let root = temp_root("open");
         let path = write_book_file(
             &root,
@@ -769,6 +905,7 @@ mod tests {
 
     #[test]
     fn reads_the_requested_page_and_decides_the_type_from_the_head() {
+        let _guard = test_cache_guard();
         let root = temp_root("read");
         let path = write_book_file(
             &root,
@@ -803,6 +940,7 @@ mod tests {
 
     #[test]
     fn deflated_pages_are_read_normally() {
+        let _guard = test_cache_guard();
         let root = temp_root("deflate");
         let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
         let path = write_book_file(
@@ -821,6 +959,7 @@ mod tests {
 
     #[test]
     fn truncates_after_five_thousand_pages() {
+        let _guard = test_cache_guard();
         let root = temp_root("truncated");
         let entries = (0..MAX_BOOK_PAGES + 5)
             .map(|index| (format!("{index:05}.png"), PNG))
@@ -865,17 +1004,20 @@ mod tests {
                 spread: false,
                 cover_single: false,
                 last_page: 34,
+                zoom_percent: 200,
                 updated_at: None,
             },
             "2026-11-21T02:00:00.000Z",
         )
         .expect("save state");
         assert_eq!(saved.last_page, 34);
+        assert_eq!(saved.zoom_percent, 200);
         let loaded = load_state_in_dir(&dir, "C:\\Books\\a.zip");
         assert_eq!(loaded.direction, "ltr");
         assert!(!loaded.spread);
         assert!(!loaded.cover_single);
         assert_eq!(loaded.last_page, 34);
+        assert_eq!(loaded.zoom_percent, 200);
 
         rename_state_in_dir(&dir, "C:\\Books\\a.zip", Some("C:\\Books\\b.zip"));
         assert_eq!(load_state_in_dir(&dir, "C:\\Books\\b.zip").last_page, 34);
@@ -888,6 +1030,50 @@ mod tests {
             load_state_in_dir(&dir, "C:\\Books\\b.zip"),
             InstructionBookState::default()
         );
+    }
+
+    #[test]
+    fn folder_rename_migrates_child_book_states_only() {
+        let dir = temp_root("state-folder-rename");
+        let first = "C:\\Books\\教材\\book1.zip";
+        let nested = "C:\\Books\\教材\\sub\\book2.zip";
+        let similar = "C:\\Books\\教材2\\other.zip";
+        for (path, page) in [(first, 12), (nested, 48), (similar, 77)] {
+            save_state_in_dir(
+                &dir,
+                path,
+                InstructionBookState {
+                    direction: "rtl".to_string(),
+                    spread: true,
+                    cover_single: true,
+                    last_page: page,
+                    zoom_percent: 150,
+                    updated_at: None,
+                },
+                "2026-11-21T02:00:00.000Z",
+            )
+            .expect("save state");
+        }
+
+        rename_state_in_dir(&dir, "c:\\books\\教材", Some("C:\\Books\\教材-renamed"));
+
+        assert_eq!(
+            load_state_in_dir(&dir, "C:\\Books\\教材-renamed\\book1.zip").last_page,
+            12
+        );
+        assert_eq!(
+            load_state_in_dir(&dir, "C:\\Books\\教材-renamed\\sub\\book2.zip").last_page,
+            48
+        );
+        assert_eq!(
+            load_state_in_dir(&dir, first),
+            InstructionBookState::default()
+        );
+        assert_eq!(
+            load_state_in_dir(&dir, nested),
+            InstructionBookState::default()
+        );
+        assert_eq!(load_state_in_dir(&dir, similar).last_page, 77);
     }
 
     #[test]
@@ -942,5 +1128,122 @@ mod tests {
             })
             .count();
         assert_eq!(broken, 1);
+    }
+
+    #[test]
+    fn close_instruction_book_evicts_only_that_book() {
+        let _guard = test_cache_guard();
+        release_all_books();
+        let root = temp_root("close-one");
+        let a = write_book_file(&root, "a.zip", &make_zip(&[("1.jpg", JPEG)]));
+        let b = write_book_file(&root, "b.zip", &make_zip(&[("1.jpg", PNG)]));
+        let roots = roots_for(&root);
+        open_book_for_roots(&a, &roots).expect("open a");
+        open_book_for_roots(&b, &roots).expect("open b");
+        assert!(is_book_cached(&a));
+        assert!(is_book_cached(&b));
+
+        close_instruction_book(a.to_string_lossy().to_string()).expect("close a");
+        assert!(!is_book_cached(&a));
+        assert!(is_book_cached(&b));
+        release_all_books();
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn release_instruction_books_clears_every_cached_book() {
+        let _guard = test_cache_guard();
+        release_all_books();
+        let root = temp_root("release-all");
+        let a = write_book_file(&root, "a.zip", &make_zip(&[("1.jpg", JPEG)]));
+        let b = write_book_file(&root, "b.zip", &make_zip(&[("1.jpg", PNG)]));
+        let roots = roots_for(&root);
+        open_book_for_roots(&a, &roots).expect("open a");
+        open_book_for_roots(&b, &roots).expect("open b");
+        assert_eq!(cached_book_count(), 2);
+
+        release_instruction_books().expect("release all");
+        assert_eq!(cached_book_count(), 0);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn renaming_instruction_file_or_folder_evicts_cached_books() {
+        let _guard = test_cache_guard();
+        release_all_books();
+        let root = temp_root("rename-evict");
+        let folder = root.join("教材");
+        fs::create_dir_all(&folder).expect("create folder");
+        let sub = write_book_file(&folder, "sub.zip", &make_zip(&[("1.jpg", JPEG)]));
+        let top = write_book_file(&root, "top.zip", &make_zip(&[("1.jpg", PNG)]));
+        let roots = roots_for(&root);
+        open_book_for_roots(&sub, &roots).expect("open sub");
+        open_book_for_roots(&top, &roots).expect("open top");
+        assert!(is_book_cached(&sub));
+        assert!(is_book_cached(&top));
+
+        super::super::instructions::rename_instruction_for_roots(&folder, "教材-new", true, &roots)
+            .expect("rename folder");
+        assert!(!is_book_cached(&sub));
+        assert!(is_book_cached(&top));
+
+        super::super::instructions::rename_instruction_for_roots(&top, "top-new", false, &roots)
+            .expect("rename file");
+        assert!(!is_book_cached(&top));
+        assert_eq!(cached_book_count(), 0);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn zoom_percent_defaults_and_sanitizes_invalid_values() {
+        let dir = temp_root("state-zoom");
+        let write_cases = r#"{
+  "version": 1,
+  "books": {
+    "C:\\Books\\legacy.zip": { "direction": "rtl", "spread": true, "coverSingle": true, "lastPage": 5 },
+    "C:\\Books\\z175.zip": { "direction": "rtl", "spread": true, "coverSingle": true, "lastPage": 1, "zoomPercent": 175 },
+    "C:\\Books\\z0.zip": { "direction": "rtl", "spread": true, "coverSingle": true, "lastPage": 1, "zoomPercent": 0 },
+    "C:\\Books\\zneg.zip": { "direction": "rtl", "spread": true, "coverSingle": true, "lastPage": 1, "zoomPercent": -5 },
+    "C:\\Books\\z1000.zip": { "direction": "rtl", "spread": true, "coverSingle": true, "lastPage": 1, "zoomPercent": 1000 },
+    "C:\\Books\\z200.zip": { "direction": "rtl", "spread": true, "coverSingle": true, "lastPage": 1, "zoomPercent": 200 }
+  }
+}"#;
+        fs::write(state_file_path(&dir), write_cases).expect("write cases");
+        assert_eq!(
+            load_state_in_dir(&dir, "C:\\Books\\legacy.zip").zoom_percent,
+            100
+        );
+        assert_eq!(
+            load_state_in_dir(&dir, "C:\\Books\\z175.zip").zoom_percent,
+            100
+        );
+        assert_eq!(
+            load_state_in_dir(&dir, "C:\\Books\\z0.zip").zoom_percent,
+            100
+        );
+        assert_eq!(
+            load_state_in_dir(&dir, "C:\\Books\\zneg.zip").zoom_percent,
+            100
+        );
+        assert_eq!(
+            load_state_in_dir(&dir, "C:\\Books\\z1000.zip").zoom_percent,
+            100
+        );
+        assert_eq!(
+            load_state_in_dir(&dir, "C:\\Books\\z200.zip").zoom_percent,
+            200
+        );
+
+        let sanitized = sanitize_state(InstructionBookState {
+            direction: "rtl".to_string(),
+            spread: true,
+            cover_single: true,
+            last_page: 1,
+            zoom_percent: 175,
+            updated_at: None,
+        });
+        assert_eq!(sanitized.zoom_percent, 100);
+        let _ = fs::remove_dir_all(dir);
     }
 }

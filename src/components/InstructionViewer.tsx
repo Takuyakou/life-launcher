@@ -36,6 +36,7 @@ import {
   readInstruction,
   readInstructionBytes,
   readInstructionInfo,
+  releaseInstructionBooks,
   writeInstruction,
 } from "../tauri";
 import type { InstructionDocument } from "../types";
@@ -300,6 +301,7 @@ export function InstructionViewer() {
   const closeInstructionWindow = useCallback(async () => {
     allowCloseRef.current = true;
     try {
+      await releaseInstructionBooks().catch(() => undefined);
       if (instructionWindow) await instructionWindow.destroy();
       else window.close();
     } catch (error) {

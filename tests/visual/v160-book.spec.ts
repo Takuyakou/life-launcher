@@ -122,7 +122,7 @@ test("V160-B2 the cover is one page and a spread opens at the remembered page", 
   await expect(page.locator(".bookPageLayer--current img")).toHaveCount(2);
   await expect(page.locator(".bookStage")).toHaveClass(/bookStage--rtl/);
   await expect(page.locator(".bookStage [aria-live='polite']")).toHaveText("34、35ページ");
-  await expect(page.locator(".bookProgress b")).toHaveAttribute("style", /28\.33/);
+  await expect(page.locator(".bookProgress b")).toHaveAttribute("style", /28\.57/);
   const rtlBoxes = await page.evaluate(() =>
     Array.from(document.querySelectorAll<HTMLImageElement>(".bookPageLayer--current img")).map(
       (image) => ({ alt: image.alt, x: image.getBoundingClientRect().x }),
@@ -264,15 +264,15 @@ test("V160-B2 reduced motion replaces the opening without a fade layer", async (
   await expect(page.locator(".bookPageLayer--outgoing")).toHaveCount(0);
 });
 
-test("V160-B2 the normal motion cross-fades the previous opening for 120ms", async ({ page }) => {
+test("V160-B2 the normal motion replaces the opening without a fade layer", async ({
+  page,
+}) => {
   await openBook(page, bookFixture({ state: { lastPage: 34 } }), false);
   expect(
     await page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches),
   ).toBe(false);
   await page.getByRole("button", { name: "次のページ" }).click();
   await expect(page.locator(".bookPageLabel")).toHaveText("36–37 / 120");
-  await expect(page.locator(".bookPageLayer--outgoing")).toHaveCount(1);
-  await page.clock.runFor(120);
   await expect(page.locator(".bookPageLayer--outgoing")).toHaveCount(0);
 });
 

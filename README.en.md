@@ -54,8 +54,7 @@ Note: it is not a complete port of the Windows product. The Web Demo has a separ
   On the “Plan this week” tab of Records, review last week's total time, active days, sessions, time per project, and completed items, then choose up to three focus projects. Projects whose Next Step has stayed the same for 14 days or more appear under “Not moving lately” with “Make it smaller” and “Keep”. “Copy with last week's facts” builds a prompt for ChatGPT or Claude, and you can add the JSON reply through Bulk import. No scores or ratings.
 
 - **View instructions**
-  Read Markdown, text, sanitized HTML, and MHTML (`.mhtml` / `.mht`) files from registered folders in a separate window.
-- Read a ZIP of images as a book in the instruction viewer (two-page spread, right-to-left, resume where you left off)
+  Read Markdown, text, sanitized HTML, and MHTML (`.mhtml` / `.mht`) files from registered folders in a separate window. Image ZIPs open as a book (two-page spread, right-to-left, resume where you left off).
 
 - **Keys**
   `Ctrl+K` dictionary / `Ctrl+F` search / `F1` guide / `Ctrl+W` close / on a row `Enter` start (Other ideas: make it the Next Step), `F2` edit, `Delete` remove (Today's Three: remove from today) / while a menu is open `T` add to Today's Three / `Ctrl+Z` undo / `Menu` or `Shift+F10` menu. Configure the show/hide, mini, and instructions keys in Settings.

@@ -137,6 +137,9 @@ export const HELP_GUIDE_SECTIONS: HelpGuideSection[] = [
           { keys: "← →", action: "本の画面で: 右から左なら ← が次・→ が前、左から右なら逆" },
           { keys: "PageUp / PageDown / Space / Shift + Space", action: "本の画面で: 前 / 次 / 次 / 前" },
           { keys: "Home / End", action: "本の画面で: 最初 / 最後" },
+          { keys: "Ctrl + G", action: "本の画面で: ページの数を打って移る" },
+          { keys: "+ / -", action: "本の画面で: 拡大 / 縮小" },
+          { keys: "0", action: "本の画面で: 全体に戻す" },
           { keys: "設定で決めたキー", action: "表示/隠す・ミニ・手順書(設定で変えられます)" },
         ],
       },
@@ -312,6 +315,14 @@ export const HELP_GUIDE_SECTIONS: HelpGuideSection[] = [
       {
         type: "paragraph",
         text: "画像の入った ZIP を手順書のフォルダに置くと、本のように開けます。見開きと1ページ、右から左と左から右を切り替えられ、教材ごとに覚えます。最後に見たページから開き、今やる一手の手順書の札に「p.34」のように出ます。中の画像(JPEG・PNG・WebP・GIF)だけを開き、それ以外は開きません。",
+      },
+      {
+        type: "paragraph",
+        text: "ページ表示を押すか Ctrl+G で、ページの数を打って移れます。下の線を押す・引くと、その場所へ移れます。",
+      },
+      {
+        type: "paragraph",
+        text: "− ＋ か、Ctrl を押しながらホイールで拡大・縮小できます。拡大している時は、ホイールと、引いて動かすので、ページの中を見て回れます。真ん中の表示を押すか 0 で、全体に戻ります。",
       },
     ],
   },

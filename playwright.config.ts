@@ -1,13 +1,13 @@
 import { defineConfig } from "@playwright/test";
 import { availableParallelism } from "node:os";
 
-const localWorkers = Math.max(1, Math.min(4, Math.floor(availableParallelism() / 2)));
+const localWorkers = Math.max(1, Math.min(8, Math.floor(availableParallelism() / 2)));
 
 export default defineConfig({
   testDir: "./tests/visual",
   globalSetup: "./tests/visual/global-setup.ts",
   outputDir: "dist/visual-qa/test-results",
-  fullyParallel: false,
+  fullyParallel: true,
   // CI (windows-latest, 4 vCPU) runs two workers. Measured on that runner: see PR #166.
   workers: process.env.CI ? 2 : localWorkers,
   // An explicit project keeps --workers from inheriting a per-project cap.
@@ -23,9 +23,9 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   webServer: {
-    command: "npm.cmd run dev -- --port 1437 --strictPort",
+    command: "npm.cmd run serve:qa",
     url: "http://127.0.0.1:1437",
     reuseExistingServer: false,
-    timeout: 30_000,
+    timeout: 180_000,
   },
 });

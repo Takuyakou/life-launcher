@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import { test, type Page } from "@playwright/test";
 import type { VisualQaFixture } from "./fixtures";
 
 const TEST_PATHS = {
@@ -6,6 +6,28 @@ const TEST_PATHS = {
   sessions: "C:\\\\PublicDemo\\\\sessions.jsonl",
   notes: "C:\\\\PublicDemo\\\\notes.json",
 };
+
+// Record only: failed requests and same-origin answers of 400 or more, so a page that
+// loses its stylesheet under load shows why in the report. It never fails a test.
+function recordQaNetwork(page: Page): void {
+  const note = (description: string) => {
+    try {
+      test.info().annotations.push({ type: "qa-net", description });
+    } catch {
+      console.warn("[qa-net]", description);
+    }
+  };
+  page.on("requestfailed", (request) => {
+    note(`failed ${request.url()} ${request.failure()?.errorText ?? ""}`);
+  });
+  page.on("response", (response) => {
+    if (response.status() < 400) return;
+    const url = new URL(response.url());
+    const frameUrl = response.frame().url();
+    if (frameUrl.startsWith("http") && new URL(frameUrl).origin !== url.origin) return;
+    note(`status ${response.status()} ${response.url()}`);
+  });
+}
 
 export async function installTauriMock(
   page: Page,
@@ -22,6 +44,8 @@ export async function installTauriMock(
     saveBlocked?: boolean;
   } = {},
 ): Promise<void> {
+  recordQaNetwork(page);
+
   await page.addInitScript(
     ({ fixture, paths, currentWindowLabel, softwareResetRecovery, options }) => {
       const configStorageKey = "life-launcher-visual-qa-config";
@@ -229,6 +253,8 @@ export async function installTauriMock(
       let launcherPickerResult: string | null = null;
       let instructionRootDelayed = false;
       const pendingInstructionRootChoices: Array<(choice: InstructionRootChoice) => void> = [];
+      const heldBookPages = new Set<number>();
+      const pendingBookPageResolvers = new Map<number, Array<() => void>>();
       const invokeCalls: Array<{ command: string; args: Record<string, unknown> }> = [];
       const callbacks = new Map<number, (event: unknown) => void>();
       const eventListeners = new Map<string, Map<number, number>>();
@@ -301,6 +327,17 @@ export async function installTauriMock(
         },
         resolveInstructionRootChoice: () => {
           pendingInstructionRootChoices.shift()?.(instructionRootChoices.shift() ?? null);
+        },
+        holdBookPage: (page: number) => {
+          heldBookPages.add(page);
+        },
+        releaseBookPage: (page: number) => {
+          heldBookPages.delete(page);
+          const waiting = pendingBookPageResolvers.get(page);
+          if (waiting) {
+            pendingBookPageResolvers.delete(page);
+            for (const resolve of waiting) resolve();
+          }
         },
         currentConfig: () => currentConfig,
         resolveExecuteActions: () => {
@@ -766,9 +803,20 @@ export async function installTauriMock(
                   skippedCount: book.skippedCount ?? 0,
                 };
               }
+              case "close_instruction_book":
+              case "release_instruction_books":
+                return null;
               case "read_instruction_book_page": {
                 const path = String(args.path ?? "");
                 const index = Number(args.index ?? -1);
+                const pageNumber = index + 1;
+                if (heldBookPages.has(pageNumber)) {
+                  await new Promise<void>((resolve) => {
+                    const queue = pendingBookPageResolvers.get(pageNumber) ?? [];
+                    queue.push(resolve);
+                    pendingBookPageResolvers.set(pageNumber, queue);
+                  });
+                }
                 const encoded = fixture.instructionBookPages?.[path]?.pages[index];
                 if (!encoded) throw new Error("page index is out of range");
                 const image = new Uint8Array(decodeBase64(encoded));
@@ -785,6 +833,7 @@ export async function installTauriMock(
                   spread: true,
                   coverSingle: true,
                   lastPage: 1,
+                  zoomPercent: 100,
                   ...fixture.instructionBookState?.[path],
                   ...stored,
                 };

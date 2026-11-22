@@ -1,12 +1,13 @@
 {
   "name": "life-launcher",
   "private": true,
-  "version": "1.6.0",
+  "version": "1.6.1",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 1420",
     "build": "tsc && vite build",
     "preview": "vite preview --host 127.0.0.1 --port 1420",
+    "serve:qa": "vite build --outDir dist-qa --emptyOutDir && vite preview --outDir dist-qa --host 127.0.0.1 --port 1437 --strictPort",
     "tauri": "tauri",
     "package:windows": "powershell -ExecutionPolicy Bypass -File scripts/package-windows.ps1",
     "package:windows:installer": "powershell -ExecutionPolicy Bypass -File scripts/package-windows-installer.ps1",

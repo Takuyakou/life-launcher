@@ -1,0 +1,1980 @@
+:root {
+  color: #f4f0e8;
+  background: #161512;
+  --app-background: #161512;
+  --font-ui: "Inter Variable", "Noto Sans JP Variable", "Yu Gothic UI", Meiryo, system-ui, sans-serif;
+  font-family: var(--font-ui);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --surface: #211f1a;
+  --surface-strong: #2b2922;
+  --surface-soft: #1b1a17;
+  --line: #4a4639;
+  --line-soft: #353126;
+  --text: #f4f0e8;
+  --muted: #b8b0a0;
+  --text-muted-readable: #a39c8e;
+  --accent: #e7b94d;
+  --accent-strong: #ffce5b;
+  --good: #6fcf97;
+  --warn: #f2a65a;
+  --error: #f06f68;
+  --control-primary-bg: #d8d1c3;
+  --control-primary-text: #181713;
+  --control-primary-hover-bg: #e9e1d2;
+  --control-primary-hover-border: #f4ecdd;
+  --control-primary-active-bg: #c8c0b2;
+  --control-primary-active-border: #c5bdaf;
+  --control-positive-bg: #27342b;
+  --control-positive-hover-bg: #304235;
+  --control-positive-active-bg: #223128;
+  --control-positive-hover-border: rgba(117, 196, 143, 0.7);
+  --control-positive-active-border: rgba(117, 196, 143, 0.58);
+  --control-short-bg: #252d38;
+  --control-short-hover-bg: #303b4a;
+  --control-short-active-bg: #202b38;
+  --control-short-hover-border: rgba(169, 208, 255, 0.7);
+  --control-short-active-border: rgba(169, 208, 255, 0.58);
+  --control-danger-bg: #3b2823;
+  --control-danger-hover-bg: #4a302a;
+  --control-danger-active-bg: #32231f;
+  --control-danger-hover-border: rgba(240, 111, 104, 0.72);
+  --control-danger-active-border: rgba(240, 111, 104, 0.6);
+  --control-neutral-bg: var(--surface);
+  --control-neutral-hover-bg: var(--surface-strong);
+  --control-neutral-active-bg: var(--surface-soft);
+  --menu-surface: #29261f;
+  --menu-hover-bg: rgba(184, 176, 160, 0.12);
+  --menu-active-bg: rgba(184, 176, 160, 0.2);
+  --menu-danger-hover-bg: rgba(240, 111, 104, 0.12);
+  --menu-danger-active-bg: rgba(240, 111, 104, 0.2);
+  --dialog-surface: var(--surface);
+  --dialog-shadow: 0 24px 60px rgba(0, 0, 0, 0.42);
+  --overlay-scrim: rgba(12, 11, 9, 0.68);
+  --overlay-scrim-strong: rgba(12, 11, 9, 0.72);
+  --dictionary-selected-bg: rgba(231, 185, 77, 0.08);
+  --empty-state-text: var(--muted);
+  --dashboard-action-surface: var(--surface);
+  --dashboard-action-start-bg: #203126;
+  --control-primary-active-shadow: inset 0 1px 0 rgba(24, 23, 19, 0.16);
+  --control-press-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.2);
+  --control-danger-press-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.22);
+  --control-neutral-press-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.22);
+  --control-warning-hover-bg: rgba(242, 166, 90, 0.2);
+  --control-warning-active-bg: rgba(242, 166, 90, 0.1);
+
+  --dialog-elevated-shadow: 0 28px 70px rgba(0, 0, 0, 0.48);
+  --menu-shadow: 0 18px 40px rgba(0, 0, 0, 0.38);
+  --radius: 8px;
+  --scrollbar-size: 8px;
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(210, 205, 190, 0.24);
+  --scrollbar-thumb-hover: rgba(210, 205, 190, 0.42);
+  --scrollbar-thumb-active: rgba(210, 205, 190, 0.56);
+  --scrollbar-radius: 999px;
+  --scrollbar-thumb-border: 2px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+[data-project-color="amber"] {
+  --project-color: #e7b94d;
+}
+[data-project-color="blue"] {
+  --project-color: #70a7ff;
+}
+[data-project-color="green"] {
+  --project-color: #6fcf97;
+}
+[data-project-color="violet"] {
+  --project-color: #b58cff;
+}
+[data-project-color="rose"] {
+  --project-color: #f184a7;
+}
+[data-project-color="cyan"] {
+  --project-color: #56c9d8;
+}
+[data-project-color="orange"] {
+  --project-color: #f2a65a;
+}
+[data-project-color="slate"] {
+  --project-color: #a8b2c1;
+}
+[data-project-color="lime"] {
+  --project-color: #b5d35c;
+}
+[data-project-color="magenta"] {
+  --project-color: #e07ad6;
+}
+[data-project-color="sand"] {
+  --project-color: #c9ab82;
+}
+[data-project-color="coral"] {
+  --project-color: #ff8b78;
+}
+
+.app-scrollbar,
+.modalBackdrop {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+.app-scrollbar::-webkit-scrollbar,
+.modalBackdrop::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+
+.app-scrollbar::-webkit-scrollbar-track,
+.modalBackdrop::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+.app-scrollbar::-webkit-scrollbar-thumb,
+.modalBackdrop::-webkit-scrollbar-thumb {
+  min-height: 32px;
+  background: var(--scrollbar-thumb);
+  border: var(--scrollbar-thumb-border) solid transparent;
+  border-radius: var(--scrollbar-radius);
+  background-clip: content-box;
+  transition: background-color 120ms ease;
+}
+
+.app-scrollbar::-webkit-scrollbar-thumb:hover,
+.modalBackdrop::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  background-clip: content-box;
+}
+
+.app-scrollbar::-webkit-scrollbar-thumb:active,
+.modalBackdrop::-webkit-scrollbar-thumb:active {
+  background: var(--scrollbar-thumb-active);
+  background-clip: content-box;
+}
+
+.app-scrollbar::-webkit-scrollbar-corner,
+.modalBackdrop::-webkit-scrollbar-corner,
+.app-scrollbar::-webkit-scrollbar-button,
+.modalBackdrop::-webkit-scrollbar-button {
+  background: transparent;
+}
+
+.app-scrollbar::-webkit-scrollbar-button,
+.modalBackdrop::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  background: #161512;
+}
+
+.dictionaryWindowLoading,
+.instructionLoading,
+.instructionShell {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  color: var(--text);
+  background: #161512;
+}
+
+.dictionaryWindowLoading,
+.instructionLoading {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.dictionaryWindowShell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 44px minmax(0, 1fr);
+  overflow: hidden;
+  color: var(--text);
+  background: var(--surface-soft);
+}
+
+.dictionaryWindowTitlebar {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 8px 0 14px;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--surface);
+  cursor: move;
+  user-select: none;
+}
+
+.dictionaryWindowTitle {
+  min-width: 0;
+  display: flex;
+  pointer-events: none;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 720;
+}
+
+.dictionaryWindowTitle strong {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.dictionaryWindowTitleActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.dictionaryWindowSettings,
+.dictionaryWindowLock,
+.dictionaryWindowClose {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.dictionaryWindowSettings:hover,
+.dictionaryWindowSettings:focus-visible,
+.dictionaryWindowLock:hover,
+.dictionaryWindowLock:focus-visible,
+.dictionaryWindowClose:hover,
+.dictionaryWindowClose:focus-visible {
+  border-color: var(--line);
+  background: var(--control-neutral-hover-bg);
+  color: var(--text);
+}
+
+.dictionaryWindowSettings:active,
+.dictionaryWindowLock:active,
+.dictionaryWindowClose:active {
+  background: var(--control-neutral-active-bg);
+  box-shadow: var(--control-neutral-press-shadow);
+}
+
+.dictionaryWindowLock[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--dictionary-selected-bg);
+  color: var(--accent);
+}
+
+.dictionaryWindowContent {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 10px;
+  overflow: hidden;
+  padding: 12px;
+}
+
+.dictionaryPageTabs {
+  min-width: 0;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 4px;
+  white-space: nowrap;
+}
+
+.dictionaryPageTab {
+  min-width: 0;
+  min-height: 36px;
+  max-width: 220px;
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, auto) auto;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 7px 10px;
+  background: var(--control-neutral-bg);
+  color: var(--muted);
+  text-align: left;
+}
+
+.dictionaryPageTab[data-overlay-page-id] {
+  cursor: grab;
+  touch-action: none;
+}
+
+.dictionaryPageTab--dragging {
+  cursor: grabbing;
+  opacity: 0.56;
+}
+
+.dictionaryPageTab--tile-drop-target {
+  border-color: var(--accent-strong);
+  background: var(--dictionary-selected-bg);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.dictionaryPageTab--drop-before {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.dictionaryPageTab--drop-after {
+  box-shadow: inset -3px 0 0 var(--accent);
+}
+.dictionaryPageTab:hover {
+  border-color: var(--line);
+  background: var(--control-neutral-hover-bg);
+  color: var(--text);
+}
+
+.dictionaryPageTab:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+  color: var(--text);
+}
+
+.dictionaryPageTab--selected,
+.dictionaryPageTab--selected:hover,
+.dictionaryPageTab--selected:focus-visible {
+  border-color: var(--line);
+  background: var(--dictionary-selected-bg);
+  color: var(--text);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.dictionaryPageTab--selected:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+
+.dictionaryPageTab span,
+.dictionaryTile > span:last-child,
+.dictionaryTileGhost > span:last-child {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dictionaryPageTab small {
+  color: var(--text-muted-readable);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.dictionaryPageTab--add {
+  width: 36px;
+  grid-template-columns: 1fr;
+  place-items: center;
+  padding: 0;
+}
+
+.dictionaryWindowShell--dragging::after {
+  content: "";
+  position: absolute;
+  inset: 48px 8px 8px;
+  z-index: 18;
+  border: 1px dashed var(--accent);
+  border-radius: var(--radius);
+  background: rgba(231, 185, 77, 0.08);
+  pointer-events: none;
+}
+
+.dictionaryDropHint {
+  position: sticky;
+  top: 0;
+  z-index: 19;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.dictionaryParityDialog {
+  width: min(520px, calc(100% - 24px));
+  max-height: calc(100% - 24px);
+}
+
+.dictionaryParityDialog.editDialog {
+  width: 560px;
+  max-width: calc(100% - 24px);
+  height: 620px;
+  max-height: calc(100% - 24px);
+}
+.dictionarySearchField {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.dictionarySearchLabel {
+  color: var(--text-muted-readable);
+  font-size: 11px;
+  font-weight: 760;
+}
+
+.dictionarySearchInput {
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 0 11px;
+  background: var(--control-neutral-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.dictionarySearchInput:hover {
+  border-color: var(--line);
+}
+
+.dictionarySearchInput:focus {
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 2px rgba(231, 185, 77, 0.18);
+}
+
+.dictionarySearchInput::placeholder {
+  color: var(--muted);
+}
+
+.dictionarySearchResults {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.dictionarySearchScope {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 2px;
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dictionarySearchScope small {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.dictionarySearchResult {
+  min-width: 0;
+  min-height: 54px;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.dictionarySearchResult:disabled,
+.dictionaryTile:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
+.dictionarySearchResult:hover {
+  border-color: var(--line);
+  background: var(--control-neutral-hover-bg);
+}
+
+.dictionarySearchResult:focus-visible {
+  border-color: var(--accent-strong);
+  outline: none;
+}
+
+.dictionarySearchResult--selected {
+  border-color: var(--accent);
+  background: var(--dictionary-selected-bg);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.dictionarySearchResultIcon {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  object-fit: contain;
+  color: var(--accent-strong);
+  font-size: 21px;
+  line-height: 1;
+}
+
+.dictionarySearchResultCopy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.dictionarySearchResultCopy strong,
+.dictionarySearchResultCopy small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dictionarySearchResultCopy small {
+  color: var(--text-muted-readable);
+  font-size: 11px;
+}
+
+.dictionaryWindowBody {
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.dictionaryLaunchStatus {
+  margin-bottom: 10px;
+  border-left: 2px solid var(--accent);
+  padding: 7px 9px;
+  background: var(--dictionary-selected-bg);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.dictionaryLaunchStatus--error {
+  border-left-color: var(--error);
+  background: var(--menu-danger-hover-bg);
+  color: var(--error);
+}
+
+.dictionaryWindowConfigWarning {
+  margin-bottom: 10px;
+  border-left: 2px solid var(--error);
+  padding: 7px 9px;
+  background: var(--menu-danger-hover-bg);
+  color: var(--error);
+  font-size: 12px;
+}
+
+.dictionaryTileGrid {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(104px, 100%), 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dictionaryWindowShell[data-tile-size="small"] .dictionaryTileGrid {
+  grid-template-columns: repeat(auto-fill, minmax(min(84px, 100%), 1fr));
+  gap: 8px;
+}
+
+.dictionaryWindowShell[data-tile-size="small"] .dictionaryTile {
+  min-height: 72px;
+  grid-template-rows: 26px auto;
+  gap: 5px;
+  padding: 7px 6px;
+  font-size: 11px;
+}
+
+.dictionaryWindowShell[data-tile-size="small"] .dictionaryTileIcon {
+  width: 24px;
+  height: 24px;
+  font-size: 19px;
+}
+
+.dictionaryWindowShell[data-tile-size="medium"] .dictionaryTileGrid {
+  grid-template-columns: repeat(auto-fill, minmax(min(112px, 100%), 1fr));
+}
+
+.dictionaryWindowShell[data-tile-size="medium"] .dictionaryTile {
+  min-height: 94px;
+  grid-template-rows: 38px auto;
+}
+
+.dictionaryWindowShell[data-tile-size="medium"] .dictionaryTileIcon {
+  width: 36px;
+  height: 36px;
+  font-size: 27px;
+}
+
+.dictionaryWindowShell[data-tile-size="large"] .dictionaryTileGrid {
+  grid-template-columns: repeat(auto-fill, minmax(min(136px, 100%), 1fr));
+  gap: 12px;
+}
+
+.dictionaryWindowShell[data-tile-size="large"] .dictionaryTile {
+  min-height: 116px;
+  grid-template-rows: 46px auto;
+  gap: 10px;
+  padding: 12px 10px;
+  font-size: 13px;
+}
+
+.dictionaryWindowShell[data-tile-size="large"] .dictionaryTileIcon {
+  width: 44px;
+  height: 44px;
+  font-size: 34px;
+}
+
+.dictionaryTileItem {
+  min-width: 0;
+  list-style: none;
+}
+
+.dictionaryTileItem--placeholder {
+  border: 1px dashed var(--accent);
+  border-radius: var(--radius);
+  background: rgba(231, 185, 77, 0.08);
+}
+
+.dictionaryTile--placeholder {
+  opacity: 0;
+}
+
+.dictionaryTileGhost {
+  position: fixed;
+  z-index: 60;
+  min-width: 0;
+  display: grid;
+  grid-template-rows: 34px auto;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  border: 1px solid var(--accent-strong);
+  border-radius: var(--radius);
+  padding: 10px 8px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.42);
+  font-size: 12px;
+  font-weight: 760;
+  text-align: center;
+  pointer-events: none;
+  user-select: none;
+}
+
+.dictionaryTile {
+  min-width: 0;
+  width: 100%;
+  min-height: 88px;
+  display: grid;
+  grid-template-rows: 34px auto;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 10px 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 760;
+  text-align: center;
+  cursor: grab;
+  touch-action: none;
+}
+
+.dictionaryTile:hover {
+  border-color: var(--line);
+  background: var(--control-neutral-hover-bg);
+}
+
+.dictionaryTile:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+
+.dictionaryTile--selected {
+  border-color: var(--accent);
+  background: var(--dictionary-selected-bg);
+}
+
+.dictionaryTile[data-pointer-state="pressed"] {
+  border-color: var(--accent-strong);
+  background: var(--dictionary-selected-bg);
+  box-shadow: inset 0 0 0 1px rgba(231, 185, 77, 0.16);
+}
+
+.dictionaryTile[data-pointer-state="dragging"] {
+  border-color: var(--accent-strong);
+  background: var(--control-neutral-hover-bg);
+  cursor: grabbing;
+  opacity: 0.82;
+}
+
+.dictionaryTileIcon {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  color: var(--accent-strong);
+  font-size: 24px;
+  line-height: 1;
+}
+
+.dictionaryTileIcon.buttonIconImage {
+  object-fit: contain;
+}
+
+.dictionaryWindowShell[data-view-mode="list"] .dictionaryTileGrid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+}
+
+.dictionaryWindowShell[data-view-mode="list"] .dictionaryTile {
+  min-height: 38px;
+  grid-template-columns: 26px minmax(0, 1fr);
+  grid-template-rows: none;
+  place-items: initial;
+  align-items: center;
+  align-content: initial;
+  gap: 9px;
+  border-color: transparent;
+  padding: 4px 8px;
+  text-align: left;
+}
+
+.dictionaryWindowShell[data-view-mode="list"] .dictionaryTile > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dictionaryWindowShell[data-view-mode="list"] .dictionaryTileIcon {
+  width: 24px;
+  height: 24px;
+  font-size: 19px;
+}
+
+.dictionaryWindowShell[data-view-mode="list"][data-tile-size="small"] .dictionaryTile {
+  min-height: 32px;
+  grid-template-columns: 22px minmax(0, 1fr);
+}
+
+.dictionaryWindowShell[data-view-mode="list"][data-tile-size="small"] .dictionaryTileIcon {
+  width: 20px;
+  height: 20px;
+  font-size: 16px;
+}
+
+.dictionaryWindowShell[data-view-mode="list"][data-tile-size="medium"] .dictionaryTile {
+  min-height: 40px;
+  grid-template-columns: 28px minmax(0, 1fr);
+}
+
+.dictionaryWindowShell[data-view-mode="list"][data-tile-size="medium"] .dictionaryTileIcon {
+  width: 26px;
+  height: 26px;
+  font-size: 21px;
+}
+
+.dictionaryWindowShell[data-view-mode="list"][data-tile-size="large"] .dictionaryTile {
+  min-height: 46px;
+  grid-template-columns: 32px minmax(0, 1fr);
+}
+
+.dictionaryWindowShell[data-view-mode="list"][data-tile-size="large"] .dictionaryTileIcon {
+  width: 30px;
+  height: 30px;
+  font-size: 24px;
+}
+
+.dictionaryWindowState {
+  min-height: 100%;
+  display: grid;
+  place-content: center;
+  gap: 6px;
+  border: 1px dashed var(--line-soft);
+  border-radius: var(--radius);
+  padding: 20px;
+  color: var(--text-muted-readable);
+  font-size: 13px;
+  text-align: center;
+}
+
+.dictionaryWindowState strong {
+  color: var(--text);
+}
+
+.dictionaryTitlebarMenu {
+  position: fixed;
+  z-index: 80;
+  width: 172px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 4px;
+  background: var(--surface);
+  box-shadow: var(--menu-shadow);
+}
+
+.dictionaryTitlebarMenu button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: calc(var(--radius) - 2px);
+  padding: 8px 9px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 760;
+  text-align: left;
+}
+
+.dictionaryTitlebarMenu button:hover,
+.dictionaryTitlebarMenu button:focus-visible {
+  background: var(--control-neutral-hover-bg);
+}
+
+.dictionarySettingsBackdrop {
+  position: fixed;
+  z-index: 90;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: transparent;
+  pointer-events: none;
+}
+
+.dictionarySettingsDialog {
+  width: min(420px, 100%);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--dialog-shadow);
+  pointer-events: auto;
+}
+
+.dictionarySettingsHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--line-soft);
+  padding: 14px 14px 12px 16px;
+}
+
+.dictionarySettingsHeader h2 {
+  margin: 2px 0 0;
+  font-size: 18px;
+}
+
+.dictionarySettingsHeader .eyebrow {
+  margin: 0;
+  font-size: 11px;
+}
+
+.dictionarySizeFieldset {
+  margin: 0;
+  border: 0;
+  padding: 16px;
+}
+
+.dictionarySizeFieldset legend {
+  padding: 0;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.dictionarySizeFieldset p {
+  margin: 5px 0 12px;
+  color: var(--text-muted-readable);
+  font-size: 12px;
+}
+
+.dictionarySizeOptions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.dictionaryViewFieldset {
+  padding-bottom: 4px;
+}
+
+.dictionaryViewOptions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dictionarySizeOptions button {
+  min-width: 0;
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dictionarySizeOptions button:hover,
+.dictionarySizeOptions button:focus-visible {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.dictionarySizeOptions button.isSelected {
+  border-color: var(--accent);
+  background: var(--dictionary-selected-bg);
+  color: var(--accent-strong);
+}
+
+.dictionarySettingsActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid var(--line-soft);
+  padding: 12px 16px;
+}
+
+.dictionarySettingsActions button {
+  min-width: 92px;
+}
+
+.dictionarySettingsActions .primaryButton,
+.dropRegisterActions .primaryButton {
+  border-color: color-mix(in srgb, var(--good) 48%, var(--line));
+  background: var(--control-positive-bg);
+  color: var(--good);
+}
+
+.dictionarySettingsActions .primaryButton:hover:not(:disabled),
+.dictionarySettingsActions .primaryButton:focus-visible,
+.dropRegisterActions .primaryButton:hover:not(:disabled),
+.dropRegisterActions .primaryButton:focus-visible {
+  border-color: var(--control-positive-hover-border);
+  background: var(--control-positive-hover-bg);
+  color: var(--good);
+}
+
+.dictionarySettingsActions .primaryButton:active:not(:disabled),
+.dropRegisterActions .primaryButton:active:not(:disabled) {
+  border-color: var(--control-positive-active-border);
+  background: var(--control-positive-active-bg);
+  box-shadow: var(--control-press-shadow);
+}
+
+.dictionaryResizeHandle {
+  position: fixed;
+  z-index: 3;
+}
+
+.dictionaryResizeHandle--north,
+.dictionaryResizeHandle--south {
+  right: 10px;
+  left: 10px;
+  height: 8px;
+  cursor: ns-resize;
+}
+
+.dictionaryResizeHandle--north {
+  top: 0;
+}
+
+.dictionaryResizeHandle--south {
+  bottom: 0;
+}
+
+.dictionaryResizeHandle--east,
+.dictionaryResizeHandle--west {
+  top: 10px;
+  bottom: 10px;
+  width: 8px;
+  cursor: ew-resize;
+}
+
+.dictionaryResizeHandle--east {
+  right: 0;
+}
+
+.dictionaryResizeHandle--west {
+  left: 0;
+}
+
+.dictionaryResizeHandle--northEast,
+.dictionaryResizeHandle--southWest,
+.dictionaryResizeHandle--northWest,
+.dictionaryResizeHandle--southEast {
+  width: 14px;
+  height: 14px;
+}
+
+.dictionaryResizeHandle--northEast {
+  top: 0;
+  right: 0;
+  cursor: nesw-resize;
+}
+
+.dictionaryResizeHandle--southWest {
+  bottom: 0;
+  left: 0;
+  cursor: nesw-resize;
+}
+
+.dictionaryResizeHandle--northWest {
+  top: 0;
+  left: 0;
+  cursor: nwse-resize;
+}
+
+.dictionaryResizeHandle--southEast {
+  right: 0;
+  bottom: 0;
+  cursor: nwse-resize;
+}
+
+.instructionShell {
+  display: grid;
+  grid-template-rows: 58px minmax(0, 1fr);
+}
+
+.instructionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+  padding: 10px 12px 10px 18px;
+  background: var(--surface-soft);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.instructionHeaderTitle {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.instructionHeaderEyebrow {
+  color: var(--accent);
+  font-size: 11px;
+}
+
+.instructionHeaderTitle strong {
+  overflow: hidden;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.instructionHeaderActions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.instructionIconButton {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  place-items: center;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.instructionIconButton:hover:not(:disabled),
+.instructionIconButton:focus-visible {
+  color: var(--text);
+  background: var(--surface-strong);
+  border-color: var(--line);
+}
+
+.instructionIconButton:active:not(:disabled) {
+  background: var(--surface-soft);
+  box-shadow: var(--control-neutral-press-shadow);
+}
+
+.instructionIconButton[aria-pressed="true"] {
+  color: var(--accent-strong);
+  background: rgba(231, 185, 77, 0.1);
+  border-color: rgba(231, 185, 77, 0.42);
+}
+
+.instructionIconButton:disabled {
+  opacity: 0.36;
+  cursor: not-allowed;
+}
+
+.instructionWorkspace {
+  display: grid;
+  grid-template-columns: minmax(0, var(--instruction-sidebar-width, 248px)) 7px minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+}
+
+.instructionSidebar {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  padding: 14px 12px;
+  background: #191815;
+  container-type: inline-size;
+}
+
+.instructionSidebarDivider {
+  position: relative;
+  z-index: 2;
+  width: 7px;
+  min-height: 0;
+  border: 0;
+  border-right: 1px solid var(--line-soft);
+  border-left: 1px solid transparent;
+  background: #191815;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.instructionSidebarDivider::after {
+  content: "";
+  position: absolute;
+  inset: 0 2px;
+  background: transparent;
+}
+
+.instructionSidebarDivider:hover::after,
+.instructionSidebarDivider:focus-visible::after,
+.instructionShell--resizing .instructionSidebarDivider::after {
+  background: var(--accent);
+}
+
+.instructionSidebarDivider:focus-visible {
+  outline: 0;
+}
+
+.instructionShell--resizing,
+.instructionShell--resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+.instructionSidebarHeading {
+  padding: 0 4px 12px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.instructionTreePanel {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+}
+
+.instructionTreeTools {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 34px;
+  gap: 6px;
+  padding-bottom: 10px;
+}
+
+@container (max-width: 220px) {
+  .instructionTreeTools {
+    grid-template-columns: minmax(0, 1fr) 34px;
+  }
+
+  .instructionSearchField {
+    grid-column: 1 / -1;
+  }
+
+  .instructionTreeLoad {
+    justify-content: center;
+  }
+}
+
+.instructionSearchField {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: center;
+  min-width: 0;
+  height: 34px;
+  padding: 0 8px;
+  color: var(--muted);
+  background: #12110f;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.instructionSearchField:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(231, 185, 77, 0.2);
+}
+
+.instructionSearchField input {
+  width: 100%;
+  min-width: 0;
+  height: 30px;
+  padding: 0;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  outline: 0;
+  font-size: 12px;
+}
+
+.instructionSearchField input::placeholder {
+  color: var(--text-muted-readable);
+}
+
+.instructionTreeRefresh {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  padding: 0;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.instructionTreeLoad {
+  display: flex;
+  height: 34px;
+  align-items: center;
+  gap: 3px;
+  padding: 0 9px;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.instructionTreeLoad:hover:not(:disabled),
+.instructionTreeLoad:focus-visible {
+  color: var(--accent-strong);
+  background: var(--surface-strong);
+  border-color: var(--accent);
+}
+
+.instructionTreeLoad:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.instructionTreeRefresh:hover:not(:disabled),
+.instructionTreeRefresh:focus-visible {
+  color: var(--text);
+  background: var(--surface-strong);
+  border-color: var(--muted);
+}
+
+.instructionTreeRefresh:disabled {
+  opacity: 0.4;
+}
+
+.instructionTreeScroll {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.instructionTreeMessage {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 6px;
+  min-height: 150px;
+  padding: 20px 10px;
+  color: var(--text-muted-readable);
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.instructionTreeMessage strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.instructionTreeMessage--error,
+.instructionTreeInlineError {
+  color: #ffaaa4;
+}
+
+.instructionTreeInlineError {
+  padding: 8px 10px;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.instructionTreeGroup {
+  min-width: 0;
+}
+
+.instructionTreeRow {
+  position: relative;
+  display: grid;
+  grid-template-columns: 22px 20px minmax(0, 1fr) auto;
+  align-items: center;
+  width: 100%;
+  height: 32px;
+  min-width: 0;
+  padding: 0 6px 0 calc((var(--instruction-tree-level) - 1) * 17px);
+  color: var(--text);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: default;
+  user-select: none;
+}
+
+.instructionTreeRow[draggable="true"] {
+  cursor: grab;
+}
+
+.instructionTreeRow--dragging {
+  border-color: var(--accent);
+  cursor: grabbing;
+  opacity: 0.58;
+}
+
+.instructionTreeRow--dropTarget {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
+.instructionTreeRow--dragging .instructionTreeMore {
+  opacity: 0;
+}
+
+.instructionTreeRow:hover {
+  background: var(--surface-soft);
+}
+
+.instructionTreeRow:focus-visible {
+  border-color: var(--accent);
+  outline: 0;
+}
+
+.instructionTreeRow--selected {
+  background: var(--surface-strong);
+}
+
+.instructionTreeRow--selected::before {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  width: 2px;
+  background: var(--accent);
+  content: "";
+}
+
+.instructionTreeRow--unavailable {
+  color: var(--text-muted-readable);
+}
+
+.instructionTreeDisclosure {
+  display: grid;
+  width: 22px;
+  height: 28px;
+  place-items: center;
+  padding: 0;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  font-size: 10px;
+}
+
+button.instructionTreeDisclosure:hover {
+  color: var(--accent-strong);
+}
+
+.instructionTreeKind {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  color: var(--accent-strong);
+}
+
+.instructionTreeKind svg,
+.instructionSearchResultName svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
+.instructionFileIcon--markdown {
+  color: #9b8cf5;
+}
+
+.instructionFileIcon--text {
+  color: #72aee6;
+}
+
+.instructionFileIcon--html {
+  color: #e88658;
+}
+
+.instructionFileIcon--mhtml,
+.instructionTreeFileIcon--mhtml {
+  color: #56c9d8;
+}
+
+.instructionTreeName {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.instructionTreeUnavailable {
+  color: #ffaaa4;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.instructionTreeMore {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  padding: 0;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  opacity: 0;
+}
+
+.instructionTreeRow:hover .instructionTreeMore,
+.instructionTreeRow:focus-within .instructionTreeMore,
+.instructionTreeMore:focus-visible {
+  opacity: 1;
+}
+
+.instructionTreeMore:hover,
+.instructionTreeMore:focus-visible {
+  color: var(--text);
+  background: var(--surface-strong);
+  border-color: var(--line);
+  outline: 0;
+}
+
+.instructionTreeStatus {
+  position: absolute;
+  right: 2px;
+  bottom: 4px;
+  left: 0;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 24px;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 7px 7px 7px 9px;
+  color: var(--text);
+  background: #29261f;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.32);
+  font-size: 11px;
+}
+
+.instructionTreeStatus span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.instructionTreeStatus button {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+}
+
+.instructionContextMenu {
+  position: fixed;
+  z-index: 90;
+  display: grid;
+  width: 210px;
+  padding: 5px;
+  background: #24221d;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.48);
+}
+
+.instructionContextMenu button {
+  min-height: 32px;
+  padding: 6px 9px;
+  color: var(--text);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.instructionContextMenu button:hover,
+.instructionContextMenu button:focus-visible {
+  background: var(--surface-strong);
+  outline: 0;
+}
+
+.instructionContextMenu .instructionContextMenuDanger {
+  color: #ffaaa4;
+}
+
+.instructionOperationBackdrop {
+  z-index: 110;
+}
+
+.instructionOperationDialog {
+  width: min(420px, calc(100vw - 32px));
+}
+
+.instructionOperationForm {
+  display: grid;
+  gap: 14px;
+}
+
+.instructionOperationForm input,
+.instructionOperationForm select {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.instructionOperationForm input:focus,
+.instructionOperationForm select:focus {
+  border-color: var(--accent);
+  outline: 0;
+  box-shadow: 0 0 0 1px rgba(231, 185, 77, 0.22);
+}
+
+.instructionProjectLinkDialog {
+  width: min(580px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+.instructionProjectLinkHeader {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--line-soft);
+  padding: 16px 18px 14px;
+}
+
+.instructionProjectLinkHeader h2,
+.instructionProjectLinkHeader p {
+  margin: 0;
+}
+
+.instructionProjectLinkForm {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.instructionProjectLinkBody {
+  min-height: 0;
+  display: grid;
+  gap: 14px;
+  overflow-y: auto;
+  padding: 16px 18px 18px;
+}
+
+.instructionProjectLinkSource,
+.instructionProjectLinkTarget {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.instructionProjectLinkLabel {
+  color: var(--text-muted-readable);
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.instructionProjectLinkSourceCard {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px 11px;
+  background: var(--surface-soft);
+}
+
+.instructionProjectLinkSourceCopy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.instructionProjectLinkSourceCopy strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.instructionProjectLinkSourceCopy small,
+.instructionProjectLinkHelper {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.instructionProjectLinkArrow {
+  color: var(--muted);
+  text-align: center;
+  line-height: 1;
+}
+
+.instructionProjectLinkTarget select {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  overflow: hidden;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  background: var(--surface);
+  color: var(--text);
+  text-overflow: ellipsis;
+}
+
+.instructionProjectLinkPreview {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  border-left: 3px solid var(--project-color);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: 9px 10px;
+  background: var(--surface-soft);
+}
+
+.instructionProjectLinkProject {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  color: var(--text-muted-readable);
+  font-size: 11px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.instructionProjectLinkProject i {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--project-color);
+}
+
+.instructionProjectLinkPreview > strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.instructionProjectLinkHelper,
+.instructionProjectLinkInfo,
+.instructionProjectLinkNotice {
+  margin: 0;
+}
+
+.instructionProjectLinkInfo,
+.instructionProjectLinkNotice,
+.instructionProjectLinkEmpty {
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 9px 10px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.instructionProjectLinkEmpty {
+  display: grid;
+  gap: 4px;
+}
+
+.instructionProjectLinkEmpty strong {
+  color: var(--text);
+}
+
+.instructionProjectLinkFooter {
+  margin: 0;
+  border-top: 1px solid var(--line);
+  padding: 12px 18px;
+  background: var(--dialog-surface);
+}
+
+@media (max-width: 480px) {
+  .instructionProjectLinkDialog {
+    width: calc(100vw - 12px);
+    max-height: calc(100vh - 12px);
+  }
+}
+
+.instructionOperationExtension {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.instructionSearchResult {
+  display: grid;
+  width: 100%;
+  gap: 3px;
+  padding: 8px 9px;
+  color: var(--muted);
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+}
+
+.instructionSearchResult:hover,
+.instructionSearchResult--active,
+.instructionSearchResult:focus-visible {
+  color: var(--text);
+  background: var(--surface-soft);
+  border-color: var(--line);
+  outline: 0;
+}
+
+.instructionSearchResultName {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.instructionSearchResultName > span {
+  color: var(--accent-strong);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.instructionSearchResultName strong,
+.instructionSearchResult > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.instructionSearchResultName strong {
+  color: inherit;
+  font-size: 12px;
+}
+
+.instructionSearchResult > span:last-child {
+  padding-left: 23px;
+  font-size: 10px;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  border: 0;
+  clip: rect(0, 0, 0, 0);
+}
+
+.instructionContentPane {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+  background: #171613;
+}
+
+.instructionContentBody {
+  display: grid;
+  grid-row: 2;
+  min-width: 0;
+  min-height: 0;
+}
+
+.instructionExternalBanner {
+  display: grid;
+  grid-row: 1;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px 12px;
+  color: var(--muted);
+  background: #27231a;
+  border-bottom: 1px solid rgba(231, 185, 77, 0.34);
+  font-size: 12px;
+}
+
+.instructionExternalBanner strong {
+  color: var(--accent-strong);
+  white-space: nowrap;
+}
+
+.instructionExternalBanner > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.instructionExternalBanner > div,
+.instructionEditorToolbar > div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.instructionExternalBanner button,
+.instructionEditorToolbar button {
+  min-height: 30px;
+  padding: 5px 9px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.instructionExternalBanner button:hover,
+.instructionExternalBanner button:focus-visible,
+.instructionEditorToolbar button:hover:not(:disabled),
+.instructionEditorToolbar button:focus-visible {
+  background: var(--surface-strong);
+  border-color: var(--muted);
+  outline: 0;
+}
+
+.instructionEditor {
+  display: grid;
+  grid-template-rows: 44px minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+}
+
+.instructionEditorToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 12px;
+  color: var(--accent-strong);
+  background: var(--surface-soft);
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.instructionEditorToolbar button:disabled {
+  opacity: 0.42;
+}
+
+.instructionEditorTextarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 24px clamp(24px, 4vw, 56px) 42px;
+  resize: none;
+  color: #e7e2d8;
+  background: #171613;
+  border: 0;
+  outline: 0;
+  font-family: "Cascadia Mono", "Consolas", monospace;
+  font-size: 14px;
+  line-height: 1.7;
+  tab-size: 2;
+}
+
+.instructionEditorTextarea:focus {
+  box-shadow: inset 0 0 0 1px rgba(231, 185, 77, 0.24);
+}
+
+.instructionDocument {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 30px clamp(28px, 5vw, 72px) 52px;
+}
+

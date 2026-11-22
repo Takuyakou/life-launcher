@@ -452,6 +452,7 @@ pub fn move_instruction_to_recycle_bin(path: String) -> Result<InstructionRecycl
     }
     let response_path = path_for_response(&target.path);
     let revalidated = validate_existing_target(&target.path, &roots)?;
+    crate::commands::instruction_books::evict_books_under_path(&revalidated.path);
     recycle_path(revalidated.path)?;
     Ok(InstructionRecycleResponse {
         path: response_path,
@@ -1122,9 +1123,18 @@ fn rename_instruction(
     new_name: &str,
     expect_directory: bool,
 ) -> Result<InstructionRenameResponse, String> {
-    validate_instruction_name(new_name)?;
     let roots = read_configured_root_strings()?;
-    let target = validate_existing_target(path, &roots)?;
+    rename_instruction_for_roots(path, new_name, expect_directory, &roots)
+}
+
+pub(crate) fn rename_instruction_for_roots(
+    path: &Path,
+    new_name: &str,
+    expect_directory: bool,
+    roots: &[String],
+) -> Result<InstructionRenameResponse, String> {
+    validate_instruction_name(new_name)?;
+    let target = validate_existing_target(path, roots)?;
     if paths_equal(&target.root, &target.path) {
         return Err("registered instruction roots cannot be renamed".to_string());
     }
@@ -1163,7 +1173,8 @@ fn rename_instruction(
         return Err("an instruction item with that name already exists".to_string());
     }
 
-    validate_existing_target(&target.path, &roots)?;
+    validate_existing_target(&target.path, roots)?;
+    crate::commands::instruction_books::evict_books_under_path(&target.path);
     fs::rename(&target.path, &destination).map_err(|error| {
         format!(
             "failed to rename {} to {}: {error}",
@@ -1551,7 +1562,7 @@ fn path_is_within_text(path: &Path, root: &Path) -> bool {
             .is_some_and(|rest| root.ends_with('\\') || rest.starts_with('\\'))
 }
 
-fn path_is_within(path: &Path, root: &Path) -> bool {
+pub(crate) fn path_is_within(path: &Path, root: &Path) -> bool {
     path_is_within_text(path, root)
 }
 

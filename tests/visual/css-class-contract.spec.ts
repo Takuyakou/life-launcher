@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { dirname, join } from "node:path";
 
 // P10-18d: P10-15 deleted four settings classes that another screen still used, and nothing noticed.
 // Every class written as a plain className="..." string in a .tsx must appear as ".name" in styles.css
@@ -20,6 +20,14 @@ const MARKER_ONLY = new Set([
   "topPillGroup--work",
 ]);
 
+/** styles.css only @imports the parts in src/styles/: follow them in order and join the contents. */
+function readStyles(path: string): string {
+  if (!existsSync(path)) throw new Error("Missing stylesheet: " + path);
+  return readFileSync(path, "utf8").replace(/^@import "([^"]+)";\r?\n?/gm, (_, target: string) =>
+    readStyles(join(dirname(path), target)),
+  );
+}
+
 function tsxFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const path = join(dir, name);
@@ -31,7 +39,7 @@ function tsxFiles(dir: string): string[] {
 // P10-18e: the bundled fonts register "Inter Variable" / "Noto Sans JP Variable". A plain `Inter` or
 // `"Noto Sans JP"` only works on a PC that has the font installed, so CI (and most users) got an OS font.
 test("styles.css font-family never names Inter or Noto Sans JP without ' Variable'", () => {
-  const css = readFileSync("src/styles.css", "utf8");
+  const css = readStyles("src/styles.css");
   const bad = [...css.matchAll(/font-family:\s*([^;]+);/g)]
     .map((match) => match[1])
     .filter((value) => /(["']?)(Inter|Noto Sans JP)\1(?!\s*Variable)/.test(value));
@@ -39,7 +47,7 @@ test("styles.css font-family never names Inter or Noto Sans JP without ' Variabl
 });
 
 test("every className string in src/**/*.tsx has a rule in styles.css", () => {
-  const css = readFileSync("src/styles.css", "utf8");
+  const css = readStyles("src/styles.css");
   const used = new Map<string, string>();
   for (const file of tsxFiles("src")) {
     const source = readFileSync(file, "utf8");
