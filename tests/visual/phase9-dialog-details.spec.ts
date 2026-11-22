@@ -71,8 +71,8 @@ test("P9-10 the Wishlist edit dialog and the Dictionary window share the same En
 });
 
 test("P9-10 the Dictionary window settings dialog uses the Dictionary eyebrow", async ({ page }) => {
-  // The in-Main dictionary overlay (eyebrow now "Dictionary" too) is switched off in the app
-  // (`{false && launcherOverlayOpen && ...}`), so the visible dialog of this object is the window's settings.
+  // V163-S2: the in-Main dictionary overlay was removed, so the only dialog of this object
+  // is the Dictionary window's settings.
   await open(page, createFullTodayFixture(), "dictionary", { width: 1000, height: 640 });
   await page.getByRole("button", { name: "辞書の設定" }).click();
   const dialog = page.getByRole("dialog", { name: "辞書の設定" });

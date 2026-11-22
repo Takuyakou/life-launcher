@@ -45,7 +45,7 @@ export function ExpandedTimerOverlay({
       if (
         event.key !== "Escape" ||
         complete ||
-        document.querySelector(".modalBackdrop, .launcherOverlayBackdrop")
+        document.querySelector(".modalBackdrop")
       ) {
         return;
       }
