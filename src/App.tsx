@@ -103,7 +103,10 @@ import { ConfirmDialog, type ConfirmDialogRequest } from "./components/ConfirmDi
 import { GroupNameDialog } from "./components/GroupNameDialog";
 import { ImportDialog } from "./components/ImportDialog";
 import { InboxAddDialog } from "./components/InboxAddDialog";
+import { InboxEditDialog } from "./components/InboxEditDialog";
+import { ProjectEditDialog } from "./components/ProjectEditDialog";
 import { SettingsDialog } from "./components/SettingsDialog";
+import { TodayPickerDialog } from "./components/TodayPickerDialog";
 import { ManualSessionDialog, SessionEditDialog } from "./components/SessionDialogs";
 import {
   SoftwareResetChoiceDialog,
@@ -154,8 +157,6 @@ import {
 } from "./completionFollowup";
 import {
   buttonGlyph,
-  PROJECT_COLOR_IDS,
-  PROJECT_COLOR_LABELS,
   resolveProjectColorId,
 } from "./projectIdentity";
 import { canRevealLauncherButton } from "./launcherReveal";
@@ -11437,333 +11438,51 @@ function DashboardApp() {
       )}
 
       {inboxEditingIndex !== null && config.inbox[inboxEditingIndex] && (
-        <div className="modalBackdrop" role="presentation">
-          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
-          <section
-            aria-label="やりたいこと編集"
-            aria-modal="true"
-            className="dropDialog inboxEditDialog"
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div>
-              <p className="eyebrow">Wishlist</p>
-              <h2>やりたいことを編集</h2>
-            </div>
-
-            <label className="fieldStack">
-              <span>やりたいこと</span>
-              <input
-                autoFocus
-                className="textInput"
-                maxLength={120}
-                onChange={(event) => setInboxEditDraft(event.target.value)}
-                value={inboxEditDraft}
-              />
-            </label>
-
-            <fieldset className="inboxProjectChoices">
-              <legend>プロジェクト</legend>
-              <label>
-                <input
-                  checked={!inboxEditProjectId}
-                  name="inbox-project"
-                  onChange={() => setInboxEditProjectId("")}
-                  type="radio"
-                />
-                <span>プロジェクトなし</span>
-              </label>
-              {config.projects.map((project) => (
-                <label key={project.id}>
-                  <input
-                    checked={inboxEditProjectId === project.id}
-                    name="inbox-project"
-                    onChange={() => setInboxEditProjectId(project.id)}
-                    type="radio"
-                  />
-                  <ProjectIdentity
-                    colorId={project.colorId}
-                    compact
-                    name={project.name}
-                    projectId={project.id}
-                  />
-                </label>
-              ))}
-            </fieldset>
-
-            <h3 className="formSectionHeading">開始環境</h3>
-            <p className="formSectionDescription">
-              一緒に使う道具や、開始時に確認する手順を設定します。
-            </p>
-            <StartEnvironmentPicker
-              buttons={projectSelectableButtons}
-              onChange={setInboxEditButtonIds}
-              overlayPages={overlayPages}
-              renderIcon={renderButtonIcon}
-              selectedIds={inboxEditButtonIds}
-            />
-            <InstructionPicker
-              choices={instructionChoices}
-              error={instructionChoicesError}
-              loading={instructionChoicesLoading}
-              onChange={(instructionPath) => {
-                setInboxEditInstructionPath(instructionPath);
-                setInboxEditInstructionOpenOnStart(
-                  instructionPath
-                    ? inboxEditInstructionPath
-                      ? inboxEditInstructionOpenOnStart
-                      : true
-                    : false,
-                );
-              }}
-              onRetry={() => void refreshInstructionChoices()}
-              selectedPath={inboxEditInstructionPath}
-            />
-            <label className="projectWeeklyFocusToggle projectInstructionStartToggle">
-              <input
-                checked={inboxEditInstructionOpenOnStart}
-                disabled={!inboxEditInstructionPath}
-                onChange={(event) => setInboxEditInstructionOpenOnStart(event.target.checked)}
-                type="checkbox"
-              />
-              <span>開始時に手順書を開く</span>
-            </label>
-            <div className="dialogActions formDialogActions">
-              <button
-                className="primaryButton"
-                disabled={!inboxEditDraft.trim() || sourceEditSaving}
-                onClick={commitInboxEdit}
-                type="button"
-              >
-                保存
-              </button>
-              <button
-                className="secondaryButton dialogCancelButton"
-                onClick={() => closeInboxEditDialog()}
-                type="button"
-              >
-                キャンセル
-              </button>
-            </div>
-          </section>
-        </div>
+        <InboxEditDialog
+          config={config}
+          inboxEditDraft={inboxEditDraft}
+          inboxEditProjectId={inboxEditProjectId}
+          inboxEditButtonIds={inboxEditButtonIds}
+          inboxEditInstructionPath={inboxEditInstructionPath}
+          inboxEditInstructionOpenOnStart={inboxEditInstructionOpenOnStart}
+          instructionChoices={instructionChoices}
+          instructionChoicesError={instructionChoicesError}
+          instructionChoicesLoading={instructionChoicesLoading}
+          overlayPages={overlayPages}
+          projectSelectableButtons={projectSelectableButtons}
+          renderButtonIcon={renderButtonIcon}
+          setInboxEditDraft={setInboxEditDraft}
+          setInboxEditProjectId={setInboxEditProjectId}
+          setInboxEditButtonIds={setInboxEditButtonIds}
+          setInboxEditInstructionPath={setInboxEditInstructionPath}
+          setInboxEditInstructionOpenOnStart={setInboxEditInstructionOpenOnStart}
+          refreshInstructionChoices={refreshInstructionChoices}
+          closeInboxEditDialog={closeInboxEditDialog}
+          commitInboxEdit={commitInboxEdit}
+          sourceEditSaving={sourceEditSaving}
+        />
       )}
 
       {todayPickerOpen && (
-        <div className="modalBackdrop" role="presentation">
-          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
-          <section
-            aria-label="今日やるものを選ぶ"
-            aria-modal="true"
-            className="dropDialog todayPickerDialog"
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div className="todayPickerHead">
-              <div className="todayPickerHeadCopy">
-                <p className="eyebrow">Today</p>
-                <h2>今日やるものを選ぶ</h2>
-              </div>
-              <p className="todayPickerIntro">3件まで。決めたら、あとは始めるだけです</p>
-              <button
-                aria-label="今日やるものを選ぶを閉じる"
-                autoFocus
-                className="iconButton"
-                disabled={todayPickerSaving}
-                onClick={requestCloseTodayPicker}
-                title="閉じる"
-                type="button"
-              >
-                <UiIcon name="close" size={16} />
-              </button>
-            </div>
-
-            {/* V163-B7: the filter pills sit between the heading and the two columns. */}
-            <div
-              aria-label="プロジェクトで絞り込む"
-              className="todayPickerFilterBar"
-              role="group"
-            >
-              {todayPickerPills.map((pill) => (
-                <button
-                  aria-pressed={todayPickerFilter === pill.key}
-                  className={
-                    todayPickerFilter === pill.key
-                      ? "todayPickerFilterPill todayPickerFilterPill--active"
-                      : "todayPickerFilterPill"
-                  }
-                  key={pill.key}
-                  onClick={() => setTodayPickerFilter(pill.key)}
-                  type="button"
-                >
-                  {pill.color !== null && (
-                    <span
-                      aria-hidden="true"
-                      className="todayPickerFilterDot"
-                      data-project-color={pill.color}
-                    />
-                  )}
-                  {pill.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="todayPickerBody">
-              <section className="todayPickerSource">
-                <div
-                  className="todayPickerSourceGroup"
-                  data-today-picker-section="next-step"
-                >
-                  <h3 className="todayPickerGroupTitle">次の一手</h3>
-                  <div className="todayPickerList">
-                    {todayPickerVisibleNextSteps.length === 0 ? (
-                      <p className="todayPickerEmpty">追加できる次の一手はありません</p>
-                    ) : (
-                      todayPickerVisibleNextSteps.map((candidate) =>
-                        renderTodayPickerCandidate(candidate),
-                      )
-                    )}
-                  </div>
-                </div>
-                <div
-                  className="todayPickerSourceGroup"
-                  data-today-picker-section="wishlist"
-                >
-                  <h3 className="todayPickerGroupTitle">やりたいこと</h3>
-                  <div className="todayPickerList">
-                    {todayPickerVisibleWishlist.length === 0 ? (
-                      <p className="todayPickerEmpty">追加できるやりたいことはありません</p>
-                    ) : (
-                      todayPickerVisibleWishlist.map((candidate) =>
-                        renderTodayPickerCandidate(candidate),
-                      )
-                    )}
-                  </div>
-                  {/* V163-B7: one compact line of quick add, under the wishlist list. */}
-                  <form
-                    className="todayPickerQuickAdd"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      addTodayPickerQuickWish();
-                    }}
-                  >
-                    <input
-                      aria-label={
-                        todayPickerQuickProject
-                          ? `「${todayPickerQuickProject.name}」のやりたいことを追加`
-                          : "やりたいことを追加"
-                      }
-                      className="todayPickerQuickAddInput"
-                      disabled={todayPickerSaving}
-                      maxLength={120}
-                      onChange={(event) => setTodayPickerQuickText(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key !== "Enter") return;
-                        if (event.nativeEvent.isComposing || event.keyCode === 229) {
-                          event.preventDefault();
-                          return;
-                        }
-                        event.preventDefault();
-                        addTodayPickerQuickWish();
-                      }}
-                      placeholder={
-                        todayPickerQuickProject
-                          ? `「${todayPickerQuickProject.name}」のやりたいことを足して今日へ`
-                          : "やりたいことを足して今日へ"
-                      }
-                      type="text"
-                      value={todayPickerQuickText}
-                    />
-                    <button
-                      className="secondaryButton todayPickerQuickAddButton"
-                      disabled={todayPickerSaving}
-                      type="submit"
-                    >
-                      ＋ 追加
-                    </button>
-                  </form>
-                </div>
-              </section>
-
-              <section
-                className="todayPickerDestination"
-                data-today-picker-section="selected"
-              >
-                <div className="todayPickerDestinationHeader">
-                  <h3>今日の3件</h3>
-                  <div
-                    aria-label={`今日の3件 ${todayPickerDraftItems.length}件`}
-                    className="todayPickerCounter"
-                  >
-                    <strong>{todayPickerDraftItems.length} / 3</strong>
-                  </div>
-                  <span className="todayPickerDragHint">ドラッグで順番を変えられます</span>
-                </div>
-                <div
-                  aria-label={`今日の3件の選択状況 ${todayPickerDraftItems.length}/3`}
-                  aria-valuemax={TODAY_ITEM_LIMIT}
-                  aria-valuemin={0}
-                  aria-valuenow={todayPickerDraftItems.length}
-                  className="todayPickerProgress"
-                  role="progressbar"
-                >
-                  {/* V163-M3: the fill springs to the new count (scaleX, as before, so it rests the same). */}
-                  <motion.span
-                    animate={{ scaleX: todayPickerDraftItems.length / TODAY_ITEM_LIMIT }}
-                    initial={false}
-                    transition={springSnappy}
-                  />
-                </div>
-                <div className="todayPickerSlots">
-                  {Array.from({ length: TODAY_ITEM_LIMIT }, (_, index) => {
-                    const item = todayPickerDraftItems[index];
-                    return item ? (
-                      renderTodayPickerSelectedItem(item, index)
-                    ) : (
-                      <div
-                        className="todayPickerSlot todayPickerSlot--empty"
-                        data-today-picker-slot-index={index}
-                        key={`empty:${index}`}
-                        onDragOver={(event) => {
-                          if (todayPickerDragIndex === null) return;
-                          event.preventDefault();
-                        }}
-                        onDrop={(event) => {
-                          event.preventDefault();
-                          moveTodayPickerItemToIndex(index);
-                        }}
-                      >
-                        <span className="todayPickerSlotIndex">{index + 1}</span>
-                        <span className="todayPickerSlotEmptyLabel">
-                          空けておいてもかまいません
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-            </div>
-
-            <div className="dialogActions formDialogActions">
-              <button
-                className="primaryButton todayPickerConfirmButton"
-                disabled={todayPickerSaving}
-                onClick={() => void saveTodayPickerDraft()}
-                type="button"
-              >
-                {todayPickerSaving ? "保存中…" : "決定"}
-              </button>
-              <button
-                className="dangerButton todayPickerCancelButton"
-                disabled={todayPickerSaving}
-                onClick={requestCloseTodayPicker}
-                type="button"
-              >
-                キャンセル
-              </button>
-            </div>
-          </section>
-        </div>
+        <TodayPickerDialog
+          todayPickerDraftItems={todayPickerDraftItems}
+          todayPickerDragIndex={todayPickerDragIndex}
+          todayPickerFilter={todayPickerFilter}
+          todayPickerPills={todayPickerPills}
+          todayPickerQuickProject={todayPickerQuickProject}
+          todayPickerQuickText={todayPickerQuickText}
+          todayPickerSaving={todayPickerSaving}
+          todayPickerVisibleNextSteps={todayPickerVisibleNextSteps}
+          todayPickerVisibleWishlist={todayPickerVisibleWishlist}
+          setTodayPickerFilter={setTodayPickerFilter}
+          setTodayPickerQuickText={setTodayPickerQuickText}
+          addTodayPickerQuickWish={addTodayPickerQuickWish}
+          moveTodayPickerItemToIndex={moveTodayPickerItemToIndex}
+          renderTodayPickerCandidate={renderTodayPickerCandidate}
+          renderTodayPickerSelectedItem={renderTodayPickerSelectedItem}
+          requestCloseTodayPicker={requestCloseTodayPicker}
+          saveTodayPickerDraft={saveTodayPickerDraft}
+        />
       )}
 
       {groupDraft !== null && (
@@ -13100,148 +12819,16 @@ function DashboardApp() {
         })()}
 
       {projectEditDraft && (
-        <div className="modalBackdrop" role="presentation">
-          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
-          <section
-            aria-label={projectEditDraft.isNew ? "プロジェクトを追加" : "プロジェクトを編集"}
-            aria-modal="true"
-            className="dropDialog editDialog modalLongForm app-scrollbar"
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div className="modalTitleRow">
-              <div>
-                <p className="eyebrow">Project</p>
-                <h2>{projectEditDraft.isNew ? "プロジェクトを追加" : "プロジェクトを編集"}</h2>
-                {projectEditDraft.isNew && (
-                  <p className="dialogLead">継続して進めるテーマを登録します。</p>
-                )}
-              </div>
-              <button
-                aria-label={`${projectEditDraft.isNew ? "プロジェクトを追加" : "プロジェクトを編集"}を閉じる`}
-                className="iconButton"
-                disabled={projectEditSaving}
-                onClick={() => closeProjectEditDialog()}
-                title="閉じる"
-                type="button"
-              >
-                <UiIcon name="close" size={16} />
-              </button>
-            </div>
-
-            <h3 className="formSectionHeading">基本</h3>
-            <label className="fieldStack">
-              <span>プロジェクト名</span>
-              <input
-                autoFocus={projectEditDraft.isNew}
-                className="textInput"
-                maxLength={48}
-                onChange={(event) =>
-                  setProjectEditDraft({ ...projectEditDraft, name: event.target.value })
-                }
-                value={projectEditDraft.name}
-              />
-            </label>
-
-            <label className="fieldStack">
-              <span>目標（任意）</span>
-              <input
-                className="textInput"
-                maxLength={60}
-                onChange={(event) =>
-                  setProjectEditDraft({ ...projectEditDraft, northStar: event.target.value })
-                }
-                placeholder="EPを1枚完成させる"
-                value={projectEditDraft.northStar}
-              />
-              <small className="fieldHint">このプロジェクトで実現したい目標を1行で書きます。</small>
-            </label>
-
-            <label className="projectWeeklyFocusToggle">
-              <input
-                checked={projectEditDraft.weeklyFocus}
-                onChange={(event) => setProjectWeeklyFocus(event.target.checked)}
-                type="checkbox"
-              />
-              <span>今週の重点にする</span>
-            </label>
-
-            <h3 className="formSectionHeading">見た目</h3>
-            <div className="fieldStack">
-              <span>プロジェクトカラー</span>
-              <div
-                aria-label="プロジェクトカラー"
-                className="projectColorPalette"
-                role="radiogroup"
-              >
-                {PROJECT_COLOR_IDS.map((colorId) => (
-                  <button
-                    aria-checked={projectEditDraft.colorId === colorId}
-                    aria-label={PROJECT_COLOR_LABELS[colorId]}
-                    className={
-                      projectEditDraft.colorId === colorId
-                        ? "projectColorSwatch projectColorSwatch--selected"
-                        : "projectColorSwatch"
-                    }
-                    data-project-color={colorId}
-                    key={colorId}
-                    onClick={() => setProjectEditDraft({ ...projectEditDraft, colorId })}
-                    role="radio"
-                    title={PROJECT_COLOR_LABELS[colorId]}
-                    type="button"
-                  >
-                    <span aria-hidden="true" />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {!projectEditDraft.isNew && (
-              <section className="projectDangerZone" aria-labelledby="project-danger-zone-title">
-                <h3 id="project-danger-zone-title">危険な操作</h3>
-                <p>
-                  このプロジェクトと、現在登録されている関連項目を削除します。過去の実行記録は残ります。
-                </p>
-                <button
-                  className="dangerButton projectDeleteButton"
-                  disabled={projectEditSaving}
-                  onClick={() => {
-                    const project = config.projects.find(
-                      (candidate) => candidate.id === projectEditDraft.id,
-                    );
-                    if (project) requestProjectDeletion(project);
-                  }}
-                  type="button"
-                >
-                  プロジェクトを削除…
-                </button>
-              </section>
-            )}
-
-            <div className="dialogActions formDialogActions">
-              <button
-                className="primaryButton"
-                disabled={!projectEditDraft.name.trim() || projectEditSaving}
-                onClick={saveProjectEdit}
-                type="button"
-              >
-                {projectEditSaving
-                  ? "保存しています…"
-                  : projectEditDraft.isNew
-                    ? "プロジェクトを追加"
-                    : "保存"}
-              </button>
-              <button
-                className="secondaryButton dialogCancelButton"
-                disabled={projectEditSaving}
-                onClick={() => closeProjectEditDialog()}
-                type="button"
-              >
-                キャンセル
-              </button>
-            </div>
-          </section>
-        </div>
+        <ProjectEditDialog
+          config={config}
+          projectEditDraft={projectEditDraft}
+          projectEditSaving={projectEditSaving}
+          setProjectEditDraft={setProjectEditDraft}
+          setProjectWeeklyFocus={setProjectWeeklyFocus}
+          closeProjectEditDialog={closeProjectEditDialog}
+          requestProjectDeletion={requestProjectDeletion}
+          saveProjectEdit={saveProjectEdit}
+        />
       )}
 
       {expandedTimerOpen && activeTimer && (
