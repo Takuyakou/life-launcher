@@ -205,7 +205,9 @@ import {
 } from "./instructionWindow";
 import { isInstructionBookName } from "./instructionBook";
 import {
+  DICTIONARY_LOCK_EVENT,
   DICTIONARY_VISIBILITY_EVENT,
+  focusDictionaryWindowIfVisible,
   openDictionaryWindow,
   toggleDictionaryWindow,
 } from "./dictionaryWindow";
@@ -262,6 +264,8 @@ function DashboardApp() {
   const [banner, setBanner] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [dictionaryVisible, setDictionaryVisible] = useState(false);
+  // V163-C4: while the dictionary keeps the main screen locked (範囲外クリックで閉じる: オフ).
+  const [dictionaryLocked, setDictionaryLocked] = useState(false);
   // P10-03: the search window (D4).
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -334,11 +338,54 @@ function DashboardApp() {
   useEffect(() => {
     const unlisten = listen<boolean>(DICTIONARY_VISIBILITY_EVENT, (event) => {
       setDictionaryVisible(event.payload);
+      // V163-C4: a hidden dictionary never keeps the main screen locked.
+      if (!event.payload) setDictionaryLocked(false);
     });
     return () => {
       unlisten.then((dispose) => dispose()).catch(() => undefined);
     };
   }, []);
+  useEffect(() => {
+    const unlisten = listen<boolean>(DICTIONARY_LOCK_EVENT, (event) => {
+      setDictionaryLocked(Boolean(event.payload));
+    });
+    return () => {
+      unlisten.then((dispose) => dispose()).catch(() => undefined);
+    };
+  }, []);
+  // V163-C4: while the lock is on, nothing under the scrim takes clicks or Tab stops.
+  useEffect(() => {
+    if (!dictionaryVisible || !dictionaryLocked) return;
+    const shell = document.querySelector<HTMLElement>(".appShell");
+    if (!shell) return;
+    const children = Array.from(shell.children).filter(
+      (child): child is HTMLElement =>
+        child instanceof HTMLElement &&
+        !child.classList.contains("dictionaryMainScrim") &&
+        child.tagName !== "A",
+    );
+    for (const child of children) child.setAttribute("inert", "");
+    return () => {
+      for (const child of children) child.removeAttribute("inert");
+    };
+  }, [dictionaryLocked, dictionaryVisible]);
+  // V163-C4: while the lock is on, focusing the main window sends the focus back to the dictionary.
+  useEffect(() => {
+    if (!dictionaryVisible || !dictionaryLocked) return;
+    let disposed = false;
+    const unlistenPromise = getCurrentWindow().onFocusChanged(({ payload: focused }) => {
+      if (!focused || disposed) return;
+      void focusDictionaryWindowIfVisible();
+    });
+    return () => {
+      disposed = true;
+      void unlistenPromise
+        .then((unlisten) => {
+          if (disposed) unlisten();
+        })
+        .catch(() => undefined);
+    };
+  }, [dictionaryLocked, dictionaryVisible]);
   const [defaultTimerDraft, setDefaultTimerDraft] = useState("");
   const [victoryEditing, setVictoryEditing] = useState(false);
   const [inboxDraft, setInboxDraft] = useState("");
@@ -8290,7 +8337,29 @@ function DashboardApp() {
         </a>
       )}
       {dictionaryVisible && (
-        <div aria-hidden="true" className="dictionaryMainScrim" role="presentation" />
+        <div
+          aria-hidden="true"
+          className={
+            dictionaryLocked
+              ? "dictionaryMainScrim dictionaryMainScrim--locked"
+              : "dictionaryMainScrim"
+          }
+          onPointerDown={
+            dictionaryLocked
+              ? (event) => {
+                  event.preventDefault();
+                  void (async () => {
+                    const focused = await focusDictionaryWindowIfVisible();
+                    if (focused) return;
+                    // The dictionary is gone or hidden: nothing may stay locked.
+                    setDictionaryVisible(false);
+                    setDictionaryLocked(false);
+                  })();
+                }
+              : undefined
+          }
+          role="presentation"
+        />
       )}
       <header
         className="topBar"

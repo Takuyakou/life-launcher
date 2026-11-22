@@ -243,6 +243,8 @@ export async function installTauriMock(
         focused: true,
         maximized: false,
       };
+      // V163-C4: the tests can tell the main window that a Dictionary window exists.
+      let dictionaryWindowExists = false;
       type InstructionRootChoice = {
         name: string;
         path: string;
@@ -308,6 +310,9 @@ export async function installTauriMock(
         },
         setMainWindowState: (state: typeof mainWindowState) => {
           mainWindowState = { ...state };
+        },
+        setDictionaryWindowExists: (exists: boolean) => {
+          dictionaryWindowExists = exists;
         },
         mainWindowState: () => ({ ...mainWindowState }),
         setInstructionRootChoices: (choices: typeof instructionRootChoices) => {
@@ -942,7 +947,9 @@ export async function installTauriMock(
               case "reveal_launcher_item":
                 return "Public demo mock: native action not executed";
               case "plugin:window|get_all_windows":
-                return [currentWindowLabel];
+                return dictionaryWindowExists
+                  ? [currentWindowLabel, "dictionary"]
+                  : [currentWindowLabel];
               case "plugin:event|listen": {
                 const event = String(args.event);
                 const listenerId = eventId++;

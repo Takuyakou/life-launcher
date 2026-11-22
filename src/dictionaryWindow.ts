@@ -14,6 +14,7 @@ export const DICTIONARY_WINDOW_LABEL = "dictionary";
 export const DICTIONARY_READY_EVENT = "dictionary-ready";
 export const DICTIONARY_SHOWN_EVENT = "dictionary-shown";
 export const DICTIONARY_VISIBILITY_EVENT = "dictionary-visibility-changed";
+export const DICTIONARY_LOCK_EVENT = "dictionary-lock-changed";
 
 const INITIAL_WIDTH = 760;
 const INITIAL_HEIGHT = 520;
@@ -243,6 +244,21 @@ export async function hideDictionaryWindow(): Promise<void> {
 
 export function setDictionaryMainDimmed(dimmed: boolean): Promise<void> {
   return emitTo("main", DICTIONARY_VISIBILITY_EVENT, dimmed);
+}
+
+/** V163-C4: tell the main window whether the dictionary keeps the main screen locked. */
+export function setDictionaryMainLocked(locked: boolean): Promise<void> {
+  return emitTo("main", DICTIONARY_LOCK_EVENT, locked);
+}
+
+/** V163-C4: bring the visible dictionary forward again (the locked scrim uses this).
+    Returns false when there is no dictionary window, so the main window can drop the lock. */
+export async function focusDictionaryWindowIfVisible(): Promise<boolean> {
+  const dictionaryWindow = await WebviewWindow.getByLabel(DICTIONARY_WINDOW_LABEL);
+  if (!dictionaryWindow) return false;
+  if (!(await dictionaryWindow.isVisible())) return false;
+  await showAndFocusDictionaryWindow(dictionaryWindow);
+  return true;
 }
 
 async function toggleDictionaryWindowInternal(): Promise<void> {

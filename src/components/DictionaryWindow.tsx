@@ -15,6 +15,7 @@ import {
 import { moveIdToSlot, nearestSlotIndex } from "../dictionaryTileReorder";
 import {
   announceDictionaryReady,
+  setDictionaryMainLocked,
   hideDictionaryWindow,
   listenForDictionaryShown,
 } from "../dictionaryWindow";
@@ -367,16 +368,16 @@ export function DictionaryWindow() {
   }, [titlebarMenu]);
 
   const toggleFocusLock = useCallback(() => {
-    setFocusLocked((current) => {
-      const next = !current;
-      focusLockedRef.current = next;
-      try {
-        window.localStorage.setItem(DICTIONARY_FOCUS_LOCK_STORAGE_KEY, String(next));
-      } catch {
-        // The current window still keeps the selected state when storage is unavailable.
-      }
-      return next;
-    });
+    const next = !focusLockedRef.current;
+    focusLockedRef.current = next;
+    setFocusLocked(next);
+    try {
+      window.localStorage.setItem(DICTIONARY_FOCUS_LOCK_STORAGE_KEY, String(next));
+    } catch {
+      // The current window still keeps the selected state when storage is unavailable.
+    }
+    // V163-C4: the main window stops taking clicks and keys while the lock is on.
+    void setDictionaryMainLocked(next);
   }, []);
 
   useEffect(() => {
@@ -1246,6 +1247,8 @@ export function DictionaryWindow() {
     const unlistenPromise = listenForDictionaryShown(() => {
       dictionaryVisibleRef.current = true;
       resetSearchAndFocus();
+      // V163-C4: every time the dictionary comes forward, tell the main window the lock state.
+      void setDictionaryMainLocked(focusLockedRef.current);
     });
     return () => {
       disposed = true;
