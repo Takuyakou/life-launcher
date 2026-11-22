@@ -448,6 +448,31 @@
   }
 }
 
+/* V163-C2: the 「＋ まとめて取り込む」 button in the 「次の一手」 heading appears the same way
+   as the Next Step card's 編集: only on hover or when something inside the heading has focus.
+   It keeps its place while hidden, so ＋ プロジェクト does not move. */
+.projectsBand .disclosureHeader .sectionGhostButton {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.projectsBand .disclosureHeader:hover .sectionGhostButton,
+.projectsBand .disclosureHeader:focus-within .sectionGhostButton {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .projectsBand .disclosureHeader .sectionGhostButton {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .projectsBand .disclosureHeader .sectionGhostButton {
+    transition: none;
+  }
+}
+
 /* P10-14d (M6): sidebar buttons are frameless rows with a 22px letter/icon square. */
 .quickButton {
   border: 0;

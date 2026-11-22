@@ -9977,7 +9977,7 @@ function DashboardApp() {
                         title="ChatGPTやClaudeに作ってもらった内容を、まとめて足します"
                         type="button"
                       >
-                        まとめて取り込む
+                        ＋ まとめて取り込む
                       </button>
                       <button
                         aria-label="プロジェクトを追加"

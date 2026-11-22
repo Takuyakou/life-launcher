@@ -364,7 +364,7 @@ test("V163-B6 7 Tab and Space alone leave a row out and import; Esc closes and f
   // Reopen from the heading button and close with Esc: focus goes back to that button.
   await page.clock.runFor(100);
   const opener = page.locator(".projectsBand .disclosureHeader").getByRole("button", {
-    name: "まとめて取り込む",
+    name: "＋ まとめて取り込む",
     exact: true,
   });
   await opener.focus();
