@@ -103,6 +103,8 @@ import { ConfirmDialog, type ConfirmDialogRequest } from "./components/ConfirmDi
 import { GroupNameDialog } from "./components/GroupNameDialog";
 import { ImportDialog } from "./components/ImportDialog";
 import { InboxAddDialog } from "./components/InboxAddDialog";
+import { ButtonEditDialog } from "./components/ButtonEditDialog";
+import { DropRegisterDialog } from "./components/DropRegisterDialog";
 import { InboxEditDialog } from "./components/InboxEditDialog";
 import { ProjectEditDialog } from "./components/ProjectEditDialog";
 import { SettingsDialog } from "./components/SettingsDialog";
@@ -171,7 +173,6 @@ import {
 } from "./nextStepWishlist";
 import { TimerPanel } from "./components/TimerPanel";
 import { ExpandedTimerOverlay } from "./components/ExpandedTimerOverlay";
-import { GroupModeField } from "./components/GroupModeField";
 import {
   buildTodayCandidates,
   legacyWishlistSourceKey,
@@ -216,7 +217,7 @@ import { type ActionDraft, type ActiveTimer, type ActiveView, type ButtonEditDra
 import { MiniModeApp } from "./components/MiniModeApp";
 import { SOFTWARE_RESET_TIMER_MESSAGE, captureSoftwareResetStorage, clearSoftwareResetStorage, getSoftwareResetRecoveryForBoot, restoreSoftwareResetStorage } from "./app/softwareReset";
 import { SectionCollapse } from "./components/SectionCollapse";
-import { actionDescription, actionHasSuspiciousPath, actionValue, aliasesInputToList, aliasesListToInput, buttonGroupName, buttonHasIconCacheSource, createStableId, dropPositionToCss, firstDroppedUrl, formatActionSummary, formatClock, formatDateKeyForHeader, formatSessionRange, formatStartedAt, formatTodayActivityLog, iconForAction, isCloseShortcutValue, isEditableTarget, isValidStartedAt, limitToday, makeAction, matchesHotkey, normalizeOptionalText, normalizeTimerMinutes, readCollapsedGroups, setActionValue, shortcutFromKeyboardEvent, showButtonInOverlay, showButtonInSidebar, sourceListRange, stripActionDraft, toActionDraft, toThreeNoteDraft, todayEntries, todaySourceKey, todayTimerSourceId, toggleDisclosureFromBar, uniqueButtonId, uniqueGroupNames, uniqueProjectId, uniqueSuggestions, validateShortcutSettings, writeCollapsedGroups } from "./app/helpers";
+import { actionHasSuspiciousPath, actionValue, aliasesInputToList, aliasesListToInput, buttonGroupName, buttonHasIconCacheSource, createStableId, dropPositionToCss, firstDroppedUrl, formatActionSummary, formatClock, formatDateKeyForHeader, formatSessionRange, formatStartedAt, formatTodayActivityLog, iconForAction, isCloseShortcutValue, isEditableTarget, isValidStartedAt, limitToday, makeAction, matchesHotkey, normalizeOptionalText, normalizeTimerMinutes, readCollapsedGroups, shortcutFromKeyboardEvent, showButtonInOverlay, showButtonInSidebar, sourceListRange, stripActionDraft, toActionDraft, toThreeNoteDraft, todayEntries, todaySourceKey, todayTimerSourceId, toggleDisclosureFromBar, uniqueButtonId, uniqueGroupNames, uniqueProjectId, uniqueSuggestions, validateShortcutSettings, writeCollapsedGroups } from "./app/helpers";
 import { clearMiniPosition, createMiniReadyWaiter, inactiveMiniSnapshot, isDictionaryView, isFiniteMiniPosition, isInstructionView, isMiniModeView, readMiniPosition, resolveSafeMiniPosition, sameMiniPosition, timerActionText, waitForMiniWindowCreated, writeMiniPosition } from "./app/miniWindow";
 import { draggedCardTopWithinTodayRemoveDropZone, inboxDropTargetFromPoint, instructionPathKey, instructionPathWithin, isReorderBlockedTarget, notifyTimerComplete, pointWithinSelector, pointWithinTodayRemoveDropZone, projectDropIndicator, projectDropTargetFromPoint, sidebarDropTargetFromPoint, sidebarGroupDropTargetFromPoint, todayAdoptionDropTargetFromPoint, todayDropTargetFromPoint, wishlistGroupDropTargetFromPoint } from "./app/dropTargets";
 
@@ -11568,306 +11569,19 @@ function DashboardApp() {
       )}
 
       {buttonEditDraft && (
-        <div className="modalBackdrop" role="presentation">
-          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
-          <section
-            aria-label="ボタン編集"
-            aria-modal="true"
-            className="dropDialog editDialog buttonEditDialog"
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div className="buttonEditDialogHeader modalTitleRow">
-              <div>
-                <p className="eyebrow">Button</p>
-                <h2>ボタンを編集</h2>
-              </div>
-              <button
-                aria-label="ボタン編集を閉じる"
-                className="iconButton"
-                onClick={requestCloseButtonEdit}
-                title="閉じる"
-                type="button"
-              >
-                <UiIcon name="close" size={16} />
-              </button>
-            </div>
-
-            <div className="buttonEditDialogBody app-scrollbar">
-              <section className="buttonEditSection">
-                <h3>基本</h3>
-                <label className="fieldStack">
-                  <span>ラベル</span>
-                  <input
-                    className="textInput"
-                    maxLength={48}
-                    onChange={(event) =>
-                      setButtonEditDraft({ ...buttonEditDraft, label: event.target.value })
-                    }
-                    value={buttonEditDraft.label}
-                  />
-                </label>
-                <GroupModeField
-                  existingGroup={buttonEditDraft.existingGroup}
-                  groupMode={buttonEditDraft.groupMode}
-                  groups={groupNames}
-                  newGroup={buttonEditDraft.newGroup}
-                  onExistingGroupChange={(existingGroup) =>
-                    setButtonEditDraft({ ...buttonEditDraft, existingGroup })
-                  }
-                  onGroupModeChange={(groupMode) =>
-                    setButtonEditDraft({
-                      ...buttonEditDraft,
-                      groupMode,
-                      existingGroup:
-                        buttonEditDraft.existingGroup || groupNames[0] || DEFAULT_BUTTON_GROUP,
-                    })
-                  }
-                  onNewGroupChange={(newGroup) =>
-                    setButtonEditDraft({ ...buttonEditDraft, newGroup })
-                  }
-                />
-              </section>
-
-              <section className="buttonEditSection">
-                <h3>表示先</h3>
-                <div className="fieldStack">
-                  <span>表示先</span>
-                  <div className="displayTargetList">
-                    <label className="displayTargetItem">
-                      <input
-                        checked={buttonEditDraft.showInSidebar}
-                        onChange={(event) =>
-                          setButtonEditDraft({
-                            ...buttonEditDraft,
-                            showInSidebar: event.target.checked,
-                          })
-                        }
-                        type="checkbox"
-                      />
-                      <strong>左サイドバーに表示</strong>
-                    </label>
-                    <label className="displayTargetItem">
-                      <input
-                        checked={buttonEditDraft.showInOverlay}
-                        onChange={(event) =>
-                          setButtonEditDraft({
-                            ...buttonEditDraft,
-                            showInOverlay: event.target.checked,
-                          })
-                        }
-                        type="checkbox"
-                      />
-                      <strong>Ctrl+K辞書に表示</strong>
-                    </label>
-                  </div>
-                </div>
-
-                {!buttonEditDraft.showInSidebar && !buttonEditDraft.showInOverlay && (
-                  <p className="visibilityWarning">
-                    サイドバーにも辞書にも表示されません。設定ファイル上には残ります。
-                  </p>
-                )}
-
-                {buttonEditDraft.showInOverlay && (
-                  <div className="fieldStack">
-                    <span>辞書ページ</span>
-                    <select
-                      className="textInput"
-                      onChange={(event) =>
-                        setButtonEditDraft({
-                          ...buttonEditDraft,
-                          overlayPageId: event.target.value || null,
-                        })
-                      }
-                      value={
-                        overlayPages.some((page) => page.id === buttonEditDraft.overlayPageId)
-                          ? (buttonEditDraft.overlayPageId ?? "")
-                          : ""
-                      }
-                    >
-                      <option value="">未分類</option>
-                      {overlayPages.map((page) => (
-                        <option key={page.id} value={page.id}>
-                          {page.name}
-                        </option>
-                      ))}
-                    </select>
-                    <small className="quietText quietText--small">
-                      サイドバーのグループと辞書ページは別々に設定できます。
-                    </small>
-                  </div>
-                )}
-              </section>
-
-              <details className="buttonEditOptional">
-                <summary>検索・説明（任意）</summary>
-                <div className="buttonEditOptionalBody">
-                  <label className="fieldStack">
-                    <span>検索キーワード</span>
-                    <textarea
-                      className="textInput aliasesInput"
-                      onChange={(event) =>
-                        setButtonEditDraft({ ...buttonEditDraft, aliasesInput: event.target.value })
-                      }
-                      placeholder="editor, docs, よく使う"
-                      value={buttonEditDraft.aliasesInput}
-                    />
-                  </label>
-                  <label className="fieldStack">
-                    <span>説明</span>
-                    <textarea
-                      className="textInput aliasesInput"
-                      onChange={(event) =>
-                        setButtonEditDraft({ ...buttonEditDraft, description: event.target.value })
-                      }
-                      placeholder="よく使うアプリやフォルダを開く。"
-                      value={buttonEditDraft.description}
-                    />
-                  </label>
-                </div>
-              </details>
-
-              <section className="buttonEditSection">
-                <h3>実行アクション</h3>
-                <div className="fieldStack">
-                  <span>アクション</span>
-                  <div className="actionEditor">
-                    {buttonEditDraft.actions.map((action, index) => (
-                      <div
-                        className={
-                          actionDragId === action.draftId
-                            ? "actionRow buttonEditActionRow actionRow--dragging"
-                            : "actionRow buttonEditActionRow"
-                        }
-                        draggable={buttonEditDraft.actions.length > 1}
-                        key={action.draftId}
-                        onDragStart={(event) => {
-                          setActionDragId(action.draftId);
-                          event.dataTransfer.setData(ACTION_DRAG_TYPE, action.draftId);
-                          event.dataTransfer.effectAllowed = "move";
-                        }}
-                        onDragEnd={() => setActionDragId(null)}
-                        onDragOver={(event) => {
-                          const draggedId =
-                            event.dataTransfer.getData(ACTION_DRAG_TYPE) || actionDragId;
-                          if (!draggedId || draggedId === action.draftId) return;
-                          event.preventDefault();
-                        }}
-                        onDrop={(event) => {
-                          const draggedId =
-                            event.dataTransfer.getData(ACTION_DRAG_TYPE) || actionDragId;
-                          if (!draggedId || draggedId === action.draftId) return;
-                          event.preventDefault();
-                          moveButtonActionTo(draggedId, action.draftId);
-                          setActionDragId(null);
-                        }}
-                      >
-                        <select
-                          onChange={(event) =>
-                            updateButtonAction(
-                              action.draftId,
-                              makeAction(
-                                event.target.value as LauncherAction["type"],
-                                actionValue(action),
-                              ),
-                            )
-                          }
-                          value={action.type}
-                        >
-                          <option value="open_app">アプリ</option>
-                          <option value="open_folder">フォルダ</option>
-                          <option value="open_file">ファイル</option>
-                          <option value="open_url">URL</option>
-                          <option value="run_script">スクリプト</option>
-                          <option value="open_shell_special">Windows特殊項目</option>
-                        </select>
-                        <input
-                          className="textInput"
-                          disabled={action.type === "open_shell_special"}
-                          onChange={(event) =>
-                            updateButtonAction(
-                              action.draftId,
-                              setActionValue(action, event.target.value),
-                            )
-                          }
-                          value={actionValue(action)}
-                        />
-                        <div className="buttonEditActionButtons">
-                          {buttonEditDraft.actions.length > 1 ? (
-                            <>
-                              <button
-                                aria-label="アクションを上へ"
-                                className="iconButton"
-                                disabled={index === 0}
-                                onClick={() => moveButtonAction(action.draftId, -1)}
-                                title="上へ"
-                                type="button"
-                              >
-                                ↑
-                              </button>
-                              <button
-                                aria-label="アクションを下へ"
-                                className="iconButton"
-                                disabled={index === buttonEditDraft.actions.length - 1}
-                                onClick={() => moveButtonAction(action.draftId, 1)}
-                                title="下へ"
-                                type="button"
-                              >
-                                ↓
-                              </button>
-                            </>
-                          ) : null}
-                          <button
-                            aria-label="アクションを削除"
-                            className="iconButton"
-                            onClick={() =>
-                              setButtonEditDraft({
-                                ...buttonEditDraft,
-                                actions: buttonEditDraft.actions.filter(
-                                  (item) => item.draftId !== action.draftId,
-                                ),
-                              })
-                            }
-                            title="削除"
-                            type="button"
-                          >
-                            <UiIcon name="close" size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    <button
-                      className="primaryButton buttonEditAddAction"
-                      onClick={() =>
-                        setButtonEditDraft({
-                          ...buttonEditDraft,
-                          actions: [...buttonEditDraft.actions, makeAction("open_app")],
-                        })
-                      }
-                      type="button"
-                    >
-                      ＋ アクションを追加
-                    </button>
-                  </div>
-                </div>
-              </section>
-            </div>
-
-            <div className="dialogActions formDialogActions buttonEditDialogFooter">
-              <button className="primaryButton" onClick={() => void saveButtonEdit()} type="button">
-                保存
-              </button>
-              <button
-                className="secondaryButton dialogCancelButton"
-                onClick={requestCloseButtonEdit}
-                type="button"
-              >
-                キャンセル
-              </button>
-            </div>
-          </section>
-        </div>
+        <ButtonEditDialog
+          actionDragId={actionDragId}
+          buttonEditDraft={buttonEditDraft}
+          groupNames={groupNames}
+          moveButtonAction={moveButtonAction}
+          moveButtonActionTo={moveButtonActionTo}
+          overlayPages={overlayPages}
+          requestCloseButtonEdit={requestCloseButtonEdit}
+          saveButtonEdit={saveButtonEdit}
+          setActionDragId={setActionDragId}
+          setButtonEditDraft={setButtonEditDraft}
+          updateButtonAction={updateButtonAction}
+        />
       )}
 
       {inboxAddOpen && (
@@ -12896,221 +12610,22 @@ function DashboardApp() {
       )}
 
       {dropDraft && (
-        <div className="modalBackdrop" role="presentation">
-          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
-          <section
-            aria-label={builderKind ? "Button Builder" : "ボタン登録"}
-            aria-modal="true"
-            className="dropDialog modalLongForm"
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div>
-              <p className="eyebrow">{builderKind ? "Button Builder" : "Drop Register"}</p>
-              <h2>ボタンを追加</h2>
-            </div>
-
-            {builderKind && (
-              <div className="builderSourceFields">
-                <span>追加元</span>
-                <div className="builderSourceModes" role="group" aria-label="追加元">
-                  {(["file", "folder", "url"] as const).map((kind) => (
-                    <button
-                      aria-pressed={builderKind === kind}
-                      className={
-                        builderKind === kind
-                          ? "builderSourceMode builderSourceMode--active"
-                          : "builderSourceMode"
-                      }
-                      key={kind}
-                      onClick={() => switchBuilderKind(kind)}
-                      type="button"
-                    >
-                      <UiIcon
-                        name={kind === "file" ? "fileText" : kind === "folder" ? "folder" : "external"}
-                        size={16}
-                      />
-                      {kind === "file" ? "ファイル" : kind === "folder" ? "フォルダ" : "URL"}
-                    </button>
-                  ))}
-                </div>
-                <div className="fieldStack">
-                  <label htmlFor="builder-source-input">
-                    {builderKind === "file" ? "ファイル" : builderKind === "folder" ? "フォルダ" : "URL"}
-                  </label>
-                  <div className="builderSourceInputRow">
-                    <input
-                      className="textInput"
-                      id="builder-source-input"
-                      onChange={(event) => updateBuilderSource(event.target.value)}
-                      placeholder={builderKind === "url" ? "https://example.com/" : "パスを入力"}
-                      value={builderSource}
-                    />
-                    {builderKind !== "url" && (
-                      <button
-                        className="secondaryButton"
-                        onClick={() => void pickBuilderSource()}
-                        type="button"
-                      >
-                        参照...
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <label className="fieldStack">
-              <span>ラベル</span>
-              <input
-                className="textInput"
-                onChange={(event) => {
-                  if (builderKind) setBuilderLabelTouched(true);
-                  setDropDraft({ ...dropDraft, label: event.target.value });
-                }}
-                value={dropDraft.label}
-              />
-              <small>ファイル名・フォルダ名・URLから自動入力します。必要なら変更できます。</small>
-            </label>
-
-            <GroupModeField
-              existingGroup={dropDraft.existingGroup}
-              groupMode={dropDraft.groupMode}
-              groups={groupNames}
-              newGroup={dropDraft.newGroup}
-              onExistingGroupChange={(existingGroup) =>
-                setDropDraft({ ...dropDraft, existingGroup })
-              }
-              onGroupModeChange={(groupMode) =>
-                setDropDraft({
-                  ...dropDraft,
-                  groupMode,
-                  existingGroup: dropDraft.existingGroup || groupNames[0] || DEFAULT_BUTTON_GROUP,
-                })
-              }
-              onNewGroupChange={(newGroup) => setDropDraft({ ...dropDraft, newGroup })}
-            />
-
-            <div className="fieldStack">
-              <span>表示先</span>
-              <div className="displayTargetList">
-                <label className="displayTargetItem">
-                  <input
-                    checked={dropDraft.showInSidebar}
-                    onChange={(event) =>
-                      setDropDraft({ ...dropDraft, showInSidebar: event.target.checked })
-                    }
-                    type="checkbox"
-                  />
-                  <span>
-                    <strong>左サイドバーに表示</strong>
-                    <small>Quickからすぐ開く項目に向いています</small>
-                  </span>
-                </label>
-                <label className="displayTargetItem">
-                  <input
-                    checked={dropDraft.showInOverlay}
-                    onChange={(event) =>
-                      setDropDraft({ ...dropDraft, showInOverlay: event.target.checked })
-                    }
-                    type="checkbox"
-                  />
-                  <span>
-                    <strong>Ctrl+K辞書に表示</strong>
-                    <small>検索して開く項目に向いています</small>
-                  </span>
-                </label>
-              </div>
-            </div>
-
-            {!dropDraft.showInSidebar && !dropDraft.showInOverlay && (
-              <p className="visibilityWarning">
-                サイドバーにも辞書にも表示されません。設定ファイル上には残ります。
-              </p>
-            )}
-
-            {dropDraft.showInOverlay && (
-              <label className="fieldStack">
-                <span>辞書ページ</span>
-                <select
-                  className="textInput"
-                  onChange={(event) =>
-                    setDropDraft({
-                      ...dropDraft,
-                      overlayPageId: event.target.value || null,
-                    })
-                  }
-                  value={
-                    overlayPages.some((page) => page.id === dropDraft.overlayPageId)
-                      ? (dropDraft.overlayPageId ?? "")
-                      : ""
-                  }
-                >
-                  <option value="">未分類</option>
-                  {overlayPages.map((page) => (
-                    <option key={page.id} value={page.id}>
-                      {page.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-
-            <div className="fieldStack">
-              <span>登録先</span>
-              <p className="dropSource">
-                <UiIcon
-                  name={
-                    (builderKind ? builderKind === "url" : dropDraft.action.type === "open_url")
-                      ? "external"
-                      : (builderKind ? builderKind === "folder" : dropDraft.action.type === "open_folder")
-                        ? "folder"
-                        : "fileText"
-                  }
-                  size={16}
-                />
-                <span>
-                  {builderKind ? builderSource || "未選択" : actionDescription(dropDraft.action)}
-                </span>
-              </p>
-            </div>
-
-            {builderKind && (
-              <div className="builderPreview" aria-label="サイドバーのプレビュー">
-                <small>Sidebar Preview</small>
-                <div className="builderPreviewItem">
-                  <UiIcon
-                    name={builderKind === "file" ? "fileText" : builderKind === "folder" ? "folder" : "external"}
-                    size={20}
-                  />
-                  <span>{dropDraft.label || "名称未設定"}</span>
-                </div>
-              </div>
-            )}
-
-            <div className="dialogActions dropRegisterActions">
-              <button
-                className="primaryButton"
-                disabled={builderBusy}
-                onClick={() => void confirmDropRegistration()}
-                type="button"
-              >
-                追加
-              </button>
-              <button
-                className="dangerButton"
-                onClick={() => {
-                  setDropDraft(null);
-                  setBuilderKind(null);
-                  setBuilderModeDrafts({});
-                }}
-                type="button"
-              >
-                キャンセル
-              </button>
-            </div>
-          </section>
-        </div>
+        <DropRegisterDialog
+          builderBusy={builderBusy}
+          builderKind={builderKind}
+          builderSource={builderSource}
+          confirmDropRegistration={confirmDropRegistration}
+          dropDraft={dropDraft}
+          groupNames={groupNames}
+          overlayPages={overlayPages}
+          pickBuilderSource={pickBuilderSource}
+          setBuilderKind={setBuilderKind}
+          setBuilderLabelTouched={setBuilderLabelTouched}
+          setBuilderModeDrafts={setBuilderModeDrafts}
+          setDropDraft={setDropDraft}
+          switchBuilderKind={switchBuilderKind}
+          updateBuilderSource={updateBuilderSource}
+        />
       )}
 
       {softwareResetChoiceOpen && (
