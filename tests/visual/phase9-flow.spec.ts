@@ -27,6 +27,7 @@ test("P9-00 flow: Today3 short Timer expires, continues, pauses, resumes, ends a
   await installTauriMock(page, createFullTodayFixture(), "main");
   await page.goto("/");
   await waitForBundledFonts(page);
+  await pauseClock(page);
 
   await expect(page.locator(".doNowBand")).toContainText("資料を1ページ読む");
 
@@ -107,6 +108,7 @@ async function expectNotRunning(card: Locator) {
 
 test("P9-04 flow: started from Do Now, Today3 follows to completion", async ({ page }) => {
   await prepare(page);
+  await pauseClock(page);
   await expectBothCards(page, "idle");
 
   await doNowCard(page).locator(".doNowStartPrimary").click();
@@ -131,6 +133,7 @@ test("P9-04 flow: started from Do Now, Today3 follows to completion", async ({ p
 
 test("P9-04 flow: started from Today3, Do Now follows to completion", async ({ page }) => {
   await prepare(page);
+  await pauseClock(page);
   await expectBothCards(page, "idle");
 
   await firstRow(page).getByRole("button", { name: "短時間タイマー1分で開始" }).click();

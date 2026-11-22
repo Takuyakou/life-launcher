@@ -132,6 +132,7 @@ test("P8.10 TX-02 expiry keeps overlay and existing continue/finish flow", async
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
   await waitForBundledFonts(page);
+  await pauseClock(page);
   await page.locator(".doNowStartPrimary").click();
   await page.getByRole("button", { name: "タイマーを大きく表示" }).click();
   const overlay = page.getByRole("dialog", { name: "拡大タイマー" });
@@ -165,6 +166,7 @@ test("P8.10 TX-02 early stop uses the existing Today confirmation", async ({ pag
   await installTauriMock(page, fixture, "main");
   await page.goto("/");
   await waitForBundledFonts(page);
+  await pauseClock(page);
   await page.locator(".todayRow").first().getByRole("button", { name: "通常タイマー25分で開始" }).click();
   await page.clock.fastForward(180_000);
   await page.getByRole("button", { name: "タイマーを大きく表示" }).click();

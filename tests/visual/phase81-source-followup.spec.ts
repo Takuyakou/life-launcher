@@ -406,6 +406,7 @@ test("Phase 8.1 incomplete early stop never opens a completion follow-up", async
   const fixture = nextStepUiFixture();
   fixture.config.today.items[0].shortTimerMinutes = 3;
   await prepareUi(page, fixture);
+  await pauseClock(page);
   const row = page.locator(".todayRow");
   await row.getByRole("button", { name: "通常タイマー25分で開始" }).click();
   await page.clock.fastForward(180_000);

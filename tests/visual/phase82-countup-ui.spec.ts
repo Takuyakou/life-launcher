@@ -139,10 +139,13 @@ test("P82-03 Measure and countdown switch in every direction with one active Tim
 
 test("P82-03 Measure manual end reuses Today3 early completion", async ({ page }) => {
   await prepare(page);
+  await pauseClock(page);
   const card = page.locator(".todayRow").first();
   await card.locator(".todayMeasureButton").click();
   await page.clock.fastForward(300_000);
   await card.locator(".runningStopButton").click();
+  await expect(page.getByRole("dialog", { name: "今日の分は完了にしますか？" })).toBeVisible();
+  await page.clock.runFor(32);
   await expect(page.getByRole("button", { name: "未完了のまま終了" })).toBeFocused();
   expect(await calls(page, "record_session")).toHaveLength(0);
   await page.getByRole("button", { name: "未完了のまま終了" }).click();
