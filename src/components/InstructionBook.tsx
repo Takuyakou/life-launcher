@@ -51,8 +51,8 @@ const SAVE_DELAY_MS = 800;
 const DECODE_HOLD_MS = 150;
 const WHEEL_THROTTLE_MS = 250;
 const ZOOM_WHEEL_THROTTLE_MS = 120;
-const STAGE_PADDING_X = 48;
-const STAGE_PADDING_Y = 46;
+const STAGE_PADDING_X = 24;
+const STAGE_PADDING_Y = 32;
 const SPREAD_GAP_PX = 2;
 
 function errorText(error: unknown): string {
@@ -857,7 +857,7 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
             );
           }
           const fit =
-            isZoomed && stageSize.width > 0 && (entry.naturalWidth ?? 0) > 0
+            stageSize.width > 0 && stageSize.height > 0 && (entry.naturalWidth ?? 0) > 0
               ? fitBookPageSize(entry.naturalWidth!, entry.naturalHeight!, slotW, availH)
               : null;
           const imgStyle =
