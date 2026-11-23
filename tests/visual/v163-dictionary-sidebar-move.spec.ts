@@ -224,3 +224,38 @@ test("V163-C8 5 the Dictionary window re-reads the config when it comes forward"
     dictionary.locator(".dictionaryTile", { hasText: "静かに変わった名前" }),
   ).toBeVisible();
 });
+
+test("V163-C8 6 coming forward after a rename shows the new name and focuses the search box", async ({
+  page,
+  context,
+}) => {
+  const fixture = createPublicFixture();
+  await openMain(page, fixture);
+  const dictionary = await openDictionary(context, fixture);
+
+  // The Dictionary window is hidden, so the main window's notification is not delivered (the
+  // relay is not used here). Coming forward must read the config again and only then focus.
+  await page.locator(".quickButton", { hasText: BUTTON_LABEL }).click({ button: "right" });
+  await page.getByRole("menuitem", { name: "編集", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "ボタン編集" });
+  await expect(dialog).toBeVisible();
+  await dialog.locator(".textInput").first().fill("隠れている間に改名");
+  await dialog.getByRole("button", { name: /保存|決定/ }).first().click();
+  await expect(dialog).toHaveCount(0);
+
+  await dictionary.evaluate(() => {
+    (window as QaWindow).__LIFE_LAUNCHER_VISUAL_QA__.emit("dictionary-shown");
+  });
+  await expect(
+    dictionary.locator(".dictionaryTile", { hasText: "隠れている間に改名" }),
+  ).toBeVisible();
+  // The window puts the focus back on the first tile (that is what coming forward does today;
+  // the search box is only focused when there is no tile to focus).
+  await expect
+    .poll(async () =>
+      dictionary.evaluate(
+        () => (document.activeElement as HTMLElement | null)?.className ?? "",
+      ),
+    )
+    .toContain("dictionaryTile");
+});

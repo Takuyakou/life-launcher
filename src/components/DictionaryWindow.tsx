@@ -380,11 +380,16 @@ export function DictionaryWindow() {
     void setDictionaryMainLocked(next);
   }, []);
 
-  // V163-C8: read the config again (the main window may have saved it).
+  // V163-C8: read the config again (the main window may have saved it). When nothing changed the
+  // current object is kept, so the tiles are not rebuilt for no reason (that used to drop the focus).
   const refreshConfig = useCallback(async () => {
     try {
       const response = await loadConfig();
-      setConfig(response.config);
+      setConfig((current) =>
+        current && JSON.stringify(current) === JSON.stringify(response.config)
+          ? current
+          : response.config,
+      );
       setConfigError(response.error ?? null);
     } catch (error) {
       setConfigError(error instanceof Error ? error.message : String(error));
@@ -1243,11 +1248,13 @@ export function DictionaryWindow() {
     let disposed = false;
     const unlistenPromise = listenForDictionaryShown(() => {
       dictionaryVisibleRef.current = true;
-      resetSearchAndFocus();
       // V163-C4: every time the dictionary comes forward, tell the main window the lock state.
       void setDictionaryMainLocked(focusLockedRef.current);
-      // V163-C8: and read the config again, in case the main window saved while hidden.
-      void refreshConfig();
+      // V163-C8: read the config again first, then put the focus back — a re-render between the
+      // two used to steal the focus from the search box. The focus is restored even on failure.
+      void refreshConfig().finally(() => {
+        if (!disposed) resetSearchAndFocus();
+      });
     });
     return () => {
       disposed = true;
