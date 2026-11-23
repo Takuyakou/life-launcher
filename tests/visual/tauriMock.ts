@@ -991,9 +991,16 @@ export async function installTauriMock(
                 unregisterEventListener(String(args.event), Number(args.eventId));
                 return null;
               case "plugin:event|emit":
-              case "plugin:event|emit_to":
                 dispatchEvent(String(args.event), args.payload);
                 return null;
+              case "plugin:event|emit_to": {
+                // V163-C8: like Tauri, a targeted event only reaches the window it names.
+                const target = args.target as string | { label?: string } | null;
+                const label = typeof target === "string" ? target : (target?.label ?? "");
+                if (label && label !== currentWindowLabel) return null;
+                dispatchEvent(String(args.event), args.payload);
+                return null;
+              }
               case "plugin:window|set_skip_taskbar":
               case "plugin:window|set_focusable":
               case "plugin:window|set_always_on_top":
