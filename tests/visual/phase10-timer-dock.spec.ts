@@ -130,13 +130,20 @@ test("P10-07 the idle minutes roll to the new value without leaving an old digit
   page,
 }) => {
   for (const reducedMotion of ["no-preference", "reduce"] as const) {
-    await page.emulateMedia({ reducedMotion });
     await open(page);
+    // open() sets "no-preference" itself, so the case under test is set after it.
+    await page.emulateMedia({ reducedMotion });
     const clock = dock(page).locator(".timerClock");
     const before = Number((await clock.textContent())!.replace(/\D/g, ""));
     await dock(page).getByRole("button", { name: "+", exact: true }).click();
+    // Wait for the digit moves to finish; then only one redraw removes the old digit.
+    await clock.evaluate((node) =>
+      Promise.allSettled(
+        node.getAnimations({ subtree: true }).map((animation) => animation.finished),
+      ),
+    );
     await expect
-      .poll(async () => (await clock.textContent())!.replace(/\D/g, ""))
+      .poll(async () => (await clock.textContent())!.replace(/\D/g, ""), { timeout: 15_000 })
       .toBe(String(before + 5));
     // The old digits are gone; only one copy of each digit remains.
     const digits = await dock(page).locator(".timerClockDigit").count();

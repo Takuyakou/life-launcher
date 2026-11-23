@@ -461,7 +461,7 @@ pub fn release_instruction_books() -> Result<(), String> {
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn read_instruction_book_page(
     path: String,
     index: usize,

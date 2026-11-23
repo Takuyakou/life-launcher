@@ -381,6 +381,11 @@ test("P10-15 10 the repeated import prompt contains the JSON format", () => {
   expect(IMPORT_PROMPT_REPEAT).not.toContain("はじめて用と同じ");
   expect(IMPORT_PROMPT_FIRST).toContain(IMPORT_JSON_FORMAT);
   expect(IMPORT_PROMPT_FIRST).not.toContain("(はじめて用と同じ");
-  expect(IMPORT_PROMPT_FIRST.startsWith("あなたは、私が「今これをやる」を決めて始めるのを手伝うアシスタントです。")).toBe(true);
-  expect(IMPORT_PROMPT_FIRST).toContain("私の状況:");
+  expect(
+    IMPORT_PROMPT_FIRST.startsWith(
+      "あなたは、私の人生・目標・やりたいことを前に進めるための行動設計パートナーです。",
+    ),
+  ).toBe(true);
+  // V163-B2: no fill-in section at the end; the prompt is sent as it is.
+  expect(IMPORT_PROMPT_FIRST).not.toContain("私の状況:");
 });

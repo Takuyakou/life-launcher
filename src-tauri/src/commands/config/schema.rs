@@ -270,6 +270,7 @@ pub(crate) fn config_schema_json() -> &'static str {
         "autoStart": { "type": "boolean", "default": false },
         "defaultTimerMinutes": { "type": "integer", "minimum": 1, "maximum": 240 },
         "shortTimerMinutes": { "type": "integer", "minimum": 1, "maximum": 240, "default": 5 },
+        "extendTimerMinutes": { "type": "integer", "minimum": 1, "maximum": 240, "default": 15 },
         "dayStartHour": { "type": "integer", "minimum": 0, "maximum": 23, "default": 4 },
         "backupFolder": { "type": ["string", "null"], "default": null },
         "backupKeep": { "type": "integer", "minimum": 1, "default": 30 },

@@ -1,7 +1,9 @@
+import type { PointerEvent } from "react";
 import type { TimerCompletionPrompt } from "../app/dashboardTypes";
 import { timerActionText } from "../app/miniWindow";
 import type { LauncherProject } from "../types";
 import { ProjectIdentity } from "./ProjectIdentity";
+import { TimerMinutesStepper } from "./TimerMinutesStepper";
 import { UiIcon } from "./UiIcon";
 
 type TimerCompletionDialogProps = {
@@ -11,6 +13,17 @@ type TimerCompletionDialogProps = {
   resumeDraft: string;
   saving: boolean;
   onResumeDraftChange: (value: string) => void;
+  /** V163-B4: the minutes 「続ける」 adds, editable here (−/＋ by 5, typing and dragging by 1). */
+  extendDraft: string;
+  extendMinutes: number;
+  extendFallback: number;
+  extendDragging: boolean;
+  onExtendChange: (value: string) => void;
+  onExtendBlur: () => void;
+  onExtendDragStart: (event: PointerEvent<HTMLElement>, value: number) => void;
+  onExtendDragMove: (event: PointerEvent<HTMLElement>) => void;
+  onExtendDragEnd: (event: PointerEvent<HTMLElement>) => void;
+  onExtendDragCancel: (event: PointerEvent<HTMLElement>) => void;
   onContinue: () => void;
   onFinish: () => void;
 };
@@ -23,6 +36,16 @@ export function TimerCompletionDialog({
   resumeDraft,
   saving,
   onResumeDraftChange,
+  extendDraft,
+  extendMinutes,
+  extendFallback,
+  extendDragging,
+  onExtendChange,
+  onExtendBlur,
+  onExtendDragStart,
+  onExtendDragMove,
+  onExtendDragEnd,
+  onExtendDragCancel,
   onContinue,
   onFinish,
 }: TimerCompletionDialogProps) {
@@ -89,6 +112,24 @@ export function TimerCompletionDialog({
           </>
         )}
 
+        <div className="timerCompleteExtendRow">
+          <span className="timerCompleteExtendLabel">延長分数</span>
+          <TimerMinutesStepper
+            disabled={saving}
+            dragging={extendDragging}
+            fallback={extendFallback}
+            label="延長"
+            onBlur={onExtendBlur}
+            onDragCancel={onExtendDragCancel}
+            onDragEnd={onExtendDragEnd}
+            onDragMove={onExtendDragMove}
+            onDragStart={onExtendDragStart}
+            onValueChange={onExtendChange}
+            step={5}
+            value={extendDraft}
+          />
+        </div>
+
         <div className="dialogActions">
           <button
             className="secondaryButton"
@@ -97,7 +138,7 @@ export function TimerCompletionDialog({
             onClick={onContinue}
             type="button"
           >
-            続ける(+15分)
+            続ける(+{extendMinutes}分)
           </button>
           <button
             className="secondaryButton secondaryButton--finish"

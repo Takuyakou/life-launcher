@@ -447,7 +447,8 @@ test("P10-15c J2 the victory bar never gets its top border clipped", async ({ pa
     const barBox = (await bar.boundingBox())!;
     const areaBox = (await area.boundingBox())!;
     const before = Math.round(barBox.y);
-    expect(before).toBe(80);
+    // v1.6.3 B3 で上の帯の下の 14px の隙間を消したため、80 から 66 になった。
+    expect(before).toBe(66);
     await bar.hover();
     await bar.evaluate((node) =>
       Promise.allSettled(node.getAnimations().map((animation) => animation.finished)),

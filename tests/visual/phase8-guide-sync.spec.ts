@@ -46,7 +46,8 @@ test("P10-17 N6 the guide matches the current timer completion, missing target, 
   await expect(dialog).toBeVisible();
   const bodyText = await dialog.innerText();
   expect(bodyText).not.toContain("5つから選べます");
-  expect(bodyText).toContain("「続ける(+15分)」か「終わる」を選べます");
+  expect(bodyText).toContain("「続ける(+〇分)」か「終わる」を選べます");
+  expect(bodyText).toContain("ふだんの分数(初めは15分)は、設定の「基本」の「延長タイマー分数」で変えられます。");
   expect(bodyText).toContain("オレンジ色の「見つかりません」が付きます");
   expect(bodyText).toContain("やりかけで終えたときは？");
 });

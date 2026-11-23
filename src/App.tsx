@@ -21,6 +21,7 @@ import { SEARCH_GROUP_LIMIT, matchesSearchQuery } from "./searchMatch";
 import { nextStepStaleDays } from "./nextStepFreshness";
 import {
   DEFAULT_BUTTON_GROUP,
+  DEFAULT_EXTEND_TIMER_MINUTES,
   EXECUTION_TRIGGER_MAX_CHARS,
   OVERLAY_PAGE_NAME_MAX_CHARS,
   TIMER_TICK_MS,
@@ -110,6 +111,8 @@ import {
   SoftwareResetProgressDialog,
 } from "./components/SoftwareResetDialogs";
 import { TimerCompletionDialog } from "./components/TimerCompletionDialog";
+import { TimerMinutesStepper } from "./components/TimerMinutesStepper";
+import { SlidingFace } from "./components/SlidingFace";
 import { TodayActivitySection } from "./components/TodayActivitySection";
 import { ToastStack } from "./components/ToastStack";
 import { useToasts } from "./hooks/useToasts";
@@ -439,6 +442,10 @@ function DashboardApp() {
   const [earlyStopSaving, setEarlyStopSaving] = useState(false);
   const [completionPrompt, setCompletionPrompt] = useState<TimerCompletionPrompt | null>(null);
   const [timerResumeDraft, setTimerResumeDraft] = useState("");
+  // V163-B4: the 「続ける」 minutes, editable on the prompt; reset from settings each time it opens.
+  const [completionExtendDraft, setCompletionExtendDraft] = useState(
+    String(DEFAULT_EXTEND_TIMER_MINUTES),
+  );
   const [completionResumeSaving, setCompletionResumeSaving] = useState(false);
   const completionResumeSavingRef = useRef(false);
   const [completionFeedback, setCompletionFeedback] = useState<CompletionFeedback | null>(null);
@@ -1924,6 +1931,9 @@ function DashboardApp() {
       mainDisplaySize: config.settings.mainDisplaySize ?? "standard",
       defaultTimerMinutes: String(config.settings.defaultTimerMinutes),
       shortTimerMinutes: String(config.settings.shortTimerMinutes),
+      extendTimerMinutes: String(
+        config.settings.extendTimerMinutes ?? DEFAULT_EXTEND_TIMER_MINUTES,
+      ),
       dayStartHour: String(config.settings.dayStartHour),
       focusHotkey: config.settings.focusHotkey ?? "",
       launcherHotkey: config.settings.launcherHotkey ?? "",
@@ -1948,6 +1958,8 @@ function DashboardApp() {
     (settingsDraft.mainDisplaySize !== (config.settings.mainDisplaySize ?? "standard") ||
       settingsDraft.defaultTimerMinutes !== String(config.settings.defaultTimerMinutes) ||
       settingsDraft.shortTimerMinutes !== String(config.settings.shortTimerMinutes) ||
+      settingsDraft.extendTimerMinutes !==
+        String(config.settings.extendTimerMinutes ?? DEFAULT_EXTEND_TIMER_MINUTES) ||
       settingsDraft.dayStartHour !== String(config.settings.dayStartHour) ||
       settingsDraft.focusHotkey !== (config.settings.focusHotkey ?? "") ||
       settingsDraft.launcherHotkey !== (config.settings.launcherHotkey ?? "") ||
@@ -2359,6 +2371,10 @@ function DashboardApp() {
       setDefaultTimerDraft(String(value));
       return;
     }
+    if (field === "completionExtend") {
+      setCompletionExtendDraft(String(value));
+      return;
+    }
     if (field === "projectDefault" || field === "projectShort") {
       if (!nextStepEditDraft) return;
       setNextStepEditDraft({
@@ -2372,6 +2388,8 @@ function DashboardApp() {
       setSettingsDraft({ ...settingsDraft, defaultTimerMinutes: String(value) });
     } else if (field === "settingsShort") {
       setSettingsDraft({ ...settingsDraft, shortTimerMinutes: String(value) });
+    } else if (field === "settingsExtend") {
+      setSettingsDraft({ ...settingsDraft, extendTimerMinutes: String(value) });
     } else {
       setSettingsDraft({ ...settingsDraft, dayStartHour: String(value) });
     }
@@ -2791,6 +2809,12 @@ function DashboardApp() {
     const shortTimerMinutes = normalizeTimerMinutes(
       Number.parseInt(settingsDraft.shortTimerMinutes, 10),
     );
+    const extendParsed = Number.parseInt(settingsDraft.extendTimerMinutes, 10);
+    const extendTimerMinutes = normalizeTimerMinutes(
+      Number.isFinite(extendParsed) && extendParsed > 0
+        ? extendParsed
+        : (config.settings.extendTimerMinutes ?? DEFAULT_EXTEND_TIMER_MINUTES),
+    );
     const dayStartHour = Math.min(
       23,
       Math.max(0, Math.round(Number.parseInt(settingsDraft.dayStartHour, 10))),
@@ -2834,6 +2858,7 @@ function DashboardApp() {
             mainDisplaySize: settingsDraft.mainDisplaySize,
             defaultTimerMinutes,
             shortTimerMinutes,
+            extendTimerMinutes,
             dayStartHour: Number.isFinite(dayStartHour)
               ? dayStartHour
               : config.settings.dayStartHour,
@@ -3965,20 +3990,6 @@ function DashboardApp() {
       window.cancelAnimationFrame(projectAutoScrollFrameRef.current);
       projectAutoScrollFrameRef.current = null;
     }
-  };
-
-  const stepProjectTimer = (field: "defaultTimerMinutes" | "shortTimerMinutes", delta: number) => {
-    if (!config || !nextStepEditDraft) return;
-    const fallback =
-      field === "defaultTimerMinutes"
-        ? config.settings.defaultTimerMinutes
-        : config.settings.shortTimerMinutes;
-    const current = Number.parseInt(nextStepEditDraft[field], 10);
-    const value = Math.min(
-      240,
-      Math.max(1, (Number.isFinite(current) ? current : fallback) + delta),
-    );
-    setNextStepEditDraft({ ...nextStepEditDraft, [field]: String(value) });
   };
 
   const continueProjectAutoScroll = () => {
@@ -5599,10 +5610,20 @@ function DashboardApp() {
           )
         : undefined;
       setTimerResumeDraft(project?.nextStep?.resumeNote ?? "");
+      setCompletionExtendDraft(
+        String(configRef.current?.settings.extendTimerMinutes ?? DEFAULT_EXTEND_TIMER_MINUTES),
+      );
     } else if (!completionPrompt) {
       setTimerResumeDraft("");
     }
   }, [completionPrompt]);
+
+  // V163-B4: an empty or invalid entry falls back to the setting (or 15), then stays in 1..240.
+  const completionExtendMinutes = (() => {
+    const fallback = config?.settings.extendTimerMinutes ?? DEFAULT_EXTEND_TIMER_MINUTES;
+    const parsed = Number.parseInt(completionExtendDraft, 10);
+    return normalizeTimerMinutes(Number.isFinite(parsed) && parsed > 0 ? parsed : fallback);
+  })();
 
   const continueCompletedTimer = () => {
     if (
@@ -5625,13 +5646,14 @@ function DashboardApp() {
         return timer;
       }
 
-      // V151-S7: the time spent on the prompt is not counted; +15 starts from the press.
+      // V151-S7: the time spent on the prompt is not counted; the extension starts from the press.
       const waitedMs =
         timer.expiredAtMs != null ? Math.max(0, continuedAt - timer.expiredAtMs) : 0;
       const extended = {
         ...timer,
         continuedAfterCompletion: true,
-        targetMinutes: (timer.targetMinutes ?? completionPrompt.targetMinutes) + 15,
+        targetMinutes:
+          (timer.targetMinutes ?? completionPrompt.targetMinutes) + completionExtendMinutes,
         pausedTotalMs: timer.pausedTotalMs + waitedMs,
         expiredAtMs: null,
       };
@@ -10588,6 +10610,18 @@ function DashboardApp() {
                     </span>
                     <div className="disclosureHeaderActions">
                       <button
+                        className="sectionGhostButton"
+                        onPointerDown={(event) => event.stopPropagation()}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          openImportDialog("", null, event.currentTarget);
+                        }}
+                        title="ChatGPTやClaudeに作ってもらった内容を、まとめて足します"
+                        type="button"
+                      >
+                        まとめて取り込む
+                      </button>
+                      <button
                         aria-label="プロジェクトを追加"
                         className="uiSmallButton sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd nextStepHeaderAdd--project mainActionButton mainActionButton--neutral"
                         onPointerDown={(event) => event.stopPropagation()}
@@ -11011,12 +11045,22 @@ function DashboardApp() {
                   ]
                     .filter(Boolean)
                     .join(" ")}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    openContextMenu(
+                      { kind: "inboxes" },
+                      event.clientX,
+                      event.clientY,
+                      event.currentTarget,
+                    );
+                  }}
                 >
                   <div
                     className="disclosureHeader"
                     data-inbox-header
                     onContextMenu={(event) => {
                       event.preventDefault();
+                      event.stopPropagation();
                       openContextMenu(
                         { kind: "inboxes" },
                         event.clientX,
@@ -11982,9 +12026,14 @@ function DashboardApp() {
               </ContextMenuItem>
             </>
           ) : contextMenu.kind === "inboxes" ? (
-            <ContextMenuItem onClick={() => openInboxAddDialog()} type="button">
-              やりたいことを追加
-            </ContextMenuItem>
+            <>
+              <ContextMenuItem onClick={() => openInboxAddDialog()} type="button">
+                やりたいことを追加
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => openImportDialog("")} type="button">
+                まとめて取り込む
+              </ContextMenuItem>
+            </>
           ) : contextMenu.kind === "session" ? (
             <>
               <ContextMenuItem
@@ -12259,8 +12308,11 @@ function DashboardApp() {
                   className="todayPickerProgress"
                   role="progressbar"
                 >
-                  <span
-                    style={{ transform: `scaleX(${todayPickerDraftItems.length / TODAY_ITEM_LIMIT})` }}
+                  {/* V163-M3: the fill springs to the new count (scaleX, as before, so it rests the same). */}
+                  <motion.span
+                    animate={{ scaleX: todayPickerDraftItems.length / TODAY_ITEM_LIMIT }}
+                    initial={false}
+                    transition={springSnappy}
                   />
                 </div>
                 <div className="todayPickerSlots">
@@ -12394,7 +12446,10 @@ function DashboardApp() {
                   role="tab"
                   type="button"
                 >
-                  {label}
+                  {settingsSection === key && (
+                    <SlidingFace className="settingsTabFace" layoutId="settings-tab-face" />
+                  )}
+                  <span className="settingsTabLabel">{label}</span>
                 </button>
               ))}
             </div>
@@ -12420,7 +12475,7 @@ function DashboardApp() {
                 </button>
               </div>
               <h3>基本</h3>
-              <div className="settingsGrid">
+              <div className="settingsGrid settingsGrid--timers">
                 <label
                   className={
                     numberInputDragging === "settingsShort"
@@ -12489,6 +12544,43 @@ function DashboardApp() {
                       }
                       type="number"
                       value={settingsDraft.defaultTimerMinutes}
+                    />
+                    <span aria-hidden="true" className="numberDragAffordance" />
+                  </span>
+                </label>
+                <label
+                  className={
+                    numberInputDragging === "settingsExtend"
+                      ? "fieldStack fieldStack--numberDrag fieldStack--numberDragging"
+                      : "fieldStack fieldStack--numberDrag"
+                  }
+                  onPointerCancel={cancelNumberInputDrag}
+                  onPointerDown={(event) =>
+                    startNumberInputDrag(
+                      event,
+                      "settingsExtend",
+                      Number.parseInt(settingsDraft.extendTimerMinutes, 10) ||
+                        DEFAULT_EXTEND_TIMER_MINUTES,
+                    )
+                  }
+                  onPointerMove={updateNumberInputDrag}
+                  onPointerUp={finishNumberInputDrag}
+                  title="上下にドラッグして分数を調整"
+                >
+                  <span>延長タイマー分数</span>
+                  <span className="numberDragInput">
+                    <input
+                      className="textInput"
+                      max={240}
+                      min={1}
+                      onChange={(event) =>
+                        setSettingsDraft({
+                          ...settingsDraft,
+                          extendTimerMinutes: event.target.value,
+                        })
+                      }
+                      type="number"
+                      value={settingsDraft.extendTimerMinutes}
                     />
                     <span aria-hidden="true" className="numberDragAffordance" />
                   </span>
@@ -13594,62 +13686,19 @@ function DashboardApp() {
             label: string,
             fallback: number,
           ) => (
-            <div className="nextStepTimerStepper">
-              <button
-                aria-label={`${label}タイマーを1分減らす`}
-                className="nextStepTimerStepButton"
-                onClick={() => stepProjectTimer(field, -1)}
-                type="button"
-              >
-                −
-              </button>
-              <label
-                className={
-                  numberInputDragging === dragField
-                    ? "nextStepTimerStepperValue fieldStack--numberDrag fieldStack--numberDragging"
-                    : "nextStepTimerStepperValue fieldStack--numberDrag"
-                }
-                onPointerCancel={cancelNumberInputDrag}
-                onPointerDown={(event) =>
-                  startNumberInputDrag(
-                    event,
-                    dragField,
-                    Number.parseInt(nextStepEditDraft[field], 10) || fallback,
-                  )
-                }
-                onPointerMove={updateNumberInputDrag}
-                onPointerUp={finishNumberInputDrag}
-                title="上下にドラッグして分数を調整"
-              >
-                <input
-                  aria-label={`${label}タイマー分数`}
-                  className="nextStepTimerValueInput"
-                  inputMode="numeric"
-                  max="240"
-                  min="1"
-                  onChange={(event) =>
-                    setNextStepEditDraft({
-                      ...nextStepEditDraft,
-                      [field]: event.target.value,
-                    })
-                  }
-                  placeholder={String(fallback)}
-                  type="number"
-                  value={nextStepEditDraft[field]}
-                />
-                <span aria-hidden="true" className="nextStepTimerStepperUnit">
-                  分
-                </span>
-              </label>
-              <button
-                aria-label={`${label}タイマーを1分増やす`}
-                className="nextStepTimerStepButton"
-                onClick={() => stepProjectTimer(field, 1)}
-                type="button"
-              >
-                ＋
-              </button>
-            </div>
+            <TimerMinutesStepper
+              dragging={numberInputDragging === dragField}
+              fallback={fallback}
+              label={label}
+              onDragCancel={cancelNumberInputDrag}
+              onDragEnd={finishNumberInputDrag}
+              onDragMove={updateNumberInputDrag}
+              onDragStart={(event, value) => startNumberInputDrag(event, dragField, value)}
+              onValueChange={(value) =>
+                setNextStepEditDraft({ ...nextStepEditDraft, [field]: value })
+              }
+              value={nextStepEditDraft[field]}
+            />
           );
 
           const renderTimerGrid = (compact: boolean) => (
@@ -13872,7 +13921,10 @@ function DashboardApp() {
                       role="tab"
                       type="button"
                     >
-                      ＋ やりたいことから選ぶ
+                      {wishlistMode && (
+                        <SlidingFace className="nextStepModeFace" layoutId="nextstep-mode-face" />
+                      )}
+                      <span className="nextStepModeLabel">＋ やりたいことから選ぶ</span>
                     </button>
                     <button
                       aria-selected={!wishlistMode}
@@ -13886,7 +13938,10 @@ function DashboardApp() {
                       role="tab"
                       type="button"
                     >
-                      ＋ 新しく入力
+                      {!wishlistMode && (
+                        <SlidingFace className="nextStepModeFace" layoutId="nextstep-mode-face" />
+                      )}
+                      <span className="nextStepModeLabel">＋ 新しく入力</span>
                     </button>
                   </div>
 
@@ -14487,7 +14542,19 @@ function DashboardApp() {
       {completionPrompt && (
         <TimerCompletionDialog
           canEditResume={completionCanEditResume}
+          extendDraft={completionExtendDraft}
+          extendDragging={numberInputDragging === "completionExtend"}
+          extendFallback={config.settings.extendTimerMinutes ?? DEFAULT_EXTEND_TIMER_MINUTES}
+          extendMinutes={completionExtendMinutes}
           onContinue={continueCompletedTimer}
+          onExtendBlur={() => setCompletionExtendDraft(String(completionExtendMinutes))}
+          onExtendChange={setCompletionExtendDraft}
+          onExtendDragCancel={cancelNumberInputDrag}
+          onExtendDragEnd={finishNumberInputDrag}
+          onExtendDragMove={updateNumberInputDrag}
+          onExtendDragStart={(event, value) =>
+            startNumberInputDrag(event, "completionExtend", value)
+          }
           onFinish={() => void submitCompletedTimer()}
           onResumeDraftChange={setTimerResumeDraft}
           project={completionProject}

@@ -6,6 +6,8 @@ export const TOAST_TIMEOUT_MS = 4000;
 export const TOAST_UNDO_TIMEOUT_MS = 5000;
 export const TIMER_TICK_MS = 1000;
 export const MAX_TIMER_MINUTES = 240;
+/** V163-B4: minutes added by 「続ける」 when settings.extendTimerMinutes is not set. */
+export const DEFAULT_EXTEND_TIMER_MINUTES = 15;
 export const DEFAULT_BUTTON_GROUP = "その他";
 export const GROUP_COLLAPSE_STORAGE_KEY = "life-launcher.sidebar-groups";
 export const WEEKLY_REVIEW_SEEN_STORAGE_KEY = "life-launcher.weekly-review-seen";

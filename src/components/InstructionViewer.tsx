@@ -13,6 +13,8 @@ import { InstructionBook } from "./InstructionBook";
 import { isInstructionBookName } from "../instructionBook";
 import { installFocusModalityTracking } from "../focusModality";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
+import { springCollapse } from "../motion";
 import {
   INSTRUCTION_ALWAYS_ON_TOP_KEY,
   INSTRUCTION_OPEN_EVENT,
@@ -62,6 +64,8 @@ const MIN_SIDEBAR_WIDTH = 140;
 const MAX_SIDEBAR_WIDTH = 440;
 const MIN_CONTENT_WIDTH = 320;
 const DIVIDER_WIDTH = 7;
+/** V163-M1: the width the closed list keeps (the bar with 「>」). */
+const COLLAPSED_SIDEBAR_WIDTH = 28;
 
 function usesCloseShortcut(value: string | null | undefined): boolean {
   return value?.trim().toLowerCase() === "ctrl+w";
@@ -161,6 +165,10 @@ export function InstructionViewer() {
   );
   const [sidebarCollapsed, setSidebarCollapsed] = useState(readInstructionSidebarCollapsed);
   const [resizingSidebar, setResizingSidebar] = useState(false);
+  // V163-M1: only opening and closing spring; resizing (drag or keys) follows at once. While the
+  // frame springs shut, the list stays drawn (faded and inert) until the end.
+  const [sidebarToggling, setSidebarToggling] = useState(false);
+  const reducedMotion = useReducedMotion() ?? false;
   // P96-03: 開いたとき・窓が前に出たときに、一覧の行へフォーカスを置く合図。
   const [treeFocusToken, setTreeFocusToken] = useState(0);
   // P97-03: MHTML is decoded in a worker before it reaches the existing HTML sanitizer.
@@ -723,6 +731,7 @@ export function InstructionViewer() {
     if (moveFocus) {
       pendingSidebarFocusRef.current = collapsed ? "open" : "close";
     }
+    setSidebarToggling(true);
     setSidebarCollapsed(collapsed);
     writeInstructionSidebarCollapsed(collapsed);
   }, []);
@@ -974,6 +983,21 @@ export function InstructionViewer() {
         ref={workspaceRef}
         style={workspaceStyle}
       >
+        <motion.div
+          animate={{
+            width: sidebarCollapsed
+              ? COLLAPSED_SIDEBAR_WIDTH
+              : clampSidebarWidth(sidebarWidth) + DIVIDER_WIDTH,
+          }}
+          className="instructionSidebarFrame"
+          initial={false}
+          onAnimationComplete={() => setSidebarToggling(false)}
+          transition={
+            sidebarToggling && !resizingSidebar && !reducedMotion
+              ? springCollapse
+              : { duration: 0 }
+          }
+        >
         {sidebarCollapsed ? (
           <div className="instructionSidebarCollapsedBar">
             <button
@@ -991,11 +1015,18 @@ export function InstructionViewer() {
           </div>
         ) : null}
 
-        <aside
+        <motion.aside
+          animate={
+            sidebarCollapsed ? { opacity: 0, x: -8 } : { opacity: 1, x: 0 }
+          }
+          aria-hidden={sidebarCollapsed || undefined}
           aria-label="手順書一覧"
           className="instructionSidebar"
-          hidden={sidebarCollapsed}
+          hidden={sidebarCollapsed && !(sidebarToggling && !reducedMotion)}
           id="instruction-sidebar"
+          initial={false}
+          {...(sidebarCollapsed ? { inert: "" } : {})}
+          transition={reducedMotion ? { duration: 0 } : springCollapse}
         >
           <div className="instructionSidebarHeading">
             <span>手順書</span>
@@ -1022,7 +1053,7 @@ export function InstructionViewer() {
             onSelectFile={requestDocument}
             selectedPath={selectedPath}
           />
-        </aside>
+        </motion.aside>
 
         <div
           aria-label="手順書一覧の幅を調整"
@@ -1042,6 +1073,7 @@ export function InstructionViewer() {
           tabIndex={0}
           title="ドラッグして一覧の幅を調整"
         />
+        </motion.div>
 
         <section
           aria-busy={loading || (isMhtmlInstruction && mhtmlState.status === "loading")}

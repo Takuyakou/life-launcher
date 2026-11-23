@@ -3,6 +3,7 @@ import type { AppConfig } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 import { waitForBundledFonts } from "./bundledFonts";
+import { waitForStableRects } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
 
@@ -189,6 +190,7 @@ test("Wishlist edit keeps every dirty field through backdrop clicks and discard 
   const original = structuredClone(fixture.config.inbox);
   await prepare(page, fixture);
   await page.getByRole("button", { name: "やりたいこと", exact: true }).click();
+  await waitForStableRects(page, [".inboxBand .inboxList"]);
   const row = page.locator('[data-inbox-id="sample-later"]');
   await row.click({ button: "right" });
   await page.getByRole("menuitem", { name: "編集", exact: true }).click();

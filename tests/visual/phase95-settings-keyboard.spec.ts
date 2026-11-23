@@ -54,10 +54,11 @@ test("ArrowDown alone walks every item of the Basic tab without changing a numbe
   await settings.getByRole("tab", { name: "基本" }).focus();
   const visited = await walkDown(page);
   // P10-02: the Basic tab opens with the guide row, so the walk starts there.
-  expect(visited.slice(0, 7)).toEqual([
+  expect(visited.slice(0, 8)).toEqual([
     "button:使い方を開く",
     "number:短時間タイマー分数",
     "number:通常タイマー分数",
+    "number:延長タイマー分数",
     "number:日付切替時刻時",
     "checkbox:常に手前",
     "checkbox:Windows自動起動",
@@ -67,6 +68,9 @@ test("ArrowDown alone walks every item of the Basic tab without changing a numbe
   expect(visited.slice(-2)).toEqual(["button:保存", "button:キャンセル"]);
   await expect(settings.getByRole("spinbutton", { name: "短時間タイマー分数" })).toHaveValue(String(before.shortTimerMinutes));
   await expect(settings.getByRole("spinbutton", { name: "通常タイマー分数" })).toHaveValue(String(before.defaultTimerMinutes));
+  await expect(settings.getByRole("spinbutton", { name: "延長タイマー分数" })).toHaveValue(
+    String(before.extendTimerMinutes ?? 15),
+  );
   await expect(settings.getByRole("spinbutton", { name: "日付切替時刻" })).toHaveValue(String(before.dayStartHour));
   // ArrowUp walks back through the same fields without changing them either.
   await page.keyboard.press("ArrowUp");

@@ -3,6 +3,7 @@ import type { AppConfig, LauncherButton } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 import { waitForBundledFonts } from "./bundledFonts";
+import { waitForStableRects } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
 
@@ -189,6 +190,7 @@ test("Wishlist edit loads its selected environment and saves the shared picker s
   fixture.config.inbox[0].buttonIds = ["sample-editor"];
   await prepare(page, fixture);
   await page.getByRole("button", { name: "やりたいこと", exact: true }).click();
+  await waitForStableRects(page, [".inboxBand .inboxList"]);
   const row = page.locator(".inboxRow", { hasText: "あとで確認するサンプル" });
   await row.click({ button: "right" });
   await page.getByRole("menuitem", { name: "編集", exact: true }).click();

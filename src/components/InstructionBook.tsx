@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { SlidingFace } from "./SlidingFace";
 import type {
   KeyboardEvent as ReactKeyboardEvent,
   PointerEvent as ReactPointerEvent,
@@ -38,6 +39,11 @@ type PageEntry = {
   error?: string;
 };
 
+type PageReadQueue = {
+  waiting: number[];
+  active: number;
+};
+
 type ScrubState = {
   ratio: number;
   page: number;
@@ -49,6 +55,9 @@ const MAX_CACHED_PAGES = 12;
 const PRELOAD_OPENINGS = 2;
 const SAVE_DELAY_MS = 800;
 const DECODE_HOLD_MS = 150;
+// V163-B1: page reads in flight at once; the rest wait in a queue ordered by distance.
+const MAX_PAGE_READS = 2;
+const EMPTY_IMAGE_ERROR = "このページの画像を表示できませんでした";
 const WHEEL_THROTTLE_MS = 250;
 const ZOOM_WHEEL_THROTTLE_MS = 120;
 const STAGE_PADDING_X = 24;
@@ -131,6 +140,10 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
   const bookTokenRef = useRef(0);
   // Pages read for the open book; a page is read again only after it leaves the cache.
   const requestedPagesRef = useRef<Set<number>>(new Set());
+  // V163-B1: one queue per open book, so a read of a closed book never frees a slot of the next.
+  const readQueueRef = useRef<PageReadQueue>({ waiting: [], active: 0 });
+  const lastGroupIndexRef = useRef(0);
+  const turnDirectionRef = useRef<1 | -1>(1);
   const holdTimerRef = useRef<number | null>(null);
   const protectedPagesRef = useRef<Set<number>>(new Set());
   const groupsRef = useRef<number[][]>([]);
@@ -153,6 +166,9 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
     const token = bookTokenRef.current;
     const requestedPages = requestedPagesRef.current;
     requestedPages.clear();
+    readQueueRef.current = { waiting: [], active: 0 };
+    lastGroupIndexRef.current = 0;
+    turnDirectionRef.current = 1;
     clearHoldTimer();
     for (const entry of cacheRef.current.values()) {
       if (entry.url) URL.revokeObjectURL(entry.url);
@@ -201,6 +217,7 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
     return () => {
       bookTokenRef.current += 1;
       requestedPages.clear();
+      readQueueRef.current = { waiting: [], active: 0 };
       clearHoldTimer();
       for (const entry of cacheRef.current.values()) {
         if (entry.url) URL.revokeObjectURL(entry.url);
@@ -295,77 +312,132 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
     ...neededPages,
   ]);
 
-  // V161-B2: keep in-flight page loads alive across rapid turns; discard only when the book changes.
+  // V161-B2 / V163-B1: reads already sent are never cancelled (their answers go into the cache),
+  // but pages still waiting are dropped when they are no longer needed. At most two reads run at
+  // once: the target opening first, then one opening away, then two; ahead of the turn first.
   useEffect(() => {
     if (!book) return;
     const token = bookTokenRef.current;
-    const needed = neededKey
-      .split(",")
-      .filter(Boolean)
-      .map((value) => Number(value));
+    const queue = readQueueRef.current;
+    if (groupIndex !== lastGroupIndexRef.current) {
+      turnDirectionRef.current = groupIndex > lastGroupIndexRef.current ? 1 : -1;
+      lastGroupIndexRef.current = groupIndex;
+    }
+    const needed = new Set(
+      neededKey
+        .split(",")
+        .filter(Boolean)
+        .map((value) => Number(value)),
+    );
+    const dropped = queue.waiting.filter((page) => !needed.has(page));
+    if (dropped.length > 0) {
+      queue.waiting = queue.waiting.filter((page) => needed.has(page));
+      for (const page of dropped) requestedPagesRef.current.delete(page);
+      setCache((previous) => {
+        let next: Map<number, PageEntry> | null = null;
+        for (const page of dropped) {
+          if (previous.get(page)?.status !== "loading") continue;
+          next ??= new Map(previous);
+          next.delete(page);
+        }
+        return next ?? previous;
+      });
+    }
+    const added: number[] = [];
     for (const page of needed) {
       if (requestedPagesRef.current.has(page)) continue;
       requestedPagesRef.current.add(page);
+      queue.waiting.push(page);
+      added.push(page);
+    }
+    if (added.length > 0) {
       setCache((previous) => {
-        if (previous.has(page)) return previous;
+        let next: Map<number, PageEntry> | null = null;
+        for (const page of added) {
+          if (previous.has(page)) continue;
+          next ??= new Map(previous);
+          next.set(page, { status: "loading" });
+        }
+        return next ?? previous;
+      });
+    }
+    const pageGroups = groupsRef.current;
+    const rank = (page: number) => {
+      const index = bookGroupIndexForPage(pageGroups, page);
+      const distance = Math.abs(index - groupIndex);
+      const behind = distance > 0 && Math.sign(index - groupIndex) !== turnDirectionRef.current ? 1 : 0;
+      return distance * 2 + behind;
+    };
+    queue.waiting.sort((left, right) => rank(left) - rank(right) || left - right);
+
+    const settle = (page: number, entry: PageEntry) => {
+      setCache((previous) => {
+        if (bookTokenRef.current !== token) {
+          if (entry.url) URL.revokeObjectURL(entry.url);
+          return previous;
+        }
         const next = new Map(previous);
-        next.set(page, { status: "loading" });
+        const old = next.get(page);
+        if (old?.url && old.url !== entry.url) URL.revokeObjectURL(old.url);
+        next.set(page, entry);
+        while (next.size > MAX_CACHED_PAGES) {
+          const oldest = Array.from(next.entries()).find(
+            ([key, cached]) =>
+              !protectedPagesRef.current.has(key) &&
+              cached.status === "ready" &&
+              cached.decoded,
+          );
+          if (!oldest) break;
+          if (oldest[1].url) URL.revokeObjectURL(oldest[1].url);
+          next.delete(oldest[0]);
+          requestedPagesRef.current.delete(oldest[0]);
+        }
         return next;
       });
-      void readInstructionBookPage(path, page - 1)
-        .then(async (buffer) => {
-          if (bookTokenRef.current !== token) return;
-          const bytes = new Uint8Array(buffer);
-          const mime = bookPageMime(bytes[0]);
-          if (!mime) throw new Error("このページは画像ではないため表示しません");
-          const url = URL.createObjectURL(
-            new Blob([bytes.subarray(1)], { type: mime }),
-          );
-          const dimensions = await decodeImageUrl(url);
-          if (bookTokenRef.current !== token) {
-            URL.revokeObjectURL(url);
-            return;
-          }
-          setCache((previous) => {
-            if (bookTokenRef.current !== token) {
-              URL.revokeObjectURL(url);
-              return previous;
-            }
-            const next = new Map(previous);
-            const old = next.get(page);
-            if (old?.url && old.url !== url) URL.revokeObjectURL(old.url);
-            next.set(page, {
-              status: "ready",
-              url,
-              decoded: true,
-              naturalWidth: dimensions.width,
-              naturalHeight: dimensions.height,
-            });
-            while (next.size > MAX_CACHED_PAGES) {
-              const oldest = Array.from(next.entries()).find(
-                ([key, entry]) =>
-                  !protectedPagesRef.current.has(key) &&
-                  entry.status === "ready" &&
-                  entry.decoded,
-              );
-              if (!oldest) break;
-              if (oldest[1].url) URL.revokeObjectURL(oldest[1].url);
-              next.delete(oldest[0]);
-              requestedPagesRef.current.delete(oldest[0]);
-            }
-            return next;
-          });
-        })
-        .catch((error) => {
-          if (bookTokenRef.current !== token) return;
-          setCache((previous) => {
-            const next = new Map(previous);
-            next.set(page, { status: "error", error: errorText(error) });
-            return next;
-          });
+    };
+    const read = async (page: number) => {
+      try {
+        const buffer = await readInstructionBookPage(path, page - 1);
+        if (bookTokenRef.current !== token) return;
+        const bytes = new Uint8Array(buffer);
+        const mime = bookPageMime(bytes[0]);
+        if (!mime) throw new Error("このページは画像ではないため表示しません");
+        const url = URL.createObjectURL(new Blob([bytes.subarray(1)], { type: mime }));
+        const dimensions = await decodeImageUrl(url);
+        if (bookTokenRef.current !== token) {
+          URL.revokeObjectURL(url);
+          return;
+        }
+        if (dimensions.width === 0 || dimensions.height === 0) {
+          URL.revokeObjectURL(url);
+          settle(page, { status: "error", error: EMPTY_IMAGE_ERROR });
+          return;
+        }
+        settle(page, {
+          status: "ready",
+          url,
+          decoded: true,
+          naturalWidth: dimensions.width,
+          naturalHeight: dimensions.height,
         });
-    }
-  }, [book, path, neededKey]);
+      } catch (error) {
+        if (bookTokenRef.current !== token) return;
+        settle(page, { status: "error", error: errorText(error) });
+      }
+    };
+    const pump = () => {
+      if (bookTokenRef.current !== token || readQueueRef.current !== queue) return;
+      while (queue.active < MAX_PAGE_READS && queue.waiting.length > 0) {
+        const page = queue.waiting.shift()!;
+        queue.active += 1;
+        void read(page).finally(() => {
+          queue.active -= 1;
+          pump();
+        });
+      }
+    };
+    pump();
+  }, [book, path, neededKey, groupIndex]);
 
   // V161-B1: once every page of the target opening is decoded within 150 ms, switch immediately.
   useEffect(() => {
@@ -955,14 +1027,16 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
             onClick={() => changeSpread(true)}
             type="button"
           >
-            見開き
+            {bookState.spread && <SlidingFace className="bookSegFace" layoutId="book-spread-face" />}
+            <span className="bookSegLabel">見開き</span>
           </button>
           <button
             aria-pressed={!bookState.spread}
             onClick={() => changeSpread(false)}
             type="button"
           >
-            1ページ
+            {!bookState.spread && <SlidingFace className="bookSegFace" layoutId="book-spread-face" />}
+            <span className="bookSegLabel">1ページ</span>
           </button>
         </div>
         <div
@@ -978,14 +1052,20 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
             onClick={() => changeDirection("rtl")}
             type="button"
           >
-            右から左
+            {bookState.direction === "rtl" && (
+              <SlidingFace className="bookSegFace" layoutId="book-direction-face" />
+            )}
+            <span className="bookSegLabel">右から左</span>
           </button>
           <button
             aria-pressed={bookState.direction === "ltr"}
             onClick={() => changeDirection("ltr")}
             type="button"
           >
-            左から右
+            {bookState.direction === "ltr" && (
+              <SlidingFace className="bookSegFace" layoutId="book-direction-face" />
+            )}
+            <span className="bookSegLabel">左から右</span>
           </button>
         </div>
         <label

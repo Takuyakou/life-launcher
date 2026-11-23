@@ -179,20 +179,15 @@ export function ImportDialog({
             <CopyButton
               className="importPromptCopy"
               disabled={busy}
-              label="はじめて用をコピー"
+              label="初回作成用をコピー"
               onCopy={copyFirstPrompt}
             />
-            <div className="importPromptRepeat">
-              <CopyButton
-                className="importPromptCopy"
-                disabled={busy}
-                label="今の内容を付けてコピー"
-                onCopy={copyRepeatPrompt}
-              />
-              <small className="quietText quietText--small">
-                コピーする文には、今のプロジェクト名・目標・次の一手・やりたいことが入ります。
-              </small>
-            </div>
+            <CopyButton
+              className="importPromptCopy"
+              disabled={busy}
+              label="追加・見直し用をコピー"
+              onCopy={copyRepeatPrompt}
+            />
           </div>
 
           <div className="importDialogActions">

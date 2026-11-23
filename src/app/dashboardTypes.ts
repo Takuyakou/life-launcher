@@ -176,6 +176,7 @@ export type SettingsCenterDraft = {
   mainDisplaySize: "standard" | "large" | "xlarge";
   defaultTimerMinutes: string;
   shortTimerMinutes: string;
+  extendTimerMinutes: string;
   dayStartHour: string;
   focusHotkey: string;
   launcherHotkey: string;
@@ -539,7 +540,9 @@ export type NumberInputDragField =
   | "timer"
   | "settingsDefault"
   | "settingsShort"
+  | "settingsExtend"
   | "settingsDayStart"
+  | "completionExtend"
   | "projectDefault"
   | "projectShort";
 

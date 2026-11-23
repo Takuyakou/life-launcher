@@ -1148,13 +1148,29 @@ body {
 
 .instructionWorkspace {
   display: grid;
-  grid-template-columns: minmax(0, var(--instruction-sidebar-width, 248px)) 7px minmax(0, 1fr);
+  /* V163-M1: the first column is the list frame; its width springs between the list and the bar. */
+  grid-template-columns: auto minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
 }
 
-.instructionWorkspace--collapsed {
-  grid-template-columns: 28px minmax(0, 1fr);
+.instructionSidebarFrame {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.instructionSidebarFrame > .instructionSidebarCollapsedBar {
+  flex: 0 0 28px;
+}
+
+.instructionSidebarFrame > .instructionSidebar {
+  flex: 0 0 var(--instruction-sidebar-width, 248px);
+}
+
+.instructionSidebarFrame > .instructionSidebarDivider {
+  flex: 0 0 7px;
 }
 
 .instructionSidebarCollapsedBar {

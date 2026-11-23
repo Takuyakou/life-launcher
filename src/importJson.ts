@@ -12,6 +12,28 @@ export function extractImportJson(text: string): ExtractImportJsonResult {
   if (text.length > IMPORT_MAX_BYTES) {
     return { ok: false, error: "256 KBを超えています" };
   }
+  // A correct answer is read as it is. Only when nothing could be read, try again with the
+  // Markdown damage of a copied answer undone outside the JSON strings (V163-B2).
+  let found = findImportJson(text);
+  if (found.matches.length === 0) {
+    const repaired = findImportJson(repairOutsideStrings(text));
+    if (repaired.matches.length > 0) found = repaired;
+  }
+  if (found.matches.length > 1) {
+    return { ok: false, error: "取り込みのJSONが2つ以上あります。1つだけにしてください" };
+  }
+  if (found.matches.length === 0) {
+    return {
+      ok: false,
+      error: found.parseError
+        ? `JSONを読めません: ${found.parseError}`
+        : "取り込みのJSONが見つかりません",
+    };
+  }
+  return { ok: true, json: found.matches[0] };
+}
+
+function findImportJson(text: string): { matches: string[]; parseError?: string } {
   const candidates: string[] = [];
   let depth = 0;
   let start = -1;
@@ -70,14 +92,64 @@ export function extractImportJson(text: string): ExtractImportJsonResult {
       parseError ??= error instanceof Error ? error.message : String(error);
     }
   }
-  if (matches.length > 1) {
-    return { ok: false, error: "取り込みのJSONが2つ以上あります。1つだけにしてください" };
+  return { matches, parseError };
+}
+
+const SPACE_ENTITY = /^&(?:#x20|#32|#160|#xa0|nbsp);/i;
+
+/**
+ * Undo what a Markdown copy does to a JSON answer, but only outside JSON strings:
+ * a backslash at the end of a line (hard line break), space entities and no-break spaces,
+ * and a backslash before { } [ ]. Strings are found the same way as findImportJson counts them.
+ * \" is left alone: in broken JSON it cannot be told apart from the start or end of a string.
+ */
+function repairOutsideStrings(text: string): string {
+  let output = "";
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+    if (inString) {
+      output += character;
+      if (escaped) {
+        escaped = false;
+      } else if (character === "\\") {
+        escaped = true;
+      } else if (character === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (character === "\\") {
+      const next = text[index + 1];
+      if (next === "\n" || (next === "\r" && text[index + 2] === "\n")) continue;
+      if (next === "{" || next === "}" || next === "[" || next === "]") continue;
+    }
+    if (character === "&") {
+      const entity = SPACE_ENTITY.exec(text.slice(index, index + 8));
+      if (entity) {
+        output += " ";
+        index += entity[0].length - 1;
+        continue;
+      }
+    }
+    if (character === "\u00A0" || character === "\uFEFF") {
+      output += " ";
+      continue;
+    }
+    output += character;
+    if (depth === 0) {
+      if (character === "{") depth = 1;
+      continue;
+    }
+    if (character === '"') {
+      inString = true;
+    } else if (character === "{") {
+      depth += 1;
+    } else if (character === "}") {
+      depth -= 1;
+    }
   }
-  if (matches.length === 0) {
-    return {
-      ok: false,
-      error: parseError ? `JSONを読めません: ${parseError}` : "取り込みのJSONが見つかりません",
-    };
-  }
-  return { ok: true, json: matches[0] };
+  return output;
 }

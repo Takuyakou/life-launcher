@@ -107,7 +107,11 @@ test("V151-S6 T1 the completion dialog leads with what happened, then what the t
 
   // Focus and buttons are unchanged.
   await expect(dialog.getByRole("button", { name: "続ける(+15分)" })).toBeFocused();
-  await expect(dialog.getByRole("button")).toHaveText(["続ける(+15分)", "終わる"]);
+  // V163-B4: the extend stepper adds − / ＋ buttons, so look at the action row only.
+  await expect(dialog.locator(".dialogActions").getByRole("button")).toHaveText([
+    "続ける(+15分)",
+    "終わる",
+  ]);
 });
 
 test("V151-S6 T1 after 続ける(+15分) the band shows the extended minutes", async ({ page }) => {

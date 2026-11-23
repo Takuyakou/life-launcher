@@ -822,7 +822,6 @@
   background: var(--good);
   box-shadow: 0 0 5px rgba(117, 196, 143, 0.24);
   transform-origin: left center;
-  transition: transform 220ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .todayPickerDestinationHeader h3,
@@ -1358,6 +1357,26 @@
 
 .sectionMenuButton:hover,
 .sectionMenuButton:focus-visible {
+  border-color: var(--line);
+  background: var(--control-neutral-hover-bg);
+  color: var(--accent-strong);
+}
+
+.sectionGhostButton {
+  align-self: center;
+  min-height: 28px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding-inline: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--dashboard-font-meta);
+  white-space: nowrap;
+}
+
+.sectionGhostButton:hover,
+.sectionGhostButton:focus-visible {
   border-color: var(--line);
   background: var(--control-neutral-hover-bg);
   color: var(--accent-strong);
@@ -1991,6 +2010,36 @@
   min-height: 42px;
   border-radius: var(--radius);
   font-weight: 750;
+}
+
+/* V163-M2: a face in the chosen mode's colors slides between the two modes while it moves. */
+.nextStepDecisionModeButton {
+  position: relative;
+}
+
+.nextStepModeLabel {
+  position: relative;
+  z-index: 1;
+}
+
+.nextStepModeFace {
+  position: absolute;
+  inset: -1px;
+  border: 1px solid var(--main-action-border);
+  border-radius: inherit;
+  background: var(--main-action-bg);
+  /* Not drawn at rest (still measured for layoutId); opacity 0 changed the frame's corners. */
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.nextStepModeFace[data-moving] {
+  visibility: visible;
+}
+
+button.mainActionButton.nextStepDecisionModeButton--active:has(> .nextStepModeFace[data-moving]) {
+  border-color: transparent;
+  background: transparent;
 }
 
 .nextStepDecisionModeButton--active {

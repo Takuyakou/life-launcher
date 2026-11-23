@@ -87,6 +87,35 @@
   color: var(--text);
 }
 
+/* V163-M2: a face carries the accent frame to the chosen tab; seen only while it moves. */
+.settingsTab {
+  position: relative;
+}
+
+.settingsTabLabel {
+  position: relative;
+  z-index: 1;
+}
+
+.settingsTabFace {
+  position: absolute;
+  inset: -1px;
+  border: 1px solid var(--accent);
+  border-radius: inherit;
+  background: transparent;
+  /* Not drawn at rest (still measured for layoutId); opacity 0 changed the frame's corners. */
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.settingsTabFace[data-moving] {
+  visibility: visible;
+}
+
+.settingsTab--active:has(> .settingsTabFace[data-moving]) {
+  border-color: var(--line);
+}
+
 .settingsSection h3 {
   margin: 0;
   color: var(--text);
@@ -97,6 +126,24 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 10px;
+}
+
+/* V163-B4: the basic tab's four number fields (short / normal / extend / day start) in a 2 x 2 grid. */
+.settingsGrid--timers {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* V163-B4: the 「続ける」 minutes on the timer prompt, right above the actions. */
+.timerCompleteExtendRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.timerCompleteExtendLabel {
+  color: var(--muted);
+  font-size: var(--dashboard-font-meta);
 }
 
 .shortcutCaptureField {

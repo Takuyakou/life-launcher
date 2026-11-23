@@ -1434,13 +1434,6 @@
   background: var(--good);
   box-shadow: 0 0 5px rgba(117, 196, 143, 0.24);
   transform-origin: left center;
-  transition: transform 220ms cubic-bezier(0.23, 1, 0.32, 1);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .todayPickerProgress > span {
-    transition: none;
-  }
 }
 
 @media (min-width: 1000px) {
@@ -1493,6 +1486,7 @@
   column-gap: 16px;
   height: 44px;
   flex: 0 0 auto;
+  margin-bottom: 0;
   padding: 0 16px;
   border-bottom: 1px solid #353126;
   background: #1b1a17;

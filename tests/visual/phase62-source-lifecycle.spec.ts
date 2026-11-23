@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import type { AppConfig } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
+import { waitForStableRects } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
 
@@ -83,6 +84,7 @@ test("completing a Wishlist item removes only its active source and records its 
   ];
   await prepare(page, fixture);
   await page.locator(".inboxBand .disclosure").click();
+  await waitForStableRects(page, [".inboxBand .inboxList"]);
   const item = page.locator(".inboxRow", { hasText: "週末に試すアイデア" });
   await item.click({ button: "right" });
   await page.getByRole("menuitem", { name: "完了にする" }).click();
@@ -120,6 +122,7 @@ test("deleting a source removes linked Today3 without creating completion histor
   ];
   await prepare(page, fixture);
   await page.locator(".inboxBand .disclosure").click();
+  await waitForStableRects(page, [".inboxBand .inboxList"]);
   const item = page.locator(".inboxRow", { hasText: "週末に試すアイデア" });
   await item.click({ button: "right" });
   await page.getByRole("menuitem", { name: "削除" }).click();
@@ -151,6 +154,7 @@ test("completion save failure rolls back source, Today3, and history together", 
   await prepare(page, fixture);
   await setSaveFailure(page, true);
   await page.locator(".inboxBand .disclosure").click();
+  await waitForStableRects(page, [".inboxBand .inboxList"]);
   const item = page.locator(".inboxRow", { hasText: "週末に試すアイデア" });
   await item.click({ button: "right" });
   await page.getByRole("menuitem", { name: "完了にする" }).click();
@@ -182,6 +186,7 @@ test("active Wishlist timer disables complete and delete actions", async ({ page
     .getByRole("button", { name: /短時間タイマー5分で開始/ })
     .click();
   await page.locator(".inboxBand .disclosure").click();
+  await waitForStableRects(page, [".inboxBand .inboxList"]);
   await page.locator(".inboxRow", { hasText: "週末に試すアイデア" }).click({ button: "right" });
   await expect(page.getByRole("menuitem", { name: "完了にする" })).toBeDisabled();
   await expect(page.getByRole("menuitem", { name: "削除" })).toBeDisabled();

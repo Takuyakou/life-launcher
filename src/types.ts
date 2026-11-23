@@ -194,6 +194,8 @@ export const SettingsSchema = z.object({
   autoStart: z.boolean().default(false),
   defaultTimerMinutes: z.number().int().min(1).max(240),
   shortTimerMinutes: z.number().int().min(1).max(240).default(5),
+  /** V163-B4: minutes 「続ける」 adds when a timer reaches its planned time (unset = 15). */
+  extendTimerMinutes: z.number().int().min(1).max(240).optional(),
   dayStartHour: z.number().int().min(0).max(23).default(4),
   backupFolder: z.string().nullable().default(null),
   backupKeep: z.number().int().min(1).default(30),

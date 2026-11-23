@@ -127,14 +127,14 @@ test("Guide shows both import prompts and copies exactly what importPrompt.ts ha
 
   const blocks = section.locator(".helpGuideCodeBlock");
   await expect(blocks).toHaveCount(3);
-  const first = blocks.filter({ hasText: "はじめて用のプロンプト" });
-  const repeat = blocks.filter({ hasText: "2回目以降用のプロンプト" });
-  const example = blocks.filter({ hasText: "「私の状況」の例" });
+  const first = blocks.filter({ hasText: "初回作成用のプロンプト" });
+  const repeat = blocks.filter({ hasText: "追加・見直し用のプロンプト" });
+  const example = blocks.filter({ hasText: "書き足すときの例" });
   await expect(first.locator("pre")).toHaveText(IMPORT_PROMPT_FIRST);
   await expect(repeat.locator("pre")).toHaveText(
     IMPORT_PROMPT_REPEAT.replace(
       "{CURRENT_STATE}",
-      "(「今の内容を付けてコピー」で、ここに今のアプリの内容が自動で入ります)",
+      "(「追加・見直し用をコピー」で、ここに今のアプリの内容が自動で入ります)",
     ),
   );
   await expect(example.locator("pre")).toHaveText(
@@ -159,7 +159,7 @@ test("Guide shows both import prompts and copies exactly what importPrompt.ts ha
   ).toBe(
     IMPORT_PROMPT_REPEAT.replace(
       "{CURRENT_STATE}",
-      "(「今の内容を付けてコピー」で、ここに今のアプリの内容が自動で入ります)",
+      "(「追加・見直し用をコピー」で、ここに今のアプリの内容が自動で入ります)",
     ),
   );
 });

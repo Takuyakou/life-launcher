@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { createFullTodayFixture, createPickerFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 import { waitForBundledFonts } from "./bundledFonts";
+import { waitForStableRects } from "./helpers";
 
 type QaWindow = Window & {
   __LIFE_LAUNCHER_VISUAL_QA__: {
@@ -54,6 +55,7 @@ test("P9-10 the Wishlist edit dialog and the Dictionary window share the same En
 }) => {
   await open(page);
   await page.locator(".inboxBand .disclosure").click();
+  await waitForStableRects(page, [".inboxBand .inboxList"]);
   await page.locator('[data-inbox-id="sample-weekend"]').click({ button: "right" });
   await page.getByRole("menuitem", { name: "編集" }).click();
   const edit = page.getByRole("dialog", { name: "やりたいこと編集" });

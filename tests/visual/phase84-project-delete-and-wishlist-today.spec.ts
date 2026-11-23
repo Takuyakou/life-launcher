@@ -73,6 +73,7 @@ test("Wishlist rows drag to Today3 with gold guidance and use the shared adoptio
   const fixture = createPublicFixture();
   await prepare(page, fixture, 1200);
   await page.getByRole("button", { name: "やりたいこと", exact: true }).click();
+  await waitForStableRects(page, [".inboxBand .inboxList"]);
   const row = page.locator('[data-inbox-id="sample-later"]');
   await expect(row).toBeVisible();
   await expect(page.locator(".inboxBody")).toHaveCSS("overflow", "visible");
