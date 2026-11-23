@@ -1629,20 +1629,22 @@
   min-width: 0;
 }
 
+/* V163-C9: the app icon matches the magnifier of the sidebar (about 22〜24px of visible picture;
+   the SVG has about 12% padding, so a 26px image shows about 23px). */
 .topBrandIcon {
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  border-radius: 7px;
+  border-radius: 8px;
   background: #2b2922;
   color: #ffce5b;
 }
 
 .topBrandIcon img {
-  width: 20px;
-  height: 20px;
+  width: 26px;
+  height: 26px;
   display: block;
 }
 
