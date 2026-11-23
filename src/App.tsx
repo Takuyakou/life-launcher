@@ -10118,7 +10118,7 @@ function DashboardApp() {
                     </span>
                     <div className="disclosureHeaderActions">
                       <button
-                        className="sectionGhostButton"
+                        className="sectionGhostButton mainActionButton mainActionButton--neutral"
                         onPointerDown={(event) => event.stopPropagation()}
                         onClick={(event) => {
                           event.stopPropagation();

@@ -170,3 +170,62 @@ test("V163-B5 5 the 「やりたいこと」 heading has no such button", async 
     page.locator(".inboxBand .disclosureHeader").getByRole("button", { name: "まとめて取り込む" }),
   ).toHaveCount(0);
 });
+
+test("V163-C10 7 the import button wears the same frame and hover move as 編集", async ({
+  page,
+}) => {
+  await prepare(page);
+
+  // At rest: the import button is invisible (opacity 0) but its frame is the same as 編集's.
+  const rest = await page.evaluate(() => {
+    const look = (element: Element | null) => {
+      if (!element) return null;
+      const style = getComputedStyle(element);
+      return {
+        borderWidth: style.borderTopWidth,
+        borderStyle: style.borderTopStyle,
+        borderColor: style.borderTopColor,
+        background: style.backgroundColor,
+        color: style.color,
+        radius: style.borderTopLeftRadius,
+        height: style.height,
+        minHeight: style.minHeight,
+      };
+    };
+    return {
+      importButton: look(
+        document.querySelector(".projectsBand .disclosureHeader .sectionGhostButton"),
+      ),
+      editButton: look(document.querySelector(".nextStepCard .nextStepRowAction--change")),
+    };
+  });
+  const importFrame = rest.importButton!;
+  const editFrame = rest.editButton!;
+  expect(importFrame.borderWidth, "the frame is drawn").not.toBe("0px");
+  expect(importFrame.borderWidth).toBe(editFrame.borderWidth);
+  expect(importFrame.borderStyle).toBe("solid");
+  expect(importFrame.borderStyle).toBe(editFrame.borderStyle);
+  expect(importFrame.borderColor).toBe(editFrame.borderColor);
+  expect(importFrame.background).toBe(editFrame.background);
+  expect(importFrame.color).toBe(editFrame.color);
+  expect(importFrame.radius).toBe(editFrame.radius);
+  expect(importFrame.height).toBe(editFrame.height);
+  expect(importFrame.minHeight).toBe(editFrame.minHeight);
+
+  // Hovering each lifts it by 1px with the same shadow move (translateY(-1px)).
+  const readTransform = (selector: string) =>
+    page.evaluate(
+      (target) => getComputedStyle(document.querySelector(target)!).transform,
+      selector,
+    );
+  await projectsHeader(page).hover();
+  await importButton(page).hover();
+  await expect.poll(() => readTransform(".projectsBand .disclosureHeader .sectionGhostButton")).toBe(
+    "matrix(1, 0, 0, 1, 0, -1)",
+  );
+  await page.mouse.move(0, 0);
+  await editButton(page).hover();
+  await expect
+    .poll(() => readTransform(".nextStepCard .nextStepRowAction--change"))
+    .toBe("matrix(1, 0, 0, 1, 0, -1)");
+});

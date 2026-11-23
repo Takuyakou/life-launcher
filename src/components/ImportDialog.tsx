@@ -454,7 +454,7 @@ export function ImportDialog({
                     {counts?.wishes ?? 0}
                   </span>
                   <button
-                    className="sectionGhostButton"
+                    className="sectionGhostButton mainActionButton mainActionButton--neutral"
                     disabled={busy}
                     onClick={repaste}
                     ref={repasteRef}

@@ -1362,26 +1362,18 @@
   color: var(--accent-strong);
 }
 
-/* V163-C2: the same look as the Next Step card's 編集 (`.nextStepCard .nextStepRowAction`). */
-.sectionGhostButton {
+.sectionGhostButton.mainActionButton {
+  --main-action-hover-bg: var(--surface-strong);
+  --main-action-hover-border: rgba(231, 185, 77, 0.48);
+  --main-action-hover-color: var(--accent-strong);
   align-self: center;
   min-height: 28px;
-  border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   padding-inline: 8px;
-  background: rgba(255, 255, 255, 0.018);
-  color: var(--muted);
   font: inherit;
   font-size: var(--dashboard-font-meta);
   font-weight: 700;
   white-space: nowrap;
-}
-
-.sectionGhostButton:hover,
-.sectionGhostButton:focus-visible {
-  border-color: rgba(231, 185, 77, 0.48);
-  background: var(--surface-strong);
-  color: var(--accent-strong);
 }
 
 .projectGrid, .inboxList {

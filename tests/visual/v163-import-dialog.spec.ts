@@ -219,7 +219,21 @@ test("V163-B6 2 pasting reads once after 300ms, folds the box, and 貼り直す 
   ).toEqual(["done", "done", "active"]);
   await expect(dialog.getByText("いらないものは、チェックを外します。今あるものは上書きしません。")).toBeVisible();
 
-  await dialog.getByRole("button", { name: "貼り直す" }).click();
+  // V163-C10: 「貼り直す」 wears the same frame as 編集 (a 1px solid border from the button part).
+  const repaste = dialog.getByRole("button", { name: "貼り直す" });
+  const repasteFrame = await repaste.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      width: style.borderTopWidth,
+      kind: style.borderTopStyle,
+      className: element.className,
+    };
+  });
+  expect(repasteFrame.width).toBe("1px");
+  expect(repasteFrame.kind).toBe("solid");
+  expect(repasteFrame.className).toContain("mainActionButton");
+
+  await repaste.click();
   await expect(box).toHaveValue(ANSWER);
   await expect(box).toBeFocused();
   await expect(dialog.getByText("✓ 読み取りました")).toHaveCount(0);
