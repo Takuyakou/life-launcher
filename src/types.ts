@@ -556,6 +556,8 @@ export type ImportRejectedItem = {
 };
 
 export type ImportPreviewProject = {
+  /** V163-B6: `p{i}`; send it back in `excluded` to leave the whole project out. */
+  key: string;
   name: string;
   color: string | null;
   goal: string | null;
@@ -563,6 +565,7 @@ export type ImportPreviewProject = {
 };
 
 export type ImportPreviewExistingProject = {
+  key: string;
   name: string;
   fillColor: string | null;
   fillGoal: string | null;
@@ -572,13 +575,22 @@ export type ImportPreviewExistingProject = {
 };
 
 export type ImportPreviewNextStep = {
+  /** `p{i}.step` */
+  key: string;
+  projectKey: string;
   project: string;
   text: string;
   action: "insert" | "wishlist";
   reason: string | null;
+  /** The values written in the answer; null when it gave none. */
+  minutes: number | null;
+  shortMinutes: number | null;
 };
 
 export type ImportPreviewWish = {
+  /** `p{i}.w{j}`, `w{j}` (no project), or `p{i}.step` for a next step that goes to the wishlist. */
+  key: string;
+  projectKey: string | null;
   text: string;
   project: string | null;
 };

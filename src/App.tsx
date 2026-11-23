@@ -23,7 +23,6 @@ import {
   DEFAULT_BUTTON_GROUP,
   DEFAULT_EXTEND_TIMER_MINUTES,
   EXECUTION_TRIGGER_MAX_CHARS,
-  OVERLAY_PAGE_NAME_MAX_CHARS,
   TIMER_TICK_MS,
   TODAY_ITEM_LIMIT,
   WEEKLY_FOCUS_LIMIT,
@@ -85,10 +84,10 @@ import {
   DropResolveInput,
   DoNowResponse,
   ImportCommitResponse,
+  InboxItem,
   LauncherAction,
   LauncherButton,
   LauncherNextStep,
-  OverlayPage,
   LauncherProject,
   MiniWindowPosition,
   NotesHistoryResponse,
@@ -104,7 +103,6 @@ import { ConfirmDialog, type ConfirmDialogRequest } from "./components/ConfirmDi
 import { GroupNameDialog } from "./components/GroupNameDialog";
 import { ImportDialog } from "./components/ImportDialog";
 import { InboxAddDialog } from "./components/InboxAddDialog";
-import { OverlayPageDialog } from "./components/OverlayPageDialog";
 import { ManualSessionDialog, SessionEditDialog } from "./components/SessionDialogs";
 import {
   SoftwareResetChoiceDialog,
@@ -195,15 +193,6 @@ import { APP_VERSION } from "./version";
 import { useHoverSuppressionAfterResize } from "./hoverSuppression";
 import { installSettingsFieldEditing, navigateAppArrow } from "./keyboardNavigation";
 import {
-  getButtonsForOverlayPage,
-  getOverlayPageCounts,
-  getOverlayDropPageId,
-  getOverlayPageNameForButton,
-  isOverlayPageKeyAvailable,
-  OVERLAY_ALL_PAGE_KEY,
-  OVERLAY_UNCLASSIFIED_PAGE_KEY,
-  overlayCustomPageKey,
-  overlayPageIdFromKey,
   searchOverlayButtons,
 } from "./overlayPages";
 import {
@@ -222,11 +211,11 @@ import {
   toggleDictionaryWindow,
 } from "./dictionaryWindow";
 import { ACTION_DRAG_TYPE, MINI_READY_EVENT, MINI_RETURN_EVENT, MINI_TIMER_COMMAND_EVENT, MINI_TIMER_SNAPSHOT_EVENT, MINI_WINDOW_HEIGHT_PX, MINI_WINDOW_LABEL, MINI_WINDOW_WIDTH_PX, NUMBER_INPUT_DRAG_PIXELS_PER_STEP, NUMBER_INPUT_DRAG_THRESHOLD_PX, OVERLAY_PAGE_DRAG_TYPE, PROJECT_CARD_COMPACT_LIMIT, SIDEBAR_DRAG_THRESHOLD_PX, SOURCE_LIST_COMPACT_LIMIT, SOURCE_LIST_PAGE_SIZE, SOURCE_LIST_PAGINATION_THRESHOLD } from "./app/constants";
-import { type ActionDraft, type ActiveTimer, type ActiveView, type ButtonEditDraft, type ButtonGroup, type CompletionFeedback, type CompletionFollowup, type ContextMenuState, type ContextMenuTarget, type DoNowCompletionHold, type DropDialogState, type InboxDragPreview, type InboxPointerDrag, type InstructionChoice, type InternalButtonDrag, type LauncherOverlayItem, type LauncherOverlayPageTab, type LegacyNextStepChoice, type MainShellDropEvent, type ManualSessionDraft, type MiniTimerCommand, type MiniTimerSnapshot, type NextStepDecisionMode, type NextStepEditDraft, type NotesSaveStatus, type NumberInputDrag, type NumberInputDragField, type OverlayPageDraft, type ProjectDragPreview, type ProjectEditDraft, type ProjectPointerDrag, type RecordsDateScope, SHORTCUT_DRAFT_FIELDS, type SessionEditDraft, type SettingsCenterDraft, type SettingsSectionKey, type ShortcutDraftField, type SidebarDragPreview, type SidebarGroupDragPreview, type SidebarGroupPointerDrag, type SidebarPointerDrag, TOP_MENU_GROUP_LABELS, TOP_MENU_LABELS, type TimerCompletionPrompt, type TodayDragPreview, type TodayPointerDrag, type WishlistGroupDragPreview, type WishlistGroupPointerDrag, type WishlistGroupView } from "./app/dashboardTypes";
+import { type ActionDraft, type ActiveTimer, type ActiveView, type ButtonEditDraft, type ButtonGroup, type CompletionFeedback, type CompletionFollowup, type ContextMenuState, type ContextMenuTarget, type DoNowCompletionHold, type DropDialogState, type InboxDragPreview, type InboxPointerDrag, type InstructionChoice, type InternalButtonDrag, type LegacyNextStepChoice, type MainShellDropEvent, type ManualSessionDraft, type MiniTimerCommand, type MiniTimerSnapshot, type NextStepDecisionMode, type NextStepEditDraft, type NotesSaveStatus, type NumberInputDrag, type NumberInputDragField, type ProjectDragPreview, type ProjectEditDraft, type ProjectPointerDrag, type RecordsDateScope, SHORTCUT_DRAFT_FIELDS, type SessionEditDraft, type SettingsCenterDraft, type SettingsSectionKey, type ShortcutDraftField, type SidebarDragPreview, type SidebarGroupDragPreview, type SidebarGroupPointerDrag, type SidebarPointerDrag, TOP_MENU_GROUP_LABELS, TOP_MENU_LABELS, type TimerCompletionPrompt, type TodayDragPreview, type TodayPointerDrag, type WishlistGroupDragPreview, type WishlistGroupPointerDrag, type WishlistGroupView } from "./app/dashboardTypes";
 import { MiniModeApp } from "./components/MiniModeApp";
 import { SOFTWARE_RESET_TIMER_MESSAGE, captureSoftwareResetStorage, clearSoftwareResetStorage, getSoftwareResetRecoveryForBoot, restoreSoftwareResetStorage } from "./app/softwareReset";
 import { SectionCollapse } from "./components/SectionCollapse";
-import { actionDescription, actionHasSuspiciousPath, actionKindLabel, actionValue, aliasesInputToList, aliasesListToInput, buttonGroupName, buttonHasIconCacheSource, createStableId, draftId, dropPositionToCss, firstDroppedUrl, formatActionSummary, formatClock, formatDateKeyForHeader, formatSessionRange, formatStartedAt, formatTodayActivityLog, iconForAction, isCloseShortcutValue, isEditableTarget, isValidStartedAt, limitToday, makeAction, matchesHotkey, normalizeOptionalText, normalizeTimerMinutes, readCollapsedGroups, setActionValue, shortcutFromKeyboardEvent, shortcutValidationMessage, showButtonInOverlay, showButtonInSidebar, sourceListRange, stripActionDraft, toActionDraft, toThreeNoteDraft, todayEntries, todaySourceKey, todayTimerSourceId, toggleDisclosureFromBar, uniqueButtonId, uniqueGroupNames, uniqueProjectId, uniqueSuggestions, validateShortcutSettings, writeCollapsedGroups } from "./app/helpers";
+import { actionDescription, actionHasSuspiciousPath, actionValue, aliasesInputToList, aliasesListToInput, buttonGroupName, buttonHasIconCacheSource, createStableId, dropPositionToCss, firstDroppedUrl, formatActionSummary, formatClock, formatDateKeyForHeader, formatSessionRange, formatStartedAt, formatTodayActivityLog, iconForAction, isCloseShortcutValue, isEditableTarget, isValidStartedAt, limitToday, makeAction, matchesHotkey, normalizeOptionalText, normalizeTimerMinutes, readCollapsedGroups, setActionValue, shortcutFromKeyboardEvent, shortcutValidationMessage, showButtonInOverlay, showButtonInSidebar, sourceListRange, stripActionDraft, toActionDraft, toThreeNoteDraft, todayEntries, todaySourceKey, todayTimerSourceId, toggleDisclosureFromBar, uniqueButtonId, uniqueGroupNames, uniqueProjectId, uniqueSuggestions, validateShortcutSettings, writeCollapsedGroups } from "./app/helpers";
 import { clearMiniPosition, createMiniReadyWaiter, inactiveMiniSnapshot, isDictionaryView, isFiniteMiniPosition, isInstructionView, isMiniModeView, readMiniPosition, resolveSafeMiniPosition, sameMiniPosition, timerActionText, waitForMiniWindowCreated, writeMiniPosition } from "./app/miniWindow";
 import { draggedCardTopWithinTodayRemoveDropZone, inboxDropTargetFromPoint, instructionPathKey, instructionPathWithin, isReorderBlockedTarget, notifyTimerComplete, pointWithinSelector, pointWithinTodayRemoveDropZone, projectDropIndicator, projectDropTargetFromPoint, sidebarDropTargetFromPoint, sidebarGroupDropTargetFromPoint, todayAdoptionDropTargetFromPoint, todayDropTargetFromPoint, wishlistGroupDropTargetFromPoint } from "./app/dropTargets";
 
@@ -388,16 +377,13 @@ function DashboardApp() {
   const todayPickerSavingRef = useRef(false);
   // P10-10 (§6.1): which draft slot is being dragged (HTML5 drag keeps it inside the Picker).
   const [todayPickerDragIndex, setTodayPickerDragIndex] = useState<number | null>(null);
+  // V163-B7: the filter pills ("all" / a project id / "unassigned") reset on every open.
+  const [todayPickerFilter, setTodayPickerFilter] = useState<string>("all");
+  // V163-B7: wishes added in the Picker stay here until 決定 saves them with Today3 (one save point).
+  const [todayPickerAddedWishes, setTodayPickerAddedWishes] = useState<InboxItem[]>([]);
+  const [todayPickerQuickText, setTodayPickerQuickText] = useState("");
   const [todayActivityOpen, setTodayActivityOpen] = useState(false);
   const [, setNotesSaveStatus] = useState<NotesSaveStatus>("saved");
-  const [launcherOverlayOpen, setLauncherOverlayOpen] = useState(false);
-  const [launcherSearch, setLauncherSearch] = useState("");
-  const [launcherSelectedIndex, setLauncherSelectedIndex] = useState(0);
-  const [selectedOverlayPageKey, setSelectedOverlayPageKey] = useState(OVERLAY_ALL_PAGE_KEY);
-  const [launcherTabScrollState, setLauncherTabScrollState] = useState({
-    canScrollLeft: false,
-    canScrollRight: false,
-  });
   const [buttonIconSources, setButtonIconSources] = useState<Record<string, string>>({});
   const [sessionSummary, setSessionSummary] = useState<SessionSummaryResponse | null>(null);
   const [weeklyReview, setWeeklyReview] = useState<WeeklyReviewResponse | null>(null);
@@ -471,8 +457,7 @@ function DashboardApp() {
     from: string;
     to: string;
   } | null>(null);
-  const [overlayPageDraft, setOverlayPageDraft] = useState<OverlayPageDraft | null>(null);
-  const [overlayPageDragId, setOverlayPageDragId] = useState<string | null>(null);
+  const [, setOverlayPageDragId] = useState<string | null>(null);
   const [settingsDraft, setSettingsDraft] = useState<SettingsCenterDraft | null>(null);
   const [shortcutRecordingField, setShortcutRecordingField] = useState<ShortcutDraftField | null>(
     null,
@@ -589,12 +574,6 @@ function DashboardApp() {
   const victorySuggestionsRef = useRef<HTMLDivElement | null>(null);
   const victoryNavigationRef = useRef<HTMLButtonElement | null>(null);
   const victorySaveRef = useRef<Promise<boolean> | null>(null);
-  const launcherSearchRef = useRef<HTMLInputElement | null>(null);
-  const launcherOverlayOpenerRef = useRef<HTMLElement | null>(null);
-  const launcherOverlayTabsRef = useRef<HTMLDivElement | null>(null);
-  const launcherPageTabRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
-  const launcherPageAddRef = useRef<HTMLButtonElement | null>(null);
-  const overlayPageDialogOpenerRef = useRef<HTMLElement | null>(null);
   const contextMenuReturnFocusRef = useRef<HTMLElement | null>(null);
   const projectEditReturnFocusRef = useRef<HTMLElement | null>(null);
   const nextStepEditReturnFocusRef = useRef<HTMLElement | null>(null);
@@ -680,7 +659,7 @@ function DashboardApp() {
       }
       returnFocusRef.current =
         activeElement?.isConnected &&
-        !activeElement.closest(".modalBackdrop, .launcherOverlayBackdrop")
+        !activeElement.closest(".modalBackdrop")
           ? activeElement
           : null;
     },
@@ -775,22 +754,6 @@ function DashboardApp() {
     [nextStepEditDraft, requestDiscardConfirmation, restoreDialogFocus],
   );
 
-  const openLauncherOverlay = useCallback((opener?: HTMLElement | null) => {
-    launcherOverlayOpenerRef.current =
-      opener ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
-    setLauncherOverlayOpen(true);
-  }, []);
-
-  const closeLauncherOverlay = useCallback((restoreFocus = true) => {
-    const returnTarget = launcherOverlayOpenerRef.current;
-    launcherOverlayOpenerRef.current = null;
-    setLauncherOverlayOpen(false);
-    if (restoreFocus) {
-      window.requestAnimationFrame(() => {
-        if (returnTarget?.isConnected) returnTarget.focus();
-      });
-    }
-  }, []);
   const openContextMenu = useCallback(
     (target: ContextMenuTarget, x: number, y: number, opener?: HTMLElement | null) => {
       contextMenuReturnFocusRef.current =
@@ -932,51 +895,6 @@ function DashboardApp() {
     [config?.buttons],
   );
   const overlayPages = useMemo(() => config?.overlayPages ?? [], [config?.overlayPages]);
-  const overlayPageCounts = useMemo(
-    () => getOverlayPageCounts(config?.buttons ?? [], overlayPages),
-    [config?.buttons, overlayPages],
-  );
-  const launcherOverlayPageTabs = useMemo<LauncherOverlayPageTab[]>(
-    () => [
-      { key: OVERLAY_ALL_PAGE_KEY, name: "すべて" },
-      { key: OVERLAY_UNCLASSIFIED_PAGE_KEY, name: "未分類" },
-      ...overlayPages.map((page) => ({ key: overlayCustomPageKey(page.id), name: page.name })),
-    ],
-    [overlayPages],
-  );
-  const selectedOverlayPageButtons = useMemo(
-    () =>
-      getButtonsForOverlayPage(
-        config?.buttons ?? [],
-        selectedOverlayPageKey,
-        overlayPages,
-        config?.dictionaryOrder,
-      ),
-    [config?.buttons, config?.dictionaryOrder, overlayPages, selectedOverlayPageKey],
-  );
-  const launcherOverlayItems = useMemo<LauncherOverlayItem[]>(() => {
-    return searchOverlayButtons(
-      config?.buttons ?? [],
-      overlayPages,
-      launcherSearch,
-      config?.dictionaryOrder,
-    ).map((button) => ({
-      groupName: buttonGroupName(button),
-      pageName: getOverlayPageNameForButton(button, overlayPages),
-      button,
-    }));
-  }, [config?.buttons, config?.dictionaryOrder, launcherSearch, overlayPages]);
-  const launcherDisplayedItems = useMemo<LauncherOverlayItem[]>(
-    () =>
-      launcherSearch.trim()
-        ? launcherOverlayItems
-        : selectedOverlayPageButtons.map((button) => ({
-            groupName: buttonGroupName(button),
-            pageName: getOverlayPageNameForButton(button, overlayPages),
-            button,
-          })),
-    [launcherOverlayItems, launcherSearch, overlayPages, selectedOverlayPageButtons],
-  );
   // P10-08 (§7.2): "N分のうち … ・ HH:MM に終わります"; paused shows the pause note instead.
   const expandedTimerPlanLabel = (() => {
     if (!activeTimer || activeTimer.paused) return "";
@@ -2005,12 +1923,6 @@ function DashboardApp() {
     setButtonEditInitialDraft(null);
   }, [buttonEditDraft, buttonEditInitialDraft, requestDiscardConfirmation]);
 
-  const closeOverlayPageDialog = useCallback(() => {
-    setOverlayPageDraft(null);
-    const opener = overlayPageDialogOpenerRef.current;
-    overlayPageDialogOpenerRef.current = null;
-    window.requestAnimationFrame(() => opener?.focus());
-  }, []);
 
   const closeInboxAddDialog = useCallback(
     (afterSuccessfulSave = false) => {
@@ -2077,6 +1989,9 @@ function DashboardApp() {
     setTodayPickerDraftItems([]);
     setTodayPickerSaving(false);
     setTodayPickerDragIndex(null);
+    setTodayPickerFilter("all");
+    setTodayPickerAddedWishes([]);
+    setTodayPickerQuickText("");
     window.requestAnimationFrame(() => {
       // Never steal focus from a dialog that opened while the Picker was closing.
       const active = document.activeElement;
@@ -2086,10 +2001,13 @@ function DashboardApp() {
   }, []);
 
   // P10-10 (§6.1): closing never saves; a changed draft only asks before discarding it.
+  // V163-B7: wishes added in the Picker and an unsent quick-add line count as unsaved too.
   const requestCloseTodayPicker = useCallback(() => {
     if (todayPickerSaving) return;
     const dirty =
-      JSON.stringify(todayPickerDraftItems) !== JSON.stringify(todayPickerInitialItemsRef.current);
+      JSON.stringify(todayPickerDraftItems) !== JSON.stringify(todayPickerInitialItemsRef.current) ||
+      todayPickerAddedWishes.length > 0 ||
+      todayPickerQuickText.trim().length > 0;
     if (dirty) {
       requestDiscardConfirmation(() => {
         closeTodayPicker();
@@ -2101,7 +2019,9 @@ function DashboardApp() {
   }, [
     closeTodayPicker,
     requestDiscardConfirmation,
+    todayPickerAddedWishes,
     todayPickerDraftItems,
+    todayPickerQuickText,
     todayPickerSaving,
   ]);
 
@@ -2115,6 +2035,10 @@ function DashboardApp() {
     todayPickerInitialItemsRef.current = initialItems;
     setTodayPickerDraftItems(initialItems);
     setTodayPickerDragIndex(null);
+    // V163-B7: every open starts on すべて with no quick-added wishes and an empty quick-add line.
+    setTodayPickerFilter("all");
+    setTodayPickerAddedWishes([]);
+    setTodayPickerQuickText("");
     setTodayPickerOpen(true);
   }, []);
 
@@ -2153,10 +2077,6 @@ function DashboardApp() {
       setManualSessionDraft(null);
       return;
     }
-    if (overlayPageDraft) {
-      closeOverlayPageDialog();
-      return;
-    }
     if (buttonEditDraft) {
       requestCloseButtonEdit();
       return;
@@ -2184,7 +2104,6 @@ function DashboardApp() {
     closeProjectEditDialog,
     closeInboxAddDialog,
     closeInboxEditDialog,
-    closeOverlayPageDialog,
     dropDraft,
     groupDraft,
     groupRenameDraft,
@@ -2192,7 +2111,6 @@ function DashboardApp() {
     inboxAddOpen,
     inboxEditingIndex,
     manualSessionDraft,
-    overlayPageDraft,
     projectEditDraft,
     nextStepEditDraft,
     completionFollowup,
@@ -2218,7 +2136,6 @@ function DashboardApp() {
     nextStepEditDraft ||
     completionFollowup ||
     groupRenameDraft ||
-    overlayPageDraft ||
     groupDraft !== null,
   );
 
@@ -2300,7 +2217,7 @@ function DashboardApp() {
       confirmDialog ||
       earlyStop ||
       helpGuideOpen ||
-      (!hasDismissibleModal && !completionPrompt && !launcherOverlayOpen)
+      (!hasDismissibleModal && !completionPrompt)
     ) {
       return;
     }
@@ -2308,7 +2225,7 @@ function DashboardApp() {
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const topSurface = () => {
       const surfaces = document.querySelectorAll<HTMLElement>(
-        ".modalBackdrop, .launcherOverlayBackdrop",
+        ".modalBackdrop",
       );
       return surfaces.item(surfaces.length - 1)?.querySelector<HTMLElement>("section") ?? null;
     };
@@ -2363,7 +2280,6 @@ function DashboardApp() {
     earlyStop,
     hasDismissibleModal,
     helpGuideOpen,
-    launcherOverlayOpen,
   ]);
 
   const setNumberDragValue = (field: NumberInputDragField, value: number) => {
@@ -2615,7 +2531,6 @@ function DashboardApp() {
     setDropDraft(null);
     setGroupDraft(null);
     setGroupRenameDraft(null);
-    setOverlayPageDraft(null);
     setContextMenu(null);
   }, []);
 
@@ -3040,29 +2955,13 @@ function DashboardApp() {
   const mainDropStateRef = useRef({
     config,
     groupNames,
-    launcherOverlayOpen,
-    launcherSearch,
     overlayPages,
-    selectedOverlayPageKey,
   });
   mainDropStateRef.current = {
     config,
     groupNames,
-    launcherOverlayOpen,
-    launcherSearch,
     overlayPages,
-    selectedOverlayPageKey,
   };
-
-  const currentDropOverlayPageId = useCallback((): string | null => {
-    const state = mainDropStateRef.current;
-    return getOverlayDropPageId(
-      state.selectedOverlayPageKey,
-      state.overlayPages,
-      state.launcherOverlayOpen,
-      Boolean(state.launcherSearch.trim()),
-    );
-  }, []);
 
   const openDropDialog = useCallback(
     async (input: DropResolveInput, suggestedLabel?: string | null) => {
@@ -3082,14 +2981,14 @@ function DashboardApp() {
           newGroup: "",
           showInSidebar: true,
           showInOverlay: true,
-          overlayPageId: currentDropOverlayPageId(),
+          overlayPageId: null,
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         showToast("error", `登録できません: ${message}`);
       }
     },
-    [currentDropOverlayPageId, showToast],
+    [showToast],
   );
 
   const handleDroppedPaths = useCallback(
@@ -3115,7 +3014,7 @@ function DashboardApp() {
   );
 
   const dropModalOpen = useCallback(
-    () => Boolean(document.querySelector(".modalBackdrop, .launcherOverlayBackdrop")),
+    () => Boolean(document.querySelector(".modalBackdrop")),
     [],
   );
 
@@ -3221,9 +3120,9 @@ function DashboardApp() {
       source: "Windowsデスクトップのごみ箱",
       showInSidebar: true,
       showInOverlay: true,
-      overlayPageId: currentDropOverlayPageId(),
+      overlayPageId: null,
     });
-  }, [currentDropOverlayPageId]);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -3347,12 +3246,6 @@ function DashboardApp() {
 
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (launcherOverlayOpen && event.key === "Escape" && !isEditableTarget(event.target)) {
-        event.preventDefault();
-        closeLauncherOverlay();
-        return;
-      }
-
       if (isEditableTarget(event.target)) return;
       if (matchesHotkey(event, config?.settings.launcherHotkey)) {
         event.preventDefault();
@@ -3360,84 +3253,16 @@ function DashboardApp() {
           (window as Window & { __LIFE_LAUNCHER_VISUAL_QA__?: boolean })
             .__LIFE_LAUNCHER_VISUAL_QA__,
         );
+        // V163-S2: without the old launcher overlay, outside Tauri this shortcut does nothing.
         if (isTauri() && !visualQa) {
           void toggleDictionaryFromShortcut();
-        } else {
-          openLauncherOverlay();
         }
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [
-    closeLauncherOverlay,
-    config?.settings.launcherHotkey,
-    launcherOverlayOpen,
-    openLauncherOverlay,
-    toggleDictionaryFromShortcut,
-  ]);
-
-  useEffect(() => {
-    if (!launcherOverlayOpen) {
-      dismissContextMenu(false);
-      return;
-    }
-    setLauncherSearch("");
-    setLauncherSelectedIndex(0);
-    window.setTimeout(() => launcherSearchRef.current?.focus(), 0);
-  }, [dismissContextMenu, launcherOverlayOpen]);
-
-  useEffect(() => {
-    setLauncherSelectedIndex((current) =>
-      Math.min(Math.max(0, current), Math.max(0, launcherDisplayedItems.length - 1)),
-    );
-  }, [launcherDisplayedItems.length]);
-
-  useEffect(() => {
-    if (isOverlayPageKeyAvailable(selectedOverlayPageKey, overlayPages)) return;
-    setSelectedOverlayPageKey(OVERLAY_ALL_PAGE_KEY);
-    setLauncherSelectedIndex(0);
-  }, [overlayPages, selectedOverlayPageKey]);
-
-  useEffect(() => {
-    if (!launcherOverlayOpen) return;
-    const frame = window.requestAnimationFrame(() => {
-      launcherPageTabRefs.current.get(selectedOverlayPageKey)?.scrollIntoView({
-        block: "nearest",
-        inline: "nearest",
-      });
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [launcherOverlayOpen, selectedOverlayPageKey]);
-
-  useEffect(() => {
-    if (!launcherOverlayOpen) {
-      setLauncherTabScrollState({ canScrollLeft: false, canScrollRight: false });
-      return;
-    }
-
-    const tabs = launcherOverlayTabsRef.current;
-    if (!tabs) return;
-    const updateScrollState = () => {
-      const maxScrollLeft = Math.max(0, tabs.scrollWidth - tabs.clientWidth);
-      const nextState = {
-        canScrollLeft: tabs.scrollLeft > 1,
-        canScrollRight: tabs.scrollLeft < maxScrollLeft - 1,
-      };
-      setLauncherTabScrollState((current) =>
-        current.canScrollLeft === nextState.canScrollLeft &&
-        current.canScrollRight === nextState.canScrollRight
-          ? current
-          : nextState,
-      );
-    };
-
-    updateScrollState();
-    const observer = new ResizeObserver(updateScrollState);
-    observer.observe(tabs);
-    return () => observer.disconnect();
-  }, [launcherOverlayOpen, launcherOverlayPageTabs.length]);
+  }, [config?.settings.launcherHotkey, toggleDictionaryFromShortcut]);
 
   const handleDomDragOver = (event: DragEvent<HTMLElement>) => {
     if (
@@ -3730,21 +3555,6 @@ function DashboardApp() {
     });
   };
 
-  const moveOverlayPageByOffset = async (pageId: string, offset: -1 | 1) => {
-    if (!config) return;
-    const index = overlayPages.findIndex((page) => page.id === pageId);
-    const page = overlayPages[index];
-    const targetIndex = index + offset;
-    if (!page || !overlayPages[targetIndex]) return;
-    const nextPages = [...overlayPages];
-    [nextPages[index], nextPages[targetIndex]] = [nextPages[targetIndex], nextPages[index]];
-
-    if (!(await persistConfig({ ...config, overlayPages: nextPages }))) return;
-    announceReorder(page.name, targetIndex + 1);
-    focusAfterReorder(() => {
-      launcherPageTabRefs.current.get(overlayCustomPageKey(pageId))?.focus();
-    });
-  };
   const startSidebarPointerDrag = (
     event: PointerEvent<HTMLButtonElement>,
     drag: InternalButtonDrag,
@@ -4613,7 +4423,7 @@ function DashboardApp() {
       source: "",
       showInSidebar: true,
       showInOverlay: true,
-      overlayPageId: currentDropOverlayPageId(),
+      overlayPageId: null,
     });
   };
 
@@ -4785,154 +4595,6 @@ function DashboardApp() {
       buttons: nextButtons,
     });
     showToast("ok", `${from} を ${to} に変更しました`);
-  };
-
-  const overlayPageNameError = (name: string, pageId?: string): string | null => {
-    const trimmed = name.trim();
-    if (!trimmed) return "ページ名を入力してください";
-    if (trimmed.length > OVERLAY_PAGE_NAME_MAX_CHARS) {
-      return `ページ名は${OVERLAY_PAGE_NAME_MAX_CHARS}文字以内で入力してください`;
-    }
-    if (["すべて", "未分類"].includes(trimmed)) {
-      return `${trimmed} は固定ページ名のため使用できません`;
-    }
-    const duplicate = overlayPages.some(
-      (page) =>
-        page.id !== pageId && page.name.trim().toLocaleLowerCase() === trimmed.toLocaleLowerCase(),
-    );
-    return duplicate ? `${trimmed} はすでにあります` : null;
-  };
-
-  const openOverlayPageDialog = (page?: OverlayPage, assignToButton = false) => {
-    overlayPageDialogOpenerRef.current = page
-      ? (launcherPageTabRefs.current.get(overlayCustomPageKey(page.id)) ?? null)
-      : document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : launcherPageAddRef.current;
-    contextMenuReturnFocusRef.current = null;
-    setContextMenu(null);
-    setOverlayPageDraft(
-      page
-        ? { mode: "rename", pageId: page.id, name: page.name }
-        : { mode: "add", name: "", assignToButton },
-    );
-  };
-
-  const saveOverlayPageDraft = async () => {
-    if (!config || !overlayPageDraft) return;
-    const name = overlayPageDraft.name.trim();
-    const error = overlayPageNameError(name, overlayPageDraft.pageId);
-    if (error) {
-      showToast("warn", error);
-      return;
-    }
-
-    const previousConfig = config;
-    if (overlayPageDraft.mode === "add") {
-      const existingIds = new Set(overlayPages.map((page) => page.id));
-      let pageId = `overlay-page-${draftId()}`;
-      while (existingIds.has(pageId)) pageId = `overlay-page-${draftId()}`;
-      const saved = await persistConfig({
-        ...config,
-        overlayPages: [...overlayPages, { id: pageId, name }],
-      });
-      if (!saved) {
-        setConfig(previousConfig);
-        return;
-      }
-      closeOverlayPageDialog();
-      setSelectedOverlayPageKey(overlayCustomPageKey(pageId));
-      setLauncherSelectedIndex(0);
-      if (overlayPageDraft.assignToButton) {
-        setButtonEditDraft((draft) => (draft ? { ...draft, overlayPageId: pageId } : draft));
-      }
-      showToast("ok", `${name} を追加しました`);
-      return;
-    }
-
-    const pageId = overlayPageDraft.pageId;
-    if (!pageId || !overlayPages.some((page) => page.id === pageId)) {
-      showToast("warn", "ページが見つかりません");
-      return;
-    }
-    const saved = await persistConfig({
-      ...config,
-      overlayPages: overlayPages.map((page) => (page.id === pageId ? { ...page, name } : page)),
-    });
-    if (!saved) {
-      setConfig(previousConfig);
-      return;
-    }
-    closeOverlayPageDialog();
-    showToast("ok", `${name} に変更しました`);
-  };
-
-  const deleteOverlayPage = (page: OverlayPage) => {
-    if (!config) return;
-    confirmFocusReturnRef.current =
-      launcherPageTabRefs.current.get(overlayCustomPageKey(page.id)) ?? null;
-    contextMenuReturnFocusRef.current = null;
-    setContextMenu(null);
-    const affectedCount = config.buttons.filter(
-      (button) => button.overlayPageId === page.id,
-    ).length;
-    requestConfirmation({
-      title: "辞書ページを削除しますか？",
-      subject: `「${page.name}」`,
-      message: `${affectedCount}件は「未分類」へ移動します。ボタン自体は削除されません。`,
-      confirmLabel: "ページを削除",
-      processingLabel: "削除しています…",
-      tone: "danger",
-      onConfirm: async () => {
-        const previousConfig = config;
-        const saved = await persistConfig({
-          ...config,
-          overlayPages: overlayPages.filter((item) => item.id !== page.id),
-          buttons: config.buttons.map((button) =>
-            button.overlayPageId === page.id ? { ...button, overlayPageId: undefined } : button,
-          ),
-        });
-        if (!saved) {
-          setConfig(previousConfig);
-          return false;
-        }
-        const deletedPageWasSelected = selectedOverlayPageKey === overlayCustomPageKey(page.id);
-        if (deletedPageWasSelected) {
-          setSelectedOverlayPageKey(OVERLAY_UNCLASSIFIED_PAGE_KEY);
-          setLauncherSelectedIndex(0);
-        }
-        confirmFocusReturnRef.current =
-          launcherPageTabRefs.current.get(
-            deletedPageWasSelected ? OVERLAY_UNCLASSIFIED_PAGE_KEY : selectedOverlayPageKey,
-          ) ?? launcherSearchRef.current;
-        showToast("neutral", `${page.name} を削除しました`);
-        return true;
-      },
-    });
-  };
-
-  const moveOverlayPage = async (
-    draggedPageId: string,
-    targetPageId: string,
-    placement: "before" | "after",
-  ) => {
-    if (!config || draggedPageId === targetPageId) return;
-    const previousConfig = config;
-    const nextPages = [...overlayPages];
-    const draggedIndex = nextPages.findIndex((page) => page.id === draggedPageId);
-    if (draggedIndex < 0) return;
-    const [draggedPage] = nextPages.splice(draggedIndex, 1);
-    const targetIndex = nextPages.findIndex((page) => page.id === targetPageId);
-    if (targetIndex < 0) return;
-    nextPages.splice(targetIndex + (placement === "after" ? 1 : 0), 0, draggedPage);
-    if (nextPages.every((page, index) => page.id === overlayPages[index]?.id)) return;
-
-    const saved = await persistConfig({ ...config, overlayPages: nextPages });
-    if (!saved) {
-      setConfig(previousConfig);
-      return;
-    }
-    showToast("ok", "辞書ページの順番を保存しました");
   };
 
   const moveSidebarButtonToDictionary = async (button: LauncherButton) => {
@@ -6472,6 +6134,7 @@ function DashboardApp() {
   const saveTodayPickerDraft = async (items = todayPickerDraftItems) => {
     const current = configRef.current;
     if (!current || todayPickerSavingRef.current) return false;
+    const addedWishes = todayPickerAddedWishes;
     if (
       JSON.stringify(current.today.items) !== JSON.stringify(todayPickerInitialItemsRef.current)
     ) {
@@ -6485,14 +6148,19 @@ function DashboardApp() {
       showToast("warn", "今日の3件がほかの所で変わりました。もう一度選んでください");
       return false;
     }
-    if (JSON.stringify(items) === JSON.stringify(current.today.items)) {
+    if (
+      addedWishes.length === 0 &&
+      JSON.stringify(items) === JSON.stringify(current.today.items)
+    ) {
       closeTodayPicker();
       return true;
     }
     todayPickerSavingRef.current = true;
     setTodayPickerSaving(true);
+    // V163-B7: the quick-added wishes and Today3 are saved together, in this one write.
     const saved = await persistConfig({
       ...current,
+      ...(addedWishes.length > 0 ? { inbox: [...current.inbox, ...addedWishes] } : {}),
       today: {
         ...current.today,
         items,
@@ -6519,6 +6187,41 @@ function DashboardApp() {
     ) {
       return;
     }
+    setTodayPickerDraftItems([...todayPickerDraftItems, todayItemFromCandidate(candidate)]);
+  };
+
+  // V163-B7: one line of quick add inside the Picker. The wish is only a draft until 決定
+  // (P10-10 §6.1: one save point); when Today3 has room it also joins the draft at once.
+  const addTodayPickerQuickWish = () => {
+    if (todayPickerSaving) return;
+    const text = todayPickerQuickText.trim().slice(0, 120);
+    if (!text) return;
+    const current = configRef.current;
+    if (!current) return;
+    const projectId =
+      todayPickerFilter !== "all" && todayPickerFilter !== "unassigned"
+        ? todayPickerFilter
+        : undefined;
+    const wish: InboxItem = {
+      id: createStableId(),
+      text,
+      ...(projectId ? { projectId } : {}),
+      buttonIds: [],
+    };
+    const nextAdded = [...todayPickerAddedWishes, wish];
+    setTodayPickerAddedWishes(nextAdded);
+    setTodayPickerQuickText("");
+    const candidate = buildTodayCandidates({
+      ...current,
+      inbox: [...current.inbox, ...nextAdded],
+    }).find((entry) => entry.sourceKey === wishlistSourceKey(wish, 0));
+    if (!candidate) return;
+    const hasRoom = todayPickerDraftItems.length < TODAY_ITEM_LIMIT;
+    if (!hasRoom) {
+      showToast("warn", "今日の3件は3件埋まっています。候補に追加しました");
+      return;
+    }
+    if (todayPickerCandidateSelected(candidate)) return;
     setTodayPickerDraftItems([...todayPickerDraftItems, todayItemFromCandidate(candidate)]);
   };
 
@@ -7702,10 +7405,20 @@ function DashboardApp() {
     void addCandidateToToday(candidate);
     return true;
   };
-  const todayPickerNextStepCandidates = rawTodayBuilderCandidates.filter(
+  // V163-B7: quick-added wishes join the candidates at once, and the filter pills narrow the two
+  // source groups to one project (or to 未分類). The two source groups always stay.
+  const todayPickerInbox =
+    todayPickerAddedWishes.length > 0
+      ? [...config.inbox, ...todayPickerAddedWishes]
+      : config.inbox;
+  const todayPickerCandidates =
+    todayPickerAddedWishes.length > 0
+      ? buildTodayCandidates({ ...config, inbox: todayPickerInbox })
+      : rawTodayBuilderCandidates;
+  const todayPickerNextStepCandidates = todayPickerCandidates.filter(
     (candidate) => candidate.source === "次の一手",
   );
-  const todayPickerWishlistCandidates = rawTodayBuilderCandidates.filter(
+  const todayPickerWishlistCandidates = todayPickerCandidates.filter(
     (candidate) => candidate.source === "やりたいこと",
   );
   const todayPickerWishlistCandidatesBySourceKey = new Map(
@@ -7722,9 +7435,45 @@ function DashboardApp() {
       }),
     }))
     .filter((group) => group.candidates.length > 0);
-  const todayPickerWishlistFlatCandidates = todayPickerWishlistGroups.flatMap(
-    (group) => group.candidates,
+  const todayPickerWishlistFlatCandidates = [
+    ...todayPickerWishlistGroups.flatMap((group) => group.candidates),
+    // Wishes added in the Picker are not in the settings yet: they come after the grouped list.
+    ...todayPickerAddedWishes.flatMap((item) => {
+      const candidate = todayPickerWishlistCandidatesBySourceKey.get(wishlistSourceKey(item, 0));
+      return candidate ? [candidate] : [];
+    }),
+  ];
+  const todayPickerFilterProjectId =
+    todayPickerFilter !== "all" && todayPickerFilter !== "unassigned" ? todayPickerFilter : null;
+  const todayPickerFilterMatches = (candidate: TodayCandidate) => {
+    if (todayPickerFilter === "all") return true;
+    if (todayPickerFilter === "unassigned") return !candidate.projectId;
+    return candidate.projectId === todayPickerFilterProjectId;
+  };
+  const todayPickerVisibleNextSteps =
+    todayPickerFilter === "unassigned"
+      ? []
+      : todayPickerNextStepCandidates.filter(todayPickerFilterMatches);
+  const todayPickerVisibleWishlist = todayPickerWishlistFlatCandidates.filter(
+    todayPickerFilterMatches,
   );
+  const todayPickerHasUnassignedWish = todayPickerInbox.some(
+    (item) => item.text.trim().length > 0 && !item.projectId,
+  );
+  const todayPickerPills = [
+    { key: "all", label: "すべて", color: null as string | null },
+    ...config.projects.map((project) => ({
+      key: project.id,
+      label: project.name,
+      color: resolveProjectColorId(project.id, project.colorId) as string | null,
+    })),
+    ...(todayPickerHasUnassignedWish
+      ? [{ key: "unassigned", label: "未分類", color: null as string | null }]
+      : []),
+  ];
+  const todayPickerQuickProject = todayPickerFilterProjectId
+    ? projectsById.get(todayPickerFilterProjectId)
+    : undefined;
   const wishlistItemIsCurrentNextStep = (item: AppConfig["inbox"][number]) => {
     if (!item.id || !item.projectId) return false;
     const nextStep = projectsById.get(item.projectId)?.nextStep;
@@ -8253,85 +8002,7 @@ function DashboardApp() {
       </span>
     );
   };
-  const runLauncherOverlayItem = (item: LauncherOverlayItem | undefined) => {
-    if (!item) return;
-    closeLauncherOverlay(false);
-    void runActions(item.button.id, item.button.actions);
-  };
-  const focusOverlayPageTabAt = (index: number) => {
-    if (launcherOverlayPageTabs.length === 0) return;
-    const normalizedIndex =
-      (index + launcherOverlayPageTabs.length) % launcherOverlayPageTabs.length;
-    const pageKey = launcherOverlayPageTabs[normalizedIndex].key;
-    window.requestAnimationFrame(() => launcherPageTabRefs.current.get(pageKey)?.focus());
-  };
-  const selectOverlayPageByOffset = (offset: -1 | 1) => {
-    const currentIndex = launcherOverlayPageTabs.findIndex(
-      (tab) => tab.key === selectedOverlayPageKey,
-    );
-    const nextIndex =
-      (Math.max(0, currentIndex) + offset + launcherOverlayPageTabs.length) %
-      launcherOverlayPageTabs.length;
-    const nextPageKey = launcherOverlayPageTabs[nextIndex]?.key;
-    if (!nextPageKey) return;
-    setSelectedOverlayPageKey(nextPageKey);
-    setLauncherSelectedIndex(0);
-    focusOverlayPageTabAt(nextIndex);
-  };
-  const scrollLauncherOverlayTabs = (direction: -1 | 1) => {
-    const tabs = launcherOverlayTabsRef.current;
-    if (!tabs) return;
-    tabs.scrollBy({ left: direction * Math.max(160, Math.round(tabs.clientWidth * 0.62)) });
-  };
-
-  const handleLauncherOverlayKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (!launcherOverlayOpen) return;
-
-    if (event.key === "Tab" && event.ctrlKey) {
-      event.preventDefault();
-      event.stopPropagation();
-      selectOverlayPageByOffset(event.shiftKey ? -1 : 1);
-      return;
-    }
-
-    if (event.key === "Escape") {
-      event.preventDefault();
-      event.stopPropagation();
-      if (launcherSearch.trim()) {
-        setLauncherSearch("");
-        setLauncherSelectedIndex(0);
-      } else {
-        closeLauncherOverlay();
-      }
-      return;
-    }
-
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      setLauncherSelectedIndex((current) =>
-        launcherDisplayedItems.length === 0 ? 0 : (current + 1) % launcherDisplayedItems.length,
-      );
-      return;
-    }
-
-    if (event.key === "ArrowUp") {
-      event.preventDefault();
-      setLauncherSelectedIndex((current) =>
-        launcherDisplayedItems.length === 0
-          ? 0
-          : (current - 1 + launcherDisplayedItems.length) % launcherDisplayedItems.length,
-      );
-      return;
-    }
-
-    if (event.key === "Enter") {
-      event.preventDefault();
-      runLauncherOverlayItem(launcherDisplayedItems[launcherSelectedIndex]);
-    }
-  };
-
   const skipLinkBlocked = Boolean(
-    launcherOverlayOpen ||
     settingsDraft ||
     helpGuideOpen ||
     confirmDialog ||
@@ -8346,7 +8017,6 @@ function DashboardApp() {
     importDialogOpen ||
     groupDraft !== null ||
     groupRenameDraft ||
-    overlayPageDraft ||
     completionPrompt,
   );
 
@@ -9099,317 +8769,6 @@ function DashboardApp() {
           }
         />
       </aside>
-
-      {/* eslint-disable-next-line no-constant-binary-expression -- 旧起動辞書のオーバーレイは今は使わない（P97-06 の削除対象ではない） */}
-      {false && launcherOverlayOpen && (
-        <div
-          className="launcherOverlayBackdrop"
-          onClick={() => closeLauncherOverlay()}
-          role="presentation"
-        >
-          <section
-            aria-label="起動辞書"
-            aria-modal="true"
-            className="launcherOverlay"
-            onClick={(event) => event.stopPropagation()}
-            onKeyDown={handleLauncherOverlayKeyDown}
-            role="dialog"
-            tabIndex={-1}
-          >
-            <header className="launcherOverlayHeader">
-              <div>
-                <p className="eyebrow">Dictionary</p>
-                <h2>辞書</h2>
-              </div>
-              <button
-                aria-label="辞書を閉じる"
-                className="iconButton"
-                onClick={() => closeLauncherOverlay()}
-                title="閉じる"
-                type="button"
-              >
-                <UiIcon name="close" size={16} />
-              </button>
-            </header>
-
-            <div className="launcherOverlayTabsFrame">
-              {launcherTabScrollState.canScrollLeft && (
-                <button
-                  aria-label="辞書タブを左へスクロール"
-                  className="launcherOverlayTabScroll"
-                  onClick={() => scrollLauncherOverlayTabs(-1)}
-                  title="左のページを表示"
-                  type="button"
-                >
-                  <UiIcon name="chevronLeft" size={16} />
-                </button>
-              )}
-              <div
-                className="launcherOverlayTabs app-scrollbar"
-                onDragOver={(event) => {
-                  if (!event.dataTransfer.types.includes(OVERLAY_PAGE_DRAG_TYPE)) return;
-                  event.preventDefault();
-                  const rect = event.currentTarget.getBoundingClientRect();
-                  const edge = 48;
-                  if (event.clientX < rect.left + edge) event.currentTarget.scrollBy(-12, 0);
-                  if (event.clientX > rect.right - edge) event.currentTarget.scrollBy(12, 0);
-                }}
-                onScroll={(event) => {
-                  const tabs = event.currentTarget;
-                  const maxScrollLeft = Math.max(0, tabs.scrollWidth - tabs.clientWidth);
-                  setLauncherTabScrollState({
-                    canScrollLeft: tabs.scrollLeft > 1,
-                    canScrollRight: tabs.scrollLeft < maxScrollLeft - 1,
-                  });
-                }}
-                ref={launcherOverlayTabsRef}
-              >
-                <div className="launcherOverlayTabList" role="tablist" aria-label="辞書ページ">
-                  {launcherOverlayPageTabs.map((tab, tabIndex) => {
-                    const selected = selectedOverlayPageKey === tab.key;
-                    const customPageId = overlayPageIdFromKey(tab.key);
-                    const customPage = customPageId
-                      ? overlayPages.find((page) => page.id === customPageId)
-                      : undefined;
-                    return (
-                      <button
-                        aria-controls="launcher-overlay-panel"
-                        aria-selected={selected}
-                        className={
-                          selected
-                            ? "launcherOverlayTab launcherOverlayTab--selected"
-                            : "launcherOverlayTab"
-                        }
-                        draggable={Boolean(customPage)}
-                        id={`launcher-overlay-tab-${tabIndex}`}
-                        key={tab.key}
-                        onClick={() => {
-                          setSelectedOverlayPageKey(tab.key);
-                          setLauncherSelectedIndex(0);
-                        }}
-                        onContextMenu={(event) => {
-                          if (!customPage) return;
-                          event.preventDefault();
-                          event.stopPropagation();
-                          openContextMenu(
-                            { kind: "overlayPage", page: customPage },
-                            event.clientX,
-                            event.clientY,
-                            event.currentTarget,
-                          );
-                        }}
-                        onKeyDown={(event) => {
-                          if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            focusOverlayPageTabAt(tabIndex + (event.key === "ArrowLeft" ? -1 : 1));
-                            return;
-                          }
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            setSelectedOverlayPageKey(tab.key);
-                            setLauncherSelectedIndex(0);
-                            return;
-                          }
-                          if (customPage) {
-                            openContextMenuFromKeyboard(event, {
-                              kind: "overlayPage",
-                              page: customPage,
-                            });
-                          }
-                        }}
-                        onDragEnd={() => setOverlayPageDragId(null)}
-                        onDragStart={(event) => {
-                          if (!customPage) {
-                            event.preventDefault();
-                            return;
-                          }
-                          setOverlayPageDragId(customPage.id);
-                          event.dataTransfer.effectAllowed = "move";
-                          event.dataTransfer.setData(OVERLAY_PAGE_DRAG_TYPE, customPage.id);
-                        }}
-                        onDrop={(event) => {
-                          if (!customPage) return;
-                          event.preventDefault();
-                          event.stopPropagation();
-                          const draggedPageId =
-                            event.dataTransfer.getData(OVERLAY_PAGE_DRAG_TYPE) || overlayPageDragId;
-                          if (!draggedPageId || draggedPageId === customPage.id) return;
-                          const rect = event.currentTarget.getBoundingClientRect();
-                          const placement =
-                            event.clientX < rect.left + rect.width / 2 ? "before" : "after";
-                          setOverlayPageDragId(null);
-                          void moveOverlayPage(draggedPageId, customPage.id, placement);
-                        }}
-                        ref={(node) => {
-                          if (node) launcherPageTabRefs.current.set(tab.key, node);
-                          else launcherPageTabRefs.current.delete(tab.key);
-                        }}
-                        role="tab"
-                        tabIndex={selected ? 0 : -1}
-                        title={tab.name}
-                        type="button"
-                      >
-                        <span>{tab.name}</span>
-                        <small>{overlayPageCounts.get(tab.key) ?? 0}</small>
-                      </button>
-                    );
-                  })}
-                </div>
-                <button
-                  aria-label="辞書ページを追加"
-                  className="launcherOverlayTabAdd"
-                  onClick={() => openOverlayPageDialog()}
-                  ref={launcherPageAddRef}
-                  title="辞書ページを追加"
-                  type="button"
-                >
-                  <UiIcon name="add" size={18} />
-                </button>
-              </div>
-              {launcherTabScrollState.canScrollRight && (
-                <button
-                  aria-label="辞書タブを右へスクロール"
-                  className="launcherOverlayTabScroll"
-                  onClick={() => scrollLauncherOverlayTabs(1)}
-                  title="右のページを表示"
-                  type="button"
-                >
-                  <UiIcon name="chevronRight" size={16} />
-                </button>
-              )}
-            </div>
-
-            <input
-              aria-label="辞書を検索"
-              className="launcherSearchInput"
-              onChange={(event) => {
-                setLauncherSearch(event.target.value);
-                setLauncherSelectedIndex(0);
-              }}
-              placeholder="ラベル・ページ・キーワードで検索"
-              ref={launcherSearchRef}
-              value={launcherSearch}
-            />
-
-            <div
-              aria-labelledby={`launcher-overlay-tab-${Math.max(
-                0,
-                launcherOverlayPageTabs.findIndex((tab) => tab.key === selectedOverlayPageKey),
-              )}`}
-              className="launcherOverlayBody app-scrollbar"
-              id="launcher-overlay-panel"
-              role="tabpanel"
-            >
-              {launcherSearch.trim() ? (
-                launcherDisplayedItems.length > 0 ? (
-                  <div className="launcherSearchResults" aria-label="全ページの検索結果">
-                    <p className="launcherSearchScope">
-                      <span>全ページの検索結果</span>
-                      <small>{launcherDisplayedItems.length}件</small>
-                    </p>
-                    {launcherDisplayedItems.map((item) => (
-                      <button
-                        className={
-                          launcherDisplayedItems[launcherSelectedIndex]?.button.id ===
-                          item.button.id
-                            ? "launcherSearchResult launcherSearchResult--selected"
-                            : "launcherSearchResult"
-                        }
-                        key={item.button.id}
-                        onClick={() => runLauncherOverlayItem(item)}
-                        onContextMenu={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          openContextMenu(
-                            { kind: "button", button: item.button },
-                            event.clientX,
-                            event.clientY,
-                            event.currentTarget,
-                          );
-                        }}
-                        onKeyDown={(event) =>
-                          openContextMenuFromKeyboard(event, {
-                            kind: "button",
-                            button: item.button,
-                          })
-                        }
-                        title={`${item.button.label} / ${item.pageName} / ${item.groupName}`}
-                        type="button"
-                      >
-                        {renderButtonIcon(item.button, "launcherSearchResultIcon")}
-                        <span className="launcherSearchResultCopy">
-                          <strong>{item.button.label}</strong>
-                          <small>
-                            {item.pageName} ・ {item.groupName} ・{" "}
-                            {actionKindLabel(item.button.actions[0])}
-                            {(item.button.aliases ?? []).length > 0
-                              ? ` ・ ${(item.button.aliases ?? []).join(", ")}`
-                              : ""}
-                          </small>
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="launcherOverlayEmptyState">
-                    <strong>該当する項目がありません</strong>
-                    <span>検索語を変えてください。</span>
-                  </div>
-                )
-              ) : selectedOverlayPageButtons.length > 0 ? (
-                <div className="launcherTileGrid">
-                  {selectedOverlayPageButtons.map((button) => (
-                    <button
-                      className={
-                        launcherDisplayedItems[launcherSelectedIndex]?.button.id === button.id
-                          ? "launcherTile launcherTile--selected"
-                          : "launcherTile"
-                      }
-                      key={button.id}
-                      onClick={() => {
-                        runLauncherOverlayItem({
-                          groupName: buttonGroupName(button),
-                          pageName: getOverlayPageNameForButton(button, overlayPages),
-                          button,
-                        });
-                      }}
-                      onContextMenu={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        openContextMenu(
-                          { kind: "button", button },
-                          event.clientX,
-                          event.clientY,
-                          event.currentTarget,
-                        );
-                      }}
-                      onKeyDown={(event) =>
-                        openContextMenuFromKeyboard(event, { kind: "button", button })
-                      }
-                      title={button.label}
-                      type="button"
-                    >
-                      {renderButtonIcon(button, "launcherTileIcon")}
-                      <span>{button.label}</span>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="launcherOverlayEmptyState">
-                  <strong>
-                    {selectedOverlayPageKey === OVERLAY_ALL_PAGE_KEY
-                      ? "まだ辞書に項目がありません"
-                      : "このページには項目がありません"}
-                  </strong>
-                  <span>ファイルやフォルダーをドロップして登録できます。</span>
-                </div>
-              )}
-            </div>
-          </section>
-        </div>
-      )}
 
       <section
         className="mainPanel"
@@ -11646,39 +11005,6 @@ function DashboardApp() {
             <ContextMenuItem onClick={showNextDoNowCandidate} type="button">
               他の一手
             </ContextMenuItem>
-          ) : contextMenu.kind === "overlayPage" ? (
-            <>
-              <ContextMenuItem
-                disabled={overlayPages.findIndex((page) => page.id === contextMenu.page.id) <= 0}
-                onClick={() => void moveOverlayPageByOffset(contextMenu.page.id, -1)}
-                type="button"
-              >
-                上へ移動
-              </ContextMenuItem>
-              <ContextMenuItem
-                disabled={
-                  overlayPages.findIndex((page) => page.id === contextMenu.page.id) >=
-                  overlayPages.length - 1
-                }
-                onClick={() => void moveOverlayPageByOffset(contextMenu.page.id, 1)}
-                type="button"
-              >
-                下へ移動
-              </ContextMenuItem>
-              <ContextMenuItem
-                onClick={() => openOverlayPageDialog(contextMenu.page)}
-                type="button"
-              >
-                名前を変更
-              </ContextMenuItem>
-              <ContextMenuItem
-                className="contextMenuDanger"
-                onClick={() => deleteOverlayPage(contextMenu.page)}
-                type="button"
-              >
-                ページを削除
-              </ContextMenuItem>
-            </>
           ) : contextMenu.kind === "button" ? (
             <>
               {showButtonInSidebar(contextMenu.button) && (
@@ -12252,6 +11578,36 @@ function DashboardApp() {
               </button>
             </div>
 
+            {/* V163-B7: the filter pills sit between the heading and the two columns. */}
+            <div
+              aria-label="プロジェクトで絞り込む"
+              className="todayPickerFilterBar"
+              role="group"
+            >
+              {todayPickerPills.map((pill) => (
+                <button
+                  aria-pressed={todayPickerFilter === pill.key}
+                  className={
+                    todayPickerFilter === pill.key
+                      ? "todayPickerFilterPill todayPickerFilterPill--active"
+                      : "todayPickerFilterPill"
+                  }
+                  key={pill.key}
+                  onClick={() => setTodayPickerFilter(pill.key)}
+                  type="button"
+                >
+                  {pill.color !== null && (
+                    <span
+                      aria-hidden="true"
+                      className="todayPickerFilterDot"
+                      data-project-color={pill.color}
+                    />
+                  )}
+                  {pill.label}
+                </button>
+              ))}
+            </div>
+
             <div className="todayPickerBody">
               <section className="todayPickerSource">
                 <div
@@ -12260,10 +11616,10 @@ function DashboardApp() {
                 >
                   <h3 className="todayPickerGroupTitle">次の一手</h3>
                   <div className="todayPickerList">
-                    {todayPickerNextStepCandidates.length === 0 ? (
+                    {todayPickerVisibleNextSteps.length === 0 ? (
                       <p className="todayPickerEmpty">追加できる次の一手はありません</p>
                     ) : (
-                      todayPickerNextStepCandidates.map((candidate) =>
+                      todayPickerVisibleNextSteps.map((candidate) =>
                         renderTodayPickerCandidate(candidate),
                       )
                     )}
@@ -12275,14 +11631,57 @@ function DashboardApp() {
                 >
                   <h3 className="todayPickerGroupTitle">やりたいこと</h3>
                   <div className="todayPickerList">
-                    {todayPickerWishlistFlatCandidates.length === 0 ? (
+                    {todayPickerVisibleWishlist.length === 0 ? (
                       <p className="todayPickerEmpty">追加できるやりたいことはありません</p>
                     ) : (
-                      todayPickerWishlistFlatCandidates.map((candidate) =>
+                      todayPickerVisibleWishlist.map((candidate) =>
                         renderTodayPickerCandidate(candidate),
                       )
                     )}
                   </div>
+                  {/* V163-B7: one compact line of quick add, under the wishlist list. */}
+                  <form
+                    className="todayPickerQuickAdd"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      addTodayPickerQuickWish();
+                    }}
+                  >
+                    <input
+                      aria-label={
+                        todayPickerQuickProject
+                          ? `「${todayPickerQuickProject.name}」のやりたいことを追加`
+                          : "やりたいことを追加"
+                      }
+                      className="todayPickerQuickAddInput"
+                      disabled={todayPickerSaving}
+                      maxLength={120}
+                      onChange={(event) => setTodayPickerQuickText(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key !== "Enter") return;
+                        if (event.nativeEvent.isComposing || event.keyCode === 229) {
+                          event.preventDefault();
+                          return;
+                        }
+                        event.preventDefault();
+                        addTodayPickerQuickWish();
+                      }}
+                      placeholder={
+                        todayPickerQuickProject
+                          ? `「${todayPickerQuickProject.name}」のやりたいことを足して今日へ`
+                          : "やりたいことを足して今日へ"
+                      }
+                      type="text"
+                      value={todayPickerQuickText}
+                    />
+                    <button
+                      className="secondaryButton todayPickerQuickAddButton"
+                      disabled={todayPickerSaving}
+                      type="submit"
+                    >
+                      ＋ 追加
+                    </button>
+                  </form>
                 </div>
               </section>
 
@@ -12365,16 +11764,6 @@ function DashboardApp() {
             </div>
           </section>
         </div>
-      )}
-
-      {overlayPageDraft && (
-        <OverlayPageDialog
-          draft={overlayPageDraft}
-          nameError={overlayPageNameError(overlayPageDraft.name, overlayPageDraft.pageId)}
-          onClose={closeOverlayPageDialog}
-          onDraftChange={setOverlayPageDraft}
-          onSave={() => void saveOverlayPageDraft()}
-        />
       )}
 
       {groupDraft !== null && (

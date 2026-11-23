@@ -1005,8 +1005,6 @@ export async function installTauriMock(
                 };
                 return null;
               case "enable_main_shell_drop":
-              case "start_shell_drop_poc":
-              case "stop_shell_drop_poc":
               case "delete_button_icon_cache":
               case "backup_config_before_instruction_change":
                 return null;

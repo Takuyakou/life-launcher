@@ -1,3 +1,7 @@
+#[cfg(test)]
+mod tests;
+
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -105,6 +109,8 @@ pub struct RejectedItem {
 #[derive(Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PreviewProject {
+    /// V163-B6: `p{i}`, the position in the answer's project list (not renumbered when rows are left out).
+    pub key: String,
     pub name: String,
     pub color: Option<String>,
     pub goal: Option<String>,
@@ -114,6 +120,7 @@ pub struct PreviewProject {
 #[derive(Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PreviewExistingProject {
+    pub key: String,
     pub name: String,
     pub fill_color: Option<String>,
     pub fill_goal: Option<String>,
@@ -125,15 +132,24 @@ pub struct PreviewExistingProject {
 #[derive(Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PreviewNextStep {
+    /// `p{i}.step`.
+    pub key: String,
+    pub project_key: String,
     pub project: String,
     pub text: String,
     pub action: String,
     pub reason: Option<String>,
+    /// The values written in the answer (None when it gave none).
+    pub minutes: Option<u32>,
+    pub short_minutes: Option<u32>,
 }
 
 #[derive(Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PreviewWish {
+    /// `p{i}.w{j}`, `w{j}` (no project), or `p{i}.step` for a next step that goes to the wishlist.
+    pub key: String,
+    pub project_key: Option<String>,
     pub text: String,
     pub project: Option<String>,
 }
@@ -572,6 +588,8 @@ fn add_wish(
     config: &mut AppConfig,
     project_id: Option<String>,
     text: String,
+    key: String,
+    project_key: Option<String>,
     preview: &mut ImportPreview,
 ) {
     let text = text.trim().to_string();
@@ -600,10 +618,21 @@ fn add_wish(
         instruction_path: None,
         instruction_open_on_start: None,
     });
-    preview.wishes.push(PreviewWish { text, project });
+    preview.wishes.push(PreviewWish {
+        key,
+        project_key,
+        text,
+        project,
+    });
 }
 
-fn build_import_plan(current: &AppConfig, parsed: ParsedImport) -> Result<ImportPlan, String> {
+/// Builds the result of an import. `excluded` holds keys the user left out: `p{i}` (a whole
+/// project), `p{i}.step` (its next step), `p{i}.w{j}` and `w{j}` (one wish). Unknown keys are ignored.
+fn build_import_plan(
+    current: &AppConfig,
+    parsed: ParsedImport,
+    excluded: &HashSet<String>,
+) -> Result<ImportPlan, String> {
     let mut config = current.clone();
     let mut preview = ImportPreview {
         ignored: parsed.ignored,
@@ -612,7 +641,24 @@ fn build_import_plan(current: &AppConfig, parsed: ParsedImport) -> Result<Import
         ..ImportPreview::default()
     };
 
-    for project in parsed.projects {
+    for (index, mut project) in parsed.projects.into_iter().enumerate() {
+        let project_key = format!("p{index}");
+        if excluded.contains(&project_key) {
+            continue;
+        }
+        let step_key = format!("{project_key}.step");
+        if excluded.contains(&step_key) {
+            project.next_step = None;
+        }
+        let wishes: Vec<(String, String)> = project
+            .wishes
+            .iter()
+            .enumerate()
+            .filter_map(|(wish_index, text)| {
+                let key = format!("{project_key}.w{wish_index}");
+                (!excluded.contains(&key)).then(|| (key, text.clone()))
+            })
+            .collect();
         let existing_index = config
             .projects
             .iter()
@@ -675,21 +721,35 @@ fn build_import_plan(current: &AppConfig, parsed: ParsedImport) -> Result<Import
                     add_wish(
                         &mut config,
                         Some(existing_id.clone()),
-                        next_step.text,
+                        next_step.text.clone(),
+                        step_key.clone(),
+                        Some(project_key.clone()),
                         &mut preview,
                     );
                 }
                 preview.next_steps.push(PreviewNextStep {
+                    key: step_key.clone(),
+                    project_key: project_key.clone(),
                     project: existing_name.clone(),
                     text: next_step_text.clone().unwrap_or_default(),
                     action: next_step_action.clone(),
                     reason: next_step_reason.clone(),
+                    minutes: next_step.minutes,
+                    short_minutes: next_step.short_minutes,
                 });
             }
-            for wish in project.wishes {
-                add_wish(&mut config, Some(existing_id.clone()), wish, &mut preview);
+            for (key, wish) in wishes {
+                add_wish(
+                    &mut config,
+                    Some(existing_id.clone()),
+                    wish,
+                    key,
+                    Some(project_key.clone()),
+                    &mut preview,
+                );
             }
             preview.existing_projects.push(PreviewExistingProject {
+                key: project_key.clone(),
                 name: existing_name,
                 fill_color,
                 fill_goal,
@@ -699,6 +759,10 @@ fn build_import_plan(current: &AppConfig, parsed: ParsedImport) -> Result<Import
             });
         } else {
             let id = new_id("project");
+            let next_step_values = project
+                .next_step
+                .as_ref()
+                .map(|step| (step.minutes, step.short_minutes));
             let next_step = project.next_step.map(build_next_step);
             let next_step_text = next_step.as_ref().map(|step| step.text.clone());
             config.projects.push(Project {
@@ -711,27 +775,44 @@ fn build_import_plan(current: &AppConfig, parsed: ParsedImport) -> Result<Import
                 legacy_next_step_settings: None,
             });
             preview.new_projects.push(PreviewProject {
+                key: project_key.clone(),
                 name: project.name.clone(),
                 color: project.color.clone(),
                 goal: project.goal.clone(),
                 next_step: next_step_text.clone(),
             });
             if let Some(text) = next_step_text {
+                let (minutes, short_minutes) = next_step_values.unwrap_or((None, None));
                 preview.next_steps.push(PreviewNextStep {
+                    key: step_key.clone(),
+                    project_key: project_key.clone(),
                     project: project.name.clone(),
                     text,
                     action: "insert".to_string(),
                     reason: None,
+                    minutes,
+                    short_minutes,
                 });
             }
-            for wish in project.wishes {
-                add_wish(&mut config, Some(id.clone()), wish, &mut preview);
+            for (key, wish) in wishes {
+                add_wish(
+                    &mut config,
+                    Some(id.clone()),
+                    wish,
+                    key,
+                    Some(project_key.clone()),
+                    &mut preview,
+                );
             }
         }
     }
 
-    for wish in parsed.wishes {
-        add_wish(&mut config, None, wish, &mut preview);
+    for (wish_index, wish) in parsed.wishes.into_iter().enumerate() {
+        let key = format!("w{wish_index}");
+        if excluded.contains(&key) {
+            continue;
+        }
+        add_wish(&mut config, None, wish, key, None, &mut preview);
     }
 
     preview.counts = PreviewCounts {
@@ -750,7 +831,7 @@ pub fn preview_import(app: AppHandle, json: String) -> Result<ImportPreviewRespo
     let current_response = load_config_internal(&app)?;
     ensure_import_preview_allowed(&current_response)?;
     let parsed = parse_import(&json)?;
-    let plan = build_import_plan(&current_response.config, parsed)?;
+    let plan = build_import_plan(&current_response.config, parsed, &HashSet::new())?;
     Ok(ImportPreviewResponse {
         preview: plan.preview,
         fingerprint: config_fingerprint(&current_response.config),
@@ -763,6 +844,7 @@ pub fn commit_import(
     state: State<'_, AppState>,
     json: String,
     fingerprint: String,
+    excluded: Vec<String>,
 ) -> Result<ImportCommitResponse, String> {
     let _reset_guard = state.begin_app_write()?;
     let _write_guard = state
@@ -775,7 +857,8 @@ pub fn commit_import(
         return Err("stale:設定が変わったため、もう一度確かめてください".to_string());
     }
     let parsed = parse_import(&json)?;
-    let plan = build_import_plan(&current_response.config, parsed)?;
+    let excluded: HashSet<String> = excluded.into_iter().collect();
+    let plan = build_import_plan(&current_response.config, parsed, &excluded)?;
     let ImportPlan { config, preview } = plan;
     validate_project_v3_invariants(&config)?;
     let (mut config, _changed, _warnings) = sanitize_config(config);
@@ -950,315 +1033,4 @@ fn restore_import_backup_in(data_dir: &Path, import_id: &str) -> Result<AppConfi
     let config: AppConfig = serde_json::from_slice(&config_entry.data)
         .map_err(|error| format!("設定を読めません: {error}"))?;
     Ok(config)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::models::{sample_config, NextStepExecutionSettingsV3};
-
-    fn base_config() -> AppConfig {
-        let mut config = sample_config();
-        config.projects.clear();
-        config.inbox.clear();
-        config
-    }
-
-    fn parse_and_plan(config: &AppConfig, json: &str) -> (AppConfig, ImportPreview) {
-        let parsed = parse_import(json).expect("parse");
-        let plan = build_import_plan(config, parsed).expect("plan");
-        (plan.config, plan.preview)
-    }
-
-    #[test]
-    fn imports_new_projects_and_wishes() {
-        let config = base_config();
-        let json = r#"{
-          "lifeLauncherImport": 1,
-          "projects": [{
-            "name": "英語",
-            "color": "lime",
-            "goal": "字幕なしで楽しむ",
-            "nextStep": {"text": "音声モードで話す", "trigger": "夕食のあと", "minutes": 25, "shortMinutes": 5},
-            "wishes": ["歌詞を訳す"]
-          }],
-          "wishes": ["プロジェクトなしのやりたいこと"]
-        }"#;
-        let (next, preview) = parse_and_plan(&config, json);
-        assert_eq!(preview.counts.new_projects, 1);
-        assert_eq!(preview.counts.next_steps, 1);
-        assert_eq!(preview.counts.wishes, 2);
-        assert_eq!(next.projects.len(), 1);
-        assert_eq!(next.projects[0].color_id.as_deref(), Some("lime"));
-        assert_eq!(
-            next.projects[0].north_star.as_deref(),
-            Some("字幕なしで楽しむ")
-        );
-        let next_step = next.projects[0].next_step.as_ref().expect("next step");
-        assert_eq!(next_step.text, "音声モードで話す");
-        assert!(next_step.generation_id.is_some());
-        assert!(next_step.updated_at.is_some());
-        assert_eq!(next_step.trigger.as_deref(), Some("夕食のあと"));
-        assert_eq!(next_step.default_timer_minutes, Some(25));
-        assert_eq!(next_step.short_timer_minutes, Some(5));
-        assert_eq!(next.inbox.len(), 2);
-    }
-
-    #[test]
-    fn existing_next_step_moves_imported_step_to_wishes() {
-        let mut config = base_config();
-        config.projects.push(Project {
-            id: "p1".to_string(),
-            name: "英語".to_string(),
-            north_star: None,
-            weekly_focus: None,
-            color_id: None,
-            next_step: Some(NextStepV3 {
-                text: "今の一手".to_string(),
-                generation_id: None,
-                source_wishlist_id: None,
-                trigger: None,
-                updated_at: None,
-                reviewed_at: None,
-                resume_note: None,
-                button_ids: Vec::new(),
-                default_timer_minutes: None,
-                short_timer_minutes: None,
-                expand_timer_on_start: None,
-                start_note_template: None,
-                instruction_path: None,
-                instruction_open_on_start: None,
-            }),
-            legacy_next_step_settings: None,
-        });
-        let json = r#"{"lifeLauncherImport":1,"projects":[{"name":" 英語 ","color":"coral","goal":"目標","nextStep":{"text":"新しい一手"}}]}"#;
-        let (next, preview) = parse_and_plan(&config, json);
-        assert_eq!(preview.counts.existing_projects, 1);
-        assert_eq!(preview.existing_projects[0].next_step_action, "wishlist");
-        assert!(preview.existing_projects[0].next_step_reason.is_some());
-        assert_eq!(
-            next.projects[0].next_step.as_ref().unwrap().text,
-            "今の一手"
-        );
-        assert_eq!(next.projects[0].color_id.as_deref(), Some("coral"));
-        assert_eq!(next.projects[0].north_star.as_deref(), Some("目標"));
-        assert_eq!(next.inbox.len(), 1);
-        assert_eq!(next.inbox[0].text, "新しい一手");
-        assert_eq!(next.inbox[0].project_id.as_deref(), Some("p1"));
-    }
-
-    #[test]
-    fn legacy_execution_settings_are_kept_and_step_goes_to_wishes() {
-        let mut config = base_config();
-        config.projects.push(Project {
-            id: "p1".to_string(),
-            name: "英語".to_string(),
-            north_star: None,
-            weekly_focus: None,
-            color_id: None,
-            next_step: None,
-            legacy_next_step_settings: Some(NextStepExecutionSettingsV3::default()),
-        });
-        let json = r#"{"lifeLauncherImport":1,"projects":[{"name":"英語","nextStep":{"text":"新しい一手"}}]}"#;
-        let (next, preview) = parse_and_plan(&config, json);
-        assert!(next.projects[0].legacy_next_step_settings.is_some());
-        assert!(next.projects[0].next_step.is_none());
-        assert_eq!(next.inbox.len(), 1);
-        assert_eq!(preview.existing_projects[0].next_step_action, "wishlist");
-        assert!(preview.existing_projects[0]
-            .next_step_reason
-            .as_deref()
-            .is_some_and(|reason| reason.contains("前の実行設定")));
-    }
-
-    #[test]
-    fn duplicate_names_in_json_are_merged() {
-        let config = base_config();
-        let json = r#"{"lifeLauncherImport":1,"projects":[
-          {"name":"英語","wishes":["A"]},
-          {"name":" 英語 ","color":"sand","wishes":["B"]}
-        ]}"#;
-        let (next, preview) = parse_and_plan(&config, json);
-        assert_eq!(next.projects.len(), 1);
-        assert_eq!(preview.merged, vec!["英語".to_string()]);
-        assert_eq!(next.inbox.len(), 2);
-        assert_eq!(next.projects[0].color_id.as_deref(), Some("sand"));
-    }
-
-    #[test]
-    fn duplicate_wishes_are_skipped() {
-        let mut config = base_config();
-        config.inbox.push(InboxItem {
-            id: Some("w1".to_string()),
-            text: "歌詞を訳す".to_string(),
-            project_id: None,
-            button_ids: Vec::new(),
-            instruction_path: None,
-            instruction_open_on_start: None,
-        });
-        let json = r#"{"lifeLauncherImport":1,"wishes":["歌詞を訳す","別のこと"]}"#;
-        let (next, preview) = parse_and_plan(&config, json);
-        assert_eq!(next.inbox.len(), 2);
-        assert_eq!(preview.counts.wishes, 1);
-        assert_eq!(preview.skipped.len(), 1);
-    }
-
-    #[test]
-    fn rejects_invalid_limits_and_versions() {
-        assert!(parse_import("not json").is_err());
-        assert!(parse_import(r#"{"lifeLauncherImport":2}"#).is_err());
-        assert!(parse_import(r#"{"projects":[]}"#).is_err());
-        let too_many_projects = format!(
-            r#"{{"lifeLauncherImport":1,"projects":[{}]}}"#,
-            (0..31)
-                .map(|index| format!(r#"{{"name":"P{index}"}}"#))
-                .collect::<Vec<_>>()
-                .join(",")
-        );
-        assert!(parse_import(&too_many_projects).is_err());
-        let too_many_wishes = format!(
-            r#"{{"lifeLauncherImport":1,"wishes":[{}]}}"#,
-            (0..101)
-                .map(|index| format!(r#""W{index}""#))
-                .collect::<Vec<_>>()
-                .join(",")
-        );
-        assert!(parse_import(&too_many_wishes).is_err());
-    }
-
-    #[test]
-    fn unknown_keys_and_invalid_color_are_reported_as_ignored() {
-        let config = base_config();
-        let json = r#"{"lifeLauncherImport":1,"extra":true,"projects":[{"name":"英語","color":"not-a-color","buttonIds":["x"],"nextStep":{"text":"一手","instructionPath":"x"}}]}"#;
-        let (next, preview) = parse_and_plan(&config, json);
-        assert_eq!(next.projects[0].color_id, None);
-        assert!(preview.ignored.contains(&"extra".to_string()));
-        assert!(preview.ignored.contains(&"projects[0].color".to_string()));
-        assert!(preview
-            .ignored
-            .contains(&"projects[0].buttonIds".to_string()));
-        assert!(preview
-            .ignored
-            .contains(&"projects[0].nextStep.instructionPath".to_string()));
-    }
-
-    #[test]
-    fn fingerprint_changes_with_config() {
-        let config = base_config();
-        let before = config_fingerprint(&config);
-        let mut next = config.clone();
-        next.projects.push(Project {
-            id: "p1".to_string(),
-            name: "P".to_string(),
-            north_star: None,
-            weekly_focus: None,
-            color_id: None,
-            next_step: None,
-            legacy_next_step_settings: None,
-        });
-        assert_ne!(before, config_fingerprint(&next));
-    }
-
-    #[test]
-    fn own_import_write_suppresses_reload() {
-        let state = AppState::default();
-        suppress_reload_for_own_write(&state).expect("suppress reload");
-        let until = *state.suppress_reload_until.lock().expect("lock");
-        assert!(until.is_some_and(|value| value > std::time::Instant::now()));
-    }
-
-    #[test]
-    fn broken_config_blocks_import_preview_commit_and_undo_without_writing() {
-        let dir = temp_dir("broken-config");
-        let path = dir.join("config.json");
-        let broken = b"{ this is not json".to_vec();
-        fs::write(&path, &broken).expect("write broken config");
-        let response = LoadConfigResponse {
-            config: sample_config(),
-            path: path.to_string_lossy().to_string(),
-            backup_path: dir.join("backups").to_string_lossy().to_string(),
-            error: Some("config.json is not valid JSON".to_string()),
-            backup_error: None,
-            changed: false,
-            save_blocked: true,
-            morning_victory_suggestion: None,
-        };
-
-        assert!(ensure_import_preview_allowed(&response).is_err());
-        assert!(ensure_import_write_allowed(&response, &path, IMPORT_SAVE_BLOCKED).is_err());
-        assert_eq!(fs::read(&path).expect("read broken config"), broken);
-
-        let mut writable = response.clone();
-        writable.save_blocked = false;
-        assert!(ensure_import_write_allowed(&writable, &path, UNDO_SAVE_BLOCKED).is_err());
-        assert_eq!(fs::read(&path).expect("read broken config"), broken);
-        let _ = fs::remove_dir_all(&dir);
-    }
-
-    fn temp_dir(label: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!(
-            "life-launcher-import-{label}-{}-{}",
-            std::process::id(),
-            new_id("test")
-        ));
-        let _ = fs::remove_dir_all(&dir);
-        fs::create_dir_all(&dir).expect("temp dir");
-        dir
-    }
-
-    #[test]
-    fn import_backup_is_created_verified_and_restored() {
-        let dir = temp_dir("backup");
-        let config = base_config();
-        fs::write(
-            dir.join("config.json"),
-            serde_json::to_vec(&config).unwrap(),
-        )
-        .unwrap();
-        fs::write(dir.join("sessions.jsonl"), b"{}").unwrap();
-        fs::write(dir.join("notes.json"), b"{}").unwrap();
-        fs::write(dir.join("config.schema.json"), b"{}").unwrap();
-
-        let path = create_import_backup_in(&dir, "import-test-1").expect("backup");
-        assert!(path.exists());
-        let restored = restore_import_backup_in(&dir, "import-test-1").expect("restore");
-        assert_eq!(restored.projects.len(), config.projects.len());
-        let _ = fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn import_backups_keep_only_the_newest_twenty() {
-        let dir = temp_dir("prune");
-        fs::write(dir.join("config.json"), b"{}").unwrap();
-        for index in 0..21 {
-            create_import_backup_in(&dir, &format!("import-{index:04}")).expect("backup");
-        }
-        let backups = fs::read_dir(import_backup_dir(&dir))
-            .unwrap()
-            .filter_map(|entry| entry.ok())
-            .count();
-        assert_eq!(backups, IMPORT_BACKUP_KEEP);
-        let _ = fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn read_import_json_handles_bom_size_and_invalid_utf8() {
-        let dir = temp_dir("read");
-        let bom_path = dir.join("bom.json");
-        fs::write(&bom_path, [0xEF, 0xBB, 0xBF, b'{', b'}']).unwrap();
-        assert_eq!(
-            read_import_json(bom_path.to_string_lossy().to_string()).unwrap(),
-            "{}"
-        );
-
-        let big_path = dir.join("big.json");
-        fs::write(&big_path, vec![b'x'; MAX_IMPORT_BYTES + 1]).unwrap();
-        assert!(read_import_json(big_path.to_string_lossy().to_string()).is_err());
-
-        let invalid_path = dir.join("invalid.json");
-        fs::write(&invalid_path, [0xFF, 0xFE, 0x00]).unwrap();
-        assert!(read_import_json(invalid_path.to_string_lossy().to_string()).is_err());
-        assert!(read_import_json(dir.to_string_lossy().to_string()).is_err());
-        let _ = fs::remove_dir_all(&dir);
-    }
 }

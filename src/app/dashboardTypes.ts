@@ -1,4 +1,4 @@
-import { DropButtonDraft, LauncherAction, LauncherButton, LauncherNextStep, LauncherProject, OverlayPage, ProjectColorId, SessionEntryRow } from "../types";
+import { DropButtonDraft, LauncherAction, LauncherButton, LauncherNextStep, LauncherProject, ProjectColorId, SessionEntryRow } from "../types";
 import type { GroupMode } from "../components/GroupModeField";
 import type { NextStepReplacementChoice } from "../nextStepWishlist";
 import type { TimerMode } from "../timerRuntime";
@@ -77,24 +77,6 @@ export type DoNowCompletionHold = DoNowCompletionSnapshot & {
 export type ButtonGroup = {
   name: string;
   buttons: LauncherButton[];
-};
-
-export type LauncherOverlayItem = {
-  groupName: string;
-  pageName: string;
-  button: LauncherButton;
-};
-
-export type LauncherOverlayPageTab = {
-  key: string;
-  name: string;
-};
-
-export type OverlayPageDraft = {
-  mode: "add" | "rename";
-  pageId?: string;
-  name: string;
-  assignToButton?: boolean;
 };
 
 export type DropDialogState = DropButtonDraft & {
@@ -287,10 +269,6 @@ export type CompletionFollowup = {
 };
 
 export type ContextMenuTarget =
-  | {
-      kind: "overlayPage";
-      page: OverlayPage;
-    }
   | {
       kind: "button";
       button: LauncherButton;

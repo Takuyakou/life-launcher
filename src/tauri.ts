@@ -74,8 +74,13 @@ export async function previewImport(json: string): Promise<ImportPreviewResponse
 export async function commitImport(
   json: string,
   fingerprint: string,
+  excluded: string[],
 ): Promise<ImportCommitResponse> {
-  const response = await invoke<ImportCommitResponse>("commit_import", { json, fingerprint });
+  const response = await invoke<ImportCommitResponse>("commit_import", {
+    json,
+    fingerprint,
+    excluded,
+  });
   return {
     ...response,
     config: AppConfigSchema.parse(response.config),
@@ -148,14 +153,6 @@ export async function focusDashboardWindow(): Promise<void> {
 
 export async function enableMainShellDrop(): Promise<void> {
   await invoke("enable_main_shell_drop");
-}
-
-export async function startShellDropPoc(): Promise<void> {
-  await invoke("start_shell_drop_poc");
-}
-
-export async function stopShellDropPoc(): Promise<void> {
-  await invoke("stop_shell_drop_poc");
 }
 
 export async function loadTodaySessionTotal(): Promise<SessionTotalResponse> {

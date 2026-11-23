@@ -10,4 +10,3 @@ pub mod main_shell_drop;
 pub mod notes;
 pub mod reset;
 pub mod sessions;
-pub mod shell_drop_poc;

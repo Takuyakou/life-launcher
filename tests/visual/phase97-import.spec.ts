@@ -30,13 +30,28 @@ function preview(): ImportPreviewResponse {
   return {
     preview: {
       newProjects: [
-        { name: "英語", color: "lime", goal: "字幕なしで楽しむ", nextStep: "音声モードで話す" },
+        {
+          key: "p0",
+          name: "英語",
+          color: "lime",
+          goal: "字幕なしで楽しむ",
+          nextStep: "音声モードで話す",
+        },
       ],
       existingProjects: [],
       nextSteps: [
-        { project: "英語", text: "音声モードで話す", action: "insert", reason: null },
+        {
+          key: "p0.step",
+          projectKey: "p0",
+          project: "英語",
+          text: "音声モードで話す",
+          action: "insert",
+          reason: null,
+          minutes: 25,
+          shortMinutes: 5,
+        },
       ],
-      wishes: [{ text: "歌詞を訳す", project: "英語" }],
+      wishes: [{ key: "p0.w0", projectKey: "p0", text: "歌詞を訳す", project: "英語" }],
       rejected: [],
       ignored: [],
       merged: [],
@@ -286,11 +301,11 @@ test("previews, imports, and undoes from the section menu", async ({ page }) => 
   await expect(dialog).toBeVisible();
 
   await page.getByLabel("取り込みのJSON").fill(`\`\`\`json\n${IMPORT_JSON}\n\`\`\``);
-  await page.getByRole("button", { name: "プレビュー" }).click();
-  await expect(dialog.getByText("新規プロジェクト 1件")).toBeVisible();
-  await expect(dialog.locator("li").filter({ hasText: "歌詞を訳す" })).toBeVisible();
+  await page.clock.runFor(300);
+  await expect(dialog.getByText("✓ 読み取りました")).toBeVisible();
+  await expect(dialog.locator(".importItem").filter({ hasText: "歌詞を訳す" })).toBeVisible();
 
-  await dialog.getByRole("button", { name: "取り込む", exact: true }).click();
+  await dialog.getByRole("button", { name: /^取り込む(\(\d+件\))?$/ }).click();
   await expect(page.getByText("3件を取り込みました")).toBeVisible();
   await expect(dialog).not.toBeVisible();
 
@@ -326,7 +341,7 @@ test("import dialog footer uses the same cancel and save colors as settings", as
   await page.getByRole("menuitem", { name: "まとめて取り込む" }).click();
   const dialog = page.getByRole("dialog", { name: "まとめて取り込む" });
   const importCancel = dialog.getByRole("button", { name: "キャンセル" });
-  const importCommit = dialog.getByRole("button", { name: "取り込む", exact: true });
+  const importCommit = dialog.locator(".importDialogCommitButton");
 
   for (const [property, value] of Object.entries(cancelColors)) {
     await expect(importCancel).toHaveCSS(
@@ -342,7 +357,9 @@ test("import dialog footer uses the same cancel and save colors as settings", as
   }
 
   await page.getByLabel("取り込みのJSON").fill(IMPORT_JSON);
-  await page.getByRole("button", { name: "プレビュー" }).click();
+  await page.clock.runFor(300);
+  // After reading, the button also says how many items it imports.
+  await expect(importCommit).toHaveText("取り込む(2件)");
   await expect(importCommit).toBeEnabled();
   const commitBox = await importCommit.boundingBox();
   const cancelBox = await importCancel.boundingBox();
@@ -367,8 +384,8 @@ test("an imported next step completes in Today3 like a screen-set next step", as
   await page.getByRole("button", { name: "次の一手の操作", exact: true }).click();
   await page.getByRole("menuitem", { name: "まとめて取り込む" }).click();
   await page.getByLabel("取り込みのJSON").fill(IMPORT_JSON);
-  await page.getByRole("button", { name: "プレビュー" }).click();
-  await page.getByRole("button", { name: "取り込む", exact: true }).click();
+  await page.clock.runFor(300);
+  await page.getByRole("button", { name: /^取り込む(\(\d+件\))?$/ }).click();
   await expect(page.getByText("3件を取り込みました")).toBeVisible();
 
   const sourceCard = page.locator(".nextStepCard[data-project-id='import-english']");
@@ -581,7 +598,7 @@ test("routes a JSON drop by the side and shows the two-zone overlay", async ({ p
   await emitDrop(page, "drop", ["C:\\PublicDemo\\import-main.json"], { x: 900, y: 300 });
   const dialog = page.getByRole("dialog", { name: "まとめて取り込む" });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByText("新規プロジェクト 1件")).toBeVisible();
+  await expect(dialog.getByText("✓ 読み取りました")).toBeVisible();
   await page.getByRole("button", { name: "キャンセル" }).click();
   await expect(dialog).not.toBeVisible();
 

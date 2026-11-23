@@ -43,9 +43,6 @@ use commands::sessions::{
     load_session_summary, load_today_session_total, load_weekly_review, record_manual_session,
     record_session, update_session_entry,
 };
-use commands::shell_drop_poc::{
-    start_shell_drop_poc, stop_shell_drop_poc, stop_shell_drop_poc_internal,
-};
 use display_awake::{set_display_awake, DisplayAwakeState};
 use startup::{
     apply_dashboard_settings_at_startup, focus_dashboard_window, focus_main_window,
@@ -378,8 +375,6 @@ pub fn run() {
             resume_dashboard_shortcuts,
             focus_dashboard_window,
             enable_main_shell_drop,
-            start_shell_drop_poc,
-            stop_shell_drop_poc,
             set_display_awake,
             test_profile_info
         ])
@@ -389,7 +384,6 @@ pub fn run() {
             if matches!(event, RunEvent::ExitRequested { .. }) {
                 app.state::<DisplayAwakeState>().shutdown();
                 remove_main_shell_drop_target(app);
-                let _ = stop_shell_drop_poc_internal(app);
             }
         });
 }

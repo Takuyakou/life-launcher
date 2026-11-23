@@ -321,23 +321,17 @@
 .importDialogBody {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px 20px;
+  gap: 0;
+  padding: 4px 20px 8px;
   overflow: auto;
 }
 
 .importTextarea {
-  min-height: 150px;
+  min-height: 96px;
   resize: vertical;
   font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
   font-size: 12px;
   line-height: 1.5;
-}
-
-.importDialogActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
 }
 
 .importPromptActions {
@@ -351,14 +345,210 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  border-top: 1px solid var(--line-soft);
-  padding-top: 12px;
 }
 
-.importSummary {
+/* V163-B6: the dialog is three numbered steps: ask the AI, paste the answer, choose what to import. */
+.importStep {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 10px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.importStep:last-child {
+  border-bottom: 0;
+}
+
+.importStepNumber {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.importStepNumber[data-state="active"] {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.importStepNumber[data-state="done"] {
+  border-color: rgba(111, 207, 151, 0.55);
+  color: var(--good);
+}
+
+.importStepContent {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.importStepHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  min-height: 22px;
+}
+
+.importStepHead h3 {
   margin: 0;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.importStepHead span {
   color: var(--text-muted-readable);
+  font-size: 12px;
+}
+
+.importReadLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 6px 8px 6px 12px;
+  background: var(--surface-soft);
   font-size: 13px;
+}
+
+.importReadLine strong {
+  color: var(--good);
+}
+
+.importReadLine span {
+  color: var(--muted);
+}
+
+.importReadLine .sectionGhostButton {
+  margin-left: auto;
+}
+
+/* One frame per project: a color line on the left, a head, then one row per item. */
+.importGroup {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line-soft);
+  border-left: 3px solid var(--project-color, var(--line));
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+  overflow: hidden;
+}
+
+.importGroupHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 10px;
+}
+
+.importGroupDot {
+  flex: 0 0 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--project-color, var(--line));
+}
+
+.importGroupName {
+  flex: 0 1 auto;
+  min-width: 0;
+  color: var(--text);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.importGroupTag {
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 1px 8px;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.importGroupTag--new {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.importGroupGoal {
+  flex: 1 1 0;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.importItem {
+  display: grid;
+  grid-template-columns: auto 76px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px;
+  padding: 7px 10px;
+  border-top: 1px solid var(--line-soft);
+  font-size: 13px;
+}
+
+.importItem--off {
+  opacity: 0.45;
+}
+
+.importItem--off .importItemTitle {
+  text-decoration: line-through;
+}
+
+.importItemKind {
+  color: var(--text-muted-readable);
+  font-size: 12px;
+}
+
+.importItemKind--step {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.importItemText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.importItemTitle {
+  color: var(--text);
+}
+
+.importItemNote {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.importItemMinutes {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.importFooterCount {
+  margin-right: auto;
+  align-self: center;
+  color: var(--text-muted-readable);
+  font-size: 12px;
 }
 
 .importPreviewSection {
