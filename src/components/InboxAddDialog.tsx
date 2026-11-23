@@ -62,7 +62,7 @@ export function InboxAddDialog({
         >
           <label className="fieldStack">
             <span>やりたいこと</span>
-            <input
+            <input autoComplete="off"
               aria-describedby={
                 error ? "wishlist-add-hint wishlist-add-error" : "wishlist-add-hint"
               }

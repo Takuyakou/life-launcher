@@ -63,7 +63,7 @@ export function TimerMinutesStepper({
         onPointerUp={onDragEnd}
         title="上下にドラッグして分数を調整"
       >
-        <input
+        <input autoComplete="off"
           aria-label={`${label}タイマー分数`}
           className="nextStepTimerValueInput"
           disabled={disabled}

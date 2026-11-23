@@ -111,11 +111,11 @@ test("G6 the top app mark is a 26px box with a 20px icon", async ({ page }) => {
   await prepare(page);
   const box = page.locator(".topBrandIcon");
   const icon = box.locator("img");
-  expect(Math.round((await box.boundingBox())!.width)).toBe(26);
-  expect(Math.round((await box.boundingBox())!.height)).toBe(26);
-  expect(Math.round((await icon.boundingBox())!.width)).toBe(20);
-  expect(Math.round((await icon.boundingBox())!.height)).toBe(20);
-  expect(await box.evaluate((node) => getComputedStyle(node).borderRadius)).toBe("7px");
+  expect(Math.round((await box.boundingBox())!.width)).toBe(30);
+  expect(Math.round((await box.boundingBox())!.height)).toBe(30);
+  expect(Math.round((await icon.boundingBox())!.width)).toBe(26);
+  expect(Math.round((await icon.boundingBox())!.height)).toBe(26);
+  expect(await box.evaluate((node) => getComputedStyle(node).borderRadius)).toBe("8px");
 });
 
 test("F3 the dictionary icon is a 28px yellow 16px glyph with a 13px label", async ({ page }) => {

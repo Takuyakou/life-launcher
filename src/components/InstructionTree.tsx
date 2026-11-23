@@ -1340,7 +1340,7 @@ export function InstructionTree({
         <label className="instructionSearchField">
           <span className="srOnly">手順書名またはフォルダ名を検索</span>
           <span aria-hidden="true">⌕</span>
-          <input
+          <input autoComplete="off"
             aria-activedescendant={
               hasQuery && searchResults.length
                 ? `instruction-search-result-${searchIndex}`
@@ -1705,7 +1705,7 @@ export function InstructionTree({
               ) : null}
               <label className="fieldStack">
                 <span>名前</span>
-                <input
+                <input autoComplete="off"
                   disabled={operationSubmitting}
                   maxLength={48}
                   onChange={(event) => setOperationName(event.target.value)}

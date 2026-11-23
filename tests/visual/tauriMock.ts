@@ -69,9 +69,11 @@ export async function installTauriMock(
         return dot >= 0 ? value.slice(dot + 1).toLocaleLowerCase() : "";
       };
       let doNowCandidates = fixture.doNowCandidates;
+      // V163-C8: the saved config lives in localStorage so that a second page of the same test
+      // (the main window and the Dictionary window) sees one save, like the real config file.
       let currentConfig = (() => {
         try {
-          const stored = window.sessionStorage.getItem(configStorageKey);
+          const stored = window.localStorage.getItem(configStorageKey);
           return stored ? (JSON.parse(stored) as typeof fixture.config) : fixture.config;
         } catch {
           return fixture.config;
@@ -85,7 +87,7 @@ export async function installTauriMock(
           }
         : { testProfile: false, profilePath: null, webviewDataDir: null };
       const persistCurrentConfig = () => {
-        window.sessionStorage.setItem(configStorageKey, JSON.stringify(currentConfig));
+        window.localStorage.setItem(configStorageKey, JSON.stringify(currentConfig));
       };
       const bookStateStorageKey = "life-launcher-visual-qa-book-state";
       const readBookStates = (): Record<string, Record<string, unknown>> => {
@@ -243,6 +245,10 @@ export async function installTauriMock(
         focused: true,
         maximized: false,
       };
+      // V163-C4: the tests can tell the main window that a Dictionary window exists.
+      let dictionaryWindowExists = false;
+      // V163-C5: the tests can make the config save slower to look for frames that flicker.
+      let saveConfigDelayMs = 0;
       type InstructionRootChoice = {
         name: string;
         path: string;
@@ -309,6 +315,12 @@ export async function installTauriMock(
         setMainWindowState: (state: typeof mainWindowState) => {
           mainWindowState = { ...state };
         },
+        setDictionaryWindowExists: (exists: boolean) => {
+          dictionaryWindowExists = exists;
+        },
+        setSaveConfigDelay: (ms: number) => {
+          saveConfigDelayMs = ms;
+        },
         mainWindowState: () => ({ ...mainWindowState }),
         setInstructionRootChoices: (choices: typeof instructionRootChoices) => {
           instructionRootChoices = [...choices];
@@ -347,6 +359,11 @@ export async function installTauriMock(
           currentConfig = nextConfig;
           persistCurrentConfig();
           dispatchEvent("config-changed");
+        },
+        /** V163-C8: change the stored config without telling this window (another window saved). */
+        setConfigSilently: (nextConfig: typeof currentConfig) => {
+          currentConfig = nextConfig;
+          persistCurrentConfig();
         },
         setDoNowCandidates: (candidates: typeof fixture.doNowCandidates) => {
           doNowCandidates = candidates;
@@ -396,6 +413,18 @@ export async function installTauriMock(
               case "test_profile_info":
           return testProfileInfo;
         case "load_config":
+                {
+                  // V163-C8: read the shared store again, like the real app reads the file, so a
+                  // second window (the Dictionary) sees what the other window saved.
+                  const stored = window.localStorage.getItem(configStorageKey);
+                  if (stored) {
+                    try {
+                      currentConfig = JSON.parse(stored);
+                    } catch {
+                      // Keep the value this window already has.
+                    }
+                  }
+                }
                 if (options.rolloverOnLoadConfig) {
                   const date = new Date();
                   if (date.getHours() < currentConfig.settings.dayStartHour) {
@@ -438,6 +467,11 @@ export async function installTauriMock(
                 };
               case "save_config":
                 if (failSaveConfig) throw new Error("Public demo mock: config save failed");
+                if (saveConfigDelayMs > 0) {
+                  await new Promise((resolve) =>
+                    setTimeout(resolve, saveConfigDelayMs), // simulated-latency
+                  );
+                }
                 currentConfig = args.config as typeof currentConfig;
                 persistCurrentConfig();
                 return { config: currentConfig, path: paths.config };
@@ -942,7 +976,9 @@ export async function installTauriMock(
               case "reveal_launcher_item":
                 return "Public demo mock: native action not executed";
               case "plugin:window|get_all_windows":
-                return [currentWindowLabel];
+                return dictionaryWindowExists
+                  ? [currentWindowLabel, "dictionary"]
+                  : [currentWindowLabel];
               case "plugin:event|listen": {
                 const event = String(args.event);
                 const listenerId = eventId++;
@@ -955,9 +991,16 @@ export async function installTauriMock(
                 unregisterEventListener(String(args.event), Number(args.eventId));
                 return null;
               case "plugin:event|emit":
-              case "plugin:event|emit_to":
                 dispatchEvent(String(args.event), args.payload);
                 return null;
+              case "plugin:event|emit_to": {
+                // V163-C8: like Tauri, a targeted event only reaches the window it names.
+                const target = args.target as string | { label?: string } | null;
+                const label = typeof target === "string" ? target : (target?.label ?? "");
+                if (label && label !== currentWindowLabel) return null;
+                dispatchEvent(String(args.event), args.payload);
+                return null;
+              }
               case "plugin:window|set_skip_taskbar":
               case "plugin:window|set_focusable":
               case "plugin:window|set_always_on_top":

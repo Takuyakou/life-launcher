@@ -15,6 +15,7 @@ import {
 import { moveIdToSlot, nearestSlotIndex } from "../dictionaryTileReorder";
 import {
   announceDictionaryReady,
+  setDictionaryMainLocked,
   hideDictionaryWindow,
   listenForDictionaryShown,
 } from "../dictionaryWindow";
@@ -367,16 +368,32 @@ export function DictionaryWindow() {
   }, [titlebarMenu]);
 
   const toggleFocusLock = useCallback(() => {
-    setFocusLocked((current) => {
-      const next = !current;
-      focusLockedRef.current = next;
-      try {
-        window.localStorage.setItem(DICTIONARY_FOCUS_LOCK_STORAGE_KEY, String(next));
-      } catch {
-        // The current window still keeps the selected state when storage is unavailable.
-      }
-      return next;
-    });
+    const next = !focusLockedRef.current;
+    focusLockedRef.current = next;
+    setFocusLocked(next);
+    try {
+      window.localStorage.setItem(DICTIONARY_FOCUS_LOCK_STORAGE_KEY, String(next));
+    } catch {
+      // The current window still keeps the selected state when storage is unavailable.
+    }
+    // V163-C4: the main window stops taking clicks and keys while the lock is on.
+    void setDictionaryMainLocked(next);
+  }, []);
+
+  // V163-C8: read the config again (the main window may have saved it). When nothing changed the
+  // current object is kept, so the tiles are not rebuilt for no reason (that used to drop the focus).
+  const refreshConfig = useCallback(async () => {
+    try {
+      const response = await loadConfig();
+      setConfig((current) =>
+        current && JSON.stringify(current) === JSON.stringify(response.config)
+          ? current
+          : response.config,
+      );
+      setConfigError(response.error ?? null);
+    } catch (error) {
+      setConfigError(error instanceof Error ? error.message : String(error));
+    }
   }, []);
 
   useEffect(() => {
@@ -437,20 +454,7 @@ export function DictionaryWindow() {
   }, [dictionaryWindow, hideWindow]);
 
   useEffect(() => {
-    let disposed = false;
     let reloadTimer: number | null = null;
-
-    const refreshConfig = async () => {
-      try {
-        const response = await loadConfig();
-        if (disposed) return;
-        setConfig(response.config);
-        setConfigError(response.error ?? null);
-      } catch (error) {
-        if (disposed) return;
-        setConfigError(error instanceof Error ? error.message : String(error));
-      }
-    };
 
     void refreshConfig();
     const unlistenPromise = listenForConfigChanges(() => {
@@ -459,11 +463,10 @@ export function DictionaryWindow() {
     });
 
     return () => {
-      disposed = true;
       if (reloadTimer !== null) window.clearTimeout(reloadTimer);
       void unlistenPromise.then((unlisten) => unlisten()).catch(() => undefined);
     };
-  }, []);
+  }, [refreshConfig]);
 
   useEffect(() => {
     if (!config) return;
@@ -1245,7 +1248,13 @@ export function DictionaryWindow() {
     let disposed = false;
     const unlistenPromise = listenForDictionaryShown(() => {
       dictionaryVisibleRef.current = true;
-      resetSearchAndFocus();
+      // V163-C4: every time the dictionary comes forward, tell the main window the lock state.
+      void setDictionaryMainLocked(focusLockedRef.current);
+      // V163-C8: read the config again first, then put the focus back — a re-render between the
+      // two used to steal the focus from the search box. The focus is restored even on failure.
+      void refreshConfig().finally(() => {
+        if (!disposed) resetSearchAndFocus();
+      });
     });
     return () => {
       disposed = true;
@@ -1258,7 +1267,7 @@ export function DictionaryWindow() {
         })
         .catch(() => undefined);
     };
-  }, [dictionaryWindow, resetSearchAndFocus]);
+  }, [dictionaryWindow, refreshConfig, resetSearchAndFocus]);
 
   useEffect(() => {
     if (searchQuery || selectedButtons.length === 0 || parity.blocking) return;

@@ -33,7 +33,7 @@ export function GroupNameDialog({
 
         <label className="fieldStack">
           <span>グループ名</span>
-          <input
+          <input autoComplete="off"
             autoFocus
             className="textInput"
             maxLength={40}

@@ -360,6 +360,10 @@ test("import dialog footer uses the same cancel and save colors as settings", as
   await page.clock.runFor(300);
   // After reading, the button also says how many items it imports.
   await expect(importCommit).toHaveText("取り込む(2件)");
+  // V163-C10: let the read finish (and its own focus move land) before taking the focus over,
+  // so the Tab below starts from 取り込む every time.
+  await expect(dialog.getByText("✓ 読み取りました")).toBeVisible();
+  await page.clock.runFor(50);
   await expect(importCommit).toBeEnabled();
   const commitBox = await importCommit.boundingBox();
   const cancelBox = await importCancel.boundingBox();

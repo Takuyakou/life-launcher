@@ -26,107 +26,110 @@ Note: it is not a complete port of the Windows product. The Web Demo has a separ
 
 ## Highlights
 
-- **One thing to do now**
-  Suggests one next step: the Next Step already in Today's Three first, then this week's focus, then items you have not touched today, then the oldest session. Start it right away with 5 minutes, 25 minutes, or Measure from the idle timer. A one-line “Resume here” note you left last time appears under the action, and attachments that can no longer be found are marked “Not found”.
+### 1. Get started quickly (main screen)
 
-- **Today's Three**
-  Limit the day to at most three items. Start from project-colored cards; an item is completed after its planned timer expires and you confirm the session. Once all three are complete, choose the next three from “Choose today's work”. Use the card's “Remove” button, its “…” menu, its context menu, or Delete on a focused card to remove only its adoption into today (the original entry and session records remain).
+- **One thing to do now.** Life Launcher suggests one action from your active projects. If you left a “Resume here” note last time, it appears under the action so you can pick up where you left off.
+- **Today's Three.** Show up to three things to do today. Pick them in “Choose today's work” and reorder them by dragging or using the keyboard. Filter by project to pick several items from one project, or add a new wish and put it into Today's Three there.
+- **Timers and session history.** Start a short or regular timer, or use Measure to track elapsed time. Sessions of at least one minute are recorded locally. When the timer ends, you can extend it or finish and decide on the next step. Change the extension length in the prompt or in Settings.
+- **First launch and bulk import.** Start with an empty workspace, choose one thing, and give it five minutes. You can also use “Bulk Import” to add JSON that ChatGPT or Claude generated. Review the contents by project and deselect items before importing.
 
-- **Choose today's work**
-  Candidates (Next Steps and Other ideas) on the left, numbered Today slots on the right. Reorder with drag or Alt+↑/↓; the decision is saved once when you press Decide. Closing with changes asks whether to discard them. Picking a third item does not confirm automatically.
+### 2. Open your tools and instructions quickly
 
-- **Other ideas**
-  Grouped per project with colored lines. “▷ Make it the Next Step” promotes a row; a group whose project has no Next Step shows a “No Next Step yet” badge.
+- **Quick Launcher / Dictionary (`Ctrl+K`).** Register frequently used apps, folders, files, and URLs. Launch them from the sidebar or the search window using the keyboard.
+- **Instruction Viewer.** Read Markdown, plain text, HTML, and MHTML files (`.mhtml` / `.mht`) from registered folders in a separate window. Read image ZIPs as books with two-page spreads, right-to-left reading, and automatic bookmarking.
+- **In-app search (`Ctrl+F`).** Search across Next Steps, launcher buttons, and instructions. Search treats hiragana and katakana, full-width and half-width characters, and upper and lower case as equivalent. Press `Enter` to start a short timer or `Shift+Enter` to start a regular timer.
 
-- **Search (Ctrl+F)**
-  Find Next Steps, buttons, and instructions regardless of hiragana/katakana, full/half width, or letter case. Press Enter to start 5 minutes, or Shift+Enter for the normal duration.
+### 3. Plan your week
 
-- **First run**
-  When there are no projects and no Today items, the main screen shows “Let's start just one thing”. Enter a theme and a first step, press “Start with 5 minutes”, and the app creates one project and one Next Step and starts a 5-minute timer. “Start later” leaves the empty dashboard.
+- **Plan this week.** Review last week's total time, active days, and completed items in Records. Choose up to three projects to focus on this week. Items that have been inactive for 14 days or more get a suggestion to make the next step smaller. Use the facts from your record to choose what to do next, with no ratings or scores.
 
-- **Quick Launcher / Dictionary**
-  Register apps, folders, files, and URLs, then open them from the sidebar or `Ctrl+K` search. The button builder retains drafts when switching registration modes. Navigate the dictionary with arrow keys; on multiple monitors, it opens on the same screen as the main app.
+### Screenshots
 
-- **Timer / Session Records**
-  Start a short or normal timer, or use Measure to count up from 0:00, and store sessions of at least one minute locally. Stopping early does not automatically complete today's item. When the planned time is up, choose “Continue (+15 min)” or “Finish”; for a Next Step that is not in Today's Three you can also leave a one-line “Resume here” note. Finishing a Next Step from Today's Three asks where to start next.
-
-- **Plan this week**
-  On the “Plan this week” tab of Records, review last week's total time, active days, sessions, time per project, and completed items, then choose up to three focus projects. Projects whose Next Step has stayed the same for 14 days or more appear under “Not moving lately” with “Make it smaller” and “Keep”. “Copy with last week's facts” builds a prompt for ChatGPT or Claude, and you can add the JSON reply through Bulk import. No scores or ratings.
-
-- **View instructions**
-  Read Markdown, text, sanitized HTML, and MHTML (`.mhtml` / `.mht`) files from registered folders in a separate window. Image ZIPs open as a book (two-page spread, right-to-left, resume where you left off).
-
-- **Keys**
-  `Ctrl+K` dictionary / `Ctrl+F` search / `F1` guide / `Ctrl+W` close / on a row `Enter` start (Other ideas: make it the Next Step), `F2` edit, `Delete` remove (Today's Three: remove from today) / while a menu is open `T` add to Today's Three / `Ctrl+Z` undo / `Menu` or `Shift+F10` menu. Configure the show/hide, mini, and instructions keys in Settings.
-
-## Screenshots
-
-### Plan this week
+#### Plan this week
 
 ![Plan this week](docs/screenshots/weekly-planning.png)
 
-### Dictionary / Instructions
+#### Dictionary / Instructions
 
-| Dictionary                                                | Instructions                                                   |
-| --------------------------------------------------------- | -------------------------------------------------------------- |
-| ![Searchable dictionary](docs/screenshots/dictionary.png) | ![Instructions window](docs/screenshots/instruction-viewer.png) |
+| Dictionary | Instruction Viewer |
+| --- | --- |
+| ![Searchable Dictionary](docs/screenshots/dictionary.png) | ![Instruction Viewer](docs/screenshots/instruction-viewer.png) |
 
-The screenshots are generated from synthetic data. They do not contain real user configuration, activity, paths, or notes.
+<sub>The screenshots use synthetic data. They contain no actual user settings, records, or paths.</sub>
+
+### Common shortcuts
+
+| Keys | Action |
+| --- | --- |
+| `Ctrl+K` / `Ctrl+F` | Open the Dictionary / Search within the app |
+| `Enter` / `F2` / `Delete` | Start the selected row (make a wish a Next Step) / Edit / Delete (remove an item from Today's Three) |
+| `T` (with a menu open) | Add to Today's Three |
+| `Ctrl+Z` / `F1` / `Ctrl+W` | Undo / Open the guide / Close |
+| `Menu key` / `Shift+F10` | Open the context menu |
+
+<sub>In Settings, you can assign global shortcuts to show the app, toggle the mini timer, and open the Instruction Viewer.</sub>
 
 ## Download
 
-Download Life Launcher from [GitHub Releases](https://github.com/Takuyakou/life-launcher/releases/latest). Check that page for the latest published version and filenames.
+Download the latest version from [GitHub Releases](https://github.com/Takuyakou/life-launcher/releases/latest). For changes in each version, see [GitHub Releases](https://github.com/Takuyakou/life-launcher/releases) and the [CHANGELOG](CHANGELOG.md).
 
-Release notes for every version are in [GitHub Releases](https://github.com/Takuyakou/life-launcher/releases) and the [changelog](CHANGELOG.md).
+| Format | Filename | Suggested use |
+| --- | --- | --- |
+| **Installer (recommended)** | `Life-Launcher-v<version>-windows-x64-setup.exe` | Everyday use, with Start menu registration and easy updates |
+| **Standalone EXE** | `Life-Launcher-v<version>-windows-x64.exe` | Try the app without installing it |
+| **Portable ZIP** | `Life-Launcher-v<version>-windows-x64-portable.zip` | Extract the app to a folder of your choice |
 
-### Installer - Recommended
+- **Runtime requirements.** Windows 10 or later (x64) and Microsoft Edge WebView2 Runtime.
+- **Integrity check.** Use `SHA256SUMS.txt` attached to the release to verify your download.
 
-Use this for the standard installation flow.
+> [!NOTE]
+> - The current downloads are unsigned, so Windows SmartScreen may warn you when you launch them.
+> - All editions, including the ZIP, store user data in `%APPDATA%\life-launcher`. This arrangement does not support carrying the app and its data together on a USB drive.
 
-Installer: `Life-Launcher-v<version>-windows-x64-setup.exe`
+## Updating and Backups
 
-### Standalone EXE
+The app has no automatic updater. To check for a new version, select “Open release page” under Maintenance in Settings. This opens your browser, and the app itself makes no network request.
 
-Run the app directly without installing it.
+**To update**
+1. Exit Life Launcher completely.
+2. Back up the `%APPDATA%\life-launcher` folder by copying it to a separate location.
+3. Run the new installer (or launch the new EXE or ZIP edition).
 
-Standalone EXE: `Life-Launcher-v<version>-windows-x64.exe`
+Your settings, session history, and window positions carry over. For the design and specifications, see [OVERVIEW](docs/OVERVIEW.md) and the [current specification](docs/spec/current-spec.md).
 
-### Portable ZIP
+<details>
+<summary>Update notes and troubleshooting (uninstall errors / migrating from v1.2)</summary>
 
-Extract the ZIP archive and run the app.
+- **If the installer cannot uninstall the previous version.** Exit Life Launcher and try again, or select “Do not uninstall” to continue. Your settings and records are preserved.
+- **If you revert to an older version.** The older version may lose settings that were introduced later, such as new colors. Restore your pre-update backup. Versions that change the data format will say so in the release notes.
+- **If you update from v1.2 to v1.3 or later for the first time.** On startup, the app automatically migrates the config schema from `2` to `3`. It creates a raw backup of the original settings first. If migration, validation, or backup fails, it leaves the original settings intact. Session records are preserved.
 
-Portable ZIP: `Life-Launcher-v<version>-windows-x64-portable.zip`
+</details>
 
-The ZIP edition also stores user data in `%APPDATA%\life-launcher`. It does not carry your data alongside the executable on a USB drive.
+## Privacy and Security
 
-> The current Windows binaries are not code-signed, so Windows SmartScreen may display a warning. Microsoft Edge WebView2 Runtime is required.
+- **Local storage with no account required.** Settings, session records, notes, backups, and the icon cache are stored on your PC in `%APPDATA%\life-launcher` or your chosen backup location. The app has no dedicated server, cloud sync, telemetry, analytics, or crash reporting.
+- **Minimal network use.** When you register a URL, the app may make a direct request to that site for its favicon. It blocks local and private destinations, rechecks redirects, and enforces timeouts and response-size limits. Tauri capabilities are scoped to each window. Automated Rust tests cover these protections.
+- **JSON import safety.** Import JSON only from sources you trust. Review the contents and deselect items before importing. Immediately after an import, before making other changes, you can undo it from the notification.
 
-You can verify the release files with the included `SHA256SUMS.txt`.
+See [PRIVACY.md](PRIVACY.md) and [SECURITY.md](SECURITY.md) for details.
 
-## Updating
+## Development and Technical Information
 
-Fully exit Life Launcher and back up the `%APPDATA%\life-launcher` folder to another location before updating. There is no automatic updater. To check for a new version, use “Open the releases page” in Settings → Maintenance; it only opens your browser, and the app itself does not connect.
+- **Tech stack.** Tauri 2 / Rust / React 18 / TypeScript / Vite 8 / Zod / Motion / Playwright for deterministic visual QA.
+- **Bundled assets and libraries**
+  - **Fonts.** [Inter](https://github.com/rsms/inter) and [Noto Sans JP](https://github.com/notofonts/noto-cjk) (`@fontsource-variable/inter` and `@fontsource-variable/noto-sans-jp`, both under the SIL Open Font License 1.1).
+  - **Animation.** [Motion](https://motion.dev/) (`motion`, MIT License).
 
-The first launch after updating from v1.2 to v1.3 migrates config schema `2` to `3`. The app creates a raw pre-migration backup and leaves the original config unchanged if migration, validation, or backup fails. Session records are not deleted.
-
-Updating to a new version keeps your current settings and records. If you go back to an older version, settings added by the newer version (for example, a new color) may be lost, so back up before updating. When a release changes the data format, the release notes will say so. The saved window position and size are also kept.
-
-If you choose "Uninstall before installing" in the installer and it reports "Could not uninstall the previous version", quit Life Launcher and try again, or choose "Do not uninstall". Your settings and records are kept.
-
-See [GitHub Releases](https://github.com/Takuyakou/life-launcher/releases) and the [changelog](CHANGELOG.md) for details. The [overview](docs/OVERVIEW.md) and [current specification](docs/spec/current-spec.md) cover the wider feature set. These detailed documents are currently in Japanese.
-
-## Runtime Requirements
-
-- Windows 10 or later (x64)
-- Microsoft Edge WebView2 Runtime
-
-## Development
+<details>
+<summary>Development setup, builds, and running with a test profile</summary>
 
 ### Requirements
 
 - Node.js 24
-- Rust stable with the MSVC toolchain
+- Rust stable (MSVC toolchain)
 
+### Basic commands
 ```powershell
 npm.cmd ci
 npm.cmd run lint
@@ -135,60 +138,33 @@ npm.cmd run test:visual
 cargo check --manifest-path src-tauri/Cargo.toml
 ```
 
-Run the Tauri development app:
-
+### Running the app in development and building Windows packages
 ```powershell
+# Start the Tauri development app
 npm.cmd run tauri -- dev
-```
 
-Build local Windows packages:
-
-```powershell
+# Build a local Windows package
 npm.cmd run package:windows
 ```
 
-A "test profile" start runs the app apart from your normal data (settings, records, window state, WebView2 data, and the autostart entry), so you do not have to close your everyday app to check a build.
+### Native testing with a separate profile
+
+Run a test build without closing your everyday copy of Life Launcher. Settings, session records, window state, WebView2 data, and autostart are isolated.
 
 ```powershell
-# Start from an empty profile (like a first launch)
+# Start from an empty profile, as on first launch
 powershell -ExecutionPolicy Bypass -File scripts/start-test-profile.ps1 -Exe release-candidate/v<version>/Life-Launcher-v<version>-windows-x64.exe
 
-# Start with a copy of the current settings (the originals are not modified)
-powershell -ExecutionPolicy Bypass -File scripts/start-test-profile.ps1 -Exe <path to the EXE> -CopyCurrentData
+# Start with a copy of your current settings, leaving the originals intact
+powershell -ExecutionPolicy Bypass -File scripts/start-test-profile.ps1 -Exe <path-to-exe> -CopyCurrentData
 ```
 
-Setting `LIFE_LAUNCHER_TEST_PROFILE` to an absolute folder and running `npm.cmd run tauri -- dev` switches the same way. Without `-Profile`, the script uses `release-candidate/native-check/profiles/<timestamp>`.
+You can also run `npm.cmd run tauri -- dev` with an absolute path in `LIFE_LAUNCHER_TEST_PROFILE`. The default location is `release-candidate/native-check/profiles/<timestamp>`. Before publishing, we run lint, build, Playwright visual QA, Rust check, test, and clippy, and the public safety scan.
 
-Public quality checks cover React / TypeScript lint and build, Playwright Visual QA, Rust check / test / clippy, and the public safety scan.
+</details>
 
-## Tech Stack
+## Public Source and License
 
-- Tauri 2 / Rust
-- React 18 / TypeScript
-- Vite 8
-- Playwright for deterministic Visual QA
-- Zod for frontend data validation
-- Motion for UI animation
-- Inter and Noto Sans JP, bundled with the app (SIL Open Font License 1.1)
+The public history of this repository starts at Life Launcher v1.0.0. It contains neither the private development history nor actual user data. Specifications and verification records since publication are kept in this repository. Downloadable builds are hosted on GitHub Releases.
 
-## Security
-
-The public source includes bounded favicon retrieval, local and private destination rejection, redirect revalidation, response validation, and window-specific Tauri capabilities. Automated Rust tests cover the network and permission contracts.
-
-Life Launcher opens the apps, files, folders, and URLs you register. Do not import JSON from an unknown source. You can review the contents before importing. Right after an import, you can undo it from the notification, as long as nothing else has changed since.
-
-## Local Data And Network Use
-
-Life Launcher does not require an account or a Life Launcher server. Configuration, sessions, notes, backups, and icon cache data are stored locally under `%APPDATA%\life-launcher` or in a backup folder selected by the user.
-
-The app has no telemetry, analytics, crash-reporting service, cloud synchronization, or automatic updater. When you register a URL, Life Launcher may fetch its favicon directly from the target origin. The fetch path rejects obvious local and private destinations and applies redirect, timeout, and response-size limits. Opening a registered URL launches your browser, whose network behavior is outside Life Launcher.
-
-See [PRIVACY.md](PRIVACY.md) and [SECURITY.md](SECURITY.md) for details.
-
-## Public Source
-
-This repository starts at Life Launcher v1.0.0 with a clean public history. It does not include the original private development history or real user data. Specifications and verification records created for public development are maintained here; release binaries are hosted on GitHub Releases.
-
-## License
-
-No open-source license is granted. The source is visible for inspection, but use, modification, and redistribution are not permitted without the copyright holder's explicit permission. All rights reserved.
+No open-source license is granted. The source is available to view. Use, modification, and redistribution require express permission from the copyright holder. All rights reserved.

@@ -206,7 +206,16 @@ export function ImportDialog({
       setProjectOff(new Set());
       setRowOff(new Set());
       setFolded(true);
-      window.requestAnimationFrame(() => repasteRef.current?.focus());
+      // V163-C10: the focus only moves to 「貼り直す」 when the box that is folding away had it
+      // (or nothing had it). A person who already moved on to another control keeps their focus.
+      const focusBeforeFold = document.activeElement;
+      const fieldOrNothing =
+        focusBeforeFold === textareaRef.current ||
+        focusBeforeFold === null ||
+        focusBeforeFold === document.body;
+      window.requestAnimationFrame(() => {
+        if (fieldOrNothing) repasteRef.current?.focus();
+      });
     } catch (previewError) {
       if (sequence !== readSequenceRef.current) return;
       setPreview(null);
@@ -454,7 +463,7 @@ export function ImportDialog({
                     {counts?.wishes ?? 0}
                   </span>
                   <button
-                    className="sectionGhostButton"
+                    className="sectionGhostButton mainActionButton mainActionButton--neutral"
                     disabled={busy}
                     onClick={repaste}
                     ref={repasteRef}
@@ -464,7 +473,7 @@ export function ImportDialog({
                   </button>
                 </div>
               ) : (
-                <textarea
+                <textarea autoComplete="off"
                   aria-label="取り込みのJSON"
                   className="textInput importTextarea"
                   onChange={(event) => {

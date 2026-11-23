@@ -244,7 +244,7 @@ export function SearchPalette({
       >
         <div className="searchPaletteInputRow">
           <UiIcon name="search" size={18} />
-          <input
+          <input autoComplete="off"
             aria-autocomplete="list"
             aria-controls={LIST_ID}
             aria-activedescendant={selected ? `search-option-${selected.id}` : undefined}

@@ -127,7 +127,7 @@ export function InstructionPicker({
             </header>
             <label className="startEnvironmentSearch">
               <span className="srOnly">手順書を検索</span>
-              <input
+              <input autoComplete="off"
                 className="textInput"
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="名前・フォルダから検索"

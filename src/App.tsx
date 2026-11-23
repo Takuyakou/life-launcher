@@ -15,7 +15,16 @@ import type {
   KeyboardEvent,
   PointerEvent,
 } from "react";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";import { AnimatePresence, motion } from "motion/react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";import { AnimatePresence, motion } from "motion/react";
 import { springCollapse, springSnappy, staggerMax, staggerStep } from "./motion";
 import { SEARCH_GROUP_LIMIT, matchesSearchQuery } from "./searchMatch";
 import { nextStepStaleDays } from "./nextStepFreshness";
@@ -63,6 +72,7 @@ import {
   recordSession,
   resolveDropItem,
   restoreBackup,
+  notifyDictionaryConfigChanged,
   saveConfig,
   saveNotesForDate,
   setDisplayAwake,
@@ -103,14 +113,19 @@ import { ConfirmDialog, type ConfirmDialogRequest } from "./components/ConfirmDi
 import { GroupNameDialog } from "./components/GroupNameDialog";
 import { ImportDialog } from "./components/ImportDialog";
 import { InboxAddDialog } from "./components/InboxAddDialog";
+import { CompletionFollowupDialog } from "./components/CompletionFollowupDialog";
+import { NextStepEditDialog } from "./components/NextStepEditDialog";
+import { ButtonEditDialog } from "./components/ButtonEditDialog";
+import { DropRegisterDialog } from "./components/DropRegisterDialog";
+import { InboxEditDialog } from "./components/InboxEditDialog";
+import { ProjectEditDialog } from "./components/ProjectEditDialog";
+import { SettingsDialog } from "./components/SettingsDialog";
+import { TodayPickerDialog } from "./components/TodayPickerDialog";
 import { ManualSessionDialog, SessionEditDialog } from "./components/SessionDialogs";
 import {
   SoftwareResetChoiceDialog,
   SoftwareResetProgressDialog,
 } from "./components/SoftwareResetDialogs";
-import { TimerCompletionDialog } from "./components/TimerCompletionDialog";
-import { TimerMinutesStepper } from "./components/TimerMinutesStepper";
-import { SlidingFace } from "./components/SlidingFace";
 import { TodayActivitySection } from "./components/TodayActivitySection";
 import { ToastStack } from "./components/ToastStack";
 import { useToasts } from "./hooks/useToasts";
@@ -134,8 +149,6 @@ import {
   projectDeletionSummary,
   type ProjectDeletionMode,
 } from "./projectDeletion";
-import { StartEnvironmentPicker } from "./StartEnvironmentPicker";
-import { InstructionPicker } from "./InstructionPicker";
 import { RecordsView } from "./RecordsView";
 import {
   canonicalSourceKey,
@@ -153,8 +166,6 @@ import {
 } from "./completionFollowup";
 import {
   buttonGlyph,
-  PROJECT_COLOR_IDS,
-  PROJECT_COLOR_LABELS,
   resolveProjectColorId,
 } from "./projectIdentity";
 import { canRevealLauncherButton } from "./launcherReveal";
@@ -169,7 +180,6 @@ import {
 } from "./nextStepWishlist";
 import { TimerPanel } from "./components/TimerPanel";
 import { ExpandedTimerOverlay } from "./components/ExpandedTimerOverlay";
-import { GroupModeField } from "./components/GroupModeField";
 import {
   buildTodayCandidates,
   legacyWishlistSourceKey,
@@ -189,7 +199,6 @@ import { ShortcutBadge } from "./components/ShortcutBadge";
 import { findShortcutConflicts } from "./shortcutConflicts";
 import { localDayKey } from "./localDay";
 import { useTopMenuLabelLevel } from "./topMenuLabels";
-import { APP_VERSION } from "./version";
 import { useHoverSuppressionAfterResize } from "./hoverSuppression";
 import { installSettingsFieldEditing, navigateAppArrow } from "./keyboardNavigation";
 import {
@@ -206,7 +215,9 @@ import {
 } from "./instructionWindow";
 import { isInstructionBookName } from "./instructionBook";
 import {
+  DICTIONARY_LOCK_EVENT,
   DICTIONARY_VISIBILITY_EVENT,
+  focusDictionaryWindowIfVisible,
   openDictionaryWindow,
   toggleDictionaryWindow,
 } from "./dictionaryWindow";
@@ -215,7 +226,7 @@ import { type ActionDraft, type ActiveTimer, type ActiveView, type ButtonEditDra
 import { MiniModeApp } from "./components/MiniModeApp";
 import { SOFTWARE_RESET_TIMER_MESSAGE, captureSoftwareResetStorage, clearSoftwareResetStorage, getSoftwareResetRecoveryForBoot, restoreSoftwareResetStorage } from "./app/softwareReset";
 import { SectionCollapse } from "./components/SectionCollapse";
-import { actionDescription, actionHasSuspiciousPath, actionValue, aliasesInputToList, aliasesListToInput, buttonGroupName, buttonHasIconCacheSource, createStableId, dropPositionToCss, firstDroppedUrl, formatActionSummary, formatClock, formatDateKeyForHeader, formatSessionRange, formatStartedAt, formatTodayActivityLog, iconForAction, isCloseShortcutValue, isEditableTarget, isValidStartedAt, limitToday, makeAction, matchesHotkey, normalizeOptionalText, normalizeTimerMinutes, readCollapsedGroups, setActionValue, shortcutFromKeyboardEvent, shortcutValidationMessage, showButtonInOverlay, showButtonInSidebar, sourceListRange, stripActionDraft, toActionDraft, toThreeNoteDraft, todayEntries, todaySourceKey, todayTimerSourceId, toggleDisclosureFromBar, uniqueButtonId, uniqueGroupNames, uniqueProjectId, uniqueSuggestions, validateShortcutSettings, writeCollapsedGroups } from "./app/helpers";
+import { actionHasSuspiciousPath, actionValue, aliasesInputToList, aliasesListToInput, buttonGroupName, buttonHasIconCacheSource, createStableId, dropPositionToCss, firstDroppedUrl, formatActionSummary, formatClock, formatDateKeyForHeader, formatSessionRange, formatStartedAt, formatTodayActivityLog, iconForAction, isCloseShortcutValue, isEditableTarget, isValidStartedAt, limitToday, makeAction, matchesHotkey, normalizeOptionalText, normalizeTimerMinutes, readCollapsedGroups, shortcutFromKeyboardEvent, showButtonInOverlay, showButtonInSidebar, sourceListRange, stripActionDraft, toActionDraft, toThreeNoteDraft, todayEntries, todaySourceKey, todayTimerSourceId, toggleDisclosureFromBar, uniqueButtonId, uniqueGroupNames, uniqueProjectId, uniqueSuggestions, validateShortcutSettings, writeCollapsedGroups } from "./app/helpers";
 import { clearMiniPosition, createMiniReadyWaiter, inactiveMiniSnapshot, isDictionaryView, isFiniteMiniPosition, isInstructionView, isMiniModeView, readMiniPosition, resolveSafeMiniPosition, sameMiniPosition, timerActionText, waitForMiniWindowCreated, writeMiniPosition } from "./app/miniWindow";
 import { draggedCardTopWithinTodayRemoveDropZone, inboxDropTargetFromPoint, instructionPathKey, instructionPathWithin, isReorderBlockedTarget, notifyTimerComplete, pointWithinSelector, pointWithinTodayRemoveDropZone, projectDropIndicator, projectDropTargetFromPoint, sidebarDropTargetFromPoint, sidebarGroupDropTargetFromPoint, todayAdoptionDropTargetFromPoint, todayDropTargetFromPoint, wishlistGroupDropTargetFromPoint } from "./app/dropTargets";
 
@@ -263,6 +274,8 @@ function DashboardApp() {
   const [banner, setBanner] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [dictionaryVisible, setDictionaryVisible] = useState(false);
+  // V163-C4: while the dictionary keeps the main screen locked (範囲外クリックで閉じる: オフ).
+  const [dictionaryLocked, setDictionaryLocked] = useState(false);
   // P10-03: the search window (D4).
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -335,11 +348,54 @@ function DashboardApp() {
   useEffect(() => {
     const unlisten = listen<boolean>(DICTIONARY_VISIBILITY_EVENT, (event) => {
       setDictionaryVisible(event.payload);
+      // V163-C4: a hidden dictionary never keeps the main screen locked.
+      if (!event.payload) setDictionaryLocked(false);
     });
     return () => {
       unlisten.then((dispose) => dispose()).catch(() => undefined);
     };
   }, []);
+  useEffect(() => {
+    const unlisten = listen<boolean>(DICTIONARY_LOCK_EVENT, (event) => {
+      setDictionaryLocked(Boolean(event.payload));
+    });
+    return () => {
+      unlisten.then((dispose) => dispose()).catch(() => undefined);
+    };
+  }, []);
+  // V163-C4: while the lock is on, nothing under the scrim takes clicks or Tab stops.
+  useEffect(() => {
+    if (!dictionaryVisible || !dictionaryLocked) return;
+    const shell = document.querySelector<HTMLElement>(".appShell");
+    if (!shell) return;
+    const children = Array.from(shell.children).filter(
+      (child): child is HTMLElement =>
+        child instanceof HTMLElement &&
+        !child.classList.contains("dictionaryMainScrim") &&
+        child.tagName !== "A",
+    );
+    for (const child of children) child.setAttribute("inert", "");
+    return () => {
+      for (const child of children) child.removeAttribute("inert");
+    };
+  }, [dictionaryLocked, dictionaryVisible]);
+  // V163-C4: while the lock is on, focusing the main window sends the focus back to the dictionary.
+  useEffect(() => {
+    if (!dictionaryVisible || !dictionaryLocked) return;
+    let disposed = false;
+    const unlistenPromise = getCurrentWindow().onFocusChanged(({ payload: focused }) => {
+      if (!focused || disposed) return;
+      void focusDictionaryWindowIfVisible();
+    });
+    return () => {
+      disposed = true;
+      void unlistenPromise
+        .then((unlisten) => {
+          if (disposed) unlisten();
+        })
+        .catch(() => undefined);
+    };
+  }, [dictionaryLocked, dictionaryVisible]);
   const [defaultTimerDraft, setDefaultTimerDraft] = useState("");
   const [victoryEditing, setVictoryEditing] = useState(false);
   const [inboxDraft, setInboxDraft] = useState("");
@@ -1352,6 +1408,8 @@ function DashboardApp() {
         configRef.current = response.config;
         setConfig(response.config);
         setBanner(null);
+        // V163-C8: the Dictionary window keeps its own copy, so it is told about every save here.
+        void notifyDictionaryConfigChanged();
         // P10-05 (D11): a successful save can change which Next Steps are stale, so the
         // list is read again from the saved config.
         void loadNextStepFreshness()
@@ -2358,6 +2416,17 @@ function DashboardApp() {
     setNumberInputDragging(null);
     event.currentTarget.releasePointerCapture(event.pointerId);
     if (!drag.moved) return;
+
+    // V163-C11: a drag that changed the number must not leave the focus (and its yellow ring)
+    // behind. The click that follows this pointer-up puts the focus back into the field, so the
+    // focus is dropped one task later. A plain press without moving keeps the focus, so the
+    // number can still be typed.
+    window.setTimeout(() => {
+      const focused = document.activeElement;
+      if (focused instanceof HTMLElement && focused.closest(".nextStepTimerStepper")) {
+        focused.blur();
+      }
+    }, 0);
 
     const max = drag.field === "settingsDayStart" ? 23 : 240;
     const min = drag.field === "settingsDayStart" ? 0 : 1;
@@ -7299,6 +7368,48 @@ function DashboardApp() {
     };
   }, []);
 
+  // V163-C7: the closed 「やりたいこと」 header shows every group without shrinking them; when the
+  // row does not fit, its right edge fades and hovering the header scrolls it slowly in a loop.
+  // The measurement runs again whenever the row resizes (ResizeObserver), so it does not need
+  // the group list in its dependencies.
+  const inboxSummaryRef = useRef<HTMLSpanElement | null>(null);
+  const [inboxSummaryOverflow, setInboxSummaryOverflow] = useState(false);
+  useLayoutEffect(() => {
+    const summary = inboxSummaryRef.current;
+    if (!summary) return;
+    const measure = () => {
+      const track = summary.querySelector<HTMLElement>(".inboxGroupSummaryTrack");
+      if (!track) return;
+      const items = Array.from(track.children).filter(
+        (child): child is HTMLElement =>
+          child instanceof HTMLElement && !child.classList.contains("inboxGroupSummaryItem--copy"),
+      );
+      const ownWidth = items.reduce(
+        (sum, item) => sum + item.getBoundingClientRect().width,
+        Math.max(0, items.length - 1) * 10,
+      );
+      // A hidden row (narrow windows) never shows the copy and never fades.
+      const available = summary.clientWidth;
+      const overflow = available > 0 && ownWidth > available + 0.5;
+      setInboxSummaryOverflow(overflow);
+      summary.style.setProperty("--inbox-summary-loop", `${Math.round(ownWidth + 10)}px`);
+      summary.style.setProperty("--inbox-summary-duration", `${(ownWidth + 10) / 30}s`);
+    };
+    measure();
+    // The first layout (and the bundled fonts) can change the widths after the effect runs, so
+    // measure once more after paint and watch the header too.
+    const frame = window.requestAnimationFrame(measure);
+    const observer = new ResizeObserver(measure);
+    observer.observe(summary);
+    if (summary.parentElement) observer.observe(summary.parentElement);
+    const track = summary.querySelector<HTMLElement>(".inboxGroupSummaryTrack");
+    if (track) observer.observe(track);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [config, inboxOpen, loading]);
+
   if (loading) {
     return (
       <main className="appShell appShell--loading">
@@ -7320,6 +7431,33 @@ function DashboardApp() {
     ? config.projects
     : config.projects.slice(0, PROJECT_CARD_COMPACT_LIMIT);
   const wishlistGroups = groupWishlistForDisplay(config);
+  const inboxSummaryTitle = wishlistGroups
+    .map((group) => `${group.name} ${group.items.length}件`)
+    .join("、");
+  const renderInboxGroupSummaryItems = (copy: boolean) =>
+    wishlistGroups.map((group) => (
+      <span
+        aria-hidden={copy ? "true" : undefined}
+        className={
+          copy ? "inboxGroupSummaryItem inboxGroupSummaryItem--copy" : "inboxGroupSummaryItem"
+        }
+        key={`${copy ? "copy:" : ""}${group.key}`}
+      >
+        <span
+          aria-hidden="true"
+          className="inboxGroupSummaryDot"
+          data-project-color={
+            group.projectId
+              ? resolveProjectColorId(
+                  group.projectId,
+                  projectsById.get(group.projectId)?.colorId ?? null,
+                )
+              : undefined
+          }
+        />
+        {group.name} {group.items.length}件
+      </span>
+    ));
   const inboxNeighborIndex = (index: number, offset: -1 | 1) => {
     const item = config.inbox[index];
     if (!item) return undefined;
@@ -8291,7 +8429,29 @@ function DashboardApp() {
         </a>
       )}
       {dictionaryVisible && (
-        <div aria-hidden="true" className="dictionaryMainScrim" role="presentation" />
+        <div
+          aria-hidden="true"
+          className={
+            dictionaryLocked
+              ? "dictionaryMainScrim dictionaryMainScrim--locked"
+              : "dictionaryMainScrim"
+          }
+          onPointerDown={
+            dictionaryLocked
+              ? (event) => {
+                  event.preventDefault();
+                  void (async () => {
+                    const focused = await focusDictionaryWindowIfVisible();
+                    if (focused) return;
+                    // The dictionary is gone or hidden: nothing may stay locked.
+                    setDictionaryVisible(false);
+                    setDictionaryLocked(false);
+                  })();
+                }
+              : undefined
+          }
+          role="presentation"
+        />
       )}
       <header
         className="topBar"
@@ -8739,7 +8899,7 @@ function DashboardApp() {
                   onPointerUp={finishNumberInputDrag}
                   title="上下にドラッグして分数を調整"
                 >
-                  <input
+                  <input autoComplete="off"
                     aria-label="通常タイマーの分数"
                     inputMode="numeric"
                     max={240}
@@ -8876,7 +9036,7 @@ function DashboardApp() {
                   <div className="victoryContent">
                     {victoryEditing ? (
                       <>
-                        <input
+                        <input autoComplete="off"
                           aria-label="今日の勝利条件"
                           className={
                             victoryDone ? "victoryInput victoryInput--done" : "victoryInput"
@@ -9633,7 +9793,7 @@ function DashboardApp() {
                                   <div className="todayTimerCluster">
                                     <div className="todayTriggerZone">
                                       {todayTriggerEditingIndex === index ? (
-                                        <input
+                                        <input autoComplete="off"
                                           aria-label="いつ・何の後にやる？"
                                           autoFocus
                                           className="todayTriggerInput"
@@ -9969,7 +10129,7 @@ function DashboardApp() {
                     </span>
                     <div className="disclosureHeaderActions">
                       <button
-                        className="sectionGhostButton"
+                        className="sectionGhostButton mainActionButton mainActionButton--neutral"
                         onPointerDown={(event) => event.stopPropagation()}
                         onClick={(event) => {
                           event.stopPropagation();
@@ -9978,7 +10138,7 @@ function DashboardApp() {
                         title="ChatGPTやClaudeに作ってもらった内容を、まとめて足します"
                         type="button"
                       >
-                        まとめて取り込む
+                        ＋ まとめて取り込む
                       </button>
                       <button
                         aria-label="プロジェクトを追加"
@@ -10455,24 +10615,14 @@ function DashboardApp() {
                       <span
                         aria-hidden="true"
                         className="disclosureDescription inboxGroupSummary"
+                        data-overflow={inboxSummaryOverflow ? "true" : "false"}
+                        ref={inboxSummaryRef}
+                        title={inboxSummaryTitle}
                       >
-                        {wishlistGroups.map((group) => (
-                          <span className="inboxGroupSummaryItem" key={group.key}>
-                            <span
-                              aria-hidden="true"
-                              className="inboxGroupSummaryDot"
-                              data-project-color={
-                                group.projectId
-                                  ? resolveProjectColorId(
-                                      group.projectId,
-                                      projectsById.get(group.projectId)?.colorId ?? null,
-                                    )
-                                  : undefined
-                              }
-                            />
-                            {group.name} {group.items.length}件
-                          </span>
-                        ))}
+                        <span className="inboxGroupSummaryTrack">
+                          {renderInboxGroupSummaryItems(false)}
+                          {inboxSummaryOverflow ? renderInboxGroupSummaryItems(true) : null}
+                        </span>
                       </span>
                     )}
                     <span className="visuallyHidden" id="wishlist-group-summary">
@@ -11437,333 +11587,51 @@ function DashboardApp() {
       )}
 
       {inboxEditingIndex !== null && config.inbox[inboxEditingIndex] && (
-        <div className="modalBackdrop" role="presentation">
-          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
-          <section
-            aria-label="やりたいこと編集"
-            aria-modal="true"
-            className="dropDialog inboxEditDialog"
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div>
-              <p className="eyebrow">Wishlist</p>
-              <h2>やりたいことを編集</h2>
-            </div>
-
-            <label className="fieldStack">
-              <span>やりたいこと</span>
-              <input
-                autoFocus
-                className="textInput"
-                maxLength={120}
-                onChange={(event) => setInboxEditDraft(event.target.value)}
-                value={inboxEditDraft}
-              />
-            </label>
-
-            <fieldset className="inboxProjectChoices">
-              <legend>プロジェクト</legend>
-              <label>
-                <input
-                  checked={!inboxEditProjectId}
-                  name="inbox-project"
-                  onChange={() => setInboxEditProjectId("")}
-                  type="radio"
-                />
-                <span>プロジェクトなし</span>
-              </label>
-              {config.projects.map((project) => (
-                <label key={project.id}>
-                  <input
-                    checked={inboxEditProjectId === project.id}
-                    name="inbox-project"
-                    onChange={() => setInboxEditProjectId(project.id)}
-                    type="radio"
-                  />
-                  <ProjectIdentity
-                    colorId={project.colorId}
-                    compact
-                    name={project.name}
-                    projectId={project.id}
-                  />
-                </label>
-              ))}
-            </fieldset>
-
-            <h3 className="formSectionHeading">開始環境</h3>
-            <p className="formSectionDescription">
-              一緒に使う道具や、開始時に確認する手順を設定します。
-            </p>
-            <StartEnvironmentPicker
-              buttons={projectSelectableButtons}
-              onChange={setInboxEditButtonIds}
-              overlayPages={overlayPages}
-              renderIcon={renderButtonIcon}
-              selectedIds={inboxEditButtonIds}
-            />
-            <InstructionPicker
-              choices={instructionChoices}
-              error={instructionChoicesError}
-              loading={instructionChoicesLoading}
-              onChange={(instructionPath) => {
-                setInboxEditInstructionPath(instructionPath);
-                setInboxEditInstructionOpenOnStart(
-                  instructionPath
-                    ? inboxEditInstructionPath
-                      ? inboxEditInstructionOpenOnStart
-                      : true
-                    : false,
-                );
-              }}
-              onRetry={() => void refreshInstructionChoices()}
-              selectedPath={inboxEditInstructionPath}
-            />
-            <label className="projectWeeklyFocusToggle projectInstructionStartToggle">
-              <input
-                checked={inboxEditInstructionOpenOnStart}
-                disabled={!inboxEditInstructionPath}
-                onChange={(event) => setInboxEditInstructionOpenOnStart(event.target.checked)}
-                type="checkbox"
-              />
-              <span>開始時に手順書を開く</span>
-            </label>
-            <div className="dialogActions formDialogActions">
-              <button
-                className="primaryButton"
-                disabled={!inboxEditDraft.trim() || sourceEditSaving}
-                onClick={commitInboxEdit}
-                type="button"
-              >
-                保存
-              </button>
-              <button
-                className="secondaryButton dialogCancelButton"
-                onClick={() => closeInboxEditDialog()}
-                type="button"
-              >
-                キャンセル
-              </button>
-            </div>
-          </section>
-        </div>
+        <InboxEditDialog
+          config={config}
+          inboxEditDraft={inboxEditDraft}
+          inboxEditProjectId={inboxEditProjectId}
+          inboxEditButtonIds={inboxEditButtonIds}
+          inboxEditInstructionPath={inboxEditInstructionPath}
+          inboxEditInstructionOpenOnStart={inboxEditInstructionOpenOnStart}
+          instructionChoices={instructionChoices}
+          instructionChoicesError={instructionChoicesError}
+          instructionChoicesLoading={instructionChoicesLoading}
+          overlayPages={overlayPages}
+          projectSelectableButtons={projectSelectableButtons}
+          renderButtonIcon={renderButtonIcon}
+          setInboxEditDraft={setInboxEditDraft}
+          setInboxEditProjectId={setInboxEditProjectId}
+          setInboxEditButtonIds={setInboxEditButtonIds}
+          setInboxEditInstructionPath={setInboxEditInstructionPath}
+          setInboxEditInstructionOpenOnStart={setInboxEditInstructionOpenOnStart}
+          refreshInstructionChoices={refreshInstructionChoices}
+          closeInboxEditDialog={closeInboxEditDialog}
+          commitInboxEdit={commitInboxEdit}
+          sourceEditSaving={sourceEditSaving}
+        />
       )}
 
       {todayPickerOpen && (
-        <div className="modalBackdrop" role="presentation">
-          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
-          <section
-            aria-label="今日やるものを選ぶ"
-            aria-modal="true"
-            className="dropDialog todayPickerDialog"
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div className="todayPickerHead">
-              <div className="todayPickerHeadCopy">
-                <p className="eyebrow">Today</p>
-                <h2>今日やるものを選ぶ</h2>
-              </div>
-              <p className="todayPickerIntro">3件まで。決めたら、あとは始めるだけです</p>
-              <button
-                aria-label="今日やるものを選ぶを閉じる"
-                autoFocus
-                className="iconButton"
-                disabled={todayPickerSaving}
-                onClick={requestCloseTodayPicker}
-                title="閉じる"
-                type="button"
-              >
-                <UiIcon name="close" size={16} />
-              </button>
-            </div>
-
-            {/* V163-B7: the filter pills sit between the heading and the two columns. */}
-            <div
-              aria-label="プロジェクトで絞り込む"
-              className="todayPickerFilterBar"
-              role="group"
-            >
-              {todayPickerPills.map((pill) => (
-                <button
-                  aria-pressed={todayPickerFilter === pill.key}
-                  className={
-                    todayPickerFilter === pill.key
-                      ? "todayPickerFilterPill todayPickerFilterPill--active"
-                      : "todayPickerFilterPill"
-                  }
-                  key={pill.key}
-                  onClick={() => setTodayPickerFilter(pill.key)}
-                  type="button"
-                >
-                  {pill.color !== null && (
-                    <span
-                      aria-hidden="true"
-                      className="todayPickerFilterDot"
-                      data-project-color={pill.color}
-                    />
-                  )}
-                  {pill.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="todayPickerBody">
-              <section className="todayPickerSource">
-                <div
-                  className="todayPickerSourceGroup"
-                  data-today-picker-section="next-step"
-                >
-                  <h3 className="todayPickerGroupTitle">次の一手</h3>
-                  <div className="todayPickerList">
-                    {todayPickerVisibleNextSteps.length === 0 ? (
-                      <p className="todayPickerEmpty">追加できる次の一手はありません</p>
-                    ) : (
-                      todayPickerVisibleNextSteps.map((candidate) =>
-                        renderTodayPickerCandidate(candidate),
-                      )
-                    )}
-                  </div>
-                </div>
-                <div
-                  className="todayPickerSourceGroup"
-                  data-today-picker-section="wishlist"
-                >
-                  <h3 className="todayPickerGroupTitle">やりたいこと</h3>
-                  <div className="todayPickerList">
-                    {todayPickerVisibleWishlist.length === 0 ? (
-                      <p className="todayPickerEmpty">追加できるやりたいことはありません</p>
-                    ) : (
-                      todayPickerVisibleWishlist.map((candidate) =>
-                        renderTodayPickerCandidate(candidate),
-                      )
-                    )}
-                  </div>
-                  {/* V163-B7: one compact line of quick add, under the wishlist list. */}
-                  <form
-                    className="todayPickerQuickAdd"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      addTodayPickerQuickWish();
-                    }}
-                  >
-                    <input
-                      aria-label={
-                        todayPickerQuickProject
-                          ? `「${todayPickerQuickProject.name}」のやりたいことを追加`
-                          : "やりたいことを追加"
-                      }
-                      className="todayPickerQuickAddInput"
-                      disabled={todayPickerSaving}
-                      maxLength={120}
-                      onChange={(event) => setTodayPickerQuickText(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key !== "Enter") return;
-                        if (event.nativeEvent.isComposing || event.keyCode === 229) {
-                          event.preventDefault();
-                          return;
-                        }
-                        event.preventDefault();
-                        addTodayPickerQuickWish();
-                      }}
-                      placeholder={
-                        todayPickerQuickProject
-                          ? `「${todayPickerQuickProject.name}」のやりたいことを足して今日へ`
-                          : "やりたいことを足して今日へ"
-                      }
-                      type="text"
-                      value={todayPickerQuickText}
-                    />
-                    <button
-                      className="secondaryButton todayPickerQuickAddButton"
-                      disabled={todayPickerSaving}
-                      type="submit"
-                    >
-                      ＋ 追加
-                    </button>
-                  </form>
-                </div>
-              </section>
-
-              <section
-                className="todayPickerDestination"
-                data-today-picker-section="selected"
-              >
-                <div className="todayPickerDestinationHeader">
-                  <h3>今日の3件</h3>
-                  <div
-                    aria-label={`今日の3件 ${todayPickerDraftItems.length}件`}
-                    className="todayPickerCounter"
-                  >
-                    <strong>{todayPickerDraftItems.length} / 3</strong>
-                  </div>
-                  <span className="todayPickerDragHint">ドラッグで順番を変えられます</span>
-                </div>
-                <div
-                  aria-label={`今日の3件の選択状況 ${todayPickerDraftItems.length}/3`}
-                  aria-valuemax={TODAY_ITEM_LIMIT}
-                  aria-valuemin={0}
-                  aria-valuenow={todayPickerDraftItems.length}
-                  className="todayPickerProgress"
-                  role="progressbar"
-                >
-                  {/* V163-M3: the fill springs to the new count (scaleX, as before, so it rests the same). */}
-                  <motion.span
-                    animate={{ scaleX: todayPickerDraftItems.length / TODAY_ITEM_LIMIT }}
-                    initial={false}
-                    transition={springSnappy}
-                  />
-                </div>
-                <div className="todayPickerSlots">
-                  {Array.from({ length: TODAY_ITEM_LIMIT }, (_, index) => {
-                    const item = todayPickerDraftItems[index];
-                    return item ? (
-                      renderTodayPickerSelectedItem(item, index)
-                    ) : (
-                      <div
-                        className="todayPickerSlot todayPickerSlot--empty"
-                        data-today-picker-slot-index={index}
-                        key={`empty:${index}`}
-                        onDragOver={(event) => {
-                          if (todayPickerDragIndex === null) return;
-                          event.preventDefault();
-                        }}
-                        onDrop={(event) => {
-                          event.preventDefault();
-                          moveTodayPickerItemToIndex(index);
-                        }}
-                      >
-                        <span className="todayPickerSlotIndex">{index + 1}</span>
-                        <span className="todayPickerSlotEmptyLabel">
-                          空けておいてもかまいません
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-            </div>
-
-            <div className="dialogActions formDialogActions">
-              <button
-                className="primaryButton todayPickerConfirmButton"
-                disabled={todayPickerSaving}
-                onClick={() => void saveTodayPickerDraft()}
-                type="button"
-              >
-                {todayPickerSaving ? "保存中…" : "決定"}
-              </button>
-              <button
-                className="dangerButton todayPickerCancelButton"
-                disabled={todayPickerSaving}
-                onClick={requestCloseTodayPicker}
-                type="button"
-              >
-                キャンセル
-              </button>
-            </div>
-          </section>
-        </div>
+        <TodayPickerDialog
+          todayPickerDraftItems={todayPickerDraftItems}
+          todayPickerDragIndex={todayPickerDragIndex}
+          todayPickerFilter={todayPickerFilter}
+          todayPickerPills={todayPickerPills}
+          todayPickerQuickProject={todayPickerQuickProject}
+          todayPickerQuickText={todayPickerQuickText}
+          todayPickerSaving={todayPickerSaving}
+          todayPickerVisibleNextSteps={todayPickerVisibleNextSteps}
+          todayPickerVisibleWishlist={todayPickerVisibleWishlist}
+          setTodayPickerFilter={setTodayPickerFilter}
+          setTodayPickerQuickText={setTodayPickerQuickText}
+          addTodayPickerQuickWish={addTodayPickerQuickWish}
+          moveTodayPickerItemToIndex={moveTodayPickerItemToIndex}
+          renderTodayPickerCandidate={renderTodayPickerCandidate}
+          renderTodayPickerSelectedItem={renderTodayPickerSelectedItem}
+          requestCloseTodayPicker={requestCloseTodayPicker}
+          saveTodayPickerDraft={saveTodayPickerDraft}
+        />
       )}
 
       {groupDraft !== null && (
@@ -11787,688 +11655,43 @@ function DashboardApp() {
       )}
 
       {settingsDraft && (
-        <div className="modalBackdrop" role="presentation">
-          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
-          <section
-            aria-label="設定"
-            aria-modal="true"
-            className="dropDialog settingsDialog"
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div className="modalTitleRow">
-              <div>
-                <p className="eyebrow">Settings</p>
-                <h2>設定</h2>
-              </div>
-              <button
-                aria-label="設定を閉じる"
-                className="iconButton"
-                onClick={requestCloseSettings}
-                title="閉じる"
-                type="button"
-              >
-                <UiIcon name="close" size={16} />
-              </button>
-            </div>
-
-            <div className="settingsTabs" role="tablist" aria-label="設定カテゴリ">
-              {[
-                ["basic", "基本"],
-                ["shortcuts", "ショートカット"],
-                ["instructions", "手順書"],
-                ["backup", "バックアップ"],
-                ["maintenance", "メンテナンス"],
-              ].map(([key, label]) => (
-                <button
-                  aria-selected={settingsSection === key}
-                  className={
-                    settingsSection === key ? "settingsTab settingsTab--active" : "settingsTab"
-                  }
-                  key={key}
-                  onClick={() => {
-                    if (shortcutRecordingField) {
-                      void finishShortcutRecording();
-                    }
-                    setSettingsSection(key as SettingsSectionKey);
-                  }}
-                  role="tab"
-                  type="button"
-                >
-                  {settingsSection === key && (
-                    <SlidingFace className="settingsTabFace" layoutId="settings-tab-face" />
-                  )}
-                  <span className="settingsTabLabel">{label}</span>
-                </button>
-              ))}
-            </div>
-
-            <div
-              className={
-                settingsSection === "basic"
-                  ? "settingsSection app-scrollbar"
-                  : "settingsSection settingsSection--hidden app-scrollbar"
-              }
-            >
-              <div className="settingsGuideRow">
-                <div>
-                  <h3>使い方</h3>
-                  <p>アプリの使い方とキーの一覧を開きます。</p>
-                </div>
-                <button
-                  className="secondaryButton settingsGuideButton"
-                  onClick={() => setHelpGuideOpen(true)}
-                  type="button"
-                >
-                  使い方を開く
-                </button>
-              </div>
-              <h3>基本</h3>
-              <div className="settingsGrid settingsGrid--timers">
-                <label
-                  className={
-                    numberInputDragging === "settingsShort"
-                      ? "fieldStack fieldStack--numberDrag fieldStack--numberDragging"
-                      : "fieldStack fieldStack--numberDrag"
-                  }
-                  onPointerCancel={cancelNumberInputDrag}
-                  onPointerDown={(event) =>
-                    startNumberInputDrag(
-                      event,
-                      "settingsShort",
-                      Number.parseInt(settingsDraft.shortTimerMinutes, 10) || 5,
-                    )
-                  }
-                  onPointerMove={updateNumberInputDrag}
-                  onPointerUp={finishNumberInputDrag}
-                  title="上下にドラッグして分数を調整"
-                >
-                  <span>短時間タイマー分数</span>
-                  <span className="numberDragInput">
-                    <input
-                      className="textInput"
-                      max={240}
-                      min={1}
-                      onChange={(event) =>
-                        setSettingsDraft({
-                          ...settingsDraft,
-                          shortTimerMinutes: event.target.value,
-                        })
-                      }
-                      type="number"
-                      value={settingsDraft.shortTimerMinutes}
-                    />
-                    <span aria-hidden="true" className="numberDragAffordance" />
-                  </span>
-                </label>
-                <label
-                  className={
-                    numberInputDragging === "settingsDefault"
-                      ? "fieldStack fieldStack--numberDrag fieldStack--numberDragging"
-                      : "fieldStack fieldStack--numberDrag"
-                  }
-                  onPointerCancel={cancelNumberInputDrag}
-                  onPointerDown={(event) =>
-                    startNumberInputDrag(
-                      event,
-                      "settingsDefault",
-                      Number.parseInt(settingsDraft.defaultTimerMinutes, 10) || 25,
-                    )
-                  }
-                  onPointerMove={updateNumberInputDrag}
-                  onPointerUp={finishNumberInputDrag}
-                  title="上下にドラッグして分数を調整"
-                >
-                  <span>通常タイマー分数</span>
-                  <span className="numberDragInput">
-                    <input
-                      className="textInput"
-                      max={240}
-                      min={1}
-                      onChange={(event) =>
-                        setSettingsDraft({
-                          ...settingsDraft,
-                          defaultTimerMinutes: event.target.value,
-                        })
-                      }
-                      type="number"
-                      value={settingsDraft.defaultTimerMinutes}
-                    />
-                    <span aria-hidden="true" className="numberDragAffordance" />
-                  </span>
-                </label>
-                <label
-                  className={
-                    numberInputDragging === "settingsExtend"
-                      ? "fieldStack fieldStack--numberDrag fieldStack--numberDragging"
-                      : "fieldStack fieldStack--numberDrag"
-                  }
-                  onPointerCancel={cancelNumberInputDrag}
-                  onPointerDown={(event) =>
-                    startNumberInputDrag(
-                      event,
-                      "settingsExtend",
-                      Number.parseInt(settingsDraft.extendTimerMinutes, 10) ||
-                        DEFAULT_EXTEND_TIMER_MINUTES,
-                    )
-                  }
-                  onPointerMove={updateNumberInputDrag}
-                  onPointerUp={finishNumberInputDrag}
-                  title="上下にドラッグして分数を調整"
-                >
-                  <span>延長タイマー分数</span>
-                  <span className="numberDragInput">
-                    <input
-                      className="textInput"
-                      max={240}
-                      min={1}
-                      onChange={(event) =>
-                        setSettingsDraft({
-                          ...settingsDraft,
-                          extendTimerMinutes: event.target.value,
-                        })
-                      }
-                      type="number"
-                      value={settingsDraft.extendTimerMinutes}
-                    />
-                    <span aria-hidden="true" className="numberDragAffordance" />
-                  </span>
-                </label>
-                <label
-                  className={
-                    numberInputDragging === "settingsDayStart"
-                      ? "fieldStack fieldStack--numberDrag fieldStack--numberDragging"
-                      : "fieldStack fieldStack--numberDrag"
-                  }
-                  onPointerCancel={cancelNumberInputDrag}
-                  onPointerDown={(event) =>
-                    startNumberInputDrag(
-                      event,
-                      "settingsDayStart",
-                      Number.parseInt(settingsDraft.dayStartHour, 10) || 0,
-                    )
-                  }
-                  onPointerMove={updateNumberInputDrag}
-                  onPointerUp={finishNumberInputDrag}
-                  title="上下にドラッグして時刻を調整"
-                >
-                  <span>日付切替時刻</span>
-                  <span className="numberDragInput">
-                    <input
-                      className="textInput"
-                      max={23}
-                      min={0}
-                      onChange={(event) =>
-                        setSettingsDraft({ ...settingsDraft, dayStartHour: event.target.value })
-                      }
-                      type="number"
-                      value={settingsDraft.dayStartHour}
-                    />
-                    <span aria-hidden="true" className="numberDragUnit">
-                      時
-                    </span>
-                    <span aria-hidden="true" className="numberDragAffordance" />
-                  </span>
-                </label>
-              </div>
-              <div className="settingsToggleGrid">
-                <label className="settingsToggle">
-                  <input
-                    checked={settingsDraft.alwaysOnTop}
-                    onChange={(event) =>
-                      setSettingsDraft({ ...settingsDraft, alwaysOnTop: event.target.checked })
-                    }
-                    type="checkbox"
-                  />
-                  <span>常に手前</span>
-                </label>
-                <label className="settingsToggle">
-                  <input
-                    checked={settingsDraft.autoStart}
-                    onChange={(event) =>
-                      setSettingsDraft({ ...settingsDraft, autoStart: event.target.checked })
-                    }
-                    type="checkbox"
-                  />
-                  <span>Windows自動起動</span>
-                  {testProfile?.testProfile && (
-                    <small className="settingsNote">
-                      テスト用の起動では、自動起動に登録しません（設定の値だけ保存します）
-                    </small>
-                  )}
-                </label>
-                <label className="settingsToggle">
-                  <input
-                    checked={settingsDraft.miniMode}
-                    onChange={(event) =>
-                      setSettingsDraft({ ...settingsDraft, miniMode: event.target.checked })
-                    }
-                    type="checkbox"
-                  />
-                  <span>ミニタイマーを使う</span>
-                </label>
-                <label className="settingsToggle settingsToggle--wide">
-                  <input
-                    checked={settingsDraft.restartShortFirst}
-                    onChange={(event) =>
-                      setSettingsDraft({
-                        ...settingsDraft,
-                        restartShortFirst: event.target.checked,
-                      })
-                    }
-                    type="checkbox"
-                  />
-                  <span>長く空いたプロジェクトでは短時間開始を優先表示する</span>
-                </label>
-              </div>
-              <section className="settingsDisplay" aria-labelledby="settings-display-title">
-                <h4 id="settings-display-title">表示</h4>
-                <fieldset className="settingsDisplayFieldset">
-                  <legend>メイン表示サイズ</legend>
-                  <div className="settingsDisplayChoices">
-                    {(["standard", "large", "xlarge"] as const).map((size) => (
-                      <label key={size}>
-                        <input
-                          checked={settingsDraft.mainDisplaySize === size}
-                          name="main-display-size"
-                          onChange={() =>
-                            setSettingsDraft({ ...settingsDraft, mainDisplaySize: size })
-                          }
-                          type="radio"
-                          value={size}
-                        />
-                        <span>
-                          {size === "standard" ? "標準" : size === "large" ? "大" : "特大"}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </fieldset>
-                <p>メイン画面の文字・カード・操作部の大きさを変更します。</p>
-              </section>
-              <section
-                className="settingsWeeklyFocus"
-                aria-labelledby="settings-weekly-focus-title"
-              >
-                <div className="settingsWeeklyFocusHeading">
-                  <div>
-                    <h4 id="settings-weekly-focus-title">今週の重点</h4>
-                    <p>今やる一手で優先するプロジェクトを最大3件選びます。</p>
-                  </div>
-                  <span>
-                    {settingsDraft.weeklyFocusProjectIds.length}/{WEEKLY_FOCUS_LIMIT}
-                  </span>
-                </div>
-                {config.projects.length > 0 ? (
-                  <div className="weeklyFocusChecklist settingsWeeklyFocusChecklist">
-                    {config.projects.map((project) => {
-                      const checked = settingsDraft.weeklyFocusProjectIds.includes(project.id);
-                      return (
-                        <label key={project.id}>
-                          <input
-                            aria-label={`${project.name}を今週の重点にする`}
-                            checked={checked}
-                            disabled={
-                              !checked &&
-                              settingsDraft.weeklyFocusProjectIds.length >= WEEKLY_FOCUS_LIMIT
-                            }
-                            onChange={(event) => {
-                              const nextIds = event.target.checked
-                                ? [...settingsDraft.weeklyFocusProjectIds, project.id]
-                                : settingsDraft.weeklyFocusProjectIds.filter(
-                                    (projectId) => projectId !== project.id,
-                                  );
-                              setSettingsDraft({
-                                ...settingsDraft,
-                                weeklyFocusProjectIds: nextIds,
-                              });
-                            }}
-                            type="checkbox"
-                          />
-                          <ProjectIdentity
-                            colorId={project.colorId}
-                            compact
-                            name={project.name}
-                            projectId={project.id}
-                          />
-                        </label>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="quietText">プロジェクトを追加すると選択できます。</p>
-                )}
-              </section>
-            </div>
-
-            <div
-              className={
-                settingsSection === "shortcuts"
-                  ? "settingsSection app-scrollbar"
-                  : "settingsSection settingsSection--hidden app-scrollbar"
-              }
-            >
-              <h3>ショートカット</h3>
-              {shortcutConflicts.map((conflict) => (
-                <p className="shortcutConflictWarning" key={conflict.chord} role="alert">
-                  {conflict.chord} は {conflict.bindings.map(({ label }) => `「${label}」`).join("・")}
-                  に設定されています。いずれかを変更してください。
-                </p>
-              ))}
-              <div className="settingsGrid">
-                {SHORTCUT_DRAFT_FIELDS.map(({ field, label }) => {
-                  const value = settingsDraft[field];
-                  const recording = shortcutRecordingField === field;
-                  const conflict = shortcutConflicts.find((item) =>
-                    item.bindings.some((binding) => binding.field === field),
-                  );
-                  const others = conflict?.bindings
-                    .filter((binding) => binding.field !== field)
-                    .map((binding) => binding.label) ?? [];
-                  return (
-                    <div
-                      className={
-                        conflict
-                          ? "fieldStack shortcutCaptureField shortcutCaptureField--conflict"
-                          : "fieldStack shortcutCaptureField"
-                      }
-                      key={field}
-                    >
-                      <span>{label}</span>
-                      <div
-                        className={
-                          recording
-                            ? "shortcutCaptureControl shortcutCaptureControl--recording"
-                            : "shortcutCaptureControl"
-                        }
-                      >
-                        <div aria-live="polite" className="shortcutCaptureValue">
-                          <kbd>{recording ? "入力待ち…" : value || "未設定"}</kbd>
-                        </div>
-                        <button
-                          aria-invalid={Boolean(conflict)}
-                          aria-pressed={recording}
-                          className="secondaryButton shortcutCaptureButton"
-                          onClick={() => void beginShortcutRecording(field)}
-                          type="button"
-                        >
-                          {recording ? "待機中" : "登録"}
-                        </button>
-                        <button
-                          aria-label={`${label}のショートカットを解除`}
-                          className="shortcutCaptureClear"
-                          disabled={!value || recording}
-                          onClick={() => setSettingsDraft({ ...settingsDraft, [field]: "" })}
-                          title="ショートカットを解除"
-                          type="button"
-                        >
-                          <UiIcon name="close" size={16} />
-                        </button>
-                      </div>
-                      {(recording || value.trim()) && (
-                        <small className="quietText quietText--small">
-                          {recording
-                            ? "キーの組み合わせを押してください。Escapeで取消"
-                            : shortcutValidationMessage(value, others)}
-                        </small>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div
-              className={
-                settingsSection === "instructions"
-                  ? "settingsSection app-scrollbar"
-                  : "settingsSection settingsSection--hidden app-scrollbar"
-              }
-            >
-              <h3>手順書</h3>
-              <div className="fieldStack">
-                <span>手順書フォルダ（最大5件）</span>
-                {settingsDraft.instructionFolders.length > 0 ? (
-                  <div className="instructionFolderSettingsList">
-                    {settingsDraft.instructionFolders.map((folder) => (
-                      <div className="instructionFolderSettingsRow" key={folder}>
-                        <span title={folder}>{folder}</span>
-                        <button
-                          className="dangerButton settingsButton--danger"
-                          disabled={instructionSettingsBusy}
-                          onClick={() => removeInstructionFolder(folder)}
-                          type="button"
-                        >
-                          解除
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="quietText quietText--small">
-                    MarkdownまたはTextファイルを置くローカルフォルダを登録してください。
-                  </p>
-                )}
-                <button
-                  className="secondaryButton settingsButton--neutral instructionFolderAddButton"
-                  disabled={instructionSettingsBusy || settingsDraft.instructionFolders.length >= 5}
-                  onClick={() => void addInstructionFolder()}
-                  type="button"
-                >
-                  ＋ フォルダを追加
-                </button>
-              </div>
-            </div>
-
-            <div
-              className={
-                settingsSection === "backup"
-                  ? "settingsSection app-scrollbar"
-                  : "settingsSection settingsSection--hidden app-scrollbar"
-              }
-            >
-              <h3>バックアップ</h3>
-              <label className="fieldStack">
-                <span>保存先フォルダ</span>
-                <div className="folderPickerRow">
-                  <input
-                    className="textInput"
-                    placeholder="未設定"
-                    readOnly
-                    value={settingsDraft.backupFolder}
-                  />
-                  <button
-                    className="secondaryButton settingsButton--neutral"
-                    onClick={chooseBackupFolder}
-                    type="button"
-                  >
-                    選択
-                  </button>
-                </div>
-              </label>
-              {!settingsDraft.backupFolder && (
-                <p className="quietText quietText--small">
-                  バックアップは未設定です。データ保護のため保存先の設定を推奨します。
-                </p>
-              )}
-              <label className="fieldStack">
-                <span>保持世代数</span>
-                <input
-                  className="textInput"
-                  min={1}
-                  onChange={(event) =>
-                    setSettingsDraft({ ...settingsDraft, backupKeep: event.target.value })
-                  }
-                  type="number"
-                  value={settingsDraft.backupKeep}
-                />
-              </label>
-              <div className="settingsButtonRow">
-                <button
-                  className="dangerButton settingsButton--danger"
-                  onClick={requestClearBackupFolder}
-                  type="button"
-                >
-                  バックアップを未設定にする
-                </button>
-                <button
-                  className="dangerButton settingsButton--danger"
-                  onClick={chooseBackupZipForRestore}
-                  type="button"
-                >
-                  バックアップから復元
-                </button>
-              </div>
-            </div>
-
-            <div
-              className={
-                settingsSection === "maintenance"
-                  ? "settingsSection app-scrollbar"
-                  : "settingsSection settingsSection--hidden app-scrollbar"
-              }
-            >
-              <h3>メンテナンス</h3>
-              <p className="quietText quietText--small">
-                このタブの操作は押すとすぐ実行されます。保存は不要です。
-              </p>
-              <div className="maintenanceGroups">
-                <section aria-labelledby="maintenance-data-heading" className="maintenanceGroup">
-                  <h4 id="maintenance-data-heading">データ・フォルダ</h4>
-                  <div className="settingsButtonRow">
-                    <button
-                      className="secondaryButton settingsButton--neutral"
-                      disabled={dailyActivityCopying}
-                      onClick={() => void copyTodayActivityLog()}
-                      title="今日のセッションとできたことをクリップボードへコピー"
-                      type="button"
-                    >
-                      {dailyActivityCopying ? "コピー中" : "今日の活動ログをコピー"}
-                    </button>
-                    <button
-                      className="secondaryButton settingsButton--neutral"
-                      onClick={openRuntimeDataFolder}
-                      type="button"
-                    >
-                      configフォルダを開く
-                    </button>
-                    <button
-                      className="secondaryButton settingsButton--neutral"
-                      onClick={openBackupFolder}
-                      type="button"
-                    >
-                      バックアップフォルダを開く
-                    </button>
-                  </div>
-                </section>
-
-                <section aria-labelledby="maintenance-display-heading" className="maintenanceGroup">
-                  <h4 id="maintenance-display-heading">表示・キャッシュ</h4>
-                  <div className="settingsButtonRow">
-                    <button
-                      className="secondaryButton settingsButton--neutral"
-                      onClick={requestIconCacheRegeneration}
-                      type="button"
-                    >
-                      アイコンキャッシュ再生成
-                    </button>
-                    <button
-                      className="secondaryButton settingsButton--neutral"
-                      onClick={requestMiniWindowPositionReset}
-                      type="button"
-                    >
-                      ミニウィンドウ位置をリセット
-                    </button>
-                    <button
-                      className="secondaryButton settingsButton--neutral"
-                      onClick={requestInstructionWindowPositionReset}
-                      type="button"
-                    >
-                      手順書ウィンドウ位置をリセット
-                    </button>
-                  </div>
-                </section>
-
-                <section
-                  aria-labelledby="maintenance-instructions-heading"
-                  className="maintenanceGroup"
-                >
-                  <h4 id="maintenance-instructions-heading">手順書</h4>
-                  <div className="settingsButtonRow">
-                    <button
-                      className="secondaryButton settingsButton--neutral"
-                      onClick={() => void reloadInstructionList()}
-                      type="button"
-                    >
-                      手順書一覧を再読み込み
-                    </button>
-                  </div>
-                </section>
-
-                <section
-                  aria-labelledby="maintenance-reset-heading"
-                  className="maintenanceGroup maintenanceGroup--reset"
-                >
-                  <h4 id="maintenance-reset-heading">初期化</h4>
-                  <p>Life Launcherを初回起動時の状態へ戻します。</p>
-                  <button
-                    className="dangerButton settingsButton--danger softwareResetButton"
-                    disabled={softwareResetStage !== "idle"}
-                    onClick={requestSoftwareReset}
-                    type="button"
-                  >
-                    ソフトウェアリセット...
-                  </button>
-                </section>
-              </div>
-              <p className="quietText quietText--small settingsVersion">
-                バージョン {APP_VERSION}
-                <button
-                  className="settingsReleaseLink"
-                  onClick={() => {
-                    void executeActions([
-                      {
-                        type: "open_url",
-                        payload: { url: "https://github.com/Takuyakou/life-launcher/releases" },
-                      },
-                    ])
-                      .then((results) => {
-                        if (!results[0]?.ok) {
-                          showToast("error", "リリースページを開けませんでした");
-                        }
-                      })
-                      .catch(() => {
-                        showToast("error", "リリースページを開けませんでした");
-                      });
-                  }}
-                  title="https://github.com/Takuyakou/life-launcher/releases"
-                  type="button"
-                >
-                  リリースページを開く
-                  <UiIcon name="external" size={12} />
-                </button>
-              </p>
-            </div>
-
-            <div className="dialogActions settingsDialogActions">
-              <button
-                className="secondaryButton settingsSaveButton"
-                disabled={Boolean(shortcutRecordingField)}
-                onClick={saveSettingsCenter}
-                type="button"
-              >
-                保存
-              </button>
-              <button
-                className="dangerButton settingsCancelButton"
-                onClick={requestCloseSettings}
-                type="button"
-              >
-                キャンセル
-              </button>
-            </div>
-          </section>
-        </div>
+        <SettingsDialog
+          config={config}
+          dailyActivityCopying={dailyActivityCopying}
+          instructionSettingsBusy={instructionSettingsBusy}
+          numberInputDragging={numberInputDragging}
+          settingsDraft={settingsDraft}
+          settingsSection={settingsSection}
+          shortcutConflicts={shortcutConflicts}
+          shortcutRecordingField={shortcutRecordingField}
+          softwareResetStage={softwareResetStage}
+          testProfile={testProfile}
+          setHelpGuideOpen={setHelpGuideOpen}
+          setSettingsDraft={setSettingsDraft}
+          setSettingsSection={setSettingsSection}
+          showToast={showToast}
+          addInstructionFolder={addInstructionFolder}
+          beginShortcutRecording={beginShortcutRecording}
+          cancelNumberInputDrag={cancelNumberInputDrag}
+          chooseBackupFolder={chooseBackupFolder}
+          chooseBackupZipForRestore={chooseBackupZipForRestore}
+          copyTodayActivityLog={copyTodayActivityLog}
+          finishNumberInputDrag={finishNumberInputDrag}
+          finishShortcutRecording={finishShortcutRecording}
+          openBackupFolder={openBackupFolder}
+          openRuntimeDataFolder={openRuntimeDataFolder}
+          reloadInstructionList={reloadInstructionList}
+          removeInstructionFolder={removeInstructionFolder}
+          requestClearBackupFolder={requestClearBackupFolder}
+          requestCloseSettings={requestCloseSettings}
+          requestIconCacheRegeneration={requestIconCacheRegeneration}
+          requestInstructionWindowPositionReset={requestInstructionWindowPositionReset}
+          requestMiniWindowPositionReset={requestMiniWindowPositionReset}
+          requestSoftwareReset={requestSoftwareReset}
+          saveSettingsCenter={saveSettingsCenter}
+          startNumberInputDrag={startNumberInputDrag}
+          updateNumberInputDrag={updateNumberInputDrag}
+        />
       )}
 
       {manualSessionDraft && (
@@ -12494,306 +11717,19 @@ function DashboardApp() {
       )}
 
       {buttonEditDraft && (
-        <div className="modalBackdrop" role="presentation">
-          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
-          <section
-            aria-label="ボタン編集"
-            aria-modal="true"
-            className="dropDialog editDialog buttonEditDialog"
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div className="buttonEditDialogHeader modalTitleRow">
-              <div>
-                <p className="eyebrow">Button</p>
-                <h2>ボタンを編集</h2>
-              </div>
-              <button
-                aria-label="ボタン編集を閉じる"
-                className="iconButton"
-                onClick={requestCloseButtonEdit}
-                title="閉じる"
-                type="button"
-              >
-                <UiIcon name="close" size={16} />
-              </button>
-            </div>
-
-            <div className="buttonEditDialogBody app-scrollbar">
-              <section className="buttonEditSection">
-                <h3>基本</h3>
-                <label className="fieldStack">
-                  <span>ラベル</span>
-                  <input
-                    className="textInput"
-                    maxLength={48}
-                    onChange={(event) =>
-                      setButtonEditDraft({ ...buttonEditDraft, label: event.target.value })
-                    }
-                    value={buttonEditDraft.label}
-                  />
-                </label>
-                <GroupModeField
-                  existingGroup={buttonEditDraft.existingGroup}
-                  groupMode={buttonEditDraft.groupMode}
-                  groups={groupNames}
-                  newGroup={buttonEditDraft.newGroup}
-                  onExistingGroupChange={(existingGroup) =>
-                    setButtonEditDraft({ ...buttonEditDraft, existingGroup })
-                  }
-                  onGroupModeChange={(groupMode) =>
-                    setButtonEditDraft({
-                      ...buttonEditDraft,
-                      groupMode,
-                      existingGroup:
-                        buttonEditDraft.existingGroup || groupNames[0] || DEFAULT_BUTTON_GROUP,
-                    })
-                  }
-                  onNewGroupChange={(newGroup) =>
-                    setButtonEditDraft({ ...buttonEditDraft, newGroup })
-                  }
-                />
-              </section>
-
-              <section className="buttonEditSection">
-                <h3>表示先</h3>
-                <div className="fieldStack">
-                  <span>表示先</span>
-                  <div className="displayTargetList">
-                    <label className="displayTargetItem">
-                      <input
-                        checked={buttonEditDraft.showInSidebar}
-                        onChange={(event) =>
-                          setButtonEditDraft({
-                            ...buttonEditDraft,
-                            showInSidebar: event.target.checked,
-                          })
-                        }
-                        type="checkbox"
-                      />
-                      <strong>左サイドバーに表示</strong>
-                    </label>
-                    <label className="displayTargetItem">
-                      <input
-                        checked={buttonEditDraft.showInOverlay}
-                        onChange={(event) =>
-                          setButtonEditDraft({
-                            ...buttonEditDraft,
-                            showInOverlay: event.target.checked,
-                          })
-                        }
-                        type="checkbox"
-                      />
-                      <strong>Ctrl+K辞書に表示</strong>
-                    </label>
-                  </div>
-                </div>
-
-                {!buttonEditDraft.showInSidebar && !buttonEditDraft.showInOverlay && (
-                  <p className="visibilityWarning">
-                    サイドバーにも辞書にも表示されません。設定ファイル上には残ります。
-                  </p>
-                )}
-
-                {buttonEditDraft.showInOverlay && (
-                  <div className="fieldStack">
-                    <span>辞書ページ</span>
-                    <select
-                      className="textInput"
-                      onChange={(event) =>
-                        setButtonEditDraft({
-                          ...buttonEditDraft,
-                          overlayPageId: event.target.value || null,
-                        })
-                      }
-                      value={
-                        overlayPages.some((page) => page.id === buttonEditDraft.overlayPageId)
-                          ? (buttonEditDraft.overlayPageId ?? "")
-                          : ""
-                      }
-                    >
-                      <option value="">未分類</option>
-                      {overlayPages.map((page) => (
-                        <option key={page.id} value={page.id}>
-                          {page.name}
-                        </option>
-                      ))}
-                    </select>
-                    <small className="quietText quietText--small">
-                      サイドバーのグループと辞書ページは別々に設定できます。
-                    </small>
-                  </div>
-                )}
-              </section>
-
-              <details className="buttonEditOptional">
-                <summary>検索・説明（任意）</summary>
-                <div className="buttonEditOptionalBody">
-                  <label className="fieldStack">
-                    <span>検索キーワード</span>
-                    <textarea
-                      className="textInput aliasesInput"
-                      onChange={(event) =>
-                        setButtonEditDraft({ ...buttonEditDraft, aliasesInput: event.target.value })
-                      }
-                      placeholder="editor, docs, よく使う"
-                      value={buttonEditDraft.aliasesInput}
-                    />
-                  </label>
-                  <label className="fieldStack">
-                    <span>説明</span>
-                    <textarea
-                      className="textInput aliasesInput"
-                      onChange={(event) =>
-                        setButtonEditDraft({ ...buttonEditDraft, description: event.target.value })
-                      }
-                      placeholder="よく使うアプリやフォルダを開く。"
-                      value={buttonEditDraft.description}
-                    />
-                  </label>
-                </div>
-              </details>
-
-              <section className="buttonEditSection">
-                <h3>実行アクション</h3>
-                <div className="fieldStack">
-                  <span>アクション</span>
-                  <div className="actionEditor">
-                    {buttonEditDraft.actions.map((action, index) => (
-                      <div
-                        className={
-                          actionDragId === action.draftId
-                            ? "actionRow buttonEditActionRow actionRow--dragging"
-                            : "actionRow buttonEditActionRow"
-                        }
-                        draggable={buttonEditDraft.actions.length > 1}
-                        key={action.draftId}
-                        onDragStart={(event) => {
-                          setActionDragId(action.draftId);
-                          event.dataTransfer.setData(ACTION_DRAG_TYPE, action.draftId);
-                          event.dataTransfer.effectAllowed = "move";
-                        }}
-                        onDragEnd={() => setActionDragId(null)}
-                        onDragOver={(event) => {
-                          const draggedId =
-                            event.dataTransfer.getData(ACTION_DRAG_TYPE) || actionDragId;
-                          if (!draggedId || draggedId === action.draftId) return;
-                          event.preventDefault();
-                        }}
-                        onDrop={(event) => {
-                          const draggedId =
-                            event.dataTransfer.getData(ACTION_DRAG_TYPE) || actionDragId;
-                          if (!draggedId || draggedId === action.draftId) return;
-                          event.preventDefault();
-                          moveButtonActionTo(draggedId, action.draftId);
-                          setActionDragId(null);
-                        }}
-                      >
-                        <select
-                          onChange={(event) =>
-                            updateButtonAction(
-                              action.draftId,
-                              makeAction(
-                                event.target.value as LauncherAction["type"],
-                                actionValue(action),
-                              ),
-                            )
-                          }
-                          value={action.type}
-                        >
-                          <option value="open_app">アプリ</option>
-                          <option value="open_folder">フォルダ</option>
-                          <option value="open_file">ファイル</option>
-                          <option value="open_url">URL</option>
-                          <option value="run_script">スクリプト</option>
-                          <option value="open_shell_special">Windows特殊項目</option>
-                        </select>
-                        <input
-                          className="textInput"
-                          disabled={action.type === "open_shell_special"}
-                          onChange={(event) =>
-                            updateButtonAction(
-                              action.draftId,
-                              setActionValue(action, event.target.value),
-                            )
-                          }
-                          value={actionValue(action)}
-                        />
-                        <div className="buttonEditActionButtons">
-                          {buttonEditDraft.actions.length > 1 ? (
-                            <>
-                              <button
-                                aria-label="アクションを上へ"
-                                className="iconButton"
-                                disabled={index === 0}
-                                onClick={() => moveButtonAction(action.draftId, -1)}
-                                title="上へ"
-                                type="button"
-                              >
-                                ↑
-                              </button>
-                              <button
-                                aria-label="アクションを下へ"
-                                className="iconButton"
-                                disabled={index === buttonEditDraft.actions.length - 1}
-                                onClick={() => moveButtonAction(action.draftId, 1)}
-                                title="下へ"
-                                type="button"
-                              >
-                                ↓
-                              </button>
-                            </>
-                          ) : null}
-                          <button
-                            aria-label="アクションを削除"
-                            className="iconButton"
-                            onClick={() =>
-                              setButtonEditDraft({
-                                ...buttonEditDraft,
-                                actions: buttonEditDraft.actions.filter(
-                                  (item) => item.draftId !== action.draftId,
-                                ),
-                              })
-                            }
-                            title="削除"
-                            type="button"
-                          >
-                            <UiIcon name="close" size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    <button
-                      className="primaryButton buttonEditAddAction"
-                      onClick={() =>
-                        setButtonEditDraft({
-                          ...buttonEditDraft,
-                          actions: [...buttonEditDraft.actions, makeAction("open_app")],
-                        })
-                      }
-                      type="button"
-                    >
-                      ＋ アクションを追加
-                    </button>
-                  </div>
-                </div>
-              </section>
-            </div>
-
-            <div className="dialogActions formDialogActions buttonEditDialogFooter">
-              <button className="primaryButton" onClick={() => void saveButtonEdit()} type="button">
-                保存
-              </button>
-              <button
-                className="secondaryButton dialogCancelButton"
-                onClick={requestCloseButtonEdit}
-                type="button"
-              >
-                キャンセル
-              </button>
-            </div>
-          </section>
-        </div>
+        <ButtonEditDialog
+          actionDragId={actionDragId}
+          buttonEditDraft={buttonEditDraft}
+          groupNames={groupNames}
+          moveButtonAction={moveButtonAction}
+          moveButtonActionTo={moveButtonActionTo}
+          overlayPages={overlayPages}
+          requestCloseButtonEdit={requestCloseButtonEdit}
+          saveButtonEdit={saveButtonEdit}
+          setActionDragId={setActionDragId}
+          setButtonEditDraft={setButtonEditDraft}
+          updateButtonAction={updateButtonAction}
+        />
       )}
 
       {inboxAddOpen && (
@@ -13004,889 +11940,51 @@ function DashboardApp() {
           );
         })()}
 
-      {nextStepEditDraft &&
-        (() => {
-          const nextStepProject = config.projects.find(
-            (project) => project.id === nextStepEditDraft.projectId,
-          );
-          const nextStepInstructionLabel = nextStepEditDraft.instructionPath
-            ? (instructionChoices.find(
-                (choice) => choice.path === nextStepEditDraft.instructionPath,
-              )?.label ?? "現在の設定")
-            : "";
-          const wishlistMode = nextStepEditDraft.decisionMode === "wishlist";
-          const wishlistCandidates = nextStepProject
-            ? config.inbox.filter(
-                (item) => Boolean(item.id) && item.projectId === nextStepProject.id,
-              )
-            : [];
-          const selectedWishlist = nextStepEditDraft.promotedWishlistId
-            ? wishlistCandidates.find((item) => item.id === nextStepEditDraft.promotedWishlistId)
-            : undefined;
-          const selectedWishlistLocked = Boolean(
-            selectedWishlist &&
-            unfinishedTodayUsesSource(config, `wishlist:${selectedWishlist.id}`),
-          );
-          const currentNextStepLocked = Boolean(
-            wishlistMode &&
-            selectedWishlist &&
-            nextStepProject?.nextStep &&
-            unfinishedTodayUsesSource(
-              config,
-              `project:${nextStepProject.id}`,
-              nextStepProject.nextStep.generationId,
-            ),
-          );
-          const legacyChoiceRequired = Boolean(
-            !wishlistMode &&
-            nextStepProject?.legacyNextStepSettings &&
-            !nextStepProject.nextStep &&
-            nextStepEditDraft.legacyChoice === null,
-          );
-          const replacingExisting = Boolean(
-            wishlistMode && selectedWishlist && nextStepProject?.nextStep?.text.trim(),
-          );
-          const swappingExisting = Boolean(
-            nextStepEditDraft.mode === "promote" && nextStepProject?.nextStep?.text.trim(),
-          );
-          const editingExisting = !wishlistMode && nextStepEditDraft.mode === "edit";
-          const dialogTitle = editingExisting
-            ? "次の一手を編集"
-            : replacingExisting || swappingExisting
-              ? "次の一手を入れ替える"
-              : "次の一手を設定";
-          const saveDisabled =
-            sourceEditSaving ||
-            !nextStepEditDraft.projectId ||
-            (wishlistMode
-              ? !selectedWishlist || selectedWishlistLocked || currentNextStepLocked
-              : !nextStepEditDraft.text.trim()) ||
-            (replacingExisting && nextStepEditDraft.replacementChoice !== "return") ||
-            legacyChoiceRequired;
-
-          const timerFieldDefs = [
-            ["shortTimerMinutes", "projectShort", "短時間", config.settings.shortTimerMinutes],
-            ["defaultTimerMinutes", "projectDefault", "通常", config.settings.defaultTimerMinutes],
-          ] as const;
-
-          const renderTimerStepper = (
-            field: "shortTimerMinutes" | "defaultTimerMinutes",
-            dragField: "projectShort" | "projectDefault",
-            label: string,
-            fallback: number,
-          ) => (
-            <TimerMinutesStepper
-              dragging={numberInputDragging === dragField}
-              fallback={fallback}
-              label={label}
-              onDragCancel={cancelNumberInputDrag}
-              onDragEnd={finishNumberInputDrag}
-              onDragMove={updateNumberInputDrag}
-              onDragStart={(event, value) => startNumberInputDrag(event, dragField, value)}
-              onValueChange={(value) =>
-                setNextStepEditDraft({ ...nextStepEditDraft, [field]: value })
-              }
-              value={nextStepEditDraft[field]}
-            />
-          );
-
-          const renderTimerGrid = (compact: boolean) => (
-            <div className={compact ? "nextStepEditTimerGrid" : "projectTimerGrid"}>
-              {timerFieldDefs.map(([field, dragField, label, fallback]) => (
-                <div className="projectTimerSetting" key={field}>
-                  <span className="projectTimerSettingLabel">
-                    <span aria-hidden="true" className="projectTimerDot" />
-                    {label}
-                  </span>
-                  {renderTimerStepper(field, dragField, label, fallback)}
-                  {compact ? null : (
-                    <div className="projectTimerFooter">
-                      <span>
-                        {nextStepEditDraft[field]
-                          ? `${nextStepEditDraft[field]}分を使用`
-                          : `全体設定 ${fallback}分を使用`}
-                      </span>
-                      <button
-                        disabled={!nextStepEditDraft[field]}
-                        onClick={() =>
-                          setNextStepEditDraft({ ...nextStepEditDraft, [field]: "" })
-                        }
-                        type="button"
-                      >
-                        全体設定に戻す
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          );
-
-          const renderActionField = (compact: boolean) => {
-            const suggestions =
-              !compact && projectNextStepSuggestions.length > 0 ? (
-                <div aria-label="次の一手候補" className="suggestionRow">
-                  {projectNextStepSuggestions.map((suggestion) => (
-                    <button
-                      className="suggestionChip"
-                      key={suggestion}
-                      onClick={() =>
-                        setNextStepEditDraft({
-                          ...nextStepEditDraft,
-                          text: suggestion,
-                        })
-                      }
-                      type="button"
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
-              ) : null;
-            return (
-              <label className={compact ? "fieldStack nextStepEditField" : "fieldStack"}>
-                <span>行動</span>
-                <input
-                  aria-label="行動"
-                  autoFocus={compact || nextStepEditDraft.projectLocked}
-                  className={compact ? "textInput nextStepEditActionInput" : "textInput"}
-                  maxLength={120}
-                  onChange={(event) =>
-                    setNextStepEditDraft({
-                      ...nextStepEditDraft,
-                      text: event.target.value,
-                    })
-                  }
-                  placeholder="次に着手する具体的な一手"
-                  value={nextStepEditDraft.text}
-                />
-                {compact ? (
-                  <small className="nextStepEditHint">
-                    始めにくいときは、最初の2分でやることだけを書きます。例: 「運動着に着替える」
-                  </small>
-                ) : (
-                  suggestions
-                )}
-              </label>
-            );
-          };
-
-          const renderTriggerField = (compact: boolean) => (
-            <label className={compact ? "fieldStack nextStepEditField" : "fieldStack"}>
-              <span>{compact ? "きっかけ（いつ・どこで）" : "始めるきっかけ（任意）"}</span>
-              <input
-                aria-label="始めるきっかけ（任意）"
-                className="textInput"
-                maxLength={EXECUTION_TRIGGER_MAX_CHARS}
-                onChange={(event) =>
-                  setNextStepEditDraft({
-                    ...nextStepEditDraft,
-                    trigger: event.target.value,
-                  })
-                }
-                placeholder="例: 21時 / 夕食後 / PCを開いたら"
-                value={nextStepEditDraft.trigger}
-              />
-            </label>
-          );
-
-          return (
-            <div className="modalBackdrop" role="presentation">
-              <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
-              <section
-                aria-label={dialogTitle}
-                aria-modal="true"
-                className={
-                  editingExisting
-                    ? "dropDialog editDialog modalLongForm nextStepEditDialog nextStepEditDialog--edit app-scrollbar"
-                    : "dropDialog editDialog modalLongForm nextStepEditDialog app-scrollbar"
-                }
-                role="dialog"
-                tabIndex={-1}
-              >
-                <div className="modalTitleRow">
-                  <div>
-                    <p className="eyebrow">{editingExisting ? "Next step" : "Next Step"}</p>
-                    <h2>{editingExisting ? "一手を編集" : dialogTitle}</h2>
-                    {editingExisting ? null : (
-                      <p className="dialogLead">今進める1件と、始めるための環境を設定します。</p>
-                    )}
-                  </div>
-                  <div className="nextStepEditHeaderRight">
-                    {editingExisting && nextStepProject ? (
-                      <span className="nextStepEditProjectChip">
-                        <ProjectIdentity
-                          colorId={nextStepProject.colorId}
-                          name={nextStepProject.name}
-                          projectId={nextStepProject.id}
-                        />
-                      </span>
-                    ) : null}
-                    <button
-                      aria-label={`${dialogTitle}を閉じる`}
-                      className="iconButton"
-                      disabled={sourceEditSaving}
-                      onClick={() => closeNextStepEditDialog()}
-                      title="閉じる"
-                      type="button"
-                    >
-                      <UiIcon name="close" size={16} />
-                    </button>
-                  </div>
-                </div>
-
-                {editingExisting ? (
-                  <>
-                    {renderActionField(true)}
-                    {renderTriggerField(true)}
-                    <label className="fieldStack nextStepEditField">
-                      <span>次はここから(任意)</span>
-                      <input
-                        aria-label="次はここから(任意)"
-                        className="textInput"
-                        maxLength={80}
-                        onChange={(event) =>
-                          setNextStepEditDraft({
-                            ...nextStepEditDraft,
-                            resumeNote: event.target.value,
-                          })
-                        }
-                        placeholder="例: 3章の途中から"
-                        value={nextStepEditDraft.resumeNote}
-                      />
-                    </label>
-                    {renderTimerGrid(true)}
-                  </>
-                ) : null}
-
-                {editingExisting ? null : (
-                  <>
-                    <h3 className="formSectionHeading">プロジェクト</h3>
-                {nextStepEditDraft.projectLocked && nextStepProject ? (
-                  <div className="nextStepFixedProject">
-                    <ProjectIdentity
-                      colorId={nextStepProject.colorId}
-                      name={nextStepProject.name}
-                      projectId={nextStepProject.id}
-                    />
-                    <span>このプロジェクトに設定します</span>
-                  </div>
-                ) : (
-                  <label className="fieldStack">
-                    <span>プロジェクト</span>
-                    <select
-                      autoFocus
-                      className="textInput"
-                      onChange={(event) => selectNextStepProject(event.target.value)}
-                      value={nextStepEditDraft.projectId}
-                    >
-                      <option value="">選択してください</option>
-                      {config.projects.map((project) => (
-                        <option key={project.id} value={project.id}>
-                          {project.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-
-                <section className="nextStepDecisionBlock">
-                  <h3>次の一手の決め方</h3>
-                  <p>同じプロジェクトのやりたいことから選ぶか、新しい行動を入力します。</p>
-                  <div
-                    aria-label="次の一手の決め方"
-                    className="nextStepDecisionModes"
-                    role="tablist"
-                  >
-                    <button
-                      aria-selected={wishlistMode}
-                      className={
-                        wishlistMode
-                          ? "nextStepDecisionModeButton nextStepDecisionModeButton--active nextStepDecisionModeButton--wishlistActive mainActionButton mainActionButton--gold"
-                          : "nextStepDecisionModeButton mainActionButton mainActionButton--neutral"
-                      }
-                      disabled={sourceEditSaving}
-                      onClick={() => selectNextStepDecisionMode("wishlist")}
-                      role="tab"
-                      type="button"
-                    >
-                      {wishlistMode && (
-                        <SlidingFace className="nextStepModeFace" layoutId="nextstep-mode-face" />
-                      )}
-                      <span className="nextStepModeLabel">＋ やりたいことから選ぶ</span>
-                    </button>
-                    <button
-                      aria-selected={!wishlistMode}
-                      className={
-                        !wishlistMode
-                          ? "nextStepDecisionModeButton nextStepDecisionModeButton--active mainActionButton mainActionButton--positive"
-                          : "nextStepDecisionModeButton mainActionButton mainActionButton--neutral"
-                      }
-                      disabled={sourceEditSaving}
-                      onClick={() => selectNextStepDecisionMode("new")}
-                      role="tab"
-                      type="button"
-                    >
-                      {!wishlistMode && (
-                        <SlidingFace className="nextStepModeFace" layoutId="nextstep-mode-face" />
-                      )}
-                      <span className="nextStepModeLabel">＋ 新しく入力</span>
-                    </button>
-                  </div>
-
-                  <div className="nextStepDecisionPanel" role="tabpanel">
-                    {wishlistMode ? (
-                      <>
-                        <div className="nextStepWishlistPickerHeading">
-                          <strong>やりたいこと</strong>
-                          <span>{wishlistCandidates.length}件</span>
-                        </div>
-                        {wishlistCandidates.length ? (
-                          <div
-                            aria-label="次の一手を設定するやりたいこと"
-                            className="nextStepWishlistPickerList"
-                            role="radiogroup"
-                          >
-                            {wishlistCandidates.map((item) => {
-                              const locked = unfinishedTodayUsesSource(
-                                config,
-                                `wishlist:${item.id}`,
-                              );
-                              return (
-                                <button
-                                  aria-checked={item.id === selectedWishlist?.id}
-                                  className="nextStepWishlistCandidate"
-                                  disabled={sourceEditSaving || locked}
-                                  key={item.id}
-                                  title={
-                                    locked
-                                      ? "未完了の今日の3件に入っているため、完了または外すまで次の一手にできません"
-                                      : undefined
-                                  }
-                                  onClick={() =>
-                                    setNextStepEditDraft({
-                                      ...nextStepEditDraft,
-                                      mode: "promote",
-                                      promotedWishlistId: item.id,
-                                      replacementChoice: null,
-                                      replacedNextStep: nextStepProject?.nextStep,
-                                    })
-                                  }
-                                  role="radio"
-                                  type="button"
-                                >
-                                  <span aria-hidden="true" className="nextStepWishlistRadio" />
-                                  <span className="nextStepWishlistCandidateText">{item.text}</span>
-                                  {locked ? (
-                                    <span className="nextStepWishlistLock">今日の3件で未完了</span>
-                                  ) : null}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <p className="nextStepWishlistEmpty">
-                            このプロジェクトのやりたいことはありません
-                          </p>
-                        )}
-
-                        {selectedWishlist ? (
-                          <div className="nextStepWishlistSelection">
-                            <span aria-hidden="true">✓</span>
-                            <span className="nextStepWishlistSelectionCopy">
-                              <small>選択済み</small>
-                              <strong>{selectedWishlist.text}</strong>
-                            </span>
-                            <button
-                              className="secondaryButton"
-                              disabled={sourceEditSaving}
-                              onClick={() =>
-                                setNextStepEditDraft({
-                                  ...nextStepEditDraft,
-                                  promotedWishlistId: undefined,
-                                })
-                              }
-                              type="button"
-                            >
-                              選び直す
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="nextStepDecisionHint">1件選択してください。</span>
-                        )}
-
-                        {replacingExisting ? (
-                          <div className="nextStepSwapSummary">
-                            <strong>現在の次の一手</strong>
-                            <span>
-                              「{nextStepProject?.nextStep?.text}
-                              」は、保存するとやりたいことへ戻ります。
-                            </span>
-                            <button
-                              aria-pressed={nextStepEditDraft.replacementChoice === "return"}
-                              className="secondaryButton"
-                              disabled={sourceEditSaving}
-                              onClick={() =>
-                                setNextStepEditDraft({
-                                  ...nextStepEditDraft,
-                                  replacementChoice: "return",
-                                })
-                              }
-                              type="button"
-                            >
-                              やりたいことへ戻す
-                            </button>
-                            {currentNextStepLocked ? (
-                              <span>今日の3件で未完了のため、今は入れ替えできません。</span>
-                            ) : null}
-                          </div>
-                        ) : null}
-                      </>
-                    ) : (
-                      <>
-                        {nextStepProject?.legacyNextStepSettings && !nextStepProject.nextStep ? (
-                          <fieldset className="legacyNextStepChoice">
-                            <legend>以前の実行設定</legend>
-                            <p>
-                              移行前の開始環境などが残っています。今回だけ扱いを選んでください。
-                            </p>
-                            <div>
-                              <button
-                                aria-pressed={nextStepEditDraft.legacyChoice === "inherit"}
-                                className={
-                                  nextStepEditDraft.legacyChoice === "inherit"
-                                    ? "secondaryButton legacyNextStepChoice--selected"
-                                    : "secondaryButton"
-                                }
-                                onClick={() => chooseLegacyNextStepSettings("inherit")}
-                                type="button"
-                              >
-                                引き継ぐ
-                              </button>
-                              <button
-                                aria-pressed={nextStepEditDraft.legacyChoice === "discard"}
-                                className={
-                                  nextStepEditDraft.legacyChoice === "discard"
-                                    ? "secondaryButton legacyNextStepChoice--selected"
-                                    : "secondaryButton"
-                                }
-                                onClick={() => chooseLegacyNextStepSettings("discard")}
-                                type="button"
-                              >
-                                破棄して全体設定を使う
-                              </button>
-                            </div>
-                          </fieldset>
-                        ) : null}
-                        {renderActionField(false)}
-                      </>
-                    )}
-                  </div>
-                </section>
-                  </>
-                )}
-
-                {editingExisting ? null : renderTriggerField(false)}
-
-                {editingExisting ? null : (
-                  <>
-                    <h3 className="formSectionHeading">タイマー</h3>
-                    {renderTimerGrid(false)}
-                  </>
-                )}
-
-                <section className="nextStepOpenTogether">
-                  {editingExisting ? (
-                    <span className="nextStepEditSectionLabel">始めると一緒に開く</span>
-                  ) : (
-                    <h3 className="formSectionHeading">始めると一緒に開く</h3>
-                  )}
-                  <div className="nextStepOpenChips">
-                    {nextStepEditDraft.buttonIds.map((buttonId) => {
-                      const button = buttonsById.get(buttonId);
-                      const label = button?.label ?? "登録が見つかりません";
-                      const buttonMissing = Boolean(button && missingButtonIds.has(button.id));
-                      return (
-                        <span
-                          className={
-                            buttonMissing
-                              ? "nextStepOpenChip nextStepOpenChip--missing"
-                              : "nextStepOpenChip"
-                          }
-                          key={`button:${buttonId}`}
-                        >
-                          {button ? (
-                            renderButtonIcon(button, "nextStepOpenChipIcon")
-                          ) : (
-                            <span aria-hidden="true" className="nextStepOpenChipIcon">
-                              ?
-                            </span>
-                          )}
-                          <span className="nextStepOpenChipLabel" title={label}>
-                            {label}
-                          </span>
-                          {buttonMissing && (
-                            <span className="uiPill nextStepOpenChipMissing">見つかりません</span>
-                          )}
-                          <button
-                            aria-label={`${label}を外す`}
-                            className="nextStepOpenChipRemove"
-                            onClick={() =>
-                              setNextStepEditDraft({
-                                ...nextStepEditDraft,
-                                buttonIds: nextStepEditDraft.buttonIds.filter(
-                                  (candidate) => candidate !== buttonId,
-                                ),
-                              })
-                            }
-                            type="button"
-                          >
-                            <UiIcon name="close" size={12} />
-                          </button>
-                        </span>
-                      );
-                    })}
-                    {nextStepEditDraft.instructionPath ? (
-                      (() => {
-                        const instructionMissing = Boolean(
-                          editingExisting &&
-                            nextStepProject &&
-                            missingInstructionProjectIds.has(nextStepProject.id) &&
-                            nextStepEditDraft.instructionPath ===
-                              (nextStepProject.nextStep?.instructionPath ?? ""),
-                        );
-                        return (
-                          <span
-                            className={
-                              instructionMissing
-                                ? "nextStepOpenChip nextStepOpenChip--missing"
-                                : "nextStepOpenChip"
-                            }
-                          >
-                            <UiIcon name="fileText" size={16} />
-                            <span className="nextStepOpenChipLabel" title={nextStepInstructionLabel}>
-                              {nextStepInstructionLabel}
-                            </span>
-                            {instructionMissing && (
-                              <span className="uiPill nextStepOpenChipMissing">見つかりません</span>
-                            )}
-                            <button
-                              aria-label={`${nextStepInstructionLabel}を外す`}
-                              className="nextStepOpenChipRemove"
-                              onClick={() =>
-                                setNextStepEditDraft({
-                                  ...nextStepEditDraft,
-                                  instructionPath: "",
-                                  instructionOpenOnStart: false,
-                                })
-                              }
-                              type="button"
-                            >
-                              <UiIcon name="close" size={12} />
-                            </button>
-                          </span>
-                        );
-                      })()
-                    ) : null}
-                    <button
-                      aria-expanded={nextStepOpenMenuOpen}
-                      className="nextStepOpenChipAdd"
-                      onClick={() => setNextStepOpenMenuOpen((current) => !current)}
-                      type="button"
-                    >
-                      ＋ ボタン・手順書を足す
-                    </button>
-                  </div>
-                  {nextStepOpenMenuOpen ? (
-                    <div aria-label="足す物" className="nextStepOpenMenu" role="menu">
-                      <button
-                        onClick={() => {
-                          setNextStepOpenMenuOpen(false);
-                          setNextStepOpenPicker("buttons");
-                        }}
-                        role="menuitem"
-                        type="button"
-                      >
-                        ボタンを選ぶ
-                      </button>
-                      <button
-                        onClick={() => {
-                          setNextStepOpenMenuOpen(false);
-                          setNextStepOpenPicker("instructions");
-                        }}
-                        role="menuitem"
-                        type="button"
-                      >
-                        手順書を選ぶ
-                      </button>
-                    </div>
-                  ) : null}
-                  <label className="projectWeeklyFocusToggle projectInstructionStartToggle">
-                    <input
-                      checked={nextStepEditDraft.instructionOpenOnStart}
-                      disabled={!nextStepEditDraft.instructionPath}
-                      onChange={(event) =>
-                        setNextStepEditDraft({
-                          ...nextStepEditDraft,
-                          instructionOpenOnStart: event.target.checked,
-                        })
-                      }
-                      type="checkbox"
-                    />
-                    <span>開始時に手順書を開く</span>
-                  </label>
-                  <StartEnvironmentPicker
-                    buttons={projectSelectableButtons}
-                    chrome="chips"
-                    onChange={(buttonIds) =>
-                      setNextStepEditDraft({ ...nextStepEditDraft, buttonIds })
-                    }
-                    onOpenChange={(open) => {
-                      setNextStepOpenPicker(open ? "buttons" : null);
-                      if (!open) {
-                        window.requestAnimationFrame(() =>
-                          document
-                            .querySelector<HTMLButtonElement>(".nextStepOpenChipAdd")
-                            ?.focus(),
-                        );
-                      }
-                    }}
-                    open={nextStepOpenPicker === "buttons"}
-                    overlayPages={overlayPages}
-                    renderIcon={renderButtonIcon}
-                    selectedIds={nextStepEditDraft.buttonIds}
-                  />
-                  <InstructionPicker
-                    choices={instructionChoices}
-                    chrome="chips"
-                    error={instructionChoicesError}
-                    loading={instructionChoicesLoading}
-                    onChange={(instructionPath) =>
-                      setNextStepEditDraft({
-                        ...nextStepEditDraft,
-                        instructionPath,
-                        instructionOpenOnStart: instructionPath
-                          ? nextStepEditDraft.instructionPath
-                            ? nextStepEditDraft.instructionOpenOnStart
-                            : true
-                          : false,
-                      })
-                    }
-                    onOpenChange={(open) => {
-                      setNextStepOpenPicker(open ? "instructions" : null);
-                      if (!open) {
-                        window.requestAnimationFrame(() =>
-                          document
-                            .querySelector<HTMLButtonElement>(".nextStepOpenChipAdd")
-                            ?.focus(),
-                        );
-                      }
-                    }}
-                    onRetry={() => void refreshInstructionChoices()}
-                    open={nextStepOpenPicker === "instructions"}
-                    selectedPath={nextStepEditDraft.instructionPath}
-                  />
-                </section>
-
-                <label className="projectWeeklyFocusToggle projectInstructionStartToggle">
-                  <input
-                    checked={nextStepEditDraft.expandTimerOnStart}
-                    onChange={(event) =>
-                      setNextStepEditDraft({
-                        ...nextStepEditDraft,
-                        expandTimerOnStart: event.target.checked,
-                      })
-                    }
-                    type="checkbox"
-                  />
-                  <span>開始時にタイマーを大きく表示</span>
-                </label>
-
-                <label
-                  className={
-                    editingExisting ? "fieldStack nextStepEditSmallField" : "fieldStack"
-                  }
-                >
-                  <span>開始noteテンプレート（任意）</span>
-                  <input
-                    className="textInput"
-                    maxLength={120}
-                    onChange={(event) =>
-                      setNextStepEditDraft({
-                        ...nextStepEditDraft,
-                        startNoteTemplate: event.target.value,
-                      })
-                    }
-                    value={nextStepEditDraft.startNoteTemplate}
-                  />
-                </label>
-
-                <div className="dialogActions formDialogActions">
-                  <button
-                    className="primaryButton"
-                    disabled={saveDisabled}
-                    onClick={() => void saveNextStepEdit()}
-                    type="button"
-                  >
-                    {sourceEditSaving ? "保存中…" : "保存"}
-                  </button>
-                  <button
-                    className="secondaryButton dialogCancelButton"
-                    disabled={sourceEditSaving}
-                    onClick={() => closeNextStepEditDialog()}
-                    type="button"
-                  >
-                    キャンセル
-                  </button>
-                </div>
-              </section>
-            </div>
-          );
-        })()}
+      {nextStepEditDraft && (
+        <NextStepEditDialog
+          config={config}
+          nextStepEditDraft={nextStepEditDraft}
+          buttonsById={buttonsById}
+          instructionChoices={instructionChoices}
+          instructionChoicesError={instructionChoicesError}
+          instructionChoicesLoading={instructionChoicesLoading}
+          missingButtonIds={missingButtonIds}
+          missingInstructionProjectIds={missingInstructionProjectIds}
+          nextStepOpenMenuOpen={nextStepOpenMenuOpen}
+          nextStepOpenPicker={nextStepOpenPicker}
+          numberInputDragging={numberInputDragging}
+          overlayPages={overlayPages}
+          projectNextStepSuggestions={projectNextStepSuggestions}
+          projectSelectableButtons={projectSelectableButtons}
+          sourceEditSaving={sourceEditSaving}
+          setNextStepEditDraft={setNextStepEditDraft}
+          setNextStepOpenMenuOpen={setNextStepOpenMenuOpen}
+          setNextStepOpenPicker={setNextStepOpenPicker}
+          renderButtonIcon={renderButtonIcon}
+          cancelNumberInputDrag={cancelNumberInputDrag}
+          finishNumberInputDrag={finishNumberInputDrag}
+          updateNumberInputDrag={updateNumberInputDrag}
+          startNumberInputDrag={startNumberInputDrag}
+          chooseLegacyNextStepSettings={chooseLegacyNextStepSettings}
+          closeNextStepEditDialog={closeNextStepEditDialog}
+          refreshInstructionChoices={refreshInstructionChoices}
+          saveNextStepEdit={saveNextStepEdit}
+          selectNextStepDecisionMode={selectNextStepDecisionMode}
+          selectNextStepProject={selectNextStepProject}
+        />
+      )}
 
       {projectEditDraft && (
-        <div className="modalBackdrop" role="presentation">
-          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
-          <section
-            aria-label={projectEditDraft.isNew ? "プロジェクトを追加" : "プロジェクトを編集"}
-            aria-modal="true"
-            className="dropDialog editDialog modalLongForm app-scrollbar"
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div className="modalTitleRow">
-              <div>
-                <p className="eyebrow">Project</p>
-                <h2>{projectEditDraft.isNew ? "プロジェクトを追加" : "プロジェクトを編集"}</h2>
-                {projectEditDraft.isNew && (
-                  <p className="dialogLead">継続して進めるテーマを登録します。</p>
-                )}
-              </div>
-              <button
-                aria-label={`${projectEditDraft.isNew ? "プロジェクトを追加" : "プロジェクトを編集"}を閉じる`}
-                className="iconButton"
-                disabled={projectEditSaving}
-                onClick={() => closeProjectEditDialog()}
-                title="閉じる"
-                type="button"
-              >
-                <UiIcon name="close" size={16} />
-              </button>
-            </div>
-
-            <h3 className="formSectionHeading">基本</h3>
-            <label className="fieldStack">
-              <span>プロジェクト名</span>
-              <input
-                autoFocus={projectEditDraft.isNew}
-                className="textInput"
-                maxLength={48}
-                onChange={(event) =>
-                  setProjectEditDraft({ ...projectEditDraft, name: event.target.value })
-                }
-                value={projectEditDraft.name}
-              />
-            </label>
-
-            <label className="fieldStack">
-              <span>目標（任意）</span>
-              <input
-                className="textInput"
-                maxLength={60}
-                onChange={(event) =>
-                  setProjectEditDraft({ ...projectEditDraft, northStar: event.target.value })
-                }
-                placeholder="EPを1枚完成させる"
-                value={projectEditDraft.northStar}
-              />
-              <small className="fieldHint">このプロジェクトで実現したい目標を1行で書きます。</small>
-            </label>
-
-            <label className="projectWeeklyFocusToggle">
-              <input
-                checked={projectEditDraft.weeklyFocus}
-                onChange={(event) => setProjectWeeklyFocus(event.target.checked)}
-                type="checkbox"
-              />
-              <span>今週の重点にする</span>
-            </label>
-
-            <h3 className="formSectionHeading">見た目</h3>
-            <div className="fieldStack">
-              <span>プロジェクトカラー</span>
-              <div
-                aria-label="プロジェクトカラー"
-                className="projectColorPalette"
-                role="radiogroup"
-              >
-                {PROJECT_COLOR_IDS.map((colorId) => (
-                  <button
-                    aria-checked={projectEditDraft.colorId === colorId}
-                    aria-label={PROJECT_COLOR_LABELS[colorId]}
-                    className={
-                      projectEditDraft.colorId === colorId
-                        ? "projectColorSwatch projectColorSwatch--selected"
-                        : "projectColorSwatch"
-                    }
-                    data-project-color={colorId}
-                    key={colorId}
-                    onClick={() => setProjectEditDraft({ ...projectEditDraft, colorId })}
-                    role="radio"
-                    title={PROJECT_COLOR_LABELS[colorId]}
-                    type="button"
-                  >
-                    <span aria-hidden="true" />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {!projectEditDraft.isNew && (
-              <section className="projectDangerZone" aria-labelledby="project-danger-zone-title">
-                <h3 id="project-danger-zone-title">危険な操作</h3>
-                <p>
-                  このプロジェクトと、現在登録されている関連項目を削除します。過去の実行記録は残ります。
-                </p>
-                <button
-                  className="dangerButton projectDeleteButton"
-                  disabled={projectEditSaving}
-                  onClick={() => {
-                    const project = config.projects.find(
-                      (candidate) => candidate.id === projectEditDraft.id,
-                    );
-                    if (project) requestProjectDeletion(project);
-                  }}
-                  type="button"
-                >
-                  プロジェクトを削除…
-                </button>
-              </section>
-            )}
-
-            <div className="dialogActions formDialogActions">
-              <button
-                className="primaryButton"
-                disabled={!projectEditDraft.name.trim() || projectEditSaving}
-                onClick={saveProjectEdit}
-                type="button"
-              >
-                {projectEditSaving
-                  ? "保存しています…"
-                  : projectEditDraft.isNew
-                    ? "プロジェクトを追加"
-                    : "保存"}
-              </button>
-              <button
-                className="secondaryButton dialogCancelButton"
-                disabled={projectEditSaving}
-                onClick={() => closeProjectEditDialog()}
-                type="button"
-              >
-                キャンセル
-              </button>
-            </div>
-          </section>
-        </div>
+        <ProjectEditDialog
+          config={config}
+          projectEditDraft={projectEditDraft}
+          projectEditSaving={projectEditSaving}
+          setProjectEditDraft={setProjectEditDraft}
+          setProjectWeeklyFocus={setProjectWeeklyFocus}
+          closeProjectEditDialog={closeProjectEditDialog}
+          requestProjectDeletion={requestProjectDeletion}
+          saveProjectEdit={saveProjectEdit}
+        />
       )}
 
       {expandedTimerOpen && activeTimer && (
@@ -13929,246 +12027,44 @@ function DashboardApp() {
       )}
 
       {completionPrompt && (
-        <TimerCompletionDialog
-          canEditResume={completionCanEditResume}
-          extendDraft={completionExtendDraft}
-          extendDragging={numberInputDragging === "completionExtend"}
-          extendFallback={config.settings.extendTimerMinutes ?? DEFAULT_EXTEND_TIMER_MINUTES}
-          extendMinutes={completionExtendMinutes}
-          onContinue={continueCompletedTimer}
-          onExtendBlur={() => setCompletionExtendDraft(String(completionExtendMinutes))}
-          onExtendChange={setCompletionExtendDraft}
-          onExtendDragCancel={cancelNumberInputDrag}
-          onExtendDragEnd={finishNumberInputDrag}
-          onExtendDragMove={updateNumberInputDrag}
-          onExtendDragStart={(event, value) =>
-            startNumberInputDrag(event, "completionExtend", value)
-          }
-          onFinish={() => void submitCompletedTimer()}
-          onResumeDraftChange={setTimerResumeDraft}
-          project={completionProject}
-          prompt={completionPrompt}
-          resumeDraft={timerResumeDraft}
-          saving={completionResumeSaving}
+        <CompletionFollowupDialog
+          config={config}
+          completionPrompt={completionPrompt}
+          completionProject={completionProject}
+          completionCanEditResume={completionCanEditResume}
+          completionExtendDraft={completionExtendDraft}
+          completionExtendMinutes={completionExtendMinutes}
+          completionResumeSaving={completionResumeSaving}
+          timerResumeDraft={timerResumeDraft}
+          numberInputDragging={numberInputDragging}
+          setCompletionExtendDraft={setCompletionExtendDraft}
+          setTimerResumeDraft={setTimerResumeDraft}
+          cancelNumberInputDrag={cancelNumberInputDrag}
+          finishNumberInputDrag={finishNumberInputDrag}
+          updateNumberInputDrag={updateNumberInputDrag}
+          startNumberInputDrag={startNumberInputDrag}
+          continueCompletedTimer={continueCompletedTimer}
+          submitCompletedTimer={submitCompletedTimer}
         />
       )}
 
       {dropDraft && (
-        <div className="modalBackdrop" role="presentation">
-          <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
-          <section
-            aria-label={builderKind ? "Button Builder" : "ボタン登録"}
-            aria-modal="true"
-            className="dropDialog modalLongForm"
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div>
-              <p className="eyebrow">{builderKind ? "Button Builder" : "Drop Register"}</p>
-              <h2>ボタンを追加</h2>
-            </div>
-
-            {builderKind && (
-              <div className="builderSourceFields">
-                <span>追加元</span>
-                <div className="builderSourceModes" role="group" aria-label="追加元">
-                  {(["file", "folder", "url"] as const).map((kind) => (
-                    <button
-                      aria-pressed={builderKind === kind}
-                      className={
-                        builderKind === kind
-                          ? "builderSourceMode builderSourceMode--active"
-                          : "builderSourceMode"
-                      }
-                      key={kind}
-                      onClick={() => switchBuilderKind(kind)}
-                      type="button"
-                    >
-                      <UiIcon
-                        name={kind === "file" ? "fileText" : kind === "folder" ? "folder" : "external"}
-                        size={16}
-                      />
-                      {kind === "file" ? "ファイル" : kind === "folder" ? "フォルダ" : "URL"}
-                    </button>
-                  ))}
-                </div>
-                <div className="fieldStack">
-                  <label htmlFor="builder-source-input">
-                    {builderKind === "file" ? "ファイル" : builderKind === "folder" ? "フォルダ" : "URL"}
-                  </label>
-                  <div className="builderSourceInputRow">
-                    <input
-                      className="textInput"
-                      id="builder-source-input"
-                      onChange={(event) => updateBuilderSource(event.target.value)}
-                      placeholder={builderKind === "url" ? "https://example.com/" : "パスを入力"}
-                      value={builderSource}
-                    />
-                    {builderKind !== "url" && (
-                      <button
-                        className="secondaryButton"
-                        onClick={() => void pickBuilderSource()}
-                        type="button"
-                      >
-                        参照...
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <label className="fieldStack">
-              <span>ラベル</span>
-              <input
-                className="textInput"
-                onChange={(event) => {
-                  if (builderKind) setBuilderLabelTouched(true);
-                  setDropDraft({ ...dropDraft, label: event.target.value });
-                }}
-                value={dropDraft.label}
-              />
-              <small>ファイル名・フォルダ名・URLから自動入力します。必要なら変更できます。</small>
-            </label>
-
-            <GroupModeField
-              existingGroup={dropDraft.existingGroup}
-              groupMode={dropDraft.groupMode}
-              groups={groupNames}
-              newGroup={dropDraft.newGroup}
-              onExistingGroupChange={(existingGroup) =>
-                setDropDraft({ ...dropDraft, existingGroup })
-              }
-              onGroupModeChange={(groupMode) =>
-                setDropDraft({
-                  ...dropDraft,
-                  groupMode,
-                  existingGroup: dropDraft.existingGroup || groupNames[0] || DEFAULT_BUTTON_GROUP,
-                })
-              }
-              onNewGroupChange={(newGroup) => setDropDraft({ ...dropDraft, newGroup })}
-            />
-
-            <div className="fieldStack">
-              <span>表示先</span>
-              <div className="displayTargetList">
-                <label className="displayTargetItem">
-                  <input
-                    checked={dropDraft.showInSidebar}
-                    onChange={(event) =>
-                      setDropDraft({ ...dropDraft, showInSidebar: event.target.checked })
-                    }
-                    type="checkbox"
-                  />
-                  <span>
-                    <strong>左サイドバーに表示</strong>
-                    <small>Quickからすぐ開く項目に向いています</small>
-                  </span>
-                </label>
-                <label className="displayTargetItem">
-                  <input
-                    checked={dropDraft.showInOverlay}
-                    onChange={(event) =>
-                      setDropDraft({ ...dropDraft, showInOverlay: event.target.checked })
-                    }
-                    type="checkbox"
-                  />
-                  <span>
-                    <strong>Ctrl+K辞書に表示</strong>
-                    <small>検索して開く項目に向いています</small>
-                  </span>
-                </label>
-              </div>
-            </div>
-
-            {!dropDraft.showInSidebar && !dropDraft.showInOverlay && (
-              <p className="visibilityWarning">
-                サイドバーにも辞書にも表示されません。設定ファイル上には残ります。
-              </p>
-            )}
-
-            {dropDraft.showInOverlay && (
-              <label className="fieldStack">
-                <span>辞書ページ</span>
-                <select
-                  className="textInput"
-                  onChange={(event) =>
-                    setDropDraft({
-                      ...dropDraft,
-                      overlayPageId: event.target.value || null,
-                    })
-                  }
-                  value={
-                    overlayPages.some((page) => page.id === dropDraft.overlayPageId)
-                      ? (dropDraft.overlayPageId ?? "")
-                      : ""
-                  }
-                >
-                  <option value="">未分類</option>
-                  {overlayPages.map((page) => (
-                    <option key={page.id} value={page.id}>
-                      {page.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-
-            <div className="fieldStack">
-              <span>登録先</span>
-              <p className="dropSource">
-                <UiIcon
-                  name={
-                    (builderKind ? builderKind === "url" : dropDraft.action.type === "open_url")
-                      ? "external"
-                      : (builderKind ? builderKind === "folder" : dropDraft.action.type === "open_folder")
-                        ? "folder"
-                        : "fileText"
-                  }
-                  size={16}
-                />
-                <span>
-                  {builderKind ? builderSource || "未選択" : actionDescription(dropDraft.action)}
-                </span>
-              </p>
-            </div>
-
-            {builderKind && (
-              <div className="builderPreview" aria-label="サイドバーのプレビュー">
-                <small>Sidebar Preview</small>
-                <div className="builderPreviewItem">
-                  <UiIcon
-                    name={builderKind === "file" ? "fileText" : builderKind === "folder" ? "folder" : "external"}
-                    size={20}
-                  />
-                  <span>{dropDraft.label || "名称未設定"}</span>
-                </div>
-              </div>
-            )}
-
-            <div className="dialogActions dropRegisterActions">
-              <button
-                className="primaryButton"
-                disabled={builderBusy}
-                onClick={() => void confirmDropRegistration()}
-                type="button"
-              >
-                追加
-              </button>
-              <button
-                className="dangerButton"
-                onClick={() => {
-                  setDropDraft(null);
-                  setBuilderKind(null);
-                  setBuilderModeDrafts({});
-                }}
-                type="button"
-              >
-                キャンセル
-              </button>
-            </div>
-          </section>
-        </div>
+        <DropRegisterDialog
+          builderBusy={builderBusy}
+          builderKind={builderKind}
+          builderSource={builderSource}
+          confirmDropRegistration={confirmDropRegistration}
+          dropDraft={dropDraft}
+          groupNames={groupNames}
+          overlayPages={overlayPages}
+          pickBuilderSource={pickBuilderSource}
+          setBuilderKind={setBuilderKind}
+          setBuilderLabelTouched={setBuilderLabelTouched}
+          setBuilderModeDrafts={setBuilderModeDrafts}
+          setDropDraft={setDropDraft}
+          switchBuilderKind={switchBuilderKind}
+          updateBuilderSource={updateBuilderSource}
+        />
       )}
 
       {softwareResetChoiceOpen && (

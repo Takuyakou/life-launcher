@@ -307,7 +307,7 @@ export function RecordsView({
               <button className="sectionLinkButton mainActionButton mainActionButton--gold" onClick={onAddSession} type="button">実行記録を追加</button>
             </div>
             <div className="recordsFilters">
-              <input aria-label="実行記録を検索" className="textInput" onChange={(event) => onSearchChange(event.target.value)} placeholder="検索" value={sessionSearch} />
+              <input autoComplete="off" aria-label="実行記録を検索" className="textInput" onChange={(event) => onSearchChange(event.target.value)} placeholder="検索" value={sessionSearch} />
               <div className="filterGroup" aria-label="期間">
                 <span>期間</span><div className="segmentRow">
                   {([ ["week", "今週"], ["today", "今日"], ["all", "すべて"] ] as const).map(([value, label]) => (
@@ -373,7 +373,7 @@ export function RecordsView({
                     <strong>{entry.date}</strong>
                     <div className="notesList">
                       {threeNotes(entry.items).map((item, index) => (
-                        <input aria-label={`${entry.date} できたこと ${index + 1}`} className="textInput" key={index} maxLength={120} onBlur={() => onHistoryNoteBlur(entry.date)} onChange={(event) => onHistoryNoteChange(entry.date, index, event.target.value)} value={item} />
+                        <input autoComplete="off" aria-label={`${entry.date} できたこと ${index + 1}`} className="textInput" key={index} maxLength={120} onBlur={() => onHistoryNoteBlur(entry.date)} onChange={(event) => onHistoryNoteChange(entry.date, index, event.target.value)} value={item} />
                       ))}
                     </div>
                   </div>

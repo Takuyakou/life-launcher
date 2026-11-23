@@ -196,9 +196,9 @@ test("P10-14e 1 the play icon sits left of the label on both start buttons", asy
 test("G5/G6 the expanded timer header matches the main top bar and logo", async ({ page }) => {
   await prepare(page, { width: 1440, height: 900 });
   const mainLogo = (await page.locator(".topBar .topBrandIcon").boundingBox())!;
-  expect(Math.round(mainLogo.width)).toBe(26);
-  expect(Math.round(mainLogo.height)).toBe(26);
-  expect(Math.round((await page.locator(".topBar .topBrandIcon img").boundingBox())!.width)).toBe(20);
+  expect(Math.round(mainLogo.width)).toBe(30);
+  expect(Math.round(mainLogo.height)).toBe(30);
+  expect(Math.round((await page.locator(".topBar .topBrandIcon img").boundingBox())!.width)).toBe(26);
 
   await page.locator(".doNowStartPrimary").click();
   await page.getByRole("button", { name: "タイマーを大きく表示" }).click();
@@ -212,8 +212,8 @@ test("G5/G6 the expanded timer header matches the main top bar and logo", async 
   const logo = (await overlay.locator(".topBrandIcon").boundingBox())!;
   expect(Math.round(logo.x - mainLogo.x)).toBe(0);
   expect(Math.round(logo.y - mainLogo.y)).toBe(0);
-  expect(Math.round(logo.width)).toBe(26);
-  expect(Math.round(logo.height)).toBe(26);
+  expect(Math.round(logo.width)).toBe(30);
+  expect(Math.round(logo.height)).toBe(30);
 
   const windowButton = (await page.locator(".windowControlsButtons .windowControlButton").first().boundingBox())!;
   const windowCenter = windowButton.y + windowButton.height / 2;

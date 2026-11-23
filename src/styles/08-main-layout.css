@@ -448,6 +448,31 @@
   }
 }
 
+/* V163-C2: the 「＋ まとめて取り込む」 button in the 「次の一手」 heading appears the same way
+   as the Next Step card's 編集: only on hover or when something inside the heading has focus.
+   It keeps its place while hidden, so ＋ プロジェクト does not move. */
+.projectsBand .disclosureHeader .sectionGhostButton {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.projectsBand .disclosureHeader:hover .sectionGhostButton,
+.projectsBand .disclosureHeader:focus-within .sectionGhostButton {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .projectsBand .disclosureHeader .sectionGhostButton {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .projectsBand .disclosureHeader .sectionGhostButton {
+    transition: none;
+  }
+}
+
 /* P10-14d (M6): sidebar buttons are frameless rows with a 22px letter/icon square. */
 .quickButton {
   border: 0;
@@ -985,11 +1010,36 @@
   cursor: ns-resize;
 }
 
+/* V163-C11: the minutes field marks the focus like every other text field in the window (the
+   「行動」 input): the frame of the stepper turns --muted with a soft ring, and the number itself
+   keeps no outline. The values are the ones .textInput:focus uses (03-do-now.css:530). */
+.nextStepTimerValueInput:focus-visible {
+  outline: none;
+}
+
+.nextStepTimerStepper:has(.nextStepTimerValueInput:focus) {
+  border-color: var(--muted);
+  box-shadow: 0 0 0 2px rgba(184, 176, 160, 0.18);
+}
+
 .nextStepTimerStepperUnit {
   color: var(--text);
   font-size: 16px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+
+/* V163-C3: while no number is typed, the unit dims with the placeholder number.
+   rgb(117, 117, 117) is the placeholder colour WebView2 gave the field before this change
+   (measured 2026-11-23), written here so the dim value does not depend on the browser default. */
+.nextStepTimerValueInput::placeholder {
+  color: rgb(117, 117, 117);
+  opacity: 1;
+}
+
+.nextStepTimerStepperValue:has(.nextStepTimerValueInput:placeholder-shown)
+  .nextStepTimerStepperUnit {
+  color: rgb(117, 117, 117);
 }
 /* E1: at narrow widths the two minute fields stack, like the existing timer grid. */
 @media (max-width: 520px) {
@@ -1591,20 +1641,22 @@
   min-width: 0;
 }
 
+/* V163-C9: the app icon matches the magnifier of the sidebar (about 22〜24px of visible picture;
+   the SVG has about 12% padding, so a 26px image shows about 23px). */
 .topBrandIcon {
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  border-radius: 7px;
+  border-radius: 8px;
   background: #2b2922;
   color: #ffce5b;
 }
 
 .topBrandIcon img {
-  width: 20px;
-  height: 20px;
+  width: 26px;
+  height: 26px;
   display: block;
 }
 

@@ -983,7 +983,7 @@ export function InstructionBook({ path, name }: { path: string; name: string }) 
           </button>
           {jumpOpen ? (
             <div className="bookPageJumpForm">
-              <input
+              <input autoComplete="off"
                 aria-label="移動するページ番号"
                 className="bookJumpInput"
                 inputMode="numeric"

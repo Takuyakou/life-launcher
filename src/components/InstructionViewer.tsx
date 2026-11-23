@@ -1123,7 +1123,7 @@ export function InstructionViewer() {
                   </button>
                 </div>
               </div>
-              <textarea
+              <textarea autoComplete="off"
                 aria-label={`${instruction.name}を編集`}
                 className="instructionEditorTextarea app-scrollbar"
                 onChange={(event) => setDraft(event.target.value)}
