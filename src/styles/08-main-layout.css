@@ -1010,6 +1010,18 @@
   cursor: ns-resize;
 }
 
+/* V163-C11: the minutes field marks the focus like every other text field in the window (the
+   「行動」 input): the frame of the stepper turns --muted with a soft ring, and the number itself
+   keeps no outline. The values are the ones .textInput:focus uses (03-do-now.css:530). */
+.nextStepTimerValueInput:focus-visible {
+  outline: none;
+}
+
+.nextStepTimerStepper:has(.nextStepTimerValueInput:focus) {
+  border-color: var(--muted);
+  box-shadow: 0 0 0 2px rgba(184, 176, 160, 0.18);
+}
+
 .nextStepTimerStepperUnit {
   color: var(--text);
   font-size: 16px;

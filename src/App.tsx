@@ -2417,6 +2417,17 @@ function DashboardApp() {
     event.currentTarget.releasePointerCapture(event.pointerId);
     if (!drag.moved) return;
 
+    // V163-C11: a drag that changed the number must not leave the focus (and its yellow ring)
+    // behind. The click that follows this pointer-up puts the focus back into the field, so the
+    // focus is dropped one task later. A plain press without moving keeps the focus, so the
+    // number can still be typed.
+    window.setTimeout(() => {
+      const focused = document.activeElement;
+      if (focused instanceof HTMLElement && focused.closest(".nextStepTimerStepper")) {
+        focused.blur();
+      }
+    }, 0);
+
     const max = drag.field === "settingsDayStart" ? 23 : 240;
     const min = drag.field === "settingsDayStart" ? 0 : 1;
     const value = Math.min(

@@ -192,3 +192,114 @@ test("V163-C3 6 an empty minutes field dims 分 together with the placeholder nu
   expect(typed.unit).toBe(typed.number);
   expect(typed.unit).not.toBe(empty.placeholder);
 });
+
+// V163-C11: dragging the minutes used to leave a yellow ring around the number, drawn differently
+// from every other field of the window (the 「行動」 input only lightens its frame).
+
+async function openStepEditor(page: Page) {
+  await open(page);
+  await page.locator("[data-project-id]").first().click({ button: "right" });
+  await page.getByRole("menuitem", { name: "次の一手を編集", exact: true }).click();
+  await page.clock.runFor(100);
+  return page.getByRole("dialog", { name: "次の一手を編集" });
+}
+
+async function dragMinutes(page: Page, input: ReturnType<Page["locator"]>) {
+  const box = (await input.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 - 32, { steps: 8 });
+  await page.mouse.up();
+}
+
+const frameOf = (element: ReturnType<Page["locator"]>) =>
+  element.evaluate((node) => {
+    const style = getComputedStyle(node);
+    return { border: style.borderTopColor, shadow: style.boxShadow };
+  });
+
+const OUTLINE_NONE = "none";
+const ACTION_FRAME = {
+  border: "rgb(184, 176, 160)",
+  shadow: "rgba(184, 176, 160, 0.18) 0px 0px 0px 2px",
+};
+
+test("V163-C11 7 dragging the minutes moves the number and leaves no focus or ring behind", async ({
+  page,
+}) => {
+  const dialog = await openStepEditor(page);
+  const stepper = dialog.locator(".nextStepTimerStepper").first();
+  const input = stepper.locator(".nextStepTimerValueInput");
+  const before = Number(await input.inputValue());
+  const restFrame = await frameOf(stepper);
+
+  await dragMinutes(page, input);
+  // The focus is dropped one task after the click that follows the pointer-up.
+  await page.clock.runFor(10);
+
+  expect(Number(await input.inputValue())).not.toBe(before);
+  await expect(input).not.toBeFocused();
+  // Nothing keeps the focus ring: the frame is back to its resting look.
+  expect(await frameOf(stepper)).toEqual(restFrame);
+});
+
+test("V163-C11 8 the focused minutes field marks the frame like the 「行動」 field", async ({
+  page,
+}) => {
+  const dialog = await openStepEditor(page);
+  const comparison = await dialog.evaluate((node) => {
+    const action = node.querySelector<HTMLInputElement>('input[aria-label="行動"]')!;
+    const stepper = node.querySelector<HTMLElement>(".nextStepTimerStepper")!;
+    const minutes = stepper.querySelector<HTMLInputElement>(".nextStepTimerValueInput")!;
+    const look = (element: Element) => {
+      const style = getComputedStyle(element);
+      return { border: style.borderTopColor, shadow: style.boxShadow };
+    };
+    action.focus();
+    const actionFocus = look(action);
+    minutes.focus();
+    return {
+      actionFocus,
+      stepperFocus: look(stepper),
+      minutesOutline: getComputedStyle(minutes).outlineStyle,
+      focused: document.activeElement === minutes,
+    };
+  });
+  expect(comparison.focused).toBe(true);
+  // The number itself has no ring of its own; the frame around it carries the mark.
+  expect(comparison.minutesOutline).toBe(OUTLINE_NONE);
+  expect(comparison.stepperFocus).toEqual(comparison.actionFocus);
+  expect(comparison.stepperFocus).toEqual(ACTION_FRAME);
+});
+
+test("V163-C11 9 Tab into the minutes field shows the same frame", async ({ page }) => {
+  const dialog = await openStepEditor(page);
+  const stepper = dialog.locator(".nextStepTimerStepper").first();
+  const input = stepper.locator(".nextStepTimerValueInput");
+  await stepper.getByRole("button", { name: "短時間タイマーを1分減らす" }).focus();
+  await page.keyboard.press("Tab");
+  await expect(input).toBeFocused();
+  expect(await frameOf(stepper)).toEqual(ACTION_FRAME);
+});
+
+test("V163-C11 10 the extend minutes in the timer prompt behave the same", async ({ page }) => {
+  await open(page);
+  await startAndExpire(page);
+  const dialog = dialogOf(page);
+  const stepper = dialog.locator(".nextStepTimerStepper").first();
+  const input = extendInput(page);
+  const before = Number(await input.inputValue());
+
+  await dragMinutes(page, input);
+  await page.clock.runFor(10);
+
+  expect(Number(await input.inputValue())).not.toBe(before);
+  await expect(input).not.toBeFocused();
+
+  await input.click();
+  await expect(input).toBeFocused();
+  expect(await frameOf(stepper)).toEqual(ACTION_FRAME);
+  expect(
+    await input.evaluate((element) => getComputedStyle(element).outlineStyle),
+  ).toBe(OUTLINE_NONE);
+});
