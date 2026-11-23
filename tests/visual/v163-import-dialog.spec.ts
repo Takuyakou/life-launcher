@@ -439,3 +439,37 @@ test("V163-B6 9 a .json dropped on the open dialog is not read (the placeholder 
   expect(await calls(page, "preview_import")).toHaveLength(0);
   await expect(dialog).toBeVisible();
 });
+
+test("V163-C10 1 reading does not take the focus back from another control", async ({ page }) => {
+  const { dialog } = await openDialog(page);
+  const box = page.getByLabel("取り込みのJSON");
+  const repaste = dialog.getByRole("button", { name: "貼り直す" });
+  const cancel = dialog.getByRole("button", { name: "キャンセル" });
+
+  await box.fill(ANSWER);
+  // The person moves on before the read finishes.
+  await cancel.focus();
+  await expect(cancel).toBeFocused();
+
+  await page.clock.runFor(400);
+  await expect(dialog.getByText("✓ 読み取りました")).toBeVisible();
+  // The read's own focus move ran (or not) — the focus stays where the person put it.
+  await page.clock.runFor(50);
+  await expect(cancel).toBeFocused();
+  await expect(repaste).not.toBeFocused();
+});
+
+test("V163-C10 2 reading with the focus in the paste box moves it to 貼り直す", async ({ page }) => {
+  const { dialog } = await openDialog(page);
+  const box = page.getByLabel("取り込みのJSON");
+  const repaste = dialog.getByRole("button", { name: "貼り直す" });
+
+  await box.fill(ANSWER);
+  await expect(box).toBeFocused();
+
+  await page.clock.runFor(400);
+  await expect(dialog.getByText("✓ 読み取りました")).toBeVisible();
+  await page.clock.runFor(50);
+  // The box the focus was in is gone, so the focus lands on 貼り直す (the old behaviour).
+  await expect(repaste).toBeFocused();
+});
