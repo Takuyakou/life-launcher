@@ -25,7 +25,7 @@ import {
   useRef,
   useState,
 } from "react";import { AnimatePresence, motion } from "motion/react";
-import { springCollapse, springSnappy, staggerMax, staggerStep } from "./motion";
+import { springSnappy } from "./motion";
 import { SEARCH_GROUP_LIMIT, matchesSearchQuery } from "./searchMatch";
 import { nextStepStaleDays } from "./nextStepFreshness";
 import {
@@ -113,6 +113,8 @@ import { ConfirmDialog, type ConfirmDialogRequest } from "./components/ConfirmDi
 import { TopBar } from "./components/TopBar";
 import { MainHeaderVictoryBand } from "./components/MainHeaderVictoryBand";
 import { CompletionNextStepDialog } from "./components/CompletionNextStepDialog";
+import { SidebarQuickLaunch } from "./components/SidebarQuickLaunch";
+import { DoNowBand } from "./components/DoNowBand";
 import { ExitPresence } from "./components/ExitPresence";
 import { GroupNameDialog } from "./components/GroupNameDialog";
 import { ImportDialog } from "./components/ImportDialog";
@@ -182,7 +184,6 @@ import {
   sameNextStepSnapshot,
   wishlistGroupKey,
 } from "./nextStepWishlist";
-import { TimerPanel } from "./components/TimerPanel";
 import { ExpandedTimerOverlay } from "./components/ExpandedTimerOverlay";
 import {
   buildTodayCandidates,
@@ -199,7 +200,6 @@ import {
   type TimerMode,
 } from "./timerRuntime";
 import { UiIcon } from "./components/UiIcon";
-import { ShortcutBadge } from "./components/ShortcutBadge";
 import { findShortcutConflicts } from "./shortcutConflicts";
 import { localDayKey } from "./localDay";
 import { useTopMenuLabelLevel } from "./topMenuLabels";
@@ -8484,357 +8484,53 @@ function DashboardApp() {
       <WindowControls closeShortcutDisabled={closeShortcutDisabled} />
 
       <div className="appBody">
-      <aside
-        className="sidebar"
-        onContextMenu={(event) => {
-          event.preventDefault();
-          openContextMenu(
-            { kind: "sidebar" },
-            event.clientX,
-            event.clientY,
-            event.currentTarget,
-          );
+      <SidebarQuickLaunch
+        actions={{
+          cancelNumberInputDrag,
+          cancelSidebarGroupPointerDrag,
+          cancelSidebarPointerDrag,
+          finishActiveTimer,
+          finishNumberInputDrag,
+          finishSidebarGroupPointerDrag,
+          finishSidebarPointerDrag,
+          openContextMenu,
+          openContextMenuFromKeyboard,
+          openDictionaryManually,
+          renderSidebarButtonIcon,
+          runActions,
+          saveDefaultTimerMinutes,
+          setDefaultTimerDraft,
+          setExpandedTimerOpen,
+          startNumberInputDrag,
+          startSidebarGroupPointerDrag,
+          startSidebarPointerDrag,
+          toggleGroupCollapsed,
+          toggleMiniMode,
+          togglePause,
+          updateNumberInputDrag,
+          updateSidebarGroupPointerDrag,
+          updateSidebarPointerDrag,
         }}
-        onKeyDown={(event) => openContextMenuFromKeyboard(event, { kind: "sidebar" })}
-        tabIndex={-1}
-      >
-        <button
-          className="launcherOpenButton"
-          onClick={() => void openDictionaryManually()}
-          type="button"
-        >
-          <span className="launcherOpenButtonLabel">
-            <span aria-hidden="true" className="launcherOpenButtonIcon">
-              <UiIcon name="search" size={16} />
-            </span>
-            <span>辞書を開く</span>
-          </span>
-          {shortcutRegistration && (
-            <ShortcutBadge
-              label="辞書"
-              shortcut={config?.settings.launcherHotkey}
-              registered={shortcutRegistration.launcher}
-            />
-          )}
-        </button>
-
-        <div className="quickList app-scrollbar" aria-label="クイック起動">
-          {visibleSidebarButtonGroups.length === 0 ? (
-            <p className="quietText quietText--small">
-              サイドバー表示の項目がありません。アプリ、ショートカット、URLをドラッグして追加できます。
-            </p>
-          ) : (
-            visibleSidebarButtonGroups.map((group) => {
-              const collapsed = collapsedGroups[group.name] ?? false;
-              // P10-02: while a sidebar drag is in flight the open/close is instant (D33).
-              const sidebarDragActive =
-                sidebarPointerDrag !== null || sidebarGroupPointerDrag !== null;
-              return (
-                <section
-                  className={[
-                    "quickGroup",
-                    sidebarGroupPointerDrag?.group === group.name ? "quickGroup--dragging" : "",
-                    sidebarGroupPointerDrag?.targetGroupName === group.name
-                      ? sidebarGroupPointerDrag.placement === "after"
-                        ? "quickGroup--drop-after"
-                        : "quickGroup--drop-before"
-                      : "",
-                    sidebarPointerDrag?.targetGroupName === group.name &&
-                    !sidebarPointerDrag.targetButtonId
-                      ? "quickGroup--item-drop-target"
-                      : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                  data-sidebar-group-section={group.name}
-                  key={group.name}
-                  onContextMenu={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    openContextMenu(
-                      { kind: "sidebar", groupName: group.name },
-                      event.clientX,
-                      event.clientY,
-                      event.currentTarget.querySelector<HTMLElement>(".quickGroupHeader"),
-                    );
-                  }}
-                >
-                  <button
-                    aria-expanded={!collapsed}
-                    className="quickGroupHeader"
-                    data-sidebar-group-name={group.name}
-                    onClick={(event) => {
-                      if (event.detail === 0) toggleGroupCollapsed(group.name);
-                    }}
-                    onContextMenu={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      openContextMenu(
-                        { kind: "sidebar", groupName: group.name },
-                        event.clientX,
-                        event.clientY,
-                        event.currentTarget,
-                      );
-                    }}
-                    onKeyDown={(event) =>
-                      openContextMenuFromKeyboard(event, {
-                        kind: "sidebar",
-                        groupName: group.name,
-                      })
-                    }
-                    onPointerCancel={cancelSidebarGroupPointerDrag}
-                    onPointerDown={(event) => startSidebarGroupPointerDrag(event, group.name)}
-                    onPointerMove={updateSidebarGroupPointerDrag}
-                    onPointerUp={(event) => finishSidebarGroupPointerDrag(event, group.name)}
-                    title={group.name}
-                    type="button"
-                  >
-                    <UiIcon name={collapsed ? "chevronRight" : "chevronDown"} size={16} />
-                    <strong>{group.name}</strong>
-                    <small>{group.buttons.length}</small>
-                  </button>
-                  <AnimatePresence initial={false}>
-                    {!collapsed && (
-                      <motion.div
-                        animate={{
-                          height: "auto",
-                          opacity: 1,
-                          transitionEnd: { overflow: "visible" },
-                        }}
-                        className="quickGroupItems"
-                        data-sidebar-group-name={group.name}
-                        exit={{ height: 0, opacity: 0, overflow: "hidden" }}
-                        initial={{ height: 0, opacity: 0, overflow: "hidden" }}
-                        key="items"
-                        transition={sidebarDragActive ? { duration: 0 } : springCollapse}
-                      >
-                        {group.buttons.length === 0 && (
-                          <p className="quickGroupEmpty">見出しを右クリックしてボタンを追加</p>
-                        )}
-                        {group.buttons.map((button, buttonIndex) => (
-                          <motion.div
-                            animate={{ opacity: 1, y: 0 }}
-                            className={
-                              sidebarPointerDrag?.id === button.id
-                                ? "quickButtonDrag quickButtonDrag--dragging"
-                                : "quickButtonDrag"
-                            }
-                            data-sidebar-button-id={button.id}
-                            data-sidebar-group-name={group.name}
-                            exit={sidebarDragActive ? { opacity: 1 } : { opacity: 0 }}
-                            initial={sidebarDragActive ? false : { opacity: 0, y: -4 }}
-                            key={button.id}
-                            transition={
-                              sidebarDragActive
-                                ? { duration: 0 }
-                                : {
-                                    delay: Math.min(buttonIndex * staggerStep, staggerMax),
-                                    duration: 0.12,
-                                  }
-                            }
-                          >
-                          <button
-                            className="quickButton"
-                            onClick={(event) => {
-                              if (event.detail === 0) void runActions(button.id, button.actions);
-                            }}
-                            onContextMenu={(event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              openContextMenu(
-                                { kind: "button", button },
-                                event.clientX,
-                                event.clientY,
-                                event.currentTarget,
-                              );
-                            }}
-                            onKeyDown={(event) =>
-                              openContextMenuFromKeyboard(event, { kind: "button", button })
-                            }
-                            onPointerCancel={cancelSidebarPointerDrag}
-                            onPointerDown={(event) =>
-                              startSidebarPointerDrag(event, { id: button.id, group: group.name })
-                            }
-                            onPointerMove={updateSidebarPointerDrag}
-                            onPointerUp={(event) => finishSidebarPointerDrag(event, button)}
-                            title={button.label}
-                            type="button"
-                          >
-                            {pendingActionId === button.id ? (
-                              <span className="quickIcon">
-                                <span className="spinner spinner--small" />
-                              </span>
-                            ) : (
-                              renderSidebarButtonIcon(button)
-                            )}
-                            <span>{button.label}</span>
-                          </button>
-                          </motion.div>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </section>
-              );
-            })
-          )}
-        </div>
-
-        {sidebarPointerDrag?.targetIndicator ? (
-          <div
-            aria-hidden="true"
-            className="sidebarDropIndicator"
-            style={{
-              left: sidebarPointerDrag.targetIndicator.left,
-              top: sidebarPointerDrag.targetIndicator.top,
-              width: sidebarPointerDrag.targetIndicator.width,
-            }}
-          />
-        ) : null}
-
-        {sidebarPointerDrag
-          ? (() => {
-              const button = config.buttons.find((item) => item.id === sidebarPointerDrag.id);
-              return button ? (
-                <div
-                  aria-hidden="true"
-                  className="sidebarDragGhost"
-                  style={{
-                    height: sidebarPointerDrag.height,
-                    left: sidebarPointerDrag.pointerX - sidebarPointerDrag.offsetX,
-                    top: sidebarPointerDrag.pointerY - sidebarPointerDrag.offsetY,
-                    width: sidebarPointerDrag.width,
-                  }}
-                >
-                  {renderSidebarButtonIcon(button)}
-                  <span>{button.label}</span>
-                </div>
-              ) : null;
-            })()
-          : null}
-        {sidebarGroupPointerDrag ? (
-          <div
-            aria-hidden="true"
-            className="sidebarGroupDragGhost"
-            style={{
-              height: sidebarGroupPointerDrag.height,
-              left: sidebarGroupPointerDrag.pointerX - sidebarGroupPointerDrag.offsetX,
-              top: sidebarGroupPointerDrag.pointerY - sidebarGroupPointerDrag.offsetY,
-              width: sidebarGroupPointerDrag.width,
-            }}
-          >
-            <UiIcon name="chevronDown" size={16} />
-            <strong>{sidebarGroupPointerDrag.group}</strong>
-          </div>
-        ) : null}
-        <TimerPanel
-          active={Boolean(activeTimer)}
-          expandButtonRef={expandTimerButtonRef}
-          clock={
-            activeTimer
-              ? timerClock
-              : String(
-                  Number.parseInt(defaultTimerDraft, 10) || config.settings.defaultTimerMinutes,
-                ) + "分"
-          }
-          clockAdjustable={!activeTimer}
-          clockDragging={numberInputDragging === "timer"}
-          identity={
-            activeTimerProject ? (
-              <ProjectIdentity
-                colorId={activeTimerProject.colorId}
-                compact
-                name={activeTimerProject.name}
-                projectId={activeTimerProject.id}
-              />
-            ) : undefined
-          }
-          actionText={activeTimer ? timerActionText(activeTimer) : undefined}
-          label={activeTimer ? activeTimer.label : "通常タイマー"}
-          onFinish={() => {
-            if (activeTimer) finishActiveTimer(activeTimer);
-          }}
-          onExpand={() => setExpandedTimerOpen(true)}
-          onClockPointerCancel={!activeTimer ? cancelNumberInputDrag : undefined}
-          onClockPointerDown={
-            !activeTimer
-              ? (event) => startNumberInputDrag(event, "timer", config.settings.defaultTimerMinutes)
-              : undefined
-          }
-          onClockPointerMove={!activeTimer ? updateNumberInputDrag : undefined}
-          onClockPointerUp={!activeTimer ? finishNumberInputDrag : undefined}
-          onPause={togglePause}
-          paused={Boolean(activeTimer?.paused)}
-          progressPercent={timerProgressPercent}
-          state={
-            completionPrompt
-              ? "complete"
-              : activeTimer?.paused
-                ? "paused"
-                : activeTimer
-                  ? "running"
-                  : "waiting"
-          }
-          status={timerStatus}
-          variant="sidebar"
-          onMini={() => void toggleMiniMode()}
-          miniDisabled={!config.settings.miniMode || miniTransitioning}
-          waitingContent={
-            <div className="timerPresetControls" aria-label="通常タイマーの分数">
-              <div className="timerPresetRow">
-                <button
-                  className="timerPresetButton"
-                  onClick={() =>
-                    void saveDefaultTimerMinutes(config.settings.defaultTimerMinutes - 5)
-                  }
-                  type="button"
-                >
-                  -
-                </button>
-                <label
-                  className={
-                    numberInputDragging === "timer"
-                      ? "timerPresetInputWrap timerPresetInputWrap--dragging"
-                      : "timerPresetInputWrap"
-                  }
-                  onPointerCancel={cancelNumberInputDrag}
-                  onPointerDown={(event) =>
-                    startNumberInputDrag(event, "timer", config.settings.defaultTimerMinutes)
-                  }
-                  onPointerMove={updateNumberInputDrag}
-                  onPointerUp={finishNumberInputDrag}
-                  title="上下にドラッグして分数を調整"
-                >
-                  <input autoComplete="off"
-                    aria-label="通常タイマーの分数"
-                    inputMode="numeric"
-                    max={240}
-                    min={1}
-                    onBlur={() => void saveDefaultTimerMinutes(defaultTimerDraft)}
-                    onChange={(event) => setDefaultTimerDraft(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") event.currentTarget.blur();
-                    }}
-                    type="number"
-                    value={defaultTimerDraft}
-                  />
-                  <span>分</span>
-                  <span aria-hidden="true" className="numberDragAffordance" />
-                </label>
-                <button
-                  className="timerPresetButton"
-                  onClick={() =>
-                    void saveDefaultTimerMinutes(config.settings.defaultTimerMinutes + 5)
-                  }
-                  type="button"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-          }
-        />
-      </aside>
+        data={{
+          activeTimer,
+          activeTimerProject,
+          collapsedGroups,
+          completionPrompt,
+          config,
+          defaultTimerDraft,
+          miniTransitioning,
+          numberInputDragging,
+          pendingActionId,
+          shortcutRegistration,
+          sidebarGroupPointerDrag,
+          sidebarPointerDrag,
+          timerClock,
+          timerProgressPercent,
+          timerStatus,
+          visibleGroups: visibleSidebarButtonGroups,
+        }}
+        expandTimerButtonRef={expandTimerButtonRef}
+      />
 
       <section
         className="mainPanel"
@@ -8942,345 +8638,44 @@ function DashboardApp() {
                   value={config.today.victory.text}
                 />
 
-                <section
-                  className="doNowBand"
-                  aria-labelledby="do-now-title"
-                  data-skip-target="main"
-                  tabIndex={-1}
-                >
-                  {doNowCompletionHold ? (
-                    <div
-                      className="doNowContent doNowContent--hold"
-                      data-project-color={resolveProjectColorId(
-                        doNowCompletionHold.projectId,
-                        doNowCompletionHold.colorId,
-                      )}
-                    >
-                      <div className="doNowCopy">
-                        <div className="doNowKicker">
-                          <h2 id="do-now-title">今やる一手</h2>
-                          <span className="uiPill doNowProjectChip">
-                            <ProjectIdentity
-                              colorId={doNowCompletionHold.colorId}
-                              compact
-                              name={doNowCompletionHold.projectName}
-                              projectId={doNowCompletionHold.projectId}
-                            />
-                          </span>
-                        </div>
-                        <strong className="doNowHoldTitle" role="status">✓ 一手進みました</strong>
-                        <span className="doNowHoldTask">{doNowCompletionHold.taskText}</span>
-                        {doNowCompletionHold.minutes > 0 && (
-                          <span className="doNowHoldMinutes">実行 {doNowCompletionHold.minutes}分</span>
-                        )}
-                      </div>
-                                            <div className="doNowFooter">
-                        <button
-                          className="mainActionButton mainActionButton--neutral doNowHoldButton"
-                          disabled={doNowCompletionSaving}
-                          onClick={() => void acknowledgeDoNowCompletion()}
-                          type="button"
-                        >
-                          次の一手を見る
-                          <UiIcon name="chevronRight" size={16} aria-hidden="true" />
-                        </button>
-                      </div>
-                    </div>
-                  ) : doNowSelection ? (
-                    <div
-                      className="doNowContent doNowContent--active"
-                      data-project-color={resolveProjectColorId(
-                        doNowSelection.project.id,
-                        doNowSelection.project.colorId,
-                      )}
-                      onContextMenu={(event) => {
-                        if (doNowCandidates.length <= 1) return;
-                        event.preventDefault();
-                        event.stopPropagation();
-                        openContextMenu(
-                          { kind: "doNow" },
-                          event.clientX,
-                          event.clientY,
-                          event.currentTarget,
-                        );
-                      }}
-                      onKeyDown={(event) => {
-                        if (doNowCandidates.length > 1) {
-                          openContextMenuFromKeyboard(event, { kind: "doNow" });
-                        }
-                      }}
-                      tabIndex={doNowCandidates.length > 1 ? 0 : undefined}
-                    >
-                      <motion.div
-                        animate={{ opacity: 1, x: 0 }}
-                        className="doNowCopy"
-                        initial={doNowCopyShouldAnimate ? { opacity: 0, x: 12 } : false}
-                        key={doNowCopyKey ?? undefined}
-                        transition={springSnappy}
-                      >
-                        <div className="doNowKicker">
-                          <span aria-hidden="true" className="doNowStatusDot" />
-                          <h2 id="do-now-title">今やる一手</h2>
-                          <span className="uiPill doNowProjectChip">
-                            <ProjectIdentity
-                              colorId={doNowSelection.project.colorId}
-                              compact
-                              name={doNowSelection.project.name}
-                              projectId={doNowSelection.project.id}
-                            />
-                          </span>
-                          {isDoNowRunning && activeTimer && (
-                            <span
-                              className={
-                                activeTimer.paused
-                                  ? "uiPill uiPill--paused runningBadge runningBadge--paused"
-                                  : "uiPill uiPill--running runningBadge runningBadge--running"
-                              }
-                            >
-                              {activeTimer.paused
-                                ? "一時停止"
-                                : activeTimer.mode === "measure"
-                                  ? "計測中"
-                                  : "実行中"}
-                            </span>
-                          )}
-                          <span className="doNowReason">{doNowReason}</span>
-                        </div>
-                        <strong title={doNowSelection.project.nextStep?.text}>
-                          {doNowSelection.project.nextStep?.text}
-                        </strong>
-                        {(() => {
-                          const resumeNote = doNowSelection.project.nextStep?.resumeNote?.trim();
-                          return resumeNote ? (
-                            <p className="doNowResume" title={resumeNote}>
-                              <span className="doNowResumeLabel">次はここから</span>
-                              <span className="doNowResumeText">{resumeNote}</span>
-                            </p>
-                          ) : null;
-                        })()}
-                        {(() => {
-                          const openButtons = (doNowSelection.project.nextStep?.buttonIds ?? [])
-                            .map((id) => buttonsById.get(id))
-                            .filter((button): button is LauncherButton => Boolean(button));
-                          const trigger = doNowSelection.project.nextStep?.trigger?.trim();
-                          const instructionName = doNowInstructionPath
-                            ?.split(/[\\/]/)
-                            .filter(Boolean)
-                            .pop();
-                          const instructionMissing = missingInstructionProjectIds.has(
-                            doNowSelection.project.id,
-                          );
-                          if (!openButtons.length && !doNowInstructionPath && !trigger) return null;
-                          return (
-                            <div className="doNowMeta">
-                              {trigger ? (
-                                <span className="doNowMetaItem doNowTrigger" title={trigger}>
-                                  <UiIcon name="clock" size={16} />
-                                  {trigger}
-                                </span>
-                              ) : null}
-                              {trigger && (openButtons.length || doNowInstructionPath) ? (
-                                <span aria-hidden="true" className="doNowDivider" />
-                              ) : null}
-                              {openButtons.length || doNowInstructionPath ? (
-                                <span className="doNowMetaLabel">始めると一緒に開く</span>
-                              ) : null}
-                              {openButtons.map((button) => {
-                                const missing = missingButtonIds.has(button.id);
-                                return (
-                                  <span
-                                    className={
-                                      missing
-                                        ? "doNowOpenChip doNowOpenChip--missing"
-                                        : "doNowOpenChip"
-                                    }
-                                    key={button.id}
-                                    title={
-                                      missing
-                                        ? "見つかりません。次の一手の編集で選び直してください"
-                                        : undefined
-                                    }
-                                  >
-                                    <UiIcon name={missing ? "alert" : "external"} size={12} />
-                                    {button.label}
-                                    {missing && (
-                                      <span className="doNowMissingText">見つかりません</span>
-                                    )}
-                                  </span>
-                                );
-                              })}
-                              {doNowInstructionPath ? (
-                                <button
-                                  className={
-                                    instructionMissing
-                                      ? "doNowOpenChip doNowOpenChip--button doNowOpenChip--missing"
-                                      : "doNowOpenChip doNowOpenChip--button"
-                                  }
-                                  onClick={() => {
-                                    void openInstructionWindow({
-                                      path: doNowInstructionPath,
-                                      focus: true,
-                                    }).catch((error) => {
-                                      showToast(
-                                        "error",
-                                        `手順書を開けません: ${error instanceof Error ? error.message : String(error)}`,
-                                      );
-                                    });
-                                  }}
-                                  aria-label={
-                                    doNowBookPage !== null && !instructionMissing
-                                      ? `${instructionName || "手順書"}、${doNowBookPage}ページから`
-                                      : undefined
-                                  }
-                                  title={
-                                    instructionMissing
-                                      ? "見つかりません。次の一手の編集で選び直してください"
-                                      : undefined
-                                  }
-                                  type="button"
-                                >
-                                  <UiIcon name={instructionMissing ? "alert" : "book"} size={12} />
-                                  {instructionName || "手順書"}
-                                  {doNowBookPage !== null && !instructionMissing ? (
-                                    <span className="doNowOpenChipPage">p.{doNowBookPage}</span>
-                                  ) : null}
-                                  {instructionMissing && (
-                                    <span className="doNowMissingText">見つかりません</span>
-                                  )}
-                                </button>
-                              ) : null}
-                            </div>
-                          );
-                        })()}
-                      </motion.div>
-                      <div className="doNowFooter">
-                        <div className="doNowActions">
-                          {isDoNowRunning && activeTimer ? (
-                            <>
-                              {activeTimer.mode === "measure" && (
-                                <span className="measureElapsedClock">{timerClock}</span>
-                              )}
-                              <button
-                                aria-label={
-                                  activeTimer.paused
-                                    ? "このセッションを再開"
-                                    : "このセッションを一時停止"
-                                }
-                                className="runningPauseButton"
-                                onClick={togglePause}
-                                type="button"
-                              >
-                                <UiIcon name={activeTimer.paused ? "play" : "pause"} size={16} />
-                                {activeTimer.paused ? "再開" : "一時停止"}
-                              </button>
-                              <button
-                                className="runningStopButton"
-                                onClick={() => finishActiveTimer(activeTimer)}
-                                type="button"
-                              >
-                                <UiIcon name="stop" size={16} /> 終了
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <button
-                                aria-label={`短時間タイマー${doNowShortTimerMinutes}分で始める`}
-                                className="doNowStartPrimary"
-                                onClick={() => startDoNowProject(doNowSelection.project, "short")}
-                                type="button"
-                              >
-                                <span className="timerStartDuration">
-                                  {doNowShortTimerMinutes}分で始める
-                                </span>
-                                <span aria-hidden="true" className="timerStartHoverGlyph">
-                                  <UiIcon name="play" size={16} />
-                                </span>
-                              </button>
-                              <button
-                                aria-label={`通常タイマー${doNowDefaultTimerMinutes}分で開始`}
-                                className="doNowStartSecondary"
-                                onClick={() => startDoNowProject(doNowSelection.project, "normal")}
-                                type="button"
-                              >
-                                <span className="timerStartDuration">
-                                  通常 {doNowDefaultTimerMinutes}分
-                                </span>
-                                <span aria-hidden="true" className="timerStartHoverGlyph">
-                                  <UiIcon name="play" size={16} />
-                                </span>
-                              </button>
-                              <button
-                                aria-label="時間を決めずに計測"
-                                className="doNowMeasureButton"
-                                onClick={() => startDoNowProject(doNowSelection.project, "measure")}
-                                title="時間を決めずに計測"
-                                type="button"
-                              >
-                                <UiIcon name="clock" size={16} />
-                                <span>計測</span>
-                              </button>
-                            </>
-                          )}
-                        </div>
-                        <div className="doNowSecondaryActions">
-                          {doNowCandidates.length > 1 && (
-                            <button
-                              className="uiSmallButton doNowAlternateButton"
-                              onClick={showNextDoNowCandidate}
-                              type="button"
-                            >
-                              <UiIcon name="refresh" size={16} />
-                              他の一手
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="doNowHeading">
-                        <h2 id="do-now-title">今やる一手</h2>
-                      </div>
-                      <div className="doNowEmpty">
-                        <div className="doNowEmptyContent">
-                          <strong>
-                            {doNowOnlyExcluded
-                              ? "今は他に提案できる一手がありません。"
-                              : nextStepSetupProject
-                              ? "次の一手を設定すると、ここに提案されます。"
-                              : "プロジェクトを作り、次の一手を設定すると提案されます。"}
-                          </strong>
-                          <span>
-                            {doNowOnlyExcluded
-                              ? "取り組んだ一手は、もう一度候補を見ると表示できます。"
-                              : "迷ったときに、今の状況から始めやすい「次にやること」を1つだけ提示します。"}
-                          </span>
-                          <button
-                            className={doNowOnlyExcluded
-                              ? "mainActionButton mainActionButton--neutral"
-                              : "mainActionButton mainActionButton--gold"}
-                            onClick={() => {
-                              if (doNowOnlyExcluded) {
-                                setDoNowExcludedProjectId(null);
-                                setDoNowPickedProjectId(null);
-                              } else if (nextStepSetupProject) {
-                                openNextStepEditor(nextStepSetupProject);
-                              } else {
-                                openProjectAddDialog();
-                              }
-                            }}
-                            type="button"
-                          >
-                            <UiIcon name={doNowOnlyExcluded ? "refresh" : "add"} size={16} />
-                            {doNowOnlyExcluded
-                              ? "候補をもう一度見る"
-                              : nextStepSetupProject ? "次の一手を設定" : "プロジェクトを追加"}
-                          </button>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </section>
+                <DoNowBand
+                  actions={{
+                    acknowledgeDoNowCompletion,
+                    finishActiveTimer,
+                    openContextMenu,
+                    openContextMenuFromKeyboard,
+                    openInstructionWindow,
+                    openNextStepEditor,
+                    openProjectAddDialog,
+                    setDoNowExcludedProjectId,
+                    setDoNowPickedProjectId,
+                    showNextDoNowCandidate,
+                    showToast,
+                    startDoNowProject,
+                    togglePause,
+                  }}
+                  data={{
+                    activeTimer,
+                    buttonsById,
+                    doNowBookPage,
+                    doNowCandidates,
+                    doNowCompletionHold,
+                    doNowCompletionSaving,
+                    doNowCopyKey,
+                    doNowCopyShouldAnimate,
+                    doNowDefaultTimerMinutes,
+                    doNowInstructionPath,
+                    doNowOnlyExcluded,
+                    doNowReason,
+                    doNowSelection,
+                    doNowShortTimerMinutes,
+                    isDoNowRunning,
+                    missingButtonIds,
+                    missingInstructionProjectIds,
+                    nextStepSetupProject,
+                    timerClock,
+                  }}
+                />
 
                 <section className="focusBand">
                   <div
