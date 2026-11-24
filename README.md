@@ -1,12 +1,15 @@
 # Life Launcher
 
+[![CI](https://github.com/Takuyakou/life-launcher/actions/workflows/ci.yml/badge.svg)](https://github.com/Takuyakou/life-launcher/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Takuyakou/life-launcher)](https://github.com/Takuyakou/life-launcher/releases/latest)
+
 **日本語** | [English](README.en.md)
 
 **「何をしよう？」を「今これをやる」に変えるWindowsアプリ。**
 
-Life Launcherは、迷っているときに「今やる一手」を1つ示し、その作業に必要な環境を開いて、すぐに始められるようにするWindowsデスクトップアプリです。データは手元のPCに保存します。
+Life Launcherは、迷っているときに「今やる一手」を1つ示し、その作業に必要なアプリ・ファイル・手順書をまとめて開いて、すぐに始められるようにするWindowsデスクトップアプリです。データと実行記録は手元のPCに保存し、外部のサーバーへは送りません。
 
-[Windows版をダウンロード](https://github.com/Takuyakou/life-launcher/releases/latest)
+[Windows版をダウンロード](https://github.com/Takuyakou/life-launcher/releases/latest) ・ [ブラウザでWeb Demoを試す](https://life-launcher-web.takuyakou.workers.dev)
 
 ![Life Launcher: 5分で始めて、「次はここから」を書いて終えるまで](docs/screenshots/demo-start.gif)
 
@@ -117,6 +120,15 @@ Web Demoは合成データを使い、今日の候補の選択、タイマー、
 ## 開発・技術情報
 
 - **技術スタック**: Tauri 2 / Rust / React 18 / TypeScript / Vite 8 / Zod / Motion / Playwright（決定論的 Visual QA）
+- **設計と仕様**: [全体概要とアーキテクチャ（OVERVIEW）](docs/OVERVIEW.md) / [現行のUI/UX・機能仕様書](docs/spec/current-spec.md) / [ドキュメントの目次](docs/README.md)
+
+### 設計の見どころ
+
+- **ウィンドウごとの最小権限**: Tauri 2 の capabilities を、メイン・辞書・手順書・ミニの4つのウィンドウごとに分けています。favicon取得の通信の守り（ローカル／プライベート宛先の拒否、リダイレクトの再検証、時間と大きさの上限）はRustで実装し、自動テストで確かめています。
+- **壊れない保存と移行**: 設定は検証してから、一時ファイル経由の置き換えで保存します。旧形式からの移行では変換前のバックアップを先に作り、変換・検証・バックアップのどれかに失敗したら元のファイルを書き換えずに止めます。
+- **変更のたびの自動チェック**: CIで、公開してはいけない情報の検査（秘密情報・開発環境のパス）、ESLint（警告0）、ビルド、Playwrightの画面テスト（時計を固定し、基準画像と比べる）、Rustの `cargo fmt`・`clippy -D warnings`・`cargo test`、`npm audit` を回しています。
+- **待たせない操作感**: 本形式の手順書はページを裏で順に読み込み、画面は機能ごとに分けて読み込みます。「動きを減らす」設定にも合わせます。
+
 - **同梱アセット・ライブラリ**:
   - フォント: [Inter](https://github.com/rsms/inter) / [Noto Sans JP](https://github.com/notofonts/noto-cjk)（`@fontsource-variable/inter`, `@fontsource-variable/noto-sans-jp`・いずれも SIL Open Font License 1.1）
   - モーション: [Motion](https://motion.dev/)（`motion`・MIT ライセンス）

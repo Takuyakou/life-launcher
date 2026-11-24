@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { marked } from "marked";
-import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 
 const version = JSON.parse(readFileSync("package.json", "utf8")).version as string;
 const changelog = readFileSync("CHANGELOG.md", "utf8");
@@ -69,6 +69,46 @@ for (const file of readmes) {
     expect(text).not.toMatch(/^##\s+(?:Changes In\s+)?v\d+\.\d+\.\d+(?:の変更)?\s*$/m);
   });
 }
+
+test("docs/ keeps the six entry points, their version and their links", () => {
+  expect(readdirSync("docs").sort()).toEqual([
+    "OVERVIEW.md",
+    "README.md",
+    "archive",
+    "releases",
+    "screenshots",
+    "spec",
+  ]);
+  expect(existsSync("docs/README.md")).toBe(true);
+  expect(existsSync("docs/archive/README.md")).toBe(true);
+  expect(readdirSync("docs/releases").every((name) => /^v\d+\.\d+\.\d+\.md$/.test(name))).toBe(
+    true,
+  );
+  for (const file of ["docs/OVERVIEW.md", "docs/spec/current-spec.md"]) {
+    const text = readFileSync(file, "utf8");
+    expect(text, file).toMatch(new RegExp(`^- \\*\\*対象バージョン\\*\\*: ${version}$`, "m"));
+  }
+  for (const file of [
+    "docs/README.md",
+    "docs/OVERVIEW.md",
+    "docs/spec/current-spec.md",
+    "docs/archive/README.md",
+  ]) {
+    const text = readFileSync(file, "utf8");
+    const paths = [
+      ...[...text.matchAll(/\]\(([^)]+)\)/g)].map((match) => match[1]),
+      ...[...text.matchAll(/\b(?:src|href)=["']([^"']+)["']/g)].map((match) => match[1]),
+    ];
+    for (const raw of paths) {
+      if (/^(?:[a-z]+:)?\/\//i.test(raw) || raw.startsWith("#") || raw.startsWith("mailto:")) {
+        continue;
+      }
+      const target = raw.split("#")[0];
+      if (!target) continue;
+      expect(existsSync(resolve(dirname(file), target)), `${file}: missing ${raw}`).toBe(true);
+    }
+  }
+});
 
 test("app metadata agrees and published notes match the changelog", () => {
   const cargoManifest = readFileSync("src-tauri/Cargo.toml", "utf8");
