@@ -22,4 +22,4 @@
 | `release-gates/preparation/` | v1.2.0・v1.3.0 の公開準備の下書き | v1.2.0・v1.3.0 |
 | `reports/` | 性能・セキュリティの単発レポート、テストの見直し(2026-10-02)、インストーラーの確認画像 | — |
 
-公開の検査に合わせて、次の 3 つは名前を変えました(中身は同じ):`release-gates/v1.3.0/p8.5-00-start-audit.md`(旧 `p8.5-00-baseline-audit.md`)・`release-gates/v1.3.1/p8.8-00-start-audit.md`(旧 `p8.8-00-baseline.md`)・`release-gates/v1.3.3/ui-05-nsis-report.md`(旧 `ui-05-nsis-work-report.md`)。
+公開の検査に合わせて、次の 3 つは名前を変えました(中身は、自分の名前を書いた所のほかは同じ):`release-gates/v1.3.0/p8.5-00-start-audit.md`(旧 `p8.5-00-baseline-audit.md`)・`release-gates/v1.3.1/p8.8-00-start-audit.md`(旧 `p8.8-00-baseline.md`)・`release-gates/v1.3.3/ui-05-nsis-report.md`(旧 `ui-05-nsis-work-report.md`)。
