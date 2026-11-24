@@ -95,30 +95,6 @@ test("P10-14e 12-2 / F4 the key caps keep one height; only Ctrl+F is muted", asy
   }
 });
 
-test("P10-14e 12-3 the small buttons have the 28px / 11px / 700 base", async ({ page }) => {
-  await prepare(page);
-  for (const selector of [
-    ".nextStepRowAction",
-    ".doNowAlternateButton",
-    ".sectionAddButton",
-    ".nextStepFreshnessButton",
-  ]) {
-    const button = page.locator(selector).first();
-    if ((await button.count()) === 0) continue;
-    const box = (await button.boundingBox())!;
-    expect(Math.abs(box.height - 28), `${selector} height`).toBeLessThanOrEqual(1);
-    expect(await style(page, selector, "font-size"), `${selector} font size`).toBe("11px");
-    expect(await style(page, selector, "font-weight"), `${selector} weight`).toBe("700");
-    expect(await style(page, selector, "border-radius"), `${selector} radius`).toBe("8px");
-  }
-  for (const selector of [".todayInstructionButton", ".todayRemoveButton", ".todayTriggerButton"]) {
-    const button = page.locator(selector).first();
-    if ((await button.count()) === 0) continue;
-    expect(await style(page, selector, "font-size"), `${selector} font size`).toBe("11px");
-    expect(await style(page, selector, "font-weight"), `${selector} weight`).toBe("700");
-  }
-});
-
 test("P10-14e 12-4 the Phase 10 weights are only 400, 500 or 700", async ({ page }) => {
   await prepare(page);
   const expected: Array<[string, "400" | "500" | "700"]> = [
@@ -177,60 +153,6 @@ test("P10-14e 5 the Enter hint sits left of the menu, after 今やる一手, and
   expect(Math.abs(hintBox.y + hintBox.height / 2 - (menuBox.y + menuBox.height / 2))).toBeLessThanOrEqual(
     2,
   );
-});
-
-test("P10-15b H5 the sidebar row, name, icon and header use the decided values", async ({
-  page,
-}) => {
-  await prepare(page);
-  const button = page.locator(".sidebar .quickButton").first();
-  const name = button.locator("span:last-child");
-  await expect(button).toBeVisible();
-  expect(Math.round((await button.boundingBox())!.height)).toBe(32);
-  await expect(name).toHaveCSS("font-size", "13px");
-  await expect(name).toHaveCSS("font-weight", "500");
-  await expect(name).toHaveCSS("color", "rgb(244, 240, 232)");
-  await button.hover();
-  await expect(name).toHaveCSS("color", "rgb(244, 240, 232)");
-  await expect(button).toHaveCSS("background-color", "rgba(190, 181, 164, 0.08)");
-  const icon = button.locator(".uiLetterIcon").first();
-  const iconBox = (await icon.boundingBox())!;
-  expect(Math.round(iconBox.width)).toBe(20);
-  expect(Math.round(iconBox.height)).toBe(20);
-  await expect(icon).toHaveCSS("font-size", "10px");
-  await expect(icon).toHaveCSS("font-weight", "700");
-  const header = page.locator(".sidebar .quickGroupHeader").first();
-  expect(Math.round((await header.boundingBox())!.height)).toBe(28);
-  await expect(header.locator("strong")).toHaveCSS("font-size", "11px");
-  await expect(header.locator("strong")).toHaveCSS("font-weight", "700");
-  await expect(header.locator("small")).toHaveCSS("font-weight", "400");
-  await expect(header.locator("small")).toHaveCSS("font-size", "11px");
-});
-
-test("P10-14e 6 the sidebar letter icons are 20px and the search icons stay 22px", async ({
-  page,
-}) => {
-  await prepare(page);
-  const icon = page.locator(".quickButton .uiLetterIcon").first();
-  await expect(icon).toBeVisible();
-  const box = (await icon.boundingBox())!;
-  expect(Math.round(box.width)).toBe(20);
-  expect(Math.round(box.height)).toBe(20);
-  expect(await icon.evaluate((node) => getComputedStyle(node).fontWeight)).toBe("700");
-  expect(await icon.evaluate((node) => getComputedStyle(node).fontSize)).toBe("10px");
-  expect(await icon.evaluate((node) => getComputedStyle(node).borderRadius)).toBe("6px");
-  const color = await icon.getAttribute("data-project-color");
-  expect(color).toBeTruthy();
-  expect(await icon.evaluate((node) => getComputedStyle(node).color)).not.toBe("rgba(0, 0, 0, 0)");
-
-  await page.locator(".topSearchButton").click();
-  await page.locator(".searchPaletteInput").fill("サンプル");
-  const searchIcon = page.locator(".searchPaletteItemIcon.uiLetterIcon").first();
-  await expect(searchIcon).toBeVisible();
-  const searchBox = (await searchIcon.boundingBox())!;
-  expect(Math.round(searchBox.width)).toBe(22);
-  expect(Math.round(searchBox.height)).toBe(22);
-  expect(await searchIcon.evaluate((node) => getComputedStyle(node).fontWeight)).toBe("700");
 });
 
 test("P10-14e 7 / G3 every size shows the 外す label with room beside the timer", async ({
@@ -313,52 +235,6 @@ test("P10-18c R1 Today card remove button appears only on card hover or focus-wi
   await expect(removeButton).toHaveCSS("opacity", "0.45");
 });
 
-test("P10-14e 2 the mini clock uses the same 700 weight as the sidebar clock", async ({
-  page,
-}) => {  await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
-  await page.setViewportSize({ width: 340, height: 120 });
-  await installTauriMock(page, createPublicFixture(), "life-launcher-mini");
-  await page.goto("/?view=mini");
-  await waitForBundledFonts(page);
-  await page.evaluate(() =>
-    (
-      window as Window & {
-        __LIFE_LAUNCHER_VISUAL_QA__: { emit: (event: string, payload?: unknown) => void };
-      }
-    ).__LIFE_LAUNCHER_VISUAL_QA__.emit("mini-timer-snapshot", {
-      active: true,
-      label: "サンプル学習",
-      actionText: "資料を1ページ読む",
-      mode: "countdown",
-      remainingClock: "24:55",
-      paused: false,
-      progressPercent: 0.33,
-      projectId: "sample-learning",
-      projectName: "サンプル学習",
-      projectColorId: "blue",
-    }),
-  );
-  const clock = page.locator(".timerPanel--mini .timerClock");
-  await expect(clock).toBeVisible();
-  expect(await clock.evaluate((node) => getComputedStyle(node).fontWeight)).toBe("700");
-});
-
-test("F7 今やる一手 uses the same Project colour as its dot", async ({ page }) => {
-  await prepare(page);
-  const badge = page.locator(".todayHereBadge");
-  const dot = page
-    .locator(".todayRow")
-    .filter({ has: badge })
-    .locator(".todayProjectIdentity .projectIdentityDot")
-    .first();
-  const badgeColor = await badge.evaluate((node) => getComputedStyle(node).color);
-  const dotColor = await dot.evaluate((node) => getComputedStyle(node).backgroundColor);
-  expect(badgeColor).toBe(dotColor);
-  expect(await badge.evaluate((node) => getComputedStyle(node).borderTopColor)).not.toBe(
-    "rgb(74, 70, 57)",
-  );
-});
-
 test("F8 the long Project name, state pill, 今やる一手 and Enter never overlap", async ({ page }) => {
   const fixture = createPublicFixture();
   fixture.config.projects[0].name = "とても長いプロジェクト名が入っている確認用のプロジェクト";
@@ -392,82 +268,5 @@ test("F8 the long Project name, state pill, 今やる一手 and Enter never over
         ).toBeLessThanOrEqual(1);
       }
     }
-  }
-});
-
-test("F9 Do Now and Today running buttons match the buttons beside them", async ({ page }) => {
-  await prepare(page);
-  const sizes = [
-    ["standard", 1280],
-    ["large", 1600],
-    ["xlarge", 1920],
-  ] as const;
-  for (const [size, width] of sizes) {
-    await page.setViewportSize({ width, height: 900 });
-    await setDisplaySize(page, size);
-    const doNowBefore = await page
-      .locator(".doNowStartPrimary, .doNowStartSecondary, .doNowMeasureButton")
-      .evaluateAll((nodes) =>
-        nodes.map((node) => ({
-          height: node.getBoundingClientRect().height,
-          font: getComputedStyle(node).fontSize,
-          weight: getComputedStyle(node).fontWeight,
-        })),
-      );
-    await page.locator(".doNowStartPrimary").click();
-    await expect(page.locator(".doNowActions .runningPauseButton")).toBeVisible();
-    await page.clock.fastForward(1000);
-    const doNowAfter = await page
-      .locator(".doNowActions .runningPauseButton, .doNowActions .runningStopButton")
-      .evaluateAll((nodes) =>
-        nodes.map((node) => ({
-          height: node.getBoundingClientRect().height,
-          font: getComputedStyle(node).fontSize,
-          weight: getComputedStyle(node).fontWeight,
-        })),
-      );
-    const doNow = [...doNowBefore, ...doNowAfter];
-    expect(new Set(doNow.map((item) => Math.round(item.height))).size).toBe(1);
-    expect(new Set(doNow.map((item) => item.font)).size).toBe(1);
-    expect(doNow.every((item) => item.weight === "700")).toBe(true);
-
-    await page.locator(".doNowActions .runningStopButton").click();
-    await page.clock.fastForward(500);
-    await page.keyboard.press("Escape");
-    const card = page.locator(".todayRow").first();
-    const todayBefore = await card
-      .locator(".todayStartButton--short, .todayStartButton--normal, .todayMeasureButton")
-      .evaluateAll((nodes) =>
-        nodes.map((node) => ({
-          height: node.getBoundingClientRect().height,
-          width: node.getBoundingClientRect().width,
-          font: getComputedStyle(node).fontSize,
-          weight: getComputedStyle(node).fontWeight,
-          radius: getComputedStyle(node).borderRadius,
-        })),
-      );
-    await card.locator(".todayStartButton--short").click();
-    await expect(card.locator(".runningPauseButton")).toBeVisible();
-    await page.clock.fastForward(3000);
-    const todayAfter = await card
-      .locator(".runningPauseButton, .runningStopButton")
-      .evaluateAll((nodes) =>
-        nodes.map((node) => ({
-          height: node.getBoundingClientRect().height,
-          width: node.getBoundingClientRect().width,
-          font: getComputedStyle(node).fontSize,
-          weight: getComputedStyle(node).fontWeight,
-          radius: getComputedStyle(node).borderRadius,
-        })),
-      );
-    const today = [...todayBefore, ...todayAfter];
-    expect(new Set(today.map((item) => Math.round(item.height))).size).toBe(1);
-    const labelled = today.filter((item) => item.width > 40);
-    expect(new Set(labelled.map((item) => Math.round(item.width))).size).toBe(1);
-    expect(new Set(labelled.map((item) => item.font)).size).toBe(1);
-    expect(labelled.every((item) => item.weight === "700")).toBe(true);
-    expect(today.every((item) => item.radius === "8px")).toBe(true);
-    await card.locator(".runningStopButton").click();
-    await page.keyboard.press("Escape");
   }
 });

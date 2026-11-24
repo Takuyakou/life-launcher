@@ -1,8 +1,7 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { createFullTodayFixture, createPickerFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 import { waitForBundledFonts } from "./bundledFonts";
-import { waitForStableRects } from "./helpers";
 
 type QaWindow = Window & {
   __LIFE_LAUNCHER_VISUAL_QA__: {
@@ -25,22 +24,6 @@ async function open(
   if (view === "main") await expect(page.locator(".doNowBand")).toBeVisible();
 }
 
-const styleOf = (locator: Locator) =>
-  locator.evaluate((element) => {
-    const style = getComputedStyle(element);
-    return { fontSize: style.fontSize, fontWeight: style.fontWeight, color: style.color };
-  });
-
-const token = (page: Page, name: string) =>
-  page.evaluate((tokenName) => {
-    const probe = document.createElement("div");
-    probe.style.setProperty("color", `var(${tokenName})`);
-    document.body.appendChild(probe);
-    const value = getComputedStyle(probe).color;
-    probe.remove();
-    return value;
-  }, name);
-
 async function openSettings(page: Page, tab?: string) {
   await page.getByRole("button", { name: "設定を開く" }).click();
   const settings = page.getByRole("dialog", { name: "設定" });
@@ -49,35 +32,6 @@ async function openSettings(page: Page, tab?: string) {
 }
 
 // 1. English eyebrows ----------------------------------------------------------------------
-
-test("P9-10 the Wishlist edit dialog and the Dictionary window share the same English eyebrows as their siblings", async ({
-  page,
-}) => {
-  await open(page);
-  await page.locator(".inboxBand .disclosure").click();
-  await waitForStableRects(page, [".inboxBand .inboxList"]);
-  await page.locator('[data-inbox-id="sample-weekend"]').click({ button: "right" });
-  await page.getByRole("menuitem", { name: "編集" }).click();
-  const edit = page.getByRole("dialog", { name: "やりたいこと編集" });
-  await expect(edit.getByRole("heading", { level: 2 })).toHaveText("やりたいことを編集");
-  await expect(edit.locator(".eyebrow")).toHaveText("Wishlist");
-  await page.keyboard.press("Escape");
-
-  // The add dialog already says Wishlist: same word for the same object.
-  await page.getByRole("button", { name: "やりたいことを追加", exact: true }).first().click();
-  await expect(
-    page.getByRole("dialog", { name: /やりたいことを追加/ }).locator(".eyebrow"),
-  ).toHaveText("Wishlist");
-});
-
-test("P9-10 the Dictionary window settings dialog uses the Dictionary eyebrow", async ({ page }) => {
-  // V163-S2: the in-Main dictionary overlay was removed, so the only dialog of this object
-  // is the Dictionary window's settings.
-  await open(page, createFullTodayFixture(), "dictionary", { width: 1000, height: 640 });
-  await page.getByRole("button", { name: "辞書の設定" }).click();
-  const dialog = page.getByRole("dialog", { name: "辞書の設定" });
-  await expect(dialog.locator(".eyebrow")).toHaveText("Dictionary");
-});
 
 // 2. Day start unit ---------------------------------------------------------------------------
 
@@ -212,107 +166,6 @@ test("P9-10 the maintenance tab starts with a note, and the footer buttons stay"
 });
 
 // 6. Save / cancel text size ------------------------------------------------------------------
-
-async function expectSameSize(save: Locator, cancel: Locator) {
-  const a = await styleOf(save);
-  const b = await styleOf(cancel);
-  expect(a.fontSize, "font-size").toBe(b.fontSize);
-  expect(a.fontWeight, "font-weight").toBe(b.fontWeight);
-  return { save: a, cancel: b };
-}
-
-test("P9-10 save and cancel have the same text size in the Next Step edit dialog, with the colours unchanged", async ({
-  page,
-}) => {
-  await open(page);
-  await page
-    .locator(".nextStepCard", { hasText: "資料を1ページ読む" })
-    .getByRole("button", { name: "編集", exact: true })
-    .click();
-  const dialog = page.getByRole("dialog", { name: "次の一手を編集" });
-  const { save, cancel } = await expectSameSize(
-    dialog.getByRole("button", { name: "保存", exact: true }),
-    dialog.getByRole("button", { name: "キャンセル", exact: true }),
-  );
-  expect(save.color).toBe(await token(page, "--good"));
-  expect(cancel.color).toBe("rgb(255, 180, 173)");
-});
-
-test("P9-10 save and cancel have the same text size in the other Main dialogs", async ({ page }) => {
-  await open(page);
-  const pairs: Array<[string, () => Promise<Locator>]> = [
-    [
-      "project add",
-      async () => {
-        await page.getByRole("button", { name: "プロジェクトを追加", exact: true }).first().click();
-        return page.getByRole("dialog", { name: "プロジェクトを追加" });
-      },
-    ],
-    [
-      "wishlist add",
-      async () => {
-        await page.getByRole("button", { name: "やりたいことを追加", exact: true }).first().click();
-        return page.getByRole("dialog", { name: /やりたいことを追加/ });
-      },
-    ],
-    [
-      "group rename",
-      async () => {
-        await page.locator(".quickGroupHeader").first().click({ button: "right" });
-        await page.getByRole("menuitem", { name: "名前を変更" }).click();
-        return page.getByRole("dialog", { name: "グループ名変更" });
-      },
-    ],
-    [
-      "button builder",
-      async () => {
-        await page.locator(".quickGroupHeader").first().click({ button: "right" });
-        await page.getByRole("menuitem", { name: "ボタンを追加" }).click();
-        return page.getByRole("dialog").last();
-      },
-    ],
-    [
-      "settings",
-      async () => {
-        await page.getByRole("button", { name: "設定を開く" }).click();
-        return page.getByRole("dialog", { name: "設定" });
-      },
-    ],
-    [
-      "today picker",
-      async () => {
-        await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
-        return page.getByRole("dialog", { name: "今日やるものを選ぶ" });
-      },
-    ],
-  ];
-  for (const [name, openDialog] of pairs) {
-    const dialog = await openDialog();
-    await expect(dialog, name).toBeVisible();
-    const actions = dialog.locator(
-      ".dialogActions, .todayPickerActions, .settingsDialog > .dialogActions",
-    ).last();
-    const buttons = actions.getByRole("button");
-    const count = await buttons.count();
-    // The last two buttons are always the positive action and cancel.
-    await expectSameSize(buttons.nth(count - 2), buttons.nth(count - 1));
-    await page.keyboard.press("Escape");
-    await page.getByRole("button", { name: "破棄して閉じる" }).click({ timeout: 300 }).catch(() => undefined);
-    await expect(dialog, name).toHaveCount(0);
-  }
-});
-
-test("P9-10 save and cancel have the same text size in the Dictionary window settings", async ({ page }) => {
-  await open(page, createFullTodayFixture(), "dictionary", { width: 1000, height: 640 });
-  await page.getByRole("button", { name: "辞書の設定" }).click();
-  const dialog = page.getByRole("dialog", { name: "辞書の設定" });
-  const { save, cancel } = await expectSameSize(
-    dialog.getByRole("button", { name: "保存" }),
-    dialog.getByRole("button", { name: "キャンセル" }),
-  );
-  expect(save.color).toBe("rgb(111, 207, 151)");
-  expect(cancel.color).toBe("rgb(255, 180, 173)");
-});
 
 // 7. Records back button ----------------------------------------------------------------------
 

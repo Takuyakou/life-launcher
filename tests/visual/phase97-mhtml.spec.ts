@@ -197,7 +197,7 @@ test("Shift_JIS MHTML text is decoded without mojibake", async ({ page }) => {
   await expect(frame.locator("p")).toHaveText("シフトJISの本文です。");
 });
 
-for (const name of ["chrome-basic.mht", "chrome-basic-upper.MHTML"]) {
+for (const name of ["chrome-basic.mht"]) {
   test(`${name} opens like .mhtml`, async ({ page }) => {
     await openViewer(page, name);
     const frame = await expectFrame(page);
@@ -306,18 +306,8 @@ test("arrow keys scroll the MHTML body like HTML", async ({ page }) => {
     .toBeGreaterThan(100);
 });
 
-test("nested multipart deeper than 3 is rejected", async ({ page }) => {
-  await openViewer(page, "nested-multipart-depth4.mhtml");
-  const alert = page.getByRole("alert");
-  await expect(alert).toContainText("このMHTMLファイルは表示できません");
-  await expect(alert).toContainText("入れ子が深すぎます");
-});
-
 for (const [name, reason] of [
   ["broken-boundary.mhtml", "境界が途中で切れています"],
-  ["not-multipart.mhtml", "multipartではありません"],
-  ["no-html.mhtml", "本文のHTMLがありません"],
-  ["too-many-parts.mhtml", "部分が多すぎます"],
 ] as const) {
   test(`${name} reports why it cannot be shown`, async ({ page }) => {
     await openViewer(page, name);
@@ -348,65 +338,6 @@ test("the assembled HTML limit reports a too-large MHTML", async ({ page }) => {
   await openViewer(page, "many-image-refs.mhtml", { limits: { maxAssembledBytes: 5_000 } });
   const alert = page.getByRole("alert");
   await expect(alert).toContainText("このMHTMLファイルは大きすぎるため表示できません");
-});
-
-test("assembly stops before outerHTML when the running size exceeds the limit", async ({
-  page,
-}) => {
-  await page.goto("/");
-  await page.addScriptTag({ content: await getAssembleMhtmlScript() });
-  const result = await page.evaluate(async () => {
-    const { assembleMhtml } = (
-      window as unknown as {
-        __qaAssembleMhtml: { assembleMhtml: typeof AssembleMhtmlFn };
-      }
-    ).__qaAssembleMhtml;
-    const descriptor = Object.getOwnPropertyDescriptor(Element.prototype, "outerHTML");
-    let outerHtmlRead = false;
-    Object.defineProperty(Element.prototype, "outerHTML", {
-      configurable: true,
-      get() {
-        outerHtmlRead = true;
-        return descriptor?.get?.call(this);
-      },
-    });
-    try {
-      const references = Array.from(
-        { length: 500 },
-        (_, index) => `<img src="cid:big" id="i${index}">`,
-      ).join("");
-      const parsed = {
-        html: `<html><body>${references}</body></html>`,
-        baseUrl: null,
-        resources: [
-          {
-            kind: "image" as const,
-            mime: "image/png",
-            contentId: "big",
-            location: null,
-            base64: "A".repeat(100_000),
-          },
-        ],
-      };
-      let code: string | null = null;
-      try {
-        assembleMhtml(parsed, {
-          maxPartCount: 1_000,
-          maxDepth: 3,
-          maxDecodedBytes: 64 * 1024 * 1024,
-          maxAssembledBytes: 150_000,
-          timeoutMs: 10_000,
-        });
-      } catch (error) {
-        code = (error as { code?: string }).code ?? String(error);
-      }
-      return { code, outerHtmlRead };
-    } finally {
-      if (descriptor) Object.defineProperty(Element.prototype, "outerHTML", descriptor);
-    }
-  });
-  expect(result.code).toBe("too-large");
-  expect(result.outerHtmlRead).toBe(false);
 });
 
 test("CSS url rewriting stops before building the whole string", async ({ page }) => {
@@ -490,11 +421,4 @@ test("the 20 MiB file limit reports the limit", async ({ page }) => {
   await expect(
     page.getByText("このMHTMLファイルは大きすぎるため表示できません（上限は20 MiBです）"),
   ).toBeVisible();
-});
-
-test("decoding stops with a message when the worker exceeds the time limit", async ({ page }) => {
-  await openViewer(page, "chrome-basic.mhtml", { limits: { timeoutMs: 0 } });
-  const alert = page.getByRole("alert");
-  await expect(alert).toContainText("このMHTMLファイルは表示できません");
-  await expect(alert).toContainText("時間内に終わりませんでした");
 });

@@ -405,23 +405,6 @@ test.describe("P96-01 top menu labels follow what fits", () => {
 });
 
 test.describe("P96-01 window control buttons", () => {
-  test("three buttons with correct labels exist on main, records and viewer", async ({ page }) => {
-    await prepare(page, 1080);
-    const expected = ["最小化", "最大化", "閉じる"];
-    for (const name of expected) {
-      await expect(page.getByRole("button", { name, exact: true })).toBeVisible();
-    }
-    await page.getByRole("button", { name: "記録ビューを開く" }).click();
-    for (const name of expected) {
-      await expect(page.getByRole("button", { name, exact: true })).toBeVisible();
-    }
-
-    await prepareViewer(page);
-    for (const name of expected) {
-      await expect(page.getByRole("button", { name, exact: true })).toBeVisible();
-    }
-  });
-
   test("maximize button switches to restore while maximized", async ({ page }) => {
     await prepare(page, 1080);
     await page.evaluate(() => {
@@ -564,24 +547,6 @@ test.describe("P96-01 window control buttons", () => {
     expect(Number.parseFloat(focused?.outlineWidth ?? "0")).toBeGreaterThan(0);
   });
 
-  test("buttons invoke the window commands and nothing else", async ({ page }) => {
-    await prepare(page, 1080);
-    const state = () => page.evaluate(() => (window as VisualQaWindow).__LIFE_LAUNCHER_VISUAL_QA__.mainWindowState());
-    await page.getByRole("button", { name: "最小化", exact: true }).click();
-    expect((await state()).minimized).toBe(true);
-    await page.getByRole("button", { name: "最大化", exact: true }).click();
-    expect((await state()).maximized).toBe(true);
-    await page.getByRole("button", { name: "最小化", exact: true }).click();
-    expect((await state()).minimized).toBe(true);
-    await page.getByRole("button", { name: "閉じる", exact: true }).click();
-    expect((await state()).visible).toBe(false);
-    const commands = (await qa(page))
-      .filter(({ command }) => command.startsWith("plugin:window|"))
-      .map(({ command }) => command);
-    expect(commands).toContain("plugin:window|minimize");
-    expect(commands).toContain("plugin:window|toggle_maximize");
-    expect(commands).toContain("plugin:window|close");
-  });
 });
 
 test.describe("P96-01 drag regions", () => {

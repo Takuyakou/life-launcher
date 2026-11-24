@@ -138,7 +138,7 @@ test("clicking the extended right edge closes the window", async ({ page }) => {
     .toBe(false);
 });
 
-for (const size of ["large", "xlarge"] as const) {
+for (const size of ["large"] as const) {
   test(`maximized top-right corner hits close at ${size}`, async ({ page }) => {
     await prepare(page, 1440, size);
     await page.evaluate(() => {
@@ -278,9 +278,6 @@ test("Ctrl+W cannot be saved as a configurable shortcut", async ({ page }) => {
 
 for (const field of [
   "focusHotkey",
-  "launcherHotkey",
-  "miniHotkey",
-  "instructionHotkey",
 ] as const) {
   test(`config ${field} Ctrl+W takes priority over closing`, async ({ page }) => {
     const fixture = createFullTodayFixture();

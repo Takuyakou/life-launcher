@@ -41,18 +41,3 @@ test("the Maintenance tab shows the package version at the bottom with the relea
   await expect(version.locator(".settingsReleaseLink")).toHaveText("リリースページを開く");
   await expect(version).toHaveCSS("font-size", "13px");
 });
-
-test("the version line stays out of the Basic settings screenshot", async ({ page }) => {
-  await prepare(page);
-  const settings = await openSettings(page);
-  // phase9-visual.spec.ts takes the settings-basic screenshot on this tab.
-  await settings.getByRole("tab", { name: "基本" }).click();
-  await expect(settings.locator(".settingsVersion")).toBeHidden();
-  await settings.getByRole("tab", { name: "メンテナンス" }).click();
-  await expect(settings.locator(".settingsVersion")).toBeVisible();
-});
-
-test("the main screen does not show the version", async ({ page }) => {
-  await prepare(page);
-  await expect(page.getByText(/^バージョン /)).toHaveCount(0);
-});

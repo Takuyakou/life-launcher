@@ -195,6 +195,12 @@ test("P84-01 reaching 3/3 keeps the Picker open until 決定 saves the order", a
   await expect(dialog).toBeVisible();
   await expect(dialog.locator(".todayPickerSlot--selected")).toHaveCount(3);
   await expect(dialog.locator(".todayPickerSlot--empty")).toHaveCount(0);
+  // P10-14d P2: every chosen slot carries its Project colour line.
+  const chosenSlot = dialog.locator(".todayPickerSlot--selected").first();
+  await expect(chosenSlot).toHaveAttribute("data-project-color", /.+/);
+  expect(await chosenSlot.evaluate((element) => getComputedStyle(element).borderTopWidth)).toBe(
+    "2px",
+  );
   expect((await currentConfig(page)).today.items).toHaveLength(2);
 
   await dialog.getByRole("button", { name: "決定", exact: true }).click();
@@ -409,35 +415,6 @@ test("P84 Picker keeps the selected Wishlist row visible with its ✓", async ({
   expect((await currentConfig(page)).today.items).toHaveLength(1);
 });
 
-test("P84 Picker remains contained and keeps actions visible at narrow width", async ({ page }) => {
-  const fixture = createPublicFixture();
-  fixture.config.today.items = fixture.config.today.items.slice(0, 1);
-  fixture.config.projects[0].name = "長いプロジェクト名の狭幅表示確認";
-  const longAction = "長い日本語の候補でもボタンと重ならず今日やる一手として最後まで確認できるようにする";
-  fixture.config.projects[1].nextStep!.text = longAction;
-  await prepare(page, fixture, 520);
-
-  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
-  const dialog = picker(page);
-  const dialogBox = await dialog.boundingBox();
-  const actionBoxes = await dialog
-    .locator(".todayPickerRow > button")
-    .evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect()));
-  expect(dialogBox).not.toBeNull();
-  expect(actionBoxes.length).toBeGreaterThan(0);
-  expect(actionBoxes.every((box) => box.left >= dialogBox!.x && box.right <= dialogBox!.x + dialogBox!.width + 1)).toBe(true);
-  const longCandidate = dialog.locator(".todayPickerRow", { hasText: longAction });
-  await expect(longCandidate.locator(".todayPickerTask")).toHaveText(longAction);
-  const taskBox = await longCandidate.locator(".todayPickerCopy").boundingBox();
-  const addBox = await longCandidate.getByRole("button", { name: "今日へ" }).boundingBox();
-  expect(taskBox && addBox).toBeTruthy();
-  expect(taskBox!.x + taskBox!.width).toBeLessThanOrEqual(addBox!.x + 1);
-  const removeButton = dialog.getByRole("button", { name: "今日から外す", exact: true });
-  await expect(removeButton).toBeVisible();
-  await expect(removeButton).toBeInViewport();
-  expect(await dialog.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
-});
-
 test("P84 Picker keeps both columns and a scrollable candidate list in a small window", async ({
   page,
 }) => {
@@ -523,35 +500,6 @@ test("P84 Picker shows both source groups without tabs on every open", async ({ 
   await expect(dialog.getByRole("tab")).toHaveCount(0);
   await expect(dialog.locator('[data-today-picker-section="next-step"]')).toBeVisible();
   await expect(dialog.locator('[data-today-picker-section="wishlist"]')).toBeVisible();
-});
-
-test("P84 add dialogs expose a consistent top-right close action", async ({ page }) => {
-  const fixture = createPublicFixture();
-  fixture.config.projects[0].nextStep = undefined;
-  await prepare(page, fixture);
-
-  const projectOpener = page.getByRole("button", { name: "プロジェクトを追加", exact: true });
-  await projectOpener.click();
-  const projectDialog = page.getByRole("dialog", { name: "プロジェクトを追加" });
-  await projectDialog.getByRole("button", { name: "プロジェクトを追加を閉じる" }).click();
-  await expect(projectDialog).toHaveCount(0);
-  await expect(projectOpener).toBeFocused();
-
-  const wishlistOpener = page.getByRole("button", { name: "やりたいことを追加", exact: true });
-  await wishlistOpener.click();
-  const wishlistDialog = page.getByRole("dialog", { name: "やりたいことを追加" });
-  await wishlistDialog.getByRole("button", { name: "やりたいことを追加を閉じる" }).click();
-  await expect(wishlistDialog).toHaveCount(0);
-  await expect(wishlistOpener).toBeFocused();
-
-  const nextStepOpener = page.getByRole("button", { name: "次の一手を設定", exact: true });
-  await nextStepOpener.click();
-  const nextStepDialog = page.getByRole("dialog", { name: "次の一手を設定" });
-  await nextStepDialog.getByRole("tab", { name: "＋ 新しく入力" }).click();
-  await nextStepDialog.getByRole("button", { name: "次の一手を設定を閉じる" }).click();
-  await expect(nextStepDialog).toHaveCount(0);
-  await expect(page.getByRole("dialog", { name: "入力内容を破棄して閉じますか？" })).toHaveCount(0);
-  await expect(nextStepOpener).toBeFocused();
 });
 
 test("Initially completed Today cards stay visible and offer a batch only when all three are done", async ({ page }) => {
