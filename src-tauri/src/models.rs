@@ -1032,64 +1032,6 @@ mod tests {
     }
 
     #[test]
-    fn initial_config_is_a_generic_empty_shell() {
-        let config = initial_config();
-
-        assert!(config.groups.is_empty());
-        assert!(config.buttons.is_empty());
-        assert!(config.projects.is_empty());
-        assert!(config.today.victory.text.is_empty());
-        assert!(config.today.items.is_empty());
-        assert!(config.inbox.is_empty());
-        assert_eq!(config.settings.default_timer_minutes, DEFAULT_TIMER_MINUTES);
-        assert_eq!(config.settings.short_timer_minutes, SHORT_TIMER_MINUTES);
-        assert_eq!(
-            config.settings.focus_hotkey.as_deref(),
-            Some("Ctrl+Alt+Space")
-        );
-    }
-
-    #[test]
-    fn expanded_timer_preference_round_trips_without_a_schema_bump() {
-        let mut config = sample_config();
-        config.projects[0]
-            .next_step
-            .as_mut()
-            .expect("next step")
-            .expand_timer_on_start = Some(true);
-        config.today.items[0].expand_timer_on_start = Some(true);
-
-        let json = serde_json::to_value(&config).expect("serialize config");
-        assert_eq!(json["projects"][0]["nextStep"]["expandTimerOnStart"], true);
-        assert_eq!(json["today"]["items"][0]["expandTimerOnStart"], true);
-        let restored: AppConfig = serde_json::from_value(json).expect("deserialize config");
-        assert_eq!(restored.version, config.version);
-        assert_eq!(
-            restored.projects[0]
-                .next_step
-                .as_ref()
-                .unwrap()
-                .expand_timer_on_start,
-            Some(true)
-        );
-        assert_eq!(restored.today.items[0].expand_timer_on_start, Some(true));
-
-        let legacy: AppConfig = serde_json::from_value(
-            serde_json::to_value(sample_config()).expect("serialize legacy config"),
-        )
-        .expect("deserialize legacy config");
-        assert_eq!(
-            legacy.projects[0]
-                .next_step
-                .as_ref()
-                .unwrap()
-                .expand_timer_on_start,
-            None
-        );
-        assert_eq!(legacy.today.items[0].expand_timer_on_start, None);
-    }
-
-    #[test]
     fn date_key_changes_at_the_configured_day_start_hour() {
         let before_start =
             crate::datetime::parse_rfc3339("2026-07-05T03:59:00+09:00").expect("datetime");

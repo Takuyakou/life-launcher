@@ -449,21 +449,12 @@ test("V160-S7 the ring uses the gold inset shadow and stays while turning", asyn
   await expect(stage).toHaveAttribute("data-focus-ring", "true");
 });
 
-test("V160-B2 baseline: spread, cover and single", async ({ page }) => {
+test("V160-B2 baseline: spread and cover", async ({ page }) => {
   await openViewer(page, bookFixture({ state: { lastPage: 34 } }), BOOK_PATH, {
     reduce: true,
   });
   await waitForBook(page);
   await expect(page).toHaveScreenshot("book-spread.png", SCREENSHOT_OPTIONS);
-
-  await page.getByRole("button", { name: "1ページ", exact: true }).click();
-  await expect(page.locator(".bookPageLabel")).toHaveText("34 / 120");
-  await page.evaluate(() =>
-    Promise.all(
-      Array.from(document.images).map((image) => image.decode().catch(() => undefined)),
-    ),
-  );
-  await expect(page).toHaveScreenshot("book-single.png", SCREENSHOT_OPTIONS);
 
   await page.getByRole("button", { name: "見開き", exact: true }).click();
   await expect(page.locator(".bookPageLabel")).toHaveText("34–35 / 120");

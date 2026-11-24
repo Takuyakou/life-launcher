@@ -217,12 +217,8 @@ fn generated_config_schema_is_valid_json_with_project_fields() {
         .expect("project required fields")
         .iter()
         .all(|field| field != "northStar" && field != "weeklyFocus" && field != "nextStep"));
-}
 
-#[test]
-fn generated_config_schema_has_source_wishlist_id_and_expand_timer_on_start() {
-    let schema: serde_json::Value =
-        serde_json::from_str(config_schema_json()).expect("config schema must be valid JSON");
+    // The optional fields the app adds keep their schema shape and stay optional.
     let next_step = &schema["$defs"]["nextStep"]["properties"];
     assert_eq!(
         next_step["sourceWishlistId"],
@@ -244,6 +240,26 @@ fn generated_config_schema_has_source_wishlist_id_and_expand_timer_on_start() {
         schema["$defs"]["nextStepExecutionSettings"]["additionalProperties"], false,
         "nextStepExecutionSettings must keep rejecting unknown keys"
     );
+    assert_eq!(
+        next_step["resumeNote"],
+        serde_json::json!({ "type": "string", "minLength": 1, "maxLength": 80 })
+    );
+    let next_step_required = schema["$defs"]["nextStep"]["required"]
+        .as_array()
+        .expect("nextStep required fields");
+    assert!(
+        next_step_required.iter().all(|field| field != "resumeNote"),
+        "resumeNote must stay optional"
+    );
+    assert_eq!(
+        schema["$defs"]["settings"]["properties"]["firstRunDoneAt"],
+        serde_json::json!({ "type": "string", "format": "date-time" })
+    );
+    assert!(schema["$defs"]["settings"]["required"]
+        .as_array()
+        .expect("settings required fields")
+        .iter()
+        .all(|field| field != "firstRunDoneAt"));
 }
 
 fn config_json_with_source_wishlist_id(value: Option<&str>) -> serde_json::Value {
@@ -267,7 +283,7 @@ fn config_json_with_source_wishlist_id(value: Option<&str>) -> serde_json::Value
 }
 
 #[test]
-fn source_wishlist_id_survives_a_read_sanitize_and_write_round_trip() {
+fn source_wishlist_id_round_trips_and_is_dropped_when_empty() {
     let json = config_json_with_source_wishlist_id(Some("wish-list-1"));
     let config: AppConfig =
         serde_json::from_value(json).expect("config with sourceWishlistId must deserialize");
@@ -278,17 +294,13 @@ fn source_wishlist_id_survives_a_read_sanitize_and_write_round_trip() {
             .and_then(|step| step.source_wishlist_id.as_deref()),
         Some("wish-list-1")
     );
-
     let (config, _changed, _warnings) = sanitize_config(config);
     let written = serde_json::to_value(&config).expect("config must serialize");
     assert_eq!(
         written["projects"][0]["nextStep"]["sourceWishlistId"],
         serde_json::json!("wish-list-1")
     );
-}
 
-#[test]
-fn source_wishlist_id_is_omitted_when_absent() {
     let json = config_json_with_source_wishlist_id(None);
     let config: AppConfig =
         serde_json::from_value(json).expect("config without sourceWishlistId must deserialize");
@@ -299,7 +311,6 @@ fn source_wishlist_id_is_omitted_when_absent() {
             .and_then(|step| step.source_wishlist_id.clone()),
         None
     );
-
     let (config, _changed, _warnings) = sanitize_config(config);
     let written = serde_json::to_value(&config).expect("config must serialize");
     assert!(
@@ -308,10 +319,7 @@ fn source_wishlist_id_is_omitted_when_absent() {
             .is_none(),
         "sourceWishlistId must not be written when it is absent"
     );
-}
 
-#[test]
-fn source_wishlist_id_is_removed_when_empty() {
     for value in ["", "   "] {
         let json = config_json_with_source_wishlist_id(Some(value));
         let config: AppConfig =
@@ -354,7 +362,7 @@ fn source_wishlist_id_stays_when_the_wishlist_item_is_gone() {
 }
 
 #[test]
-fn first_run_done_at_is_stamped_once_and_kept_afterwards() {
+fn first_run_done_at_is_stamped_once_and_round_trips() {
     let mut settings = sample_config().settings;
     assert_eq!(settings.first_run_done_at, None);
     assert!(stamp_first_run_done_at(&mut settings));
@@ -366,13 +374,9 @@ fn first_run_done_at_is_stamped_once_and_kept_afterwards() {
         datetime::parse_rfc3339(&stamp).is_some(),
         "the stamp must be an RFC 3339 instant: {stamp}"
     );
-
     assert!(!stamp_first_run_done_at(&mut settings));
     assert_eq!(settings.first_run_done_at.as_deref(), Some(stamp.as_str()));
-}
 
-#[test]
-fn first_run_done_at_survives_a_read_sanitize_and_write_round_trip() {
     let mut config = sample_config();
     config.settings.first_run_done_at = Some("2026-11-15T09:00:00+09:00".to_string());
     let (config, _changed, _warnings) = sanitize_config(config);
@@ -388,7 +392,7 @@ fn first_run_done_at_survives_a_read_sanitize_and_write_round_trip() {
 }
 
 #[test]
-fn unreadable_first_run_done_at_is_dropped_without_being_replaced() {
+fn first_run_done_at_is_dropped_unreadable_and_loading_never_stamps() {
     for value in ["", "   ", "not-a-date", "2026-11-15"] {
         let mut config = sample_config();
         config.settings.first_run_done_at = Some(value.to_string());
@@ -404,33 +408,13 @@ fn unreadable_first_run_done_at_is_dropped_without_being_replaced() {
             "{value:?} must not be written"
         );
     }
-}
 
-#[test]
-fn loading_never_stamps_first_run_done_at() {
     let mut config = sample_config();
     config.settings.first_run_done_at = None;
     let (config, _changed, _warnings) = sanitize_config(config);
     assert_eq!(
         config.settings.first_run_done_at, None,
         "sanitize (the load path) must not create the stamp"
-    );
-}
-
-#[test]
-fn generated_config_schema_has_first_run_done_at() {
-    let schema: serde_json::Value =
-        serde_json::from_str(config_schema_json()).expect("config schema must be valid JSON");
-    assert_eq!(
-        schema["$defs"]["settings"]["properties"]["firstRunDoneAt"],
-        serde_json::json!({ "type": "string", "format": "date-time" })
-    );
-    let required = schema["$defs"]["settings"]["required"]
-        .as_array()
-        .expect("settings required fields");
-    assert!(
-        required.iter().all(|field| field != "firstRunDoneAt"),
-        "firstRunDoneAt must stay optional"
     );
 }
 
@@ -655,6 +639,19 @@ fn next_step_freshness_changes_at_fourteen_days() {
     project.next_step.as_mut().expect("next step").reviewed_at =
         Some("2026-07-10T12:00:00Z".to_string());
     assert!(!project_is_stale_at(&project, fourteen_days));
+
+    // The shared helper measures exactly fourteen days at the boundary.
+    let basis = datetime::parse_rfc3339("2026-11-06T00:00:00+00:00").expect("datetime");
+    assert!(!datetime::is_at_least_days_old(
+        basis,
+        datetime::parse_rfc3339("2026-11-19T23:59:59+00:00").expect("datetime"),
+        14
+    ));
+    assert!(datetime::is_at_least_days_old(
+        basis,
+        datetime::parse_rfc3339("2026-11-20T00:00:00+00:00").expect("datetime"),
+        14
+    ));
 }
 
 #[test]

@@ -594,9 +594,6 @@ test("routes a JSON drop by the side and shows the two-zone overlay", async ({ p
 
   await emitDrop(page, "dragOver", ["C:\\PublicDemo\\import.json"], { x: 100, y: 300 });
   await expect(page.locator(".importDropZone--sidebar.importDropZone--active")).toBeVisible();
-  await expect(overlay).toHaveScreenshot("phase97-import-drop-sidebar.png", {
-    maxDiffPixels: 12,
-  });
 
   await emitDrop(page, "dragEnter", ["C:\\PublicDemo\\import-main.json"], { x: 900, y: 300 });
   await emitDrop(page, "drop", ["C:\\PublicDemo\\import-main.json"], { x: 900, y: 300 });

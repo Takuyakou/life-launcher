@@ -432,19 +432,4 @@ mod tests {
         let end_of_year = parse_date("2026-12-31").expect("date");
         assert_eq!(format_date(add_days(end_of_year, 1)), "2027-01-01");
     }
-
-    #[test]
-    fn measures_fourteen_days_exactly() {
-        let basis = at("2026-11-06T00:00:00+00:00");
-        assert!(!is_at_least_days_old(
-            basis,
-            at("2026-11-19T23:59:59+00:00"),
-            14
-        ));
-        assert!(is_at_least_days_old(
-            basis,
-            at("2026-11-20T00:00:00+00:00"),
-            14
-        ));
-    }
 }
