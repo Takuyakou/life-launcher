@@ -1,6 +1,6 @@
 # Life Launcher UI/UX・機能仕様書
 
-- **対象バージョン**: 1.6.3
+- **対象バージョン**: 1.6.4
 - **状態**: 現行
 - **最終更新**: 2026-11-24
 
@@ -8,12 +8,12 @@
 
 | 項目             | 内容                                                                   |
 | ---------------- | ---------------------------------------------------------------------- |
-| 文書版           | 1.6.3                                                                  |
+| 文書版           | 1.6.4                                                                  |
 | 対象             | Windowsデスクトップ版 Life Launcher                                    |
-| 実装基準         | Public repository `Takuyakou/life-launcher` の v1.6.3 実装             |
-| 作業branch       | `v163/03-app-modals-split` |
-| 監査基準コミット | `e2a7c0d`（v1.6.3 の実装と基準画像）                                             |
-| 確認日           | 2026-11-23                                                             |
+| 実装基準         | Public repository `Takuyakou/life-launcher` の v1.6.4 実装             |
+| 作業branch       | `v164/04-docs-public-release` |
+| 監査基準コミット | `5321a91`（v1.6.4 の文書と基準画像）                                             |
+| 確認日           | 2026-11-24                                                             |
 | UI実装           | Tauri 2 / React 18 / TypeScript / CSS                                  |
 
 本書は、Life Launcher の UI/UX と主要機能を、現在のコード、型、設定、capability、テストから整理した現行仕様書である。
