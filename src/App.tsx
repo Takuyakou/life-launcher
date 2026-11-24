@@ -7634,117 +7634,7 @@ function DashboardApp() {
       ? nextStep.sourceWishlistId === item.id
       : nextStep.text.trim() === item.text.trim();
   };
-  const renderTodayPickerSelectedItem = (item: TodayItem, index: number) => {
-    const project = item.projectId ? projectsById.get(item.projectId) : undefined;
-    const pickerItemRunning = timerRunsTodayItem(
-      todayEntries(todayPickerDraftItems),
-      activeTimer,
-      todayTimerSourceId(item, index),
-      todaySourceKey(item, index),
-    );
-    return (
-      <div
-        className={[
-          "todayPickerSlot todayPickerSlot--selected todayPickerRow todayPickerRow--selected",
-          todayPickerDragIndex === index ? "todayPickerSlot--dragging" : "",
-        ]
-          .filter(Boolean)
-          .join(" ")}
-        data-project-color={
-          project ? resolveProjectColorId(project.id, project.colorId) : undefined
-        }
-        data-today-picker-slot-index={index}
-        draggable={!todayPickerSaving}
-        key={`today-selected:${todaySourceKey(item, index)}`}
-        onDragEnd={() => setTodayPickerDragIndex(null)}
-        onDragOver={(event) => {
-          if (todayPickerDragIndex === null) return;
-          event.preventDefault();
-        }}
-        onDragStart={(event) => {
-          event.dataTransfer.effectAllowed = "move";
-          event.dataTransfer.setData("text/plain", String(index));
-          setTodayPickerDragIndex(index);
-        }}
-        onDrop={(event) => {
-          event.preventDefault();
-          moveTodayPickerItemToIndex(index);
-        }}
-        onKeyDown={(event) => {
-          if (!event.altKey || (event.key !== "ArrowUp" && event.key !== "ArrowDown")) return;
-          event.preventDefault();
-          moveTodayPickerItem(index, event.key === "ArrowUp" ? index - 1 : index + 1);
-        }}
-        tabIndex={0}
-      >
-        <span aria-hidden="true" className="todayPickerSlotIndex">
-          {index + 1}
-        </span>
-        <div className="todayPickerSlotCopy">
-          {project && (
-            <span className="todayPickerSlotProject">
-              <span aria-hidden="true" className="todayPickerDot" />
-              {project.name}
-            </span>
-          )}
-          <strong className="todayPickerSlotTask" title={item.text}>
-            {item.text}
-          </strong>
-        </div>
-        <button
-          aria-label="今日から外す"
-          className="todayPickerRemoveButton"
-          disabled={todayPickerSaving || pickerItemRunning}
-          onClick={() => removeTodayPickerDraftItem(index)}
-          onPointerDown={(event) => event.stopPropagation()}
-          title={pickerItemRunning ? "タイマーを停止してから外してください" : undefined}
-          type="button"
-        >
-          <UiIcon name="close" size={16} />
-        </button>
-      </div>
-    );
-  };
-  const renderTodayPickerCandidate = (candidate: TodayCandidate) => {
-    const project = candidate.projectId ? projectsById.get(candidate.projectId) : undefined;
-    const selected = todayPickerCandidateSelected(candidate);
-    return (
-      <div
-        className="todayPickerRow"
-        data-project-color={
-          project ? resolveProjectColorId(project.id, project.colorId) : "uncategorized"
-        }
-        key={candidate.key}
-      >
-        <div className="todayPickerCopy">
-          <span className="todayPickerProject">
-            <span aria-hidden="true" className="todayPickerDot" />
-            {project?.name ?? "未分類"}
-          </span>
-          <strong className="todayPickerTask" title={candidate.text}>
-            {candidate.text}
-          </strong>
-        </div>
-        {selected ? (
-          <span className="uiPill uiPill--good todayPickerSelectedStatus">✓ 選択済み</span>
-        ) : (
-          <button
-            className="todayPickerAddButton"
-            disabled={todayPickerSaving || todayPickerDraftItems.length >= TODAY_ITEM_LIMIT}
-            onClick={() => void chooseTodayCandidate(candidate)}
-            title={
-              todayPickerDraftItems.length >= TODAY_ITEM_LIMIT
-                ? "今日の3件は3件埋まっています"
-                : undefined
-            }
-            type="button"
-          >
-            ＋ 今日へ
-          </button>
-        )}
-      </div>
-    );
-  };
+
   const allTodayItemsCompleted =
     config.today.items.length === TODAY_ITEM_LIMIT && config.today.items.every((item) => item.done);
   const displayedDayKey = topMenuDayKey;
@@ -9847,9 +9737,16 @@ function DashboardApp() {
                 setTodayPickerQuickText={setTodayPickerQuickText}
                 addTodayPickerQuickWish={addTodayPickerQuickWish}
                 moveTodayPickerItemToIndex={moveTodayPickerItemToIndex}
-                renderTodayPickerCandidate={renderTodayPickerCandidate}
-                renderTodayPickerSelectedItem={renderTodayPickerSelectedItem}
                 requestCloseTodayPicker={requestCloseTodayPicker}
+                rows={{
+                  activeTimer,
+                  chooseTodayCandidate,
+                  moveTodayPickerItem,
+                  projectsById,
+                  removeTodayPickerDraftItem,
+                  setTodayPickerDragIndex,
+                  todayPickerCandidateSelected,
+                }}
                 saveTodayPickerDraft={saveTodayPickerDraft}
               />
             )}

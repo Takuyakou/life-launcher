@@ -1,14 +1,18 @@
-import type { Dispatch, ReactNode, SetStateAction } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import { motion } from "motion/react";
+import type { ActiveTimer } from "../app/dashboardTypes";
+import { todayEntries, todaySourceKey, todayTimerSourceId } from "../app/helpers";
 import type { LauncherProject, TodayItem } from "../types";
 import type { TodayCandidate } from "../todayCandidates";
 import { TODAY_ITEM_LIMIT } from "../constants";
 import { springSnappy } from "../motion";
+import { resolveProjectColorId } from "../projectIdentity";
+import { timerRunsTodayItem } from "../timerSource";
 import { UiIcon } from "./UiIcon";
 import type { ExitPresenceAttributes } from "./ExitPresence";
 
 // V163-A2: the Today picker, moved out of App.tsx (same DOM, text and handlers).
-// The two render helpers stay in App.tsx and come in as props, so the markup is unchanged.
+// V164-A3: the two row renderers came in from App.tsx, so the markup is still unchanged.
 
 export type TodayPickerDialogProps = {
   todayPickerDraftItems: TodayItem[];
@@ -24,10 +28,18 @@ export type TodayPickerDialogProps = {
   setTodayPickerQuickText: Dispatch<SetStateAction<string>>;
   addTodayPickerQuickWish: () => void;
   moveTodayPickerItemToIndex: (index: number) => void;
-  renderTodayPickerCandidate: (candidate: TodayCandidate) => ReactNode;
-  renderTodayPickerSelectedItem: (item: TodayItem, index: number) => ReactNode;
   requestCloseTodayPicker: () => void;
   saveTodayPickerDraft: () => void;
+  /** V164-A3: what the two row renderers need from the screen. */
+  rows: {
+    activeTimer: ActiveTimer | null;
+    chooseTodayCandidate: (candidate: TodayCandidate) => void;
+    moveTodayPickerItem: (fromIndex: number, toIndex: number) => void;
+    projectsById: Map<string, LauncherProject>;
+    removeTodayPickerDraftItem: (index: number) => void;
+    setTodayPickerDragIndex: Dispatch<SetStateAction<number | null>>;
+    todayPickerCandidateSelected: (candidate: TodayCandidate) => boolean;
+  };
   /** V164 (E1): attributes for the close motion; the backdrop is removed when it ends. */
   exitProps?: ExitPresenceAttributes;
 };
@@ -36,9 +48,8 @@ export function TodayPickerDialog(props: TodayPickerDialogProps) {
   const {
     addTodayPickerQuickWish,
     moveTodayPickerItemToIndex,
-    renderTodayPickerCandidate,
-    renderTodayPickerSelectedItem,
     requestCloseTodayPicker,
+    rows,
     saveTodayPickerDraft,
     setTodayPickerFilter,
     setTodayPickerQuickText,
@@ -53,6 +64,119 @@ export function TodayPickerDialog(props: TodayPickerDialogProps) {
     todayPickerVisibleWishlist,
     exitProps,
   } = props;
+
+  const renderTodayPickerSelectedItem = (item: TodayItem, index: number) => {
+    const project = item.projectId ? rows.projectsById.get(item.projectId) : undefined;
+    const pickerItemRunning = timerRunsTodayItem(
+      todayEntries(todayPickerDraftItems),
+      rows.activeTimer,
+      todayTimerSourceId(item, index),
+      todaySourceKey(item, index),
+    );
+    return (
+      <div
+        className={[
+          "todayPickerSlot todayPickerSlot--selected todayPickerRow todayPickerRow--selected",
+          todayPickerDragIndex === index ? "todayPickerSlot--dragging" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        data-project-color={
+          project ? resolveProjectColorId(project.id, project.colorId) : undefined
+        }
+        data-today-picker-slot-index={index}
+        draggable={!todayPickerSaving}
+        key={`today-selected:${todaySourceKey(item, index)}`}
+        onDragEnd={() => rows.setTodayPickerDragIndex(null)}
+        onDragOver={(event) => {
+          if (todayPickerDragIndex === null) return;
+          event.preventDefault();
+        }}
+        onDragStart={(event) => {
+          event.dataTransfer.effectAllowed = "move";
+          event.dataTransfer.setData("text/plain", String(index));
+          rows.setTodayPickerDragIndex(index);
+        }}
+        onDrop={(event) => {
+          event.preventDefault();
+          moveTodayPickerItemToIndex(index);
+        }}
+        onKeyDown={(event) => {
+          if (!event.altKey || (event.key !== "ArrowUp" && event.key !== "ArrowDown")) return;
+          event.preventDefault();
+          rows.moveTodayPickerItem(index, event.key === "ArrowUp" ? index - 1 : index + 1);
+        }}
+        tabIndex={0}
+      >
+        <span aria-hidden="true" className="todayPickerSlotIndex">
+          {index + 1}
+        </span>
+        <div className="todayPickerSlotCopy">
+          {project && (
+            <span className="todayPickerSlotProject">
+              <span aria-hidden="true" className="todayPickerDot" />
+              {project.name}
+            </span>
+          )}
+          <strong className="todayPickerSlotTask" title={item.text}>
+            {item.text}
+          </strong>
+        </div>
+        <button
+          aria-label="今日から外す"
+          className="todayPickerRemoveButton"
+          disabled={todayPickerSaving || pickerItemRunning}
+          onClick={() => rows.removeTodayPickerDraftItem(index)}
+          onPointerDown={(event) => event.stopPropagation()}
+          title={pickerItemRunning ? "タイマーを停止してから外してください" : undefined}
+          type="button"
+        >
+          <UiIcon name="close" size={16} />
+        </button>
+      </div>
+    );
+  };
+
+  const renderTodayPickerCandidate = (candidate: TodayCandidate) => {
+    const project = candidate.projectId ? rows.projectsById.get(candidate.projectId) : undefined;
+    const selected = rows.todayPickerCandidateSelected(candidate);
+    return (
+      <div
+        className="todayPickerRow"
+        data-project-color={
+          project ? resolveProjectColorId(project.id, project.colorId) : "uncategorized"
+        }
+        key={candidate.key}
+      >
+        <div className="todayPickerCopy">
+          <span className="todayPickerProject">
+            <span aria-hidden="true" className="todayPickerDot" />
+            {project?.name ?? "未分類"}
+          </span>
+          <strong className="todayPickerTask" title={candidate.text}>
+            {candidate.text}
+          </strong>
+        </div>
+        {selected ? (
+          <span className="uiPill uiPill--good todayPickerSelectedStatus">✓ 選択済み</span>
+        ) : (
+          <button
+            className="todayPickerAddButton"
+            disabled={todayPickerSaving || todayPickerDraftItems.length >= TODAY_ITEM_LIMIT}
+            onClick={() => void rows.chooseTodayCandidate(candidate)}
+            title={
+              todayPickerDraftItems.length >= TODAY_ITEM_LIMIT
+                ? "今日の3件は3件埋まっています"
+                : undefined
+            }
+            type="button"
+          >
+            ＋ 今日へ
+          </button>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="modalBackdrop" role="presentation" {...exitProps}>
