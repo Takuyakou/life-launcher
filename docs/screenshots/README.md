@@ -16,7 +16,7 @@ npm.cmd run screenshot:public
 | `weekly-planning.png` | Plan this week tab of Records, 1366 x 768 | PASS - synthetic projects, records, and completed items only |
 | `demo-start.gif` | Starting the current step for 5 minutes and leaving a “Resume here” note, 960 x 570 | PASS - synthetic public fixture only; assembled by the lead from Playwright frames |
 | `contact-sheet.png` | Combined Windows product review sheet | PASS - contains only the three Windows product images above |
-| `web-demo.png` | Web Demo landing page (W16 redesign), 1440 x 900 | PASS - synthetic public landing page only |
+| `web-demo.png` | Web Demo landing page (W17 update), 1440 x 900 | PASS - synthetic public landing page only |
 
 The Windows screenshot test fixes the date and time, installs a Tauri API mock before navigation, disables animation and caret rendering, uses a dedicated local Vite port, and never reads real application data. The weekly planning image is captured with reduced motion so the counters show their final values.
 
