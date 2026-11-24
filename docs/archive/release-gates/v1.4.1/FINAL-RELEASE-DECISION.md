@@ -92,7 +92,7 @@
 | 3 | 公開安全 | **通過** | `npm.cmd run public:check`: 3585 ファイル、blocker 0 |
 | 4 | 公開文書の横断確認 | **通過** | README、README.en.md、CHANGELOG、`docs/releases/v1.4.1.md`、仕様書、OVERVIEW のバージョンが 1.4.1 で一致。P95-01〜04 と P95-03b の内容が CHANGELOG、リリースノート(2つの控えは同一)にある。配布ファイル名、config schema `3`、Web Demo が別公開工程であることは、すべての文書で同じ。`readme-contract` のテストも通っている |
 | 5 | ポータブル ZIP | **通過** | 中身は `Life-Launcher-v1.4.1-windows-x64.exe` と `README.txt` の2つだけ。ZIP 内の EXE の SHA-256 が単体 EXE と一致(`69afc8c1…0c2`) |
-| 6 | 秘密情報・パスの走査 | **通過** | 単体 EXE、ZIP 内 EXE(展開したもの)、インストーラー、ZIP を ASCII と UTF-16LE で走査。`C:\Users\`、`D:\dev\`、`D:/dev/`、`Life Launcher-dev`、開発者のユーザー名(2種類)、`Takuyakou\`、秘密鍵ヘッダー(RSA、OPENSSH、PRIVATE KEY、EC)、トークン接頭辞(`ghp_`、`github_pat_`、`gho_`、`AKIA`、`xoxb-`、`xoxp-`、`sk-ant-`)、`sourceMappingURL`、`.js.map` のいずれも 0 件。インストーラーは圧縮されているため、中身の走査には限りがある(EXE 本体は圧縮されていない) |
+| 6 | 秘密情報・パスの走査 | **通過** | 単体 EXE、ZIP 内 EXE(展開したもの)、インストーラー、ZIP を ASCII と UTF-16LE で走査。Windows のユーザーフォルダーのパス、開発用ドライブのパス、開発用ドライブのパス、`Life Launcher-dev`、開発者のユーザー名(2種類)、`Takuyakou\`、秘密鍵ヘッダー(RSA、OPENSSH、PRIVATE KEY、EC)、トークン接頭辞(`ghp_`、`github_pat_`、`gho_`、`AKIA`、`xoxb-`、`xoxp-`、`sk-ant-`)、`sourceMappingURL`、`.js.map` のいずれも 0 件。インストーラーは圧縮されているため、中身の走査には限りがある(EXE 本体は圧縮されていない) |
 | 7 | SHA-256 | **通過** | PowerShell の `Get-FileHash`(ビルドのスクリプトとは別の手段)で3ファイルを再計算し、`SHA256SUMS.txt` と全件一致(大文字小文字を除く) |
 | 8 | バージョン情報 | **通過** | 2. |
 | 9 | Windows Defender | **通過(新しい検出 0 件)** | Defender は有効(AMService、Antivirus、リアルタイム保護とも有効。署名 1.463.66.0、2026-11-01 更新)。成果物のコピー(`.local-evaluation/v141-defender-copy-b/`)のフォルダー全体と各 EXE・ZIP に `Start-MpScan -ScanType CustomScan`。スキャンは完了し、`Get-MpThreatDetection` の件数は前後で 1 件のまま(この PC に以前からある 2024 年の別のフォルダーの検出で、今回の成果物とは無関係) |

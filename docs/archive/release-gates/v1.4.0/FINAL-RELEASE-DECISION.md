@@ -83,7 +83,7 @@ P9-12 のビルド(ソース `731cb08`、P9-13 の前):
 | 3 | 公開安全 | **通過** | `npm.cmd run public:check`: 3575 ファイル、blocker 0 |
 | 4 | 公開文書の横断確認 | **通過** | README、README.en.md、CHANGELOG、`docs/releases/v1.4.0.md`、仕様書、OVERVIEW のバージョンが 1.4.0 で一致。P9-13・P9-14 の内容が CHANGELOG、リリースノート(2つの控えは同一)、README、README.en.md、仕様書にある。配布ファイル名、config schema `3`、Web Demo が別公開工程であることは、すべての文書で同じ。`readme-contract` のテストも通っている |
 | 5 | ポータブル ZIP | **通過** | 中身は `Life-Launcher-v1.4.0-windows-x64.exe` と `README.txt` の2つだけ。絶対パス、`..`、シンボリックリンクなし。EXE 以外の実行形式なし。ZIP 内の EXE と単体 EXE の SHA-256 が一致(`0f833c17…bb6`) |
-| 6 | 秘密情報・パスの走査 | **通過** | 単体 EXE、ZIP 内 EXE、インストーラー、ZIP を ASCII と UTF-16LE で走査。`C:\Users\`、`D:\dev\`、開発者のユーザー名(2種類)、`Takuyakou\`、秘密鍵ヘッダー(RSA、OPENSSH、PRIVATE KEY、EC)、トークン接頭辞(`ghp_`、`github_pat_`、`gho_`、`AKIA`、`xoxb-`、`xoxp-`、`sk-ant-`)、`sourceMappingURL`、`.js.map` のいずれも 0 件。インストーラーは圧縮されているため、中身の走査には限りがある(EXE 本体は圧縮されていない) |
+| 6 | 秘密情報・パスの走査 | **通過** | 単体 EXE、ZIP 内 EXE、インストーラー、ZIP を ASCII と UTF-16LE で走査。Windows のユーザーフォルダーのパス、開発用ドライブのパス、開発者のユーザー名(2種類)、`Takuyakou\`、秘密鍵ヘッダー(RSA、OPENSSH、PRIVATE KEY、EC)、トークン接頭辞(`ghp_`、`github_pat_`、`gho_`、`AKIA`、`xoxb-`、`xoxp-`、`sk-ant-`)、`sourceMappingURL`、`.js.map` のいずれも 0 件。インストーラーは圧縮されているため、中身の走査には限りがある(EXE 本体は圧縮されていない) |
 | 7 | SHA-256 | **通過** | `Get-FileHash`(ビルドのスクリプトとは別の手段)で3ファイルを再計算し、`SHA256SUMS.txt` と全件一致 |
 | 8 | バージョン情報 | **通過** | 2. |
 | 9 | Windows Defender | **通過(検出 0 件)** | Defender は有効(AMService、Antivirus、リアルタイム保護とも有効。署名 1.463.31.0、2026-10-30 更新)。`Start-MpScan -ScanType CustomScan` を、候補フォルダ全体、インストーラー、単体 EXE、ZIP、ZIP を展開したフォルダに実行し、スキャンは完了、`Get-MpThreatDetection` の新しい検出は 0 件 |
@@ -108,7 +108,7 @@ P9-12 のビルド(ソース `731cb08`、P9-13 の前):
 
 6. の走査は EXE の生バイトが対象で、画面の資産(JS・CSS)は EXE の中で圧縮されていて中まで見られない。そこで、次を追加で確かめた。
 
-- `9a86f7a` と同じソース(`9a86f7a..HEAD` は文書だけ)から `npm.cmd run build` で作り直した `dist/` を走査した。`C:\Users`、`D:\dev`、開発者のユーザー名、`Takuyakou`、秘密鍵ヘッダー、トークン接頭辞(`ghp_`、`github_pat_`、`gho_`、`AKIA`、`xoxb-`、`xoxp-`、`sk-ant-`)、`sourceMappingURL` は 0 件、`.map` ファイルも 0 件。URL は、仕様の名前空間(w3.org、json-schema.org)、ライブラリのエラー説明(`reactjs.org`、`markedjs/marked`)、入力欄のプレースホルダー例(`https://example.com/`)、CSP とローカルの資産の `asset.localhost` だけで、外部へ通信する URL はない。P9-14 のクラス名(`victoryBar--empty`)が含まれる。
+- `9a86f7a` と同じソース(`9a86f7a..HEAD` は文書だけ)から `npm.cmd run build` で作り直した `dist/` を走査した。Windows のユーザーフォルダーのパス、開発用ドライブのパス、開発者のユーザー名、`Takuyakou`、秘密鍵ヘッダー、トークン接頭辞(`ghp_`、`github_pat_`、`gho_`、`AKIA`、`xoxb-`、`xoxp-`、`sk-ant-`)、`sourceMappingURL` は 0 件、`.map` ファイルも 0 件。URL は、仕様の名前空間(w3.org、json-schema.org)、ライブラリのエラー説明(`reactjs.org`、`markedjs/marked`)、入力欄のプレースホルダー例(`https://example.com/`)、CSP とローカルの資産の `asset.localhost` だけで、外部へ通信する URL はない。P9-14 のクラス名(`victoryBar--empty`)が含まれる。
 - `v1.3.4..9a86f7a` で、Tauri の権限(`src-tauri/capabilities`)は変わらず、`tauri.conf.json`(CSP を含む)はバージョン番号以外変わっていない。Rust に、新しいコマンド・外部プロセスの実行・`unsafe` の追加はない。画面のコードに `dangerouslySetInnerHTML`・`innerHTML`・`eval(`・`fetch(` の追加はない。コミットの作者のメールアドレスは GitHub の noreply だけ。
 - 限界: 上は、ビルドの出力を作り直したものの確認で、候補の EXE の中から取り出した資産そのものの照合ではない(ビルドの来歴 R6 と同じ限界。13. に次の版の課題として書いた)。
 

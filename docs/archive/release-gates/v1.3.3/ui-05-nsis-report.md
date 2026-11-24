@@ -17,7 +17,7 @@
 - `src-tauri/installer/nsis-sidebar.bmp`: 差し替えサイドバー画像。
 - `src-tauri/installer/nsis-header.bmp`: 追加後、今回の修正で削除。
 - `docs/screenshots/ui-05-nsis/`: 当時の実機画面5枚。現行ツリーでは2枚を掲載し、他3枚はPR #111の履歴を参照。
-- `docs/release/v1.3.3/ui-05-nsis-work-report.md`: 本報告書。
+- `docs/archive/release-gates/v1.3.3/ui-05-nsis-report.md`: 本報告書。
 
 ## 実機確認
 

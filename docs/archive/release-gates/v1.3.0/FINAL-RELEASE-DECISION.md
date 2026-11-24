@@ -26,7 +26,7 @@ The packaging scripts and application source used to build the artifacts match c
 
 | Gate | Result | Evidence |
 | --- | --- | --- |
-| Baseline / security | FIXED-AND-PASS | `p8.5-00-baseline-audit.md`; npm 0 vulnerabilities; cargo 0 vulnerabilities; public scan clean |
+| Baseline / security | FIXED-AND-PASS | `p8.5-00-start-audit.md`; npm 0 vulnerabilities; cargo 0 vulnerabilities; public scan clean |
 | High-risk regression | PASS | `p8.5-01-high-risk-regression.md`; 359 Playwright passed / 48 intentional skips / 0 failed |
 | Reset / Backup / Restore | PASS | `p8.5-02-reset-backup-restore-e2e.md`; rollback fault boundaries and isolated restore passed |
 | Version / artifacts | FIXED-AND-PASS | `p8.5-03-artifact-report.md`; consistent v1.3.0 metadata, full post-version gate, Defender 0 new detections |

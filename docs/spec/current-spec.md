@@ -489,7 +489,7 @@ Main Window
 - 未完了Today3が参照するcanonical sourceはSource Lock状態にする。NextStepは同一Projectかつ同一generation、Wishlistは同一stable IDだけを対象とし、本文一致ではロックしない。Today3が完了するか採用解除されると即座に解除する。
 - Source Lock中のNextStepはProject名、鍵、緑の「✓ 今日の3件に設定済み」を同じ行へ順に表示し、カード右下には重複した使用中文字を置かない。登録元からの編集、完了、削除、昇格、置換、未設定化、領域間D&DをUIとhandlerの両方で拒否する。未設定NextStepや別generation、別IDのWishlistはロックしない。
 - Source Lock中でもToday3カードの「編集」から開いた元editorだけは保存できる。この経路は元sourceと一致する現在のToday3 snapshotを1回のconfig保存で同時更新し、Timer実行中・一時停止中・確認中の既存guardは迂回しない。
-- 明示保存時だけ、generationが一致するToday3へtext/trigger/projectId/buttonIds/instructionPath/instructionOpenOnStart/defaultTimerMinutes/shortTimerMinutes/expandTimerOnStartを再snapshotする。解除した任意値は残さない。[詳細matrix](../phase7.1/00-field-sync-matrix.md)。
+- 明示保存時だけ、generationが一致するToday3へtext/trigger/projectId/buttonIds/instructionPath/instructionOpenOnStart/defaultTimerMinutes/shortTimerMinutes/expandTimerOnStartを再snapshotする。解除した任意値は残さない。[詳細matrix](../archive/phases/phase7.1/00-field-sync-matrix.md)。
 - 現在のToday3のsourceKey、done、配列順、個数、date、勝利条件は保持する。完了済みの現在カードもdoneを維持して更新し、Session/今日の実行/sourceCompletionsは書き換えない。部分補充なし。
 - Project編集はそのProject sourceだけ更新し、同じprojectIdを持つ別Wishlistは自動更新しない。Wishlist自身の編集保存時に関連Projectの現在の分数を解決する。
 - 同sourceのrunning/paused/満了確認/早期終了確認中はUI・直接handler双方で拒否する。別source Timerは編集を妨げない。保存中は同source開始も拒否し、実行中の分数・開始環境を変更しない。
@@ -948,7 +948,7 @@ URLはWindowsの既定ブラウザで開き、登録ごとのブラウザ指定�
 - backendはcommand受領後に内部snapshotとdurable journalを保存してからruntime file、icon、window state、autostartを変更し、検出した途中失敗ではsnapshotからrollbackする。
 - 起動時は通常のconfig読み込みより前に未完了journalを確認する。中断された処理はsnapshotから復旧し、frontendがlocalStorage復旧を適用してacknowledgeするまで復旧情報を保持する。
 - 成功時は補助windowを閉じてprocess restartを要求する。再起動後はProject 0件を含むcanonical初回起動状態から使用できる。
-- 詳細な境界と失敗時契約は [ソフトウェアリセット](../phase8.3/software-reset.md) に定める。
+- 詳細な境界と失敗時契約は [ソフトウェアリセット](../archive/phases/phase8.3/software-reset.md) に定める。
 
 ## 20. アプリ内ガイド
 
@@ -1001,7 +1001,7 @@ URLはWindowsの既定ブラウザで開き、登録ごとのブラウザ指定�
 | `icons/`              | アイコンキャッシュ                                                           |
 | `backups/`            | 更新前退避                                                                   |
 
-- configの現行データ版は `3`。v2移行は専用decoderとv3全体検証を通し、変換前raw backupの作成成功後にだけ一時ファイルとWindowsの原子的置換で書き込む。失敗時は`changed: false`、`saveBlocked: true`として元ファイルを書き換えず、future versionも拒否する。未リリースv3内で追加したoptional generation fieldはversionや`sourceKey`を変えず、v2 NextStepと既存Today3には遡及付与しない。詳細は[Phase 8.1 config v2→v3移行](../phase8.1/config-v2-to-v3-migration.md)を参照する。
+- configの現行データ版は `3`。v2移行は専用decoderとv3全体検証を通し、変換前raw backupの作成成功後にだけ一時ファイルとWindowsの原子的置換で書き込む。失敗時は`changed: false`、`saveBlocked: true`として元ファイルを書き換えず、future versionも拒否する。未リリースv3内で追加したoptional generation fieldはversionや`sourceKey`を変えず、v2 NextStepと既存Today3には遡及付与しない。詳細は[Phase 8.1 config v2→v3移行](../archive/phases/phase8.1/config-v2-to-v3-migration.md)を参照する。
 - UIからのconfig書き込みはRustのアトミック保存経路へ統一する。
 - 外部変更はホットリロードする。
 - 既定の1日開始時刻は4時。
@@ -1089,7 +1089,7 @@ URLはWindowsの既定ブラウザで開き、登録ごとのブラウザ指定�
 - 候補除外は元sourceを保持したままmatching Today snapshotを外し、localStorageへ保存する。既存schema v2は読み込み時に後方互換補完する。
 - native Explorer、実ランチャー起動、Tauri権限、Rust推薦はDemoへ再実装しない。
 - backend、認証、analytics、外部APIを使用せず、入力はブラウザのlocalStorageだけに保存する。
-- Windows本体Phase 7.2との差分と将来の同期条件は [Web Demo Phase 7.2 Follow-up](../phase7.2/web-demo-followup.md) に記録する。
+- Windows本体Phase 7.2との差分と将来の同期条件は [Web Demo Phase 7.2 Follow-up](../archive/phases/phase7.2/web-demo-followup.md) に記録する。
 
 ## 28. 仕様確認の主要ソース
 
@@ -1130,8 +1130,6 @@ URLはWindowsの既定ブラウザで開き、登録ごとのブラウザ指定�
 - `tests/visual/phase8-records.spec.ts`
 - `tests/visual/phase8-dictionary-state.spec.ts`
 - `tests/visual/phase61-guide.spec.ts`
-- `docs/v1.3.0-ui-ux-spec.md`
-- `docs/ui-audit/UI-UX-MASTER-AUDIT.md`
 - Phase 8の監査・作業報告書
 
 計画書や過去の記憶ではなく、現行の実装と自動テストを優先して記述している。

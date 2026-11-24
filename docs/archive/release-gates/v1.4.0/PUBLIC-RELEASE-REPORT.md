@@ -45,7 +45,7 @@ Life Launcher v1.4.0 RELEASED
 
 ## 起動の確認
 
-公開作業の時点で、別の Life Launcher が起動中だった(PID 33656、2026-10-31 0:06 起動、`D:\dev\life-launcher-installer-smoke-v1.0.0-merged-main\installed\life-launcher.exe`)。このアプリは単一インスタンスのため(`tauri-plugin-single-instance`)、ダウンロードした EXE を起動しても確認にならないので、その時は起動しなかった。オーナーが起動中のアプリを閉じた後、Life Launcher のプロセスが無いことを確認して、2回目の再ダウンロード(公開後)の EXE を起動して確かめた。
+公開作業の時点で、別の Life Launcher が起動中だった(PID 33656、2026-10-31 0:06 起動、`<確認用フォルダー>\installed\life-launcher.exe`)。このアプリは単一インスタンスのため(`tauri-plugin-single-instance`)、ダウンロードした EXE を起動しても確認にならないので、その時は起動しなかった。オーナーが起動中のアプリを閉じた後、Life Launcher のプロセスが無いことを確認して、2回目の再ダウンロード(公開後)の EXE を起動して確かめた。
 
 | 対象 | 結果 |
 | --- | --- |
