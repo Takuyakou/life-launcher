@@ -20,7 +20,7 @@ Try the central Life Launcher flow in your browser without installing the Window
 
 <img src="docs/screenshots/web-demo.png" alt="Life Launcher Web Demo" width="720">
 
-The Web Demo uses synthetic data to demonstrate the central Life Launcher flow, including choosing today's items, running timers, and removing an item from Today's Three. Changes are stored in your browser's localStorage. Launching apps, files, and URLs is simulated rather than performed.
+The Web Demo uses synthetic data to demonstrate the central Life Launcher flow, including choosing today's items, running timers, and removing an item from Today's Three. Changes stay in this browser. Launching apps, files, and URLs is simulated rather than performed.
 
 Note: it is not a complete port of the Windows product. The Web Demo has a separate publishing process and is not updated alongside the Windows desktop release.
 
