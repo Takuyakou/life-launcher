@@ -53,11 +53,13 @@ export function ContextMenu({
   exitProps,
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  /** V164: while the close motion plays the menu is inert; it must not take keys, clicks or focus. */
+  const exiting = exitProps?.["data-exiting"] === "true";
 
   const dismiss = useCallback(() => {
     onClose();
     window.requestAnimationFrame(() => {
-      if (document.activeElement?.closest('[role="menu"]')) return;
+      if (document.activeElement?.closest('[role="menu"]:not([data-exiting="true"])')) return;
       if (opener?.isConnected) opener.focus({ preventScroll: true });
     });
   }, [onClose, opener]);
@@ -93,6 +95,7 @@ export function ContextMenu({
   }, [clampToViewport]);
 
   useEffect(() => {
+    if (exiting) return;
     menuRef.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
     const closeOnPointerDown = (event: PointerEvent) => {
       if (!menuRef.current?.contains(event.target as Node)) dismiss();
@@ -129,7 +132,7 @@ export function ContextMenu({
       document.removeEventListener("keydown", closeOnKeyDown);
       window.removeEventListener("blur", closeOnBlur);
     };
-  }, [dismiss, onShortcutKey]);
+  }, [dismiss, exiting, onShortcutKey]);
 
   const moveFocus = (direction: "first" | "last" | "next" | "previous") => {
     const items = Array.from(

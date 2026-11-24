@@ -218,7 +218,11 @@ export function SearchPalette({
   // V151-S2-3: the palette only receives keydown while focus is inside it. When focus moves to the
   // page (body) the window listener still closes the palette with one Escape. The capture phase and
   // stopImmediatePropagation keep the app's other Escape handlers (dialogs, menus, drags) out of it.
+  // V164: while the close motion plays, the palette no longer takes Escape (the next one belongs to
+  // whatever is under it).
+  const exiting = exitProps?.["data-exiting"] === "true";
   useEffect(() => {
+    if (exiting) return;
     const closeOnEscape = (event: globalThis.KeyboardEvent) => {
       if (event.key !== "Escape") return;
       if (event.isComposing || event.keyCode === 229) return;
@@ -228,7 +232,7 @@ export function SearchPalette({
     };
     window.addEventListener("keydown", closeOnEscape, true);
     return () => window.removeEventListener("keydown", closeOnEscape, true);
-  }, [onClose]);
+  }, [exiting, onClose]);
 
   return (
     <div

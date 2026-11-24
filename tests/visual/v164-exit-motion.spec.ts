@@ -101,14 +101,10 @@ test("V164-E1 a closed dialog runs the close motion and leaves the DOM after it,
   await pauseClock(page);
 
   await page.getByRole("button", { name: "設定を閉じる" }).click();
-  // The surface stays in the DOM with the close motion, and it can no longer be used.
-  await expect(page.locator('.modalBackdrop[data-exiting="true"]')).toHaveCount(1);
-  await expect(page.locator('.modalBackdrop[data-exiting="true"]')).toHaveAttribute(
-    "aria-hidden",
-    "true",
-  );
-  await expect(page.locator('.modalBackdrop[data-exiting="true"]')).toHaveAttribute("inert", "");
-
+  // The surface stays in the DOM with the close motion, and it can no longer be used. The motion
+  // lasts 150ms, so a busy machine can finish it before a live DOM check runs; the observer from
+  // watchExits() records the surface at the moment it starts closing instead.
+  await expect.poll(async () => (await readExits(page)).length).toBe(1);
   const exits = await readExits(page);
   expect(exits).toHaveLength(1);
   expect(exits[0].className).toContain("modalBackdrop");

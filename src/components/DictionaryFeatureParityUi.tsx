@@ -18,20 +18,26 @@ const DIALOG_FOCUSABLE =
   "button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex='-1'])";
 
 function DictionaryDialogBehavior({
+  exiting = false,
   onRequestClose,
   suspended,
 }: {
+  /** V164: true while the close motion plays. Focus goes back to the opener at once. */
+  exiting?: boolean;
   onRequestClose: () => void;
   suspended: boolean;
 }) {
   const markerRef = useRef<HTMLSpanElement | null>(null);
   const closeRef = useRef(onRequestClose);
   closeRef.current = onRequestClose;
+  const openerRef = useRef<HTMLElement | null>(null);
+  const focusReturnedRef = useRef(false);
 
   useEffect(() => {
     const dialog = markerRef.current?.closest<HTMLElement>("[role='dialog']");
     if (!dialog) return;
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    openerRef.current = opener;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const frame = window.requestAnimationFrame(() => {
@@ -41,12 +47,18 @@ function DictionaryDialogBehavior({
     return () => {
       window.cancelAnimationFrame(frame);
       document.body.style.overflow = previousOverflow;
-      opener?.focus();
+      if (!focusReturnedRef.current) opener?.focus();
     };
   }, []);
 
   useEffect(() => {
-    if (suspended) return;
+    if (!exiting || focusReturnedRef.current) return;
+    focusReturnedRef.current = true;
+    openerRef.current?.focus();
+  }, [exiting]);
+
+  useEffect(() => {
+    if (suspended || exiting) return;
     const dialog = markerRef.current?.closest<HTMLElement>("[role='dialog']");
     if (!dialog) return;
     const focusable = () =>
@@ -87,7 +99,7 @@ function DictionaryDialogBehavior({
       document.removeEventListener("keydown", onKeyDown, true);
       document.removeEventListener("focusin", onFocusIn, true);
     };
-  }, [suspended]);
+  }, [exiting, suspended]);
 
   return <span aria-hidden="true" ref={markerRef} style={{ display: "none" }} />;
 }
@@ -226,6 +238,7 @@ export function DictionaryFeatureParityUi({ c }: { c: DictionaryFeatureParityCon
                       setError(null);
                       setPageDraft(null);
                     }}
+                    exiting={exiting}
                     suspended={Boolean(confirmation)}
                   />
                   <div>
@@ -298,6 +311,7 @@ export function DictionaryFeatureParityUi({ c }: { c: DictionaryFeatureParityCon
                       setError(null);
                       setDropDraft(null);
                     }}
+                    exiting={exiting}
                     suspended={Boolean(confirmation)}
                   />
                   <div>
@@ -409,6 +423,7 @@ export function DictionaryFeatureParityUi({ c }: { c: DictionaryFeatureParityCon
                 >
                   <DictionaryDialogBehavior
                     onRequestClose={requestCloseButtonEdit}
+                    exiting={exiting}
                     suspended={Boolean(confirmation)}
                   />
                   <div className="buttonEditDialogHeader modalTitleRow">
