@@ -116,6 +116,8 @@ import { SidebarQuickLaunch } from "./components/SidebarQuickLaunch";
 import { DoNowBand } from "./components/DoNowBand";
 import { TodayThreeSection } from "./components/TodayThreeSection";
 import { NextStepsSection } from "./components/NextStepsSection";
+import { WishlistSection } from "./components/WishlistSection";
+import { DashboardContextMenu } from "./components/DashboardContextMenu";
 import { ExitPresence } from "./components/ExitPresence";
 import { GroupNameDialog } from "./components/GroupNameDialog";
 import { ImportDialog } from "./components/ImportDialog";
@@ -146,7 +148,6 @@ import {
   timerMatchesProjectNextStep,
   timerRunsTodayItem,
 } from "./timerSource";
-import { ContextMenu, ContextMenuItem } from "./components/ContextMenu";
 import { HelpGuideDialog } from "./components/HelpGuideDialog";
 import { SearchPalette, type SearchItem, type SearchSection } from "./components/SearchPalette";
 import { ProjectIdentity } from "./components/ProjectIdentity";
@@ -175,7 +176,6 @@ import {
   buttonGlyph,
   resolveProjectColorId,
 } from "./projectIdentity";
-import { canRevealLauncherButton } from "./launcherReveal";
 import {
   groupWishlist,
   groupWishlistForDisplay,
@@ -200,7 +200,6 @@ import {
   timerMetrics,
   type TimerMode,
 } from "./timerRuntime";
-import { UiIcon } from "./components/UiIcon";
 import { findShortcutConflicts } from "./shortcutConflicts";
 import { localDayKey } from "./localDay";
 import { useTopMenuLabelLevel } from "./topMenuLabels";
@@ -230,8 +229,7 @@ import { ACTION_DRAG_TYPE, MINI_READY_EVENT, MINI_RETURN_EVENT, MINI_TIMER_COMMA
 import { type ActionDraft, type ActiveTimer, type ActiveView, type ButtonEditDraft, type ButtonGroup, type CompletionFeedback, type CompletionFollowup, type ContextMenuState, type ContextMenuTarget, type DoNowCompletionHold, type DropDialogState, type InboxDragPreview, type InboxPointerDrag, type InstructionChoice, type InternalButtonDrag, type LegacyNextStepChoice, type MainShellDropEvent, type ManualSessionDraft, type MiniTimerCommand, type MiniTimerSnapshot, type NextStepDecisionMode, type NextStepEditDraft, type NotesSaveStatus, type NumberInputDrag, type NumberInputDragField, type ProjectDragPreview, type ProjectEditDraft, type ProjectPointerDrag, type RecordsDateScope, SHORTCUT_DRAFT_FIELDS, type SessionEditDraft, type SettingsCenterDraft, type SettingsSectionKey, type ShortcutDraftField, type SidebarDragPreview, type SidebarGroupDragPreview, type SidebarGroupPointerDrag, type SidebarPointerDrag, TOP_MENU_LABELS, type TimerCompletionPrompt, type TodayDragPreview, type TodayPointerDrag, type WishlistGroupDragPreview, type WishlistGroupPointerDrag, type WishlistGroupView } from "./app/dashboardTypes";
 import { MiniModeApp } from "./components/MiniModeApp";
 import { SOFTWARE_RESET_TIMER_MESSAGE, captureSoftwareResetStorage, clearSoftwareResetStorage, getSoftwareResetRecoveryForBoot, restoreSoftwareResetStorage } from "./app/softwareReset";
-import { SectionCollapse } from "./components/SectionCollapse";
-import { actionHasSuspiciousPath, actionValue, aliasesInputToList, aliasesListToInput, buttonGroupName, buttonHasIconCacheSource, createStableId, dropPositionToCss, firstDroppedUrl, formatActionSummary, formatClock, formatDateKeyForHeader, formatStartedAt, formatTodayActivityLog, iconForAction, isCloseShortcutValue, isEditableTarget, isValidStartedAt, limitToday, makeAction, matchesHotkey, normalizeOptionalText, normalizeTimerMinutes, readCollapsedGroups, shortcutFromKeyboardEvent, showButtonInOverlay, showButtonInSidebar, sourceListRange, stripActionDraft, toActionDraft, toThreeNoteDraft, todayEntries, todaySourceKey, todayTimerSourceId, toggleDisclosureFromBar, uniqueButtonId, uniqueGroupNames, uniqueProjectId, uniqueSuggestions, validateShortcutSettings, writeCollapsedGroups } from "./app/helpers";
+import { actionHasSuspiciousPath, actionValue, aliasesInputToList, aliasesListToInput, buttonGroupName, buttonHasIconCacheSource, createStableId, dropPositionToCss, firstDroppedUrl, formatActionSummary, formatClock, formatDateKeyForHeader, formatStartedAt, formatTodayActivityLog, iconForAction, isCloseShortcutValue, isEditableTarget, isValidStartedAt, limitToday, makeAction, matchesHotkey, normalizeOptionalText, normalizeTimerMinutes, readCollapsedGroups, shortcutFromKeyboardEvent, showButtonInOverlay, showButtonInSidebar, stripActionDraft, toActionDraft, toThreeNoteDraft, todayEntries, todaySourceKey, todayTimerSourceId, uniqueButtonId, uniqueGroupNames, uniqueProjectId, uniqueSuggestions, validateShortcutSettings, writeCollapsedGroups } from "./app/helpers";
 import { clearMiniPosition, createMiniReadyWaiter, inactiveMiniSnapshot, isDictionaryView, isFiniteMiniPosition, isInstructionView, isMiniModeView, readMiniPosition, resolveSafeMiniPosition, sameMiniPosition, timerActionText, waitForMiniWindowCreated, writeMiniPosition } from "./app/miniWindow";
 import { draggedCardTopWithinTodayRemoveDropZone, inboxDropTargetFromPoint, instructionPathKey, instructionPathWithin, isReorderBlockedTarget, notifyTimerComplete, pointWithinSelector, pointWithinTodayRemoveDropZone, projectDropIndicator, projectDropTargetFromPoint, sidebarDropTargetFromPoint, sidebarGroupDropTargetFromPoint, todayAdoptionDropTargetFromPoint, todayDropTargetFromPoint, wishlistGroupDropTargetFromPoint } from "./app/dropTargets";
 
@@ -8648,557 +8646,44 @@ function DashboardApp() {
                   visibleProjects={visibleProjects}
                 />
 
-                <section
-                  className={[
-                    "inboxBand",
-                    projectPointerDrag?.wishlistEligible ? "sourceReturnBand--target" : "",
-                    projectPointerDrag?.wishlistTarget ? "sourceReturnBand--active" : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                  onContextMenu={(event) => {
-                    event.preventDefault();
-                    openContextMenu(
-                      { kind: "inboxes" },
-                      event.clientX,
-                      event.clientY,
-                      event.currentTarget,
-                    );
+                <WishlistSection
+                  actions={{
+                    beginInboxEdit,
+                    cancelInboxPointerDrag,
+                    cancelWishlistGroupPointerDrag,
+                    deleteInboxItem,
+                    finishInboxPointerDrag,
+                    finishWishlistGroupPointerDrag,
+                    handleRowShortcutKey,
+                    openContextMenu,
+                    openContextMenuFromKeyboard,
+                    openInboxAddDialog,
+                    promoteInboxToNextStep,
+                    setInboxOpen,
+                    setWishlistGroupViews,
+                    sourceEditBlockReason,
+                    sourceEditBlocked,
+                    startInboxPointerDrag,
+                    startWishlistGroupPointerDrag,
+                    toggleWishlistGroup,
+                    updateInboxPointerDrag,
+                    updateWishlistGroupPointerDrag,
                   }}
-                >
-                  <div
-                    className="disclosureHeader"
-                    data-inbox-header
-                    onContextMenu={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      openContextMenu(
-                        { kind: "inboxes" },
-                        event.clientX,
-                        event.clientY,
-                        event.currentTarget,
-                      );
-                    }}
-                    onKeyDown={(event) => openContextMenuFromKeyboard(event, { kind: "inboxes" })}
-                    tabIndex={-1}
-                    onClick={(event) =>
-                      toggleDisclosureFromBar(event, () => setInboxOpen((open) => !open))
-                    }
-                  >
-                    <button
-                      aria-describedby="wishlist-group-summary"
-                      aria-expanded={inboxOpen}
-                      className="disclosure"
-                      onClick={() => setInboxOpen((open) => !open)}
-                      type="button"
-                    >
-                      <UiIcon name={inboxOpen ? "chevronDown" : "chevronRight"} size={16} />
-                      <span className="disclosureLabel">
-                        <strong>やりたいこと</strong>
-                      </span>
-                    </button>
-                    <span className="disclosureCount">{config.inbox.length}件</span>
-                    {inboxOpen ? (
-                      <span className="disclosureDescription">
-                        他にやりたいこと。今日やるものは「今日の3件」から選べます。
-                      </span>
-                    ) : (
-                      // P10-06 (D26): closed, the header shows the groups as dots and counts.
-                      <span
-                        aria-hidden="true"
-                        className="disclosureDescription inboxGroupSummary"
-                        data-overflow={inboxSummaryOverflow ? "true" : "false"}
-                        ref={inboxSummaryRef}
-                        title={inboxSummaryTitle}
-                      >
-                        <span className="inboxGroupSummaryTrack">
-                          {renderInboxGroupSummaryItems(false)}
-                          {inboxSummaryOverflow ? renderInboxGroupSummaryItems(true) : null}
-                        </span>
-                      </span>
-                    )}
-                    <span className="visuallyHidden" id="wishlist-group-summary">
-                      {`やりたいこと ${config.inbox.length}件。${wishlistGroups
-                        .map((group) => `${group.name} ${group.items.length}件`)
-                        .join("、")}`}
-                    </span>
-                    <div className="disclosureHeaderActions">
-                      <button
-                        aria-label="やりたいことを追加"
-                        className="uiSmallButton sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd nextStepHeaderAdd--wishlist mainActionButton mainActionButton--neutral"
-                        disabled={inboxAddOpen}
-                        onPointerDown={(event) => event.stopPropagation()}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          openInboxAddDialog(event.currentTarget);
-                        }}
-                        title="やりたいことを追加"
-                        type="button"
-                      >
-                        ＋ やりたいこと
-                      </button>
-                      <button
-                        aria-label="やりたいことの操作"
-                        aria-haspopup="menu"
-                        className="sectionMenuButton"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          const rect = event.currentTarget.getBoundingClientRect();
-                          openContextMenu(
-                            { kind: "inboxes" },
-                            rect.left,
-                            rect.bottom,
-                            event.currentTarget,
-                          );
-                        }}
-                        onPointerDown={(event) => event.stopPropagation()}
-                        title="やりたいことの操作"
-                        type="button"
-                      >
-                        <span aria-hidden="true">…</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {projectPointerDrag?.wishlistEligible && (
-                    <div
-                      className={
-                        projectPointerDrag?.wishlistTarget
-                          ? "sourceReturnDropZone sourceReturnDropZone--active"
-                          : "sourceReturnDropZone"
-                      }
-                    >
-                      <span className="dropHintLabel">
-                        <span aria-hidden="true">↓</span>
-                        <span>ここにドロップしてやりたいことへ戻す</span>
-                      </span>
-                    </div>
-                  )}
-
-                  <SectionCollapse open={inboxOpen} dragActive={dragActive}>
-                    <div className="inboxBody">
-                      {config.inbox.length === 0 && (
-                        <div className="sectionEmptyState">
-                          <div className="sectionEmptyStateContent">
-                            <strong>やりたいことを設定しましょう</strong>
-                            <span>あとでやりたいことを登録して、今日やる候補にできます</span>
-                            <button
-                              className="mainActionButton mainActionButton--gold"
-                              disabled={inboxAddOpen}
-                              onClick={(event) => openInboxAddDialog(event.currentTarget)}
-                              type="button"
-                            >
-                              <UiIcon name="add" size={16} />
-                              やりたいことを追加する
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                      <div className="inboxGroups">
-                        {wishlistGroups.map((group) => {
-                          const view = wishlistGroupViews[group.key] ?? {};
-                          const range = sourceListRange(
-                            group.items.length,
-                            Boolean(view.expanded),
-                            view.page ?? 1,
-                          );
-                          const collapsed = Boolean(view.collapsed);
-                          const visibleItems = group.items.slice(range.start, range.end);
-                          const groupProject = group.projectId
-                            ? projectsById.get(group.projectId)
-                            : undefined;
-                          // P10-06 (D25): a Project group with no Next Step asks for one.
-                          const groupNeedsNextStep = Boolean(
-                            group.key !== "unassigned" && groupProject && !groupProject.nextStep?.text.trim(),
-                          );
-                          return (
-                            <section
-                              className={[
-                                "wishlistGroup",
-                                group.key === "unassigned" ? "wishlistGroup--unassigned" : "",
-                                wishlistGroupPointerDrag?.key === group.key
-                                  ? "wishlistGroup--dragging"
-                                  : "",
-                              ]
-                                .filter(Boolean)
-                                .join(" ")}
-                              data-project-color={
-                                groupProject
-                                  ? resolveProjectColorId(groupProject.id, groupProject.colorId)
-                                  : undefined
-                              }
-                              data-wishlist-group={group.key}
-                              key={group.key}
-                              onPointerCancel={cancelWishlistGroupPointerDrag}
-                              onPointerDown={(event) =>
-                                startWishlistGroupPointerDrag(event, group.key, group.name)
-                              }
-                              onPointerMove={updateWishlistGroupPointerDrag}
-                              onPointerUp={finishWishlistGroupPointerDrag}
-                            >
-                              <button
-                                aria-expanded={!collapsed}
-                                className={
-                                  group.key === "unassigned"
-                                    ? "wishlistGroupHeader wishlistGroupHeader--fixed"
-                                    : "wishlistGroupHeader"
-                                }
-                                onClick={(event) => {
-                                  if (event.detail === 0 || group.key === "unassigned") {
-                                    toggleWishlistGroup(group.key);
-                                  }
-                                }}
-                                onContextMenu={(event) => {
-                                  if (!groupProject) return;
-                                  event.preventDefault();
-                                  event.stopPropagation();
-                                  openContextMenu(
-                                    { kind: "project", project: groupProject },
-                                    event.clientX,
-                                    event.clientY,
-                                    event.currentTarget,
-                                  );
-                                }}
-                                onKeyDown={(event) => {
-                                  if (groupProject) {
-                                    openContextMenuFromKeyboard(event, {
-                                      kind: "project",
-                                      project: groupProject,
-                                    });
-                                  }
-                                }}
-                                title={
-                                  group.key === "unassigned"
-                                    ? "未分類は並べ替えできません"
-                                    : groupProject
-                                      ? `${group.name}（ドラッグでグループを並べ替え、右クリックで編集）`
-                                      : "ドラッグでグループを並べ替え"
-                                }
-                                type="button"
-                              >
-                                <UiIcon
-                                  name={collapsed ? "chevronRight" : "chevronDown"}
-                                  size={16}
-                                />
-                                {groupProject ? (
-                                  <ProjectIdentity
-                                    colorId={groupProject.colorId}
-                                    compact
-                                    name={group.name}
-                                    projectId={groupProject.id}
-                                  />
-                                ) : (
-                                  <strong>未分類</strong>
-                                )}
-                                {groupNeedsNextStep && (
-                                  <span className="uiPill wishlistNextStepMissing">次の一手が未設定</span>
-                                )}
-                                <span>{group.items.length}件</span>
-                              </button>
-                              <SectionCollapse open={!collapsed} dragActive={dragActive}>
-                                <>
-                                  <div className="inboxList">
-                                    {visibleItems.map(({ item, index }) => {
-                                      const sourceKey = item.id ? `wishlist:${item.id}` : null;
-                                      const sourceLocked = Boolean(
-                                        sourceKey &&
-                                        sourceLockedByUnfinishedToday(config, sourceKey),
-                                      );
-                                      const selected = Boolean(
-                                        sourceKey &&
-                                        config.today.items.some((todayItem) => {
-                                          if (todayItem.sourceKey) {
-                                            return (
-                                              canonicalSourceKey(config, todayItem.sourceKey) ===
-                                              sourceKey
-                                            );
-                                          }
-                                          return (
-                                            todayItem.projectId === item.projectId &&
-                                            todayItem.text.trim() === item.text.trim()
-                                          );
-                                        }),
-                                      );
-                                      const nextStepSelected = wishlistItemIsCurrentNextStep(item);
-                                      return (
-                                        <div
-                                          className={
-                                            inboxPointerDrag?.index === index
-                                              ? "inboxRow sourceListRow inboxRow--dragging"
-                                              : "inboxRow sourceListRow"
-                                          }
-                                          data-inbox-index={index}
-                                          data-inbox-id={item.id}
-                                          key={item.id ?? `${item.text}-${index}`}
-                                          onFocus={() => {
-                                            if (item.id)
-                                              inboxListAnchorRef.current = { id: item.id, index };
-                                          }}
-                                          onBlur={(event) => {
-                                            if (!(event.relatedTarget instanceof Node) ||
-                                                !event.currentTarget.contains(event.relatedTarget)) {
-                                              inboxListAnchorRef.current = null;
-                                            }
-                                          }}
-                                          onContextMenu={(event) => {
-                                            event.preventDefault();
-                                            event.stopPropagation();
-                                            openContextMenu(
-                                              { kind: "inbox", index, itemText: item.text },
-                                              event.clientX,
-                                              event.clientY,
-                                              event.currentTarget,
-                                            );
-                                          }}
-                                          onKeyDown={(event) => {
-                                            if (
-                                              handleRowShortcutKey(event, {
-                                                activate: () => promoteInboxToNextStep(index),
-                                                edit: () => beginInboxEdit(index),
-                                                remove: () => deleteInboxItem(index),
-                                              })
-                                            )
-                                              return;
-                                            openContextMenuFromKeyboard(event, {
-                                              kind: "inbox",
-                                              index,
-                                              itemText: item.text,
-                                            });
-                                          }}
-                                          onPointerCancel={cancelInboxPointerDrag}
-                                          onPointerDown={(event) =>
-                                            startInboxPointerDrag(event, index)
-                                          }
-                                          onPointerMove={updateInboxPointerDrag}
-                                          onPointerUp={finishInboxPointerDrag}
-                                          tabIndex={0}
-                                        >
-                                          <span className="inboxItemText" title={item.text}>
-                                            {sourceLocked && (
-                                              <span
-                                                aria-label="今日の3件で使用中のためロック中"
-                                                className="sourceLockBadge sourceLockBadge--wishlist"
-                                                tabIndex={0}
-                                                title={SOURCE_LOCK_REASON}
-                                              >
-                                                <UiIcon name="lock" size={16} />
-                                              </span>
-                                            )}
-                                            {item.text}
-                                          </span>
-                                          <div className="wishlistRowActions">
-                                            <span className="wishlistNextStepSlot">
-                                              {!nextStepSelected && !sourceLocked ? (
-                                                <button
-                                                  aria-label={`${item.text}の次の一手にする`}
-                                                  className={
-  groupNeedsNextStep
-    ? "wishlistNextStepAction nextStepRowAction nextStepRowAction--set mainActionButton mainActionButton--gold"
-    : "wishlistNextStepAction nextStepRowAction nextStepRowAction--set mainActionButton mainActionButton--neutral"
-}
-                                                  disabled={
-                                                    !item.id ||
-                                                    sourceEditBlocked(`wishlist:${item.id}`)
-                                                  }
-                                                  onClick={(event) => {
-                                                    event.stopPropagation();
-                                                    promoteInboxToNextStep(index);
-                                                  }}
-                                                  onPointerDown={(event) => event.stopPropagation()}
-                                                  title={
-                                                    item.id
-                                                      ? (sourceEditBlockReason(
-                                                          `wishlist:${item.id}`,
-                                                        ) ?? "次の一手にする")
-                                                      : "次の一手にする"
-                                                  }
-                                                  type="button"
-                                                >
-                                                  ▷ 次の一手にする
-                                                </button>
-                                              ) : null}
-                                            </span>
-                                            {nextStepSelected && (
-                                              <span className="wishlistNextStepStatus">
-                                                ✓ 次の一手に設定済み
-                                              </span>
-                                            )}
-                                            {selected && (
-                                              <span className="wishlistTodayStatus">
-                                                ✓ 今日の3件に設定済み
-                                              </span>
-                                            )}
-                                            <span aria-hidden="true" className="uiKey rowKeyHint">
-                                              Enter
-                                            </span>
-                                            <button
-                                              aria-label={`${item.text}の操作`}
-                                              aria-haspopup="menu"
-                                              className="sourceRowMenu"
-                                              onClick={(event) => {
-                                                const rect =
-                                                  event.currentTarget.getBoundingClientRect();
-                                                openContextMenu(
-                                                  { kind: "inbox", index, itemText: item.text },
-                                                  rect.left,
-                                                  rect.bottom,
-                                                  event.currentTarget,
-                                                );
-                                              }}
-                                              title="操作メニュー"
-                                              type="button"
-                                            >
-                                              <span aria-hidden="true">…</span>
-                                            </button>
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                  {group.items.length > SOURCE_LIST_COMPACT_LIMIT &&
-                                    group.items.length < SOURCE_LIST_PAGINATION_THRESHOLD && (
-                                      <div className="sourceListControls">
-                                        <button
-                                          className="mainActionButton mainActionButton--neutral"
-                                          onClick={() =>
-                                            setWishlistGroupViews((current) => ({
-                                              ...current,
-                                              [group.key]: {
-                                                ...current[group.key],
-                                                expanded: !view.expanded,
-                                              },
-                                            }))
-                                          }
-                                          type="button"
-                                        >
-                                          {view.expanded
-                                            ? "5件だけ表示"
-                                            : `残り${group.items.length - SOURCE_LIST_COMPACT_LIMIT}件をもっと見る`}
-                                        </button>
-                                      </div>
-                                    )}
-                                  {group.items.length >= SOURCE_LIST_PAGINATION_THRESHOLD && (
-                                    <nav
-                                      aria-label={`${group.name}のやりたいことページ`}
-                                      className="sourceListPagination"
-                                    >
-                                      <button
-                                        className="mainActionButton mainActionButton--neutral"
-                                        disabled={range.page <= 1}
-                                        onClick={() =>
-                                          setWishlistGroupViews((current) => ({
-                                            ...current,
-                                            [group.key]: {
-                                              ...current[group.key],
-                                              page: Math.max(1, range.page - 1),
-                                            },
-                                          }))
-                                        }
-                                        type="button"
-                                      >
-                                        <UiIcon name="chevronLeft" size={16} /> 前へ
-                                      </button>
-                                      <span>
-                                        {range.page} / {range.pageCount}
-                                      </span>
-                                      <button
-                                        className="mainActionButton mainActionButton--neutral"
-                                        disabled={range.page >= range.pageCount}
-                                        onClick={() =>
-                                          setWishlistGroupViews((current) => ({
-                                            ...current,
-                                            [group.key]: {
-                                              ...current[group.key],
-                                              page: Math.min(range.pageCount, range.page + 1),
-                                            },
-                                          }))
-                                        }
-                                        type="button"
-                                      >
-                                        次へ <UiIcon name="chevronRight" size={16} />
-                                      </button>
-                                    </nav>
-                                  )}
-                                </>
-                              </SectionCollapse>
-                            </section>
-                          );
-                        })}
-                      </div>
-                      {inboxPointerDrag?.targetIndicator && (
-                        <div
-                          aria-hidden="true"
-                          className="inboxDropIndicator"
-                          style={inboxPointerDrag.targetIndicator}
-                        />
-                      )}
-                      {inboxPointerDrag?.todayTargetIndicator && (
-                        <div
-                          aria-hidden="true"
-                          className="todayDropIndicator"
-                          style={inboxPointerDrag.todayTargetIndicator}
-                        />
-                      )}
-                      {wishlistGroupPointerDrag?.targetIndicator && (
-                        <div
-                          aria-hidden="true"
-                          className="wishlistGroupDropIndicator"
-                          style={wishlistGroupPointerDrag.targetIndicator}
-                        />
-                      )}
-                      {wishlistGroupPointerDrag && (
-                        <div
-                          aria-hidden="true"
-                          className="wishlistGroupDragGhost"
-                          style={{
-                            left:
-                              wishlistGroupPointerDrag.pointerX - wishlistGroupPointerDrag.offsetX,
-                            top:
-                              wishlistGroupPointerDrag.pointerY - wishlistGroupPointerDrag.offsetY,
-                            width: Math.min(320, wishlistGroupPointerDrag.width),
-                          }}
-                        >
-                          {wishlistGroupPointerDrag.name}
-                        </div>
-                      )}
-                      {inboxPointerDrag &&
-                        (() => {
-                          const item = config.inbox.find(
-                            (entry) =>
-                              entry.id === inboxPointerDrag.sourceKey.slice("wishlist:".length),
-                          );
-                          const project = item?.projectId
-                            ? projectsById.get(item.projectId)
-                            : undefined;
-                          return item ? (
-                            <div
-                              aria-hidden="true"
-                              className="inboxDragGhost"
-                              style={{
-                                left: inboxPointerDrag.pointerX - inboxPointerDrag.offsetX,
-                                top: inboxPointerDrag.pointerY - inboxPointerDrag.offsetY,
-                                width: Math.min(300, inboxPointerDrag.width),
-                              }}
-                            >
-                              <span className="inboxProjectIdentity">
-                                {project ? (
-                                  <ProjectIdentity
-                                    colorId={project.colorId}
-                                    compact
-                                    name={project.name}
-                                    projectId={project.id}
-                                  />
-                                ) : (
-                                  <span className="sourceProjectNone">プロジェクトなし</span>
-                                )}
-                              </span>
-                              <strong>{item.text}</strong>
-                            </div>
-                          ) : null;
-                        })()}
-                    </div>
-                  </SectionCollapse>
-                </section>
+                  config={config}
+                  drag={{ inboxPointerDrag, projectPointerDrag, wishlistGroupPointerDrag }}
+                  dragActive={dragActive}
+                  inboxAddOpen={inboxAddOpen}
+                  inboxListAnchorRef={inboxListAnchorRef}
+                  inboxOpen={inboxOpen}
+                  inboxSummaryOverflow={inboxSummaryOverflow}
+                  inboxSummaryRef={inboxSummaryRef}
+                  inboxSummaryTitle={inboxSummaryTitle}
+                  projectsById={projectsById}
+                  renderInboxGroupSummaryItems={renderInboxGroupSummaryItems}
+                  wishlistGroups={wishlistGroups}
+                  wishlistGroupViews={wishlistGroupViews}
+                  wishlistItemIsCurrentNextStep={wishlistItemIsCurrentNextStep}
+                />
 
                 <TodayActivitySection
                   count={todayActivityCount}
@@ -9234,456 +8719,53 @@ function DashboardApp() {
         toasts={toasts}
       />
 
-      <AnimatePresence initial={false}>
-        {contextMenu && (
-          <ExitPresence key="context-menu">
-            {(exiting, exitProps) => (
-              <ContextMenu
-                exitProps={exitProps}
-                ariaLabel="操作メニュー"
-                onClose={() => dismissContextMenu(false)}
-                onShortcutKey={handleContextMenuShortcut}
-                opener={contextMenuReturnFocusRef.current}
-                x={contextMenu.x}
-                y={contextMenu.y}
-              >
-                {contextMenu.kind === "doNow" ? (
-                  <ContextMenuItem onClick={showNextDoNowCandidate} type="button">
-                    他の一手
-                  </ContextMenuItem>
-                ) : contextMenu.kind === "button" ? (
-                  <>
-                    {showButtonInSidebar(contextMenu.button) && (
-                      <>
-                        <ContextMenuItem
-                          disabled={
-                            (config?.buttons ?? [])
-                              .filter(
-                                (button) =>
-                                  showButtonInSidebar(button) &&
-                                  buttonGroupName(button) === buttonGroupName(contextMenu.button),
-                              )
-                              .findIndex((button) => button.id === contextMenu.button.id) <= 0
-                          }
-                          onClick={() => void moveSidebarButtonByOffset(contextMenu.button.id, -1)}
-                          type="button"
-                        >
-                          上へ移動
-                        </ContextMenuItem>
-                        <ContextMenuItem
-                          disabled={(() => {
-                            const groupButtons = (config?.buttons ?? []).filter(
-                              (button) =>
-                                showButtonInSidebar(button) &&
-                                buttonGroupName(button) === buttonGroupName(contextMenu.button),
-                            );
-                            return (
-                              groupButtons.findIndex((button) => button.id === contextMenu.button.id) >=
-                              groupButtons.length - 1
-                            );
-                          })()}
-                          onClick={() => void moveSidebarButtonByOffset(contextMenu.button.id, 1)}
-                          type="button"
-                        >
-                          下へ移動
-                        </ContextMenuItem>
-                      </>
-                    )}
-                    <ContextMenuItem
-                      onClick={() => openButtonEditDialog(contextMenu.button)}
-                      type="button"
-                    >
-                      編集
-                    </ContextMenuItem>
-                    {canRevealLauncherButton(contextMenu.button) ? (
-                      <ContextMenuItem
-                        onClick={() => void revealButtonInExplorer(contextMenu.button)}
-                        type="button"
-                      >
-                        エクスプローラーで表示する
-                      </ContextMenuItem>
-                    ) : null}
-                    <ContextMenuItem
-                      className="contextMenuSeparatorBefore"
-                      onClick={() => void moveSidebarButtonToDictionary(contextMenu.button)}
-                      type="button"
-                    >
-                      辞書に移動
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      className="contextMenuDanger contextMenuSeparatorBefore"
-                      onClick={() => deleteButton(contextMenu.button)}
-                      type="button"
-                    >
-                      削除
-                    </ContextMenuItem>
-                  </>
-                ) : contextMenu.kind === "today" ? (
-                  <>
-                    <ContextMenuItem
-                      disabled={
-                        !config.today.items[contextMenu.index]?.sourceKey ||
-                        !canonicalSourceKey(config, config.today.items[contextMenu.index].sourceKey!) ||
-                        sourceEditBlocked(
-                          canonicalSourceKey(config, config.today.items[contextMenu.index].sourceKey!) ??
-                            "",
-                          true,
-                        )
-                      }
-                      title={
-                        config.today.items[contextMenu.index]?.sourceKey
-                          ? (sourceEditBlockReason(
-                              canonicalSourceKey(
-                                config,
-                                config.today.items[contextMenu.index].sourceKey!,
-                              ) ?? "",
-                              true,
-                            ) ?? undefined)
-                          : undefined
-                      }
-                      onClick={() => {
-                        const current = configRef.current;
-                        const item = current?.today.items[contextMenu.index];
-                        if (!current || !item?.sourceKey) return;
-                        const key = canonicalSourceKey(current, item.sourceKey);
-                        if (!key || sourceEditBlocked(key, true)) return;
-                        const project = current.projects.find((p) => `project:${p.id}` === key);
-                        if (project) openNextStepEditor(project, { origin: "today" });
-                        else {
-                          const index = current.inbox.findIndex((i) => `wishlist:${i.id}` === key);
-                          if (index >= 0) beginInboxEdit(index, "today");
-                        }
-                      }}
-                      shortcut="F2"
-                      type="button"
-                    >
-                      編集
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      disabled={contextMenu.index <= 0}
-                      onClick={() => void moveTodayItemByOffset(contextMenu.index, -1)}
-                      type="button"
-                    >
-                      左へ移動
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      disabled={contextMenu.index >= (config?.today.items.length ?? 0) - 1}
-                      onClick={() => void moveTodayItemByOffset(contextMenu.index, 1)}
-                      type="button"
-                    >
-                      右へ移動
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      disabled={
-                        !!config?.today.items[contextMenu.index] &&
-                        isTimerOnTodayItem(config.today.items[contextMenu.index], contextMenu.index)
-                      }
-                      title={
-                        config?.today.items[contextMenu.index] &&
-                        isTimerOnTodayItem(config.today.items[contextMenu.index], contextMenu.index)
-                          ? "タイマーを停止してから外してください"
-                          : undefined
-                      }
-                      onClick={() => {
-                        setContextMenu(null);
-                        const item = config?.today.items[contextMenu.index];
-                        if (item) void removeTodayItem(todaySourceKey(item, contextMenu.index));
-                      }}
-                      shortcut="Delete"
-                      type="button"
-                    >
-                      今日の3件から外す
-                    </ContextMenuItem>
-                  </>
-                ) : contextMenu.kind === "inbox" ? (
-                  <>
-                    <ContextMenuItem
-                      disabled={
-                        sourceEditBlocked(`wishlist:${config?.inbox[contextMenu.index]?.id ?? ""}`) ||
-                        Boolean(
-                          config?.inbox[contextMenu.index] &&
-                          wishlistItemIsCurrentNextStep(config.inbox[contextMenu.index]),
-                        )
-                      }
-                      onClick={() => promoteInboxToNextStep(contextMenu.index)}
-                      title={
-                        sourceEditBlockReason(`wishlist:${config?.inbox[contextMenu.index]?.id ?? ""}`) ??
-                        undefined
-                      }
-                      type="button"
-                    >
-                      {config?.inbox[contextMenu.index] &&
-                      wishlistItemIsCurrentNextStep(config.inbox[contextMenu.index])
-                        ? "次の一手に設定済み"
-                        : "次の一手にする"}
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      disabled={inboxNeighborIndex(contextMenu.index, -1) === undefined}
-                      onClick={() => void moveInboxItemByOffset(contextMenu.index, -1)}
-                      type="button"
-                    >
-                      上へ移動
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      disabled={inboxNeighborIndex(contextMenu.index, 1) === undefined}
-                      onClick={() => void moveInboxItemByOffset(contextMenu.index, 1)}
-                      type="button"
-                    >
-                      下へ移動
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      disabled={sourceEditBlocked(`wishlist:${config.inbox[contextMenu.index]?.id}`)}
-                      title={
-                        sourceEditBlockReason(`wishlist:${config.inbox[contextMenu.index]?.id}`) ??
-                        undefined
-                      }
-                      onClick={() => beginInboxEdit(contextMenu.index)}
-                      shortcut="F2"
-                      type="button"
-                    >
-                      編集
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      disabled={
-                        !config?.inbox[contextMenu.index] ||
-                        sourceEditBlocked(`wishlist:${config?.inbox[contextMenu.index]?.id ?? ""}`) ||
-                        isTimerActiveForSource([
-                          wishlistSourceKey(config.inbox[contextMenu.index], contextMenu.index),
-                          legacyWishlistSourceKey(config.inbox[contextMenu.index]),
-                        ])
-                      }
-                      onClick={() => completeInboxItem(contextMenu.index)}
-                      type="button"
-                    >
-                      完了にする
-                    </ContextMenuItem>
-                    {contextMenuTodayAdd ? (
-                      <ContextMenuItem
-                        disabled={contextMenuTodayAdd.disabled}
-                        onClick={() => {
-                          const candidate = contextMenuTodayAdd.candidate;
-                          setContextMenu(null);
-                          void addCandidateToToday(candidate);
-                        }}
-                        shortcut="T"
-                        title={contextMenuTodayAdd.reason}
-                        type="button"
-                      >
-                        今日の3件に入れる
-                      </ContextMenuItem>
-                    ) : null}
-                    <ContextMenuItem
-                      className="contextMenuDanger"
-                      disabled={
-                        !config?.inbox[contextMenu.index] ||
-                        sourceEditBlocked(`wishlist:${config?.inbox[contextMenu.index]?.id ?? ""}`) ||
-                        isTimerActiveForSource([
-                          wishlistSourceKey(config.inbox[contextMenu.index], contextMenu.index),
-                          legacyWishlistSourceKey(config.inbox[contextMenu.index]),
-                        ])
-                      }
-                      onClick={() => deleteInboxItem(contextMenu.index)}
-                      shortcut="Delete"
-                      type="button"
-                    >
-                      削除
-                    </ContextMenuItem>
-                  </>
-                ) : contextMenu.kind === "nextStep" ? (
-                  <>
-                    <ContextMenuItem
-                      onClick={() => openProjectEditDialog(contextMenu.project)}
-                      type="button"
-                    >
-                      プロジェクトを編集
-                    </ContextMenuItem>
-                    {contextMenu.project.nextStep?.text.trim() ? (
-                      <>
-                        <ContextMenuItem
-                          disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
-                          onClick={() => openNextStepEditor(contextMenu.project)}
-                          shortcut="F2"
-                          title={sourceEditBlockReason(`project:${contextMenu.project.id}`) ?? undefined}
-                          type="button"
-                        >
-                          次の一手を編集
-                        </ContextMenuItem>
-                        <ContextMenuItem
-                          disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
-                          onClick={() =>
-                            openNextStepEditor(contextMenu.project, {
-                              mode: "promote",
-                              text: "",
-                              projectLocked: true,
-                            })
-                          }
-                          title={sourceEditBlockReason(`project:${contextMenu.project.id}`) ?? undefined}
-                          type="button"
-                        >
-                          別の行動に入れ替える
-                        </ContextMenuItem>
-                        <ContextMenuItem
-                          disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
-                          onClick={() => clearProjectNextStep(contextMenu.project)}
-                          shortcut="Delete"
-                          title={sourceEditBlockReason(`project:${contextMenu.project.id}`) ?? undefined}
-                          type="button"
-                        >
-                          次の一手を未設定にする
-                        </ContextMenuItem>
-                      </>
-                    ) : (
-                      <ContextMenuItem
-                        disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
-                        onClick={() => openNextStepEditor(contextMenu.project)}
-                        title={sourceEditBlockReason(`project:${contextMenu.project.id}`) ?? undefined}
-                        type="button"
-                      >
-                        次の一手を設定
-                      </ContextMenuItem>
-                    )}
-                    {contextMenuTodayAdd ? (
-                      <ContextMenuItem
-                        disabled={contextMenuTodayAdd.disabled}
-                        onClick={() => {
-                          const candidate = contextMenuTodayAdd.candidate;
-                          setContextMenu(null);
-                          void addCandidateToToday(candidate);
-                        }}
-                        shortcut="T"
-                        title={contextMenuTodayAdd.reason}
-                        type="button"
-                      >
-                        今日の3件に入れる
-                      </ContextMenuItem>
-                    ) : null}
-                    <ContextMenuItem
-                      className="contextMenuDanger contextMenuSeparatorBefore"
-                      onClick={() => requestProjectDeletion(contextMenu.project)}
-                      type="button"
-                    >
-                      プロジェクトを削除…
-                    </ContextMenuItem>
-                  </>
-                ) : contextMenu.kind === "project" ? (
-                  <>
-                    <ContextMenuItem
-                      onClick={() => openProjectEditDialog(contextMenu.project)}
-                      type="button"
-                    >
-                      プロジェクトを編集
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      className="contextMenuSeparatorBefore"
-                      onClick={openProjectManagement}
-                      type="button"
-                    >
-                      プロジェクトを管理
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      className="contextMenuDanger contextMenuSeparatorBefore"
-                      onClick={() => requestProjectDeletion(contextMenu.project)}
-                      type="button"
-                    >
-                      プロジェクトを削除…
-                    </ContextMenuItem>
-                  </>
-                ) : contextMenu.kind === "projects" ? (
-                  <>
-                    <ContextMenuItem onClick={openProjectAddDialog} type="button">
-                      プロジェクトを追加
-                    </ContextMenuItem>
-                    <ContextMenuItem onClick={() => openImportDialog("")} type="button">
-                      まとめて取り込む
-                    </ContextMenuItem>
-                  </>
-                ) : contextMenu.kind === "inboxes" ? (
-                  <>
-                    <ContextMenuItem onClick={() => openInboxAddDialog()} type="button">
-                      やりたいことを追加
-                    </ContextMenuItem>
-                    <ContextMenuItem onClick={() => openImportDialog("")} type="button">
-                      まとめて取り込む
-                    </ContextMenuItem>
-                  </>
-                ) : contextMenu.kind === "session" ? (
-                  <>
-                    <ContextMenuItem
-                      onClick={() => openSessionEditDialog(contextMenu.session)}
-                      type="button"
-                    >
-                      編集
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      className="contextMenuDanger"
-                      onClick={() => requestSessionDelete(contextMenu.session)}
-                      type="button"
-                    >
-                      削除
-                    </ContextMenuItem>
-                  </>
-                ) : (
-                  <>
-                    <ContextMenuItem onClick={openGroupDialog} type="button">
-                      グループを追加
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      onClick={() => openButtonBuilder(contextMenu.groupName)}
-                      type="button"
-                    >
-                      ボタンを追加
-                    </ContextMenuItem>
-                    {contextMenu.groupName && (
-                      <>
-                        <ContextMenuItem
-                          disabled={uniqueGroupNames(config).indexOf(contextMenu.groupName) <= 0}
-                          onClick={() => void moveSidebarGroupByOffset(contextMenu.groupName!, -1)}
-                          type="button"
-                        >
-                          上へ移動
-                        </ContextMenuItem>
-                        <ContextMenuItem
-                          disabled={
-                            uniqueGroupNames(config).indexOf(contextMenu.groupName) >=
-                            uniqueGroupNames(config).length - 1
-                          }
-                          onClick={() => void moveSidebarGroupByOffset(contextMenu.groupName!, 1)}
-                          type="button"
-                        >
-                          下へ移動
-                        </ContextMenuItem>
-                      </>
-                    )}
-                    {!contextMenu.groupName ? null : contextMenu.groupName === DEFAULT_BUTTON_GROUP ? (
-                      <ContextMenuItem disabled type="button">
-                        その他は削除不可
-                      </ContextMenuItem>
-                    ) : (
-                      <>
-                        <ContextMenuItem
-                          onClick={() => openGroupRenameDialog(contextMenu.groupName)}
-                          type="button"
-                        >
-                          名前を変更
-                        </ContextMenuItem>
-                        <ContextMenuItem
-                          className="contextMenuDanger"
-                          onClick={() => {
-                            if (contextMenu.groupName) deleteGroup(contextMenu.groupName);
-                          }}
-                          type="button"
-                        >
-                          {contextMenu.groupName ? `${contextMenu.groupName}を削除` : "グループ削除"}
-                        </ContextMenuItem>
-                      </>
-                    )}
-                  </>
-                )}
-              </ContextMenu>
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
+      <DashboardContextMenu
+        actions={{
+          addCandidateToToday,
+          beginInboxEdit,
+          clearProjectNextStep,
+          completeInboxItem,
+          deleteButton,
+          deleteGroup,
+          deleteInboxItem,
+          dismissContextMenu,
+          handleContextMenuShortcut,
+          moveInboxItemByOffset,
+          moveSidebarButtonByOffset,
+          moveSidebarButtonToDictionary,
+          moveSidebarGroupByOffset,
+          moveTodayItemByOffset,
+          openButtonBuilder,
+          openButtonEditDialog,
+          openGroupDialog,
+          openGroupRenameDialog,
+          openImportDialog,
+          openInboxAddDialog,
+          openNextStepEditor,
+          openProjectAddDialog,
+          openProjectEditDialog,
+          openProjectManagement,
+          openSessionEditDialog,
+          promoteInboxToNextStep,
+          removeTodayItem,
+          requestProjectDeletion,
+          requestSessionDelete,
+          revealButtonInExplorer,
+          setContextMenu,
+          showNextDoNowCandidate,
+          sourceEditBlockReason,
+          sourceEditBlocked,
+          wishlistItemIsCurrentNextStep,
+        }}
+        config={config}
+        configRef={configRef}
+        contextMenu={contextMenu}
+        contextMenuReturnFocusRef={contextMenuReturnFocusRef}
+        contextMenuTodayAdd={contextMenuTodayAdd}
+        inboxNeighborIndex={inboxNeighborIndex}
+        isTimerActiveForSource={isTimerActiveForSource}
+        isTimerOnTodayItem={isTimerOnTodayItem}
+      />
 
       <AnimatePresence initial={false}>
         {inboxEditingIndex !== null && config.inbox[inboxEditingIndex] && (
