@@ -23,62 +23,69 @@ import { ExitPresence, type ExitPresenceAttributes } from "./ExitPresence";
 
 export type NextStepEditDialogProps = {
   config: AppConfig;
-  nextStepEditDraft: NextStepEditDraft;
-  buttonsById: Map<string, LauncherButton>;
-  instructionChoices: InstructionChoice[];
-  instructionChoicesError: string | null;
-  instructionChoicesLoading: boolean;
-  missingButtonIds: Set<string>;
-  missingInstructionProjectIds: Set<string>;
-  nextStepOpenMenuOpen: boolean;
-  nextStepOpenPicker: "buttons" | "instructions" | null;
-  numberInputDragging: NumberInputDragField | null;
-  overlayPages: OverlayPage[];
-  projectNextStepSuggestions: string[];
-  projectSelectableButtons: LauncherButton[];
-  sourceEditSaving: boolean;
-  setNextStepEditDraft: Dispatch<SetStateAction<NextStepEditDraft | null>>;
-  setNextStepOpenMenuOpen: Dispatch<SetStateAction<boolean>>;
-  setNextStepOpenPicker: Dispatch<SetStateAction<"buttons" | "instructions" | null>>;
-  renderButtonIcon: (button: LauncherButton, className: string) => React.ReactNode;
-  cancelNumberInputDrag: (event: React.PointerEvent<HTMLElement>) => void;
-  finishNumberInputDrag: (event: React.PointerEvent<HTMLElement>) => void;
-  updateNumberInputDrag: (event: React.PointerEvent<HTMLElement>) => void;
-  startNumberInputDrag: (
-    event: React.PointerEvent<HTMLElement>,
-    field: NumberInputDragField,
-    value: number,
-  ) => void;
-  chooseLegacyNextStepSettings: (choice: Exclude<LegacyNextStepChoice, null>) => void;
-  closeNextStepEditDialog: (afterSuccessfulSave?: boolean) => void;
-  refreshInstructionChoices: () => void;
-  saveNextStepEdit: () => void;
-  selectNextStepDecisionMode: (decisionMode: NextStepDecisionMode) => void;
-  selectNextStepProject: (projectId: string) => void;
+  data: {
+    buttonsById: Map<string, LauncherButton>;
+    instructionChoices: InstructionChoice[];
+    instructionChoicesError: string | null;
+    instructionChoicesLoading: boolean;
+    missingButtonIds: Set<string>;
+    missingInstructionProjectIds: Set<string>;
+    numberInputDragging: NumberInputDragField | null;
+    overlayPages: OverlayPage[];
+    projectNextStepSuggestions: string[];
+    projectSelectableButtons: LauncherButton[];
+    sourceEditSaving: boolean;
+  };
+  draft: {
+    nextStepEditDraft: NextStepEditDraft;
+    nextStepOpenMenuOpen: boolean;
+    nextStepOpenPicker: "buttons" | "instructions" | null;
+  };
+  actions: {
+    cancelNumberInputDrag: (event: React.PointerEvent<HTMLElement>) => void;
+    chooseLegacyNextStepSettings: (choice: Exclude<LegacyNextStepChoice, null>) => void;
+    closeNextStepEditDialog: (afterSuccessfulSave?: boolean) => void;
+    finishNumberInputDrag: (event: React.PointerEvent<HTMLElement>) => void;
+    refreshInstructionChoices: () => void;
+    renderButtonIcon: (button: LauncherButton, className: string) => React.ReactNode;
+    saveNextStepEdit: () => void;
+    selectNextStepDecisionMode: (decisionMode: NextStepDecisionMode) => void;
+    selectNextStepProject: (projectId: string) => void;
+    setNextStepEditDraft: Dispatch<SetStateAction<NextStepEditDraft | null>>;
+    setNextStepOpenMenuOpen: Dispatch<SetStateAction<boolean>>;
+    setNextStepOpenPicker: Dispatch<SetStateAction<"buttons" | "instructions" | null>>;
+    startNumberInputDrag: (
+      event: React.PointerEvent<HTMLElement>,
+      field: NumberInputDragField,
+      value: number,
+    ) => void;
+    updateNumberInputDrag: (event: React.PointerEvent<HTMLElement>) => void;
+  };
   /** V164 (E1): attributes for the close motion; the backdrop is removed when it ends. */
   exitProps?: ExitPresenceAttributes;
 };
 
 export function NextStepEditDialog(props: NextStepEditDialogProps) {
+  const { actions, config, data, draft, exitProps } = props;
+  const { nextStepEditDraft, nextStepOpenMenuOpen, nextStepOpenPicker } = draft;
   const {
     buttonsById,
-    cancelNumberInputDrag,
-    chooseLegacyNextStepSettings,
-    closeNextStepEditDialog,
-    config,
-    finishNumberInputDrag,
     instructionChoices,
     instructionChoicesError,
     instructionChoicesLoading,
     missingButtonIds,
     missingInstructionProjectIds,
-    nextStepEditDraft,
-    nextStepOpenMenuOpen,
-    nextStepOpenPicker,
     numberInputDragging,
     overlayPages,
     projectNextStepSuggestions,
     projectSelectableButtons,
+    sourceEditSaving,
+  } = data;
+  const {
+    cancelNumberInputDrag,
+    chooseLegacyNextStepSettings,
+    closeNextStepEditDialog,
+    finishNumberInputDrag,
     refreshInstructionChoices,
     renderButtonIcon,
     saveNextStepEdit,
@@ -87,11 +94,9 @@ export function NextStepEditDialog(props: NextStepEditDialogProps) {
     setNextStepEditDraft,
     setNextStepOpenMenuOpen,
     setNextStepOpenPicker,
-    sourceEditSaving,
     startNumberInputDrag,
     updateNumberInputDrag,
-    exitProps,
-  } = props;
+  } = actions;
 
   return (
     (() => {
