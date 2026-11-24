@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence } from "motion/react";
 import { UiIcon } from "./components/UiIcon";
+import { ExitPresence } from "./components/ExitPresence";
 
 export type InstructionChoice = { path: string; label: string };
 
@@ -107,73 +109,79 @@ export function InstructionPicker({
           ) : null}
         </>
       ) : null}
-      {dialogOpen ? (
-        <div className="modalBackdrop startEnvironmentBackdrop" role="presentation">
-          <section
-            aria-label="手順書を選ぶ"
-            aria-modal="true"
-            className="dropDialog instructionPickerDialog"
-            onKeyDown={(event) => {
-              if (event.key !== "Escape") return;
-              event.preventDefault();
-              event.stopPropagation();
-              close();
-            }}
-            role="dialog"
-          >
-            <header className="startEnvironmentDialogHeader">
-              <div><p className="eyebrow">Instruction</p><h2>手順書を選ぶ</h2></div>
-              <span className="startEnvironmentCount">{draftPath ? "1 / 1" : "0 / 1"}</span>
-            </header>
-            <label className="startEnvironmentSearch">
-              <span className="srOnly">手順書を検索</span>
-              <input autoComplete="off"
-                className="textInput"
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="名前・フォルダから検索"
-                ref={searchRef}
-                type="search"
-                value={query}
-              />
-            </label>
-            <div className="startEnvironmentOptions app-scrollbar" role="listbox">
-              <button
-                aria-selected={!draftPath}
-                className={!draftPath ? "startEnvironmentOption startEnvironmentOption--selected" : "startEnvironmentOption"}
-                onClick={() => setDraftPath("")}
-                role="option"
-                type="button"
-              >
-                <UiIcon name="close" size={18} />
-                <span className="startEnvironmentOptionCopy"><strong>手順書なし</strong></span>
-                <span aria-hidden="true" className="startEnvironmentOptionState">{!draftPath ? "✓" : ""}</span>
-              </button>
-              {rows.map((choice) => {
-                const selected = draftPath === choice.path;
-                return (
-                  <button
-                    aria-selected={selected}
-                    className={selected ? "startEnvironmentOption startEnvironmentOption--selected" : "startEnvironmentOption"}
-                    key={choice.path}
-                    onClick={() => setDraftPath(choice.path)}
-                    role="option"
-                    type="button"
-                  >
-                    <UiIcon name="fileText" size={18} />
-                    <span className="startEnvironmentOptionCopy"><strong>{choice.label}</strong></span>
-                    <span aria-hidden="true" className="startEnvironmentOptionState">{selected ? "✓" : ""}</span>
-                  </button>
-                );
-              })}
-              {rows.length === 0 ? <p className="startEnvironmentNoResults">該当する手順書はありません</p> : null}
-            </div>
-            <div className="dialogActions formDialogActions">
-              <button className="primaryButton" onClick={() => { onChange(draftPath); close(); }} type="button">選択</button>
-              <button className="secondaryButton dialogCancelButton" onClick={close} type="button">キャンセル</button>
-            </div>
-          </section>
-        </div>
-      ) : null}
+      <AnimatePresence initial={false}>
+        {dialogOpen && (
+          <ExitPresence key="instruction-picker">
+            {(exiting, exitProps) => (
+              <div className="modalBackdrop startEnvironmentBackdrop" role="presentation" {...exitProps}>
+                <section
+                  aria-label="手順書を選ぶ"
+                  aria-modal="true"
+                  className="dropDialog instructionPickerDialog"
+                  onKeyDown={(event) => {
+                    if (event.key !== "Escape") return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    close();
+                  }}
+                  role="dialog"
+                >
+                  <header className="startEnvironmentDialogHeader">
+                    <div><p className="eyebrow">Instruction</p><h2>手順書を選ぶ</h2></div>
+                    <span className="startEnvironmentCount">{draftPath ? "1 / 1" : "0 / 1"}</span>
+                  </header>
+                  <label className="startEnvironmentSearch">
+                    <span className="srOnly">手順書を検索</span>
+                    <input autoComplete="off"
+                      className="textInput"
+                      onChange={(event) => setQuery(event.target.value)}
+                      placeholder="名前・フォルダから検索"
+                      ref={searchRef}
+                      type="search"
+                      value={query}
+                    />
+                  </label>
+                  <div className="startEnvironmentOptions app-scrollbar" role="listbox">
+                    <button
+                      aria-selected={!draftPath}
+                      className={!draftPath ? "startEnvironmentOption startEnvironmentOption--selected" : "startEnvironmentOption"}
+                      onClick={() => setDraftPath("")}
+                      role="option"
+                      type="button"
+                    >
+                      <UiIcon name="close" size={18} />
+                      <span className="startEnvironmentOptionCopy"><strong>手順書なし</strong></span>
+                      <span aria-hidden="true" className="startEnvironmentOptionState">{!draftPath ? "✓" : ""}</span>
+                    </button>
+                    {rows.map((choice) => {
+                      const selected = draftPath === choice.path;
+                      return (
+                        <button
+                          aria-selected={selected}
+                          className={selected ? "startEnvironmentOption startEnvironmentOption--selected" : "startEnvironmentOption"}
+                          key={choice.path}
+                          onClick={() => setDraftPath(choice.path)}
+                          role="option"
+                          type="button"
+                        >
+                          <UiIcon name="fileText" size={18} />
+                          <span className="startEnvironmentOptionCopy"><strong>{choice.label}</strong></span>
+                          <span aria-hidden="true" className="startEnvironmentOptionState">{selected ? "✓" : ""}</span>
+                        </button>
+                      );
+                    })}
+                    {rows.length === 0 ? <p className="startEnvironmentNoResults">該当する手順書はありません</p> : null}
+                  </div>
+                  <div className="dialogActions formDialogActions">
+                    <button className="primaryButton" onClick={() => { onChange(draftPath); close(); }} type="button">選択</button>
+                    <button className="secondaryButton dialogCancelButton" onClick={close} type="button">キャンセル</button>
+                  </div>
+                </section>
+              </div>
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

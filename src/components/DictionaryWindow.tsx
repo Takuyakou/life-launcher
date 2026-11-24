@@ -13,6 +13,7 @@ import {
   type DictionaryTilePointerState,
 } from "../dictionaryTilePointer";
 import { moveIdToSlot, nearestSlotIndex } from "../dictionaryTileReorder";
+import { ExitPresence } from "./ExitPresence";
 import {
   announceDictionaryReady,
   setDictionaryMainLocked,
@@ -2001,107 +2002,121 @@ export function DictionaryWindow() {
           )}
         </div>
       </section>
-      {titlebarMenu ? (
-        <div
-          className="dictionaryTitlebarMenu"
-          role="menu"
-          style={{ left: titlebarMenu.x, top: titlebarMenu.y }}
-        >
-          <button onClick={openDictionarySettings} role="menuitem" type="button">
-            <UiIcon name="settings" size={16} />
-            <span>辞書の設定</span>
-          </button>
-        </div>
-      ) : null}
-      {settingsOpen ? (
-        <div
-          className="dictionarySettingsBackdrop"
-          role="presentation"
-        >
-          <section
-            aria-labelledby="dictionary-settings-title"
-            className="dictionarySettingsDialog"
-            onPointerDown={(event) => event.stopPropagation()}
-            ref={settingsDialogRef}
-            role="dialog"
-          >
-            <header className="dictionarySettingsHeader">
-              <div>
-                <p className="eyebrow">Dictionary</p>
-                <h2 id="dictionary-settings-title">辞書の設定</h2>
-              </div>
-              <button
-                aria-label="辞書の設定を閉じる"
-                className="dictionaryWindowClose"
-                onClick={closeDictionarySettings}
-                title="閉じる"
-                type="button"
-              >
-                <UiIcon name="close" size={16} />
-              </button>
-            </header>
-            <fieldset className="dictionarySizeFieldset dictionaryViewFieldset">
-              <legend>表示形式</legend>
+      <AnimatePresence initial={false}>
+        {titlebarMenu && (
+          <ExitPresence key="dictionary-titlebar-menu">
+            {(exiting, exitProps) => (
               <div
-                aria-label="表示形式"
-                className="dictionarySizeOptions dictionaryViewOptions"
-                role="radiogroup"
+                className="dictionaryTitlebarMenu"
+                role="menu"
+                style={{ left: titlebarMenu.x, top: titlebarMenu.y }}
+                {...exitProps}
               >
-                {(
-                  [
-                    ["tile", "タイル"],
-                    ["list", "リスト"],
-                  ] as const
-                ).map(([value, label]) => (
-                  <button
-                    aria-checked={viewModeDraft === value}
-                    className={viewModeDraft === value ? "isSelected" : undefined}
-                    key={value}
-                    onClick={() => setViewModeDraft(value)}
-                    role="radio"
-                    type="button"
-                  >
-                    {label}
-                  </button>
-                ))}
+                <button onClick={openDictionarySettings} role="menuitem" type="button">
+                  <UiIcon name="settings" size={16} />
+                  <span>辞書の設定</span>
+                </button>
               </div>
-            </fieldset>
-            <fieldset className="dictionarySizeFieldset">
-              <legend>アイコンサイズ</legend>
-              <p>項目の密度を選びます。自動ではウィンドウ幅に合わせます。</p>
-              <div aria-label="アイコンサイズ" className="dictionarySizeOptions" role="radiogroup">
-                {(
-                  [
-                    ["auto", "自動"],
-                    ["small", "小"],
-                    ["medium", "中"],
-                    ["large", "大"],
-                  ] as const
-                ).map(([value, label]) => (
-                  <button
-                    aria-checked={tileSizeDraft === value}
-                    className={tileSizeDraft === value ? "isSelected" : undefined}
-                    key={value}
-                    onClick={() => setTileSizeDraft(value)}
-                    role="radio"
-                    type="button"
-                  >
-                    {label}
-                  </button>
-                ))}
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {settingsOpen && (
+          <ExitPresence key="dictionary-settings">
+            {(exiting, exitProps) => (
+              <div
+                className="dictionarySettingsBackdrop"
+                role="presentation"
+                {...exitProps}
+              >
+                <section
+                  aria-labelledby="dictionary-settings-title"
+                  className="dictionarySettingsDialog"
+                  onPointerDown={(event) => event.stopPropagation()}
+                  ref={settingsDialogRef}
+                  role="dialog"
+                >
+                  <header className="dictionarySettingsHeader">
+                    <div>
+                      <p className="eyebrow">Dictionary</p>
+                      <h2 id="dictionary-settings-title">辞書の設定</h2>
+                    </div>
+                    <button
+                      aria-label="辞書の設定を閉じる"
+                      className="dictionaryWindowClose"
+                      onClick={closeDictionarySettings}
+                      title="閉じる"
+                      type="button"
+                    >
+                      <UiIcon name="close" size={16} />
+                    </button>
+                  </header>
+                  <fieldset className="dictionarySizeFieldset dictionaryViewFieldset">
+                    <legend>表示形式</legend>
+                    <div
+                      aria-label="表示形式"
+                      className="dictionarySizeOptions dictionaryViewOptions"
+                      role="radiogroup"
+                    >
+                      {(
+                        [
+                          ["tile", "タイル"],
+                          ["list", "リスト"],
+                        ] as const
+                      ).map(([value, label]) => (
+                        <button
+                          aria-checked={viewModeDraft === value}
+                          className={viewModeDraft === value ? "isSelected" : undefined}
+                          key={value}
+                          onClick={() => setViewModeDraft(value)}
+                          role="radio"
+                          type="button"
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </fieldset>
+                  <fieldset className="dictionarySizeFieldset">
+                    <legend>アイコンサイズ</legend>
+                    <p>項目の密度を選びます。自動ではウィンドウ幅に合わせます。</p>
+                    <div aria-label="アイコンサイズ" className="dictionarySizeOptions" role="radiogroup">
+                      {(
+                        [
+                          ["auto", "自動"],
+                          ["small", "小"],
+                          ["medium", "中"],
+                          ["large", "大"],
+                        ] as const
+                      ).map(([value, label]) => (
+                        <button
+                          aria-checked={tileSizeDraft === value}
+                          className={tileSizeDraft === value ? "isSelected" : undefined}
+                          key={value}
+                          onClick={() => setTileSizeDraft(value)}
+                          role="radio"
+                          type="button"
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </fieldset>
+                  <footer className="dictionarySettingsActions">
+                    <button className="primaryButton" onClick={saveDictionarySettings} type="button">
+                      保存
+                    </button>
+                    <button className="dangerButton" onClick={closeDictionarySettings} type="button">
+                      キャンセル
+                    </button>
+                  </footer>
+                </section>
               </div>
-            </fieldset>
-            <footer className="dictionarySettingsActions">
-              <button className="primaryButton" onClick={saveDictionarySettings} type="button">
-                保存
-              </button>
-              <button className="dangerButton" onClick={closeDictionarySettings} type="button">
-                キャンセル
-              </button>
-            </footer>
-          </section>
-        </div>
-      ) : null}
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
       {dragPreview && dragSourceButton ? (
         <div
           aria-hidden="true"

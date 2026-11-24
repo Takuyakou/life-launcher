@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { LauncherButton, OverlayPage } from "./types";
 import { UiIcon } from "./components/UiIcon";
+import { AnimatePresence } from "motion/react";
+import { ExitPresence } from "./components/ExitPresence";
 
 type PickerTab = "all" | "sidebar" | "dictionary";
 
@@ -188,126 +190,132 @@ export function StartEnvironmentPicker({
         </>
       ) : null}
 
-      {dialogOpen ? (
-        <div className="modalBackdrop startEnvironmentBackdrop" role="presentation">
-          <section
-            aria-label="開始環境を選ぶ"
-            aria-modal="true"
-            className="dropDialog startEnvironmentDialog"
-            onKeyDown={(event) => {
-              if (event.key !== "Escape") return;
-              event.preventDefault();
-              event.stopPropagation();
-              closePicker();
-            }}
-            role="dialog"
-          >
-            <header className="startEnvironmentDialogHeader">
-              <div>
-                <p className="eyebrow">Start Environment</p>
-                <h2>開始環境を選ぶ</h2>
-              </div>
-              <span
-                className={
-                  draftIds.length > maxSelected
-                    ? "startEnvironmentCount startEnvironmentCount--over"
-                    : "startEnvironmentCount"
-                }
-              >
-                {draftIds.length} / {maxSelected}
-              </span>
-            </header>
-
-            <div aria-label="表示対象" className="startEnvironmentTabs" role="tablist">
-              {(Object.keys(TAB_LABELS) as PickerTab[]).map((key) => (
-                <button
-                  aria-selected={tab === key}
-                  className={
-                    tab === key
-                      ? "startEnvironmentTab startEnvironmentTab--active"
-                      : "startEnvironmentTab"
-                  }
-                  key={key}
-                  onClick={() => setTab(key)}
-                  role="tab"
-                  type="button"
+      <AnimatePresence initial={false}>
+        {dialogOpen && (
+          <ExitPresence key="start-environment-picker">
+            {(exiting, exitProps) => (
+              <div className="modalBackdrop startEnvironmentBackdrop" role="presentation" {...exitProps}>
+                <section
+                  aria-label="開始環境を選ぶ"
+                  aria-modal="true"
+                  className="dropDialog startEnvironmentDialog"
+                  onKeyDown={(event) => {
+                    if (event.key !== "Escape") return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    closePicker();
+                  }}
+                  role="dialog"
                 >
-                  {TAB_LABELS[key]}
-                </button>
-              ))}
-            </div>
+                  <header className="startEnvironmentDialogHeader">
+                    <div>
+                      <p className="eyebrow">Start Environment</p>
+                      <h2>開始環境を選ぶ</h2>
+                    </div>
+                    <span
+                      className={
+                        draftIds.length > maxSelected
+                          ? "startEnvironmentCount startEnvironmentCount--over"
+                          : "startEnvironmentCount"
+                      }
+                    >
+                      {draftIds.length} / {maxSelected}
+                    </span>
+                  </header>
 
-            <label className="startEnvironmentSearch">
-              <span className="srOnly">開始環境を検索</span>
-              <input autoComplete="off"
-                className="textInput"
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="名前・カテゴリから検索"
-                ref={searchRef}
-                type="search"
-                value={query}
-              />
-            </label>
+                  <div aria-label="表示対象" className="startEnvironmentTabs" role="tablist">
+                    {(Object.keys(TAB_LABELS) as PickerTab[]).map((key) => (
+                      <button
+                        aria-selected={tab === key}
+                        className={
+                          tab === key
+                            ? "startEnvironmentTab startEnvironmentTab--active"
+                            : "startEnvironmentTab"
+                        }
+                        key={key}
+                        onClick={() => setTab(key)}
+                        role="tab"
+                        type="button"
+                      >
+                        {TAB_LABELS[key]}
+                      </button>
+                    ))}
+                  </div>
 
-            <div
-              className="startEnvironmentOptions app-scrollbar"
-              role="listbox"
-              aria-multiselectable="true"
-            >
-              {filteredButtons.map((button) => {
-                const selected = draftIds.includes(button.id);
-                const additionBlocked = !selected && draftIds.length >= maxSelected;
-                return (
-                  <button
-                    aria-disabled={additionBlocked}
-                    aria-selected={selected}
-                    className={
-                      selected
-                        ? "startEnvironmentOption startEnvironmentOption--selected"
-                        : "startEnvironmentOption"
-                    }
-                    key={button.id}
-                    onClick={() => {
-                      if (!additionBlocked) toggleDraft(button.id);
-                    }}
-                    role="option"
-                    type="button"
+                  <label className="startEnvironmentSearch">
+                    <span className="srOnly">開始環境を検索</span>
+                    <input autoComplete="off"
+                      className="textInput"
+                      onChange={(event) => setQuery(event.target.value)}
+                      placeholder="名前・カテゴリから検索"
+                      ref={searchRef}
+                      type="search"
+                      value={query}
+                    />
+                  </label>
+
+                  <div
+                    className="startEnvironmentOptions app-scrollbar"
+                    role="listbox"
+                    aria-multiselectable="true"
                   >
-                    {renderIcon(button, "startEnvironmentOptionIcon")}
-                    <span className="startEnvironmentOptionCopy">
-                      <strong>{button.label}</strong>
-                      <small>{categoryFor(button)}</small>
-                    </span>
-                    <span aria-hidden="true" className="startEnvironmentOptionState">
-                      {selected ? "✓" : additionBlocked ? "上限" : ""}
-                    </span>
-                  </button>
-                );
-              })}
-              {filteredButtons.length === 0 ? (
-                <p className="startEnvironmentNoResults">該当する開始環境はありません</p>
-              ) : null}
-            </div>
+                    {filteredButtons.map((button) => {
+                      const selected = draftIds.includes(button.id);
+                      const additionBlocked = !selected && draftIds.length >= maxSelected;
+                      return (
+                        <button
+                          aria-disabled={additionBlocked}
+                          aria-selected={selected}
+                          className={
+                            selected
+                              ? "startEnvironmentOption startEnvironmentOption--selected"
+                              : "startEnvironmentOption"
+                          }
+                          key={button.id}
+                          onClick={() => {
+                            if (!additionBlocked) toggleDraft(button.id);
+                          }}
+                          role="option"
+                          type="button"
+                        >
+                          {renderIcon(button, "startEnvironmentOptionIcon")}
+                          <span className="startEnvironmentOptionCopy">
+                            <strong>{button.label}</strong>
+                            <small>{categoryFor(button)}</small>
+                          </span>
+                          <span aria-hidden="true" className="startEnvironmentOptionState">
+                            {selected ? "✓" : additionBlocked ? "上限" : ""}
+                          </span>
+                        </button>
+                      );
+                    })}
+                    {filteredButtons.length === 0 ? (
+                      <p className="startEnvironmentNoResults">該当する開始環境はありません</p>
+                    ) : null}
+                  </div>
 
-            <div className="dialogActions formDialogActions">
-              <button
-                className="primaryButton"
-                onClick={() => {
-                  onChange(draftIds);
-                  setDialogOpen(false);
-                  returnFocus();
-                }}
-                type="button"
-              >
-                選択
-              </button>
-              <button className="secondaryButton dialogCancelButton" onClick={closePicker} ref={cancelRef} type="button">
-                キャンセル
-              </button>
-            </div>
-          </section>
-        </div>
-      ) : null}
+                  <div className="dialogActions formDialogActions">
+                    <button
+                      className="primaryButton"
+                      onClick={() => {
+                        onChange(draftIds);
+                        setDialogOpen(false);
+                        returnFocus();
+                      }}
+                      type="button"
+                    >
+                      選択
+                    </button>
+                    <button className="secondaryButton dialogCancelButton" onClick={closePicker} ref={cancelRef} type="button">
+                      キャンセル
+                    </button>
+                  </div>
+                </section>
+              </div>
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

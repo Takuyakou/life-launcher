@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { AnimatePresence } from "motion/react";
 import { OVERLAY_PAGE_NAME_MAX_CHARS } from "../constants";
 import type { LauncherAction } from "../types";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -11,6 +12,7 @@ import {
 } from "./DictionaryFeatureParity";
 import { UiIcon } from "./UiIcon";
 import { GroupModeField } from "./GroupModeField";
+import { ExitPresence } from "./ExitPresence";
 
 const DIALOG_FOCUSABLE =
   "button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex='-1'])";
@@ -207,445 +209,463 @@ export function DictionaryFeatureParityUi({ c }: { c: DictionaryFeatureParityCon
           )}
         </ContextMenu>
       ) : null}
-      {pageDraft ? (
-        <div className="modalBackdrop" role="presentation">
-          <section
-            aria-label={pageDraft.mode === "add" ? "辞書ページ追加" : "辞書ページ名変更"}
-            aria-modal="true"
-            className="dropDialog dictionaryParityDialog"
-            role="dialog"
-            tabIndex={-1}
-          >
-            <DictionaryDialogBehavior
-              onRequestClose={() => {
-                setError(null);
-                setPageDraft(null);
-              }}
-              suspended={Boolean(confirmation)}
-            />
-            <div>
-              <p className="eyebrow">Dictionary page</p>
-              <h2>{pageDraft.mode === "add" ? "ページを追加" : "名前を変更"}</h2>
-            </div>
-            <label className="fieldStack">
-              <span>ページ名</span>
-              <input autoComplete="off"
-                autoFocus
-                className="textInput"
-                maxLength={OVERLAY_PAGE_NAME_MAX_CHARS}
-                onChange={(event) => setPageDraft({ ...pageDraft, name: event.target.value })}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && !pageError(pageDraft.name, pageDraft.pageId))
-                    void savePage();
-                  if (event.key === "Escape") setPageDraft(null);
-                }}
-                value={pageDraft.name}
-              />
-              {pageError(pageDraft.name, pageDraft.pageId) ? (
-                <small className="fieldError">{pageError(pageDraft.name, pageDraft.pageId)}</small>
-              ) : null}
-            </label>
-            {error ? (
-              <p className="fieldError" role="alert">
-                {error}
-              </p>
-            ) : null}
-            <div className="dialogActions">
-              <button
-                className="secondaryButton"
-                onClick={() => {
-                  setError(null);
-                  setPageDraft(null);
-                }}
-                type="button"
-              >
-                キャンセル
-              </button>
-              <button
-                className="primaryButton"
-                disabled={Boolean(pageError(pageDraft.name, pageDraft.pageId))}
-                onClick={() => void savePage()}
-                type="button"
-              >
-                {pageDraft.mode === "add" ? "追加" : "保存"}
-              </button>
-            </div>
-          </section>
-        </div>
-      ) : null}{" "}
-      {dropDraft ? (
-        <div className="modalBackdrop" role="presentation">
-          <section
-            aria-label="ボタン登録"
-            aria-modal="true"
-            className="dropDialog modalLongForm dictionaryParityDialog app-scrollbar"
-            role="dialog"
-            tabIndex={-1}
-          >
-            <DictionaryDialogBehavior
-              onRequestClose={() => {
-                setError(null);
-                setDropDraft(null);
-              }}
-              suspended={Boolean(confirmation)}
-            />
-            <div>
-              <p className="eyebrow">Register</p>
-              <h2>辞書へ登録</h2>
-            </div>
-            <label className="fieldStack">
-              <span>ラベル</span>
-              <input autoComplete="off"
-                autoFocus
-                className="textInput"
-                maxLength={48}
-                onChange={(event) => setDropDraft({ ...dropDraft, label: event.target.value })}
-                value={dropDraft.label}
-              />
-            </label>
-            <label className="fieldStack">
-              <span>グループ</span>
-              <input autoComplete="off"
-                className="textInput"
-                list="dictionary-groups"
-                onChange={(event) => setDropDraft({ ...dropDraft, group: event.target.value })}
-                value={dropDraft.group}
-              />
-            </label>
-            <datalist id="dictionary-groups">
-              {groups.map((group) => (
-                <option key={group} value={group} />
-              ))}
-            </datalist>
-            <div className="displayTargetList">
-              <label className="displayTargetItem">
-                <input
-                  checked={dropDraft.showInSidebar}
-                  onChange={(event) =>
-                    setDropDraft({ ...dropDraft, showInSidebar: event.target.checked })
-                  }
-                  type="checkbox"
-                />
-                <strong>左サイドバーに表示</strong>
-              </label>
-              <label className="displayTargetItem">
-                <input
-                  checked={dropDraft.showInOverlay}
-                  onChange={(event) =>
-                    setDropDraft({ ...dropDraft, showInOverlay: event.target.checked })
-                  }
-                  type="checkbox"
-                />
-                <strong>辞書に表示</strong>
-              </label>
-            </div>
-            {dropDraft.showInOverlay ? (
-              <label className="fieldStack">
-                <span>辞書ページ</span>
-                <select
-                  className="textInput"
-                  onChange={(event) =>
-                    setDropDraft({ ...dropDraft, overlayPageId: event.target.value || null })
-                  }
-                  value={dropDraft.overlayPageId ?? ""}
+      <AnimatePresence initial={false}>
+        {pageDraft && (
+          <ExitPresence key="dictionary-page-dialog">
+            {(exiting, exitProps) => (
+              <div className="modalBackdrop" role="presentation" {...exitProps}>
+                <section
+                  aria-label={pageDraft.mode === "add" ? "辞書ページ追加" : "辞書ページ名変更"}
+                  aria-modal="true"
+                  className="dropDialog dictionaryParityDialog"
+                  role="dialog"
+                  tabIndex={-1}
                 >
-                  <option value="">未分類</option>
-                  {pages.map((page) => (
-                    <option key={page.id} value={page.id}>
-                      {page.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
-            <p className="dropSource">{dropDraft.source}</p>
-            {error ? (
-              <p className="fieldError" role="alert">
-                {error}
-              </p>
-            ) : null}
-            <div className="dialogActions">
-              <button
-                className="secondaryButton"
-                onClick={() => {
-                  setError(null);
-                  setDropDraft(null);
-                }}
-                type="button"
-              >
-                キャンセル
-              </button>
-              <button className="primaryButton" onClick={() => void register()} type="button">
-                登録
-              </button>
-            </div>
-          </section>
-        </div>
-      ) : null}
-      {buttonDraft ? (
-        <div className="modalBackdrop" role="presentation">
-          <section
-            aria-label="ボタン編集"
-            className="dropDialog editDialog dictionaryParityDialog buttonEditDialog"
-            role="dialog"
-            tabIndex={-1}
-          >
-            <DictionaryDialogBehavior
-              onRequestClose={requestCloseButtonEdit}
-              suspended={Boolean(confirmation)}
-            />
-            <div className="buttonEditDialogHeader modalTitleRow">
-              <div>
-                <p className="eyebrow">Button</p>
-                <h2>ボタンを編集</h2>
-              </div>
-              <button
-                aria-label="ボタン編集を閉じる"
-                className="iconButton"
-                onClick={requestCloseButtonEdit}
-                title="閉じる"
-                type="button"
-              >
-                <UiIcon name="close" size={16} />
-              </button>
-            </div>
-            <div className="buttonEditDialogBody app-scrollbar">
-              <section className="buttonEditSection">
-                <h3>基本</h3>
-                <label className="fieldStack">
-                  <span>ラベル</span>
-                  <input autoComplete="off"
-                    autoFocus
-                    className="textInput"
-                    maxLength={48}
-                    onChange={(event) =>
-                      setButtonDraft({ ...buttonDraft, label: event.target.value })
-                    }
-                    value={buttonDraft.label}
+                  <DictionaryDialogBehavior
+                    onRequestClose={() => {
+                      setError(null);
+                      setPageDraft(null);
+                    }}
+                    suspended={Boolean(confirmation)}
                   />
-                </label>
-                <GroupModeField
-                  existingGroup={buttonDraft.existingGroup}
-                  groupMode={buttonDraft.groupMode}
-                  groups={groups}
-                  newGroup={buttonDraft.newGroup}
-                  onExistingGroupChange={(existingGroup) =>
-                    setButtonDraft({ ...buttonDraft, existingGroup })
-                  }
-                  onGroupModeChange={(groupMode) =>
-                    setButtonDraft({
-                      ...buttonDraft,
-                      groupMode,
-                      existingGroup: buttonDraft.existingGroup || groups[0] || "未分類",
-                    })
-                  }
-                  onNewGroupChange={(newGroup) => setButtonDraft({ ...buttonDraft, newGroup })}
-                />
-              </section>
-              <section className="buttonEditSection">
-                <h3>表示先</h3>
-                <div className="displayTargetList">
-                  <label className="displayTargetItem">
-                    <input
-                      checked={buttonDraft.showInSidebar}
-                      onChange={(event) =>
-                        setButtonDraft({ ...buttonDraft, showInSidebar: event.target.checked })
-                      }
-                      type="checkbox"
-                    />
-                    <strong>左サイドバーに表示</strong>
-                  </label>
-                  <label className="displayTargetItem">
-                    <input
-                      checked={buttonDraft.showInOverlay}
-                      onChange={(event) =>
-                        setButtonDraft({ ...buttonDraft, showInOverlay: event.target.checked })
-                      }
-                      type="checkbox"
-                    />
-                    <strong>辞書に表示</strong>
-                  </label>
-                </div>
-                {buttonDraft.showInOverlay ? (
-                  <div className="fieldStack">
-                    <span>辞書ページ</span>
-                    <select
-                      className="textInput"
-                      onChange={(event) =>
-                        setButtonDraft({
-                          ...buttonDraft,
-                          overlayPageId: event.target.value || null,
-                        })
-                      }
-                      value={buttonDraft.overlayPageId ?? ""}
-                    >
-                      <option value="">未分類</option>
-                      {pages.map((page) => (
-                        <option key={page.id} value={page.id}>
-                          {page.name}
-                        </option>
-                      ))}
-                    </select>
+                  <div>
+                    <p className="eyebrow">Dictionary page</p>
+                    <h2>{pageDraft.mode === "add" ? "ページを追加" : "名前を変更"}</h2>
                   </div>
-                ) : null}
-              </section>
-              <details className="buttonEditOptional">
-                <summary>検索・説明（任意）</summary>
-                <div className="buttonEditOptionalBody">
                   <label className="fieldStack">
-                    <span>検索キーワード</span>
-                    <textarea autoComplete="off"
-                      className="textInput aliasesInput"
-                      onChange={(event) =>
-                        setButtonDraft({ ...buttonDraft, aliasesInput: event.target.value })
-                      }
-                      value={buttonDraft.aliasesInput}
+                    <span>ページ名</span>
+                    <input autoComplete="off"
+                      autoFocus
+                      className="textInput"
+                      maxLength={OVERLAY_PAGE_NAME_MAX_CHARS}
+                      onChange={(event) => setPageDraft({ ...pageDraft, name: event.target.value })}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" && !pageError(pageDraft.name, pageDraft.pageId))
+                          void savePage();
+                        if (event.key === "Escape") setPageDraft(null);
+                      }}
+                      value={pageDraft.name}
+                    />
+                    {pageError(pageDraft.name, pageDraft.pageId) ? (
+                      <small className="fieldError">{pageError(pageDraft.name, pageDraft.pageId)}</small>
+                    ) : null}
+                  </label>
+                  {error ? (
+                    <p className="fieldError" role="alert">
+                      {error}
+                    </p>
+                  ) : null}
+                  <div className="dialogActions">
+                    <button
+                      className="secondaryButton"
+                      onClick={() => {
+                        setError(null);
+                        setPageDraft(null);
+                      }}
+                      type="button"
+                    >
+                      キャンセル
+                    </button>
+                    <button
+                      className="primaryButton"
+                      disabled={Boolean(pageError(pageDraft.name, pageDraft.pageId))}
+                      onClick={() => void savePage()}
+                      type="button"
+                    >
+                      {pageDraft.mode === "add" ? "追加" : "保存"}
+                    </button>
+                  </div>
+                </section>
+              </div>
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>{" "}
+      <AnimatePresence initial={false}>
+        {dropDraft && (
+          <ExitPresence key="dictionary-drop-dialog">
+            {(exiting, exitProps) => (
+              <div className="modalBackdrop" role="presentation" {...exitProps}>
+                <section
+                  aria-label="ボタン登録"
+                  aria-modal="true"
+                  className="dropDialog modalLongForm dictionaryParityDialog app-scrollbar"
+                  role="dialog"
+                  tabIndex={-1}
+                >
+                  <DictionaryDialogBehavior
+                    onRequestClose={() => {
+                      setError(null);
+                      setDropDraft(null);
+                    }}
+                    suspended={Boolean(confirmation)}
+                  />
+                  <div>
+                    <p className="eyebrow">Register</p>
+                    <h2>辞書へ登録</h2>
+                  </div>
+                  <label className="fieldStack">
+                    <span>ラベル</span>
+                    <input autoComplete="off"
+                      autoFocus
+                      className="textInput"
+                      maxLength={48}
+                      onChange={(event) => setDropDraft({ ...dropDraft, label: event.target.value })}
+                      value={dropDraft.label}
                     />
                   </label>
                   <label className="fieldStack">
-                    <span>説明</span>
-                    <textarea autoComplete="off"
-                      className="textInput aliasesInput"
-                      onChange={(event) =>
-                        setButtonDraft({ ...buttonDraft, description: event.target.value })
-                      }
-                      value={buttonDraft.description}
+                    <span>グループ</span>
+                    <input autoComplete="off"
+                      className="textInput"
+                      list="dictionary-groups"
+                      onChange={(event) => setDropDraft({ ...dropDraft, group: event.target.value })}
+                      value={dropDraft.group}
                     />
                   </label>
-                </div>
-              </details>
-              <section className="buttonEditSection">
-                <h3>実行アクション</h3>
-                <div className="actionEditor">
-                  {buttonDraft.actions.map((action, index) => (
-                    <div className="actionRow buttonEditActionRow" key={action.draftId}>
-                      <select
-                        onChange={(event) => {
-                          const next = makeAction(
-                            event.target.value as LauncherAction["type"],
-                            valueOf(action),
-                          );
-                          setButtonDraft({
-                            ...buttonDraft,
-                            actions: buttonDraft.actions.map((item) =>
-                              item.draftId === action.draftId ? next : item,
-                            ),
-                          });
-                        }}
-                        value={action.type}
-                      >
-                        <option value="open_app">アプリ</option>
-                        <option value="open_folder">フォルダ</option>
-                        <option value="open_file">ファイル</option>
-                        <option value="open_url">URL</option>
-                        <option value="run_script">スクリプト</option>
-                        <option value="open_shell_special">Windows特殊項目</option>
-                      </select>
-                      <input autoComplete="off"
-                        className="textInput"
-                        disabled={action.type === "open_shell_special"}
+                  <datalist id="dictionary-groups">
+                    {groups.map((group) => (
+                      <option key={group} value={group} />
+                    ))}
+                  </datalist>
+                  <div className="displayTargetList">
+                    <label className="displayTargetItem">
+                      <input
+                        checked={dropDraft.showInSidebar}
                         onChange={(event) =>
+                          setDropDraft({ ...dropDraft, showInSidebar: event.target.checked })
+                        }
+                        type="checkbox"
+                      />
+                      <strong>左サイドバーに表示</strong>
+                    </label>
+                    <label className="displayTargetItem">
+                      <input
+                        checked={dropDraft.showInOverlay}
+                        onChange={(event) =>
+                          setDropDraft({ ...dropDraft, showInOverlay: event.target.checked })
+                        }
+                        type="checkbox"
+                      />
+                      <strong>辞書に表示</strong>
+                    </label>
+                  </div>
+                  {dropDraft.showInOverlay ? (
+                    <label className="fieldStack">
+                      <span>辞書ページ</span>
+                      <select
+                        className="textInput"
+                        onChange={(event) =>
+                          setDropDraft({ ...dropDraft, overlayPageId: event.target.value || null })
+                        }
+                        value={dropDraft.overlayPageId ?? ""}
+                      >
+                        <option value="">未分類</option>
+                        {pages.map((page) => (
+                          <option key={page.id} value={page.id}>
+                            {page.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+                  <p className="dropSource">{dropDraft.source}</p>
+                  {error ? (
+                    <p className="fieldError" role="alert">
+                      {error}
+                    </p>
+                  ) : null}
+                  <div className="dialogActions">
+                    <button
+                      className="secondaryButton"
+                      onClick={() => {
+                        setError(null);
+                        setDropDraft(null);
+                      }}
+                      type="button"
+                    >
+                      キャンセル
+                    </button>
+                    <button className="primaryButton" onClick={() => void register()} type="button">
+                      登録
+                    </button>
+                  </div>
+                </section>
+              </div>
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {buttonDraft && (
+          <ExitPresence key="dictionary-button-dialog">
+            {(exiting, exitProps) => (
+              <div className="modalBackdrop" role="presentation" {...exitProps}>
+                <section
+                  aria-label="ボタン編集"
+                  className="dropDialog editDialog dictionaryParityDialog buttonEditDialog"
+                  role="dialog"
+                  tabIndex={-1}
+                >
+                  <DictionaryDialogBehavior
+                    onRequestClose={requestCloseButtonEdit}
+                    suspended={Boolean(confirmation)}
+                  />
+                  <div className="buttonEditDialogHeader modalTitleRow">
+                    <div>
+                      <p className="eyebrow">Button</p>
+                      <h2>ボタンを編集</h2>
+                    </div>
+                    <button
+                      aria-label="ボタン編集を閉じる"
+                      className="iconButton"
+                      onClick={requestCloseButtonEdit}
+                      title="閉じる"
+                      type="button"
+                    >
+                      <UiIcon name="close" size={16} />
+                    </button>
+                  </div>
+                  <div className="buttonEditDialogBody app-scrollbar">
+                    <section className="buttonEditSection">
+                      <h3>基本</h3>
+                      <label className="fieldStack">
+                        <span>ラベル</span>
+                        <input autoComplete="off"
+                          autoFocus
+                          className="textInput"
+                          maxLength={48}
+                          onChange={(event) =>
+                            setButtonDraft({ ...buttonDraft, label: event.target.value })
+                          }
+                          value={buttonDraft.label}
+                        />
+                      </label>
+                      <GroupModeField
+                        existingGroup={buttonDraft.existingGroup}
+                        groupMode={buttonDraft.groupMode}
+                        groups={groups}
+                        newGroup={buttonDraft.newGroup}
+                        onExistingGroupChange={(existingGroup) =>
+                          setButtonDraft({ ...buttonDraft, existingGroup })
+                        }
+                        onGroupModeChange={(groupMode) =>
                           setButtonDraft({
                             ...buttonDraft,
-                            actions: buttonDraft.actions.map((item) =>
-                              item.draftId === action.draftId
-                                ? setValue(action, event.target.value)
-                                : item,
-                            ),
+                            groupMode,
+                            existingGroup: buttonDraft.existingGroup || groups[0] || "未分類",
                           })
                         }
-                        value={valueOf(action)}
+                        onNewGroupChange={(newGroup) => setButtonDraft({ ...buttonDraft, newGroup })}
                       />
-                      <div className="buttonEditActionButtons">
-                        {buttonDraft.actions.length > 1 ? (
-                          <>
-                            <button
-                              aria-label="アクションを上へ"
-                              className="iconButton"
-                              disabled={index === 0}
-                              onClick={() => {
-                                const actions = [...buttonDraft.actions];
-                                [actions[index - 1], actions[index]] = [
-                                  actions[index],
-                                  actions[index - 1],
-                                ];
-                                setButtonDraft({ ...buttonDraft, actions });
+                    </section>
+                    <section className="buttonEditSection">
+                      <h3>表示先</h3>
+                      <div className="displayTargetList">
+                        <label className="displayTargetItem">
+                          <input
+                            checked={buttonDraft.showInSidebar}
+                            onChange={(event) =>
+                              setButtonDraft({ ...buttonDraft, showInSidebar: event.target.checked })
+                            }
+                            type="checkbox"
+                          />
+                          <strong>左サイドバーに表示</strong>
+                        </label>
+                        <label className="displayTargetItem">
+                          <input
+                            checked={buttonDraft.showInOverlay}
+                            onChange={(event) =>
+                              setButtonDraft({ ...buttonDraft, showInOverlay: event.target.checked })
+                            }
+                            type="checkbox"
+                          />
+                          <strong>辞書に表示</strong>
+                        </label>
+                      </div>
+                      {buttonDraft.showInOverlay ? (
+                        <div className="fieldStack">
+                          <span>辞書ページ</span>
+                          <select
+                            className="textInput"
+                            onChange={(event) =>
+                              setButtonDraft({
+                                ...buttonDraft,
+                                overlayPageId: event.target.value || null,
+                              })
+                            }
+                            value={buttonDraft.overlayPageId ?? ""}
+                          >
+                            <option value="">未分類</option>
+                            {pages.map((page) => (
+                              <option key={page.id} value={page.id}>
+                                {page.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : null}
+                    </section>
+                    <details className="buttonEditOptional">
+                      <summary>検索・説明（任意）</summary>
+                      <div className="buttonEditOptionalBody">
+                        <label className="fieldStack">
+                          <span>検索キーワード</span>
+                          <textarea autoComplete="off"
+                            className="textInput aliasesInput"
+                            onChange={(event) =>
+                              setButtonDraft({ ...buttonDraft, aliasesInput: event.target.value })
+                            }
+                            value={buttonDraft.aliasesInput}
+                          />
+                        </label>
+                        <label className="fieldStack">
+                          <span>説明</span>
+                          <textarea autoComplete="off"
+                            className="textInput aliasesInput"
+                            onChange={(event) =>
+                              setButtonDraft({ ...buttonDraft, description: event.target.value })
+                            }
+                            value={buttonDraft.description}
+                          />
+                        </label>
+                      </div>
+                    </details>
+                    <section className="buttonEditSection">
+                      <h3>実行アクション</h3>
+                      <div className="actionEditor">
+                        {buttonDraft.actions.map((action, index) => (
+                          <div className="actionRow buttonEditActionRow" key={action.draftId}>
+                            <select
+                              onChange={(event) => {
+                                const next = makeAction(
+                                  event.target.value as LauncherAction["type"],
+                                  valueOf(action),
+                                );
+                                setButtonDraft({
+                                  ...buttonDraft,
+                                  actions: buttonDraft.actions.map((item) =>
+                                    item.draftId === action.draftId ? next : item,
+                                  ),
+                                });
                               }}
-                              type="button"
+                              value={action.type}
                             >
-                              ↑
-                            </button>
-                            <button
-                              aria-label="アクションを下へ"
-                              className="iconButton"
-                              disabled={index === buttonDraft.actions.length - 1}
-                              onClick={() => {
-                                const actions = [...buttonDraft.actions];
-                                [actions[index + 1], actions[index]] = [
-                                  actions[index],
-                                  actions[index + 1],
-                                ];
-                                setButtonDraft({ ...buttonDraft, actions });
-                              }}
-                              type="button"
-                            >
-                              ↓
-                            </button>
-                          </>
-                        ) : null}
+                              <option value="open_app">アプリ</option>
+                              <option value="open_folder">フォルダ</option>
+                              <option value="open_file">ファイル</option>
+                              <option value="open_url">URL</option>
+                              <option value="run_script">スクリプト</option>
+                              <option value="open_shell_special">Windows特殊項目</option>
+                            </select>
+                            <input autoComplete="off"
+                              className="textInput"
+                              disabled={action.type === "open_shell_special"}
+                              onChange={(event) =>
+                                setButtonDraft({
+                                  ...buttonDraft,
+                                  actions: buttonDraft.actions.map((item) =>
+                                    item.draftId === action.draftId
+                                      ? setValue(action, event.target.value)
+                                      : item,
+                                  ),
+                                })
+                              }
+                              value={valueOf(action)}
+                            />
+                            <div className="buttonEditActionButtons">
+                              {buttonDraft.actions.length > 1 ? (
+                                <>
+                                  <button
+                                    aria-label="アクションを上へ"
+                                    className="iconButton"
+                                    disabled={index === 0}
+                                    onClick={() => {
+                                      const actions = [...buttonDraft.actions];
+                                      [actions[index - 1], actions[index]] = [
+                                        actions[index],
+                                        actions[index - 1],
+                                      ];
+                                      setButtonDraft({ ...buttonDraft, actions });
+                                    }}
+                                    type="button"
+                                  >
+                                    ↑
+                                  </button>
+                                  <button
+                                    aria-label="アクションを下へ"
+                                    className="iconButton"
+                                    disabled={index === buttonDraft.actions.length - 1}
+                                    onClick={() => {
+                                      const actions = [...buttonDraft.actions];
+                                      [actions[index + 1], actions[index]] = [
+                                        actions[index],
+                                        actions[index + 1],
+                                      ];
+                                      setButtonDraft({ ...buttonDraft, actions });
+                                    }}
+                                    type="button"
+                                  >
+                                    ↓
+                                  </button>
+                                </>
+                              ) : null}
+                              <button
+                                aria-label="アクションを削除"
+                                className="iconButton"
+                                onClick={() =>
+                                  setButtonDraft({
+                                    ...buttonDraft,
+                                    actions: buttonDraft.actions.filter(
+                                      (item) => item.draftId !== action.draftId,
+                                    ),
+                                  })
+                                }
+                                type="button"
+                              >
+                                <UiIcon name="close" size={16} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                         <button
-                          aria-label="アクションを削除"
-                          className="iconButton"
+                          className="primaryButton buttonEditAddAction"
                           onClick={() =>
                             setButtonDraft({
                               ...buttonDraft,
-                              actions: buttonDraft.actions.filter(
-                                (item) => item.draftId !== action.draftId,
-                              ),
+                              actions: [...buttonDraft.actions, makeAction("open_app")],
                             })
                           }
                           type="button"
                         >
-                          <UiIcon name="close" size={16} />
+                          ＋ アクションを追加
                         </button>
                       </div>
-                    </div>
-                  ))}
-                  <button
-                    className="primaryButton buttonEditAddAction"
-                    onClick={() =>
-                      setButtonDraft({
-                        ...buttonDraft,
-                        actions: [...buttonDraft.actions, makeAction("open_app")],
-                      })
-                    }
-                    type="button"
-                  >
-                    ＋ アクションを追加
-                  </button>
-                </div>
-              </section>
-              {error ? (
-                <p className="fieldError" role="alert">
-                  {error}
-                </p>
-              ) : null}
-            </div>
-            <div className="dialogActions formDialogActions buttonEditDialogFooter">
-              <button className="primaryButton" onClick={() => void saveButton()} type="button">
-                保存
-              </button>
-              <button
-                className="secondaryButton dialogCancelButton"
-                onClick={requestCloseButtonEdit}
-                type="button"
-              >
-                キャンセル
-              </button>
-            </div>
-          </section>
-        </div>
-      ) : null}
+                    </section>
+                    {error ? (
+                      <p className="fieldError" role="alert">
+                        {error}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="dialogActions formDialogActions buttonEditDialogFooter">
+                    <button className="primaryButton" onClick={() => void saveButton()} type="button">
+                      保存
+                    </button>
+                    <button
+                      className="secondaryButton dialogCancelButton"
+                      onClick={requestCloseButtonEdit}
+                      type="button"
+                    >
+                      キャンセル
+                    </button>
+                  </div>
+                </section>
+              </div>
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
       <ConfirmDialog
         {...(confirmation ?? { title: "", confirmLabel: "確定", onConfirm: () => undefined })}
         onCancel={() => setConfirmation(null)}

@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef } from "react";
+import { AnimatePresence } from "motion/react";
 import { UiIcon } from "./UiIcon";
+import { ExitPresence, type ExitPresenceAttributes } from "./ExitPresence";
 
 type InstructionUnsavedDialogProps = {
   open: boolean;
@@ -10,14 +12,29 @@ type InstructionUnsavedDialogProps = {
   onSave: () => void;
 };
 
-export function InstructionUnsavedDialog({
+export function InstructionUnsavedDialog(props: InstructionUnsavedDialogProps) {
+  return (
+    <AnimatePresence initial={false}>
+      {props.open && (
+        <ExitPresence key="instruction-unsaved">
+          {(exiting, exitProps) => (
+            <InstructionUnsavedDialogBody {...props} exitProps={exitProps} />
+          )}
+        </ExitPresence>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function InstructionUnsavedDialogBody({
   open,
   saving,
   error,
   onContinueEditing,
   onDiscard,
   onSave,
-}: InstructionUnsavedDialogProps) {
+  exitProps,
+}: InstructionUnsavedDialogProps & { exitProps: ExitPresenceAttributes }) {
   const titleId = useId();
   const descriptionId = useId();
   const dialogRef = useRef<HTMLElement>(null);
@@ -63,7 +80,7 @@ export function InstructionUnsavedDialog({
   if (!open) return null;
 
   return (
-    <div className="modalBackdrop instructionUnsavedBackdrop" role="presentation">
+    <div className="modalBackdrop instructionUnsavedBackdrop" role="presentation" {...exitProps}>
       <section
         aria-describedby={descriptionId}
         aria-labelledby={titleId}
