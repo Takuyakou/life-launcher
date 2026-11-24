@@ -110,6 +110,9 @@ import {
   TodayItem,
 } from "./types";
 import { ConfirmDialog, type ConfirmDialogRequest } from "./components/ConfirmDialog";
+import { TopBar } from "./components/TopBar";
+import { MainHeaderVictoryBand } from "./components/MainHeaderVictoryBand";
+import { CompletionNextStepDialog } from "./components/CompletionNextStepDialog";
 import { ExitPresence } from "./components/ExitPresence";
 import { GroupNameDialog } from "./components/GroupNameDialog";
 import { ImportDialog } from "./components/ImportDialog";
@@ -223,11 +226,11 @@ import {
   toggleDictionaryWindow,
 } from "./dictionaryWindow";
 import { ACTION_DRAG_TYPE, MINI_READY_EVENT, MINI_RETURN_EVENT, MINI_TIMER_COMMAND_EVENT, MINI_TIMER_SNAPSHOT_EVENT, MINI_WINDOW_HEIGHT_PX, MINI_WINDOW_LABEL, MINI_WINDOW_WIDTH_PX, NUMBER_INPUT_DRAG_PIXELS_PER_STEP, NUMBER_INPUT_DRAG_THRESHOLD_PX, OVERLAY_PAGE_DRAG_TYPE, PROJECT_CARD_COMPACT_LIMIT, SIDEBAR_DRAG_THRESHOLD_PX, SOURCE_LIST_COMPACT_LIMIT, SOURCE_LIST_PAGE_SIZE, SOURCE_LIST_PAGINATION_THRESHOLD } from "./app/constants";
-import { type ActionDraft, type ActiveTimer, type ActiveView, type ButtonEditDraft, type ButtonGroup, type CompletionFeedback, type CompletionFollowup, type ContextMenuState, type ContextMenuTarget, type DoNowCompletionHold, type DropDialogState, type InboxDragPreview, type InboxPointerDrag, type InstructionChoice, type InternalButtonDrag, type LegacyNextStepChoice, type MainShellDropEvent, type ManualSessionDraft, type MiniTimerCommand, type MiniTimerSnapshot, type NextStepDecisionMode, type NextStepEditDraft, type NotesSaveStatus, type NumberInputDrag, type NumberInputDragField, type ProjectDragPreview, type ProjectEditDraft, type ProjectPointerDrag, type RecordsDateScope, SHORTCUT_DRAFT_FIELDS, type SessionEditDraft, type SettingsCenterDraft, type SettingsSectionKey, type ShortcutDraftField, type SidebarDragPreview, type SidebarGroupDragPreview, type SidebarGroupPointerDrag, type SidebarPointerDrag, TOP_MENU_GROUP_LABELS, TOP_MENU_LABELS, type TimerCompletionPrompt, type TodayDragPreview, type TodayPointerDrag, type WishlistGroupDragPreview, type WishlistGroupPointerDrag, type WishlistGroupView } from "./app/dashboardTypes";
+import { type ActionDraft, type ActiveTimer, type ActiveView, type ButtonEditDraft, type ButtonGroup, type CompletionFeedback, type CompletionFollowup, type ContextMenuState, type ContextMenuTarget, type DoNowCompletionHold, type DropDialogState, type InboxDragPreview, type InboxPointerDrag, type InstructionChoice, type InternalButtonDrag, type LegacyNextStepChoice, type MainShellDropEvent, type ManualSessionDraft, type MiniTimerCommand, type MiniTimerSnapshot, type NextStepDecisionMode, type NextStepEditDraft, type NotesSaveStatus, type NumberInputDrag, type NumberInputDragField, type ProjectDragPreview, type ProjectEditDraft, type ProjectPointerDrag, type RecordsDateScope, SHORTCUT_DRAFT_FIELDS, type SessionEditDraft, type SettingsCenterDraft, type SettingsSectionKey, type ShortcutDraftField, type SidebarDragPreview, type SidebarGroupDragPreview, type SidebarGroupPointerDrag, type SidebarPointerDrag, TOP_MENU_LABELS, type TimerCompletionPrompt, type TodayDragPreview, type TodayPointerDrag, type WishlistGroupDragPreview, type WishlistGroupPointerDrag, type WishlistGroupView } from "./app/dashboardTypes";
 import { MiniModeApp } from "./components/MiniModeApp";
 import { SOFTWARE_RESET_TIMER_MESSAGE, captureSoftwareResetStorage, clearSoftwareResetStorage, getSoftwareResetRecoveryForBoot, restoreSoftwareResetStorage } from "./app/softwareReset";
 import { SectionCollapse } from "./components/SectionCollapse";
-import { actionHasSuspiciousPath, actionValue, aliasesInputToList, aliasesListToInput, buttonGroupName, buttonHasIconCacheSource, createStableId, dropPositionToCss, firstDroppedUrl, formatActionSummary, formatClock, formatDateKeyForHeader, formatSessionRange, formatStartedAt, formatTodayActivityLog, iconForAction, isCloseShortcutValue, isEditableTarget, isValidStartedAt, limitToday, makeAction, matchesHotkey, normalizeOptionalText, normalizeTimerMinutes, readCollapsedGroups, shortcutFromKeyboardEvent, showButtonInOverlay, showButtonInSidebar, sourceListRange, stripActionDraft, toActionDraft, toThreeNoteDraft, todayEntries, todaySourceKey, todayTimerSourceId, toggleDisclosureFromBar, uniqueButtonId, uniqueGroupNames, uniqueProjectId, uniqueSuggestions, validateShortcutSettings, writeCollapsedGroups } from "./app/helpers";
+import { actionHasSuspiciousPath, actionValue, aliasesInputToList, aliasesListToInput, buttonGroupName, buttonHasIconCacheSource, createStableId, dropPositionToCss, firstDroppedUrl, formatActionSummary, formatClock, formatDateKeyForHeader, formatStartedAt, formatTodayActivityLog, iconForAction, isCloseShortcutValue, isEditableTarget, isValidStartedAt, limitToday, makeAction, matchesHotkey, normalizeOptionalText, normalizeTimerMinutes, readCollapsedGroups, shortcutFromKeyboardEvent, showButtonInOverlay, showButtonInSidebar, sourceListRange, stripActionDraft, toActionDraft, toThreeNoteDraft, todayEntries, todaySourceKey, todayTimerSourceId, toggleDisclosureFromBar, uniqueButtonId, uniqueGroupNames, uniqueProjectId, uniqueSuggestions, validateShortcutSettings, writeCollapsedGroups } from "./app/helpers";
 import { clearMiniPosition, createMiniReadyWaiter, inactiveMiniSnapshot, isDictionaryView, isFiniteMiniPosition, isInstructionView, isMiniModeView, readMiniPosition, resolveSafeMiniPosition, sameMiniPosition, timerActionText, waitForMiniWindowCreated, writeMiniPosition } from "./app/miniWindow";
 import { draggedCardTopWithinTodayRemoveDropZone, inboxDropTargetFromPoint, instructionPathKey, instructionPathWithin, isReorderBlockedTarget, notifyTimerComplete, pointWithinSelector, pointWithinTodayRemoveDropZone, projectDropIndicator, projectDropTargetFromPoint, sidebarDropTargetFromPoint, sidebarGroupDropTargetFromPoint, todayAdoptionDropTargetFromPoint, todayDropTargetFromPoint, wishlistGroupDropTargetFromPoint } from "./app/dropTargets";
 
@@ -8463,128 +8466,21 @@ function DashboardApp() {
           role="presentation"
         />
       )}
-      <header
-        className="topBar"
-        data-tauri-drag-region=""
-        data-top-menu-labels={topMenuLabelLevel}
-        ref={topMenuBarRef}
-      >
-        <div
-          className="topBrand"
-          data-tauri-drag-region=""
-          onContextMenu={(event) => {
-            event.preventDefault();
-            openContextMenu(
-              { kind: "sidebar" },
-              event.clientX,
-              event.clientY,
-              event.currentTarget,
-            );
-          }}
-        >
-          <span className="topBrandIcon" aria-hidden="true" data-tauri-drag-region="">
-            <img alt="" draggable={false} src="/life-launcher-icon.svg" />
-          </span>
-          <span className="topBrandName" data-tauri-drag-region="">
-            Life Launcher
-          </span>
-          {testProfile?.testProfile && (
-            <span className="uiPill testProfileBadge" title="テスト用の起動（普段のデータとは別）">
-              テスト
-            </span>
-          )}
-          {shortcutRegistration && (
-            <ShortcutBadge
-              label="Life Launcherを表示/隠す"
-              shortcut={config?.settings.focusHotkey}
-              registered={shortcutRegistration.main}
-            />
-          )}
-        </div>
-        <button
-          aria-keyshortcuts="Control+F"
-          aria-label="一手・ボタン・手順書を検索(Ctrl+F)"
-          className="topSearchButton"
-          data-top-search=""
-          onClick={() => openSearchPalette()}
-          title="一手・ボタン・手順書を検索(Ctrl+F)"
-          type="button"
-        >
-          <UiIcon name="search" size={18} />
-          <span className="topSearchLabel">検索</span>
-          <ShortcutBadge label="検索" registered shortcut="Ctrl+F" tone="muted" />
-        </button>
-
-        <div className="topPills" data-tauri-drag-region="" ref={topMenuPillsRef}>
-          <div
-            aria-label={TOP_MENU_GROUP_LABELS.autoStart}
-            className="topPillGroup topPillGroup--autostart"
-            role="group"
-          >
-            <button
-              aria-label="Windows自動起動"
-              aria-pressed={config.settings.autoStart === true}
-              className={
-                config.settings.autoStart
-                  ? "viewToggleButton viewToggleButton--autoStart viewToggleButton--active"
-                  : "viewToggleButton viewToggleButton--autoStart"
-              }
-              onClick={() => void toggleAutoStart()}
-              title={config.settings.autoStart ? "Windows自動起動: ON" : "Windows自動起動: OFF"}
-              type="button"
-            >
-              <UiIcon name="power" size={18} />
-              {config.settings.autoStart && (
-                <span aria-hidden="true" className="autoStartDot" />
-              )}
-            </button>
-          </div>
-          <span aria-hidden="true" className="topPillsDivider" />
-          <div
-            aria-label={TOP_MENU_GROUP_LABELS.work}
-            className="topPillGroup topPillGroup--work"
-            role="group"
-          >
-            <button
-              className="viewToggleButton"
-              data-view-toggle=""
-              onClick={() => setActiveView((view) => (view === "records" ? "main" : "records"))}
-              title={activeView === "records" ? "メイン画面に戻る" : "記録ビューを開く"}
-              aria-label={activeView === "records" ? "メイン画面に戻る" : "記録ビューを開く"}
-              type="button"
-            >
-              <UiIcon name={activeView === "records" ? "back" : "records"} size={18} />
-              <span className="viewToggleButtonLabel">
-                {activeView === "records" ? TOP_MENU_LABELS.dashboard : TOP_MENU_LABELS.records}
-              </span>
-            </button>
-            <button
-              aria-label="手順書を開く"
-              className="viewToggleButton"
-              data-menu-label-secondary=""
-              onClick={() => void openInstructionsManually()}
-              title="手順書を開く"
-              type="button"
-            >
-              <UiIcon name="book" size={18} />
-              <span className="viewToggleButtonLabel">
-                {TOP_MENU_LABELS.instructions}
-              </span>
-            </button>
-            <button
-              className="viewToggleButton"
-              data-menu-label-secondary=""
-              onClick={openSettingsCenter}
-              title="設定を開く"
-              aria-label="設定を開く"
-              type="button"
-            >
-              <UiIcon name="settings" size={18} />
-              <span className="viewToggleButtonLabel">{TOP_MENU_LABELS.settings}</span>
-            </button>
-          </div>
-        </div>
-      </header>
+      <TopBar
+        activeView={activeView}
+        config={config}
+        openContextMenu={openContextMenu}
+        openInstructionsManually={openInstructionsManually}
+        openSearchPalette={openSearchPalette}
+        openSettingsCenter={openSettingsCenter}
+        setActiveView={setActiveView}
+        shortcutRegistration={shortcutRegistration}
+        testProfile={testProfile}
+        toggleAutoStart={toggleAutoStart}
+        topMenuBarRef={topMenuBarRef}
+        topMenuLabelLevel={topMenuLabelLevel}
+        topMenuPillsRef={topMenuPillsRef}
+      />
       <WindowControls closeShortcutDisabled={closeShortcutDisabled} />
 
       <div className="appBody">
@@ -9019,135 +8915,32 @@ function DashboardApp() {
               />
             ) : (
               <>
-                <div className="mainHeaderRow">
-                  <div className="mainHeaderDate">
-                    <span className="mainDateText">{headerDateMain}</span>
-                    <span className="mainDateWeekday">{headerDateWeekday}</span>
-                  </div>
-                <div className="victoryBarWrap">
-                <section
-                  className={[
-                    "victoryBar",
-                    victoryDone ? "victoryBar--done" : "",
-                    victoryText ? "" : "victoryBar--empty",
-                    completionFeedback?.kind === "victory" ? "victoryBar--reward" : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                  aria-label="今日の勝利条件"
-                >
-                  {completionFeedback?.kind === "victory" && (
-                    <span aria-hidden="true" className="victoryRewardSweep" />
-                  )}
-                  <span className="victoryIcon" aria-hidden="true">
-                    <UiIcon name="flag" size={16} />
-                  </span>
-                  <span className="victoryLabel">今日の勝利条件</span>
-                  <div className="victoryContent">
-                    {victoryEditing ? (
-                      <>
-                        <input autoComplete="off"
-                          aria-label="今日の勝利条件"
-                          className={
-                            victoryDone ? "victoryInput victoryInput--done" : "victoryInput"
-                          }
-                          maxLength={90}
-                          onBlur={(event) => {
-                            const next = event.relatedTarget;
-                            if (next instanceof Node && victorySuggestionsRef.current?.contains(next)) {
-                              return;
-                            }
-                            setVictoryEditing(false);
-                          }}
-                          onChange={(event) => {
-                            victorySaveRef.current = updateVictoryText(event.target.value);
-                          }}
-                          onKeyDown={handleVictoryKeyDown}
-                          placeholder="今日はこれができれば勝ち"
-                          ref={victoryInputRef}
-                          value={config.today.victory.text}
-                        />
-                      </>
-                    ) : (
-                      <button
-                        aria-label="今日の勝利条件を編集"
-                        className={
-                          victoryDone
-                            ? "victoryTextButton victoryTextButton--done"
-                            : victoryText
-                              ? "victoryTextButton"
-                              : "victoryTextButton victoryTextButton--empty"
-                        }
-                        onBlur={clearVictoryAutoFocus}
-                        onClick={enterVictoryEditing}
-                        onKeyDown={clearVictoryAutoFocus}
-                        ref={victoryNavigationRef}
-                        type="button"
-                      >
-                        {config.today.victory.text || "今日はこれができれば勝ち"}
-                      </button>
-                    )}
-                  </div>
-                  {victoryDone ? (
-                    <span
-                      className={
-                        completionFeedback?.kind === "victory"
-                          ? "victoryBadge victoryBadge--reward"
-                          : "victoryBadge"
-                      }
-                      role={completionFeedback?.kind === "victory" ? "status" : undefined}
-                    >
-                      ✓ 今日の勝利、達成
-                    </span>
-                  ) : null}
-                  <input
-                    aria-label="勝利条件を達成"
-                    checked={victoryDone}
-                    className="check victoryCheck"
-                    disabled={!victoryText}
-                    onChange={toggleVictoryDone}
-                    type="checkbox"
-                  />
-                </section>
-                {victoryEditing && !victoryText && victorySuggestions.length > 0 && (
-                  <div
-                    className="victorySuggestions"
-                    aria-label="勝利条件の候補"
-                    ref={victorySuggestionsRef}
-                  >
-                    {victorySuggestions.map((suggestion) => (
-                      <button
-                        className="suggestionChip"
-                        key={suggestion}
-                        onBlur={(event) => {
-                          const next = event.relatedTarget;
-                          if (
-                            next instanceof Node &&
-                            (next === victoryInputRef.current ||
-                              victorySuggestionsRef.current?.contains(next))
-                          ) {
-                            return;
-                          }
-                          setVictoryEditing(false);
-                        }}
-                        onClick={() => applyVictorySuggestion(suggestion)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Escape") {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            leaveVictoryEditing();
-                          }
-                        }}
-                        onMouseDown={(event) => event.preventDefault()}
-                        type="button"
-                      >
-                        {suggestion}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                </div>
-                </div>
+                <MainHeaderVictoryBand
+                  actions={{
+                    applyVictorySuggestion,
+                    clearVictoryAutoFocus,
+                    enterVictoryEditing,
+                    handleVictoryKeyDown,
+                    leaveVictoryEditing,
+                    toggleVictoryDone,
+                    updateVictoryText,
+                  }}
+                  completionFeedback={completionFeedback}
+                  dateMain={headerDateMain}
+                  dateWeekday={headerDateWeekday}
+                  done={victoryDone}
+                  editing={victoryEditing}
+                  refs={{
+                    input: victoryInputRef,
+                    navigation: victoryNavigationRef,
+                    save: victorySaveRef,
+                    suggestions: victorySuggestionsRef,
+                  }}
+                  setEditing={setVictoryEditing}
+                  suggestions={victorySuggestions}
+                  text={victoryText}
+                  value={config.today.victory.text}
+                />
 
                 <section
                   className="doNowBand"
@@ -11832,195 +11625,23 @@ function DashboardApp() {
       <AnimatePresence initial={false}>
         {completionFollowup?.source.kind === "nextStep" && (
           <ExitPresence key="completion-next-step">
-            {(exiting, exitProps) => {
-              const projectId = completionFollowup.source.projectId;
-              const followupProject = config.projects.find((project) => project.id === projectId);
-              const followupWishlist = config.inbox.filter(
-                (item): item is AppConfig["inbox"][number] & { id: string } =>
-                  item.projectId === projectId && Boolean(item.id),
-              );
-              const previous = completionFollowup.previousNextStep;
-              const decide = () => {
-                const live = configRef.current;
-                const project = live?.projects.find((candidate) => candidate.id === projectId);
-                if (!project) {
-                  setCompletionFollowup(null);
-                  showToast("warn", "プロジェクトが見つかりません");
-                  return;
-                }
-                if (project.nextStep?.text.trim()) {
-                  setCompletionFollowup(null);
-                  showToast("warn", "次の一手はもう決まっています");
-                  return;
-                }
-                if (completionFollowupChoice === "none") {
-                  setCompletionFollowup(null);
-                  return;
-                }
-                if (completionFollowupChoice.startsWith("wishlist:")) {
-                  const wishlistId = completionFollowupChoice.slice("wishlist:".length);
-                  const index = live?.inbox.findIndex((item) => item.id === wishlistId) ?? -1;
-                  if (index < 0) {
-                    // P10-14 (§8.1): the chosen wishlist item vanished while the dialog was open.
-                    const firstWishlist = live?.inbox.find(
-                      (item) => item.projectId === projectId && Boolean(item.id),
-                    );
-                    setCompletionFollowupChoice(
-                      firstWishlist?.id
-                        ? `wishlist:${firstWishlist.id}`
-                        : previous
-                          ? "repeat"
-                          : "write",
-                    );
-                    showToast("warn", "選んだやりたいことが見つかりません");
-                    return;
-                  }
-                  setCompletionFollowup(null);
-                  promoteInboxToNextStep(index);
-                  return;
-                }
-                if (completionFollowupChoice === "repeat" && previous) {
-                  // Only the buttons that still exist and can be chosen in the editor are copied.
-                  const liveButtons = new Set(projectSelectableButtons.map((button) => button.id));
-                  setCompletionFollowup(null);
-                  openNextStepEditor(project, {
-                    mode: "set",
-                    prefill: {
-                      text: previous.text,
-                      trigger: previous.trigger ?? "",
-                      buttonIds: previous.buttonIds.filter((id) => liveButtons.has(id)),
-                      shortTimerMinutes:
-                        previous.shortTimerMinutes === undefined
-                          ? ""
-                          : String(previous.shortTimerMinutes),
-                      defaultTimerMinutes:
-                        previous.defaultTimerMinutes === undefined
-                          ? ""
-                          : String(previous.defaultTimerMinutes),
-                      instructionPath: previous.instructionPath ?? "",
-                      instructionOpenOnStart: previous.instructionOpenOnStart ?? false,
-                      startNoteTemplate: previous.startNoteTemplate ?? "",
-                      expandTimerOnStart: previous.expandTimerOnStart ?? false,
-                    },
-                  });
-                  return;
-                }
-                setCompletionFollowup(null);
-                openNextStepEditor(project, { mode: "set" });
-              };
-              const choiceClass = (selected: boolean) =>
-                selected
-                  ? "completionFollowupChoice completionFollowupChoice--selected"
-                  : "completionFollowupChoice";
-              return (
-                <div className="modalBackdrop" role="presentation" {...exitProps}>
-                  <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
-                  <section
-                    aria-label="一手進みました"
-                    aria-modal="true"
-                    className="dropDialog completionFollowupDialog"
-                    role="dialog"
-                    tabIndex={-1}
-                  >
-                    <div className="completionDoneHeader">
-                      <span aria-hidden="true" className="completionDoneMark">
-                        ✓
-                      </span>
-                      <div>
-                        <p className="eyebrow">Session</p>
-                        <h2>一手進みました</h2>
-                      </div>
-                    </div>
-                    <div className="completionDoneSubject">
-                      {followupProject && (
-                        <ProjectIdentity
-                          colorId={followupProject.colorId}
-                          compact
-                          name={followupProject.name}
-                          projectId={followupProject.id}
-                        />
-                      )}
-                      <strong title={completionFollowup.text}>{completionFollowup.text}</strong>
-                      {completionFollowup.minutes ? (
-                        <span className="completionDoneMinutes">
-                          {formatSessionRange(completionFollowup) ??
-                            `実行 ${completionFollowup.minutes}分`}
-                        </span>
-                      ) : null}
-                    </div>
-                    <h3 className="completionFollowupQuestion" id="completion-followup-question">
-                      次はどこから始めますか
-                    </h3>
-                    <div
-                      aria-labelledby="completion-followup-question"
-                      className="completionFollowupChoices"
-                      role="radiogroup"
-                    >
-                      {followupWishlist.map((item) => {
-                        const key = `wishlist:${item.id}`;
-                        return (
-                          <label className={choiceClass(completionFollowupChoice === key)} key={key}>
-                            <input
-                              aria-label={item.text}
-                              checked={completionFollowupChoice === key}
-                              onChange={() => setCompletionFollowupChoice(key)}
-                              type="radio"
-                            />
-                            <span>{item.text}</span>
-                            <small>やりたいことから</small>
-                          </label>
-                        );
-                      })}
-                      {previous && (
-                        <label className={choiceClass(completionFollowupChoice === "repeat")}>
-                          <input
-                            aria-label={`同じ一手をもう一度（${previous.text}）`}
-                            checked={completionFollowupChoice === "repeat"}
-                            onChange={() => setCompletionFollowupChoice("repeat")}
-                            type="radio"
-                          />
-                          <span>同じ一手をもう一度（{previous.text}）</span>
-                        </label>
-                      )}
-                      <label className={choiceClass(completionFollowupChoice === "write")}>
-                        <input
-                          aria-label="自分で書く"
-                          checked={completionFollowupChoice === "write"}
-                          onChange={() => setCompletionFollowupChoice("write")}
-                          type="radio"
-                        />
-                        <span>自分で書く</span>
-                      </label>
-                      <label className={choiceClass(completionFollowupChoice === "none")}>
-                        <input
-                          aria-label="今は決めない"
-                          checked={completionFollowupChoice === "none"}
-                          onChange={() => setCompletionFollowupChoice("none")}
-                          type="radio"
-                        />
-                        <span>今は決めない</span>
-                      </label>
-                    </div>
-                    <div className="dialogActions formDialogActions">
-                      <button
-                        className="primaryButton completionFollowupDecide"
-                        onClick={decide}
-                        type="button"
-                      >
-                        決定
-                      </button>
-                      <button
-                        className="secondaryButton dialogCancelButton"
-                        onClick={() => setCompletionFollowup(null)}
-                        type="button"
-                      >
-                        閉じる
-                      </button>
-                    </div>
-                  </section>
-                </div>
-              );
-            }}
+            {(exiting, exitProps) => (
+              <CompletionNextStepDialog
+                actions={{
+                  openNextStepEditor,
+                  projectSelectableButtons,
+                  promoteInboxToNextStep,
+                  showToast,
+                }}
+                choice={completionFollowupChoice}
+                config={config}
+                configRef={configRef}
+                exitProps={exitProps}
+                followup={completionFollowup}
+                setChoice={setCompletionFollowupChoice}
+                setFollowup={setCompletionFollowup}
+              />
+            )}
           </ExitPresence>
         )}
       </AnimatePresence>
