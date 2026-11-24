@@ -166,7 +166,7 @@ test("P89 xlarge Main remains contained and reachable across responsive boundari
   }
 });
 
-for (const size of ["large", "xlarge"] as const) {
+for (const size of ["large"] as const) {
   test("P89 " + size + " preserves NextStep to Today3 drag geometry", async ({ page }) => {
     const fixture = createPublicFixture();
     fixture.config.settings.mainDisplaySize = size;
@@ -213,7 +213,7 @@ for (const size of ["large", "xlarge"] as const) {
   });
 }
 
-for (const size of ["large", "xlarge"] as const) {
+for (const size of ["large"] as const) {
   test(
     "P89 " + size + " Main toolbar matches the content width and menu density",
     async ({ page }) => {

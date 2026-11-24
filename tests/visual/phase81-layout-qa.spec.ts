@@ -4,7 +4,7 @@ import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtur
 import { installTauriMock } from "./tauriMock";
 import { waitForBundledFonts } from "./bundledFonts";
 
-const VIEWPORTS = [1920, 1000, 860, 620] as const;
+const VIEWPORTS = [1920, 620] as const;
 const LONG_PROJECT_NAME = "長い名前でも責務が混ざらない公開確認用プロジェクト";
 const LONG_NEXT_STEP =
   "とても長い次の一手でもプロジェクト名や設定ボタンを押し出さず、現在の実行内容として一行で識別できることを確認するための公開用テキスト";

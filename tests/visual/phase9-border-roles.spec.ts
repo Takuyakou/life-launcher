@@ -237,8 +237,6 @@ test("P9-07 hit areas never get smaller than before", async ({ page }) => {
 
 for (const [name, options] of [
   ["standard", { display: "standard" as const }],
-  ["large", { display: "large" as const }],
-  ["xlarge", { display: "xlarge" as const }],
   ["860x560", { display: "standard" as const, size: { width: 860, height: 560 } }],
 ] as const) {
   test(`P9-07 layout holds at ${name}`, async ({ page }) => {

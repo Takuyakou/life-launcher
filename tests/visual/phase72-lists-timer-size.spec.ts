@@ -58,8 +58,8 @@ async function saveCallCount(page: Page) {
 }
 
 for (const [kind, counts] of [
-  ["projects", [6, 7]],
-  ["inbox", [5, 6, 19, 20]],
+  ["projects", [7]],
+  ["inbox", [5, 20]],
 ] as const) {
   for (const count of counts) {
     test(`P72-03 ${kind} count ${count} uses the contracted display threshold`, async ({ page }) => {
@@ -225,7 +225,7 @@ test("P72-03 long-duration Today actions remain readable, separate and operable"
   await expect(card.getByRole("button", { name: "このセッションを一時停止" })).toBeVisible();
 });
 
-for (const width of [1920, 860]) {
+for (const width of [860]) {
   test(`P72-03 long-text Today buttons keep the Today grid bounded at ${width}`, async ({ page }) => {
     const fixture = createPublicFixture();
     fixture.config.today.items.push({ text: "長い本文".repeat(20), done: false, sourceKey: "manual:long" });

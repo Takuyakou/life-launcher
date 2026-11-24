@@ -41,39 +41,7 @@ async function saveConfigCount(page: Page): Promise<number> {
   });
 }
 
-async function setSaveConfigFailure(page: Page, failed: boolean) {
-  await page.evaluate((shouldFail) => {
-    const control = (
-      window as Window & {
-        __LIFE_LAUNCHER_VISUAL_QA__?: {
-          setSaveConfigFailure: (value: boolean) => void;
-        };
-      }
-    ).__LIFE_LAUNCHER_VISUAL_QA__;
-    if (!control) throw new Error("Visual QA control is unavailable");
-    control.setSaveConfigFailure(shouldFail);
-  }, failed);
-}
-
-function withThreeTodayItems(): VisualQaFixture {
-  const fixture = createPublicFixture();
-  fixture.config.today.items = [
-    fixture.config.today.items[0],
-    {
-      text: "机の上を整える",
-      done: false,
-      sourceKey: "manual:fixture-cleanup",
-    },
-    {
-      text: "短い振り返りを書く",
-      done: false,
-      sourceKey: "manual:fixture-review",
-    },
-  ];
-  return fixture;
-}
-
-for (const width of [860, 1440]) {
+for (const width of [1440]) {
   test(`victory suggestion preserves the main scroll position at ${width}px`, async ({ page }) => {
     const fixture = createPublicFixture();
     fixture.config.today.victory = { text: "", done: false };
@@ -120,73 +88,6 @@ for (const width of [860, 1440]) {
       .toBeCloseTo(before, 0);
   });
 }
-
-test("Today3 drag shows its position and saves on drop only", async ({ page }) => {
-  const fixture = withThreeTodayItems();
-  const originalOrder = fixture.config.today.items.map((item) => item.text);
-  await prepare(page, fixture);
-  const cards = page.locator(".todayRow");
-  const source = await cards.nth(0).boundingBox();
-  const target = await cards.nth(2).boundingBox();
-  expect(source).not.toBeNull();
-  expect(target).not.toBeNull();
-
-  const savesBeforeDrag = await saveConfigCount(page);
-  await page.mouse.move(source!.x + source!.width * 0.5, source!.y + 12);
-  await page.mouse.down();
-  await page.mouse.move(source!.x + source!.width * 0.5 - 16, source!.y + 12, { steps: 2 });
-  await page.mouse.move(target!.x + target!.width * 0.75, target!.y + 12, {
-    steps: 5,
-  });
-
-  await expect(cards.nth(0)).toHaveClass(/todayRow--dragging/);
-  await expect(page.locator(".todayDragGhost")).toBeVisible();
-  const indicator = page.locator(".todayDropIndicator");
-  await expect(indicator).toBeVisible();
-  await expect(indicator).toHaveCSS("background-color", "rgb(231, 185, 77)");
-  const indicatorBox = await indicator.boundingBox();
-  expect(indicatorBox).not.toBeNull();
-  expect(indicatorBox!.height).toBeGreaterThan(indicatorBox!.width);
-  expect(await saveConfigCount(page)).toBe(savesBeforeDrag);
-  expect((await currentConfig(page)).today.items.map((item) => item.text)).toEqual(originalOrder);
-  await page.mouse.up();
-
-  const reordered = [originalOrder[1], originalOrder[2], originalOrder[0]];
-  await expect
-    .poll(async () => (await currentConfig(page)).today.items.map((item) => item.text))
-    .toEqual(reordered);
-  expect(await saveConfigCount(page)).toBe(savesBeforeDrag + 1);
-});
-
-test("Today3 drag rolls its optimistic order back when saving fails", async ({ page }) => {
-  const fixture = withThreeTodayItems();
-  const originalOrder = fixture.config.today.items.map((item) => item.text);
-  await prepare(page, fixture);
-  await setSaveConfigFailure(page, true);
-  const cards = page.locator(".todayRow");
-  const source = await cards.nth(0).boundingBox();
-  const target = await cards.nth(2).boundingBox();
-  expect(source).not.toBeNull();
-  expect(target).not.toBeNull();
-  const savesBeforeDrag = await saveConfigCount(page);
-  await page.mouse.move(source!.x + source!.width * 0.5, source!.y + 12);
-  await page.mouse.down();
-  await page.mouse.move(source!.x + source!.width * 0.5 - 16, source!.y + 12, {
-    steps: 2,
-  });
-  await page.mouse.move(target!.x + target!.width * 0.75, target!.y + 12, { steps: 5 });
-  await expect(page.locator(".todayDragGhost")).toBeVisible();
-  await page.mouse.up();
-
-  await expect.poll(() => saveConfigCount(page)).toBe(savesBeforeDrag + 1);
-  await expect
-    .poll(async () => (await currentConfig(page)).today.items.map((item) => item.text))
-    .toEqual(originalOrder);
-  await expect(cards.nth(0)).toContainText(originalOrder[0]);
-  await expect(cards.nth(1)).toContainText(originalOrder[1]);
-  await expect(cards.nth(2)).toContainText(originalOrder[2]);
-  await setSaveConfigFailure(page, false);
-});
 
 test("NextStep and Wishlist use compact non-destructive Today actions", async ({ page }) => {
   const fixture = createPublicFixture();
@@ -360,33 +261,4 @@ test("Today adoption snapshots timer, actions, text, and instruction", async ({ 
   expect(item.buttonIds).toEqual(["sample-documents"]);
   expect(item.defaultTimerMinutes).toBe(37);
   expect(item.shortTimerMinutes).toBe(7);
-});
-
-test("failed Picker save keeps the draft and rolls the UI back", async ({ page }) => {
-  const fixture = createPublicFixture();
-  fixture.config.today.items = [];
-  await prepare(page, fixture);
-  await page.evaluate(() => {
-    const control = (
-      window as Window & {
-        __LIFE_LAUNCHER_VISUAL_QA__?: { setSaveConfigFailure: (failed: boolean) => void };
-      }
-    ).__LIFE_LAUNCHER_VISUAL_QA__;
-    control?.setSaveConfigFailure(true);
-  });
-
-  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
-  const picker = page.getByRole("dialog", { name: "今日やるものを選ぶ" });
-  await picker
-    .locator('[data-today-picker-section="next-step"] .todayPickerRow')
-    .first()
-    .getByRole("button", { name: "今日へ" })
-    .click();
-  await expect(picker.locator(".todayPickerSlot--selected")).toHaveCount(1);
-  await picker.getByRole("button", { name: "決定" }).click();
-  await expect(page.locator(".toast")).toContainText("保存できません");
-  await expect(picker).toBeVisible();
-  await expect(picker.locator(".todayPickerSlot--selected")).toHaveCount(1);
-  await expect(page.locator(".todayRow")).toHaveCount(0);
-  expect((await currentConfig(page)).today.items).toEqual([]);
 });

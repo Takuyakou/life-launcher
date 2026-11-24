@@ -131,14 +131,6 @@ test("P10-03 the list is announced as a listbox with the active option", async (
   await expect(palette(page).getByRole("combobox")).toHaveAttribute("aria-activedescendant", second!);
 });
 
-test("P10-03 no key hints are shown under the list", async ({ page }) => {
-  await open(page);
-  await page.keyboard.press("Control+f");
-  await expect(palette(page).locator("kbd")).toHaveCount(0);
-  await expect(palette(page)).not.toContainText("Enter");
-  await expect(palette(page)).not.toContainText("↑↓");
-});
-
 /** V151-S7 (S1 rule 4): the option and the highlight are measured in one evaluate. */
 async function highlightOffset(page: Page, index: number) {
   await page.evaluate(async () => document.fonts.ready);

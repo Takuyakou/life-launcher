@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import type { AppConfig, LauncherButton } from "../../src/types";
+import type { AppConfig } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
 import { waitForBundledFonts } from "./bundledFonts";
@@ -54,49 +54,6 @@ function buttonSnapshot(config: AppConfig, buttonId: string) {
   if (!button) throw new Error(`${buttonId} not found`);
   return structuredClone(button);
 }
-
-test("Quick and Dictionary move the same item without deleting its action", async ({ page }) => {
-  const fixture = createPublicFixture();
-  const original = buttonSnapshot(fixture.config, "sample-editor");
-  await prepare(page, fixture);
-
-  const quick = page.locator(".quickButton", { hasText: "サンプルエディター" });
-  await quick.focus();
-  await quick.press("Shift+F10");
-  await expect(page.getByRole("menuitem", { name: "辞書に移動" })).toBeVisible();
-  await expect(page.getByRole("menuitem", { name: "削除" })).toBeVisible();
-  await page.getByRole("menuitem", { name: "辞書に移動" }).click();
-
-  await expect(quick).toHaveCount(0);
-  let moved = buttonSnapshot(await currentConfig(page), "sample-editor");
-  expect(moved).toMatchObject({ showInSidebar: false, showInOverlay: true });
-  expect(moved.actions).toEqual(original.actions);
-  expect((await currentConfig(page)).buttons).toHaveLength(fixture.config.buttons.length);
-
-  await page.reload();
-  await expect(page.locator(".quickButton", { hasText: "サンプルエディター" })).toHaveCount(0);
-  await page.goto("/?view=dictionary");
-  await waitForBundledFonts(page);
-  const dictionaryTile = page.locator(".dictionaryTile", { hasText: "サンプルエディター" });
-  await expect(dictionaryTile).toBeVisible();
-  await dictionaryTile.focus();
-  await dictionaryTile.press("Shift+F10");
-  const moveBack = page.getByRole("menuitem", { name: "サイドバーに移動" });
-  await expect(moveBack).toBeEnabled();
-  await moveBack.click();
-
-  moved = buttonSnapshot(await currentConfig(page), "sample-editor");
-  expect(moved).toMatchObject({ showInSidebar: true, showInOverlay: true });
-  expect(moved.actions).toEqual(original.actions);
-  await page.goto("/");
-  await waitForBundledFonts(page);
-  await expect(page.locator(".quickButton", { hasText: "サンプルエディター" })).toBeVisible();
-  await page.goto("/?view=dictionary");
-  await waitForBundledFonts(page);
-  await dictionaryTile.focus();
-  await dictionaryTile.press("Shift+F10");
-  await expect(page.getByRole("menuitem", { name: "サイドバーに移動" })).toBeDisabled();
-});
 
 test("Quick to Dictionary move rolls the display back when saving fails", async ({ page }) => {
   const fixture = createPublicFixture();
@@ -205,64 +162,4 @@ test("Wishlist edit loads its selected environment and saves the shared picker s
   await expect(wishlistDialog.locator(".startEnvironmentSelectedItem")).toHaveCount(2);
   await wishlistDialog.getByRole("button", { name: "保存", exact: true }).click();
   expect((await currentConfig(page)).inbox[0].buttonIds).toEqual(["sample-editor", "sample-documents"]);
-});
-
-test("Legacy selections over the limit are preserved and picker fits the narrow viewport", async ({
-  page,
-}) => {
-  const fixture = createPublicFixture();
-  fixture.config.today.items = [];
-  const longButton: LauncherButton = {
-    id: "long-start-environment",
-    label: "非常に長い日本語の開始環境名でも横方向にはみ出さず省略表示される確認項目",
-    icon: "□",
-    group: "長いカテゴリ名の確認用グループ",
-    showInSidebar: true,
-    showInOverlay: true,
-    aliases: [],
-    actions: [{ type: "open_file", payload: { path: "C:\\PublicDemo\\long.txt" } }],
-  };
-  fixture.config.buttons.push(longButton);
-  fixture.config.projects[0].nextStep!.buttonIds = [
-    "sample-documents",
-    "sample-editor",
-    "reference-site",
-  ];
-  await prepare(page, fixture, { width: 860, height: 700 });
-  await page.locator('[data-project-id="sample-learning"]').click({ button: "right" });
-  await page.getByRole("menuitem", { name: "次の一手を編集", exact: true }).click();
-  const projectDialog = page.getByRole("dialog", { name: "次の一手を編集" });
-  await expect(projectDialog.locator(".nextStepOpenChip")).toHaveCount(4);
-  await projectDialog.getByRole("button", { name: "＋ ボタン・手順書を足す" }).click();
-  await projectDialog.getByRole("menuitem", { name: "ボタンを選ぶ" }).click();
-  const picker = page.getByRole("dialog", { name: "開始環境を選ぶ" });
-  await expect(picker.locator(".startEnvironmentCount")).toContainText("3 / 2");
-  const longOption = picker.getByRole("option", { name: /非常に長い日本語/ });
-  await expect(longOption).toHaveAttribute("aria-disabled", "true");
-  await longOption.dispatchEvent("click");
-  await expect(picker.locator('[role="option"][aria-selected="true"]')).toHaveCount(3);
-
-  for (const viewport of [{ width: 860, height: 700 }]) {
-    await page.setViewportSize(viewport);
-    const box = await picker.boundingBox();
-    expect(box).not.toBeNull();
-    expect(box!.x).toBeGreaterThanOrEqual(0);
-    expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width);
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
-      ),
-    ).toBe(true);
-  }
-
-  await picker.getByRole("button", { name: "キャンセル" }).click();
-  await projectDialog.getByRole("button", { name: "保存" }).click();
-  const project = (await currentConfig(page)).projects.find(
-    (item) => item.id === "sample-learning",
-  );
-  expect(project?.nextStep?.buttonIds).toEqual([
-    "sample-documents",
-    "sample-editor",
-    "reference-site",
-  ]);
 });

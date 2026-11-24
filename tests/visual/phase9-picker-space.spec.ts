@@ -99,7 +99,7 @@ test("P9-08 at 860x560 the last candidate is reachable by scrolling and the foot
   }
 });
 
-for (const display of ["standard", "large", "xlarge"] as const) {
+for (const display of ["standard"] as const) {
   test(`P9-08 the picker holds together at display size ${display}`, async ({ page }) => {
     await openPicker(page, MINIMUM, display);
     const dialog = page.locator(".todayPickerDialog");

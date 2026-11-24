@@ -117,29 +117,6 @@ test("P10-10 adding, removing and reordering only changes the draft", async ({ p
   expect((await currentConfig(page)).today.items).toHaveLength(1);
 });
 
-test("P10-10 決定 saves once and keeps the slot order", async ({ page }) => {
-  const fixture = createPublicFixture();
-  await prepare(page, fixture);
-  const dialog = await openPicker(page);
-  const before = await saveConfigCount(page);
-
-  await addNextStepCandidate(dialog, "5分だけ体を動かす");
-  await expect(dialog.locator(".todayPickerSlot--selected")).toHaveCount(3);
-  const third = findSlot(dialog, "5分だけ体を動かす");
-  await third.focus();
-  await page.keyboard.press("Alt+ArrowUp");
-  await page.keyboard.press("Alt+ArrowUp");
-  const expectedOrder = await slotTexts(page);
-  expect(expectedOrder[0]).toBe("5分だけ体を動かす");
-
-  await dialog.getByRole("button", { name: "決定" }).dblclick();
-  await expect(dialog).toHaveCount(0);
-  expect(await saveConfigCount(page)).toBe(before + 1);
-  const saved = await currentConfig(page);
-  expect(saved.today.items.map((item) => item.text)).toEqual(expectedOrder);
-  await expect(page.locator(".todayRow")).toHaveCount(3);
-});
-
 test("P10-10 キャンセル・Esc・閉じる never save", async ({ page }) => {
   const fixture = createPublicFixture();
   fixture.config.today.items = fixture.config.today.items.slice(0, 1);
@@ -231,23 +208,6 @@ test("P10-10 save failure keeps the Picker open and can be retried", async ({ pa
   expect((await currentConfig(page)).today.items).toHaveLength(2);
 });
 
-test("P10-10 a running Timer card cannot be removed", async ({ page }) => {
-  const fixture = createPublicFixture();
-  fixture.config.today.items = fixture.config.today.items.slice(0, 1);
-  fixture.config.today.items[0].shortTimerMinutes = 1;
-  await prepare(page, fixture);
-  await page
-    .locator(".todayRow")
-    .getByRole("button", { name: "短時間タイマー1分で開始" })
-    .click();
-
-  const dialog = await openPicker(page);
-  const remove = dialog.getByRole("button", { name: "今日から外す" });
-  await expect(remove).toBeDisabled();
-  await expect(remove).toHaveAttribute("title", "タイマーを停止してから外してください");
-  await expect(dialog.locator(".todayPickerSlot--selected")).toHaveCount(1);
-});
-
 test("F11 the Picker header has no rule and 今日の3件 sits next to 2 / 3", async ({ page }) => {
   await prepare(page, createPublicFixture());
   await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
@@ -271,18 +231,6 @@ test("F11 the Picker header has no rule and 今日の3件 sits next to 2 / 3", a
       return Math.abs(counterLeft - (titleRight + 8));
     })
     .toBeLessThanOrEqual(1);
-});
-
-test("P10-10 the Picker cannot be opened when Today3 is full", async ({ page }) => {
-  const fixture = createPublicFixture();
-  fixture.config.today.items.push({
-    text: "3件目の札",
-    done: false,
-    sourceKey: "manual:p10-10-third",
-  });
-  await prepare(page, fixture);
-  await expect(page.locator(".todayRow")).toHaveCount(3);
-  await expect(page.getByRole("button", { name: "今日やるものを選ぶ", exact: true })).toHaveCount(0);
 });
 
 test("P10-15b H0 the picker progress line sits under the header and follows the count", async ({

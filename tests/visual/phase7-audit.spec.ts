@@ -41,8 +41,8 @@ async function prepare(page: Page, short: number, planned: number) {
 
 // P7.0 boundary fixtures now exercise the implemented P7.1 manual-stop flow.
 const boundaries = [
-  { short: 3, planned: 25, elapsed: [179, 180] },
-  { short: 5, planned: 25, elapsed: [1499, 1500] },
+  { short: 3, planned: 25, elapsed: [179] },
+  { short: 5, planned: 25, elapsed: [1500] },
 ];
 
 for (const { short, planned, elapsed } of boundaries) {

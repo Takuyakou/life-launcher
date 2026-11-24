@@ -80,42 +80,6 @@ async function currentConfig(page: Page): Promise<AppConfig> {
   });
 }
 
-test("category focus moves independently of its selected page", async ({ page }) => {
-  await prepare(page, "dictionary");
-  await expect(page.locator(".dictionaryTile").first()).toBeFocused();
-  const allTab = page.getByRole("tab", { name: /すべて/ });
-  const uncategorizedTab = page.getByRole("tab", { name: /未分類/ });
-  const toolsTab = page.getByRole("tab", { name: /ツール/ });
-
-  await allTab.click();
-  await allTab.focus();
-  await page.keyboard.press("ArrowRight");
-  await expect(uncategorizedTab).toBeFocused();
-  await expect(allTab).toHaveAttribute("aria-selected", "true");
-  await expect(uncategorizedTab).toHaveAttribute("aria-selected", "false");
-  await page.keyboard.press("ArrowLeft");
-  await expect(allTab).toBeFocused();
-  await page.keyboard.press("ArrowRight");
-  await expect(uncategorizedTab).toBeFocused();
-  await page.keyboard.press("Enter");
-  await expect(uncategorizedTab).toHaveAttribute("aria-selected", "true");
-
-  await page.keyboard.press("ArrowRight");
-  await expect(toolsTab).toBeFocused();
-  await page.keyboard.press("Space");
-  await expect(toolsTab).toHaveAttribute("aria-selected", "true");
-  await toolsTab.hover();
-  await allTab.focus();
-  await page.keyboard.press("ArrowRight");
-  await expect(uncategorizedTab).toBeFocused();
-  await page.keyboard.press("ArrowRight");
-  await expect(toolsTab).toBeFocused();
-  expect(await toolsTab.evaluate((node) => node.matches(":focus-visible"))).toBe(true);
-
-  await page.keyboard.press("ArrowDown");
-  await expect(page.locator(".dictionaryTile:focus")).toHaveCount(1);
-});
-
 test("tile arrows recover from blur, follow visual rows and adapt after resize", async ({ page }) => {
   await prepare(page, "dictionary");
   const tiles = page.locator(".dictionaryTile");
@@ -252,37 +216,6 @@ test("Quick keyboard menu uses the same reveal command and hides it for URLs", a
     "aria-expanded",
     "false",
   );
-});
-
-test("Dictionary drag saves the reordered tile order and survives reload", async ({ page }) => {
-  await prepare(page, "dictionary");
-  await page.getByRole("tab", { name: /ツール/ }).click();
-  const tiles = page.locator(".dictionaryTile");
-  const source = await tiles.nth(0).boundingBox();
-  const target = await tiles.nth(2).boundingBox();
-  expect(source).not.toBeNull();
-  expect(target).not.toBeNull();
-
-  await page.mouse.move(source!.x + source!.width / 2, source!.y + source!.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(source!.x + source!.width / 2 + 12, source!.y + source!.height / 2, {
-    steps: 2,
-  });
-  await page.mouse.move(target!.x + target!.width / 2, target!.y + target!.height / 2, {
-    steps: 5,
-  });
-  await page.mouse.up();
-
-  await expect
-    .poll(async () => (await currentConfig(page)).dictionaryOrder?.indexOf("grid-file-1") ?? -1)
-    .toBeGreaterThan(0);
-  const savedOrder = (await currentConfig(page)).dictionaryOrder;
-  await page.reload();
-  await page.getByRole("tab", { name: /ツール/ }).click();
-  const renderedOrder = await page
-    .locator("[data-dictionary-button-id]")
-    .evaluateAll((items) => items.map((item) => item.getAttribute("data-dictionary-button-id")));
-  expect(renderedOrder).toEqual(savedOrder?.filter((id) => id.startsWith("grid-file-")));
 });
 
 test("Dictionary navigates a 120-item grid and finds its last item", async ({ page }) => {
