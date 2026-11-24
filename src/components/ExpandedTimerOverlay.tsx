@@ -44,7 +44,10 @@ export function ExpandedTimerOverlay({
     closeRef.current?.focus({ preventScroll: true });
   }, []);
 
+  // V164: while the close motion plays, the overlay no longer takes Escape.
+  const exiting = exitProps?.["data-exiting"] === "true";
   useEffect(() => {
+    if (exiting) return;
     const closeOnEscape = (event: globalThis.KeyboardEvent) => {
       if (
         event.key !== "Escape" ||
@@ -59,7 +62,7 @@ export function ExpandedTimerOverlay({
     };
     window.addEventListener("keydown", closeOnEscape, true);
     return () => window.removeEventListener("keydown", closeOnEscape, true);
-  }, [complete, onClose]);
+  }, [complete, exiting, onClose]);
 
   const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key !== "Tab") return;

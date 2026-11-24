@@ -113,7 +113,7 @@ export function navigateAppArrow(event: KeyboardEvent, captureActive: boolean): 
   const settingsInput =
     current instanceof HTMLInputElement && current.closest(SETTINGS) !== null && !isEditing(current);
   if (!settingsInput && current.matches('input:not([type="checkbox"]), textarea, select, [contenteditable="true"]')) return;
-  if (current.closest('[role="menu"]')) return;
+  if (current.closest('[role="menu"]:not([data-exiting="true"])')) return;
 
   const modals = Array.from(
     document.querySelectorAll<HTMLElement>(
