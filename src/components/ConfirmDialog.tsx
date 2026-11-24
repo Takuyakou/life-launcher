@@ -1,5 +1,6 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { UiIcon } from "./UiIcon";
+import type { ExitPresenceAttributes } from "./ExitPresence";
 
 export type ConfirmDialogTone = "normal" | "positive" | "warning" | "danger";
 
@@ -24,6 +25,8 @@ export type ConfirmDialogRequest = {
 type ConfirmDialogProps = ConfirmDialogRequest & {
   open: boolean;
   onCancel: () => void;
+  /** V164 (E1): attributes for the close motion; the backdrop is removed when it ends. */
+  exitProps?: ExitPresenceAttributes;
 };
 
 export function ConfirmDialog({
@@ -43,6 +46,7 @@ export function ConfirmDialog({
   onConfirm,
   onAlternate,
   onCancel,
+  exitProps,
 }: ConfirmDialogProps) {
   const titleId = useId();
   const descriptionId = useId();
@@ -53,10 +57,17 @@ export function ConfirmDialog({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const processing = isProcessing || internalProcessing !== null;
 
+  // V164 (E1): the opener is read in the layout pass, before the effects of the other dialogs
+  // move the focus, so 「開いた元へ戻す」 still names the control that opened this confirm.
+  const openerRef = useRef<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    openerRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  }, []);
+
   useEffect(() => {
     if (!open) return;
 
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     setErrorMessage(null);
@@ -74,7 +85,13 @@ export function ConfirmDialog({
     return () => {
       window.cancelAnimationFrame(focusFrame);
       document.body.style.overflow = previousOverflow;
-      opener?.focus();
+      // V164 (E1): the surface stays mounted while the close motion runs, so the focus may already
+      // be back inside the dialog under it. Only restore the opener when the close left it nowhere.
+      const active = document.activeElement;
+      if (!active || active === document.body || active === document.documentElement) {
+        openerRef.current?.focus();
+      }
+      openerRef.current = null;
     };
   }, [initialFocus, open]);
 
@@ -82,7 +99,9 @@ export function ConfirmDialog({
     if (!open) return;
 
     const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-      const dialogs = document.querySelectorAll('[role="dialog"][aria-modal="true"]');
+      const dialogs = document.querySelectorAll(
+        '[role="dialog"][aria-modal="true"]:not([data-exiting="true"]):not([data-exiting="true"] *)',
+      );
       if (dialogs.item(dialogs.length - 1) !== dialogRef.current) return;
       if (event.isComposing || event.keyCode === 229) {
         if (event.key === "Enter" || event.key === "Escape") {
@@ -148,7 +167,7 @@ export function ConfirmDialog({
   const descriptionIds = message || subject || errorMessage ? descriptionId : undefined;
 
   return (
-    <div className="modalBackdrop confirmBackdrop" role="presentation">
+    <div className="modalBackdrop confirmBackdrop" role="presentation" {...exitProps}>
       <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
       <section
         aria-describedby={descriptionIds}

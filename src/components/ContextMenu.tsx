@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes, MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import type { ExitPresenceAttributes } from "./ExitPresence";
 
 type ContextMenuProps = {
   ariaLabel: string;
@@ -11,6 +12,8 @@ type ContextMenuProps = {
   onShortcutKey?: (key: string) => boolean;
   x: number;
   y: number;
+  /** V164 (E1): attributes for the close motion; the menu is removed when it ends. */
+  exitProps?: ExitPresenceAttributes;
 };
 
 const EDGE_GUTTER = 8;
@@ -47,6 +50,7 @@ export function ContextMenu({
   onShortcutKey,
   x,
   y,
+  exitProps,
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -182,6 +186,7 @@ export function ContextMenu({
         transition: "none",
         visibility: "hidden",
       }}
+      {...exitProps}
     >
       {children}
     </div>

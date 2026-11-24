@@ -8,10 +8,13 @@ import {
   type HelpGuideBlock,
   type HelpSectionId,
 } from "../content/helpGuide";
+import type { ExitPresenceAttributes } from "./ExitPresence";
 
 type HelpGuideDialogProps = {
   onClose: () => void;
   onCopyResult: (ok: boolean) => void;
+  /** V164 (E1): attributes for the close motion; the backdrop is removed when it ends. */
+  exitProps?: ExitPresenceAttributes;
 };
 
 function prefersReducedMotion() {
@@ -127,7 +130,7 @@ function HelpBlock({
   );
 }
 
-export function HelpGuideDialog({ onClose, onCopyResult }: HelpGuideDialogProps) {
+export function HelpGuideDialog({ onClose, onCopyResult, exitProps }: HelpGuideDialogProps) {
   const bodyRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const firstTocButtonRef = useRef<HTMLButtonElement>(null);
@@ -260,7 +263,7 @@ export function HelpGuideDialog({ onClose, onCopyResult }: HelpGuideDialogProps)
   };
 
   return (
-    <div className="modalBackdrop helpGuideBackdrop" role="presentation">
+    <div className="modalBackdrop helpGuideBackdrop" role="presentation" {...exitProps}>
       <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
       <section
         aria-labelledby="help-guide-title"

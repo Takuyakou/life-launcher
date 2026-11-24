@@ -1,9 +1,13 @@
+import type { ExitPresenceAttributes } from "./ExitPresence";
+
 type GroupNameDialogProps = {
   mode: "add" | "rename";
   value: string;
   onChange: (value: string) => void;
   onConfirm: () => void;
   onCancel: () => void;
+  /** V164 (E1): attributes for the close motion; the backdrop is removed when it ends. */
+  exitProps?: ExitPresenceAttributes;
 };
 
 /** Modal dialog for adding or renaming a sidebar group without altering dialog focus structure. */
@@ -13,11 +17,12 @@ export function GroupNameDialog({
   onChange,
   onConfirm,
   onCancel,
+  exitProps,
 }: GroupNameDialogProps) {
   const isAdd = mode === "add";
 
   return (
-    <div className="modalBackdrop" role="presentation">
+    <div className="modalBackdrop" role="presentation" {...exitProps}>
       <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
       <section
         aria-label={isAdd ? "グループ追加" : "グループ名変更"}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
 import { UiIcon } from "./UiIcon";
+import type { ExitPresenceAttributes } from "./ExitPresence";
 
 type ExpandedTimerOverlayProps = {
   clock: string;
@@ -17,6 +18,8 @@ type ExpandedTimerOverlayProps = {
   planLabel: string;
   /** P10-08: the mini window entry in the header. */
   onMini?: () => void;
+  /** V164 (E1): attributes for the close motion; the backdrop is removed when it ends. */
+  exitProps?: ExitPresenceAttributes;
 };
 
 export function ExpandedTimerOverlay({
@@ -32,6 +35,7 @@ export function ExpandedTimerOverlay({
   status,
   planLabel,
   onMini,
+  exitProps,
 }: ExpandedTimerOverlayProps) {
   const dialogRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -45,7 +49,7 @@ export function ExpandedTimerOverlay({
       if (
         event.key !== "Escape" ||
         complete ||
-        document.querySelector(".modalBackdrop")
+        document.querySelector('.modalBackdrop:not([data-exiting="true"])')
       ) {
         return;
       }
@@ -73,7 +77,7 @@ export function ExpandedTimerOverlay({
   };
 
   return (
-    <div className="expandedTimerBackdrop">
+    <div className="expandedTimerBackdrop" {...exitProps}>
       <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
       <section
         aria-label="拡大タイマー"

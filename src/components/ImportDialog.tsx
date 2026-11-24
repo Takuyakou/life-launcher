@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence } from "motion/react";
 import { CopyButton } from "./CopyButton";
+import { ExitPresence, type ExitPresenceAttributes } from "./ExitPresence";
 import { IMPORT_PROMPT_FIRST, IMPORT_PROMPT_REPEAT } from "../content/importPrompt";
 import { buildImportCurrentState } from "../importCurrentState";
 import { extractImportJson } from "../importJson";
@@ -162,6 +164,38 @@ export function ImportDialog({
   onImported,
   onNotify,
 }: ImportDialogProps) {
+  return (
+    <AnimatePresence initial={false}>
+      {open && (
+        <ExitPresence key="import-dialog">
+          {(exiting, exitProps) => (
+            <ImportDialogBody
+              config={config}
+              exitProps={exitProps}
+              initialError={initialError}
+              initialText={initialText}
+              onClose={onClose}
+              onImported={onImported}
+              onNotify={onNotify}
+              open={open}
+            />
+          )}
+        </ExitPresence>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function ImportDialogBody({
+  open,
+  initialText,
+  initialError,
+  config,
+  onClose,
+  onImported,
+  onNotify,
+  exitProps,
+}: ImportDialogProps & { exitProps: ExitPresenceAttributes }) {
   const [text, setText] = useState("");
   const [json, setJson] = useState("");
   const [preview, setPreview] = useState<ImportPreviewResponse | null>(null);
@@ -384,6 +418,7 @@ export function ImportDialog({
         if (event.target === event.currentTarget && !busy) onClose();
       }}
       role="presentation"
+      {...exitProps}
     >
       <section
         aria-label="まとめて取り込む"

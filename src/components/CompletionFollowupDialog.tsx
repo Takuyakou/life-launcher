@@ -3,6 +3,7 @@ import type { AppConfig, LauncherProject } from "../types";
 import type { NumberInputDragField, TimerCompletionPrompt } from "../app/dashboardTypes";
 import { DEFAULT_EXTEND_TIMER_MINUTES } from "../constants";
 import { TimerCompletionDialog } from "./TimerCompletionDialog";
+import type { ExitPresenceAttributes } from "./ExitPresence";
 
 // V163-A4: the 「一手進みました」 dialog, moved out of App.tsx (same DOM, text and handlers).
 
@@ -28,6 +29,8 @@ export type CompletionFollowupDialogProps = {
   ) => void;
   continueCompletedTimer: () => void;
   submitCompletedTimer: () => void;
+  /** V164 (E1): attributes for the close motion; the backdrop is removed when it ends. */
+  exitProps?: ExitPresenceAttributes;
 };
 
 export function CompletionFollowupDialog(props: CompletionFollowupDialogProps) {
@@ -49,10 +52,12 @@ export function CompletionFollowupDialog(props: CompletionFollowupDialogProps) {
     submitCompletedTimer,
     timerResumeDraft,
     updateNumberInputDrag,
+    exitProps,
   } = props;
 
   return (
     <TimerCompletionDialog
+      exitProps={exitProps}
       canEditResume={completionCanEditResume}
       extendDraft={completionExtendDraft}
       extendDragging={numberInputDragging === "completionExtend"}

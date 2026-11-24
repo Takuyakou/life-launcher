@@ -1,5 +1,6 @@
 import type { LauncherProject } from "../types";
 import { UiIcon } from "./UiIcon";
+import type { ExitPresenceAttributes } from "./ExitPresence";
 
 type InboxAddDialogProps = {
   draft: string;
@@ -11,6 +12,8 @@ type InboxAddDialogProps = {
   onProjectIdChange: (value: string) => void;
   onSubmit: () => void;
   onClose: () => void;
+  /** V164 (E1): attributes for the close motion; the backdrop is removed when it ends. */
+  exitProps?: ExitPresenceAttributes;
 };
 
 /** Modal dialog for adding a wishlist ("やりたいこと") item. */
@@ -24,9 +27,10 @@ export function InboxAddDialog({
   onProjectIdChange,
   onSubmit,
   onClose,
+  exitProps,
 }: InboxAddDialogProps) {
   return (
-    <div className="modalBackdrop" role="presentation">
+    <div className="modalBackdrop" role="presentation" {...exitProps}>
       <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
       <section
         aria-label="やりたいことを追加"

@@ -16,6 +16,7 @@ import { APP_VERSION } from "../version";
 import { ProjectIdentity } from "./ProjectIdentity";
 import { SlidingFace } from "./SlidingFace";
 import { UiIcon } from "./UiIcon";
+import type { ExitPresenceAttributes } from "./ExitPresence";
 
 // V163-A1: the Settings dialog, moved out of App.tsx. The inside is the same DOM, text and handlers.
 
@@ -59,6 +60,8 @@ export type SettingsDialogProps = {
     value: number,
   ) => void;
   updateNumberInputDrag: (event: PointerEvent<HTMLElement>) => void;
+  /** V164 (E1): attributes for the close motion; the backdrop is removed when it ends. */
+  exitProps?: ExitPresenceAttributes;
 };
 
 export function SettingsDialog(props: SettingsDialogProps) {
@@ -98,10 +101,11 @@ export function SettingsDialog(props: SettingsDialogProps) {
     saveSettingsCenter,
     startNumberInputDrag,
     updateNumberInputDrag,
+    exitProps,
   } = props;
 
   return (
-    <div className="modalBackdrop" role="presentation">
+    <div className="modalBackdrop" role="presentation" {...exitProps}>
       <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
       <section
         aria-label="設定"

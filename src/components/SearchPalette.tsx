@@ -4,6 +4,7 @@ import { springSnappy } from "../motion";
 import { buttonGlyph, PROJECT_COLOR_IDS, resolveProjectColorId } from "../projectIdentity";
 import type { ProjectColorId } from "../types";
 import { UiIcon } from "./UiIcon";
+import type { ExitPresenceAttributes } from "./ExitPresence";
 
 export type SearchItemKind = "nextStep" | "wishlist" | "button" | "instruction" | "action";
 
@@ -38,6 +39,8 @@ type SearchPaletteProps = {
   onActivate: (item: SearchItem, mode: "enter" | "shift") => void;
   onClose: () => void;
   busy?: boolean;
+  /** V164 (E1): attributes for the close motion; the backdrop is removed when it ends. */
+  exitProps?: ExitPresenceAttributes;
 };
 
 const LIST_ID = "search-palette-list";
@@ -100,6 +103,7 @@ export function SearchPalette({
   onActivate,
   onClose,
   busy = false,
+  exitProps,
 }: SearchPaletteProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const dialogRef = useRef<HTMLElement | null>(null);
@@ -233,6 +237,7 @@ export function SearchPalette({
         if (event.target === event.currentTarget) onClose();
       }}
       role="presentation"
+      {...exitProps}
     >
       <section
         aria-label="検索"

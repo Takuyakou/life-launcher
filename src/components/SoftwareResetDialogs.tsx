@@ -1,10 +1,13 @@
 import type { RefObject } from "react";
 import { UiIcon } from "./UiIcon";
+import type { ExitPresenceAttributes } from "./ExitPresence";
 
 type SoftwareResetChoiceDialogProps = {
   busy: boolean;
   onContinue: (withBackup: boolean) => void;
   onClose: () => void;
+  /** V164 (E1): attributes for the close motion; the backdrop is removed when it ends. */
+  exitProps?: ExitPresenceAttributes;
 };
 
 /** Prompts whether to save a backup before starting a software reset. */
@@ -12,11 +15,13 @@ export function SoftwareResetChoiceDialog({
   busy,
   onContinue,
   onClose,
+  exitProps,
 }: SoftwareResetChoiceDialogProps) {
   return (
     <div
       className="modalBackdrop confirmBackdrop softwareResetChoiceBackdrop"
       role="presentation"
+      {...exitProps}
     >
       <section
         aria-describedby="software-reset-choice-description"
@@ -80,15 +85,18 @@ export function SoftwareResetChoiceDialog({
 type SoftwareResetProgressDialogProps = {
   stage: "resetting" | "restart";
   progressRef: RefObject<HTMLElement>;
+  /** V164 (E1): attributes for the close motion; the backdrop is removed when it ends. */
+  exitProps?: ExitPresenceAttributes;
 };
 
 /** Non-dismissible progress modal displayed during software reset and relaunch. */
 export function SoftwareResetProgressDialog({
   stage,
   progressRef,
+  exitProps,
 }: SoftwareResetProgressDialogProps) {
   return (
-    <div className="modalBackdrop softwareResetProgressBackdrop" role="presentation">
+    <div className="modalBackdrop softwareResetProgressBackdrop" role="presentation" {...exitProps}>
       <section
         aria-labelledby="software-reset-progress-title"
         aria-live="assertive"

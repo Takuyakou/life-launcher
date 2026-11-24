@@ -4,6 +4,7 @@ import type { InstructionChoice } from "../app/dashboardTypes";
 import { InstructionPicker } from "../InstructionPicker";
 import { StartEnvironmentPicker } from "../StartEnvironmentPicker";
 import { ProjectIdentity } from "./ProjectIdentity";
+import type { ExitPresenceAttributes } from "./ExitPresence";
 
 // V163-A2: the Wishlist edit dialog, moved out of App.tsx (same DOM, text and handlers).
 
@@ -29,6 +30,8 @@ export type InboxEditDialogProps = {
   closeInboxEditDialog: (afterSuccessfulSave?: boolean) => void;
   commitInboxEdit: () => void;
   sourceEditSaving: boolean;
+  /** V164 (E1): attributes for the close motion; the backdrop is removed when it ends. */
+  exitProps?: ExitPresenceAttributes;
 };
 
 export function InboxEditDialog(props: InboxEditDialogProps) {
@@ -54,10 +57,11 @@ export function InboxEditDialog(props: InboxEditDialogProps) {
     setInboxEditInstructionPath,
     setInboxEditProjectId,
     sourceEditSaving,
+    exitProps,
   } = props;
 
   return (
-    <div className="modalBackdrop" role="presentation">
+    <div className="modalBackdrop" role="presentation" {...exitProps}>
       <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
       <section
         aria-label="やりたいこと編集"
