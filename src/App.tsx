@@ -28,7 +28,6 @@ import {
   DEFAULT_EXTEND_TIMER_MINUTES,
   TIMER_TICK_MS,
   TODAY_ITEM_LIMIT,
-  WEEKLY_FOCUS_LIMIT,
 } from "./constants";
 import {
   acknowledgeSoftwareResetRecovery,
@@ -45,8 +44,6 @@ import {
   loadNotesHistory,
   loadNextStepFreshness,
   loadNextStepSuggestions,
-  listInstructionDirectory,
-  listInstructionRoots,
   loadSessionEntries,
   loadSessionSummary,
   loadTodaySessionTotal,
@@ -131,17 +128,10 @@ import {
 import { HelpGuideDialog } from "./components/HelpGuideDialog";
 import { SearchPalette } from "./components/SearchPalette";
 import { ProjectIdentity } from "./components/ProjectIdentity";
-import {
-  prepareProjectDeletion,
-  projectDeletionBlockReason,
-  projectDeletionSummary,
-  type ProjectDeletionMode,
-} from "./projectDeletion";
 import { RecordsView } from "./RecordsView";
 import {
   canonicalSourceKey,
   timerSourceKey,
-  unfinishedTodayUsesSource,
 } from "./sourceEdit";
 import {
   completeTodayItemAndPrepareSource,
@@ -155,9 +145,6 @@ import {
 import {
   groupWishlist,
   groupWishlistForDisplay,
-  prepareNextStepRemoval,
-  prepareWishlistPromotion,
-  sameNextStepSnapshot,
   wishlistGroupKey,
 } from "./nextStepWishlist";
 import { ExpandedTimerOverlay } from "./components/ExpandedTimerOverlay";
@@ -196,13 +183,14 @@ import {
   toggleDictionaryWindow,
 } from "./dictionaryWindow";
 import { MINI_READY_EVENT, MINI_RETURN_EVENT, MINI_TIMER_COMMAND_EVENT, MINI_TIMER_SNAPSHOT_EVENT, MINI_WINDOW_HEIGHT_PX, MINI_WINDOW_LABEL, MINI_WINDOW_WIDTH_PX, PROJECT_CARD_COMPACT_LIMIT, SOURCE_LIST_COMPACT_LIMIT, SOURCE_LIST_PAGE_SIZE, SOURCE_LIST_PAGINATION_THRESHOLD } from "./app/constants";
-import { type ActiveTimer, type ActiveView, type ButtonEditDraft, type ButtonGroup, type CompletionFeedback, type CompletionFollowup, type ContextMenuState, type ContextMenuTarget, type DoNowCompletionHold, type DropDialogState, type InboxDragPreview, type InboxPointerDrag, type InstructionChoice, type LegacyNextStepChoice, type ManualSessionDraft, type MiniTimerCommand, type MiniTimerSnapshot, type NextStepDecisionMode, type NextStepEditDraft, type NotesSaveStatus, type NumberInputDrag, type NumberInputDragField, type ProjectDragPreview, type ProjectEditDraft, type ProjectPointerDrag, type RecordsDateScope, SHORTCUT_DRAFT_FIELDS, type SessionEditDraft, type SettingsCenterDraft, type SettingsSectionKey, type ShortcutDraftField, type SidebarDragPreview, type SidebarGroupDragPreview, type SidebarGroupPointerDrag, type SidebarPointerDrag, TOP_MENU_LABELS, type TimerCompletionPrompt, type TodayDragPreview, type TodayPointerDrag, type WishlistGroupDragPreview, type WishlistGroupPointerDrag, type WishlistGroupView } from "./app/dashboardTypes";
+import { type ActiveTimer, type ActiveView, type ButtonEditDraft, type ButtonGroup, type CompletionFeedback, type CompletionFollowup, type ContextMenuState, type ContextMenuTarget, type DoNowCompletionHold, type DropDialogState, type InboxDragPreview, type InboxPointerDrag, type InstructionChoice, type ManualSessionDraft, type MiniTimerCommand, type MiniTimerSnapshot, type NextStepEditDraft, type NotesSaveStatus, type NumberInputDrag, type NumberInputDragField, type ProjectDragPreview, type ProjectEditDraft, type ProjectPointerDrag, type RecordsDateScope, SHORTCUT_DRAFT_FIELDS, type SessionEditDraft, type SettingsCenterDraft, type SettingsSectionKey, type ShortcutDraftField, type SidebarDragPreview, type SidebarGroupDragPreview, type SidebarGroupPointerDrag, type SidebarPointerDrag, TOP_MENU_LABELS, type TimerCompletionPrompt, type TodayDragPreview, type TodayPointerDrag, type WishlistGroupDragPreview, type WishlistGroupPointerDrag, type WishlistGroupView } from "./app/dashboardTypes";
 import { MiniModeApp } from "./components/MiniModeApp";
 import { getSoftwareResetRecoveryForBoot, restoreSoftwareResetStorage } from "./app/softwareReset";
-import { buttonGroupName, buttonHasIconCacheSource, createStableId, formatActionSummary, formatClock, formatDateKeyForHeader, formatStartedAt, formatTodayActivityLog, iconForAction, isCloseShortcutValue, isEditableTarget, isValidStartedAt, limitToday, makeAction, matchesHotkey, normalizeTimerMinutes, readCollapsedGroups, shortcutFromKeyboardEvent, showButtonInOverlay, showButtonInSidebar, toThreeNoteDraft, todayEntries, todaySourceKey, todayTimerSourceId, uniqueGroupNames, uniqueProjectId, uniqueSuggestions, writeCollapsedGroups } from "./app/helpers";
+import { buttonGroupName, buttonHasIconCacheSource, createStableId, formatActionSummary, formatClock, formatDateKeyForHeader, formatStartedAt, formatTodayActivityLog, iconForAction, isCloseShortcutValue, isEditableTarget, isValidStartedAt, limitToday, makeAction, matchesHotkey, normalizeTimerMinutes, readCollapsedGroups, shortcutFromKeyboardEvent, showButtonInOverlay, showButtonInSidebar, toThreeNoteDraft, todayEntries, todaySourceKey, todayTimerSourceId, uniqueGroupNames, uniqueSuggestions, writeCollapsedGroups } from "./app/helpers";
 import { clearMiniPosition, createMiniReadyWaiter, inactiveMiniSnapshot, isDictionaryView, isFiniteMiniPosition, isInstructionView, isMiniModeView, readMiniPosition, resolveSafeMiniPosition, sameMiniPosition, timerActionText, waitForMiniWindowCreated, writeMiniPosition } from "./app/miniWindow";
 import { notifyTimerComplete } from "./app/dropTargets";
 import { useWishlistAndSources } from "./hooks/useWishlistAndSources";
+import { useProjectsAndNextSteps } from "./hooks/useProjectsAndNextSteps";
 import { shouldSkipFocusRestore } from "./app/focusRestore";
 
 const InstructionViewer = lazy(() =>
@@ -239,6 +227,24 @@ function DashboardApp() {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [shortcutRegistration, setShortcutRegistration] = useState<ShortcutRegistrationStatus | null>(null);
   const configRef = useRef<AppConfig | null>(null);
+
+  const [projectNextStepSuggestions, setProjectNextStepSuggestions] = useState<string[]>([]);
+  const [projectEditDraft, setProjectEditDraft] = useState<ProjectEditDraft | null>(null);
+  const [projectEditSaving, setProjectEditSaving] = useState(false);
+  const [nextStepEditDraft, setNextStepEditDraft] = useState<NextStepEditDraft | null>(null);
+  const [nextStepOpenMenuOpen, setNextStepOpenMenuOpen] = useState(false);
+  const [nextStepOpenPicker, setNextStepOpenPicker] = useState<"buttons" | "instructions" | null>(
+    null,
+  );
+  const [instructionChoices, setInstructionChoices] = useState<InstructionChoice[]>([]);
+  const [instructionChoicesLoading, setInstructionChoicesLoading] = useState(false);
+  const [instructionChoicesError, setInstructionChoicesError] = useState<string | null>(null);
+  const [instructionSettingsBusy, setInstructionSettingsBusy] = useState(false);
+  const projectEditSavingRef = useRef(false);
+  const projectEditInitialDraftRef = useRef<ProjectEditDraft | null>(null);
+  const nextStepEditInitialDraftRef = useRef<NextStepEditDraft | null>(null);
+  const projectEditReturnFocusRef = useRef<HTMLElement | null>(null);
+  const nextStepEditReturnFocusRef = useRef<HTMLElement | null>(null);
   configRef.current = config;
   const [backupPath, setBackupPath] = useState("");
   const [todaySessionMinutes, setTodaySessionMinutes] = useState(0);
@@ -418,7 +424,6 @@ function DashboardApp() {
   const [sessionProjectFilter, setSessionProjectFilter] = useState("");
   const [sessionDateScope, setSessionDateScope] = useState<RecordsDateScope>("week");
   const [notesHistory, setNotesHistory] = useState<NotesHistoryResponse | null>(null);
-  const [projectNextStepSuggestions, setProjectNextStepSuggestions] = useState<string[]>([]);
   const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(null);
   const [expandedTimerOpen, setExpandedTimerOpen] = useState(false);
   const expandTimerButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -506,18 +511,6 @@ function DashboardApp() {
   const [buttonEditInitialDraft, setButtonEditInitialDraft] = useState<ButtonEditDraft | null>(
     null,
   );
-  const [projectEditDraft, setProjectEditDraft] = useState<ProjectEditDraft | null>(null);
-  const [projectEditSaving, setProjectEditSaving] = useState(false);
-  const [nextStepEditDraft, setNextStepEditDraft] = useState<NextStepEditDraft | null>(null);
-  // P10-10 (§6.2): the "＋ ボタン・手順書を足す" choice and which picker dialog is open.
-  const [nextStepOpenMenuOpen, setNextStepOpenMenuOpen] = useState(false);
-  const [nextStepOpenPicker, setNextStepOpenPicker] = useState<"buttons" | "instructions" | null>(
-    null,
-  );
-  const [instructionChoices, setInstructionChoices] = useState<InstructionChoice[]>([]);
-  const [instructionChoicesLoading, setInstructionChoicesLoading] = useState(false);
-  const [instructionChoicesError, setInstructionChoicesError] = useState<string | null>(null);
-  const [instructionSettingsBusy, setInstructionSettingsBusy] = useState(false);
   const [dailyActivityCopying, setDailyActivityCopying] = useState(false);
   const [sidebarPointerDrag, setSidebarPointerDrag] = useState<SidebarDragPreview | null>(null);
   const [sidebarGroupPointerDrag, setSidebarGroupPointerDrag] =
@@ -543,7 +536,6 @@ function DashboardApp() {
   const projectPointerDragRef = useRef<ProjectPointerDrag | null>(null);
   const inboxPointerDragRef = useRef<InboxPointerDrag | null>(null);
   const wishlistGroupPointerDragRef = useRef<WishlistGroupPointerDrag | null>(null);
-  const projectEditSavingRef = useRef(false);
   const configSaveBlockedRef = useRef(false);
   // P10-11: the first-run guide must not appear while saves are blocked.
   const [configSaveBlocked, setConfigSaveBlocked] = useState(false);
@@ -560,8 +552,6 @@ function DashboardApp() {
   // P10-11 (§8.2): the IDs for the first-run guide are created once per guide.
   const firstRunIdsRef = useRef<{ projectId: string; generationId: string } | null>(null);
   const [firstRunSaving, setFirstRunSaving] = useState(false);
-  const projectEditInitialDraftRef = useRef<ProjectEditDraft | null>(null);
-  const nextStepEditInitialDraftRef = useRef<NextStepEditDraft | null>(null);
   const projectListAnchorRef = useRef<{ id: string; index: number } | null>(null);
   const inboxListAnchorRef = useRef<{ id: string; index: number } | null>(null);
   const mainScrollAreaRef = useRef<HTMLDivElement | null>(null);
@@ -580,8 +570,6 @@ function DashboardApp() {
   const victoryNavigationRef = useRef<HTMLButtonElement | null>(null);
   const victorySaveRef = useRef<Promise<boolean> | null>(null);
   const contextMenuReturnFocusRef = useRef<HTMLElement | null>(null);
-  const projectEditReturnFocusRef = useRef<HTMLElement | null>(null);
-  const nextStepEditReturnFocusRef = useRef<HTMLElement | null>(null);
   const confirmFocusReturnRef = useRef<HTMLElement | null>(null);
   const morningFocusDateRef = useRef<string | null>(null);
   const miniWindowRef = useRef<WebviewWindow | null>(null);
@@ -2064,6 +2052,79 @@ function DashboardApp() {
     withoutSourceFromToday,
     projectsById,
   });
+
+  const {
+    chooseLegacyNextStepSettings,
+    clearProjectNextStep,
+    openNextStepEditor,
+    openProjectAddDialog,
+    openProjectEditDialog,
+    openProjectManagement,
+    promoteInboxToNextStep,
+    promoteWishlistToProject,
+    refreshInstructionChoices,
+    removeProjectNextStep,
+    requestProjectDeletion,
+    saveNextStepEdit,
+    saveProjectEdit,
+    selectNextStepDecisionMode,
+    selectNextStepProject,
+    setProjectWeeklyFocus,
+    setWeeklyReviewProjectFocus,
+  } = useProjectsAndNextSteps({
+    activeTimerRef,
+    closeNextStepEditDialog,
+    closeProjectEditDialog,
+    config,
+    configRef,
+    now,
+    persistConfig,
+    projectsById,
+    refreshInstructionChoicesRef,
+    requestConfirmation,
+    requestDiscardConfirmation,
+    captureDialogReturnFocus,
+    restoreDialogFocus,
+    saveSourceEdit,
+    setSourceEditSaving,
+    setContextMenu,
+    setProjectsOpen,
+    showToast,
+    sourceEditBlockReason,
+    sourceEditBlocked,
+    sourceEditBusyRef,
+    sourceEditOriginRef,
+    warnSourceEditBlocked,
+    withoutSourceFromToday,
+    projectNextStepSuggestions,
+    setProjectNextStepSuggestions,
+    projectEditDraft,
+    setProjectEditDraft,
+    projectEditSaving,
+    setProjectEditSaving,
+    nextStepEditDraft,
+    setNextStepEditDraft,
+    nextStepOpenMenuOpen,
+    setNextStepOpenMenuOpen,
+    nextStepOpenPicker,
+    setNextStepOpenPicker,
+    instructionChoices,
+    setInstructionChoices,
+    instructionChoicesLoading,
+    setInstructionChoicesLoading,
+    instructionChoicesError,
+    setInstructionChoicesError,
+    instructionSettingsBusy,
+    setInstructionSettingsBusy,
+    projectEditSavingRef,
+    projectEditInitialDraftRef,
+    nextStepEditInitialDraftRef,
+    projectEditReturnFocusRef,
+    nextStepEditReturnFocusRef,
+    projectSelectableButtons,
+    refreshNextStepSuggestions,
+  });
+  refreshInstructionChoicesRef.current = refreshInstructionChoices;
 
   const dismissNonCriticalModal = useCallback(() => {
     if (sourceEditBusyRef.current || projectEditSavingRef.current) return;
@@ -3778,766 +3839,6 @@ function DashboardApp() {
       todayPickerDragIndex,
       Math.min(index, Math.max(0, todayPickerDraftItems.length - 1)),
     );
-  };
-
-  const refreshInstructionChoices = async () => {
-    setInstructionChoicesLoading(true);
-    setInstructionChoicesError(null);
-    try {
-      const roots = (await listInstructionRoots()).filter((root) => root.available);
-      const choices: InstructionChoice[] = [];
-      const queue = roots.map((root) => ({ root, path: root.path }));
-      let scanned = 0;
-      while (queue.length > 0) {
-        const current = queue.shift();
-        if (!current) break;
-        const entries = await listInstructionDirectory(current.path);
-        for (const entry of entries) {
-          scanned += 1;
-          if (scanned > 50_000) throw new Error("手順書一覧が50,000項目を超えています");
-          if (entry.kind === "folder") {
-            queue.push({ root: current.root, path: entry.path });
-          } else {
-            const relative = entry.path
-              .slice(current.root.path.length)
-              .replace(/^[\\/]+/, "")
-              .replace(/[\\/]+/g, " / ");
-            choices.push({ path: entry.path, label: `${current.root.name} / ${relative}` });
-          }
-        }
-      }
-      choices.sort((left, right) => left.label.localeCompare(right.label, "ja"));
-      setInstructionChoices(choices);
-    } catch (error) {
-      setInstructionChoices([]);
-      setInstructionChoicesError(error instanceof Error ? error.message : String(error));
-    } finally {
-      setInstructionChoicesLoading(false);
-    }
-  };
-
-  refreshInstructionChoicesRef.current = refreshInstructionChoices;
-
-  const openProjectAddDialog = () => {
-    if (!config) return;
-    captureDialogReturnFocus(projectEditReturnFocusRef);
-    setContextMenu(null);
-    const draft: ProjectEditDraft = {
-      id: "",
-      name: "",
-      northStar: "",
-      weeklyFocus: false,
-      colorId: "amber",
-      isNew: true,
-    };
-    projectEditInitialDraftRef.current = draft;
-    setProjectEditDraft(draft);
-  };
-
-  const openProjectEditDialog = (
-    project: LauncherProject,
-    origin: "source" | "today" | "builder" = "source",
-  ) => {
-    sourceEditOriginRef.current = origin;
-    captureDialogReturnFocus(projectEditReturnFocusRef);
-    setContextMenu(null);
-    const draft: ProjectEditDraft = {
-      id: project.id,
-      name: project.name,
-      northStar: project.northStar ?? "",
-      weeklyFocus: project.weeklyFocus === true,
-      colorId: resolveProjectColorId(project.id, project.colorId),
-      isNew: false,
-    };
-    projectEditInitialDraftRef.current = draft;
-    setProjectEditDraft(draft);
-  };
-
-  const nextStepExecutionDraft = (
-    execution?: Partial<LauncherNextStep>,
-  ): Pick<
-    NextStepEditDraft,
-    | "buttonIds"
-    | "defaultTimerMinutes"
-    | "shortTimerMinutes"
-    | "startNoteTemplate"
-    | "instructionPath"
-    | "instructionOpenOnStart"
-    | "expandTimerOnStart"
-  > => ({
-    buttonIds: (execution?.buttonIds ?? []).filter((buttonId) =>
-      projectSelectableButtons.some((button) => button.id === buttonId),
-    ),
-    defaultTimerMinutes: execution?.defaultTimerMinutes
-      ? String(execution.defaultTimerMinutes)
-      : "",
-    shortTimerMinutes: execution?.shortTimerMinutes ? String(execution.shortTimerMinutes) : "",
-    startNoteTemplate: execution?.startNoteTemplate ?? "",
-    instructionPath: execution?.instructionPath ?? "",
-    instructionOpenOnStart: Boolean(
-      execution?.instructionPath && execution.instructionOpenOnStart !== false,
-    ),
-    expandTimerOnStart: execution?.expandTimerOnStart === true,
-  });
-
-  const openNextStepEditor = (
-    project: LauncherProject,
-    options?: {
-      mode?: NextStepEditDraft["mode"];
-      text?: string;
-      promotedWishlistId?: string;
-      projectLocked?: boolean;
-      origin?: "source" | "today" | "builder";
-      /** P10-09: values copied from the Next Step that was just finished. */
-      prefill?: Partial<
-        Pick<
-          NextStepEditDraft,
-          | "text"
-          | "trigger"
-          | "buttonIds"
-          | "shortTimerMinutes"
-          | "defaultTimerMinutes"
-          | "instructionPath"
-          | "instructionOpenOnStart"
-          | "startNoteTemplate"
-          | "expandTimerOnStart"
-        >
-      >;
-    },
-  ) => {
-    const sourceKey = `project:${project.id}`;
-    const origin = options?.origin ?? "source";
-    if (warnSourceEditBlocked(sourceKey, origin === "today")) {
-      setContextMenu(null);
-      return;
-    }
-    const mode = options?.mode ?? (project.nextStep?.text.trim() ? "edit" : "set");
-    const promotingWishlist = mode === "promote" && Boolean(options?.promotedWishlistId);
-    const editingExisting = mode === "edit" && Boolean(project.nextStep);
-    // P10-09 (§8.1): a prefilled Next Step ("same step again") starts on the free-text form so
-    // the copied action and its execution settings are visible as they are.
-    const initialDecisionMode: NextStepDecisionMode = options?.prefill
-      ? "new"
-      : promotingWishlist || mode === "set"
-        ? "wishlist"
-        : "new";
-    sourceEditOriginRef.current = origin;
-    captureDialogReturnFocus(nextStepEditReturnFocusRef);
-    setContextMenu(null);
-    const draft: NextStepEditDraft = {
-      mode,
-      decisionMode: initialDecisionMode,
-      projectId: project.id,
-      projectLocked: options?.projectLocked ?? true,
-      text:
-        initialDecisionMode === "wishlist" ? "" : (options?.text ?? project.nextStep?.text ?? ""),
-      originalText: project.nextStep?.text ?? "",
-      trigger: editingExisting ? (project.nextStep?.trigger ?? "") : "",
-      resumeNote: editingExisting ? (project.nextStep?.resumeNote ?? "") : "",
-      ...nextStepExecutionDraft(editingExisting ? project.nextStep : undefined),
-      legacyChoice:
-        !editingExisting && !project.nextStep && project.legacyNextStepSettings ? null : "discard",
-      replacementChoice: null,
-      replacedNextStep: promotingWishlist ? project.nextStep : undefined,
-      ...(options?.promotedWishlistId ? { promotedWishlistId: options.promotedWishlistId } : {}),
-      ...(options?.prefill ?? {}),
-    };
-    nextStepEditInitialDraftRef.current = draft;
-    setNextStepOpenMenuOpen(false);
-    setNextStepOpenPicker(null);
-    setNextStepEditDraft(draft);
-    void refreshNextStepSuggestions(project.id);
-    void refreshInstructionChoices();
-  };
-
-  const promoteInboxToNextStep = (index: number) => {
-    const current = configRef.current;
-    const item = current?.inbox[index];
-    if (!current || !item) return;
-    if (!item.id) {
-      setContextMenu(null);
-      showToast("warn", "この項目にはstable IDがないため、先に編集して保存してください");
-      return;
-    }
-    if (warnSourceEditBlocked(`wishlist:${item.id}`)) {
-      setContextMenu(null);
-      return;
-    }
-    const project = item.projectId
-      ? current.projects.find((candidate) => candidate.id === item.projectId)
-      : undefined;
-    if (item.projectId && !project) {
-      setContextMenu(null);
-      showToast("warn", "所属プロジェクトが見つかりません");
-      return;
-    }
-    if (project) {
-      openNextStepEditor(project, {
-        mode: "promote",
-        text: item.text,
-        promotedWishlistId: item.id,
-        projectLocked: true,
-      });
-      return;
-    }
-    captureDialogReturnFocus(nextStepEditReturnFocusRef);
-    setContextMenu(null);
-    const draft: NextStepEditDraft = {
-      mode: "promote",
-      decisionMode: "wishlist",
-      projectId: "",
-      projectLocked: false,
-      text: "",
-      originalText: "",
-      trigger: "",
-      resumeNote: "",
-      ...nextStepExecutionDraft(),
-      legacyChoice: "discard",
-      replacementChoice: null,
-      replacedNextStep: undefined,
-      promotedWishlistId: item.id,
-    };
-    nextStepEditInitialDraftRef.current = draft;
-    setNextStepOpenMenuOpen(false);
-    setNextStepOpenPicker(null);
-    setNextStepEditDraft(draft);
-    setProjectNextStepSuggestions([]);
-    void refreshInstructionChoices();
-  };
-
-  async function promoteWishlistToProject(wishlistId: string) {
-    const current = configRef.current;
-    const item = current?.inbox.find((candidate) => candidate.id === wishlistId);
-    const project = item?.projectId
-      ? current?.projects.find((candidate) => candidate.id === item.projectId)
-      : undefined;
-    if (!current || !item || !project || sourceEditBusyRef.current) return false;
-    if (project.nextStep?.sourceWishlistId === wishlistId) {
-      showToast("warn", "すでに次の一手に設定されています");
-      return true;
-    }
-    const projectId = project.id;
-    const wishlistSource = `wishlist:${wishlistId}`;
-    const projectSource = `project:${projectId}`;
-    const blockReason =
-      sourceEditBlockReason(wishlistSource) ?? sourceEditBlockReason(projectSource);
-    if (blockReason) {
-      showToast("warn", blockReason);
-      return false;
-    }
-
-    const legacyExecution = project.nextStep ? undefined : project.legacyNextStepSettings;
-    const instructionPath = item.instructionPath ?? legacyExecution?.instructionPath;
-    const nextStep: LauncherNextStep = {
-      text: item.text.trim(),
-      generationId: createStableId(),
-      buttonIds: [...(item.buttonIds ?? legacyExecution?.buttonIds ?? [])],
-      ...(legacyExecution?.defaultTimerMinutes
-        ? { defaultTimerMinutes: legacyExecution.defaultTimerMinutes }
-        : {}),
-      ...(legacyExecution?.shortTimerMinutes
-        ? { shortTimerMinutes: legacyExecution.shortTimerMinutes }
-        : {}),
-      ...(legacyExecution?.expandTimerOnStart ? { expandTimerOnStart: true } : {}),
-      ...(legacyExecution?.startNoteTemplate
-        ? { startNoteTemplate: legacyExecution.startNoteTemplate }
-        : {}),
-      ...(instructionPath
-        ? {
-            instructionPath,
-            instructionOpenOnStart:
-              item.instructionPath !== undefined
-                ? item.instructionOpenOnStart !== false
-                : legacyExecution?.instructionOpenOnStart !== false,
-          }
-        : {}),
-      updatedAt: new Date().toISOString(),
-    };
-    let nextConfig: AppConfig;
-    try {
-      nextConfig = prepareWishlistPromotion(current, {
-        wishlistId,
-        projectId,
-        nextStep,
-        expectedCurrent: project.nextStep,
-        createId: createStableId,
-      });
-    } catch (error) {
-      showToast("warn", error instanceof Error ? error.message : String(error));
-      return false;
-    }
-
-    sourceEditBusyRef.current = projectSource;
-    try {
-      const saved = await persistConfig(nextConfig);
-      if (saved) {
-        showToast(
-          "ok",
-          project.nextStep?.text.trim() ? "次の一手を変更しました" : "次の一手に設定しました",
-          {
-            detail: project.nextStep?.text.trim()
-              ? "元の次の一手はやりたいことへ戻しました"
-              : undefined,
-          },
-        );
-      }
-      return saved;
-    } finally {
-      sourceEditBusyRef.current = null;
-    }
-  }
-
-  const selectNextStepProject = (projectId: string) => {
-    if (!nextStepEditDraft || nextStepEditDraft.projectLocked) return;
-    const project = configRef.current?.projects.find((candidate) => candidate.id === projectId);
-    if (project && warnSourceEditBlocked(`project:${project.id}`)) {
-      return;
-    }
-    setNextStepEditDraft({
-      ...nextStepEditDraft,
-      mode:
-        nextStepEditDraft.decisionMode === "wishlist"
-          ? "promote"
-          : project?.nextStep
-            ? "edit"
-            : "set",
-      projectId,
-      originalText: project?.nextStep?.text ?? "",
-      trigger: "",
-      resumeNote: "",
-      ...nextStepExecutionDraft(),
-      legacyChoice: project?.legacyNextStepSettings && !project.nextStep ? null : "discard",
-      replacementChoice: null,
-      replacedNextStep:
-        nextStepEditDraft.decisionMode === "wishlist" ? project?.nextStep : undefined,
-      promotedWishlistId: undefined,
-    });
-    void refreshNextStepSuggestions(projectId || null);
-  };
-
-  const selectNextStepDecisionMode = (decisionMode: NextStepDecisionMode) => {
-    const draft = nextStepEditDraft;
-    const current = configRef.current;
-    if (!draft || !current || draft.decisionMode === decisionMode) return;
-    const project = current.projects.find((candidate) => candidate.id === draft.projectId);
-    const selectedWishlistStillMatches = current.inbox.some(
-      (item) => item.id === draft.promotedWishlistId && item.projectId === draft.projectId,
-    );
-    if (decisionMode === "wishlist") {
-      setNextStepEditDraft({
-        ...draft,
-        mode: "promote",
-        decisionMode,
-        trigger: "",
-        resumeNote: "",
-        ...nextStepExecutionDraft(),
-        legacyChoice: "discard",
-        replacementChoice: null,
-        replacedNextStep: project?.nextStep,
-        promotedWishlistId: selectedWishlistStillMatches ? draft.promotedWishlistId : undefined,
-      });
-      return;
-    }
-    setNextStepEditDraft({
-      ...draft,
-      mode: project?.nextStep ? "edit" : "set",
-      decisionMode,
-      resumeNote: project?.nextStep?.resumeNote ?? "",
-      legacyChoice: project?.legacyNextStepSettings && !project.nextStep ? null : "discard",
-      replacementChoice: null,
-      replacedNextStep: undefined,
-    });
-  };
-
-  const chooseLegacyNextStepSettings = (choice: Exclude<LegacyNextStepChoice, null>) => {
-    if (!nextStepEditDraft) return;
-    const project = configRef.current?.projects.find(
-      (candidate) => candidate.id === nextStepEditDraft.projectId,
-    );
-    setNextStepEditDraft({
-      ...nextStepEditDraft,
-      ...nextStepExecutionDraft(choice === "inherit" ? project?.legacyNextStepSettings : undefined),
-      legacyChoice: choice,
-    });
-  };
-
-  const parseNextStepTimer = (raw: string, label: string) => {
-    if (!raw.trim()) return undefined;
-    const value = Number.parseInt(raw, 10);
-    if (!Number.isFinite(value) || value < 1 || value > 240) {
-      throw new Error(`${label}は1〜240分で入力してください`);
-    }
-    return value;
-  };
-
-  const saveNextStepEdit = async () => {
-    const current = configRef.current;
-    const draft = nextStepEditDraft;
-    if (!current || !draft || sourceEditBusyRef.current) return;
-    const project = current.projects.find((candidate) => candidate.id === draft.projectId);
-    if (!project) {
-      showToast("warn", "プロジェクトを選択してください");
-      return;
-    }
-
-    const promotingWishlist = draft.decisionMode === "wishlist";
-    const selectedWishlist =
-      promotingWishlist && draft.promotedWishlistId
-        ? current.inbox.find(
-            (item) => item.id === draft.promotedWishlistId && item.projectId === project.id,
-          )
-        : undefined;
-    if (promotingWishlist && !selectedWishlist) {
-      showToast("warn", "やりたいことを選択してください");
-      return;
-    }
-    if (selectedWishlist && project.nextStep?.sourceWishlistId === selectedWishlist.id) {
-      showToast("warn", "すでに次の一手に設定されています");
-      return;
-    }
-    const text = promotingWishlist ? (selectedWishlist?.text.trim() ?? "") : draft.text.trim();
-    if (!text) {
-      showToast("warn", "次の一手を入力してください");
-      return;
-    }
-    if (promotingWishlist && !sameNextStepSnapshot(project.nextStep, draft.replacedNextStep)) {
-      showToast("warn", "現在の次の一手が変更されたため、内容を確認し直してください");
-      return;
-    }
-    if (
-      !promotingWishlist &&
-      !project.nextStep &&
-      project.legacyNextStepSettings &&
-      draft.legacyChoice === null
-    ) {
-      showToast("warn", "以前の実行設定を引き継ぐか破棄するか選んでください");
-      return;
-    }
-
-    const replacingExisting = Boolean(promotingWishlist && project.nextStep?.text.trim());
-    if (replacingExisting && draft.replacementChoice !== "return") {
-      showToast("warn", "現在の次の一手をやりたいことへ戻すことを確認してください");
-      return;
-    }
-    const projectSourceKey = `project:${project.id}`;
-    const wishlistSourceKey = selectedWishlist ? `wishlist:${selectedWishlist.id}` : null;
-    const allowTodaySourceSync = sourceEditOriginRef.current === "today" && !promotingWishlist;
-    const blockReason =
-      sourceEditBlockReason(projectSourceKey, allowTodaySourceSync) ??
-      (wishlistSourceKey ? sourceEditBlockReason(wishlistSourceKey) : null);
-    if (blockReason) {
-      showToast("warn", blockReason);
-      return;
-    }
-    if (selectedWishlist && unfinishedTodayUsesSource(current, `wishlist:${selectedWishlist.id}`)) {
-      showToast("warn", "今日の3件で未完了のやりたいことは選べません");
-      return;
-    }
-    if (
-      replacingExisting &&
-      unfinishedTodayUsesSource(current, projectSourceKey, project.nextStep?.generationId)
-    ) {
-      showToast("warn", "今日の3件で未完了の次の一手があるため変更できません");
-      return;
-    }
-
-    let defaultTimerMinutes: number | undefined;
-    let shortTimerMinutes: number | undefined;
-    try {
-      defaultTimerMinutes = parseNextStepTimer(draft.defaultTimerMinutes, "通常タイマー");
-      shortTimerMinutes = parseNextStepTimer(draft.shortTimerMinutes, "短時間タイマー");
-    } catch (error) {
-      showToast("warn", error instanceof Error ? error.message : String(error));
-      return;
-    }
-
-    const now = new Date().toISOString();
-    const existing = !promotingWishlist && draft.mode === "edit" ? project.nextStep : undefined;
-    const nextStep: LauncherNextStep = {
-      text,
-      ...(existing ? { generationId: existing.generationId } : { generationId: createStableId() }),
-      ...(existing?.sourceWishlistId ? { sourceWishlistId: existing.sourceWishlistId } : {}),
-      buttonIds: [...draft.buttonIds],
-      ...(draft.trigger.trim() ? { trigger: draft.trigger.trim() } : {}),
-      ...(defaultTimerMinutes ? { defaultTimerMinutes } : {}),
-      ...(shortTimerMinutes ? { shortTimerMinutes } : {}),
-      ...(draft.expandTimerOnStart ? { expandTimerOnStart: true } : {}),
-      ...(draft.startNoteTemplate.trim()
-        ? { startNoteTemplate: draft.startNoteTemplate.trim() }
-        : {}),
-      ...(draft.instructionPath
-        ? {
-            instructionPath: draft.instructionPath,
-            instructionOpenOnStart: draft.instructionOpenOnStart,
-          }
-        : {}),
-      updatedAt: existing?.updatedAt && text === draft.originalText ? existing.updatedAt : now,
-      ...(existing?.reviewedAt ? { reviewedAt: existing.reviewedAt } : {}),
-      ...(existing && draft.resumeNote.trim() ? { resumeNote: draft.resumeNote.trim() } : {}),
-    };
-
-    let nextConfig: AppConfig;
-    if (promotingWishlist && selectedWishlist) {
-      try {
-        nextConfig = prepareWishlistPromotion(current, {
-          wishlistId: selectedWishlist.id!,
-          projectId: project.id,
-          nextStep,
-          expectedCurrent: draft.replacedNextStep,
-          createId: createStableId,
-        });
-      } catch (error) {
-        showToast("warn", error instanceof Error ? error.message : String(error));
-        return;
-      }
-    } else {
-      const nextProject: LauncherProject = {
-        ...project,
-        nextStep,
-        legacyNextStepSettings: undefined,
-      };
-      nextConfig = {
-        ...current,
-        projects: current.projects.map((candidate) =>
-          candidate.id === project.id ? nextProject : candidate,
-        ),
-      };
-    }
-
-    if (!promotingWishlist && draft.mode === "edit") {
-      const result = await saveSourceEdit(current, nextConfig, projectSourceKey);
-      if (!result) return;
-      closeNextStepEditDialog(true);
-      showToast("ok", "次の一手を保存しました", {
-        detail: result.todayUpdated ? "今日の3件にも反映しました" : undefined,
-      });
-      return;
-    }
-
-    sourceEditBusyRef.current = projectSourceKey;
-    setSourceEditSaving(true);
-    try {
-      if (!(await persistConfig(nextConfig))) return;
-      closeNextStepEditDialog(true);
-      showToast("ok", promotingWishlist ? "次の一手にしました" : "次の一手を保存しました", {
-        detail: replacingExisting ? "元の次の一手はやりたいことへ戻しました" : undefined,
-      });
-    } finally {
-      sourceEditBusyRef.current = null;
-      setSourceEditSaving(false);
-    }
-  };
-
-  async function removeProjectNextStep(project: LauncherProject, choice: "return" | "delete") {
-    const current = configRef.current;
-    const liveProject = current?.projects.find((candidate) => candidate.id === project.id);
-    if (!current || !liveProject?.nextStep?.text.trim()) return false;
-    const sourceKey = `project:${project.id}`;
-    if (warnSourceEditBlocked(sourceKey)) {
-      setContextMenu(null);
-      return false;
-    }
-    let nextConfig: AppConfig;
-    try {
-      nextConfig = prepareNextStepRemoval(current, {
-        projectId: liveProject.id,
-        expectedCurrent: liveProject.nextStep,
-        choice,
-        createId: createStableId,
-      });
-    } catch (error) {
-      showToast("warn", error instanceof Error ? error.message : String(error));
-      return false;
-    }
-    const saved = await persistConfig(nextConfig);
-    if (saved) {
-      setContextMenu(null);
-      showToast(
-        "neutral",
-        choice === "return" ? "やりたいことへ戻しました" : "次の一手を未設定にしました",
-      );
-    }
-    return saved;
-  }
-
-  const clearProjectNextStep = (project: LauncherProject) => {
-    const current = configRef.current;
-    const liveProject = current?.projects.find((candidate) => candidate.id === project.id);
-    if (!current || !liveProject?.nextStep?.text.trim()) return;
-    const sourceKey = `project:${project.id}`;
-    if (warnSourceEditBlocked(sourceKey)) {
-      setContextMenu(null);
-      return;
-    }
-    setContextMenu(null);
-    requestConfirmation({
-      title: "次の一手を未設定にしますか？",
-      subject: `「${liveProject.nextStep.text}」`,
-      message: "今日の3件に採用済みの内容と実行記録は変更しません。",
-      confirmLabel: "やりたいことへ戻す",
-      alternateLabel: "削除して未設定にする",
-      alternateTone: "danger",
-      processingLabel: "保存しています…",
-      alternateProcessingLabel: "保存しています…",
-      tone: "warning",
-      onConfirm: () => removeProjectNextStep(liveProject, "return"),
-      onAlternate: () => removeProjectNextStep(liveProject, "delete"),
-    });
-  };
-
-  const projectDeleteBlockReason = (projectId: string) => {
-    const current = configRef.current;
-    if (!current) return "設定を読み込んでから削除してください";
-    if (sourceEditBusyRef.current !== null || projectEditSavingRef.current) {
-      return "保存処理が完了してから削除してください";
-    }
-    return projectDeletionBlockReason(current, projectId, activeTimerRef.current?.sourceId);
-  };
-
-  const executeProjectDeletion = async (projectId: string, mode: ProjectDeletionMode) => {
-    const current = configRef.current;
-    if (!current) return false;
-    const reason = projectDeleteBlockReason(projectId);
-    if (reason) {
-      showToast("warn", reason);
-      return false;
-    }
-    const summary = projectDeletionSummary(current, projectId);
-    if (!summary) {
-      showToast("warn", "削除するプロジェクトが見つかりません");
-      return false;
-    }
-    const nextConfig = prepareProjectDeletion(current, projectId, mode, {
-      completedAt: new Date().toISOString(),
-      createId: createStableId,
-    });
-    if (!nextConfig) return false;
-    if (!(await persistConfig(nextConfig))) return false;
-
-    if (projectEditDraft?.id === projectId) closeProjectEditDialog(true);
-    showToast(
-      "danger",
-      mode === "complete"
-        ? `残っている項目を完了扱いにして、プロジェクト「${summary.project.name}」を削除しました`
-        : `プロジェクト「${summary.project.name}」を削除しました`,
-    );
-    return true;
-  };
-
-  const requestProjectDeletion = (project: LauncherProject) => {
-    setContextMenu(null);
-    const current = configRef.current;
-    if (!current) return;
-    const reason = projectDeleteBlockReason(project.id);
-    if (reason) {
-      showToast("warn", reason);
-      return;
-    }
-    const summary = projectDeletionSummary(current, project.id);
-    if (!summary) {
-      showToast("warn", "削除するプロジェクトが見つかりません");
-      return;
-    }
-    requestConfirmation({
-      title: "プロジェクトを削除しますか？",
-      subject: `「${summary.project.name}」と、現在登録されている関連項目が対象です。`,
-      message: `次の一手: ${summary.nextStepCount}件\nやりたいこと: ${summary.wishlistCount}件\n\n過去の実行記録は残ります。`,
-      confirmLabel: "関連項目も削除",
-      alternateLabel: "残っている項目を完了扱いにして削除",
-      processingLabel: "削除しています…",
-      alternateProcessingLabel: "完了扱いにして削除しています…",
-      tone: "danger",
-      alternateTone: "danger",
-      initialFocus: "cancel",
-      onConfirm: () => executeProjectDeletion(project.id, "delete"),
-      onAlternate: () => executeProjectDeletion(project.id, "complete"),
-    });
-  };
-
-  const openProjectManagement = () => {
-    setContextMenu(null);
-    setProjectsOpen(true);
-    window.requestAnimationFrame(() => {
-      document.querySelector<HTMLElement>(".projectsBand")?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    });
-  };
-
-  const saveProjectEdit = async () => {
-    const config = configRef.current;
-    if (!config || !projectEditDraft || projectEditSavingRef.current) return;
-    if (!projectEditDraft.isNew && !config.projects.some((p) => p.id === projectEditDraft.id)) {
-      showToast("warn", "元の登録が見つかりません");
-      return;
-    }
-    const name = projectEditDraft.name.trim();
-    if (!name) {
-      showToast("warn", "プロジェクト名を入力してください");
-      return;
-    }
-
-    const existingProject = projectEditDraft.isNew
-      ? undefined
-      : config.projects.find((item) => item.id === projectEditDraft.id);
-    const project: LauncherProject = {
-      ...(existingProject ?? {}),
-      id: projectEditDraft.isNew ? uniqueProjectId(name, config.projects) : projectEditDraft.id,
-      name,
-      northStar: projectEditDraft.northStar.trim() || undefined,
-      weeklyFocus: projectEditDraft.weeklyFocus || undefined,
-      colorId: projectEditDraft.colorId,
-    };
-
-    const projects = projectEditDraft.isNew
-      ? [...config.projects, project]
-      : config.projects.map((item) => (item.id === project.id ? project : item));
-
-    projectEditSavingRef.current = true;
-    setProjectEditSaving(true);
-    try {
-      if (!(await persistConfig({ ...config, projects }))) return;
-      closeProjectEditDialog(true);
-      if (projectEditDraft.isNew) {
-        showToast("ok", `${name} を追加しました`);
-      } else {
-        showToast("ok", "プロジェクトを保存しました");
-      }
-    } finally {
-      projectEditSavingRef.current = false;
-      setProjectEditSaving(false);
-    }
-  };
-
-  const setProjectWeeklyFocus = (checked: boolean) => {
-    if (!config || !projectEditDraft) return;
-    const otherFocusedProjects = config.projects.filter(
-      (project) => project.id !== projectEditDraft.id && project.weeklyFocus === true,
-    ).length;
-    if (checked && otherFocusedProjects >= WEEKLY_FOCUS_LIMIT) {
-      showToast("neutral", `今週の重点は最大${WEEKLY_FOCUS_LIMIT}件まで選べます`);
-      return;
-    }
-    setProjectEditDraft({ ...projectEditDraft, weeklyFocus: checked });
-  };
-
-  const setWeeklyReviewProjectFocus = (projectId: string, checked: boolean) => {
-    if (!config) return;
-    const otherFocusedProjects = config.projects.filter(
-      (project) => project.id !== projectId && project.weeklyFocus === true,
-    ).length;
-    if (checked && otherFocusedProjects >= WEEKLY_FOCUS_LIMIT) {
-      showToast("neutral", `今週の重点は最大${WEEKLY_FOCUS_LIMIT}件まで選べます`);
-      return;
-    }
-
-    void persistConfig({
-      ...config,
-      projects: config.projects.map((project) =>
-        project.id === projectId ? { ...project, weeklyFocus: checked || undefined } : project,
-      ),
-    });
   };
 
   const openManualSessionDialog = () => {
