@@ -56,7 +56,6 @@ import {
   saveConfig,
   setDisplayAwake,
   loadInstructionBookState,
-  loadTestProfileInfo,
   type ShortcutRegistrationStatus,
   type TestProfileInfo,
 } from "./tauri";
@@ -189,6 +188,7 @@ import { useTodayAndVictory } from "./hooks/useTodayAndVictory";
 import { useMiniWindowSync } from "./hooks/useMiniWindowSync";
 import { useModalsAndFocus } from "./hooks/useModalsAndFocus";
 import { useFirstRunAndGuidedActions } from "./hooks/useFirstRunAndGuidedActions";
+import { useBootstrapAndSubscriptions } from "./hooks/useBootstrapAndSubscriptions";
 import { shouldSkipFocusRestore } from "./app/focusRestore";
 
 const InstructionViewer = lazy(() =>
@@ -270,12 +270,15 @@ function DashboardApp() {
   // テスト用の起動（普段のデータから切り離した起動）かどうか。
   // 自動起動の登録を呼ばないことと、「テスト」の表示に使う。
   const [testProfile, setTestProfile] = useState<TestProfileInfo | null>(null);
-  useEffect(() => {
-    void loadTestProfileInfo()
-      .then(setTestProfile)
-      .catch(() => undefined);
-  }, []);
   // P97-02 F: 窓の大きさが変わった直後は、マウスが動くまで乗せた色を出さない。
+  useBootstrapAndSubscriptions({
+    dictionaryLocked,
+    dictionaryVisible,
+    setDictionaryLocked,
+    setDictionaryVisible,
+    setTestProfile,
+  });
+
   useHoverSuppressionAfterResize();
   // 上部メニューの文字は、幅の決まった境目ではなく実測で隠す(P96-01 追加修正)。
   // 段階はメイン画面の見出し(「今日 N分」＋日付)の幅で決め、記録画面も同じ段階にする
@@ -343,38 +346,7 @@ function DashboardApp() {
     };
   }, []);
   // V163-C4: while the lock is on, nothing under the scrim takes clicks or Tab stops.
-  useEffect(() => {
-    if (!dictionaryVisible || !dictionaryLocked) return;
-    const shell = document.querySelector<HTMLElement>(".appShell");
-    if (!shell) return;
-    const children = Array.from(shell.children).filter(
-      (child): child is HTMLElement =>
-        child instanceof HTMLElement &&
-        !child.classList.contains("dictionaryMainScrim") &&
-        child.tagName !== "A",
-    );
-    for (const child of children) child.setAttribute("inert", "");
-    return () => {
-      for (const child of children) child.removeAttribute("inert");
-    };
-  }, [dictionaryLocked, dictionaryVisible]);
   // V163-C4: while the lock is on, focusing the main window sends the focus back to the dictionary.
-  useEffect(() => {
-    if (!dictionaryVisible || !dictionaryLocked) return;
-    let disposed = false;
-    const unlistenPromise = getCurrentWindow().onFocusChanged(({ payload: focused }) => {
-      if (!focused || disposed) return;
-      void focusDictionaryWindowIfVisible();
-    });
-    return () => {
-      disposed = true;
-      void unlistenPromise
-        .then((unlisten) => {
-          if (disposed) unlisten();
-        })
-        .catch(() => undefined);
-    };
-  }, [dictionaryLocked, dictionaryVisible]);
   const [defaultTimerDraft, setDefaultTimerDraft] = useState("");
   const [victoryEditing, setVictoryEditing] = useState(false);
   const [projectsOpen, setProjectsOpen] = useState(true);
