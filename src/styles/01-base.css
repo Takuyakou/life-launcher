@@ -2053,3 +2053,89 @@ button.instructionTreeDisclosure:hover {
   padding: 30px clamp(28px, 5vw, 72px) 52px;
 }
 
+
+/* 選ぶ欄(select):開いた一覧を、右クリックメニューと同じ地・枠・影・乗せた時の色にする(v1.6.4)。
+   WebView2(Chromium 135 以降)の appearance: base-select を使う。対応していない時は今までの見た目のまま。
+   キーボード(↑↓・Enter・Esc・頭文字)と読み上げは、ふつうの select のまま。 */
+select {
+  appearance: base-select;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+select::picker-icon {
+  content: "";
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  margin: 0 3px 0 auto;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: translateY(-2px) rotate(45deg);
+  transition:
+    transform 140ms ease,
+    border-color 120ms ease;
+}
+
+select:hover:not(:disabled)::picker-icon {
+  border-color: var(--text);
+}
+
+select:open::picker-icon {
+  transform: translateY(2px) rotate(225deg);
+}
+
+select::picker(select) {
+  appearance: base-select;
+  /* 下に収まる時は下に出す(上の方が広くても上に回らない)。収まらない時だけ上に出す。 */
+  position-try-order: normal;
+  margin-block: 4px;
+  max-height: min(320px, calc(100vh - 24px));
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 5px;
+  background: var(--menu-surface);
+  box-shadow: var(--menu-shadow);
+  color: var(--text);
+}
+
+select option {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: var(--text);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+select option::checkmark {
+  display: none;
+}
+
+select option:hover,
+select option:focus-visible {
+  background: var(--menu-hover-bg);
+  outline: none;
+}
+
+select option:checked {
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+select option:checked::after {
+  content: "✓";
+  margin-left: auto;
+  color: var(--accent-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  select::picker-icon {
+    transition: none;
+  }
+}

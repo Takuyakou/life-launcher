@@ -160,7 +160,7 @@ for (const width of [860]) {
       expect(await toast.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
       await page.mouse.move(1, 1);
       await page.getByRole("button", { name: "Windows自動起動" }).focus();
-      await page.clock.runFor(4900);
+      await page.clock.runFor(3900);
       await expect(toast).toBeVisible();
       await toast.getByRole("button", { name: "元に戻す" }).click();
       const restored = page.locator(".toast", { hasText: "元に戻しました" }).last();
