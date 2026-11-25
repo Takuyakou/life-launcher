@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { findSecretFindings, forbiddenAiToolFinding } from "./public-safety-rules.mjs";
 
@@ -94,8 +94,56 @@ function gitPaths(args) {
 const trackedPaths = gitPaths(["ls-files", "-z"]);
 const ignoredPaths = gitPaths(["ls-files", "--others", "--ignored", "--exclude-standard", "-z"]);
 
+function sameDirectory(a, b) {
+  try {
+    const left = realpathSync.native(a);
+    const right = realpathSync.native(b);
+    return process.platform === "win32" ? left.toLowerCase() === right.toLowerCase() : left === right;
+  } catch {
+    return false;
+  }
+}
+
+// Only what Git publishes is checked: tracked files plus new files that are not ignored.
+// Work files that Git ignores (tool caches, local run records) never leave this folder, so they
+// are not scanned. Outside the top of a Git work tree (for example a temporary copy of this
+// script), there is no such list and every file under the folder is scanned.
+function gitFileList() {
+  try {
+    const top = execFileSync("git", ["rev-parse", "--show-toplevel"], {
+      cwd: ROOT,
+      encoding: "utf8",
+    }).trim();
+    if (!top || !sameDirectory(top, ROOT)) return null;
+    const listed = execFileSync("git", ["ls-files", "-z", "--cached", "--others", "--exclude-standard"], {
+      cwd: ROOT,
+      encoding: "utf8",
+      maxBuffer: 64 * 1024 * 1024,
+    })
+      .split("\0")
+      .filter(Boolean);
+    const files = [];
+    for (const path of new Set(listed)) {
+      const rel = slash(path);
+      const directories = rel.split("/").slice(0, -1);
+      if (directories.some((part) => skippedDirectories.has(part))) continue;
+      const absolute = resolve(ROOT, rel);
+      try {
+        // A file that was deleted but is still in the index has nothing to scan.
+        if (!statSync(absolute).isFile()) continue;
+      } catch {
+        continue;
+      }
+      files.push({ absolute, rel });
+    }
+    return files;
+  } catch {
+    return null;
+  }
+}
+
 const findings = [];
-const files = walk(ROOT);
+const files = gitFileList() ?? walk(ROOT);
 
 for (const { absolute, rel } of files) {
   const lower = rel.toLowerCase();

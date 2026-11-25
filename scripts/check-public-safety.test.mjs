@@ -1,4 +1,8 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import { findSecretFindings, forbiddenAiToolFinding, isForbiddenAiToolPath } from "./public-safety-rules.mjs";
 
@@ -71,4 +75,74 @@ test("tracked AI tool files fail even when ignored; ignored untracked files are 
   assert.equal(forbiddenAiToolFinding(path, new Set(), new Set([path])), null);
   assert.equal(forbiddenAiToolFinding(path, new Set(), new Set()), "prohibited");
   assert.equal(forbiddenAiToolFinding("src/App.tsx", new Set(), new Set()), null);
+});
+
+// --- Which files the check scans ---------------------------------------------------------
+// The check reads the list of files from Git (tracked files plus new files that are not ignored)
+// when it runs at the top of a work tree, so ignored work files are not scanned.
+
+const script = new URL("./check-public-safety.mjs", import.meta.url);
+const rules = new URL("./public-safety-rules.mjs", import.meta.url);
+
+function makeRepository() {
+  const root = mkdtempSync(join(tmpdir(), "ll-public-check-"));
+  mkdirSync(join(root, "scripts"));
+  copyFileSync(script, join(root, "scripts/check-public-safety.mjs"));
+  copyFileSync(rules, join(root, "scripts/public-safety-rules.mjs"));
+  const git = (...args) =>
+    spawnSync("git", args, { cwd: root, encoding: "utf8" });
+  assert.equal(git("init", "-q").status, 0);
+  writeFileSync(join(root, ".gitignore"), "ignored-work/\n");
+  writeFileSync(join(root, "README.md"), "# Synthetic repository\n");
+  return {
+    root,
+    run: () => spawnSync(process.execPath, ["scripts/check-public-safety.mjs"], { cwd: root, encoding: "utf8" }),
+    cleanup: () => rmSync(root, { recursive: true, force: true }),
+  };
+}
+
+// Build values at runtime so this file does not hold a complete blocker-shaped string.
+const blockerPath = fake("D", ":", "\\", "work", "\\", "note.txt");
+
+test("work files that Git ignores are not scanned", () => {
+  const repository = makeRepository();
+  try {
+    mkdirSync(join(repository.root, "ignored-work"));
+    writeFileSync(join(repository.root, "ignored-work/run-record.json"), `{"path":"${blockerPath.replaceAll("\\", "\\\\")}"}`);
+    const result = repository.run();
+    assert.equal(result.status, 0, result.stderr);
+    // .gitignore, README.md and the two scripts. The ignored run record is not counted.
+    assert.match(result.stdout, /\b4 files scanned/);
+  } finally {
+    repository.cleanup();
+  }
+});
+
+test("a new file that Git does not ignore is still scanned", () => {
+  const repository = makeRepository();
+  try {
+    writeFileSync(join(repository.root, "notes.txt"), `see ${blockerPath}\n`);
+    const result = repository.run();
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /notes\.txt: absolute D drive path/);
+    rmSync(join(repository.root, "notes.txt"));
+    assert.equal(repository.run().status, 0);
+  } finally {
+    repository.cleanup();
+  }
+});
+
+test("outside a Git work tree every file under the folder is scanned", () => {
+  const root = mkdtempSync(join(tmpdir(), "ll-public-check-plain-"));
+  try {
+    mkdirSync(join(root, "scripts"));
+    copyFileSync(script, join(root, "scripts/check-public-safety.mjs"));
+    copyFileSync(rules, join(root, "scripts/public-safety-rules.mjs"));
+    writeFileSync(join(root, "notes.txt"), `see ${blockerPath}\n`);
+    const result = spawnSync(process.execPath, ["scripts/check-public-safety.mjs"], { cwd: root, encoding: "utf8" });
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /notes\.txt: absolute D drive path/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
