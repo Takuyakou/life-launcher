@@ -177,8 +177,8 @@ import {
   openDictionaryWindow,
   toggleDictionaryWindow,
 } from "./dictionaryWindow";
-import { MINI_READY_EVENT, MINI_RETURN_EVENT, MINI_TIMER_COMMAND_EVENT, MINI_TIMER_SNAPSHOT_EVENT, MINI_WINDOW_HEIGHT_PX, MINI_WINDOW_LABEL, MINI_WINDOW_WIDTH_PX, PROJECT_CARD_COMPACT_LIMIT, SOURCE_LIST_COMPACT_LIMIT, SOURCE_LIST_PAGE_SIZE, SOURCE_LIST_PAGINATION_THRESHOLD } from "./app/constants";
-import { type ActiveTimer, type ActiveView, type ButtonEditDraft, type ButtonGroup, type CompletionFeedback, type CompletionFollowup, type ContextMenuState, type ContextMenuTarget, type DoNowCompletionHold, type DropDialogState, type InboxDragPreview, type InboxPointerDrag, type InstructionChoice, type ManualSessionDraft, type MiniTimerCommand, type MiniTimerSnapshot, type NextStepEditDraft, type NotesSaveStatus, type NumberInputDrag, type NumberInputDragField, type ProjectDragPreview, type ProjectEditDraft, type ProjectPointerDrag, type RecordsDateScope, SHORTCUT_DRAFT_FIELDS, type SessionEditDraft, type SettingsCenterDraft, type SettingsSectionKey, type ShortcutDraftField, type SidebarDragPreview, type SidebarGroupDragPreview, type SidebarGroupPointerDrag, type SidebarPointerDrag, TOP_MENU_LABELS, type TimerCompletionPrompt, type TodayDragPreview, type TodayPointerDrag, type WishlistGroupDragPreview, type WishlistGroupPointerDrag, type WishlistGroupView } from "./app/dashboardTypes";
+import { MINI_TIMER_SNAPSHOT_EVENT, MINI_WINDOW_HEIGHT_PX, MINI_WINDOW_LABEL, MINI_WINDOW_WIDTH_PX, PROJECT_CARD_COMPACT_LIMIT, SOURCE_LIST_COMPACT_LIMIT, SOURCE_LIST_PAGE_SIZE, SOURCE_LIST_PAGINATION_THRESHOLD } from "./app/constants";
+import { type ActiveTimer, type ActiveView, type ButtonEditDraft, type ButtonGroup, type CompletionFeedback, type CompletionFollowup, type ContextMenuState, type ContextMenuTarget, type DoNowCompletionHold, type DropDialogState, type InboxDragPreview, type InboxPointerDrag, type InstructionChoice, type ManualSessionDraft, type MiniTimerSnapshot, type NextStepEditDraft, type NotesSaveStatus, type NumberInputDrag, type NumberInputDragField, type ProjectDragPreview, type ProjectEditDraft, type ProjectPointerDrag, type RecordsDateScope, SHORTCUT_DRAFT_FIELDS, type SessionEditDraft, type SettingsCenterDraft, type SettingsSectionKey, type ShortcutDraftField, type SidebarDragPreview, type SidebarGroupDragPreview, type SidebarGroupPointerDrag, type SidebarPointerDrag, TOP_MENU_LABELS, type TimerCompletionPrompt, type TodayDragPreview, type TodayPointerDrag, type WishlistGroupDragPreview, type WishlistGroupPointerDrag, type WishlistGroupView } from "./app/dashboardTypes";
 import { MiniModeApp } from "./components/MiniModeApp";
 import { getSoftwareResetRecoveryForBoot, restoreSoftwareResetStorage } from "./app/softwareReset";
 import { buttonGroupName, buttonHasIconCacheSource, createStableId, formatActionSummary, formatClock, formatDateKeyForHeader, formatStartedAt, iconForAction, isCloseShortcutValue, isEditableTarget, limitToday, makeAction, matchesHotkey, normalizeTimerMinutes, readCollapsedGroups, shortcutFromKeyboardEvent, showButtonInOverlay, showButtonInSidebar, todayEntries, todaySourceKey, todayTimerSourceId, uniqueGroupNames, uniqueSuggestions, writeCollapsedGroups } from "./app/helpers";
@@ -188,6 +188,7 @@ import { useWishlistAndSources } from "./hooks/useWishlistAndSources";
 import { useProjectsAndNextSteps } from "./hooks/useProjectsAndNextSteps";
 import { useSessionLogs } from "./hooks/useSessionLogs";
 import { useTodayAndVictory } from "./hooks/useTodayAndVictory";
+import { useMiniWindowSync } from "./hooks/useMiniWindowSync";
 import { shouldSkipFocusRestore } from "./app/focusRestore";
 
 const InstructionViewer = lazy(() =>
@@ -2166,6 +2167,7 @@ function DashboardApp() {
     todayPickerDraftItems,
     setTodayPickerDraftItems,
     setTodayTriggerDraft,
+    todayTriggerDraft,
     setVictoryEditing,
     victoryEditing,
     setTodayTriggerEditingIndex,
@@ -3342,54 +3344,17 @@ function DashboardApp() {
     setActiveTimer(nextTimer);
   }, []);
 
-  useEffect(() => {
-    let disposed = false;
-    let cleanup: Array<() => void> = [];
+  useMiniWindowSync({
+    activeTimer,
+    config,
+    finishActiveTimerRef,
+    hideMiniWindow,
+    miniSnapshot,
+    miniSnapshotRef,
+    returnToMain,
+    togglePause,
+  });
 
-    const setup = async () => {
-      const unlistenReady = await listen(MINI_READY_EVENT, () => {
-        void emit(MINI_TIMER_SNAPSHOT_EVENT, miniSnapshotRef.current);
-      });
-      const unlistenCommand = await listen<MiniTimerCommand>(MINI_TIMER_COMMAND_EVENT, (event) => {
-        if (event.payload.action === "pause") {
-          togglePause();
-          return;
-        }
-        if (event.payload.action === "finish" && activeTimer) {
-          finishActiveTimerRef.current(activeTimer);
-        }
-      });
-      const unlistenReturn = await listen(MINI_RETURN_EVENT, () => {
-        void returnToMain().catch((error) =>
-          console.error("[mini-mode] メイン復帰に失敗しました", error),
-        );
-      });
-
-      if (disposed) {
-        unlistenReady();
-        unlistenCommand();
-        unlistenReturn();
-      } else {
-        cleanup = [unlistenReady, unlistenCommand, unlistenReturn];
-      }
-    };
-
-    void setup();
-
-    return () => {
-      disposed = true;
-      cleanup.forEach((dispose) => dispose());
-    };
-  }, [activeTimer, returnToMain, togglePause]);
-
-  useEffect(() => {
-    void emit(MINI_TIMER_SNAPSHOT_EVENT, miniSnapshot);
-  }, [miniSnapshot]);
-
-  useEffect(() => {
-    if (config?.settings.miniMode !== false) return;
-    void hideMiniWindow().catch(() => undefined);
-  }, [hideMiniWindow, config?.settings.miniMode]);
 
   const toggleAutoStart = async () => {
     if (!config) return;
