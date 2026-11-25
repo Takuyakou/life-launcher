@@ -22,51 +22,57 @@ import type { ExitPresenceAttributes } from "./ExitPresence";
 
 export type SettingsDialogProps = {
   config: AppConfig;
-  dailyActivityCopying: boolean;
-  instructionSettingsBusy: boolean;
-  numberInputDragging: NumberInputDragField | null;
-  settingsDraft: SettingsCenterDraft;
-  settingsSection: SettingsSectionKey;
-  shortcutConflicts: ShortcutConflict<ShortcutDraftField>[];
-  shortcutRecordingField: ShortcutDraftField | null;
-  softwareResetStage: "idle" | "resetting" | "restart";
-  testProfile: TestProfileInfo | null;
-  setHelpGuideOpen: Dispatch<SetStateAction<boolean>>;
-  setSettingsDraft: Dispatch<SetStateAction<SettingsCenterDraft | null>>;
-  setSettingsSection: Dispatch<SetStateAction<SettingsSectionKey>>;
-  showToast: ReturnType<typeof useToasts>["showToast"];
-  addInstructionFolder: () => void;
-  beginShortcutRecording: (field: ShortcutDraftField) => void;
-  cancelNumberInputDrag: (event: PointerEvent<HTMLElement>) => void;
-  chooseBackupFolder: () => void;
-  chooseBackupZipForRestore: () => void;
-  copyTodayActivityLog: () => void;
-  finishNumberInputDrag: (event: PointerEvent<HTMLElement>) => void;
-  finishShortcutRecording: () => void;
-  openBackupFolder: () => void;
-  openRuntimeDataFolder: () => void;
-  reloadInstructionList: () => void;
-  removeInstructionFolder: (path: string) => void;
-  requestClearBackupFolder: () => void;
-  requestCloseSettings: () => void;
-  requestIconCacheRegeneration: () => void;
-  requestInstructionWindowPositionReset: () => void;
-  requestMiniWindowPositionReset: () => void;
-  requestSoftwareReset: () => void;
-  saveSettingsCenter: () => void;
-  startNumberInputDrag: (
-    event: PointerEvent<HTMLElement>,
-    field: NumberInputDragField,
-    value: number,
-  ) => void;
-  updateNumberInputDrag: (event: PointerEvent<HTMLElement>) => void;
+  data: {
+    dailyActivityCopying: boolean;
+    instructionSettingsBusy: boolean;
+    numberInputDragging: NumberInputDragField | null;
+    settingsDraft: SettingsCenterDraft;
+    settingsSection: SettingsSectionKey;
+    shortcutConflicts: ShortcutConflict<ShortcutDraftField>[];
+    shortcutRecordingField: ShortcutDraftField | null;
+    softwareResetStage: "idle" | "resetting" | "restart";
+    testProfile: TestProfileInfo | null;
+  };
+  actions: {
+    beginShortcutRecording: (field: ShortcutDraftField) => void;
+    cancelNumberInputDrag: (event: PointerEvent<HTMLElement>) => void;
+    finishNumberInputDrag: (event: PointerEvent<HTMLElement>) => void;
+    finishShortcutRecording: () => void;
+    requestCloseSettings: () => void;
+    saveSettingsCenter: () => void;
+    setHelpGuideOpen: Dispatch<SetStateAction<boolean>>;
+    setSettingsDraft: Dispatch<SetStateAction<SettingsCenterDraft | null>>;
+    setSettingsSection: Dispatch<SetStateAction<SettingsSectionKey>>;
+    showToast: ReturnType<typeof useToasts>["showToast"];
+    startNumberInputDrag: (
+      event: PointerEvent<HTMLElement>,
+      field: NumberInputDragField,
+      value: number,
+    ) => void;
+    updateNumberInputDrag: (event: PointerEvent<HTMLElement>) => void;
+  };
+  maintenance: {
+    addInstructionFolder: () => void;
+    chooseBackupFolder: () => void;
+    chooseBackupZipForRestore: () => void;
+    copyTodayActivityLog: () => void;
+    openBackupFolder: () => void;
+    openRuntimeDataFolder: () => void;
+    reloadInstructionList: () => void;
+    removeInstructionFolder: (path: string) => void;
+    requestClearBackupFolder: () => void;
+    requestIconCacheRegeneration: () => void;
+    requestInstructionWindowPositionReset: () => void;
+    requestMiniWindowPositionReset: () => void;
+    requestSoftwareReset: () => void;
+  };
   /** V164 (E1): attributes for the close motion; the backdrop is removed when it ends. */
   exitProps?: ExitPresenceAttributes;
 };
 
 export function SettingsDialog(props: SettingsDialogProps) {
+  const { actions, config, data, exitProps, maintenance } = props;
   const {
-    config,
     dailyActivityCopying,
     instructionSettingsBusy,
     numberInputDragging,
@@ -76,33 +82,36 @@ export function SettingsDialog(props: SettingsDialogProps) {
     shortcutRecordingField,
     softwareResetStage,
     testProfile,
+  } = data;
+  const {
+    beginShortcutRecording,
+    cancelNumberInputDrag,
+    finishNumberInputDrag,
+    finishShortcutRecording,
+    requestCloseSettings,
+    saveSettingsCenter,
     setHelpGuideOpen,
     setSettingsDraft,
     setSettingsSection,
     showToast,
+    startNumberInputDrag,
+    updateNumberInputDrag,
+  } = actions;
+  const {
     addInstructionFolder,
-    beginShortcutRecording,
-    cancelNumberInputDrag,
     chooseBackupFolder,
     chooseBackupZipForRestore,
     copyTodayActivityLog,
-    finishNumberInputDrag,
-    finishShortcutRecording,
     openBackupFolder,
     openRuntimeDataFolder,
     reloadInstructionList,
     removeInstructionFolder,
     requestClearBackupFolder,
-    requestCloseSettings,
     requestIconCacheRegeneration,
     requestInstructionWindowPositionReset,
     requestMiniWindowPositionReset,
     requestSoftwareReset,
-    saveSettingsCenter,
-    startNumberInputDrag,
-    updateNumberInputDrag,
-    exitProps,
-  } = props;
+  } = maintenance;
 
   return (
     <div className="modalBackdrop" role="presentation" {...exitProps}>

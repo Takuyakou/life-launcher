@@ -1,5 +1,4 @@
 import { isTauri } from "@tauri-apps/api/core";
-import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { emit, listen } from "@tauri-apps/api/event";
 import { PhysicalPosition } from "@tauri-apps/api/dpi";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
@@ -11,9 +10,7 @@ import {
   enable as enableAutostart,
 } from "@tauri-apps/plugin-autostart";
 import type {
-  DragEvent,
   KeyboardEvent,
-  PointerEvent,
 } from "react";
 import {
   lazy,
@@ -25,25 +22,18 @@ import {
   useRef,
   useState,
 } from "react";import { AnimatePresence, motion } from "motion/react";
-import { springCollapse, springSnappy, staggerMax, staggerStep } from "./motion";
-import { SEARCH_GROUP_LIMIT, matchesSearchQuery } from "./searchMatch";
+import { springSnappy } from "./motion";
 import { nextStepStaleDays } from "./nextStepFreshness";
 import {
-  DEFAULT_BUTTON_GROUP,
   DEFAULT_EXTEND_TIMER_MINUTES,
-  EXECUTION_TRIGGER_MAX_CHARS,
   TIMER_TICK_MS,
   TODAY_ITEM_LIMIT,
   WEEKLY_FOCUS_LIMIT,
 } from "./constants";
 import {
   acknowledgeSoftwareResetRecovery,
-  chooseLauncherTarget,
-  chooseInstructionRoot,
-  createSoftwareResetBackup,
   deleteSessionEntry,
   deleteButtonIconCache,
-  enableMainShellDrop,
   ensureButtonIconCache,
   executeActions,
   focusDashboardWindow,
@@ -63,27 +53,16 @@ import {
   loadWeeklyReview,
   openConfigBackups,
   openDataFolder,
-  prepareSoftwareReset,
-  readImportJson,
   reapplyDashboardSettings,
   revealLauncherItem,
-  resumeDashboardShortcuts,
   recordManualSession,
   recordSession,
-  resolveDropItem,
-  restoreBackup,
   notifyDictionaryConfigChanged,
   saveConfig,
   saveNotesForDate,
   setDisplayAwake,
-  selectBackupFolder,
-  selectBackupZip,
-  softwareReset,
-  suspendDashboardShortcuts,
   loadInstructionBookState,
   updateSessionEntry,
-  updateInstructionReferences,
-  undoImport,
   undoTodaySelection,
   loadTestProfileInfo,
   type ShortcutRegistrationStatus,
@@ -91,9 +70,7 @@ import {
 } from "./tauri";
 import {
   AppConfig,
-  DropResolveInput,
   DoNowResponse,
-  ImportCommitResponse,
   InboxItem,
   LauncherAction,
   LauncherButton,
@@ -104,12 +81,20 @@ import {
   SessionEntriesResponse,
   SessionEntryRow,
   SessionSummaryResponse,
-  SoftwareResetStorageSnapshot,
   SourceCompletion,
   WeeklyReviewResponse,
   TodayItem,
 } from "./types";
 import { ConfirmDialog, type ConfirmDialogRequest } from "./components/ConfirmDialog";
+import { TopBar } from "./components/TopBar";
+import { MainHeaderVictoryBand } from "./components/MainHeaderVictoryBand";
+import { CompletionNextStepDialog } from "./components/CompletionNextStepDialog";
+import { SidebarQuickLaunch } from "./components/SidebarQuickLaunch";
+import { DoNowBand } from "./components/DoNowBand";
+import { TodayThreeSection } from "./components/TodayThreeSection";
+import { NextStepsSection } from "./components/NextStepsSection";
+import { WishlistSection } from "./components/WishlistSection";
+import { DashboardContextMenu } from "./components/DashboardContextMenu";
 import { ExitPresence } from "./components/ExitPresence";
 import { GroupNameDialog } from "./components/GroupNameDialog";
 import { ImportDialog } from "./components/ImportDialog";
@@ -130,6 +115,10 @@ import {
 import { TodayActivitySection } from "./components/TodayActivitySection";
 import { ToastStack } from "./components/ToastStack";
 import { useToasts } from "./hooks/useToasts";
+import { useSearchPalette } from "./hooks/useSearchPalette";
+import { useLauncherButtons } from "./hooks/useLauncherButtons";
+import { useDashboardDragAndDrop } from "./hooks/useDashboardDragAndDrop";
+import { useSettingsAndMaintenance } from "./hooks/useSettingsAndMaintenance";
 import { FirstRunBand } from "./components/FirstRunBand";
 import { IMPORT_PROMPT_FIRST } from "./content/importPrompt";
 import { earlyCompletionItem } from "./earlyCompletion";
@@ -140,9 +129,8 @@ import {
   timerMatchesProjectNextStep,
   timerRunsTodayItem,
 } from "./timerSource";
-import { ContextMenu, ContextMenuItem } from "./components/ContextMenu";
 import { HelpGuideDialog } from "./components/HelpGuideDialog";
-import { SearchPalette, type SearchItem, type SearchSection } from "./components/SearchPalette";
+import { SearchPalette } from "./components/SearchPalette";
 import { ProjectIdentity } from "./components/ProjectIdentity";
 import {
   prepareProjectDeletion,
@@ -169,22 +157,18 @@ import {
   buttonGlyph,
   resolveProjectColorId,
 } from "./projectIdentity";
-import { canRevealLauncherButton } from "./launcherReveal";
 import {
   groupWishlist,
   groupWishlistForDisplay,
   prepareNextStepRemoval,
   prepareWishlistPromotion,
-  reorderWishlistGroups,
   sameNextStepSnapshot,
   wishlistGroupKey,
 } from "./nextStepWishlist";
-import { TimerPanel } from "./components/TimerPanel";
 import { ExpandedTimerOverlay } from "./components/ExpandedTimerOverlay";
 import {
   buildTodayCandidates,
   legacyWishlistSourceKey,
-  todayCandidateFromConfig,
   wishlistSourceKey,
   type TodayCandidate,
 } from "./todayCandidates";
@@ -195,23 +179,18 @@ import {
   timerMetrics,
   type TimerMode,
 } from "./timerRuntime";
-import { UiIcon } from "./components/UiIcon";
-import { ShortcutBadge } from "./components/ShortcutBadge";
 import { findShortcutConflicts } from "./shortcutConflicts";
 import { localDayKey } from "./localDay";
 import { useTopMenuLabelLevel } from "./topMenuLabels";
 import { useHoverSuppressionAfterResize } from "./hoverSuppression";
 import { installSettingsFieldEditing, navigateAppArrow } from "./keyboardNavigation";
 import {
-  searchOverlayButtons,
 } from "./overlayPages";
 import {
   INSTRUCTION_BOOK_STATE_CHANGED_EVENT,
-  INSTRUCTION_RELOAD_TREE_EVENT,
   INSTRUCTION_WINDOW_SHOW_EVENT,
   openInstructionWindow,
   readLastInstructionPath,
-  resetInstructionWindowPosition,
   type InstructionWindowOpenOptions,
 } from "./instructionWindow";
 import { isInstructionBookName } from "./instructionBook";
@@ -222,14 +201,13 @@ import {
   openDictionaryWindow,
   toggleDictionaryWindow,
 } from "./dictionaryWindow";
-import { ACTION_DRAG_TYPE, MINI_READY_EVENT, MINI_RETURN_EVENT, MINI_TIMER_COMMAND_EVENT, MINI_TIMER_SNAPSHOT_EVENT, MINI_WINDOW_HEIGHT_PX, MINI_WINDOW_LABEL, MINI_WINDOW_WIDTH_PX, NUMBER_INPUT_DRAG_PIXELS_PER_STEP, NUMBER_INPUT_DRAG_THRESHOLD_PX, OVERLAY_PAGE_DRAG_TYPE, PROJECT_CARD_COMPACT_LIMIT, SIDEBAR_DRAG_THRESHOLD_PX, SOURCE_LIST_COMPACT_LIMIT, SOURCE_LIST_PAGE_SIZE, SOURCE_LIST_PAGINATION_THRESHOLD } from "./app/constants";
-import { type ActionDraft, type ActiveTimer, type ActiveView, type ButtonEditDraft, type ButtonGroup, type CompletionFeedback, type CompletionFollowup, type ContextMenuState, type ContextMenuTarget, type DoNowCompletionHold, type DropDialogState, type InboxDragPreview, type InboxPointerDrag, type InstructionChoice, type InternalButtonDrag, type LegacyNextStepChoice, type MainShellDropEvent, type ManualSessionDraft, type MiniTimerCommand, type MiniTimerSnapshot, type NextStepDecisionMode, type NextStepEditDraft, type NotesSaveStatus, type NumberInputDrag, type NumberInputDragField, type ProjectDragPreview, type ProjectEditDraft, type ProjectPointerDrag, type RecordsDateScope, SHORTCUT_DRAFT_FIELDS, type SessionEditDraft, type SettingsCenterDraft, type SettingsSectionKey, type ShortcutDraftField, type SidebarDragPreview, type SidebarGroupDragPreview, type SidebarGroupPointerDrag, type SidebarPointerDrag, TOP_MENU_GROUP_LABELS, TOP_MENU_LABELS, type TimerCompletionPrompt, type TodayDragPreview, type TodayPointerDrag, type WishlistGroupDragPreview, type WishlistGroupPointerDrag, type WishlistGroupView } from "./app/dashboardTypes";
+import { MINI_READY_EVENT, MINI_RETURN_EVENT, MINI_TIMER_COMMAND_EVENT, MINI_TIMER_SNAPSHOT_EVENT, MINI_WINDOW_HEIGHT_PX, MINI_WINDOW_LABEL, MINI_WINDOW_WIDTH_PX, PROJECT_CARD_COMPACT_LIMIT, SOURCE_LIST_COMPACT_LIMIT, SOURCE_LIST_PAGE_SIZE, SOURCE_LIST_PAGINATION_THRESHOLD } from "./app/constants";
+import { type ActiveTimer, type ActiveView, type ButtonEditDraft, type ButtonGroup, type CompletionFeedback, type CompletionFollowup, type ContextMenuState, type ContextMenuTarget, type DoNowCompletionHold, type DropDialogState, type InboxDragPreview, type InboxPointerDrag, type InstructionChoice, type LegacyNextStepChoice, type ManualSessionDraft, type MiniTimerCommand, type MiniTimerSnapshot, type NextStepDecisionMode, type NextStepEditDraft, type NotesSaveStatus, type NumberInputDrag, type NumberInputDragField, type ProjectDragPreview, type ProjectEditDraft, type ProjectPointerDrag, type RecordsDateScope, SHORTCUT_DRAFT_FIELDS, type SessionEditDraft, type SettingsCenterDraft, type SettingsSectionKey, type ShortcutDraftField, type SidebarDragPreview, type SidebarGroupDragPreview, type SidebarGroupPointerDrag, type SidebarPointerDrag, TOP_MENU_LABELS, type TimerCompletionPrompt, type TodayDragPreview, type TodayPointerDrag, type WishlistGroupDragPreview, type WishlistGroupPointerDrag, type WishlistGroupView } from "./app/dashboardTypes";
 import { MiniModeApp } from "./components/MiniModeApp";
-import { SOFTWARE_RESET_TIMER_MESSAGE, captureSoftwareResetStorage, clearSoftwareResetStorage, getSoftwareResetRecoveryForBoot, restoreSoftwareResetStorage } from "./app/softwareReset";
-import { SectionCollapse } from "./components/SectionCollapse";
-import { actionHasSuspiciousPath, actionValue, aliasesInputToList, aliasesListToInput, buttonGroupName, buttonHasIconCacheSource, createStableId, dropPositionToCss, firstDroppedUrl, formatActionSummary, formatClock, formatDateKeyForHeader, formatSessionRange, formatStartedAt, formatTodayActivityLog, iconForAction, isCloseShortcutValue, isEditableTarget, isValidStartedAt, limitToday, makeAction, matchesHotkey, normalizeOptionalText, normalizeTimerMinutes, readCollapsedGroups, shortcutFromKeyboardEvent, showButtonInOverlay, showButtonInSidebar, sourceListRange, stripActionDraft, toActionDraft, toThreeNoteDraft, todayEntries, todaySourceKey, todayTimerSourceId, toggleDisclosureFromBar, uniqueButtonId, uniqueGroupNames, uniqueProjectId, uniqueSuggestions, validateShortcutSettings, writeCollapsedGroups } from "./app/helpers";
+import { getSoftwareResetRecoveryForBoot, restoreSoftwareResetStorage } from "./app/softwareReset";
+import { buttonGroupName, buttonHasIconCacheSource, createStableId, formatActionSummary, formatClock, formatDateKeyForHeader, formatStartedAt, formatTodayActivityLog, iconForAction, isCloseShortcutValue, isEditableTarget, isValidStartedAt, limitToday, makeAction, matchesHotkey, normalizeTimerMinutes, readCollapsedGroups, shortcutFromKeyboardEvent, showButtonInOverlay, showButtonInSidebar, toThreeNoteDraft, todayEntries, todaySourceKey, todayTimerSourceId, uniqueGroupNames, uniqueProjectId, uniqueSuggestions, writeCollapsedGroups } from "./app/helpers";
 import { clearMiniPosition, createMiniReadyWaiter, inactiveMiniSnapshot, isDictionaryView, isFiniteMiniPosition, isInstructionView, isMiniModeView, readMiniPosition, resolveSafeMiniPosition, sameMiniPosition, timerActionText, waitForMiniWindowCreated, writeMiniPosition } from "./app/miniWindow";
-import { draggedCardTopWithinTodayRemoveDropZone, inboxDropTargetFromPoint, instructionPathKey, instructionPathWithin, isReorderBlockedTarget, notifyTimerComplete, pointWithinSelector, pointWithinTodayRemoveDropZone, projectDropIndicator, projectDropTargetFromPoint, sidebarDropTargetFromPoint, sidebarGroupDropTargetFromPoint, todayAdoptionDropTargetFromPoint, todayDropTargetFromPoint, wishlistGroupDropTargetFromPoint } from "./app/dropTargets";
+import { notifyTimerComplete } from "./app/dropTargets";
 
 const InstructionViewer = lazy(() =>
   import("./components/InstructionViewer").then((module) => ({
@@ -1832,44 +1810,97 @@ function DashboardApp() {
     }
   };
 
-  const finishShortcutRecording = useCallback(async () => {
-    setShortcutRecordingField(null);
-    if (!shortcutCaptureActiveRef.current) return;
-    shortcutCaptureActiveRef.current = false;
-    try {
-      await resumeDashboardShortcuts();
-    } catch (error) {
-      showToast(
-        "warn",
-        `ショートカットを再登録できません: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
-    }
-  }, [showToast]);
-
-  const beginShortcutRecording = async (field: ShortcutDraftField) => {
-    if (shortcutCaptureActiveRef.current) {
-      if (shortcutRecordingField === field) {
-        await finishShortcutRecording();
-        return;
-      }
-      setShortcutRecordingField(field);
-      return;
-    }
-    try {
-      await suspendDashboardShortcuts();
-      shortcutCaptureActiveRef.current = true;
-      setShortcutRecordingField(field);
-    } catch (error) {
-      showToast(
-        "error",
-        `ショートカット入力を開始できません: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
-    }
-  };
+  const {
+    addInstructionFolder,
+    beginShortcutRecording,
+    cancelNumberInputDrag,
+    chooseBackupFolder,
+    chooseBackupZipForRestore,
+    closeSoftwareResetChoice,
+    continueSoftwareReset,
+    finishNumberInputDrag,
+    finishShortcutRecording,
+    openSettingsCenter,
+    reloadInstructionList,
+    removeInstructionFolder,
+    requestClearBackupFolder,
+    requestCloseSettings,
+    requestInstructionWindowPositionReset,
+    requestSoftwareReset,
+    saveSettingsCenter,
+    startNumberInputDrag,
+    updateNumberInputDrag,
+  } = useSettingsAndMaintenance({
+    actions: {
+      persistConfig,
+      refreshRecords,
+      refreshSessions,
+      refreshTodayActivity,
+      requestConfirmation,
+      requestDiscardConfirmation,
+      saveDefaultTimerMinutes,
+      showToast,
+    },
+    refs: {
+      activeTimerRef,
+      completionFollowupTimerRef,
+      completionPromptRef,
+      configRef,
+      configSaveBlockedRef,
+      confirmFocusReturnRef,
+      earlyStopRef,
+      iconRefreshGenerationRef,
+      iconRequestIdsRef,
+      lastSettingsApplyErrorRef,
+      notesSaveTimersRef,
+      numberInputDragRef,
+      resetInProgressRef,
+      shortcutCaptureActiveRef,
+      softwareResetChoiceOpenerRef,
+      timerStartRequestRef,
+      writeGenerationRef,
+    },
+    setters: {
+      setActiveTimer,
+      setBackupPath,
+      setBanner,
+      setButtonEditDraft,
+      setButtonIconSources,
+      setCompletionExtendDraft,
+      setCompletionPrompt,
+      setConfig,
+      setConfigSaveBlocked,
+      setContextMenu,
+      setDefaultTimerDraft,
+      setDropDraft,
+      setGroupDraft,
+      setGroupRenameDraft,
+      setInstructionSettingsBusy,
+      setManualSessionDraft,
+      setMorningVictorySuggestion,
+      setNextStepEditDraft,
+      setNotesSaveStatus,
+      setNumberInputDragging,
+      setProjectEditDraft,
+      setSessionEditDraft,
+      setSettingsDraft,
+      setSettingsSection,
+      setShortcutRecordingField,
+      setShortcutRegistration,
+      setSoftwareResetChoiceBusy,
+      setSoftwareResetChoiceOpen,
+      setSoftwareResetStage,
+    },
+    state: {
+      activeView,
+      config,
+      nextStepEditDraft,
+      settingsDraft,
+      shortcutRecordingField,
+      softwareResetChoiceBusy,
+      testProfile,
+    },
+  });
 
   useEffect(() => {
     if (!shortcutRecordingField) return;
@@ -1902,75 +1933,6 @@ function DashboardApp() {
     void finishShortcutRecording();
   }, [finishShortcutRecording, settingsDraft]);
 
-  const openSettingsCenter = () => {
-    if (!config) return;
-    if (shortcutCaptureActiveRef.current) {
-      void finishShortcutRecording();
-    } else {
-      setShortcutRecordingField(null);
-    }
-    setSettingsSection("basic");
-    setSettingsDraft({
-      mainDisplaySize: config.settings.mainDisplaySize ?? "standard",
-      defaultTimerMinutes: String(config.settings.defaultTimerMinutes),
-      shortTimerMinutes: String(config.settings.shortTimerMinutes),
-      extendTimerMinutes: String(
-        config.settings.extendTimerMinutes ?? DEFAULT_EXTEND_TIMER_MINUTES,
-      ),
-      dayStartHour: String(config.settings.dayStartHour),
-      focusHotkey: config.settings.focusHotkey ?? "",
-      launcherHotkey: config.settings.launcherHotkey ?? "",
-      miniHotkey: config.settings.miniHotkey ?? "",
-      instructionHotkey: config.settings.instructionHotkey ?? "",
-      instructionFolders: [...config.settings.instructionFolders],
-      weeklyFocusProjectIds: config.projects
-        .filter((project) => project.weeklyFocus === true)
-        .map((project) => project.id),
-      alwaysOnTop: config.settings.alwaysOnTop,
-      autoStart: config.settings.autoStart,
-      miniMode: config.settings.miniMode,
-      restartShortFirst: config.settings.restartShortFirst ?? true,
-      backupFolder: config.settings.backupFolder ?? "",
-      backupKeep: String(config.settings.backupKeep ?? 30),
-    });
-  };
-
-  const settingsHaveUnsavedChanges = Boolean(
-    config &&
-    settingsDraft &&
-    (settingsDraft.mainDisplaySize !== (config.settings.mainDisplaySize ?? "standard") ||
-      settingsDraft.defaultTimerMinutes !== String(config.settings.defaultTimerMinutes) ||
-      settingsDraft.shortTimerMinutes !== String(config.settings.shortTimerMinutes) ||
-      settingsDraft.extendTimerMinutes !==
-        String(config.settings.extendTimerMinutes ?? DEFAULT_EXTEND_TIMER_MINUTES) ||
-      settingsDraft.dayStartHour !== String(config.settings.dayStartHour) ||
-      settingsDraft.focusHotkey !== (config.settings.focusHotkey ?? "") ||
-      settingsDraft.launcherHotkey !== (config.settings.launcherHotkey ?? "") ||
-      settingsDraft.miniHotkey !== (config.settings.miniHotkey ?? "") ||
-      settingsDraft.instructionHotkey !== (config.settings.instructionHotkey ?? "") ||
-      JSON.stringify(settingsDraft.instructionFolders) !==
-        JSON.stringify(config.settings.instructionFolders) ||
-      JSON.stringify(settingsDraft.weeklyFocusProjectIds) !==
-        JSON.stringify(
-          config.projects
-            .filter((project) => project.weeklyFocus === true)
-            .map((project) => project.id),
-        ) ||
-      settingsDraft.alwaysOnTop !== config.settings.alwaysOnTop ||
-      settingsDraft.autoStart !== config.settings.autoStart ||
-      settingsDraft.miniMode !== config.settings.miniMode ||
-      settingsDraft.restartShortFirst !== (config.settings.restartShortFirst ?? true) ||
-      settingsDraft.backupFolder !== (config.settings.backupFolder ?? "") ||
-      settingsDraft.backupKeep !== String(config.settings.backupKeep ?? 30)),
-  );
-
-  const requestCloseSettings = useCallback(() => {
-    if (settingsHaveUnsavedChanges) {
-      requestDiscardConfirmation(() => setSettingsDraft(null));
-      return;
-    }
-    setSettingsDraft(null);
-  }, [requestDiscardConfirmation, settingsHaveUnsavedChanges]);
 
   const requestCloseButtonEdit = useCallback(() => {
     if (!buttonEditDraft) return;
@@ -2350,412 +2312,8 @@ function DashboardApp() {
     helpGuideOpen,
   ]);
 
-  const setNumberDragValue = (field: NumberInputDragField, value: number) => {
-    if (field === "timer") {
-      setDefaultTimerDraft(String(value));
-      return;
-    }
-    if (field === "completionExtend") {
-      setCompletionExtendDraft(String(value));
-      return;
-    }
-    if (field === "projectDefault" || field === "projectShort") {
-      if (!nextStepEditDraft) return;
-      setNextStepEditDraft({
-        ...nextStepEditDraft,
-        [field === "projectDefault" ? "defaultTimerMinutes" : "shortTimerMinutes"]: String(value),
-      });
-      return;
-    }
-    if (!settingsDraft) return;
-    if (field === "settingsDefault") {
-      setSettingsDraft({ ...settingsDraft, defaultTimerMinutes: String(value) });
-    } else if (field === "settingsShort") {
-      setSettingsDraft({ ...settingsDraft, shortTimerMinutes: String(value) });
-    } else if (field === "settingsExtend") {
-      setSettingsDraft({ ...settingsDraft, extendTimerMinutes: String(value) });
-    } else {
-      setSettingsDraft({ ...settingsDraft, dayStartHour: String(value) });
-    }
-  };
 
-  const startNumberInputDrag = (
-    event: PointerEvent<HTMLElement>,
-    field: NumberInputDragField,
-    value: number,
-  ) => {
-    if (event.button !== 0) return;
-    window.getSelection()?.removeAllRanges();
-    if (!(event.target instanceof HTMLInputElement)) event.preventDefault();
-    numberInputDragRef.current = {
-      pointerId: event.pointerId,
-      field,
-      startY: event.clientY,
-      startValue: value,
-      moved: false,
-    };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  };
 
-  const updateNumberInputDrag = (event: PointerEvent<HTMLElement>) => {
-    const drag = numberInputDragRef.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    const distance = Math.abs(event.clientY - drag.startY);
-    if (!drag.moved && distance < NUMBER_INPUT_DRAG_THRESHOLD_PX) return;
-
-    drag.moved = true;
-    const max = drag.field === "settingsDayStart" ? 23 : 240;
-    const min = drag.field === "settingsDayStart" ? 0 : 1;
-    const value = Math.min(
-      max,
-      Math.max(
-        min,
-        drag.startValue +
-          Math.round((drag.startY - event.clientY) / NUMBER_INPUT_DRAG_PIXELS_PER_STEP),
-      ),
-    );
-    setNumberDragValue(drag.field, value);
-    setNumberInputDragging(drag.field);
-    event.preventDefault();
-  };
-
-  const finishNumberInputDrag = (event: PointerEvent<HTMLElement>) => {
-    const drag = numberInputDragRef.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    numberInputDragRef.current = null;
-    setNumberInputDragging(null);
-    event.currentTarget.releasePointerCapture(event.pointerId);
-    if (!drag.moved) return;
-
-    // V163-C11: a drag that changed the number must not leave the focus (and its yellow ring)
-    // behind. The click that follows this pointer-up puts the focus back into the field, so the
-    // focus is dropped one task later. A plain press without moving keeps the focus, so the
-    // number can still be typed.
-    window.setTimeout(() => {
-      const focused = document.activeElement;
-      if (focused instanceof HTMLElement && focused.closest(".nextStepTimerStepper")) {
-        focused.blur();
-      }
-    }, 0);
-
-    const max = drag.field === "settingsDayStart" ? 23 : 240;
-    const min = drag.field === "settingsDayStart" ? 0 : 1;
-    const value = Math.min(
-      max,
-      Math.max(
-        min,
-        drag.startValue +
-          Math.round((drag.startY - event.clientY) / NUMBER_INPUT_DRAG_PIXELS_PER_STEP),
-      ),
-    );
-    if (drag.field === "timer") {
-      void saveDefaultTimerMinutes(value);
-    }
-  };
-
-  const cancelNumberInputDrag = (event: PointerEvent<HTMLElement>) => {
-    const drag = numberInputDragRef.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    numberInputDragRef.current = null;
-    setNumberInputDragging(null);
-  };
-
-  const chooseBackupFolder = async () => {
-    if (!settingsDraft) return;
-    try {
-      const selected = await selectBackupFolder();
-      if (selected) {
-        setSettingsDraft({ ...settingsDraft, backupFolder: selected });
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      showToast("error", `フォルダを選べません: ${message}`);
-    }
-  };
-
-  const addInstructionFolder = async () => {
-    if (!settingsDraft || settingsDraft.instructionFolders.length >= 5) return;
-    setInstructionSettingsBusy(true);
-    try {
-      const selected = await chooseInstructionRoot();
-      if (!selected) return;
-      if (
-        settingsDraft.instructionFolders.some(
-          (folder) => instructionPathKey(folder) === instructionPathKey(selected.path),
-        )
-      ) {
-        showToast("warn", "同じ手順書フォルダは重複して登録できません");
-        return;
-      }
-      setSettingsDraft({
-        ...settingsDraft,
-        instructionFolders: [...settingsDraft.instructionFolders, selected.path],
-      });
-    } catch (error) {
-      showToast(
-        "error",
-        `手順書フォルダを追加できません: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    } finally {
-      setInstructionSettingsBusy(false);
-    }
-  };
-
-  const removeInstructionFolder = (path: string) => {
-    if (!config || !settingsDraft) return;
-    const savedRoot = config.settings.instructionFolders.some(
-      (folder) => instructionPathKey(folder) === instructionPathKey(path),
-    );
-    const projectNames = config.projects
-      .filter(
-        (project) =>
-          project.nextStep?.instructionPath &&
-          instructionPathWithin(project.nextStep.instructionPath, path),
-      )
-      .map((project) => project.name);
-    requestConfirmation({
-      title: "手順書フォルダの登録を解除しますか？",
-      subject: path,
-      message:
-        projectNames.length > 0
-          ? `実フォルダは削除しません。次のプロジェクトとの紐付けを解除します: ${projectNames.join("、")}`
-          : "実フォルダや手順書ファイルは削除しません。Life Launcherからの登録だけを解除します。",
-      confirmLabel: "登録を解除",
-      processingLabel: "解除しています…",
-      tone: "warning",
-      onConfirm: async () => {
-        setInstructionSettingsBusy(true);
-        try {
-          if (savedRoot) {
-            await updateInstructionReferences(path, null, true);
-            const response = await loadConfig();
-            configSaveBlockedRef.current = response.saveBlocked;
-            setConfigSaveBlocked(response.saveBlocked);
-            setConfig(response.config);
-          }
-          setSettingsDraft((current) =>
-            current
-              ? {
-                  ...current,
-                  instructionFolders: current.instructionFolders.filter(
-                    (folder) => instructionPathKey(folder) !== instructionPathKey(path),
-                  ),
-                }
-              : current,
-          );
-          await emit(INSTRUCTION_RELOAD_TREE_EVENT);
-          showToast("neutral", "手順書フォルダの登録を解除しました");
-          return true;
-        } catch (error) {
-          throw new Error(
-            `登録を解除できません: ${error instanceof Error ? error.message : String(error)}`,
-            { cause: error },
-          );
-        } finally {
-          setInstructionSettingsBusy(false);
-        }
-      },
-    });
-  };
-
-  const reloadInstructionList = async () => {
-    await emit(INSTRUCTION_RELOAD_TREE_EVENT);
-    showToast("ok", "手順書一覧を再読み込みしました");
-  };
-
-  const requestInstructionWindowPositionReset = () => {
-    requestConfirmation({
-      title: "手順書ウィンドウ位置をリセットしますか？",
-      message: "手順書ウィンドウを標準サイズでメインディスプレイ中央へ戻します。",
-      confirmLabel: "リセットする",
-      processingLabel: "リセットしています…",
-      tone: "warning",
-      onConfirm: async () => {
-        await resetInstructionWindowPosition();
-        showToast("ok", "手順書ウィンドウ位置をリセットしました");
-        return true;
-      },
-    });
-  };
-
-  const softwareResetIsTimerBlocked = useCallback(
-    () => Boolean(activeTimerRef.current || completionPromptRef.current || earlyStopRef.current),
-    [],
-  );
-
-  const rejectSoftwareResetForTimer = useCallback(() => {
-    if (!softwareResetIsTimerBlocked()) return false;
-    showToast("warn", SOFTWARE_RESET_TIMER_MESSAGE);
-    return true;
-  }, [showToast, softwareResetIsTimerBlocked]);
-
-  const freezeFrontendForSoftwareReset = useCallback(() => {
-    resetInProgressRef.current = true;
-    writeGenerationRef.current += 1;
-    timerStartRequestRef.current += 1;
-    notesSaveTimersRef.current.forEach((timer) => window.clearTimeout(timer));
-    notesSaveTimersRef.current.clear();
-    if (completionFollowupTimerRef.current !== null) {
-      window.clearTimeout(completionFollowupTimerRef.current);
-      completionFollowupTimerRef.current = null;
-    }
-    setNotesSaveStatus("saved");
-    setShortcutRecordingField(null);
-    setSettingsDraft(null);
-    setManualSessionDraft(null);
-    setSessionEditDraft(null);
-    setButtonEditDraft(null);
-    setProjectEditDraft(null);
-    setNextStepEditDraft(null);
-    setDropDraft(null);
-    setGroupDraft(null);
-    setGroupRenameDraft(null);
-    setContextMenu(null);
-  }, []);
-
-  const executeSoftwareReset = useCallback(async () => {
-    if (resetInProgressRef.current) return false;
-    if (rejectSoftwareResetForTimer()) return true;
-
-    let localStorageSnapshot: SoftwareResetStorageSnapshot;
-    try {
-      localStorageSnapshot = captureSoftwareResetStorage();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      showToast("error", `ソフトウェアリセットを準備できません: ${message}`);
-      return false;
-    }
-    resetInProgressRef.current = true;
-    freezeFrontendForSoftwareReset();
-    setSoftwareResetStage("resetting");
-
-    try {
-      await prepareSoftwareReset();
-      clearSoftwareResetStorage();
-      const response = await softwareReset({
-        localStorageSnapshot,
-        localStorageCleared: true,
-      });
-      if (!response?.restartRequested) {
-        throw new Error("アプリの再起動を開始できませんでした");
-      }
-      setSoftwareResetStage("restart");
-      return true;
-    } catch (error) {
-      let storageRollbackError: unknown = null;
-      try {
-        restoreSoftwareResetStorage(localStorageSnapshot);
-      } catch (rollbackError) {
-        storageRollbackError = rollbackError;
-      }
-      resetInProgressRef.current = false;
-      writeGenerationRef.current += 1;
-      setSoftwareResetStage("idle");
-      const message = error instanceof Error ? error.message : String(error);
-      const rollbackDetail = storageRollbackError
-        ? ` localStorageも復元できません: ${
-            storageRollbackError instanceof Error
-              ? storageRollbackError.message
-              : String(storageRollbackError)
-          }`
-        : "";
-      showToast("error", `ソフトウェアリセットに失敗しました: ${message}${rollbackDetail}`);
-      return false;
-    }
-  }, [freezeFrontendForSoftwareReset, rejectSoftwareResetForTimer, showToast]);
-
-  const requestFinalSoftwareResetConfirmation = useCallback(() => {
-    confirmFocusReturnRef.current = softwareResetChoiceOpenerRef.current;
-    requestConfirmation({
-      title: "ソフトウェアリセットを実行しますか？",
-      message:
-        "Life Launcherのデータと設定を初回起動時の状態へ戻します。\n\nこの操作はアプリ内からは取り消せません。",
-      confirmLabel: "ソフトウェアリセット",
-      processingLabel: "リセットしています…",
-      tone: "danger",
-      initialFocus: "cancel",
-      closeOnBackdrop: true,
-      onConfirm: executeSoftwareReset,
-    });
-  }, [executeSoftwareReset, requestConfirmation]);
-
-  const closeSoftwareResetChoice = useCallback((restoreFocus = true) => {
-    setSoftwareResetChoiceOpen(false);
-    if (restoreFocus) {
-      window.requestAnimationFrame(() =>
-        softwareResetChoiceOpenerRef.current?.focus({ preventScroll: true }),
-      );
-    }
-  }, []);
-
-  const continueSoftwareReset = useCallback(
-    async (createBackup: boolean) => {
-      if (softwareResetChoiceBusy || rejectSoftwareResetForTimer()) {
-        if (!softwareResetChoiceBusy) closeSoftwareResetChoice();
-        return;
-      }
-      setSoftwareResetChoiceBusy(true);
-      try {
-        if (createBackup) {
-          let backupFolder =
-            settingsDraft?.backupFolder.trim() ||
-            configRef.current?.settings.backupFolder?.trim() ||
-            "";
-          if (!backupFolder) {
-            const selected = await selectBackupFolder();
-            if (!selected) {
-              showToast("warn", "バックアップ保存先を選択してください");
-              return;
-            }
-            backupFolder = selected;
-          }
-
-          const current = configRef.current;
-          if (!current) throw new Error("現在の設定を確認できませんでした");
-          if ((current.settings.backupFolder ?? "") !== backupFolder) {
-            const saved = await persistConfig({
-              ...current,
-              settings: {
-                ...current.settings,
-                backupFolder,
-              },
-            });
-            if (!saved) throw new Error("バックアップ保存先を保存できませんでした");
-            setSettingsDraft((draft) => (draft ? { ...draft, backupFolder } : draft));
-          }
-
-          const backup = await createSoftwareResetBackup();
-          if (!backup?.path) throw new Error("バックアップ先を確認できませんでした");
-        }
-        softwareResetChoiceOpenerRef.current?.focus({ preventScroll: true });
-        closeSoftwareResetChoice(false);
-        requestFinalSoftwareResetConfirmation();
-      } catch (error) {
-        closeSoftwareResetChoice();
-        const message = error instanceof Error ? error.message : String(error);
-        showToast("error", `リセット前のバックアップに失敗しました: ${message}`);
-      } finally {
-        setSoftwareResetChoiceBusy(false);
-      }
-    },
-    [
-      rejectSoftwareResetForTimer,
-      requestFinalSoftwareResetConfirmation,
-      persistConfig,
-      settingsDraft?.backupFolder,
-      showToast,
-      softwareResetChoiceBusy,
-      closeSoftwareResetChoice,
-    ],
-  );
-
-  const requestSoftwareReset = useCallback(() => {
-    if (rejectSoftwareResetForTimer()) return;
-    softwareResetChoiceOpenerRef.current =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    setSoftwareResetChoiceBusy(false);
-    setSoftwareResetChoiceOpen(true);
-  }, [rejectSoftwareResetForTimer]);
 
   useEffect(() => {
     if (!softwareResetChoiceOpen) return;
@@ -2774,221 +2332,6 @@ function DashboardApp() {
     window.requestAnimationFrame(() => softwareResetProgressRef.current?.focus());
   }, [softwareResetStage]);
 
-  const requestClearBackupFolder = () => {
-    if (!settingsDraft?.backupFolder) return;
-    requestConfirmation({
-      title: "バックアップ保存先を未設定にしますか？",
-      subject: settingsDraft.backupFolder,
-      message: "今後のバックアップは作成されません。保存済みのバックアップは削除されません。",
-      confirmLabel: "未設定にする",
-      cancelLabel: "設定を維持",
-      tone: "danger",
-      onConfirm: () => {
-        setSettingsDraft((current) => (current ? { ...current, backupFolder: "" } : current));
-      },
-    });
-  };
-
-  const saveSettingsCenter = async () => {
-    if (!config || !settingsDraft) return;
-    const shortcutError = validateShortcutSettings(settingsDraft, config.settings);
-    if (shortcutError) {
-      showToast("warn", shortcutError);
-      setSettingsSection("shortcuts");
-      return;
-    }
-    const defaultTimerMinutes = normalizeTimerMinutes(
-      Number.parseInt(settingsDraft.defaultTimerMinutes, 10),
-    );
-    const shortTimerMinutes = normalizeTimerMinutes(
-      Number.parseInt(settingsDraft.shortTimerMinutes, 10),
-    );
-    const extendParsed = Number.parseInt(settingsDraft.extendTimerMinutes, 10);
-    const extendTimerMinutes = normalizeTimerMinutes(
-      Number.isFinite(extendParsed) && extendParsed > 0
-        ? extendParsed
-        : (config.settings.extendTimerMinutes ?? DEFAULT_EXTEND_TIMER_MINUTES),
-    );
-    const dayStartHour = Math.min(
-      23,
-      Math.max(0, Math.round(Number.parseInt(settingsDraft.dayStartHour, 10))),
-    );
-    const keep = Number.parseInt(settingsDraft.backupKeep, 10);
-    const backupKeep = Number.isFinite(keep) && keep > 0 ? keep : 30;
-    const hotkeysChanged =
-      (settingsDraft.focusHotkey.trim() || null) !== (config.settings.focusHotkey ?? null) ||
-      (settingsDraft.launcherHotkey.trim() || null) !== (config.settings.launcherHotkey ?? null) ||
-      (settingsDraft.miniHotkey.trim() || null) !== (config.settings.miniHotkey ?? null) ||
-      (settingsDraft.instructionHotkey.trim() || null) !==
-        (config.settings.instructionHotkey ?? null);
-    const alwaysOnTopChanged = settingsDraft.alwaysOnTop !== config.settings.alwaysOnTop;
-
-    try {
-      // テスト用の起動では、普段のアプリの自動起動の登録を書き換えない。
-      if (!testProfile?.testProfile && settingsDraft.autoStart !== config.settings.autoStart) {
-        if (settingsDraft.autoStart) {
-          await enableAutostart();
-        } else {
-          await disableAutostart();
-        }
-      }
-
-      const previousConfig = config;
-      const weeklyFocusIds = new Set(settingsDraft.weeklyFocusProjectIds);
-      const saved = await persistConfig(
-        {
-          ...config,
-          projects: config.projects.map((project) => {
-            if (weeklyFocusIds.has(project.id)) {
-              return { ...project, weeklyFocus: true };
-            }
-            if (project.weeklyFocus === undefined) return project;
-            const nextProject = { ...project };
-            delete nextProject.weeklyFocus;
-            return nextProject;
-          }),
-          settings: {
-            ...config.settings,
-            mainDisplaySize: settingsDraft.mainDisplaySize,
-            defaultTimerMinutes,
-            shortTimerMinutes,
-            extendTimerMinutes,
-            dayStartHour: Number.isFinite(dayStartHour)
-              ? dayStartHour
-              : config.settings.dayStartHour,
-            focusHotkey: settingsDraft.focusHotkey.trim() || null,
-            launcherHotkey: settingsDraft.launcherHotkey.trim() || null,
-            miniHotkey: settingsDraft.miniHotkey.trim() || null,
-            instructionHotkey: settingsDraft.instructionHotkey.trim() || null,
-            instructionFolders: settingsDraft.instructionFolders,
-            alwaysOnTop: settingsDraft.alwaysOnTop,
-            autoStart: settingsDraft.autoStart,
-            miniMode: settingsDraft.miniMode,
-            restartShortFirst: settingsDraft.restartShortFirst,
-            backupFolder: settingsDraft.backupFolder.trim() || null,
-            backupKeep,
-          },
-        },
-        hotkeysChanged,
-      );
-      if (!saved) {
-        try {
-          const restored = await saveConfig(previousConfig);
-          setConfig(restored.config);
-          await reapplyDashboardSettings();
-          setShortcutRegistration(await loadShortcutRegistrationStatus().catch(() => null));
-          setBanner(null);
-          showToast("warn", "設定を反映できなかったため、以前の設定を維持しました");
-        } catch (rollbackError) {
-          showToast(
-            "error",
-            `以前の設定へ戻せません: ${
-              rollbackError instanceof Error ? rollbackError.message : String(rollbackError)
-            }`,
-          );
-        }
-        return;
-      }
-      let windowWarning: string | null = null;
-      if (alwaysOnTopChanged && !hotkeysChanged) {
-        try {
-          await getCurrentWindow().setAlwaysOnTop(settingsDraft.alwaysOnTop);
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          windowWarning = `保存しましたが、最前面表示を反映できません: ${message}`;
-          setBanner(windowWarning);
-        }
-      }
-      setDefaultTimerDraft(String(defaultTimerMinutes));
-      await emit(INSTRUCTION_RELOAD_TREE_EVENT);
-      setSettingsDraft(null);
-      showToast(windowWarning ? "warn" : "ok", windowWarning ?? "設定を保存しました");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      showToast("error", `設定を保存できません: ${message}`);
-    }
-  };
-
-  const chooseBackupZipForRestore = async () => {
-    try {
-      const selected = await selectBackupZip();
-      if (selected) {
-        requestConfirmation({
-          title: "バックアップから復元しますか？",
-          subject: selected,
-          message: "現在のデータは復元前に退避され、選択したZIPの内容で上書きされます。",
-          confirmLabel: "復元する",
-          processingLabel: "復元しています…",
-          tone: "warning",
-          onConfirm: () => confirmBackupRestore(selected),
-        });
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      showToast("error", `バックアップZIPを選べません: ${message}`);
-    }
-  };
-
-  const confirmBackupRestore = async (zipPath: string) => {
-    let shortcutsSuspended = false;
-    let response: Awaited<ReturnType<typeof restoreBackup>>;
-    try {
-      await suspendDashboardShortcuts();
-      shortcutsSuspended = true;
-      response = await restoreBackup(zipPath);
-    } catch (error) {
-      if (shortcutsSuspended) {
-        await resumeDashboardShortcuts().catch(() => undefined);
-      }
-      const message = error instanceof Error ? error.message : String(error);
-      showToast("error", `復元できません: ${message}`);
-      return false;
-    }
-
-    configSaveBlockedRef.current = response.saveBlocked;
-    setConfigSaveBlocked(response.saveBlocked);
-    iconRefreshGenerationRef.current += 1;
-    iconRequestIdsRef.current.clear();
-    setButtonIconSources({});
-    setConfig(response.config);
-    setMorningVictorySuggestion(response.morningVictorySuggestion ?? null);
-    setBackupPath(response.backupPath);
-    setBanner(response.error ?? null);
-    setActiveTimer(null);
-    setCompletionPrompt(null);
-
-    let settingsWarning: string | null = null;
-    try {
-      await reapplyDashboardSettings();
-      lastSettingsApplyErrorRef.current = null;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      lastSettingsApplyErrorRef.current = message;
-      settingsWarning = `ショートカットを登録できません: ${message}`;
-    }
-
-    let refreshWarning: string | null = null;
-    try {
-      await refreshSessions();
-      await refreshTodayActivity();
-      if (activeView === "records") {
-        await refreshRecords();
-      }
-    } catch (error) {
-      refreshWarning = `表示を更新できません: ${error instanceof Error ? error.message : String(error)}`;
-    }
-
-    setSettingsDraft(null);
-    const warnings = [settingsWarning, refreshWarning].filter(
-      (warning): warning is string => warning !== null,
-    );
-    if (warnings.length > 0) {
-      showToast("warn", `バックアップから復元しましたが、${warnings.join(" / ")}`);
-    } else {
-      showToast("ok", "バックアップから復元しました");
-    }
-    return true;
-  };
 
   const runActions = useCallback(
     async (id: string, actions: LauncherAction[]) => {
@@ -3031,298 +2374,100 @@ function DashboardApp() {
     });
   };
 
-  const mainDropStateRef = useRef({
-    config,
-    groupNames,
-    overlayPages,
+  const {
+    announceReorder,
+    cancelInboxPointerDrag,
+    cancelProjectPointerDrag,
+    cancelSidebarGroupPointerDrag,
+    cancelSidebarPointerDrag,
+    cancelTodayPointerDrag,
+    cancelWishlistGroupPointerDrag,
+    closeImportDialog,
+    finishInboxPointerDrag,
+    finishProjectPointerDrag,
+    finishSidebarGroupPointerDrag,
+    finishSidebarPointerDrag,
+    finishTodayPointerDrag,
+    finishWishlistGroupPointerDrag,
+    handleDomDragOver,
+    handleDomDrop,
+    handleImported,
+    moveInboxItemByOffset,
+    moveSidebarButtonByOffset,
+    moveSidebarGroupByOffset,
+    moveTodayItemByOffset,
+    openImportDialog,
+    startInboxPointerDrag,
+    startProjectPointerDrag,
+    startSidebarGroupPointerDrag,
+    startSidebarPointerDrag,
+    startTodayPointerDrag,
+    startWishlistGroupPointerDrag,
+    toggleWishlistGroup,
+    updateInboxPointerDrag,
+    updateProjectPointerDrag,
+    updateSidebarGroupPointerDrag,
+    updateSidebarPointerDrag,
+    updateTodayPointerDrag,
+    updateWishlistGroupPointerDrag,
+  } = useDashboardDragAndDrop({
+    actions: {
+      addCandidateToToday,
+      isTimerActiveForSource,
+      persistConfig,
+      promoteWishlistToProject,
+      removeProjectNextStep,
+      removeTodayItem,
+      runActions,
+      showToast,
+      sourceEditBlocked,
+      sourceEditBlockReason,
+      toggleGroupCollapsed,
+      warnSourceEditBlocked,
+    },
+    refs: {
+      activeTimerRef,
+      configRef,
+      dragPathsRef,
+      importOpenerRef,
+      inboxPointerDragRef,
+      lastDropRef,
+      mainScrollAreaRef,
+      projectAutoScrollFrameRef,
+      projectAutoScrollSpeedRef,
+      projectPointerDragRef,
+      sidebarGroupPointerDragRef,
+      sidebarPointerDragRef,
+      todayPointerDragRef,
+      wishlistGroupPointerDragRef,
+    },
+    setters: {
+      setActionDragId,
+      setBuilderKind,
+      setConfig,
+      setContextMenu,
+      setDragActive,
+      setDropDraft,
+      setImportDialogOpen,
+      setImportInitialError,
+      setImportInitialText,
+      setInboxPointerDrag,
+      setJsonDrop,
+      setOverlayPageDragId,
+      setProjectPointerDrag,
+      setReorderAnnouncement,
+      setSidebarGroupPointerDrag,
+      setSidebarPointerDrag,
+      setTodayPointerDrag,
+      setWishlistGroupPointerDrag,
+      setWishlistGroupViews,
+    },
+    state: {
+      config,
+      groupNames,
+      overlayPages,
+    },
   });
-  mainDropStateRef.current = {
-    config,
-    groupNames,
-    overlayPages,
-  };
-
-  const openDropDialog = useCallback(
-    async (input: DropResolveInput, suggestedLabel?: string | null) => {
-      const state = mainDropStateRef.current;
-      if (!state.config) return;
-      try {
-        const draft = await resolveDropItem(
-          input.kind === "url" ? { ...input, suggestedLabel } : input,
-        );
-        setBuilderKind(null);
-        setDropDraft({
-          ...draft,
-          label: draft.label,
-          group: draft.group?.trim() || state.groupNames[0] || DEFAULT_BUTTON_GROUP,
-          groupMode: state.groupNames.length > 0 ? "existing" : "new",
-          existingGroup: draft.group?.trim() || state.groupNames[0] || DEFAULT_BUTTON_GROUP,
-          newGroup: "",
-          showInSidebar: true,
-          showInOverlay: true,
-          overlayPageId: null,
-        });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        showToast("error", `登録できません: ${message}`);
-      }
-    },
-    [showToast],
-  );
-
-  const handleDroppedPaths = useCallback(
-    async (paths: string[]) => {
-      setDragActive(false);
-      if (paths.length === 0) return;
-      if (paths.length > 1) {
-        showToast("warn", "複数ドロップ時は先頭の1件だけ登録します");
-      }
-      await openDropDialog({ kind: "path", value: paths[0] });
-    },
-    [openDropDialog, showToast],
-  );
-
-  const dropSideFromPosition = useCallback(
-    (position: { x: number; y: number }): "main" | "sidebar" | null => {
-      const element = document.elementFromPoint(position.x, position.y);
-      if (element?.closest(".sidebar")) return "sidebar";
-      if (element?.closest(".mainPanel")) return "main";
-      return null;
-    },
-    [],
-  );
-
-  const dropModalOpen = useCallback(
-    () => Boolean(document.querySelector('.modalBackdrop:not([data-exiting="true"])')),
-    [],
-  );
-
-  const openImportDialog = useCallback(
-    (text: string, error: string | null = null, opener?: HTMLElement | null) => {
-      importOpenerRef.current =
-        opener ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
-      setImportInitialText(text);
-      setImportInitialError(error);
-      setImportDialogOpen(true);
-    },
-    [],
-  );
-
-  const closeImportDialog = useCallback(() => {
-    setImportDialogOpen(false);
-    const opener = importOpenerRef.current;
-    importOpenerRef.current = null;
-    window.requestAnimationFrame(() => opener?.focus({ preventScroll: true }));
-  }, []);
-
-  const handleImported = useCallback(
-    (response: ImportCommitResponse) => {
-      setConfig(response.config);
-      closeImportDialog();
-      const counts = response.preview.counts;
-      const total =
-        counts.newProjects + counts.existingProjects + counts.nextSteps + counts.wishes;
-      showToast("ok", `${total}件を取り込みました`, {
-        detail: counts.rejected > 0 ? `${counts.rejected}件は取り込めませんでした` : undefined,
-        actionLabel: "元に戻す",
-        onAction: async () => {
-          try {
-            const undone = await undoImport(response.importId, response.fingerprint);
-            setConfig(undone.config);
-            return true;
-          } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            showToast("warn", message.replace(/^changed:/, ""));
-            return false;
-          }
-        },
-      });
-    },
-    [closeImportDialog, showToast],
-  );
-
-  const claimDrop = useCallback((paths: string[]) => {
-    const signature = paths.join("\u0000");
-    const now = Date.now();
-    if (
-      lastDropRef.current &&
-      lastDropRef.current.signature === signature &&
-      now - lastDropRef.current.at < 1000
-    ) {
-      return false;
-    }
-    lastDropRef.current = { signature, at: now };
-    return true;
-  }, []);
-
-  const handleDropAt = useCallback(
-    async (paths: string[], cssPosition: { x: number; y: number } | null) => {
-      setDragActive(false);
-      setJsonDrop(null);
-      if (paths.length === 0) return;
-      if (!claimDrop(paths)) return;
-      const modalOpen = dropModalOpen();
-      const side = cssPosition ? dropSideFromPosition(cssPosition) : null;
-      if (
-        paths.length === 1 &&
-        /\.json$/i.test(paths[0]) &&
-        side === "main" &&
-        !modalOpen
-      ) {
-        try {
-          const text = await readImportJson(paths[0]);
-          openImportDialog(text);
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          openImportDialog("", message);
-        }
-        return;
-      }
-      await handleDroppedPaths(paths);
-    },
-    [claimDrop, dropModalOpen, dropSideFromPosition, handleDroppedPaths, openImportDialog],
-  );
-
-  const openRecycleBinDropDialog = useCallback(() => {
-    const state = mainDropStateRef.current;
-    setDropDraft({
-      label: "ごみ箱",
-      group: state.groupNames[0] ?? DEFAULT_BUTTON_GROUP,
-      groupMode: state.groupNames.length > 0 ? "existing" : "new",
-      existingGroup: state.groupNames[0] ?? DEFAULT_BUTTON_GROUP,
-      newGroup: "",
-      iconSource: null,
-      action: {
-        type: "open_shell_special",
-        payload: { item: "recycle_bin" },
-      },
-      source: "Windowsデスクトップのごみ箱",
-      showInSidebar: true,
-      showInOverlay: true,
-      overlayPageId: null,
-    });
-  }, []);
-
-  useEffect(() => {
-    let mounted = true;
-    let unlisten: (() => void) | undefined;
-
-    listen<MainShellDropEvent>("main-shell-drop-result", (event) => {
-      if (!mounted || event.payload.windowLabel !== "main") return;
-      if (event.payload.stage === "error") {
-        setDragActive(false);
-        showToast("error", `D&Dを初期化できません: ${event.payload.message}`);
-        return;
-      }
-      if (event.payload.stage === "dragEnter" || event.payload.stage === "dragOver") {
-        const isJson =
-          event.payload.paths.length === 1 && /\.json$/i.test(event.payload.paths[0]);
-        if (isJson && event.payload.position && !dropModalOpen()) {
-          setDragActive(false);
-          setJsonDrop(dropSideFromPosition(dropPositionToCss(event.payload.position)));
-        } else {
-          setJsonDrop(null);
-          setDragActive(true);
-        }
-        return;
-      }
-      if (event.payload.stage === "dragLeave") {
-        setDragActive(false);
-        setJsonDrop(null);
-        return;
-      }
-
-      setDragActive(false);
-      setJsonDrop(null);
-      if (event.payload.paths.length > 0) {
-        void handleDropAt(
-          event.payload.paths,
-          event.payload.position ? dropPositionToCss(event.payload.position) : null,
-        );
-        return;
-      }
-      if (event.payload.url) {
-        void openDropDialog({ kind: "url", value: event.payload.url }, event.payload.label);
-        return;
-      }
-      if (event.payload.shellSpecial === "recycle_bin") {
-        openRecycleBinDropDialog();
-      }
-    })
-      .then((dispose) => {
-        if (mounted) {
-          unlisten = dispose;
-          void enableMainShellDrop().catch((error) => {
-            const message = error instanceof Error ? error.message : String(error);
-            showToast("error", `D&Dを初期化できません: ${message}`);
-          });
-        } else {
-          dispose();
-        }
-      })
-      .catch(() => undefined);
-
-    return () => {
-      mounted = false;
-      unlisten?.();
-    };
-  }, [dropModalOpen, dropSideFromPosition, handleDropAt, openDropDialog, openRecycleBinDropDialog, showToast]);
-
-  useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    let mounted = true;
-
-    getCurrentWebview()
-      .onDragDropEvent((event) => {
-        const payload = event.payload;
-        if (payload.type === "enter") {
-          dragPathsRef.current = payload.paths;
-          const isJson =
-            payload.paths.length === 1 && /\.json$/i.test(payload.paths[0]);
-          if (isJson && !dropModalOpen()) {
-            setDragActive(false);
-            setJsonDrop(dropSideFromPosition(dropPositionToCss(payload.position)));
-          } else {
-            setJsonDrop(null);
-            setDragActive(true);
-          }
-        } else if (payload.type === "over") {
-          const paths = dragPathsRef.current;
-          const isJson = paths.length === 1 && /\.json$/i.test(paths[0]);
-          if (isJson && !dropModalOpen()) {
-            setDragActive(false);
-            setJsonDrop(dropSideFromPosition(dropPositionToCss(payload.position)));
-          } else {
-            setJsonDrop(null);
-            setDragActive(true);
-          }
-        } else if (payload.type === "leave") {
-          dragPathsRef.current = [];
-          setDragActive(false);
-          setJsonDrop(null);
-        } else if (payload.type === "drop") {
-          dragPathsRef.current = [];
-          void handleDropAt(payload.paths, dropPositionToCss(payload.position));
-        }
-      })
-      .then((dispose) => {
-        if (mounted) {
-          unlisten = dispose;
-        } else {
-          dispose();
-        }
-      })
-      .catch((error) => {
-        const message = error instanceof Error ? error.message : String(error);
-        showToast("error", `D&Dを初期化できません: ${message}`);
-      });
-
-    return () => {
-      mounted = false;
-      unlisten?.();
-    };
-  }, [dropModalOpen, dropSideFromPosition, handleDropAt, showToast]);
-
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (isEditableTarget(event.target)) return;
@@ -3343,1516 +2488,57 @@ function DashboardApp() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [config?.settings.launcherHotkey, toggleDictionaryFromShortcut]);
 
-  const handleDomDragOver = (event: DragEvent<HTMLElement>) => {
-    if (
-      event.dataTransfer.types.includes(ACTION_DRAG_TYPE) ||
-      event.dataTransfer.types.includes(OVERLAY_PAGE_DRAG_TYPE)
-    ) {
-      event.preventDefault();
-      return;
-    }
-    event.preventDefault();
-    setJsonDrop(null);
-    setDragActive(true);
-  };
-
-  const handleDomDrop = (event: DragEvent<HTMLElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setDragActive(false);
-    setJsonDrop(null);
-
-    if (event.dataTransfer.types.includes(ACTION_DRAG_TYPE)) {
-      setActionDragId(null);
-      return;
-    }
-    if (event.dataTransfer.types.includes(OVERLAY_PAGE_DRAG_TYPE)) {
-      setOverlayPageDragId(null);
-      return;
-    }
-
-    const text =
-      event.dataTransfer.getData("text/uri-list") || event.dataTransfer.getData("text/plain");
-    const url = firstDroppedUrl(text);
-    if (!url) return;
-    try {
-      const dropped = new URL(url);
-      if (
-        dropped.origin === window.location.origin ||
-        dropped.hostname === "tauri.localhost" ||
-        dropped.hostname === "asset.localhost"
-      ) {
-        return;
-      }
-    } catch {
-      return;
-    }
-
-    void openDropDialog({ kind: "url", value: url });
-  };
-
-  const moveButtonInSidebar = (
-    draggedButtonId: string,
-    targetGroupName: string,
-    targetButtonId?: string,
-  ) => {
-    if (!config) return;
-    if (targetButtonId === draggedButtonId) return;
-    const draggedButton = config.buttons.find((button) => button.id === draggedButtonId);
-    if (!draggedButton) return;
-
-    const targetGroup = targetGroupName === DEFAULT_BUTTON_GROUP ? undefined : targetGroupName;
-    const movedButton = { ...draggedButton, group: targetGroup };
-    const withoutDragged = config.buttons.filter((button) => button.id !== draggedButtonId);
-    const targetIndex = targetButtonId
-      ? withoutDragged.findIndex((button) => button.id === targetButtonId)
-      : -1;
-    const draggedIndex = config.buttons.findIndex((button) => button.id === draggedButtonId);
-    const originalTargetIndex = targetButtonId
-      ? config.buttons.findIndex((button) => button.id === targetButtonId)
-      : -1;
-
-    let insertIndex: number;
-    if (targetIndex >= 0) {
-      insertIndex = draggedIndex < originalTargetIndex ? targetIndex + 1 : targetIndex;
-    } else {
-      const buttonsInGroup = withoutDragged
-        .map((button, index) => ({ button, index }))
-        .filter(({ button }) => buttonGroupName(button) === targetGroupName);
-      const lastInGroup = buttonsInGroup[buttonsInGroup.length - 1];
-      insertIndex = lastInGroup ? lastInGroup.index + 1 : withoutDragged.length;
-    }
-
-    const nextButtons = [...withoutDragged];
-    nextButtons.splice(insertIndex, 0, movedButton);
-    void persistConfig({ ...config, buttons: nextButtons });
-  };
-
-  const moveGroupInSidebar = (
-    draggedGroupName: string,
-    targetGroupName: string,
-    placement: "before" | "after",
-  ) => {
-    if (!config || draggedGroupName === targetGroupName) return;
-
-    const orderedGroups = uniqueGroupNames(config);
-    const withoutDragged = orderedGroups.filter((name) => name !== draggedGroupName);
-    const targetIndex = withoutDragged.indexOf(targetGroupName);
-    if (targetIndex < 0) return;
-
-    const insertIndex = placement === "after" ? targetIndex + 1 : targetIndex;
-    const nextGroups = [...withoutDragged];
-    nextGroups.splice(insertIndex, 0, draggedGroupName);
-    void persistConfig({ ...config, groups: nextGroups });
-  };
-
-  const moveTodayItem = (
-    draggedIndex: number,
-    targetIndex: number,
-    placement: "before" | "after",
-  ) => {
-    if (!config || draggedIndex === targetIndex) return;
-
-    const draggedItem = config.today.items[draggedIndex];
-    if (!draggedItem || !config.today.items[targetIndex]) return;
-
-    const withoutDragged = config.today.items.filter((_, index) => index !== draggedIndex);
-    let insertIndex = targetIndex;
-    if (draggedIndex < targetIndex) {
-      insertIndex -= 1;
-    }
-    if (placement === "after") {
-      insertIndex += 1;
-    }
-
-    const items = [...withoutDragged];
-    items.splice(insertIndex, 0, draggedItem);
-    void persistConfig({ ...config, today: { ...config.today, items } });
-  };
-
-  const moveProject = (
-    draggedProjectId: string,
-    targetProjectId: string,
-    placement: "before" | "after",
-  ) => {
-    if (!config || draggedProjectId === targetProjectId) return;
-
-    const draggedProject = config.projects.find((project) => project.id === draggedProjectId);
-    const draggedIndex = config.projects.findIndex((project) => project.id === draggedProjectId);
-    const targetIndex = config.projects.findIndex((project) => project.id === targetProjectId);
-    if (!draggedProject || draggedIndex < 0 || targetIndex < 0) return;
-
-    const withoutDragged = config.projects.filter((project) => project.id !== draggedProjectId);
-    let insertIndex = targetIndex;
-    if (draggedIndex < targetIndex) {
-      insertIndex -= 1;
-    }
-    if (placement === "after") {
-      insertIndex += 1;
-    }
-
-    const projects = [...withoutDragged];
-    projects.splice(insertIndex, 0, draggedProject);
-    void persistConfig({ ...config, projects });
-  };
-
-  const moveInboxItem = (
-    draggedIndex: number,
-    targetIndex: number,
-    placement: "before" | "after",
-  ) => {
-    if (!config || draggedIndex === targetIndex) return;
-    const draggedItem = config.inbox[draggedIndex];
-    const targetItem = config.inbox[targetIndex];
-    if (!draggedItem || !targetItem) return;
-    const projectIds = new Set(config.projects.map((project) => project.id));
-    if (wishlistGroupKey(draggedItem, projectIds) !== wishlistGroupKey(targetItem, projectIds))
-      return;
-
-    const withoutDragged = config.inbox.filter((_, index) => index !== draggedIndex);
-    let insertIndex = targetIndex;
-    if (draggedIndex < targetIndex) insertIndex -= 1;
-    if (placement === "after") insertIndex += 1;
-
-    const inbox = [...withoutDragged];
-    inbox.splice(insertIndex, 0, draggedItem);
-    void persistConfig({ ...config, inbox });
-  };
-
-  const moveWishlistGroup = (
-    draggedKey: string,
-    targetKey: string,
-    placement: "before" | "after",
-  ) => {
-    const current = configRef.current;
-    if (!current || draggedKey === targetKey || draggedKey === "unassigned") return;
-    const nextConfig = reorderWishlistGroups(
-      current,
-      draggedKey,
-      targetKey,
-      targetKey === "unassigned" ? "before" : placement,
-    );
-    if (nextConfig === current) return;
-    void persistConfig(nextConfig);
-  };
-
-  const announceReorder = (label: string, position: number) => {
-    setReorderAnnouncement(`「${label}」を${position}番目へ移動しました`);
-  };
-
-  const focusAfterReorder = (focusTarget: () => void) => {
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(focusTarget);
-    });
-  };
-
-  const moveSidebarButtonByOffset = async (buttonId: string, offset: -1 | 1) => {
-    if (!config) return;
-    const button = config.buttons.find((item) => item.id === buttonId);
-    if (!button || !showButtonInSidebar(button)) return;
-    const groupName = buttonGroupName(button);
-    const groupButtons = config.buttons.filter(
-      (item) => showButtonInSidebar(item) && buttonGroupName(item) === groupName,
-    );
-    const index = groupButtons.findIndex((item) => item.id === buttonId);
-    const target = groupButtons[index + offset];
-    if (index < 0 || !target) return;
-
-    const withoutButton = config.buttons.filter((item) => item.id !== buttonId);
-    const targetIndex = withoutButton.findIndex((item) => item.id === target.id);
-    if (targetIndex < 0) return;
-    const nextButtons = [...withoutButton];
-    nextButtons.splice(targetIndex + (offset === 1 ? 1 : 0), 0, button);
-
-    if (!(await persistConfig({ ...config, buttons: nextButtons }))) return;
-    announceReorder(button.label, index + offset + 1);
-    focusAfterReorder(() => {
-      const wrapper = Array.from(
-        document.querySelectorAll<HTMLElement>("[data-sidebar-button-id]"),
-      ).find((element) => element.dataset.sidebarButtonId === buttonId);
-      wrapper?.querySelector<HTMLButtonElement>(".quickButton")?.focus();
-    });
-  };
-
-  const moveSidebarGroupByOffset = async (groupName: string, offset: -1 | 1) => {
-    if (!config) return;
-    const groups = uniqueGroupNames(config);
-    const index = groups.indexOf(groupName);
-    const target = groups[index + offset];
-    if (index < 0 || !target) return;
-    const nextGroups = [...groups];
-    [nextGroups[index], nextGroups[index + offset]] = [
-      nextGroups[index + offset],
-      nextGroups[index],
-    ];
-
-    if (!(await persistConfig({ ...config, groups: nextGroups }))) return;
-    announceReorder(groupName, index + offset + 1);
-    focusAfterReorder(() => {
-      const header = Array.from(
-        document.querySelectorAll<HTMLButtonElement>("button[data-sidebar-group-name]"),
-      ).find((element) => element.dataset.sidebarGroupName === groupName);
-      header?.focus();
-    });
-  };
-
-  const moveTodayItemByOffset = async (index: number, offset: -1 | 1) => {
-    if (!config) return;
-    const targetIndex = index + offset;
-    const item = config.today.items[index];
-    if (!item || !config.today.items[targetIndex]) return;
-    const items = [...config.today.items];
-    [items[index], items[targetIndex]] = [items[targetIndex], items[index]];
-
-    if (!(await persistConfig({ ...config, today: { ...config.today, items } }))) return;
-    announceReorder(item.text || "未入力", targetIndex + 1);
-    focusAfterReorder(() => {
-      document.querySelector<HTMLElement>(`[data-today-index="${targetIndex}"]`)?.focus();
-    });
-  };
-
-  const moveInboxItemByOffset = async (index: number, offset: -1 | 1) => {
-    if (!config) return;
-    const item = config.inbox[index];
-    if (!item) return;
-    const projectIds = new Set(config.projects.map((project) => project.id));
-    const key = wishlistGroupKey(item, projectIds);
-    const groupIndexes = config.inbox.flatMap((candidate, candidateIndex) =>
-      wishlistGroupKey(candidate, projectIds) === key ? [candidateIndex] : [],
-    );
-    const groupIndex = groupIndexes.indexOf(index);
-    const targetIndex = groupIndexes[groupIndex + offset];
-    if (targetIndex === undefined || !config.inbox[targetIndex]) return;
-    const inbox = [...config.inbox];
-    [inbox[index], inbox[targetIndex]] = [inbox[targetIndex], inbox[index]];
-
-    if (!(await persistConfig({ ...config, inbox }))) return;
-    setContextMenu(null);
-    announceReorder(item.text, targetIndex + 1);
-    focusAfterReorder(() => {
-      document.querySelector<HTMLElement>(`[data-inbox-index="${targetIndex}"]`)?.focus();
-    });
-  };
-
-  const startSidebarPointerDrag = (
-    event: PointerEvent<HTMLButtonElement>,
-    drag: InternalButtonDrag,
-  ) => {
-    if (event.button !== 0) return;
-    event.preventDefault();
-    event.stopPropagation();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    const rect = event.currentTarget.getBoundingClientRect();
-    sidebarPointerDragRef.current = {
-      ...drag,
-      startX: event.clientX,
-      startY: event.clientY,
-      hasMoved: false,
-      offsetX: event.clientX - rect.left,
-      offsetY: event.clientY - rect.top,
-      width: rect.width,
-      height: rect.height,
-    };
-  };
-
-  const updateSidebarPointerDrag = (event: PointerEvent<HTMLButtonElement>) => {
-    const drag = sidebarPointerDragRef.current;
-    if (!drag) return;
-
-    const distance = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
-    if (!drag.hasMoved && distance >= SIDEBAR_DRAG_THRESHOLD_PX) drag.hasMoved = true;
-    if (drag.hasMoved) {
-      const target = sidebarDropTargetFromPoint(event.clientX, event.clientY, drag.id);
-      setSidebarPointerDrag({
-        id: drag.id,
-        group: drag.group,
-        pointerX: event.clientX,
-        pointerY: event.clientY,
-        offsetX: drag.offsetX,
-        offsetY: drag.offsetY,
-        width: drag.width,
-        height: drag.height,
-        targetIndicator: target?.indicator,
-        targetButtonId: target?.buttonId,
-        targetGroupName: target?.groupName,
-      });
-    }
-  };
-
-  const finishSidebarPointerDrag = (
-    event: PointerEvent<HTMLButtonElement>,
-    button: LauncherButton,
-  ) => {
-    event.preventDefault();
-    event.stopPropagation();
-    const drag = sidebarPointerDragRef.current;
-    sidebarPointerDragRef.current = null;
-    setSidebarPointerDrag(null);
-
-    if (!drag) return;
-    if (!drag.hasMoved) {
-      void runActions(button.id, button.actions);
-      return;
-    }
-
-    const target = sidebarDropTargetFromPoint(event.clientX, event.clientY, drag.id);
-    if (!target || target.buttonId === drag.id) return;
-    moveButtonInSidebar(drag.id, target.groupName, target.buttonId);
-  };
-
-  const cancelSidebarPointerDrag = () => {
-    sidebarPointerDragRef.current = null;
-    setSidebarPointerDrag(null);
-  };
-
-  const startSidebarGroupPointerDrag = (
-    event: PointerEvent<HTMLButtonElement>,
-    groupName: string,
-  ) => {
-    if (event.button !== 0) return;
-    event.preventDefault();
-    event.stopPropagation();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    const rect = event.currentTarget.getBoundingClientRect();
-    sidebarGroupPointerDragRef.current = {
-      group: groupName,
-      startX: event.clientX,
-      startY: event.clientY,
-      hasMoved: false,
-      offsetX: event.clientX - rect.left,
-      offsetY: event.clientY - rect.top,
-      width: rect.width,
-      height: rect.height,
-    };
-  };
-
-  const updateSidebarGroupPointerDrag = (event: PointerEvent<HTMLButtonElement>) => {
-    const drag = sidebarGroupPointerDragRef.current;
-    if (!drag) return;
-
-    const distance = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
-    if (!drag.hasMoved && distance >= SIDEBAR_DRAG_THRESHOLD_PX) drag.hasMoved = true;
-    if (drag.hasMoved) {
-      const target = sidebarGroupDropTargetFromPoint(event.clientX, event.clientY);
-      setSidebarGroupPointerDrag({
-        group: drag.group,
-        pointerX: event.clientX,
-        pointerY: event.clientY,
-        offsetX: drag.offsetX,
-        offsetY: drag.offsetY,
-        width: drag.width,
-        height: drag.height,
-        targetGroupName: target?.groupName,
-        placement: target?.placement,
-      });
-    }
-  };
-
-  const finishSidebarGroupPointerDrag = (
-    event: PointerEvent<HTMLButtonElement>,
-    groupName: string,
-  ) => {
-    event.preventDefault();
-    event.stopPropagation();
-    const drag = sidebarGroupPointerDragRef.current;
-    sidebarGroupPointerDragRef.current = null;
-    setSidebarGroupPointerDrag(null);
-
-    if (!drag) return;
-    if (!drag.hasMoved) {
-      toggleGroupCollapsed(groupName);
-      return;
-    }
-
-    const target = sidebarGroupDropTargetFromPoint(event.clientX, event.clientY);
-    if (!target) return;
-    moveGroupInSidebar(drag.group, target.groupName, target.placement);
-  };
-
-  const cancelSidebarGroupPointerDrag = () => {
-    sidebarGroupPointerDragRef.current = null;
-    setSidebarGroupPointerDrag(null);
-  };
-
-  const startTodayPointerDrag = (event: PointerEvent<HTMLElement>, index: number) => {
-    if (event.button !== 0 || isReorderBlockedTarget(event.target)) return;
-    event.preventDefault();
-    event.stopPropagation();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    const rect = event.currentTarget.getBoundingClientRect();
-    todayPointerDragRef.current = {
-      index,
-      startX: event.clientX,
-      startY: event.clientY,
-      hasMoved: false,
-      offsetX: event.clientX - rect.left,
-      offsetY: event.clientY - rect.top,
-      width: rect.width,
-      height: rect.height,
-    };
-  };
-
-  const updateTodayPointerDrag = (event: PointerEvent<HTMLElement>) => {
-    const drag = todayPointerDragRef.current;
-    if (!drag) return;
-
-    const distance = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
-    if (!drag.hasMoved && distance >= SIDEBAR_DRAG_THRESHOLD_PX) drag.hasMoved = true;
-    if (!drag.hasMoved) return;
-
-    const current = configRef.current;
-    const item = current?.today.items[drag.index];
-    const removeEligible = Boolean(
-      item && activeTimerRef.current?.sourceId !== todayTimerSourceId(item, drag.index),
-    );
-    const removeTargetActive =
-      removeEligible &&
-      (pointWithinTodayRemoveDropZone(event.clientX, event.clientY) ||
-        draggedCardTopWithinTodayRemoveDropZone(
-          event.clientX,
-          event.clientY,
-          drag.offsetX,
-          drag.offsetY,
-          drag.width,
-        ));
-    const target = todayDropTargetFromPoint(event.clientX, event.clientY);
-    setTodayPointerDrag({
-      index: drag.index,
-      pointerX: event.clientX,
-      pointerY: event.clientY,
-      offsetX: drag.offsetX,
-      offsetY: drag.offsetY,
-      width: drag.width,
-      height: drag.height,
-      removeEligible,
-      removeTargetActive,
-      targetIndex: target?.index,
-      placement: target?.placement,
-      targetIndicator: target && target.index !== drag.index ? target.indicator : undefined,
-    });
-  };
-
-  const finishTodayPointerDrag = (event: PointerEvent<HTMLElement>) => {
-    const drag = todayPointerDragRef.current;
-    const current = configRef.current;
-    const item = current?.today.items[drag?.index ?? -1];
-    const sourceKey = item && drag ? todaySourceKey(item, drag.index) : null;
-    const removeDrop =
-      Boolean(
-        item &&
-        drag?.hasMoved &&
-        activeTimerRef.current?.sourceId !== todayTimerSourceId(item, drag.index),
-      ) &&
-      (pointWithinTodayRemoveDropZone(event.clientX, event.clientY) ||
-        draggedCardTopWithinTodayRemoveDropZone(
-          event.clientX,
-          event.clientY,
-          drag?.offsetX ?? 0,
-          drag?.offsetY ?? 0,
-          drag?.width ?? 0,
-        ));
-    todayPointerDragRef.current = null;
-    setTodayPointerDrag(null);
-
-    if (!drag) return;
-    event.preventDefault();
-    event.stopPropagation();
-    if (!drag.hasMoved) return;
-    if (removeDrop && sourceKey) {
-      void removeTodayItem(sourceKey);
-      return;
-    }
-
-    const target = todayDropTargetFromPoint(event.clientX, event.clientY);
-    if (!target) return;
-    moveTodayItem(drag.index, target.index, target.placement);
-  };
-
-  const cancelTodayPointerDrag = () => {
-    todayPointerDragRef.current = null;
-    setTodayPointerDrag(null);
-  };
-
-  const stopProjectAutoScroll = () => {
-    projectAutoScrollSpeedRef.current = 0;
-    if (projectAutoScrollFrameRef.current !== null) {
-      window.cancelAnimationFrame(projectAutoScrollFrameRef.current);
-      projectAutoScrollFrameRef.current = null;
-    }
-  };
-
-  const continueProjectAutoScroll = () => {
-    const scrollArea = mainScrollAreaRef.current;
-    const speed = projectAutoScrollSpeedRef.current;
-    if (!scrollArea || speed === 0) {
-      projectAutoScrollFrameRef.current = null;
-      return;
-    }
-
-    scrollArea.scrollTop += speed;
-    projectAutoScrollFrameRef.current = window.requestAnimationFrame(continueProjectAutoScroll);
-  };
-
-  const updateProjectAutoScroll = (clientY: number) => {
-    const scrollArea = mainScrollAreaRef.current;
-    if (!scrollArea) return;
-
-    const rect = scrollArea.getBoundingClientRect();
-    const edgeSize = Math.min(72, rect.height * 0.2);
-    let speed = 0;
-    if (clientY < rect.top + edgeSize) {
-      speed = -Math.max(4, Math.ceil((rect.top + edgeSize - clientY) / 4));
-    } else if (clientY > rect.bottom - edgeSize) {
-      speed = Math.max(4, Math.ceil((clientY - (rect.bottom - edgeSize)) / 4));
-    }
-    projectAutoScrollSpeedRef.current = Math.max(-18, Math.min(18, speed));
-
-    if (projectAutoScrollSpeedRef.current === 0) {
-      stopProjectAutoScroll();
-    } else if (projectAutoScrollFrameRef.current === null) {
-      projectAutoScrollFrameRef.current = window.requestAnimationFrame(continueProjectAutoScroll);
-    }
-  };
-
-  const resolveProjectDropPlacement = (
-    draggedId: string,
-    target: { id: string; placement: "before" | "after" },
-  ) => {
-    const draggedIndex = config?.projects.findIndex((project) => project.id === draggedId) ?? -1;
-    const targetIndex = config?.projects.findIndex((project) => project.id === target.id) ?? -1;
-    if (draggedIndex < 0 || targetIndex < 0 || draggedIndex === targetIndex) {
-      return target.placement;
-    }
-    return draggedIndex < targetIndex ? "after" : "before";
-  };
-
-  const startProjectPointerDrag = (event: PointerEvent<HTMLElement>, projectId: string) => {
-    if (event.button !== 0 || isReorderBlockedTarget(event.target)) return;
-    const current = configRef.current;
-    if (!current) return;
-    event.preventDefault();
-    event.stopPropagation();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    const rect = event.currentTarget.getBoundingClientRect();
-    projectPointerDragRef.current = {
-      id: projectId,
-      sourceKey: `project:${projectId}`,
-      origin: "nextStep",
-      dayKey: current.today.date,
-      startX: event.clientX,
-      startY: event.clientY,
-      hasMoved: false,
-      offsetX: event.clientX - rect.left,
-      offsetY: event.clientY - rect.top,
-      width: rect.width,
-      height: rect.height,
-    };
-  };
-
-  const updateProjectPointerDrag = (event: PointerEvent<HTMLElement>) => {
-    const drag = projectPointerDragRef.current;
-    if (!drag) return;
-
-    const distance = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
-    if (!drag.hasMoved && distance >= SIDEBAR_DRAG_THRESHOLD_PX) {
-      drag.hasMoved = true;
-    }
-    if (drag.hasMoved) {
-      const overWishlist = pointWithinSelector(event.clientX, event.clientY, ".inboxBand");
-      const overToday = pointWithinSelector(event.clientX, event.clientY, ".todayGrid");
-      const current = configRef.current;
-      const project = current?.projects.find((candidate) => candidate.id === drag.id);
-      const candidate = current ? todayCandidateFromConfig(current, drag.sourceKey) : undefined;
-      const matchingSourceKeys = candidate
-        ? new Set([candidate.sourceKey, ...(candidate.sourceAliases ?? [])])
-        : new Set<string>();
-      const todayGuidanceActive = Boolean(
-        candidate &&
-        current &&
-        current.today.date === drag.dayKey &&
-        current.today.items.length < TODAY_ITEM_LIMIT &&
-        !current.today.items.some((item, index) =>
-          matchingSourceKeys.has(todaySourceKey(item, index)),
-        ) &&
-        !isTimerActiveForSource(
-          [candidate.sourceKey, ...(candidate.sourceAliases ?? [])],
-          candidate.projectId,
-        ),
-      );
-      const todayTarget = todayGuidanceActive
-        ? todayAdoptionDropTargetFromPoint(event.clientX, event.clientY)
-        : null;
-      const wishlistEligible = Boolean(
-        project?.nextStep?.text.trim() && !sourceEditBlocked(drag.sourceKey),
-      );
-      const target =
-        overWishlist || overToday
-          ? null
-          : projectDropTargetFromPoint(event.clientX, event.clientY);
-      const placement = target ? resolveProjectDropPlacement(drag.id, target) : undefined;
-      setProjectPointerDrag({
-        id: drag.id,
-        pointerX: event.clientX,
-        pointerY: event.clientY,
-        offsetX: drag.offsetX,
-        offsetY: drag.offsetY,
-        width: drag.width,
-        height: drag.height,
-        targetId: todayTarget ? undefined : target?.id,
-        placement: todayTarget ? undefined : placement,
-        targetIndicator:
-          !todayTarget && target && target.id !== drag.id && placement
-            ? projectDropIndicator(target.id, placement)
-            : undefined,
-        wishlistTarget: overWishlist && wishlistEligible,
-        wishlistEligible,
-        todayTargetIndex: todayTarget?.insertionIndex,
-        todayTargetIndicator: todayTarget?.indicator,
-        todayGuidanceActive,
-      });
-      updateProjectAutoScroll(event.clientY);
-    }
-  };
-
-  const finishProjectPointerDrag = (event: PointerEvent<HTMLElement>) => {
-    const drag = projectPointerDragRef.current;
-    projectPointerDragRef.current = null;
-    setProjectPointerDrag(null);
-    stopProjectAutoScroll();
-
-    if (!drag) return;
-    event.preventDefault();
-    event.stopPropagation();
-    if (!drag.hasMoved) return;
-
-    const current = configRef.current;
-    const candidate = current ? todayCandidateFromConfig(current, drag.sourceKey) : undefined;
-    const matchingSourceKeys = candidate
-      ? new Set([candidate.sourceKey, ...(candidate.sourceAliases ?? [])])
-      : new Set<string>();
-    const todayTarget = todayAdoptionDropTargetFromPoint(event.clientX, event.clientY);
-    const canAdoptToday = Boolean(
-      candidate &&
-      current &&
-      current.today.date === drag.dayKey &&
-      current.today.items.length < TODAY_ITEM_LIMIT &&
-      !current.today.items.some((item, index) =>
-        matchingSourceKeys.has(todaySourceKey(item, index)),
-      ) &&
-      !isTimerActiveForSource(
-        [candidate.sourceKey, ...(candidate.sourceAliases ?? [])],
-        candidate.projectId,
-      ),
-    );
-    if (candidate && todayTarget && canAdoptToday) {
-      void addCandidateToToday(candidate, todayTarget.insertionIndex);
-      return;
-    }
-    if (pointWithinSelector(event.clientX, event.clientY, ".todayGrid")) return;
-
-    if (pointWithinSelector(event.clientX, event.clientY, ".inboxBand")) {
-      const project = configRef.current?.projects.find((candidate) => candidate.id === drag.id);
-      if (project?.nextStep?.text.trim() && !sourceEditBlocked(drag.sourceKey)) {
-        void removeProjectNextStep(project, "return");
-      } else if (project?.nextStep?.text.trim()) {
-        warnSourceEditBlocked(drag.sourceKey);
-      }
-      return;
-    }
-
-    const target = projectDropTargetFromPoint(event.clientX, event.clientY);
-    if (!target) return;
-    moveProject(drag.id, target.id, resolveProjectDropPlacement(drag.id, target));
-  };
-
-  const cancelProjectPointerDrag = () => {
-    if (!projectPointerDragRef.current) return;
-    projectPointerDragRef.current = null;
-    setProjectPointerDrag(null);
-    stopProjectAutoScroll();
-  };
-
-  const startInboxPointerDrag = (event: PointerEvent<HTMLDivElement>, index: number) => {
-    if (event.button !== 0 || isReorderBlockedTarget(event.target)) return;
-    const current = configRef.current;
-    const item = current?.inbox[index];
-    if (!current || !item?.id) return;
-    event.preventDefault();
-    event.stopPropagation();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    const rect = event.currentTarget.getBoundingClientRect();
-    inboxPointerDragRef.current = {
-      index,
-      sourceKey: `wishlist:${item.id}`,
-      origin: "wishlist",
-      dayKey: current.today.date,
-      startX: event.clientX,
-      startY: event.clientY,
-      hasMoved: false,
-      offsetX: event.clientX - rect.left,
-      offsetY: event.clientY - rect.top,
-      width: rect.width,
-      height: rect.height,
-    };
-  };
-
-  const updateInboxPointerDrag = (event: PointerEvent<HTMLDivElement>) => {
-    const drag = inboxPointerDragRef.current;
-    if (!drag) return;
-    const current = configRef.current;
-    const sourceId = drag.sourceKey.slice("wishlist:".length);
-    const sourceIndex = current?.inbox.findIndex((item) => item.id === sourceId) ?? -1;
-    if (sourceIndex < 0) {
-      cancelInboxPointerDrag();
-      return;
-    }
-    const distance = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
-    if (!drag.hasMoved && distance >= SIDEBAR_DRAG_THRESHOLD_PX) drag.hasMoved = true;
-    if (!drag.hasMoved) return;
-
-    const sourceItem = current?.inbox[sourceIndex];
-    const sourceEditable = Boolean(
-      sourceItem?.id && !sourceEditBlocked(`wishlist:${sourceItem.id}`),
-    );
-    const sourceProject = sourceItem?.projectId
-      ? current?.projects.find((project) => project.id === sourceItem.projectId)
-      : undefined;
-    const candidate = current ? todayCandidateFromConfig(current, drag.sourceKey) : undefined;
-    const matchingSourceKeys = candidate
-      ? new Set([candidate.sourceKey, ...(candidate.sourceAliases ?? [])])
-      : new Set<string>();
-    const todayGuidanceActive = Boolean(
-      candidate &&
-      current &&
-      current.today.date === drag.dayKey &&
-      current.today.items.length < TODAY_ITEM_LIMIT &&
-      !current.today.items.some((item, index) =>
-        matchingSourceKeys.has(todaySourceKey(item, index)),
-      ) &&
-      !isTimerActiveForSource(
-        [candidate.sourceKey, ...(candidate.sourceAliases ?? [])],
-        candidate.projectId,
-      ),
-    );
-    const todayTarget = todayGuidanceActive
-      ? todayAdoptionDropTargetFromPoint(event.clientX, event.clientY)
-      : null;
-    const nextStepEligible = Boolean(
-      sourceEditable && sourceProject && !sourceEditBlocked(`project:${sourceProject.id}`),
-    );
-    const nextStepTargetProjectId =
-      nextStepEligible && pointWithinSelector(event.clientX, event.clientY, ".projectsBand")
-        ? sourceProject?.id
-        : undefined;
-    const candidateTarget =
-      nextStepTargetProjectId || todayTarget
-        ? null
-        : inboxDropTargetFromPoint(event.clientX, event.clientY);
-    const projectIds = new Set((current?.projects ?? []).map((project) => project.id));
-    const targetItem = candidateTarget ? current?.inbox[candidateTarget.index] : undefined;
-    const target =
-      sourceItem &&
-      targetItem &&
-      wishlistGroupKey(sourceItem, projectIds) === wishlistGroupKey(targetItem, projectIds)
-        ? candidateTarget
-        : null;
-    setInboxPointerDrag({
-      index: sourceIndex,
-      sourceKey: drag.sourceKey,
-      pointerX: event.clientX,
-      pointerY: event.clientY,
-      offsetX: drag.offsetX,
-      offsetY: drag.offsetY,
-      width: drag.width,
-      height: drag.height,
-      targetIndex: todayTarget ? undefined : target?.index,
-      placement: todayTarget ? undefined : target?.placement,
-      targetIndicator:
-        !todayTarget && target && target.index !== drag.index ? target.indicator : undefined,
-      nextStepEligible,
-      nextStepTargetProjectId,
-      todayTargetIndex: todayTarget?.insertionIndex,
-      todayTargetIndicator: todayTarget?.indicator,
-      todayGuidanceActive,
-    });
-    updateProjectAutoScroll(event.clientY);
-  };
-
-  const finishInboxPointerDrag = (event: PointerEvent<HTMLDivElement>) => {
-    const drag = inboxPointerDragRef.current;
-    inboxPointerDragRef.current = null;
-    setInboxPointerDrag(null);
-    if (!drag) return;
-    event.preventDefault();
-    event.stopPropagation();
-    if (!drag.hasMoved) return;
-
-    stopProjectAutoScroll();
-
-    const current = configRef.current;
-    const sourceIndex =
-      current?.inbox.findIndex((item) => item.id === drag.sourceKey.slice("wishlist:".length)) ??
-      -1;
-    if (sourceIndex < 0) return;
-    const sourceItem = current?.inbox[sourceIndex];
-    const candidate = current ? todayCandidateFromConfig(current, drag.sourceKey) : undefined;
-    const matchingSourceKeys = candidate
-      ? new Set([candidate.sourceKey, ...(candidate.sourceAliases ?? [])])
-      : new Set<string>();
-    const todayTarget = todayAdoptionDropTargetFromPoint(event.clientX, event.clientY);
-    const canAdoptToday = Boolean(
-      candidate &&
-      current &&
-      current.today.date === drag.dayKey &&
-      current.today.items.length < TODAY_ITEM_LIMIT &&
-      !current.today.items.some((item, index) =>
-        matchingSourceKeys.has(todaySourceKey(item, index)),
-      ) &&
-      !isTimerActiveForSource(
-        [candidate.sourceKey, ...(candidate.sourceAliases ?? [])],
-        candidate.projectId,
-      ),
-    );
-    if (candidate && todayTarget && canAdoptToday) {
-      void addCandidateToToday(candidate, todayTarget.insertionIndex);
-      return;
-    }
-    if (pointWithinSelector(event.clientX, event.clientY, ".todayGrid")) return;
-    const sourceProject = sourceItem?.projectId
-      ? current?.projects.find((project) => project.id === sourceItem.projectId)
-      : undefined;
-    const overNextStep = pointWithinSelector(event.clientX, event.clientY, ".projectsBand");
-    if (
-      overNextStep &&
-      sourceItem?.id &&
-      sourceProject &&
-      !sourceEditBlocked(`wishlist:${sourceItem.id}`) &&
-      !sourceEditBlocked(`project:${sourceProject.id}`)
-    ) {
-      void promoteWishlistToProject(sourceItem.id);
-      return;
-    }
-    if (overNextStep) {
-      const blockReason = sourceItem?.id
-        ? (sourceEditBlockReason(`wishlist:${sourceItem.id}`) ??
-          (sourceProject ? sourceEditBlockReason(`project:${sourceProject.id}`) : null))
-        : null;
-      showToast("warn", blockReason ?? "このやりたいことは次の一手へ移動できません");
-      return;
-    }
-    const target = inboxDropTargetFromPoint(event.clientX, event.clientY);
-    if (!target) return;
-    const placement =
-      sourceIndex === target.index
-        ? target.placement
-        : sourceIndex < target.index
-          ? "after"
-          : "before";
-    moveInboxItem(sourceIndex, target.index, placement);
-  };
-
-  const cancelInboxPointerDrag = () => {
-    if (!inboxPointerDragRef.current) return;
-    inboxPointerDragRef.current = null;
-    setInboxPointerDrag(null);
-    stopProjectAutoScroll();
-  };
-
-  const toggleWishlistGroup = (key: string) => {
-    setWishlistGroupViews((current) => ({
-      ...current,
-      [key]: {
-        ...current[key],
-        collapsed: !current[key]?.collapsed,
-      },
-    }));
-  };
-
-  const startWishlistGroupPointerDrag = (
-    event: PointerEvent<HTMLElement>,
-    key: string,
-    name: string,
-  ) => {
-    if (event.button !== 0 || key === "unassigned") return;
-    const header = (event.target as Element).closest<HTMLElement>(".wishlistGroupHeader");
-    if (!header || !event.currentTarget.contains(header)) return;
-    event.preventDefault();
-    event.stopPropagation();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    const rect = header.getBoundingClientRect();
-    wishlistGroupPointerDragRef.current = {
-      key,
-      name,
-      startX: event.clientX,
-      startY: event.clientY,
-      hasMoved: false,
-      offsetX: event.clientX - rect.left,
-      offsetY: event.clientY - rect.top,
-      width: rect.width,
-      height: rect.height,
-    };
-  };
-
-  const updateWishlistGroupPointerDrag = (event: PointerEvent<HTMLElement>) => {
-    const drag = wishlistGroupPointerDragRef.current;
-    if (!drag) return;
-    const distance = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
-    if (!drag.hasMoved && distance >= SIDEBAR_DRAG_THRESHOLD_PX) drag.hasMoved = true;
-    if (!drag.hasMoved) return;
-    const target = wishlistGroupDropTargetFromPoint(event.clientX, event.clientY);
-    setWishlistGroupPointerDrag({
-      key: drag.key,
-      name: drag.name,
-      pointerX: event.clientX,
-      pointerY: event.clientY,
-      offsetX: drag.offsetX,
-      offsetY: drag.offsetY,
-      width: drag.width,
-      height: drag.height,
-      targetKey: target?.key,
-      placement: target?.placement,
-      targetIndicator: target && target.key !== drag.key ? target.indicator : undefined,
-    });
-    updateProjectAutoScroll(event.clientY);
-  };
-
-  const finishWishlistGroupPointerDrag = (event: PointerEvent<HTMLElement>) => {
-    const drag = wishlistGroupPointerDragRef.current;
-    wishlistGroupPointerDragRef.current = null;
-    setWishlistGroupPointerDrag(null);
-    stopProjectAutoScroll();
-    if (!drag) return;
-    event.preventDefault();
-    event.stopPropagation();
-    if (!drag.hasMoved) {
-      toggleWishlistGroup(drag.key);
-      return;
-    }
-    const target = wishlistGroupDropTargetFromPoint(event.clientX, event.clientY);
-    if (target && target.key !== drag.key) {
-      moveWishlistGroup(drag.key, target.key, target.placement);
-    }
-  };
-
-  const cancelWishlistGroupPointerDrag = () => {
-    wishlistGroupPointerDragRef.current = null;
-    setWishlistGroupPointerDrag(null);
-    stopProjectAutoScroll();
-  };
-
-  const confirmDropRegistration = async () => {
-    if (!config || !dropDraft) return;
-    if (builderBusy) return;
-    let resolved = dropDraft;
-    if (builderKind) {
-      const source = builderSource.trim();
-      if (!source) {
-        showToast("warn", "登録先を入力してください");
-        return;
-      }
-      try {
-        setBuilderBusy(true);
-        const target = await resolveDropItem(
-          builderKind === "url" ? { kind: "url", value: source } : { kind: "path", value: source },
-        );
-        if (
-          (builderKind === "folder" && target.action.type !== "open_folder") ||
-          (builderKind === "file" &&
-            target.action.type === "open_folder" &&
-            !source.toLowerCase().endsWith(".lnk"))
-        ) {
-          showToast(
-            "warn",
-            builderKind === "file" ? "ファイルを選んでください" : "フォルダを選んでください",
-          );
-          return;
-        }
-        resolved = {
-          ...dropDraft,
-          action: target.action,
-          iconSource: target.iconSource,
-          source: target.source,
-        };
-      } catch (error) {
-        showToast(
-          "error",
-          `登録先を確認できません: ${error instanceof Error ? error.message : String(error)}`,
-        );
-        return;
-      } finally {
-        setBuilderBusy(false);
-      }
-    }
-    const label = resolved.label.trim();
-    if (!label) {
-      showToast("warn", "ラベルを入力してください");
-      return;
-    }
-
-    const group =
-      dropDraft.groupMode === "existing"
-        ? dropDraft.existingGroup.trim()
-        : dropDraft.newGroup.trim();
-    const button: LauncherButton = {
-      id: uniqueButtonId(label, config.buttons),
-      label,
-      icon: iconForAction(resolved.action),
-      iconSource: resolved.iconSource ?? undefined,
-      group: group && group !== DEFAULT_BUTTON_GROUP ? group : undefined,
-      showInSidebar: dropDraft.showInSidebar,
-      showInOverlay: dropDraft.showInOverlay,
-      overlayPageId: dropDraft.overlayPageId ?? undefined,
-      aliases: [],
-      actions: [resolved.action],
-    };
-
-    const saved = await persistConfig({
-      ...config,
-      groups:
-        group && !config.groups.includes(group) && group !== DEFAULT_BUTTON_GROUP
-          ? [...config.groups, group]
-          : config.groups,
-      buttons: [...config.buttons, button],
-    });
-    if (!saved) return;
-    setDropDraft(null);
-    setBuilderKind(null);
-    setBuilderModeDrafts({});
-    void refreshButtonIcon(button, true);
-    showToast("ok", `${label} を登録しました`);
-  };
-
-  const deleteButton = (button: LauncherButton) => {
-    if (!config) return;
-    setContextMenu(null);
-    requestConfirmation({
-      title: "ボタンを削除しますか？",
-      subject: `「${button.label}」`,
-      message: "この操作は元に戻せません。",
-      confirmLabel: "削除する",
-      processingLabel: "削除しています…",
-      tone: "danger",
-      onConfirm: async () => {
-        const saved = await persistConfig({
-          ...config,
-          buttons: config.buttons.filter((item) => item.id !== button.id),
-          projects: config.projects.map((project) => ({
-            ...project,
-            ...(project.nextStep
-              ? {
-                  nextStep: {
-                    ...project.nextStep,
-                    buttonIds: project.nextStep.buttonIds.filter(
-                      (buttonId) => buttonId !== button.id,
-                    ),
-                  },
-                }
-              : {}),
-            ...(project.legacyNextStepSettings
-              ? {
-                  legacyNextStepSettings: {
-                    ...project.legacyNextStepSettings,
-                    buttonIds: project.legacyNextStepSettings.buttonIds.filter(
-                      (buttonId) => buttonId !== button.id,
-                    ),
-                  },
-                }
-              : {}),
-          })),
-        });
-        if (!saved) {
-          setConfig(config);
-          return false;
-        }
-        void deleteButtonIconCache(button.id);
-        setButtonIconSources((current) => {
-          const next = { ...current };
-          delete next[button.id];
-          return next;
-        });
-        setContextMenu(null);
-        showToast("danger", `${button.label} を削除しました`);
-        return true;
-      },
-    });
-  };
-
-  const openGroupDialog = () => {
-    if (!config) return;
-    setContextMenu(null);
-    setGroupDraft("");
-  };
-
-  const openButtonBuilder = (groupName?: string) => {
-    if (!config) return;
-    const group = groupName || groupNames[0] || DEFAULT_BUTTON_GROUP;
-    setContextMenu(null);
-    setBuilderKind("file");
-    setBuilderSource("");
-    setBuilderLabelTouched(false);
-    setBuilderModeDrafts({});
-    setDropDraft({
-      label: "",
-      group,
-      groupMode: "existing",
-      existingGroup: group,
-      newGroup: "",
-      iconSource: null,
-      action: { type: "open_file", payload: { path: "" } },
-      source: "",
-      showInSidebar: true,
-      showInOverlay: true,
-      overlayPageId: null,
-    });
-  };
-
-  const updateBuilderSource = (source: string) => {
-    setBuilderSource(source);
-    if (!dropDraft || !builderKind) return;
-    const basename = source.trim().replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? "";
-    let suggestion = basename.replace(/\.[^.]+$/, "");
-    if (builderKind === "url") {
-      try {
-        suggestion = new URL(source).hostname;
-      } catch {
-        suggestion = "";
-      }
-    }
-    if (!builderLabelTouched) setDropDraft({ ...dropDraft, label: suggestion });
-  };
-
-  const switchBuilderKind = (kind: "file" | "folder" | "url") => {
-    if (!builderKind || !dropDraft || builderKind === kind) return;
-    const restored = builderModeDrafts[kind];
-    setBuilderModeDrafts({
-      ...builderModeDrafts,
-      [builderKind]: {
-        source: builderSource,
-        label: dropDraft.label,
-        labelTouched: builderLabelTouched,
-      },
-    });
-    setBuilderKind(kind);
-    setBuilderSource(restored?.source ?? "");
-    setBuilderLabelTouched(restored?.labelTouched ?? false);
-    setDropDraft({ ...dropDraft, label: restored?.label ?? "" });
-  };
-
-  const pickBuilderSource = async () => {
-    if (!builderKind || builderKind === "url") return;
-    try {
-      const source = await chooseLauncherTarget(builderKind);
-      if (source) updateBuilderSource(source);
-    } catch (error) {
-      showToast("error", `選択できません: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  };
-
-  const confirmGroupAddition = () => {
-    if (!config || groupDraft === null) return;
-
-    const groupName = groupDraft.trim();
-    if (!groupName) return;
-
-    if (groupNames.includes(groupName)) {
-      showToast("warn", `${groupName} はすでにあります`);
-      return;
-    }
-
-    setCollapsedGroups((current) => {
-      const next = { ...current, [groupName]: false };
-      writeCollapsedGroups(next);
-      return next;
-    });
-
-    void persistConfig({
-      ...config,
-      groups: [...config.groups, groupName],
-    });
-    setGroupDraft(null);
-    showToast("ok", `${groupName} を追加しました`);
-  };
-
-  const deleteGroup = (groupName: string) => {
-    if (!config) return;
-    const cleanGroupName = groupName.trim();
-    if (!cleanGroupName) return;
-
-    if (cleanGroupName === DEFAULT_BUTTON_GROUP) {
-      showToast("warn", `${DEFAULT_BUTTON_GROUP} は削除できません`);
-      return;
-    }
-
-    if (!groupNames.includes(cleanGroupName)) {
-      showToast("warn", `${cleanGroupName} は見つかりません`);
-      return;
-    }
-
-    const affectedButtons = config.buttons.filter(
-      (button) => buttonGroupName(button) === cleanGroupName,
-    );
-    requestConfirmation({
-      title: "グループを削除しますか？",
-      subject: `「${cleanGroupName}」`,
-      message:
-        affectedButtons.length > 0
-          ? `${affectedButtons.length}個のボタンは「${DEFAULT_BUTTON_GROUP}」へ移動します。この操作は元に戻せません。`
-          : "この操作は元に戻せません。",
-      confirmLabel: "削除する",
-      processingLabel: "削除しています…",
-      tone: "danger",
-      onConfirm: async () => {
-        const nextButtons = config.buttons.map((button) =>
-          buttonGroupName(button) === cleanGroupName ? { ...button, group: undefined } : button,
-        );
-        const nextGroups = config.groups.filter((name) => name.trim() !== cleanGroupName);
-        const saved = await persistConfig({ ...config, groups: nextGroups, buttons: nextButtons });
-        if (!saved) {
-          setConfig(config);
-          return false;
-        }
-        setCollapsedGroups((current) => {
-          const next = { ...current };
-          delete next[cleanGroupName];
-          writeCollapsedGroups(next);
-          return next;
-        });
-        setContextMenu(null);
-        showToast("danger", `${cleanGroupName} を削除しました`);
-        return true;
-      },
-    });
-  };
-
-  const openGroupRenameDialog = (groupName?: string) => {
-    const cleanName = groupName?.trim();
-    if (!cleanName || cleanName === DEFAULT_BUTTON_GROUP) {
-      showToast("warn", `${DEFAULT_BUTTON_GROUP} は名前を変更できません`);
-      setContextMenu(null);
-      return;
-    }
-
-    setContextMenu(null);
-    setGroupRenameDraft({ from: cleanName, to: cleanName });
-  };
-
-  const confirmGroupRename = () => {
-    if (!config || !groupRenameDraft) return;
-    const from = groupRenameDraft.from.trim();
-    const to = groupRenameDraft.to.trim();
-    if (!to) return;
-    if (from === DEFAULT_BUTTON_GROUP || to === DEFAULT_BUTTON_GROUP) {
-      showToast("warn", `${DEFAULT_BUTTON_GROUP} は変更できません`);
-      return;
-    }
-    if (from !== to && groupNames.includes(to)) {
-      showToast("warn", `${to} はすでにあります`);
-      return;
-    }
-
-    const nextGroups = config.groups.map((group) => (group.trim() === from ? to : group));
-    const nextButtons = config.buttons.map((button) =>
-      buttonGroupName(button) === from
-        ? { ...button, group: to === DEFAULT_BUTTON_GROUP ? undefined : to }
-        : button,
-    );
-
-    setCollapsedGroups((current) => {
-      const next = { ...current };
-      if (Object.prototype.hasOwnProperty.call(next, from)) {
-        next[to] = next[from];
-        delete next[from];
-      }
-      writeCollapsedGroups(next);
-      return next;
-    });
-
-    setGroupRenameDraft(null);
-    void persistConfig({
-      ...config,
-      groups: nextGroups,
-      buttons: nextButtons,
-    });
-    showToast("ok", `${from} を ${to} に変更しました`);
-  };
-
-  const moveSidebarButtonToDictionary = async (button: LauncherButton) => {
-    if (!config || !showButtonInSidebar(button)) return;
-    const previousConfig = config;
-    setContextMenu(null);
-    const dictionaryOrder =
-      config.dictionaryOrder ?? config.buttons.filter(showButtonInOverlay).map((item) => item.id);
-    const nextDictionaryOrder = dictionaryOrder.includes(button.id)
-      ? dictionaryOrder
-      : [...dictionaryOrder, button.id];
-    const saved = await persistConfig({
-      ...config,
-      dictionaryOrder: nextDictionaryOrder,
-      buttons: config.buttons.map((item) =>
-        item.id === button.id ? { ...item, showInSidebar: false, showInOverlay: true } : item,
-      ),
-    });
-    if (!saved) {
-      setConfig(previousConfig);
-      return;
-    }
-    showToast("ok", `${button.label} を辞書に移動しました`);
-  };
-
-  const openButtonEditDialog = (button: LauncherButton) => {
-    setContextMenu(null);
-    const group = buttonGroupName(button);
-    const draft: ButtonEditDraft = {
-      id: button.id,
-      label: button.label,
-      groupMode: "existing",
-      existingGroup: group,
-      newGroup: "",
-      showInSidebar: showButtonInSidebar(button),
-      showInOverlay: showButtonInOverlay(button),
-      overlayPageId: overlayPages.some((page) => page.id === button.overlayPageId)
-        ? (button.overlayPageId ?? null)
-        : null,
-      aliasesInput: aliasesListToInput(button.aliases),
-      description: button.description ?? "",
-      actions: button.actions.map(toActionDraft),
-    };
-    setButtonEditDraft(draft);
-    setButtonEditInitialDraft(draft);
-  };
-
-  const saveButtonEdit = async () => {
-    if (!config || !buttonEditDraft) return;
-    const label = buttonEditDraft.label.trim();
-    if (!label) {
-      showToast("warn", "ラベルを入力してください");
-      return;
-    }
-
-    const actions = buttonEditDraft.actions.map(stripActionDraft);
-    if (actions.some((action) => !actionValue(action).trim())) {
-      showToast("warn", "アクション内容を入力してください");
-      return;
-    }
-
-    const originalButton = config.buttons.find((button) => button.id === buttonEditDraft.id);
-    const actionsChanged =
-      JSON.stringify(originalButton?.actions ?? []) !== JSON.stringify(actions);
-    const group =
-      buttonEditDraft.groupMode === "existing"
-        ? buttonEditDraft.existingGroup.trim()
-        : buttonEditDraft.newGroup.trim();
-    if (buttonEditDraft.groupMode === "new" && groupNames.includes(group)) {
-      showToast("warn", `${group} はすでにあります`);
-      return;
-    }
-    const aliases = aliasesInputToList(buttonEditDraft.aliasesInput);
-    const description = normalizeOptionalText(buttonEditDraft.description);
-    const nextButtons = config.buttons.map((button) =>
-      button.id === buttonEditDraft.id
-        ? {
-            ...button,
-            label,
-            group: group && group !== DEFAULT_BUTTON_GROUP ? group : undefined,
-            showInSidebar: buttonEditDraft.showInSidebar,
-            showInOverlay: buttonEditDraft.showInOverlay,
-            overlayPageId: buttonEditDraft.overlayPageId ?? undefined,
-            aliases,
-            description,
-            actions,
-          }
-        : button,
-    );
-    const nextGroups =
-      group && group !== DEFAULT_BUTTON_GROUP && !config.groups.includes(group)
-        ? [...config.groups, group]
-        : config.groups;
-    const nextProjects =
-      buttonEditDraft.showInSidebar || buttonEditDraft.showInOverlay
-        ? config.projects
-        : config.projects.map((project) => ({
-            ...project,
-            ...(project.nextStep
-              ? {
-                  nextStep: {
-                    ...project.nextStep,
-                    buttonIds: project.nextStep.buttonIds.filter(
-                      (buttonId) => buttonId !== buttonEditDraft.id,
-                    ),
-                  },
-                }
-              : {}),
-            ...(project.legacyNextStepSettings
-              ? {
-                  legacyNextStepSettings: {
-                    ...project.legacyNextStepSettings,
-                    buttonIds: project.legacyNextStepSettings.buttonIds.filter(
-                      (buttonId) => buttonId !== buttonEditDraft.id,
-                    ),
-                  },
-                }
-              : {}),
-          }));
-
-    const saved = await persistConfig({
-      ...config,
-      groups: nextGroups,
-      buttons: nextButtons,
-      projects: nextProjects,
-    });
-    if (!saved) return;
-    setButtonEditDraft(null);
-    setButtonEditInitialDraft(null);
-    const updatedButton = nextButtons.find((button) => button.id === buttonEditDraft.id);
-    if (updatedButton && actionsChanged) {
-      void refreshButtonIcon(updatedButton, true);
-    }
-
-    if (actions.some(actionHasSuspiciousPath)) {
-      showToast("warn", "保存しました。開けない場合はパスまたはURLを確認してください");
-    } else {
-      showToast("ok", `${label} を保存しました`);
-    }
-  };
-
-  const updateButtonAction = (draftIdValue: string, action: ActionDraft) => {
-    setButtonEditDraft((draft) =>
-      draft
-        ? {
-            ...draft,
-            actions: draft.actions.map((item) => (item.draftId === draftIdValue ? action : item)),
-          }
-        : draft,
-    );
-  };
-
-  const moveButtonAction = (draftIdValue: string, delta: -1 | 1) => {
-    setButtonEditDraft((draft) => {
-      if (!draft) return draft;
-      const index = draft.actions.findIndex((action) => action.draftId === draftIdValue);
-      const nextIndex = index + delta;
-      if (index < 0 || nextIndex < 0 || nextIndex >= draft.actions.length) return draft;
-      const actions = [...draft.actions];
-      const [action] = actions.splice(index, 1);
-      actions.splice(nextIndex, 0, action);
-      return { ...draft, actions };
-    });
-  };
-
-  const moveButtonActionTo = (draggedId: string, targetId: string) => {
-    if (draggedId === targetId) return;
-    setButtonEditDraft((draft) => {
-      if (!draft) return draft;
-      const fromIndex = draft.actions.findIndex((action) => action.draftId === draggedId);
-      const toIndex = draft.actions.findIndex((action) => action.draftId === targetId);
-      if (fromIndex < 0 || toIndex < 0) return draft;
-
-      const actions = [...draft.actions];
-      const [action] = actions.splice(fromIndex, 1);
-      actions.splice(toIndex, 0, action);
-      return { ...draft, actions };
-    });
-  };
+  const {
+    confirmDropRegistration,
+    confirmGroupAddition,
+    confirmGroupRename,
+    deleteButton,
+    deleteGroup,
+    moveButtonAction,
+    moveButtonActionTo,
+    moveSidebarButtonToDictionary,
+    openButtonBuilder,
+    openButtonEditDialog,
+    openGroupDialog,
+    openGroupRenameDialog,
+    pickBuilderSource,
+    saveButtonEdit,
+    switchBuilderKind,
+    updateBuilderSource,
+    updateButtonAction,
+  } = useLauncherButtons({
+    actions: { persistConfig, refreshButtonIcon, requestConfirmation, showToast },
+    setters: {
+      setBuilderBusy,
+      setBuilderKind,
+      setBuilderLabelTouched,
+      setBuilderModeDrafts,
+      setBuilderSource,
+      setButtonEditDraft,
+      setButtonEditInitialDraft,
+      setButtonIconSources,
+      setCollapsedGroups,
+      setConfig,
+      setContextMenu,
+      setDropDraft,
+      setGroupDraft,
+      setGroupRenameDraft,
+    },
+    state: {
+      builderBusy,
+      builderKind,
+      builderLabelTouched,
+      builderModeDrafts,
+      builderSource,
+      buttonEditDraft,
+      config,
+      dropDraft,
+      groupDraft,
+      groupNames,
+      groupRenameDraft,
+      overlayPages,
+    },
+  });
 
   // P10-09 (§8.1): preselect the first wishlist item, else "repeat", else "write".
   useEffect(() => {
@@ -5712,7 +3398,7 @@ function DashboardApp() {
     }
   };
 
-  const removeTodayItem = async (sourceKey: string) => {
+  async function removeTodayItem(sourceKey: string) {
     const current = configRef.current;
     if (!current) return;
     const index = current.today.items.findIndex(
@@ -5769,7 +3455,7 @@ function DashboardApp() {
           }),
       });
     }
-  };
+  }
 
   const beginTodayTriggerEdit = (index: number) => {
     if (!config) return;
@@ -5846,7 +3532,7 @@ function DashboardApp() {
     closeInboxAddDialog(true);
   };
 
-  const sourceEditBlockReason = (key: string, allowTodaySourceSync = false) => {
+  function sourceEditBlockReason(key: string, allowTodaySourceSync = false) {
     const current = configRef.current;
     if (sourceEditBusyRef.current !== null) return "保存処理が完了してから変更してください";
     if (
@@ -5860,16 +3546,17 @@ function DashboardApp() {
       return SOURCE_LOCK_REASON;
     }
     return null;
-  };
+  }
 
-  const sourceEditBlocked = (key: string, allowTodaySourceSync = false) =>
-    sourceEditBlockReason(key, allowTodaySourceSync) !== null;
+  function sourceEditBlocked(key: string, allowTodaySourceSync = false) {
+    return sourceEditBlockReason(key, allowTodaySourceSync) !== null;
+  }
 
-  const warnSourceEditBlocked = (key: string, allowTodaySourceSync = false) => {
+  function warnSourceEditBlocked(key: string, allowTodaySourceSync = false) {
     const reason = sourceEditBlockReason(key, allowTodaySourceSync);
     if (reason) showToast("warn", reason);
     return Boolean(reason);
-  };
+  }
 
   const saveSourceEdit = async (previous: AppConfig, next: AppConfig, key: string) => {
     const allowTodaySourceSync = sourceEditOriginRef.current === "today";
@@ -5966,13 +3653,13 @@ function DashboardApp() {
     showToast("ok", "変更を保存しました", { detail });
   };
 
-  const isTimerActiveForSource = (sourceKeys: string[], projectId?: string) => {
+  function isTimerActiveForSource(sourceKeys: string[], projectId?: string) {
     if (!activeTimer) return false;
     return (
       (projectId !== undefined && activeTimer.sourceId === projectId) ||
       sourceKeys.some((sourceKey) => activeTimer.sourceId === `today:${sourceKey}`)
     );
-  };
+  }
 
   const withoutSourceFromToday = (currentConfig: AppConfig, sourceKeys: string[]) => {
     const matchingSourceKeys = new Set(sourceKeys);
@@ -6130,7 +3817,7 @@ function DashboardApp() {
     });
   };
 
-  const addCandidateToToday = async (candidate: TodayCandidate, insertionIndex?: number) => {
+  async function addCandidateToToday(candidate: TodayCandidate, insertionIndex?: number) {
     const current = configRef.current;
     if (!current || !candidate.text.trim()) return false;
     if (current.today.items.length >= TODAY_ITEM_LIMIT) {
@@ -6188,7 +3875,7 @@ function DashboardApp() {
     }
     if (saved) showToast("ok", "今日の3件に追加しました");
     return saved;
-  };
+  }
 
   const todayItemFromCandidate = (candidate: TodayCandidate): TodayItem => ({
     text: candidate.text,
@@ -6591,7 +4278,7 @@ function DashboardApp() {
     void refreshInstructionChoices();
   };
 
-  const promoteWishlistToProject = async (wishlistId: string) => {
+  async function promoteWishlistToProject(wishlistId: string) {
     const current = configRef.current;
     const item = current?.inbox.find((candidate) => candidate.id === wishlistId);
     const project = item?.projectId
@@ -6671,7 +4358,7 @@ function DashboardApp() {
     } finally {
       sourceEditBusyRef.current = null;
     }
-  };
+  }
 
   const selectNextStepProject = (projectId: string) => {
     if (!nextStepEditDraft || nextStepEditDraft.projectLocked) return;
@@ -6914,7 +4601,7 @@ function DashboardApp() {
     }
   };
 
-  const removeProjectNextStep = async (project: LauncherProject, choice: "return" | "delete") => {
+  async function removeProjectNextStep(project: LauncherProject, choice: "return" | "delete") {
     const current = configRef.current;
     const liveProject = current?.projects.find((candidate) => candidate.id === project.id);
     if (!current || !liveProject?.nextStep?.text.trim()) return false;
@@ -6944,7 +4631,7 @@ function DashboardApp() {
       );
     }
     return saved;
-  };
+  }
 
   const clearProjectNextStep = (project: LauncherProject) => {
     const current = configRef.current;
@@ -7630,117 +5317,7 @@ function DashboardApp() {
       ? nextStep.sourceWishlistId === item.id
       : nextStep.text.trim() === item.text.trim();
   };
-  const renderTodayPickerSelectedItem = (item: TodayItem, index: number) => {
-    const project = item.projectId ? projectsById.get(item.projectId) : undefined;
-    const pickerItemRunning = timerRunsTodayItem(
-      todayEntries(todayPickerDraftItems),
-      activeTimer,
-      todayTimerSourceId(item, index),
-      todaySourceKey(item, index),
-    );
-    return (
-      <div
-        className={[
-          "todayPickerSlot todayPickerSlot--selected todayPickerRow todayPickerRow--selected",
-          todayPickerDragIndex === index ? "todayPickerSlot--dragging" : "",
-        ]
-          .filter(Boolean)
-          .join(" ")}
-        data-project-color={
-          project ? resolveProjectColorId(project.id, project.colorId) : undefined
-        }
-        data-today-picker-slot-index={index}
-        draggable={!todayPickerSaving}
-        key={`today-selected:${todaySourceKey(item, index)}`}
-        onDragEnd={() => setTodayPickerDragIndex(null)}
-        onDragOver={(event) => {
-          if (todayPickerDragIndex === null) return;
-          event.preventDefault();
-        }}
-        onDragStart={(event) => {
-          event.dataTransfer.effectAllowed = "move";
-          event.dataTransfer.setData("text/plain", String(index));
-          setTodayPickerDragIndex(index);
-        }}
-        onDrop={(event) => {
-          event.preventDefault();
-          moveTodayPickerItemToIndex(index);
-        }}
-        onKeyDown={(event) => {
-          if (!event.altKey || (event.key !== "ArrowUp" && event.key !== "ArrowDown")) return;
-          event.preventDefault();
-          moveTodayPickerItem(index, event.key === "ArrowUp" ? index - 1 : index + 1);
-        }}
-        tabIndex={0}
-      >
-        <span aria-hidden="true" className="todayPickerSlotIndex">
-          {index + 1}
-        </span>
-        <div className="todayPickerSlotCopy">
-          {project && (
-            <span className="todayPickerSlotProject">
-              <span aria-hidden="true" className="todayPickerDot" />
-              {project.name}
-            </span>
-          )}
-          <strong className="todayPickerSlotTask" title={item.text}>
-            {item.text}
-          </strong>
-        </div>
-        <button
-          aria-label="今日から外す"
-          className="todayPickerRemoveButton"
-          disabled={todayPickerSaving || pickerItemRunning}
-          onClick={() => removeTodayPickerDraftItem(index)}
-          onPointerDown={(event) => event.stopPropagation()}
-          title={pickerItemRunning ? "タイマーを停止してから外してください" : undefined}
-          type="button"
-        >
-          <UiIcon name="close" size={16} />
-        </button>
-      </div>
-    );
-  };
-  const renderTodayPickerCandidate = (candidate: TodayCandidate) => {
-    const project = candidate.projectId ? projectsById.get(candidate.projectId) : undefined;
-    const selected = todayPickerCandidateSelected(candidate);
-    return (
-      <div
-        className="todayPickerRow"
-        data-project-color={
-          project ? resolveProjectColorId(project.id, project.colorId) : "uncategorized"
-        }
-        key={candidate.key}
-      >
-        <div className="todayPickerCopy">
-          <span className="todayPickerProject">
-            <span aria-hidden="true" className="todayPickerDot" />
-            {project?.name ?? "未分類"}
-          </span>
-          <strong className="todayPickerTask" title={candidate.text}>
-            {candidate.text}
-          </strong>
-        </div>
-        {selected ? (
-          <span className="uiPill uiPill--good todayPickerSelectedStatus">✓ 選択済み</span>
-        ) : (
-          <button
-            className="todayPickerAddButton"
-            disabled={todayPickerSaving || todayPickerDraftItems.length >= TODAY_ITEM_LIMIT}
-            onClick={() => void chooseTodayCandidate(candidate)}
-            title={
-              todayPickerDraftItems.length >= TODAY_ITEM_LIMIT
-                ? "今日の3件は3件埋まっています"
-                : undefined
-            }
-            type="button"
-          >
-            ＋ 今日へ
-          </button>
-        )}
-      </div>
-    );
-  };
+
   const allTodayItemsCompleted =
     config.today.items.length === TODAY_ITEM_LIMIT && config.today.items.every((item) => item.done);
   const displayedDayKey = topMenuDayKey;
@@ -8184,189 +5761,39 @@ function DashboardApp() {
     target.scrollIntoView({ block: "start", inline: "nearest" });
   };
   // --- P10-03: the search window (D4) ---------------------------------------
-  const searchActions = [
-    { key: "mini", title: "ミニタイマーにする" },
-    { key: "records", title: "記録を開く" },
-    { key: "instructions", title: "手順書を開く" },
-    { key: "settings", title: "設定を開く" },
-    { key: "guide", title: "使い方を開く" },
-    { key: "dictionary", title: "辞書を開く" },
-  ];
-
-  const openSearchPalette = () => {
-    if (searchOpen) {
-      const input = document.querySelector<HTMLInputElement>(".searchPaletteInput");
-      input?.focus();
-      input?.select();
-      return;
-    }
-    const active = document.activeElement;
-    searchOpenerRef.current = active instanceof HTMLElement ? active : null;
-    setSearchQuery("");
-    setSearchOpen(true);
-    if (instructionChoices.length === 0 && !instructionChoicesLoading) {
-      void refreshInstructionChoices();
-    }
-  };
-  openSearchRef.current = openSearchPalette;
-
-  const closeSearchPalette = () => {
-    setSearchOpen(false);
-    const opener = searchOpenerRef.current;
-    searchOpenerRef.current = null;
-    if (opener && document.contains(opener)) opener.focus();
-  };
-
-  const searchNextStepItem = (project: LauncherProject): SearchItem | null => {
-    const step = project.nextStep;
-    if (!step || !step.text.trim()) return null;
-    return {
-      id: `nextStep:${project.id}`,
-      kind: "nextStep",
-      title: step.text.trim(),
-      subtitle: project.name,
-      meta: step.trigger?.trim() || undefined,
-    };
-  };
-
-  const buildSearchSections = (): SearchSection[] => {
-    const query = searchQuery.trim();
-    const sections: SearchSection[] = [];
-    const push = (id: string, title: string, items: SearchItem[]) => {
-      if (items.length === 0) return;
-      sections.push({ id, title, items: items.slice(0, SEARCH_GROUP_LIMIT), total: items.length });
-    };
-    const linkedToday = new Set(
-      config.today.items
-        .filter((item) => !item.done)
-        .map((item) => item.sourceKey?.trim())
-        .filter((key): key is string => Boolean(key)),
-    );
-
-    if (!query) {
-      const top = doNowSelection?.project;
-      const topItem = top ? searchNextStepItem(top) : null;
-      if (topItem) push("doNow", "今やる一手", [topItem]);
-      push("today3", "今日の3件の次の一手", config.projects
-        .filter((project) => linkedToday.has(`project:${project.id}`))
-        .map(searchNextStepItem)
-        .filter((item): item is SearchItem => item !== null));
-      return sections;
-    }
-
-    push("nextStep", "次の一手", config.projects
-      .filter((project) => {
-        const step = project.nextStep;
-        if (!step || !step.text.trim()) return false;
-        return matchesSearchQuery([project.name, step.text, step.trigger ?? ""].join("\n"), query);
-      })
-      .map(searchNextStepItem)
-      .filter((item): item is SearchItem => item !== null));
-
-    push("wishlist", "やりたいこと", config.inbox
-      .filter((item) => {
-        const project = item.projectId
-          ? config.projects.find((candidate) => candidate.id === item.projectId)
-          : undefined;
-        return matchesSearchQuery([item.text, project?.name ?? ""].join("\n"), query);
-      })
-      .map((item) => {
-        const project = item.projectId
-          ? config.projects.find((candidate) => candidate.id === item.projectId)
-          : undefined;
-        return {
-          id: `wishlist:${item.id}`,
-          kind: "wishlist" as const,
-          title: item.text,
-          subtitle: project?.name,
-        };
-      }));
-
-    push("button", "ボタン", searchOverlayButtons(
-      config.buttons,
-      config.overlayPages ?? [],
-      query,
-      config.dictionaryOrder,
-    ).map((button) => ({
-      id: `button:${button.id}`,
-      kind: "button" as const,
-      title: button.label,
-      subtitle: buttonGroupName(button),
-    })));
-
-    push("instruction", "手順書", instructionChoices
-      .filter((choice) => matchesSearchQuery(choice.label, query))
-      .map((choice) => ({
-        id: `instruction:${choice.path}`,
-        kind: "instruction" as const,
-        title: choice.label.split(" / ").pop() ?? choice.label,
-        subtitle: choice.label.split(" / ").slice(0, -1).join(" / "),
-      })));
-
-    push("action", "操作", searchActions
-      .filter((action) => matchesSearchQuery(action.title, query))
-      .map((action) => ({
-        id: `action:${action.key}`,
-        kind: "action" as const,
-        title: action.title,
-      })));
-
-    return sections;
-  };
-  const searchSections = buildSearchSections();
-
-  const runSearchItem = async (item: SearchItem, mode: "enter" | "shift") => {
-    if (searchBusy) return;
-    const missing = () => {
-      setSearchBusy(false);
-      showToast("warn", "見つかりません。一覧を作り直しました");
-      return;
-    };
-    setSearchBusy(true);
-    try {
-    if (item.kind === "nextStep") {
-      const projectId = item.id.replace("nextStep:", "");
-      const project = configRef.current?.projects.find((candidate) => candidate.id === projectId);
-      if (!project || !project.nextStep?.text.trim()) return missing();
-      closeSearchPalette();
-      startDoNowProject(project, mode === "shift" ? "normal" : "short");
-      return;
-    }
-    if (item.kind === "wishlist") {
-      const itemId = item.id.replace("wishlist:", "");
-      const index = (configRef.current?.inbox ?? []).findIndex((entry) => entry.id === itemId);
-      if (index < 0) return missing();
-      closeSearchPalette();
-      promoteInboxToNextStep(index);
-      return;
-    }
-    if (item.kind === "button") {
-      const buttonId = item.id.replace("button:", "");
-      const button = (configRef.current?.buttons ?? []).find((entry) => entry.id === buttonId);
-      if (!button) return missing();
-      closeSearchPalette();
-      void runActions(button.id, button.actions);
-      return;
-    }
-    if (item.kind === "instruction") {
-      const path = item.id.replace("instruction:", "");
-      if (!instructionChoices.some((choice) => choice.path === path)) return missing();
-      closeSearchPalette();
-      await openInstructionWindow({ path, focus: true });
-      return;
-    }
-    const key = item.id.replace("action:", "");
-    closeSearchPalette();
-    if (key === "mini") void toggleMiniMode();
-    else if (key === "records") setActiveView("records");
-    else if (key === "instructions") void openInstructionsManually();
-    else if (key === "settings") openSettingsCenter();
-    else if (key === "guide") setHelpGuideOpen(true);
-    else if (key === "dictionary") void openDictionaryManually();
-    } finally {
-      setSearchBusy(false);
-    }
-  };
+  const { closeSearchPalette, openSearchPalette, runSearchItem, searchSections } =
+    // useSearchPalette returns what a hook would, but it holds no React state of its own, so
+    // calling it after the loading guards keeps the effect order exactly as it was.
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useSearchPalette({
+      actions: {
+        openDictionaryManually,
+        openInstructionWindow,
+        openInstructionsManually,
+        openSettingsCenter,
+        promoteInboxToNextStep,
+        refreshInstructionChoices,
+        runActions,
+        setActiveView,
+        setHelpGuideOpen,
+        showToast,
+        startDoNowProject,
+        toggleMiniMode,
+      },
+      config,
+      configRef,
+      doNowSelection,
+      instructionChoices,
+      instructionChoicesLoading,
+      openSearchRef,
+      searchBusy,
+      searchOpenerRef,
+      searchOpen,
+      searchQuery,
+      setSearchBusy,
+      setSearchOpen,
+      setSearchQuery,
+    });
   return (
     <main
       className={
@@ -8463,482 +5890,71 @@ function DashboardApp() {
           role="presentation"
         />
       )}
-      <header
-        className="topBar"
-        data-tauri-drag-region=""
-        data-top-menu-labels={topMenuLabelLevel}
-        ref={topMenuBarRef}
-      >
-        <div
-          className="topBrand"
-          data-tauri-drag-region=""
-          onContextMenu={(event) => {
-            event.preventDefault();
-            openContextMenu(
-              { kind: "sidebar" },
-              event.clientX,
-              event.clientY,
-              event.currentTarget,
-            );
-          }}
-        >
-          <span className="topBrandIcon" aria-hidden="true" data-tauri-drag-region="">
-            <img alt="" draggable={false} src="/life-launcher-icon.svg" />
-          </span>
-          <span className="topBrandName" data-tauri-drag-region="">
-            Life Launcher
-          </span>
-          {testProfile?.testProfile && (
-            <span className="uiPill testProfileBadge" title="テスト用の起動（普段のデータとは別）">
-              テスト
-            </span>
-          )}
-          {shortcutRegistration && (
-            <ShortcutBadge
-              label="Life Launcherを表示/隠す"
-              shortcut={config?.settings.focusHotkey}
-              registered={shortcutRegistration.main}
-            />
-          )}
-        </div>
-        <button
-          aria-keyshortcuts="Control+F"
-          aria-label="一手・ボタン・手順書を検索(Ctrl+F)"
-          className="topSearchButton"
-          data-top-search=""
-          onClick={() => openSearchPalette()}
-          title="一手・ボタン・手順書を検索(Ctrl+F)"
-          type="button"
-        >
-          <UiIcon name="search" size={18} />
-          <span className="topSearchLabel">検索</span>
-          <ShortcutBadge label="検索" registered shortcut="Ctrl+F" tone="muted" />
-        </button>
-
-        <div className="topPills" data-tauri-drag-region="" ref={topMenuPillsRef}>
-          <div
-            aria-label={TOP_MENU_GROUP_LABELS.autoStart}
-            className="topPillGroup topPillGroup--autostart"
-            role="group"
-          >
-            <button
-              aria-label="Windows自動起動"
-              aria-pressed={config.settings.autoStart === true}
-              className={
-                config.settings.autoStart
-                  ? "viewToggleButton viewToggleButton--autoStart viewToggleButton--active"
-                  : "viewToggleButton viewToggleButton--autoStart"
-              }
-              onClick={() => void toggleAutoStart()}
-              title={config.settings.autoStart ? "Windows自動起動: ON" : "Windows自動起動: OFF"}
-              type="button"
-            >
-              <UiIcon name="power" size={18} />
-              {config.settings.autoStart && (
-                <span aria-hidden="true" className="autoStartDot" />
-              )}
-            </button>
-          </div>
-          <span aria-hidden="true" className="topPillsDivider" />
-          <div
-            aria-label={TOP_MENU_GROUP_LABELS.work}
-            className="topPillGroup topPillGroup--work"
-            role="group"
-          >
-            <button
-              className="viewToggleButton"
-              data-view-toggle=""
-              onClick={() => setActiveView((view) => (view === "records" ? "main" : "records"))}
-              title={activeView === "records" ? "メイン画面に戻る" : "記録ビューを開く"}
-              aria-label={activeView === "records" ? "メイン画面に戻る" : "記録ビューを開く"}
-              type="button"
-            >
-              <UiIcon name={activeView === "records" ? "back" : "records"} size={18} />
-              <span className="viewToggleButtonLabel">
-                {activeView === "records" ? TOP_MENU_LABELS.dashboard : TOP_MENU_LABELS.records}
-              </span>
-            </button>
-            <button
-              aria-label="手順書を開く"
-              className="viewToggleButton"
-              data-menu-label-secondary=""
-              onClick={() => void openInstructionsManually()}
-              title="手順書を開く"
-              type="button"
-            >
-              <UiIcon name="book" size={18} />
-              <span className="viewToggleButtonLabel">
-                {TOP_MENU_LABELS.instructions}
-              </span>
-            </button>
-            <button
-              className="viewToggleButton"
-              data-menu-label-secondary=""
-              onClick={openSettingsCenter}
-              title="設定を開く"
-              aria-label="設定を開く"
-              type="button"
-            >
-              <UiIcon name="settings" size={18} />
-              <span className="viewToggleButtonLabel">{TOP_MENU_LABELS.settings}</span>
-            </button>
-          </div>
-        </div>
-      </header>
+      <TopBar
+        activeView={activeView}
+        config={config}
+        openContextMenu={openContextMenu}
+        openInstructionsManually={openInstructionsManually}
+        openSearchPalette={openSearchPalette}
+        openSettingsCenter={openSettingsCenter}
+        setActiveView={setActiveView}
+        shortcutRegistration={shortcutRegistration}
+        testProfile={testProfile}
+        toggleAutoStart={toggleAutoStart}
+        topMenuBarRef={topMenuBarRef}
+        topMenuLabelLevel={topMenuLabelLevel}
+        topMenuPillsRef={topMenuPillsRef}
+      />
       <WindowControls closeShortcutDisabled={closeShortcutDisabled} />
 
       <div className="appBody">
-      <aside
-        className="sidebar"
-        onContextMenu={(event) => {
-          event.preventDefault();
-          openContextMenu(
-            { kind: "sidebar" },
-            event.clientX,
-            event.clientY,
-            event.currentTarget,
-          );
+      <SidebarQuickLaunch
+        actions={{
+          cancelNumberInputDrag,
+          cancelSidebarGroupPointerDrag,
+          cancelSidebarPointerDrag,
+          finishActiveTimer,
+          finishNumberInputDrag,
+          finishSidebarGroupPointerDrag,
+          finishSidebarPointerDrag,
+          openContextMenu,
+          openContextMenuFromKeyboard,
+          openDictionaryManually,
+          renderSidebarButtonIcon,
+          runActions,
+          saveDefaultTimerMinutes,
+          setDefaultTimerDraft,
+          setExpandedTimerOpen,
+          startNumberInputDrag,
+          startSidebarGroupPointerDrag,
+          startSidebarPointerDrag,
+          toggleGroupCollapsed,
+          toggleMiniMode,
+          togglePause,
+          updateNumberInputDrag,
+          updateSidebarGroupPointerDrag,
+          updateSidebarPointerDrag,
         }}
-        onKeyDown={(event) => openContextMenuFromKeyboard(event, { kind: "sidebar" })}
-        tabIndex={-1}
-      >
-        <button
-          className="launcherOpenButton"
-          onClick={() => void openDictionaryManually()}
-          type="button"
-        >
-          <span className="launcherOpenButtonLabel">
-            <span aria-hidden="true" className="launcherOpenButtonIcon">
-              <UiIcon name="search" size={16} />
-            </span>
-            <span>辞書を開く</span>
-          </span>
-          {shortcutRegistration && (
-            <ShortcutBadge
-              label="辞書"
-              shortcut={config?.settings.launcherHotkey}
-              registered={shortcutRegistration.launcher}
-            />
-          )}
-        </button>
-
-        <div className="quickList app-scrollbar" aria-label="クイック起動">
-          {visibleSidebarButtonGroups.length === 0 ? (
-            <p className="quietText quietText--small">
-              サイドバー表示の項目がありません。アプリ、ショートカット、URLをドラッグして追加できます。
-            </p>
-          ) : (
-            visibleSidebarButtonGroups.map((group) => {
-              const collapsed = collapsedGroups[group.name] ?? false;
-              // P10-02: while a sidebar drag is in flight the open/close is instant (D33).
-              const sidebarDragActive =
-                sidebarPointerDrag !== null || sidebarGroupPointerDrag !== null;
-              return (
-                <section
-                  className={[
-                    "quickGroup",
-                    sidebarGroupPointerDrag?.group === group.name ? "quickGroup--dragging" : "",
-                    sidebarGroupPointerDrag?.targetGroupName === group.name
-                      ? sidebarGroupPointerDrag.placement === "after"
-                        ? "quickGroup--drop-after"
-                        : "quickGroup--drop-before"
-                      : "",
-                    sidebarPointerDrag?.targetGroupName === group.name &&
-                    !sidebarPointerDrag.targetButtonId
-                      ? "quickGroup--item-drop-target"
-                      : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                  data-sidebar-group-section={group.name}
-                  key={group.name}
-                  onContextMenu={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    openContextMenu(
-                      { kind: "sidebar", groupName: group.name },
-                      event.clientX,
-                      event.clientY,
-                      event.currentTarget.querySelector<HTMLElement>(".quickGroupHeader"),
-                    );
-                  }}
-                >
-                  <button
-                    aria-expanded={!collapsed}
-                    className="quickGroupHeader"
-                    data-sidebar-group-name={group.name}
-                    onClick={(event) => {
-                      if (event.detail === 0) toggleGroupCollapsed(group.name);
-                    }}
-                    onContextMenu={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      openContextMenu(
-                        { kind: "sidebar", groupName: group.name },
-                        event.clientX,
-                        event.clientY,
-                        event.currentTarget,
-                      );
-                    }}
-                    onKeyDown={(event) =>
-                      openContextMenuFromKeyboard(event, {
-                        kind: "sidebar",
-                        groupName: group.name,
-                      })
-                    }
-                    onPointerCancel={cancelSidebarGroupPointerDrag}
-                    onPointerDown={(event) => startSidebarGroupPointerDrag(event, group.name)}
-                    onPointerMove={updateSidebarGroupPointerDrag}
-                    onPointerUp={(event) => finishSidebarGroupPointerDrag(event, group.name)}
-                    title={group.name}
-                    type="button"
-                  >
-                    <UiIcon name={collapsed ? "chevronRight" : "chevronDown"} size={16} />
-                    <strong>{group.name}</strong>
-                    <small>{group.buttons.length}</small>
-                  </button>
-                  <AnimatePresence initial={false}>
-                    {!collapsed && (
-                      <motion.div
-                        animate={{
-                          height: "auto",
-                          opacity: 1,
-                          transitionEnd: { overflow: "visible" },
-                        }}
-                        className="quickGroupItems"
-                        data-sidebar-group-name={group.name}
-                        exit={{ height: 0, opacity: 0, overflow: "hidden" }}
-                        initial={{ height: 0, opacity: 0, overflow: "hidden" }}
-                        key="items"
-                        transition={sidebarDragActive ? { duration: 0 } : springCollapse}
-                      >
-                        {group.buttons.length === 0 && (
-                          <p className="quickGroupEmpty">見出しを右クリックしてボタンを追加</p>
-                        )}
-                        {group.buttons.map((button, buttonIndex) => (
-                          <motion.div
-                            animate={{ opacity: 1, y: 0 }}
-                            className={
-                              sidebarPointerDrag?.id === button.id
-                                ? "quickButtonDrag quickButtonDrag--dragging"
-                                : "quickButtonDrag"
-                            }
-                            data-sidebar-button-id={button.id}
-                            data-sidebar-group-name={group.name}
-                            exit={sidebarDragActive ? { opacity: 1 } : { opacity: 0 }}
-                            initial={sidebarDragActive ? false : { opacity: 0, y: -4 }}
-                            key={button.id}
-                            transition={
-                              sidebarDragActive
-                                ? { duration: 0 }
-                                : {
-                                    delay: Math.min(buttonIndex * staggerStep, staggerMax),
-                                    duration: 0.12,
-                                  }
-                            }
-                          >
-                          <button
-                            className="quickButton"
-                            onClick={(event) => {
-                              if (event.detail === 0) void runActions(button.id, button.actions);
-                            }}
-                            onContextMenu={(event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              openContextMenu(
-                                { kind: "button", button },
-                                event.clientX,
-                                event.clientY,
-                                event.currentTarget,
-                              );
-                            }}
-                            onKeyDown={(event) =>
-                              openContextMenuFromKeyboard(event, { kind: "button", button })
-                            }
-                            onPointerCancel={cancelSidebarPointerDrag}
-                            onPointerDown={(event) =>
-                              startSidebarPointerDrag(event, { id: button.id, group: group.name })
-                            }
-                            onPointerMove={updateSidebarPointerDrag}
-                            onPointerUp={(event) => finishSidebarPointerDrag(event, button)}
-                            title={button.label}
-                            type="button"
-                          >
-                            {pendingActionId === button.id ? (
-                              <span className="quickIcon">
-                                <span className="spinner spinner--small" />
-                              </span>
-                            ) : (
-                              renderSidebarButtonIcon(button)
-                            )}
-                            <span>{button.label}</span>
-                          </button>
-                          </motion.div>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </section>
-              );
-            })
-          )}
-        </div>
-
-        {sidebarPointerDrag?.targetIndicator ? (
-          <div
-            aria-hidden="true"
-            className="sidebarDropIndicator"
-            style={{
-              left: sidebarPointerDrag.targetIndicator.left,
-              top: sidebarPointerDrag.targetIndicator.top,
-              width: sidebarPointerDrag.targetIndicator.width,
-            }}
-          />
-        ) : null}
-
-        {sidebarPointerDrag
-          ? (() => {
-              const button = config.buttons.find((item) => item.id === sidebarPointerDrag.id);
-              return button ? (
-                <div
-                  aria-hidden="true"
-                  className="sidebarDragGhost"
-                  style={{
-                    height: sidebarPointerDrag.height,
-                    left: sidebarPointerDrag.pointerX - sidebarPointerDrag.offsetX,
-                    top: sidebarPointerDrag.pointerY - sidebarPointerDrag.offsetY,
-                    width: sidebarPointerDrag.width,
-                  }}
-                >
-                  {renderSidebarButtonIcon(button)}
-                  <span>{button.label}</span>
-                </div>
-              ) : null;
-            })()
-          : null}
-        {sidebarGroupPointerDrag ? (
-          <div
-            aria-hidden="true"
-            className="sidebarGroupDragGhost"
-            style={{
-              height: sidebarGroupPointerDrag.height,
-              left: sidebarGroupPointerDrag.pointerX - sidebarGroupPointerDrag.offsetX,
-              top: sidebarGroupPointerDrag.pointerY - sidebarGroupPointerDrag.offsetY,
-              width: sidebarGroupPointerDrag.width,
-            }}
-          >
-            <UiIcon name="chevronDown" size={16} />
-            <strong>{sidebarGroupPointerDrag.group}</strong>
-          </div>
-        ) : null}
-        <TimerPanel
-          active={Boolean(activeTimer)}
-          expandButtonRef={expandTimerButtonRef}
-          clock={
-            activeTimer
-              ? timerClock
-              : String(
-                  Number.parseInt(defaultTimerDraft, 10) || config.settings.defaultTimerMinutes,
-                ) + "分"
-          }
-          clockAdjustable={!activeTimer}
-          clockDragging={numberInputDragging === "timer"}
-          identity={
-            activeTimerProject ? (
-              <ProjectIdentity
-                colorId={activeTimerProject.colorId}
-                compact
-                name={activeTimerProject.name}
-                projectId={activeTimerProject.id}
-              />
-            ) : undefined
-          }
-          actionText={activeTimer ? timerActionText(activeTimer) : undefined}
-          label={activeTimer ? activeTimer.label : "通常タイマー"}
-          onFinish={() => {
-            if (activeTimer) finishActiveTimer(activeTimer);
-          }}
-          onExpand={() => setExpandedTimerOpen(true)}
-          onClockPointerCancel={!activeTimer ? cancelNumberInputDrag : undefined}
-          onClockPointerDown={
-            !activeTimer
-              ? (event) => startNumberInputDrag(event, "timer", config.settings.defaultTimerMinutes)
-              : undefined
-          }
-          onClockPointerMove={!activeTimer ? updateNumberInputDrag : undefined}
-          onClockPointerUp={!activeTimer ? finishNumberInputDrag : undefined}
-          onPause={togglePause}
-          paused={Boolean(activeTimer?.paused)}
-          progressPercent={timerProgressPercent}
-          state={
-            completionPrompt
-              ? "complete"
-              : activeTimer?.paused
-                ? "paused"
-                : activeTimer
-                  ? "running"
-                  : "waiting"
-          }
-          status={timerStatus}
-          variant="sidebar"
-          onMini={() => void toggleMiniMode()}
-          miniDisabled={!config.settings.miniMode || miniTransitioning}
-          waitingContent={
-            <div className="timerPresetControls" aria-label="通常タイマーの分数">
-              <div className="timerPresetRow">
-                <button
-                  className="timerPresetButton"
-                  onClick={() =>
-                    void saveDefaultTimerMinutes(config.settings.defaultTimerMinutes - 5)
-                  }
-                  type="button"
-                >
-                  -
-                </button>
-                <label
-                  className={
-                    numberInputDragging === "timer"
-                      ? "timerPresetInputWrap timerPresetInputWrap--dragging"
-                      : "timerPresetInputWrap"
-                  }
-                  onPointerCancel={cancelNumberInputDrag}
-                  onPointerDown={(event) =>
-                    startNumberInputDrag(event, "timer", config.settings.defaultTimerMinutes)
-                  }
-                  onPointerMove={updateNumberInputDrag}
-                  onPointerUp={finishNumberInputDrag}
-                  title="上下にドラッグして分数を調整"
-                >
-                  <input autoComplete="off"
-                    aria-label="通常タイマーの分数"
-                    inputMode="numeric"
-                    max={240}
-                    min={1}
-                    onBlur={() => void saveDefaultTimerMinutes(defaultTimerDraft)}
-                    onChange={(event) => setDefaultTimerDraft(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") event.currentTarget.blur();
-                    }}
-                    type="number"
-                    value={defaultTimerDraft}
-                  />
-                  <span>分</span>
-                  <span aria-hidden="true" className="numberDragAffordance" />
-                </label>
-                <button
-                  className="timerPresetButton"
-                  onClick={() =>
-                    void saveDefaultTimerMinutes(config.settings.defaultTimerMinutes + 5)
-                  }
-                  type="button"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-          }
-        />
-      </aside>
+        data={{
+          activeTimer,
+          activeTimerProject,
+          collapsedGroups,
+          completionPrompt,
+          config,
+          defaultTimerDraft,
+          miniTransitioning,
+          numberInputDragging,
+          pendingActionId,
+          shortcutRegistration,
+          sidebarGroupPointerDrag,
+          sidebarPointerDrag,
+          timerClock,
+          timerProgressPercent,
+          timerStatus,
+          visibleGroups: visibleSidebarButtonGroups,
+        }}
+        expandTimerButtonRef={expandTimerButtonRef}
+      />
 
       <section
         className="mainPanel"
@@ -9019,2104 +6035,190 @@ function DashboardApp() {
               />
             ) : (
               <>
-                <div className="mainHeaderRow">
-                  <div className="mainHeaderDate">
-                    <span className="mainDateText">{headerDateMain}</span>
-                    <span className="mainDateWeekday">{headerDateWeekday}</span>
-                  </div>
-                <div className="victoryBarWrap">
-                <section
-                  className={[
-                    "victoryBar",
-                    victoryDone ? "victoryBar--done" : "",
-                    victoryText ? "" : "victoryBar--empty",
-                    completionFeedback?.kind === "victory" ? "victoryBar--reward" : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                  aria-label="今日の勝利条件"
-                >
-                  {completionFeedback?.kind === "victory" && (
-                    <span aria-hidden="true" className="victoryRewardSweep" />
-                  )}
-                  <span className="victoryIcon" aria-hidden="true">
-                    <UiIcon name="flag" size={16} />
-                  </span>
-                  <span className="victoryLabel">今日の勝利条件</span>
-                  <div className="victoryContent">
-                    {victoryEditing ? (
-                      <>
-                        <input autoComplete="off"
-                          aria-label="今日の勝利条件"
-                          className={
-                            victoryDone ? "victoryInput victoryInput--done" : "victoryInput"
-                          }
-                          maxLength={90}
-                          onBlur={(event) => {
-                            const next = event.relatedTarget;
-                            if (next instanceof Node && victorySuggestionsRef.current?.contains(next)) {
-                              return;
-                            }
-                            setVictoryEditing(false);
-                          }}
-                          onChange={(event) => {
-                            victorySaveRef.current = updateVictoryText(event.target.value);
-                          }}
-                          onKeyDown={handleVictoryKeyDown}
-                          placeholder="今日はこれができれば勝ち"
-                          ref={victoryInputRef}
-                          value={config.today.victory.text}
-                        />
-                      </>
-                    ) : (
-                      <button
-                        aria-label="今日の勝利条件を編集"
-                        className={
-                          victoryDone
-                            ? "victoryTextButton victoryTextButton--done"
-                            : victoryText
-                              ? "victoryTextButton"
-                              : "victoryTextButton victoryTextButton--empty"
-                        }
-                        onBlur={clearVictoryAutoFocus}
-                        onClick={enterVictoryEditing}
-                        onKeyDown={clearVictoryAutoFocus}
-                        ref={victoryNavigationRef}
-                        type="button"
-                      >
-                        {config.today.victory.text || "今日はこれができれば勝ち"}
-                      </button>
-                    )}
-                  </div>
-                  {victoryDone ? (
-                    <span
-                      className={
-                        completionFeedback?.kind === "victory"
-                          ? "victoryBadge victoryBadge--reward"
-                          : "victoryBadge"
-                      }
-                      role={completionFeedback?.kind === "victory" ? "status" : undefined}
-                    >
-                      ✓ 今日の勝利、達成
-                    </span>
-                  ) : null}
-                  <input
-                    aria-label="勝利条件を達成"
-                    checked={victoryDone}
-                    className="check victoryCheck"
-                    disabled={!victoryText}
-                    onChange={toggleVictoryDone}
-                    type="checkbox"
-                  />
-                </section>
-                {victoryEditing && !victoryText && victorySuggestions.length > 0 && (
-                  <div
-                    className="victorySuggestions"
-                    aria-label="勝利条件の候補"
-                    ref={victorySuggestionsRef}
-                  >
-                    {victorySuggestions.map((suggestion) => (
-                      <button
-                        className="suggestionChip"
-                        key={suggestion}
-                        onBlur={(event) => {
-                          const next = event.relatedTarget;
-                          if (
-                            next instanceof Node &&
-                            (next === victoryInputRef.current ||
-                              victorySuggestionsRef.current?.contains(next))
-                          ) {
-                            return;
-                          }
-                          setVictoryEditing(false);
-                        }}
-                        onClick={() => applyVictorySuggestion(suggestion)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Escape") {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            leaveVictoryEditing();
-                          }
-                        }}
-                        onMouseDown={(event) => event.preventDefault()}
-                        type="button"
-                      >
-                        {suggestion}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                </div>
-                </div>
-
-                <section
-                  className="doNowBand"
-                  aria-labelledby="do-now-title"
-                  data-skip-target="main"
-                  tabIndex={-1}
-                >
-                  {doNowCompletionHold ? (
-                    <div
-                      className="doNowContent doNowContent--hold"
-                      data-project-color={resolveProjectColorId(
-                        doNowCompletionHold.projectId,
-                        doNowCompletionHold.colorId,
-                      )}
-                    >
-                      <div className="doNowCopy">
-                        <div className="doNowKicker">
-                          <h2 id="do-now-title">今やる一手</h2>
-                          <span className="uiPill doNowProjectChip">
-                            <ProjectIdentity
-                              colorId={doNowCompletionHold.colorId}
-                              compact
-                              name={doNowCompletionHold.projectName}
-                              projectId={doNowCompletionHold.projectId}
-                            />
-                          </span>
-                        </div>
-                        <strong className="doNowHoldTitle" role="status">✓ 一手進みました</strong>
-                        <span className="doNowHoldTask">{doNowCompletionHold.taskText}</span>
-                        {doNowCompletionHold.minutes > 0 && (
-                          <span className="doNowHoldMinutes">実行 {doNowCompletionHold.minutes}分</span>
-                        )}
-                      </div>
-                                            <div className="doNowFooter">
-                        <button
-                          className="mainActionButton mainActionButton--neutral doNowHoldButton"
-                          disabled={doNowCompletionSaving}
-                          onClick={() => void acknowledgeDoNowCompletion()}
-                          type="button"
-                        >
-                          次の一手を見る
-                          <UiIcon name="chevronRight" size={16} aria-hidden="true" />
-                        </button>
-                      </div>
-                    </div>
-                  ) : doNowSelection ? (
-                    <div
-                      className="doNowContent doNowContent--active"
-                      data-project-color={resolveProjectColorId(
-                        doNowSelection.project.id,
-                        doNowSelection.project.colorId,
-                      )}
-                      onContextMenu={(event) => {
-                        if (doNowCandidates.length <= 1) return;
-                        event.preventDefault();
-                        event.stopPropagation();
-                        openContextMenu(
-                          { kind: "doNow" },
-                          event.clientX,
-                          event.clientY,
-                          event.currentTarget,
-                        );
-                      }}
-                      onKeyDown={(event) => {
-                        if (doNowCandidates.length > 1) {
-                          openContextMenuFromKeyboard(event, { kind: "doNow" });
-                        }
-                      }}
-                      tabIndex={doNowCandidates.length > 1 ? 0 : undefined}
-                    >
-                      <motion.div
-                        animate={{ opacity: 1, x: 0 }}
-                        className="doNowCopy"
-                        initial={doNowCopyShouldAnimate ? { opacity: 0, x: 12 } : false}
-                        key={doNowCopyKey ?? undefined}
-                        transition={springSnappy}
-                      >
-                        <div className="doNowKicker">
-                          <span aria-hidden="true" className="doNowStatusDot" />
-                          <h2 id="do-now-title">今やる一手</h2>
-                          <span className="uiPill doNowProjectChip">
-                            <ProjectIdentity
-                              colorId={doNowSelection.project.colorId}
-                              compact
-                              name={doNowSelection.project.name}
-                              projectId={doNowSelection.project.id}
-                            />
-                          </span>
-                          {isDoNowRunning && activeTimer && (
-                            <span
-                              className={
-                                activeTimer.paused
-                                  ? "uiPill uiPill--paused runningBadge runningBadge--paused"
-                                  : "uiPill uiPill--running runningBadge runningBadge--running"
-                              }
-                            >
-                              {activeTimer.paused
-                                ? "一時停止"
-                                : activeTimer.mode === "measure"
-                                  ? "計測中"
-                                  : "実行中"}
-                            </span>
-                          )}
-                          <span className="doNowReason">{doNowReason}</span>
-                        </div>
-                        <strong title={doNowSelection.project.nextStep?.text}>
-                          {doNowSelection.project.nextStep?.text}
-                        </strong>
-                        {(() => {
-                          const resumeNote = doNowSelection.project.nextStep?.resumeNote?.trim();
-                          return resumeNote ? (
-                            <p className="doNowResume" title={resumeNote}>
-                              <span className="doNowResumeLabel">次はここから</span>
-                              <span className="doNowResumeText">{resumeNote}</span>
-                            </p>
-                          ) : null;
-                        })()}
-                        {(() => {
-                          const openButtons = (doNowSelection.project.nextStep?.buttonIds ?? [])
-                            .map((id) => buttonsById.get(id))
-                            .filter((button): button is LauncherButton => Boolean(button));
-                          const trigger = doNowSelection.project.nextStep?.trigger?.trim();
-                          const instructionName = doNowInstructionPath
-                            ?.split(/[\\/]/)
-                            .filter(Boolean)
-                            .pop();
-                          const instructionMissing = missingInstructionProjectIds.has(
-                            doNowSelection.project.id,
-                          );
-                          if (!openButtons.length && !doNowInstructionPath && !trigger) return null;
-                          return (
-                            <div className="doNowMeta">
-                              {trigger ? (
-                                <span className="doNowMetaItem doNowTrigger" title={trigger}>
-                                  <UiIcon name="clock" size={16} />
-                                  {trigger}
-                                </span>
-                              ) : null}
-                              {trigger && (openButtons.length || doNowInstructionPath) ? (
-                                <span aria-hidden="true" className="doNowDivider" />
-                              ) : null}
-                              {openButtons.length || doNowInstructionPath ? (
-                                <span className="doNowMetaLabel">始めると一緒に開く</span>
-                              ) : null}
-                              {openButtons.map((button) => {
-                                const missing = missingButtonIds.has(button.id);
-                                return (
-                                  <span
-                                    className={
-                                      missing
-                                        ? "doNowOpenChip doNowOpenChip--missing"
-                                        : "doNowOpenChip"
-                                    }
-                                    key={button.id}
-                                    title={
-                                      missing
-                                        ? "見つかりません。次の一手の編集で選び直してください"
-                                        : undefined
-                                    }
-                                  >
-                                    <UiIcon name={missing ? "alert" : "external"} size={12} />
-                                    {button.label}
-                                    {missing && (
-                                      <span className="doNowMissingText">見つかりません</span>
-                                    )}
-                                  </span>
-                                );
-                              })}
-                              {doNowInstructionPath ? (
-                                <button
-                                  className={
-                                    instructionMissing
-                                      ? "doNowOpenChip doNowOpenChip--button doNowOpenChip--missing"
-                                      : "doNowOpenChip doNowOpenChip--button"
-                                  }
-                                  onClick={() => {
-                                    void openInstructionWindow({
-                                      path: doNowInstructionPath,
-                                      focus: true,
-                                    }).catch((error) => {
-                                      showToast(
-                                        "error",
-                                        `手順書を開けません: ${error instanceof Error ? error.message : String(error)}`,
-                                      );
-                                    });
-                                  }}
-                                  aria-label={
-                                    doNowBookPage !== null && !instructionMissing
-                                      ? `${instructionName || "手順書"}、${doNowBookPage}ページから`
-                                      : undefined
-                                  }
-                                  title={
-                                    instructionMissing
-                                      ? "見つかりません。次の一手の編集で選び直してください"
-                                      : undefined
-                                  }
-                                  type="button"
-                                >
-                                  <UiIcon name={instructionMissing ? "alert" : "book"} size={12} />
-                                  {instructionName || "手順書"}
-                                  {doNowBookPage !== null && !instructionMissing ? (
-                                    <span className="doNowOpenChipPage">p.{doNowBookPage}</span>
-                                  ) : null}
-                                  {instructionMissing && (
-                                    <span className="doNowMissingText">見つかりません</span>
-                                  )}
-                                </button>
-                              ) : null}
-                            </div>
-                          );
-                        })()}
-                      </motion.div>
-                      <div className="doNowFooter">
-                        <div className="doNowActions">
-                          {isDoNowRunning && activeTimer ? (
-                            <>
-                              {activeTimer.mode === "measure" && (
-                                <span className="measureElapsedClock">{timerClock}</span>
-                              )}
-                              <button
-                                aria-label={
-                                  activeTimer.paused
-                                    ? "このセッションを再開"
-                                    : "このセッションを一時停止"
-                                }
-                                className="runningPauseButton"
-                                onClick={togglePause}
-                                type="button"
-                              >
-                                <UiIcon name={activeTimer.paused ? "play" : "pause"} size={16} />
-                                {activeTimer.paused ? "再開" : "一時停止"}
-                              </button>
-                              <button
-                                className="runningStopButton"
-                                onClick={() => finishActiveTimer(activeTimer)}
-                                type="button"
-                              >
-                                <UiIcon name="stop" size={16} /> 終了
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <button
-                                aria-label={`短時間タイマー${doNowShortTimerMinutes}分で始める`}
-                                className="doNowStartPrimary"
-                                onClick={() => startDoNowProject(doNowSelection.project, "short")}
-                                type="button"
-                              >
-                                <span className="timerStartDuration">
-                                  {doNowShortTimerMinutes}分で始める
-                                </span>
-                                <span aria-hidden="true" className="timerStartHoverGlyph">
-                                  <UiIcon name="play" size={16} />
-                                </span>
-                              </button>
-                              <button
-                                aria-label={`通常タイマー${doNowDefaultTimerMinutes}分で開始`}
-                                className="doNowStartSecondary"
-                                onClick={() => startDoNowProject(doNowSelection.project, "normal")}
-                                type="button"
-                              >
-                                <span className="timerStartDuration">
-                                  通常 {doNowDefaultTimerMinutes}分
-                                </span>
-                                <span aria-hidden="true" className="timerStartHoverGlyph">
-                                  <UiIcon name="play" size={16} />
-                                </span>
-                              </button>
-                              <button
-                                aria-label="時間を決めずに計測"
-                                className="doNowMeasureButton"
-                                onClick={() => startDoNowProject(doNowSelection.project, "measure")}
-                                title="時間を決めずに計測"
-                                type="button"
-                              >
-                                <UiIcon name="clock" size={16} />
-                                <span>計測</span>
-                              </button>
-                            </>
-                          )}
-                        </div>
-                        <div className="doNowSecondaryActions">
-                          {doNowCandidates.length > 1 && (
-                            <button
-                              className="uiSmallButton doNowAlternateButton"
-                              onClick={showNextDoNowCandidate}
-                              type="button"
-                            >
-                              <UiIcon name="refresh" size={16} />
-                              他の一手
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="doNowHeading">
-                        <h2 id="do-now-title">今やる一手</h2>
-                      </div>
-                      <div className="doNowEmpty">
-                        <div className="doNowEmptyContent">
-                          <strong>
-                            {doNowOnlyExcluded
-                              ? "今は他に提案できる一手がありません。"
-                              : nextStepSetupProject
-                              ? "次の一手を設定すると、ここに提案されます。"
-                              : "プロジェクトを作り、次の一手を設定すると提案されます。"}
-                          </strong>
-                          <span>
-                            {doNowOnlyExcluded
-                              ? "取り組んだ一手は、もう一度候補を見ると表示できます。"
-                              : "迷ったときに、今の状況から始めやすい「次にやること」を1つだけ提示します。"}
-                          </span>
-                          <button
-                            className={doNowOnlyExcluded
-                              ? "mainActionButton mainActionButton--neutral"
-                              : "mainActionButton mainActionButton--gold"}
-                            onClick={() => {
-                              if (doNowOnlyExcluded) {
-                                setDoNowExcludedProjectId(null);
-                                setDoNowPickedProjectId(null);
-                              } else if (nextStepSetupProject) {
-                                openNextStepEditor(nextStepSetupProject);
-                              } else {
-                                openProjectAddDialog();
-                              }
-                            }}
-                            type="button"
-                          >
-                            <UiIcon name={doNowOnlyExcluded ? "refresh" : "add"} size={16} />
-                            {doNowOnlyExcluded
-                              ? "候補をもう一度見る"
-                              : nextStepSetupProject ? "次の一手を設定" : "プロジェクトを追加"}
-                          </button>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </section>
-
-                <section className="focusBand">
-                  <div
-                    className="todaySectionBar"
-                    onClick={(event) =>
-                      toggleDisclosureFromBar(event, () => setTodayOpen((open) => !open))
-                    }
-                  >
-                    <button
-                      aria-expanded={todayOpen}
-                      className="todaySectionDisclosure"
-                      onClick={() => setTodayOpen((open) => !open)}
-                      type="button"
-                    >
-                      <UiIcon name={todayOpen ? "chevronDown" : "chevronRight"} size={16} />
-                      <h2>今日の3件</h2>
-                    </button>
-                    {config.today.items.length === 0 ? (
-                      <span className="todaySectionCount">0件</span>
-                    ) : (
-                      <span
-                        className={
-                          todayAllCompleted
-                            ? "todayCompletionSummary todayCompletionSummary--complete"
-                            : "todayCompletionSummary"
-                        }
-                      >
-                        {todayCompletedCount} / {config.today.items.length} 完了
-                      </span>
-                    )}
-                    <span className="todaySectionDescription">
-                      今日やると決めたもの。タイマーから開始します。
-                    </span>
-                  </div>
-                  <SectionCollapse open={todayOpen} dragActive={dragActive}>
-                    <>
-                      <div className="todayGridRegion">
-                        <div
-                          className={[
-                            "todayGrid",
-                            config.today.items.length === 0 ? "todayGrid--empty" : "",
-                            completionFeedback?.kind === "todayAll"
-                              ? "todayGrid--allCompleteReward"
-                              : "",
-                            projectPointerDrag?.todayGuidanceActive ||
-                            inboxPointerDrag?.todayGuidanceActive
-                              ? "todayGrid--dropGuidance"
-                              : "",
-                            projectPointerDrag?.todayTargetIndicator ||
-                            inboxPointerDrag?.todayTargetIndicator
-                              ? "todayGrid--dropTarget"
-                              : "",
-                          ]
-                            .filter(Boolean)
-                            .join(" ")}
-                        >
-                          {(projectPointerDrag?.todayGuidanceActive ||
-                            inboxPointerDrag?.todayGuidanceActive) && (
-                            <div aria-hidden="true" className="todayDropGuidanceOverlay">
-                              <span className="dropHintLabel">↓ ここにドロップして「今日の3件」に追加</span>
-                            </div>
-                          )}
-                          {config.today.items.length === 0 && (
-                            <div className="todayEmptyState">
-                              <div className="todayEmptyStateContent">
-                                <strong>今日やるものを選びましょう</strong>
-                                <span>次の一手・やりたいことから選べます</span>
-                                <button
-                                  className="mainActionButton mainActionButton--gold"
-                                  onClick={(event) => openTodayPicker(event.currentTarget)}
-                                  type="button"
-                                >
-                                  <UiIcon name="add" size={16} />
-                                  今日やるものを選ぶ
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                          {config.today.items.map((item, index) => {
-                            const timerSourceId = todayTimerSourceId(item, index);
-                            const isRunningTodayItem = activeTimer !== null && isTimerOnTodayItem(item, index);
-                            const project = item.projectId
-                              ? projectsById.get(item.projectId)
-                              : undefined;
-                            const todayInstructionPath =
-                              item.instructionPath?.trim() ||
-                              project?.nextStep?.instructionPath?.trim();
-                            const hasLinkedSource =
-                              (item.sourceKey?.startsWith("project:") &&
-                                Boolean(project?.nextStep)) ||
-                              (item.sourceKey?.startsWith("wishlist:") &&
-                                config.inbox.some(
-                                  (source, sourceIndex) =>
-                                    wishlistSourceKey(source, sourceIndex) === item.sourceKey,
-                                ));
-                            const shortMinutes =
-                              hasLinkedSource && project?.nextStep?.shortTimerMinutes == null
-                                ? config.settings.shortTimerMinutes
-                                : (item.shortTimerMinutes ??
-                                  project?.nextStep?.shortTimerMinutes ??
-                                  config.settings.shortTimerMinutes);
-                            const defaultMinutes =
-                              hasLinkedSource && project?.nextStep?.defaultTimerMinutes == null
-                                ? config.settings.defaultTimerMinutes
-                                : (item.defaultTimerMinutes ??
-                                  project?.nextStep?.defaultTimerMinutes ??
-                                  config.settings.defaultTimerMinutes);
-                            // P10-04's rule, used again here: the unfinished card adopted from
-                            // the current Next Step of the Project shown in "Do Now".
-                            const hereNowProject = doNowSelection?.project;
-                            const isHereNowTodayItem =
-                              !item.done &&
-                              Boolean(hereNowProject) &&
-                              item.sourceKey?.trim() === `project:${hereNowProject.id}` &&
-                              item.sourceGenerationId === hereNowProject.nextStep?.generationId;
-                            return (
-                              <article
-                                className={[
-                                  "todayRow",
-                                  todayPointerDrag?.index === index ? "todayRow--dragging" : "",
-                                  isRunningTodayItem ? "todayRow--running" : "",
-                                  item.done ? "todayRow--complete" : "",
-                                  completionFeedback?.kind === "today" &&
-                                  completionFeedback.sourceKey === todaySourceKey(item, index)
-                                    ? "todayRow--justCompleted"
-                                    : "",
-                                ]
-                                  .filter(Boolean)
-                                  .join(" ")}
-                                data-today-index={index}
-                                data-project-color={
-                                  project
-                                    ? resolveProjectColorId(project.id, project.colorId)
-                                    : undefined
-                                }
-                                key={todaySourceKey(item, index)}
-                                onContextMenu={(event) => {
-                                  event.preventDefault();
-                                  event.stopPropagation();
-                                  openContextMenu(
-                                    { kind: "today", index, itemText: item.text },
-                                    event.clientX,
-                                    event.clientY,
-                                    event.currentTarget,
-                                  );
-                                }}
-                                onKeyDown={(event) => {
-                                  if (
-                                    handleRowShortcutKey(event, {
-                                      activate: () =>
-                                        startTodayItemShort(
-                                          item,
-                                          index,
-                                          timerSourceId,
-                                          shortMinutes,
-                                        ),
-                                      edit: () => editTodayRowItem(index),
-                                      remove: () =>
-                                        void removeTodayItem(todaySourceKey(item, index)),
-                                    })
-                                  )
-                                    return;
-                                  openContextMenuFromKeyboard(event, {
-                                    kind: "today",
-                                    index,
-                                    itemText: item.text,
-                                  });
-                                }}
-                                onPointerCancel={cancelTodayPointerDrag}
-                                onPointerDown={(event) => startTodayPointerDrag(event, index)}
-                                onPointerMove={updateTodayPointerDrag}
-                                onPointerUp={finishTodayPointerDrag}
-                                tabIndex={0}
-                              >
-                                <div className="todayRowTopActions">
-                                  {isHereNowTodayItem && (
-                                    <span
-                                      aria-label="今やる一手"
-                                      className="uiPill uiPill--project todayHereBadge"
-                                      data-project-color={
-                                        project
-                                          ? resolveProjectColorId(project.id, project.colorId)
-                                          : undefined
-                                      }
-                                      role="status"
-                                    >
-                                      今やる一手
-                                    </span>
-                                  )}
-                                  <span aria-hidden="true" className="uiKey rowKeyHint">
-                                    Enter
-                                  </span>
-                                  <button
-                                    aria-label={`${item.text || "未入力"}の操作`}
-                                    aria-haspopup="menu"
-                                    className="sourceRowMenu todayRowMenu"
-                                    onClick={(event) => {
-                                      const rect = event.currentTarget.getBoundingClientRect();
-                                      openContextMenu(
-                                        { kind: "today", index, itemText: item.text },
-                                        rect.left,
-                                        rect.bottom,
-                                        event.currentTarget,
-                                      );
-                                    }}
-                                    onPointerDown={(event) => event.stopPropagation()}
-                                    title="操作メニュー"
-                                    type="button"
-                                  >
-                                    <span aria-hidden="true">…</span>
-                                  </button>
-                                </div>
-                                <span
-                                  aria-label={item.done ? "今日の分は完了" : "未完了"}
-                                  className={
-                                    item.done
-                                      ? "todayCompletionStatus todayCompletionStatus--complete"
-                                      : "todayCompletionStatus"
-                                  }
-                                  role="status"
-                                >
-                                  {item.done ? "✓" : "○"}
-                                </span>
-                                <div
-                                  className={
-                                    project
-                                      ? "todayItemCopy"
-                                      : "todayItemCopy todayItemCopy--withoutIdentity"
-                                  }
-                                >
-                                  <div className="todayItemMeta">
-                                    {item.projectId && projectsById.has(item.projectId) && (
-                                      <span className="todayProjectIdentity">
-                                        <ProjectIdentity
-                                          colorId={projectsById.get(item.projectId)?.colorId}
-                                          compact
-                                          name={projectsById.get(item.projectId)?.name ?? ""}
-                                          projectId={item.projectId}
-                                        />
-                                      </span>
-                                    )}
-                                    {/* P10-05 (§4.3): the card linked to this moment's step. */}
-                                    {isRunningTodayItem && (
-                                      <span
-                                        className={
-                                          activeTimer.paused
-                                            ? "uiPill uiPill--paused runningBadge runningBadge--paused"
-                                            : "uiPill uiPill--running runningBadge runningBadge--running"
-                                        }
-                                      >
-                                        {activeTimer.paused
-                                          ? "一時停止"
-                                          : activeTimer.mode === "measure"
-                                            ? "計測中"
-                                            : "実行中"}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span
-                                    className={
-                                      item.done
-                                        ? "todayTextButton todayTextButton--done"
-                                        : "todayTextButton"
-                                    }
-                                    title={item.text || "未入力"}
-                                  >
-                                    {item.text || "未入力"}
-                                  </span>
-                                </div>
-                                <div className="todayCardFooter">
-                                  <div className="todayCardSecondaryActions">
-                                    {todayInstructionPath && (
-                                      <button
-                                        aria-label={`${item.text || "未入力"}の手順書を開く`}
-                                        className="doNowInstructionButton todayInstructionButton mainActionButton mainActionButton--neutral"
-                                        onClick={() => {
-                                          void openInstructionWindow({
-                                            path: todayInstructionPath,
-                                            focus: true,
-                                          }).catch((error) => {
-                                            showToast(
-                                              "error",
-                                              `手順書を開けません: ${error instanceof Error ? error.message : String(error)}`,
-                                            );
-                                          });
-                                        }}
-                                        onPointerDown={(event) => event.stopPropagation()}
-                                        title="手順書を開く"
-                                        type="button"
-                                      >
-                                        <UiIcon name="book" size={16} /> 手順書
-                                      </button>
-                                    )}
-                                    <button
-                                      aria-label="今日の3件から外す"
-                                      className="todayRemoveButton mainActionButton mainActionButton--neutral"
-                                      disabled={isRunningTodayItem}
-                                      onClick={() =>
-                                        void removeTodayItem(todaySourceKey(item, index))
-                                      }
-                                      onPointerDown={(event) => event.stopPropagation()}
-                                      title={
-                                        isRunningTodayItem
-                                          ? "タイマーを停止してから外してください"
-                                          : "今日の3件から外す"
-                                      }
-                                      type="button"
-                                    >
-                                      <UiIcon name="back" size={16} />
-                                      <span className="todayRemoveLabel">外す</span>
-                                    </button>
-                                  </div>
-                                  <div className="todayTimerCluster">
-                                    <div className="todayTriggerZone">
-                                      {todayTriggerEditingIndex === index ? (
-                                        <input autoComplete="off"
-                                          aria-label="いつ・何の後にやる？"
-                                          autoFocus
-                                          className="todayTriggerInput"
-                                          maxLength={EXECUTION_TRIGGER_MAX_CHARS}
-                                          onBlur={cancelTodayTriggerEdit}
-                                          onChange={(event) =>
-                                            setTodayTriggerDraft(event.target.value)
-                                          }
-                                          onKeyDown={(event) =>
-                                            handleTodayTriggerKeyDown(event, index)
-                                          }
-                                          onPointerDown={(event) => event.stopPropagation()}
-                                          placeholder="例: 21時 / 夕食後"
-                                          value={todayTriggerDraft}
-                                        />
-                                      ) : (
-                                        <button
-                                          className={
-                                            item.trigger
-                                              ? "todayTriggerButton"
-                                              : "todayTriggerButton todayTriggerButton--empty"
-                                          }
-                                          onClick={() => beginTodayTriggerEdit(index)}
-                                          onPointerDown={(event) => event.stopPropagation()}
-                                          type="button"
-                                        >
-                                          {item.trigger ? `${item.trigger} ▸` : "+ きっかけ"}
-                                        </button>
-                                      )}
-                                    </div>
-                                    {item.done ? (
-                                      <span className="todayCompletedLabel">今日の分は完了</span>
-                                    ) : isRunningTodayItem ? (
-                                      <div
-                                        className={
-                                          activeTimer.mode === "measure"
-                                            ? "todayTimerActions todayTimerActions--running todayTimerActions--measure"
-                                            : "todayTimerActions todayTimerActions--running"
-                                        }
-                                      >
-                                        {activeTimer.mode === "measure" && (
-                                          <span className="measureElapsedClock">{timerClock}</span>
-                                        )}
-                                        <button
-                                          aria-label={
-                                            activeTimer.paused
-                                              ? "このセッションを再開"
-                                              : "このセッションを一時停止"
-                                          }
-                                          className="runningPauseButton"
-                                          onClick={togglePause}
-                                          title={
-                                            activeTimer.paused
-                                              ? "このセッションを再開"
-                                              : "このセッションを一時停止"
-                                          }
-                                          type="button"
-                                        >
-                                          <UiIcon
-                                            name={activeTimer.paused ? "play" : "pause"}
-                                            size={16}
-                                          />
-                                          {activeTimer.paused
-                                            ? "再開"
-                                            : activeTimer.mode === "measure"
-                                              ? "停止"
-                                              : "一時停止"}
-                                        </button>
-                                        <button
-                                          className="runningStopButton"
-                                          onClick={() => finishActiveTimer(activeTimer)}
-                                          title="このセッションを終了"
-                                          type="button"
-                                        >
-                                          <UiIcon name="stop" size={16} /> 終了
-                                        </button>
-                                      </div>
-                                    ) : (
-                                      <div className="todayTimerActions">
-                                        <button
-                                          aria-label={`短時間タイマー${shortMinutes}分で開始`}
-                                          className="todayStartButton todayStartButton--short"
-                                          disabled={!item.text.trim()}
-                                          onClick={() => void startTodayItemShort(item, index, timerSourceId, shortMinutes)}
-                                          title={`短時間タイマー: ${shortMinutes}分`}
-                                          type="button"
-                                        >
-                                          <span aria-hidden="true" className="nextStepStartGlyph">
-                                            <UiIcon name="play" size={16} />
-                                          </span>
-                                          <span
-                                            aria-hidden="true"
-                                            className="nextStepStartDuration"
-                                          >
-                                            {shortMinutes}分
-                                          </span>
-                                        </button>
-                                        <button
-                                          aria-label={`通常タイマー${defaultMinutes}分で開始`}
-                                          className="todayStartButton todayStartButton--normal"
-                                          disabled={!item.text.trim()}
-                                          onClick={() =>
-                                            void startTimer(
-                                              timerSourceId,
-                                              item.projectId && projectsById.has(item.projectId)
-                                                ? (projectsById.get(item.projectId)?.name ??
-                                                    item.text)
-                                                : item.text,
-                                              item.projectId && projectsById.has(item.projectId)
-                                                ? item.projectId
-                                                : null,
-                                              (item.buttonIds ?? []).flatMap(
-                                                (buttonId) =>
-                                                  buttonsById.get(buttonId)?.actions ?? [],
-                                              ),
-                                              defaultMinutes,
-                                              item.text,
-                                              item.instructionPath,
-                                              item.instructionOpenOnStart,
-                                              "countdown",
-                                              undefined,
-                                              item.sourceKey?.startsWith("project:") &&
-                                                item.expandTimerOnStart === true,
-                                            )
-                                          }
-                                          title={`通常タイマー: ${defaultMinutes}分`}
-                                          type="button"
-                                        >
-                                          <span aria-hidden="true" className="nextStepStartGlyph">
-                                            <UiIcon name="play" size={16} />
-                                          </span>
-                                          <span
-                                            aria-hidden="true"
-                                            className="nextStepStartDuration"
-                                          >
-                                            {defaultMinutes}分
-                                          </span>
-                                        </button>
-                                        <button
-                                          aria-label="時間を決めずに計測"
-                                          className="todayMeasureButton"
-                                          disabled={!item.text.trim()}
-                                          onClick={() =>
-                                            void startTimer(
-                                              timerSourceId,
-                                              item.projectId && projectsById.has(item.projectId)
-                                                ? (projectsById.get(item.projectId)?.name ??
-                                                    item.text)
-                                                : item.text,
-                                              item.projectId && projectsById.has(item.projectId)
-                                                ? item.projectId
-                                                : null,
-                                              (item.buttonIds ?? []).flatMap(
-                                                (buttonId) =>
-                                                  buttonsById.get(buttonId)?.actions ?? [],
-                                              ),
-                                              undefined,
-                                              item.text,
-                                              item.instructionPath,
-                                              item.instructionOpenOnStart,
-                                              "measure",
-                                              undefined,
-                                              item.sourceKey?.startsWith("project:") &&
-                                                item.expandTimerOnStart === true,
-                                            )
-                                          }
-                                          title="時間を決めずに計測"
-                                          type="button"
-                                        >
-                                          <UiIcon name="clock" size={16} />
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </article>
-                            );
-                          })}
-                          {config.today.items.length > 0 &&
-                            config.today.items.length < TODAY_ITEM_LIMIT &&
-                            !todayPointerDrag && (
-                              <button
-                                className="todayPickerEntry"
-                                onClick={(event) => openTodayPicker(event.currentTarget)}
-                                type="button"
-                              >
-                                <span className="todayPickerEntryVisual">
-                                  <UiIcon name="add" size={16} />
-                                  今日やるものを選ぶ
-                                </span>
-                              </button>
-                            )}
-                          {todayPointerDrag?.targetIndicator && (
-                            <div
-                              aria-hidden="true"
-                              className="todayDropIndicator"
-                              style={todayPointerDrag.targetIndicator}
-                            />
-                          )}
-                          {todayPointerDrag &&
-                            (() => {
-                              const draggedItem = config.today.items[todayPointerDrag.index];
-                              if (!draggedItem) return null;
-                              const draggedProject = draggedItem.projectId
-                                ? projectsById.get(draggedItem.projectId)
-                                : undefined;
-                              return (
-                                <div
-                                  aria-hidden="true"
-                                  className="todayDragGhost"
-                                  data-project-color={
-                                    draggedProject
-                                      ? resolveProjectColorId(
-                                          draggedProject.id,
-                                          draggedProject.colorId,
-                                        )
-                                      : undefined
-                                  }
-                                  style={{
-                                    height: todayPointerDrag.height,
-                                    left: todayPointerDrag.pointerX - todayPointerDrag.offsetX,
-                                    top: todayPointerDrag.pointerY - todayPointerDrag.offsetY,
-                                    width: todayPointerDrag.width,
-                                  }}
-                                >
-                                  {draggedProject && (
-                                    <span className="todayProjectIdentity">
-                                      <ProjectIdentity
-                                        colorId={draggedProject.colorId}
-                                        compact
-                                        name={draggedProject.name}
-                                        projectId={draggedProject.id}
-                                      />
-                                    </span>
-                                  )}
-                                  <strong>{draggedItem.text || "未入力"}</strong>
-                                </div>
-                              );
-                            })()}
-                        </div>
-
-                        {todayPointerDrag && (
-                          <div
-                            aria-disabled={!todayPointerDrag.removeEligible}
-                            className={[
-                              "todayRemoveDropZone",
-                              todayPointerDrag.removeTargetActive
-                                ? "todayRemoveDropZone--active"
-                                : "",
-                            ]
-                              .filter(Boolean)
-                              .join(" ")}
-                          >
-                            <span className="dropHintLabel">↓ ここにドロップして今日の3件から外す</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {completionFeedback?.kind === "todayAll" && (
-                        <div className="todayAllCompletionReward" role="status">
-                          <span aria-hidden="true">✓</span>
-                          今日の3件、完了！
-                        </div>
-                      )}
-
-                      {allTodayItemsCompleted && (
-                        <div className="todayNextBatch">
-                          <button
-                            className="secondaryButton mainActionButton mainActionButton--neutral"
-                            onClick={() => void startNextTodayBatch()}
-                            type="button"
-                          >
-                            <UiIcon name="add" size={16} />
-                            次の3件を選ぶ
-                          </button>
-                          <span>まだやりたいときだけ、次の枠を作れます。</span>
-                        </div>
-                      )}
-                    </>
-                  </SectionCollapse>
-                </section>
-
-
-                <section
-                  className={[
-                    "projectsBand",
-                    inboxPointerDrag?.nextStepEligible ? "sourceReturnBand--target" : "",
-                    inboxPointerDrag?.nextStepTargetProjectId ? "sourceReturnBand--active" : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                  onContextMenu={(event) => {
-                    event.preventDefault();
-                    openContextMenu(
-                      { kind: "projects" },
-                      event.clientX,
-                      event.clientY,
-                      event.currentTarget,
-                    );
+                <MainHeaderVictoryBand
+                  actions={{
+                    applyVictorySuggestion,
+                    clearVictoryAutoFocus,
+                    enterVictoryEditing,
+                    handleVictoryKeyDown,
+                    leaveVictoryEditing,
+                    toggleVictoryDone,
+                    updateVictoryText,
                   }}
-                  tabIndex={-1}
-                >
-                  <div
-                    className="disclosureHeader"
-                    onClick={(event) =>
-                      toggleDisclosureFromBar(event, () => setProjectsOpen((open) => !open))
-                    }
-                    onContextMenu={(event) => {
-                      event.preventDefault();
-                      openContextMenu(
-                        { kind: "projects" },
-                        event.clientX,
-                        event.clientY,
-                        event.currentTarget,
-                      );
-                    }}
-                    tabIndex={-1}
-                  >
-                    <button
-                      aria-expanded={projectsOpen}
-                      className="disclosure"
-                      onClick={() => setProjectsOpen((open) => !open)}
-                      type="button"
-                    >
-                      <UiIcon name={projectsOpen ? "chevronDown" : "chevronRight"} size={16} />
-                      <span className="disclosureLabel">
-                        <strong>次の一手</strong>
-                      </span>
-                    </button>
-                    <span className="disclosureCount">{config.projects.length}件</span>
-                    <span className="disclosureDescription">
-                      迷ったときに戻る再開地点。プロジェクトごとに1つだけ設定。
-                    </span>
-                    <div className="disclosureHeaderActions">
-                      <button
-                        className="sectionGhostButton mainActionButton mainActionButton--neutral"
-                        onPointerDown={(event) => event.stopPropagation()}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          openImportDialog("", null, event.currentTarget);
-                        }}
-                        title="ChatGPTやClaudeに作ってもらった内容を、まとめて足します"
-                        type="button"
-                      >
-                        ＋ まとめて取り込む
-                      </button>
-                      <button
-                        aria-label="プロジェクトを追加"
-                        className="uiSmallButton sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd nextStepHeaderAdd--project mainActionButton mainActionButton--neutral"
-                        onPointerDown={(event) => event.stopPropagation()}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          openProjectAddDialog();
-                        }}
-                        title="プロジェクトを追加"
-                        type="button"
-                      >
-                        ＋ プロジェクト
-                      </button>
-                      <button
-                        aria-label="次の一手の操作"
-                        aria-haspopup="menu"
-                        className="sectionMenuButton"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          const rect = event.currentTarget.getBoundingClientRect();
-                          openContextMenu(
-                            { kind: "projects" },
-                            rect.left,
-                            rect.bottom,
-                            event.currentTarget,
-                          );
-                        }}
-                        onPointerDown={(event) => event.stopPropagation()}
-                        title="次の一手の操作"
-                        type="button"
-                      >
-                        <span aria-hidden="true">…</span>
-                      </button>
-                    </div>
-                  </div>
-                  {inboxPointerDrag?.nextStepEligible && (
-                    <div
-                      className={
-                        inboxPointerDrag.nextStepTargetProjectId
-                          ? "sourceReturnDropZone sourceReturnDropZone--active"
-                          : "sourceReturnDropZone"
-                      }
-                    >
-                      <span className="dropHintLabel">
-                        <span aria-hidden="true">↓</span>
-                        <span>ここにドロップして次の一手を設定する</span>
-                      </span>
-                    </div>
-                  )}
-                  <SectionCollapse open={projectsOpen} dragActive={dragActive}>
-                    <div
-                      className={
-                        config.projects.length === 0
-                          ? "nextStepBody nextStepBody--empty"
-                          : "nextStepBody"
-                      }
-                    >
-                      {config.projects.length === 0 && (
-                        <div className="sectionEmptyState">
-                          <div className="sectionEmptyStateContent">
-                            <strong>プロジェクトを設定しましょう</strong>
-                            <span>取り組みたいことをまとめると、次の一手を決められます</span>
-                            <button
-                              className="mainActionButton mainActionButton--gold"
-                              onClick={openProjectAddDialog}
-                              type="button"
-                            >
-                              <UiIcon name="add" size={16} />
-                              プロジェクトを設定
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                      <div className="projectGrid">
-                        {visibleProjects.map((project) => {
-                          const projectSourceKey = `project:${project.id}`;
-                          const placeholderActionable =
-                            !project.nextStep?.text.trim() && !sourceEditBlocked(projectSourceKey);
-                          const sourceLocked = Boolean(
-                            project.nextStep &&
-                            sourceLockedByUnfinishedToday(config, projectSourceKey),
-                          );
-                          const todayCandidate = rawTodayBuilderCandidates.find(
-                            (candidate) => candidate.sourceKey === projectSourceKey,
-                          );
-                          const alreadySelected = Boolean(
-                            todayCandidate && todayCandidateSelected(todayCandidate),
-                          );
-                          return (
-                            <article
-                              className={[
-                                "nextStepRow sourceListRow",
-                                "nextStepCard",
-                                projectPointerDrag?.id === project.id
-                                  ? "nextStepRow--dragging"
-                                  : "",
-                                inboxPointerDrag?.nextStepTargetProjectId === project.id
-                                  ? "nextStepCard--dropTarget"
-                                  : "",
-                              ]
-                                .filter(Boolean)
-                                .join(" ")}
-                              data-project-color={resolveProjectColorId(
-                                project.id,
-                                project.colorId,
-                              )}
-                              data-project-id={project.id}
-                              key={project.id}
-                              onContextMenu={(event) => {
-                                event.preventDefault();
-                                openContextMenu(
-                                  { kind: "nextStep", project },
-                                  event.clientX,
-                                  event.clientY,
-                                  event.currentTarget,
-                                );
-                              }}
-                              onFocus={() => {
-                                const index = config.projects.findIndex(
-                                  (item) => item.id === project.id,
-                                );
-                                projectListAnchorRef.current = { id: project.id, index };
-                              }}
-                              onBlur={(event) => {
-                                if (!(event.relatedTarget instanceof Node) ||
-                                    !event.currentTarget.contains(event.relatedTarget)) {
-                                  projectListAnchorRef.current = null;
-                                }
-                              }}
-                              onKeyDown={(event) => {
-                                if (
-                                  handleRowShortcutKey(event, {
-                                    activate: () => startProjectShort(project),
-                                    edit: () => openNextStepEditor(project),
-                                    remove: () => clearProjectNextStep(project),
-                                  })
-                                )
-                                  return;
-                                openContextMenuFromKeyboard(event, { kind: "nextStep", project });
-                              }}
-                              onPointerCancel={cancelProjectPointerDrag}
-                              onPointerDown={(event) => startProjectPointerDrag(event, project.id)}
-                              onPointerMove={updateProjectPointerDrag}
-                              onPointerUp={finishProjectPointerDrag}
-                              tabIndex={0}
-                            >
-                              {/* P10-14 (§4.4): one horizontal row: Project / action text / actions. */}
-                              <div
-                                className="nextStepProjectRegion"
-                                onContextMenu={(event) => {
-                                  event.preventDefault();
-                                  event.stopPropagation();
-                                  openContextMenu(
-                                    { kind: "nextStep", project },
-                                    event.clientX,
-                                    event.clientY,
-                                    event.currentTarget,
-                                  );
-                                }}
-                                onKeyDown={(event) =>
-                                  openContextMenuFromKeyboard(event, { kind: "nextStep", project })
-                                }
-                                tabIndex={0}
-                              >
-                                <h3>
-                                  <ProjectIdentity
-                                    compact
-                                    colorId={project.colorId}
-                                    name={project.name}
-                                    projectId={project.id}
-                                  />
-                                </h3>
-                              </div>
-                              <div
-                                className="nextStepActionRegion"
-                                onContextMenu={(event) => {
-                                  event.preventDefault();
-                                  event.stopPropagation();
-                                  openContextMenu(
-                                    { kind: "nextStep", project },
-                                    event.clientX,
-                                    event.clientY,
-                                    event.currentTarget,
-                                  );
-                                }}
-                                onKeyDown={(event) =>
-                                  openContextMenuFromKeyboard(event, { kind: "nextStep", project })
-                                }
-                                tabIndex={0}
-                              >
-                                <div className="nextStepTextRegion">
-                                  <p
-                                    className={
-                                      project.nextStep?.text.trim()
-                                        ? ""
-                                        : placeholderActionable
-                                          ? "projectNextStepPlaceholder projectNextStepPlaceholder--action"
-                                          : "projectNextStepPlaceholder"
-                                    }
-                                    onClick={
-                                      placeholderActionable
-                                        ? (event) => {
-                                            event.stopPropagation();
-                                            openNextStepEditor(project);
-                                          }
-                                        : undefined
-                                    }
-                                    onPointerDown={
-                                      placeholderActionable
-                                        ? (event) => event.stopPropagation()
-                                        : undefined
-                                    }
-                                    title={
-                                      project.nextStep?.text.trim() || "まだ次の一手がありません"
-                                    }
-                                  >
-                                    {project.nextStep?.trigger?.trim() && (
-                                      <span className="projectNextStepTrigger">
-                                        {project.nextStep.trigger.trim()} ▸{" "}
-                                      </span>
-                                    )}
-                                    {project.nextStep?.text.trim() || "まだ次の一手がありません"}
-                                  </p>
-                                  {staleNextStepMap.has(project.id) && (
-                                    <div className="nextStepFreshness">
-                                      <span>
-                                        {staleNextStepMap.get(project.id)}日同じ一手です。大きすぎるかもしれません
-                                      </span>
-                                      <span className="nextStepFreshnessActions">
-                                        <button
-                                          className="uiSmallButton nextStepFreshnessButton"
-                                          onClick={() => openNextStepEditor(project, { mode: "edit" })}
-                                          onPointerDown={(event) => event.stopPropagation()}
-                                          type="button"
-                                        >
-                                          小さくする
-                                        </button>
-                                        <button
-                                          className="uiSmallButton nextStepFreshnessButton"
-                                          disabled={nextStepReviewBusy === project.id}
-                                          onClick={() => void markNextStepReviewed(project.id)}
-                                          onPointerDown={(event) => event.stopPropagation()}
-                                          type="button"
-                                        >
-                                          このまま
-                                        </button>
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="nextStepRowMeta">
-                                  {sourceLocked && (
-                                    <span
-                                      aria-label="今日の3件で使用中のためロック中"
-                                      className="sourceLockBadge"
-                                      tabIndex={0}
-                                      title={SOURCE_LOCK_REASON}
-                                    >
-                                      <UiIcon name="lock" size={16} />
-                                    </span>
-                                  )}
-                                  {alreadySelected && (
-                                    <span className="uiPill uiPill--good nextStepTodayStatus">✓ 今日の3件</span>
-                                  )}
-                                  {project.nextStep?.text.trim() ? (
-                                    !sourceLocked && (
-                                      <div className="nextStepCardActions">
-                                        <button
-                                          className="uiSmallButton nextStepRowAction nextStepRowAction--change mainActionButton mainActionButton--neutral"
-                                          disabled={sourceEditBlocked(projectSourceKey)}
-                                          onClick={(event) => {
-                                            event.stopPropagation();
-                                            openNextStepEditor(project);
-                                          }}
-                                          onPointerDown={(event) => event.stopPropagation()}
-                                          title={sourceEditBlockReason(projectSourceKey) ?? undefined}
-                                          type="button"
-                                        >
-                                          編集
-                                        </button>
-                                        <button
-                                          className="nextStepTodayAdd mainActionButton mainActionButton--neutral"
-                                          disabled={
-                                            !todayCandidate ||
-                                            alreadySelected ||
-                                            config.today.items.length >= TODAY_ITEM_LIMIT
-                                          }
-                                          onClick={(event) => {
-                                            event.stopPropagation();
-                                            if (todayCandidate)
-                                              void addCandidateToToday(todayCandidate);
-                                          }}
-                                          onPointerDown={(event) => event.stopPropagation()}
-                                          title={
-                                            alreadySelected
-                                              ? "今日の3件にあります"
-                                              : config.today.items.length >= TODAY_ITEM_LIMIT
-                                                ? "今日の3件は3件埋まっています"
-                                                : "今日の3件に追加"
-                                          }
-                                          type="button"
-                                        >
-                                          ＋ 今日へ
-                                        </button>
-                                      </div>
-                                    )
-                                  ) : (
-                                    <button
-                                      className="uiSmallButton nextStepRowAction nextStepRowAction--set mainActionButton mainActionButton--neutral"
-                                      disabled={sourceEditBlocked(projectSourceKey)}
-                                      onClick={(event) => {
-                                        event.stopPropagation();
-                                        openNextStepEditor(project);
-                                      }}
-                                      onPointerDown={(event) => event.stopPropagation()}
-                                      title={sourceEditBlockReason(projectSourceKey) ?? undefined}
-                                      type="button"
-                                    >
-                                      次の一手を設定
-                                    </button>
-                                  )}
-                                </div>
-                                <span aria-hidden="true" className="uiKey rowKeyHint">
-                                  Enter
-                                </span>
-                                <button
-                                  aria-label={`${project.name}の次の一手の操作`}
-                                  aria-haspopup="menu"
-                                  className="sourceRowMenu nextStepRegionMenu"
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    const rect = event.currentTarget.getBoundingClientRect();
-                                    openContextMenu(
-                                      { kind: "nextStep", project },
-                                      rect.left,
-                                      rect.bottom,
-                                      event.currentTarget,
-                                    );
-                                  }}
-                                  onPointerDown={(event) => event.stopPropagation()}
-                                  title="次の一手の操作"
-                                  type="button"
-                                >
-                                  <span aria-hidden="true">…</span>
-                                </button>
-                              </div>
-                            </article>
-                          );
-                        })}
-                      </div>
-                      {config.projects.length > PROJECT_CARD_COMPACT_LIMIT && (
-                        <div className="sourceListControls nextStepCardControls">
-                          <button
-                            className="mainActionButton mainActionButton--neutral"
-                            onClick={() => {
-                              projectListAnchorRef.current = null;
-                              setProjectsListExpanded((expanded) => !expanded);
-                            }}
-                            type="button"
-                          >
-                            {projectsListExpanded
-                              ? "− 折りたたむ"
-                              : `＋ 残り${config.projects.length - PROJECT_CARD_COMPACT_LIMIT}件を表示`}
-                          </button>
-                        </div>
-                      )}
-                      {projectPointerDrag?.targetIndicator && (
-                        <div
-                          aria-hidden="true"
-                          className="projectDropIndicator"
-                          style={projectPointerDrag.targetIndicator}
-                        />
-                      )}
-                      {projectPointerDrag?.todayTargetIndicator && (
-                        <div
-                          aria-hidden="true"
-                          className="todayDropIndicator"
-                          style={projectPointerDrag.todayTargetIndicator}
-                        />
-                      )}
-                      {projectPointerDrag && (
-                        <div
-                          aria-hidden="true"
-                          className={
-                            projectPointerDrag.todayTargetIndex !== undefined
-                              ? "projectDragGhost projectDragGhost--today"
-                              : "projectDragGhost"
-                          }
-                          style={{
-                            left: projectPointerDrag.pointerX - projectPointerDrag.offsetX,
-                            top: projectPointerDrag.pointerY - projectPointerDrag.offsetY,
-                            width: Math.min(300, projectPointerDrag.width),
-                          }}
-                        >
-                          {(() => {
-                            const project = config.projects.find(
-                              (item) => item.id === projectPointerDrag.id,
-                            );
-                            return project ? (
-                              <>
-                                <ProjectIdentity
-                                  colorId={project.colorId}
-                                  compact
-                                  name={project.name}
-                                  projectId={project.id}
-                                />
-                                <strong>{project.nextStep?.text || "次の一手を書く"}</strong>
-                              </>
-                            ) : null;
-                          })()}
-                        </div>
-                      )}
-                    </div>
-                  </SectionCollapse>
-                </section>
-
-                <section
-                  className={[
-                    "inboxBand",
-                    projectPointerDrag?.wishlistEligible ? "sourceReturnBand--target" : "",
-                    projectPointerDrag?.wishlistTarget ? "sourceReturnBand--active" : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                  onContextMenu={(event) => {
-                    event.preventDefault();
-                    openContextMenu(
-                      { kind: "inboxes" },
-                      event.clientX,
-                      event.clientY,
-                      event.currentTarget,
-                    );
+                  completionFeedback={completionFeedback}
+                  dateMain={headerDateMain}
+                  dateWeekday={headerDateWeekday}
+                  done={victoryDone}
+                  editing={victoryEditing}
+                  refs={{
+                    input: victoryInputRef,
+                    navigation: victoryNavigationRef,
+                    save: victorySaveRef,
+                    suggestions: victorySuggestionsRef,
                   }}
-                >
-                  <div
-                    className="disclosureHeader"
-                    data-inbox-header
-                    onContextMenu={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      openContextMenu(
-                        { kind: "inboxes" },
-                        event.clientX,
-                        event.clientY,
-                        event.currentTarget,
-                      );
-                    }}
-                    onKeyDown={(event) => openContextMenuFromKeyboard(event, { kind: "inboxes" })}
-                    tabIndex={-1}
-                    onClick={(event) =>
-                      toggleDisclosureFromBar(event, () => setInboxOpen((open) => !open))
-                    }
-                  >
-                    <button
-                      aria-describedby="wishlist-group-summary"
-                      aria-expanded={inboxOpen}
-                      className="disclosure"
-                      onClick={() => setInboxOpen((open) => !open)}
-                      type="button"
-                    >
-                      <UiIcon name={inboxOpen ? "chevronDown" : "chevronRight"} size={16} />
-                      <span className="disclosureLabel">
-                        <strong>やりたいこと</strong>
-                      </span>
-                    </button>
-                    <span className="disclosureCount">{config.inbox.length}件</span>
-                    {inboxOpen ? (
-                      <span className="disclosureDescription">
-                        他にやりたいこと。今日やるものは「今日の3件」から選べます。
-                      </span>
-                    ) : (
-                      // P10-06 (D26): closed, the header shows the groups as dots and counts.
-                      <span
-                        aria-hidden="true"
-                        className="disclosureDescription inboxGroupSummary"
-                        data-overflow={inboxSummaryOverflow ? "true" : "false"}
-                        ref={inboxSummaryRef}
-                        title={inboxSummaryTitle}
-                      >
-                        <span className="inboxGroupSummaryTrack">
-                          {renderInboxGroupSummaryItems(false)}
-                          {inboxSummaryOverflow ? renderInboxGroupSummaryItems(true) : null}
-                        </span>
-                      </span>
-                    )}
-                    <span className="visuallyHidden" id="wishlist-group-summary">
-                      {`やりたいこと ${config.inbox.length}件。${wishlistGroups
-                        .map((group) => `${group.name} ${group.items.length}件`)
-                        .join("、")}`}
-                    </span>
-                    <div className="disclosureHeaderActions">
-                      <button
-                        aria-label="やりたいことを追加"
-                        className="uiSmallButton sectionAddButton sectionAddButton--barHitTarget nextStepHeaderAdd nextStepHeaderAdd--wishlist mainActionButton mainActionButton--neutral"
-                        disabled={inboxAddOpen}
-                        onPointerDown={(event) => event.stopPropagation()}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          openInboxAddDialog(event.currentTarget);
-                        }}
-                        title="やりたいことを追加"
-                        type="button"
-                      >
-                        ＋ やりたいこと
-                      </button>
-                      <button
-                        aria-label="やりたいことの操作"
-                        aria-haspopup="menu"
-                        className="sectionMenuButton"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          const rect = event.currentTarget.getBoundingClientRect();
-                          openContextMenu(
-                            { kind: "inboxes" },
-                            rect.left,
-                            rect.bottom,
-                            event.currentTarget,
-                          );
-                        }}
-                        onPointerDown={(event) => event.stopPropagation()}
-                        title="やりたいことの操作"
-                        type="button"
-                      >
-                        <span aria-hidden="true">…</span>
-                      </button>
-                    </div>
-                  </div>
+                  setEditing={setVictoryEditing}
+                  suggestions={victorySuggestions}
+                  text={victoryText}
+                  value={config.today.victory.text}
+                />
 
-                  {projectPointerDrag?.wishlistEligible && (
-                    <div
-                      className={
-                        projectPointerDrag?.wishlistTarget
-                          ? "sourceReturnDropZone sourceReturnDropZone--active"
-                          : "sourceReturnDropZone"
-                      }
-                    >
-                      <span className="dropHintLabel">
-                        <span aria-hidden="true">↓</span>
-                        <span>ここにドロップしてやりたいことへ戻す</span>
-                      </span>
-                    </div>
-                  )}
+                <DoNowBand
+                  actions={{
+                    acknowledgeDoNowCompletion,
+                    finishActiveTimer,
+                    openContextMenu,
+                    openContextMenuFromKeyboard,
+                    openInstructionWindow,
+                    openNextStepEditor,
+                    openProjectAddDialog,
+                    setDoNowExcludedProjectId,
+                    setDoNowPickedProjectId,
+                    showNextDoNowCandidate,
+                    showToast,
+                    startDoNowProject,
+                    togglePause,
+                  }}
+                  data={{
+                    activeTimer,
+                    buttonsById,
+                    doNowBookPage,
+                    doNowCandidates,
+                    doNowCompletionHold,
+                    doNowCompletionSaving,
+                    doNowCopyKey,
+                    doNowCopyShouldAnimate,
+                    doNowDefaultTimerMinutes,
+                    doNowInstructionPath,
+                    doNowOnlyExcluded,
+                    doNowReason,
+                    doNowSelection,
+                    doNowShortTimerMinutes,
+                    isDoNowRunning,
+                    missingButtonIds,
+                    missingInstructionProjectIds,
+                    nextStepSetupProject,
+                    timerClock,
+                  }}
+                />
 
-                  <SectionCollapse open={inboxOpen} dragActive={dragActive}>
-                    <div className="inboxBody">
-                      {config.inbox.length === 0 && (
-                        <div className="sectionEmptyState">
-                          <div className="sectionEmptyStateContent">
-                            <strong>やりたいことを設定しましょう</strong>
-                            <span>あとでやりたいことを登録して、今日やる候補にできます</span>
-                            <button
-                              className="mainActionButton mainActionButton--gold"
-                              disabled={inboxAddOpen}
-                              onClick={(event) => openInboxAddDialog(event.currentTarget)}
-                              type="button"
-                            >
-                              <UiIcon name="add" size={16} />
-                              やりたいことを追加する
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                      <div className="inboxGroups">
-                        {wishlistGroups.map((group) => {
-                          const view = wishlistGroupViews[group.key] ?? {};
-                          const range = sourceListRange(
-                            group.items.length,
-                            Boolean(view.expanded),
-                            view.page ?? 1,
-                          );
-                          const collapsed = Boolean(view.collapsed);
-                          const visibleItems = group.items.slice(range.start, range.end);
-                          const groupProject = group.projectId
-                            ? projectsById.get(group.projectId)
-                            : undefined;
-                          // P10-06 (D25): a Project group with no Next Step asks for one.
-                          const groupNeedsNextStep = Boolean(
-                            group.key !== "unassigned" && groupProject && !groupProject.nextStep?.text.trim(),
-                          );
-                          return (
-                            <section
-                              className={[
-                                "wishlistGroup",
-                                group.key === "unassigned" ? "wishlistGroup--unassigned" : "",
-                                wishlistGroupPointerDrag?.key === group.key
-                                  ? "wishlistGroup--dragging"
-                                  : "",
-                              ]
-                                .filter(Boolean)
-                                .join(" ")}
-                              data-project-color={
-                                groupProject
-                                  ? resolveProjectColorId(groupProject.id, groupProject.colorId)
-                                  : undefined
-                              }
-                              data-wishlist-group={group.key}
-                              key={group.key}
-                              onPointerCancel={cancelWishlistGroupPointerDrag}
-                              onPointerDown={(event) =>
-                                startWishlistGroupPointerDrag(event, group.key, group.name)
-                              }
-                              onPointerMove={updateWishlistGroupPointerDrag}
-                              onPointerUp={finishWishlistGroupPointerDrag}
-                            >
-                              <button
-                                aria-expanded={!collapsed}
-                                className={
-                                  group.key === "unassigned"
-                                    ? "wishlistGroupHeader wishlistGroupHeader--fixed"
-                                    : "wishlistGroupHeader"
-                                }
-                                onClick={(event) => {
-                                  if (event.detail === 0 || group.key === "unassigned") {
-                                    toggleWishlistGroup(group.key);
-                                  }
-                                }}
-                                onContextMenu={(event) => {
-                                  if (!groupProject) return;
-                                  event.preventDefault();
-                                  event.stopPropagation();
-                                  openContextMenu(
-                                    { kind: "project", project: groupProject },
-                                    event.clientX,
-                                    event.clientY,
-                                    event.currentTarget,
-                                  );
-                                }}
-                                onKeyDown={(event) => {
-                                  if (groupProject) {
-                                    openContextMenuFromKeyboard(event, {
-                                      kind: "project",
-                                      project: groupProject,
-                                    });
-                                  }
-                                }}
-                                title={
-                                  group.key === "unassigned"
-                                    ? "未分類は並べ替えできません"
-                                    : groupProject
-                                      ? `${group.name}（ドラッグでグループを並べ替え、右クリックで編集）`
-                                      : "ドラッグでグループを並べ替え"
-                                }
-                                type="button"
-                              >
-                                <UiIcon
-                                  name={collapsed ? "chevronRight" : "chevronDown"}
-                                  size={16}
-                                />
-                                {groupProject ? (
-                                  <ProjectIdentity
-                                    colorId={groupProject.colorId}
-                                    compact
-                                    name={group.name}
-                                    projectId={groupProject.id}
-                                  />
-                                ) : (
-                                  <strong>未分類</strong>
-                                )}
-                                {groupNeedsNextStep && (
-                                  <span className="uiPill wishlistNextStepMissing">次の一手が未設定</span>
-                                )}
-                                <span>{group.items.length}件</span>
-                              </button>
-                              <SectionCollapse open={!collapsed} dragActive={dragActive}>
-                                <>
-                                  <div className="inboxList">
-                                    {visibleItems.map(({ item, index }) => {
-                                      const sourceKey = item.id ? `wishlist:${item.id}` : null;
-                                      const sourceLocked = Boolean(
-                                        sourceKey &&
-                                        sourceLockedByUnfinishedToday(config, sourceKey),
-                                      );
-                                      const selected = Boolean(
-                                        sourceKey &&
-                                        config.today.items.some((todayItem) => {
-                                          if (todayItem.sourceKey) {
-                                            return (
-                                              canonicalSourceKey(config, todayItem.sourceKey) ===
-                                              sourceKey
-                                            );
-                                          }
-                                          return (
-                                            todayItem.projectId === item.projectId &&
-                                            todayItem.text.trim() === item.text.trim()
-                                          );
-                                        }),
-                                      );
-                                      const nextStepSelected = wishlistItemIsCurrentNextStep(item);
-                                      return (
-                                        <div
-                                          className={
-                                            inboxPointerDrag?.index === index
-                                              ? "inboxRow sourceListRow inboxRow--dragging"
-                                              : "inboxRow sourceListRow"
-                                          }
-                                          data-inbox-index={index}
-                                          data-inbox-id={item.id}
-                                          key={item.id ?? `${item.text}-${index}`}
-                                          onFocus={() => {
-                                            if (item.id)
-                                              inboxListAnchorRef.current = { id: item.id, index };
-                                          }}
-                                          onBlur={(event) => {
-                                            if (!(event.relatedTarget instanceof Node) ||
-                                                !event.currentTarget.contains(event.relatedTarget)) {
-                                              inboxListAnchorRef.current = null;
-                                            }
-                                          }}
-                                          onContextMenu={(event) => {
-                                            event.preventDefault();
-                                            event.stopPropagation();
-                                            openContextMenu(
-                                              { kind: "inbox", index, itemText: item.text },
-                                              event.clientX,
-                                              event.clientY,
-                                              event.currentTarget,
-                                            );
-                                          }}
-                                          onKeyDown={(event) => {
-                                            if (
-                                              handleRowShortcutKey(event, {
-                                                activate: () => promoteInboxToNextStep(index),
-                                                edit: () => beginInboxEdit(index),
-                                                remove: () => deleteInboxItem(index),
-                                              })
-                                            )
-                                              return;
-                                            openContextMenuFromKeyboard(event, {
-                                              kind: "inbox",
-                                              index,
-                                              itemText: item.text,
-                                            });
-                                          }}
-                                          onPointerCancel={cancelInboxPointerDrag}
-                                          onPointerDown={(event) =>
-                                            startInboxPointerDrag(event, index)
-                                          }
-                                          onPointerMove={updateInboxPointerDrag}
-                                          onPointerUp={finishInboxPointerDrag}
-                                          tabIndex={0}
-                                        >
-                                          <span className="inboxItemText" title={item.text}>
-                                            {sourceLocked && (
-                                              <span
-                                                aria-label="今日の3件で使用中のためロック中"
-                                                className="sourceLockBadge sourceLockBadge--wishlist"
-                                                tabIndex={0}
-                                                title={SOURCE_LOCK_REASON}
-                                              >
-                                                <UiIcon name="lock" size={16} />
-                                              </span>
-                                            )}
-                                            {item.text}
-                                          </span>
-                                          <div className="wishlistRowActions">
-                                            <span className="wishlistNextStepSlot">
-                                              {!nextStepSelected && !sourceLocked ? (
-                                                <button
-                                                  aria-label={`${item.text}の次の一手にする`}
-                                                  className={
-  groupNeedsNextStep
-    ? "wishlistNextStepAction nextStepRowAction nextStepRowAction--set mainActionButton mainActionButton--gold"
-    : "wishlistNextStepAction nextStepRowAction nextStepRowAction--set mainActionButton mainActionButton--neutral"
-}
-                                                  disabled={
-                                                    !item.id ||
-                                                    sourceEditBlocked(`wishlist:${item.id}`)
-                                                  }
-                                                  onClick={(event) => {
-                                                    event.stopPropagation();
-                                                    promoteInboxToNextStep(index);
-                                                  }}
-                                                  onPointerDown={(event) => event.stopPropagation()}
-                                                  title={
-                                                    item.id
-                                                      ? (sourceEditBlockReason(
-                                                          `wishlist:${item.id}`,
-                                                        ) ?? "次の一手にする")
-                                                      : "次の一手にする"
-                                                  }
-                                                  type="button"
-                                                >
-                                                  ▷ 次の一手にする
-                                                </button>
-                                              ) : null}
-                                            </span>
-                                            {nextStepSelected && (
-                                              <span className="wishlistNextStepStatus">
-                                                ✓ 次の一手に設定済み
-                                              </span>
-                                            )}
-                                            {selected && (
-                                              <span className="wishlistTodayStatus">
-                                                ✓ 今日の3件に設定済み
-                                              </span>
-                                            )}
-                                            <span aria-hidden="true" className="uiKey rowKeyHint">
-                                              Enter
-                                            </span>
-                                            <button
-                                              aria-label={`${item.text}の操作`}
-                                              aria-haspopup="menu"
-                                              className="sourceRowMenu"
-                                              onClick={(event) => {
-                                                const rect =
-                                                  event.currentTarget.getBoundingClientRect();
-                                                openContextMenu(
-                                                  { kind: "inbox", index, itemText: item.text },
-                                                  rect.left,
-                                                  rect.bottom,
-                                                  event.currentTarget,
-                                                );
-                                              }}
-                                              title="操作メニュー"
-                                              type="button"
-                                            >
-                                              <span aria-hidden="true">…</span>
-                                            </button>
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                  {group.items.length > SOURCE_LIST_COMPACT_LIMIT &&
-                                    group.items.length < SOURCE_LIST_PAGINATION_THRESHOLD && (
-                                      <div className="sourceListControls">
-                                        <button
-                                          className="mainActionButton mainActionButton--neutral"
-                                          onClick={() =>
-                                            setWishlistGroupViews((current) => ({
-                                              ...current,
-                                              [group.key]: {
-                                                ...current[group.key],
-                                                expanded: !view.expanded,
-                                              },
-                                            }))
-                                          }
-                                          type="button"
-                                        >
-                                          {view.expanded
-                                            ? "5件だけ表示"
-                                            : `残り${group.items.length - SOURCE_LIST_COMPACT_LIMIT}件をもっと見る`}
-                                        </button>
-                                      </div>
-                                    )}
-                                  {group.items.length >= SOURCE_LIST_PAGINATION_THRESHOLD && (
-                                    <nav
-                                      aria-label={`${group.name}のやりたいことページ`}
-                                      className="sourceListPagination"
-                                    >
-                                      <button
-                                        className="mainActionButton mainActionButton--neutral"
-                                        disabled={range.page <= 1}
-                                        onClick={() =>
-                                          setWishlistGroupViews((current) => ({
-                                            ...current,
-                                            [group.key]: {
-                                              ...current[group.key],
-                                              page: Math.max(1, range.page - 1),
-                                            },
-                                          }))
-                                        }
-                                        type="button"
-                                      >
-                                        <UiIcon name="chevronLeft" size={16} /> 前へ
-                                      </button>
-                                      <span>
-                                        {range.page} / {range.pageCount}
-                                      </span>
-                                      <button
-                                        className="mainActionButton mainActionButton--neutral"
-                                        disabled={range.page >= range.pageCount}
-                                        onClick={() =>
-                                          setWishlistGroupViews((current) => ({
-                                            ...current,
-                                            [group.key]: {
-                                              ...current[group.key],
-                                              page: Math.min(range.pageCount, range.page + 1),
-                                            },
-                                          }))
-                                        }
-                                        type="button"
-                                      >
-                                        次へ <UiIcon name="chevronRight" size={16} />
-                                      </button>
-                                    </nav>
-                                  )}
-                                </>
-                              </SectionCollapse>
-                            </section>
-                          );
-                        })}
-                      </div>
-                      {inboxPointerDrag?.targetIndicator && (
-                        <div
-                          aria-hidden="true"
-                          className="inboxDropIndicator"
-                          style={inboxPointerDrag.targetIndicator}
-                        />
-                      )}
-                      {inboxPointerDrag?.todayTargetIndicator && (
-                        <div
-                          aria-hidden="true"
-                          className="todayDropIndicator"
-                          style={inboxPointerDrag.todayTargetIndicator}
-                        />
-                      )}
-                      {wishlistGroupPointerDrag?.targetIndicator && (
-                        <div
-                          aria-hidden="true"
-                          className="wishlistGroupDropIndicator"
-                          style={wishlistGroupPointerDrag.targetIndicator}
-                        />
-                      )}
-                      {wishlistGroupPointerDrag && (
-                        <div
-                          aria-hidden="true"
-                          className="wishlistGroupDragGhost"
-                          style={{
-                            left:
-                              wishlistGroupPointerDrag.pointerX - wishlistGroupPointerDrag.offsetX,
-                            top:
-                              wishlistGroupPointerDrag.pointerY - wishlistGroupPointerDrag.offsetY,
-                            width: Math.min(320, wishlistGroupPointerDrag.width),
-                          }}
-                        >
-                          {wishlistGroupPointerDrag.name}
-                        </div>
-                      )}
-                      {inboxPointerDrag &&
-                        (() => {
-                          const item = config.inbox.find(
-                            (entry) =>
-                              entry.id === inboxPointerDrag.sourceKey.slice("wishlist:".length),
-                          );
-                          const project = item?.projectId
-                            ? projectsById.get(item.projectId)
-                            : undefined;
-                          return item ? (
-                            <div
-                              aria-hidden="true"
-                              className="inboxDragGhost"
-                              style={{
-                                left: inboxPointerDrag.pointerX - inboxPointerDrag.offsetX,
-                                top: inboxPointerDrag.pointerY - inboxPointerDrag.offsetY,
-                                width: Math.min(300, inboxPointerDrag.width),
-                              }}
-                            >
-                              <span className="inboxProjectIdentity">
-                                {project ? (
-                                  <ProjectIdentity
-                                    colorId={project.colorId}
-                                    compact
-                                    name={project.name}
-                                    projectId={project.id}
-                                  />
-                                ) : (
-                                  <span className="sourceProjectNone">プロジェクトなし</span>
-                                )}
-                              </span>
-                              <strong>{item.text}</strong>
-                            </div>
-                          ) : null;
-                        })()}
-                    </div>
-                  </SectionCollapse>
-                </section>
+                <TodayThreeSection
+                  actions={{
+                    beginTodayTriggerEdit,
+                    cancelTodayPointerDrag,
+                    cancelTodayTriggerEdit,
+                    editTodayRowItem,
+                    finishActiveTimer,
+                    finishTodayPointerDrag,
+                    handleRowShortcutKey,
+                    handleTodayTriggerKeyDown,
+                    openContextMenu,
+                    openContextMenuFromKeyboard,
+                    openInstructionWindow,
+                    openTodayPicker,
+                    removeTodayItem,
+                    setTodayOpen,
+                    setTodayTriggerDraft,
+                    showToast,
+                    startNextTodayBatch,
+                    startTimer,
+                    startTodayItemShort,
+                    startTodayPointerDrag,
+                    togglePause,
+                    updateTodayPointerDrag,
+                  }}
+                  data={{
+                    activeTimer,
+                    allTodayItemsCompleted,
+                    buttonsById,
+                    completionFeedback,
+                    config,
+                    doNowSelection,
+                    isTimerOnTodayItem,
+                    projectsById,
+                    timerClock,
+                    todayAllCompleted,
+                    todayCompletedCount,
+                    todayOpen,
+                    todayTriggerDraft,
+                    todayTriggerEditingIndex,
+                  }}
+                  drag={{ inboxPointerDrag, projectPointerDrag, todayPointerDrag }}
+                  dragActive={dragActive}
+                />
+
+
+                <NextStepsSection
+                  actions={{
+                    addCandidateToToday,
+                    cancelProjectPointerDrag,
+                    clearProjectNextStep,
+                    finishProjectPointerDrag,
+                    handleRowShortcutKey,
+                    markNextStepReviewed,
+                    openContextMenu,
+                    openContextMenuFromKeyboard,
+                    openImportDialog,
+                    openNextStepEditor,
+                    openProjectAddDialog,
+                    setProjectsListExpanded,
+                    setProjectsOpen,
+                    sourceEditBlockReason,
+                    sourceEditBlocked,
+                    startProjectPointerDrag,
+                    startProjectShort,
+                    todayCandidateSelected,
+                    updateProjectPointerDrag,
+                  }}
+                  config={config}
+                  drag={{ inboxPointerDrag, projectPointerDrag }}
+                  dragActive={dragActive}
+                  nextStepReviewBusy={nextStepReviewBusy}
+                  projectListAnchorRef={projectListAnchorRef}
+                  projectsListExpanded={projectsListExpanded}
+                  projectsOpen={projectsOpen}
+                  rawTodayBuilderCandidates={rawTodayBuilderCandidates}
+                  staleNextStepMap={staleNextStepMap}
+                  visibleProjects={visibleProjects}
+                />
+
+                <WishlistSection
+                  actions={{
+                    beginInboxEdit,
+                    cancelInboxPointerDrag,
+                    cancelWishlistGroupPointerDrag,
+                    deleteInboxItem,
+                    finishInboxPointerDrag,
+                    finishWishlistGroupPointerDrag,
+                    handleRowShortcutKey,
+                    openContextMenu,
+                    openContextMenuFromKeyboard,
+                    openInboxAddDialog,
+                    promoteInboxToNextStep,
+                    setInboxOpen,
+                    setWishlistGroupViews,
+                    sourceEditBlockReason,
+                    sourceEditBlocked,
+                    startInboxPointerDrag,
+                    startWishlistGroupPointerDrag,
+                    toggleWishlistGroup,
+                    updateInboxPointerDrag,
+                    updateWishlistGroupPointerDrag,
+                  }}
+                  config={config}
+                  drag={{ inboxPointerDrag, projectPointerDrag, wishlistGroupPointerDrag }}
+                  dragActive={dragActive}
+                  inboxAddOpen={inboxAddOpen}
+                  inboxListAnchorRef={inboxListAnchorRef}
+                  inboxOpen={inboxOpen}
+                  inboxSummaryOverflow={inboxSummaryOverflow}
+                  inboxSummaryRef={inboxSummaryRef}
+                  inboxSummaryTitle={inboxSummaryTitle}
+                  projectsById={projectsById}
+                  renderInboxGroupSummaryItems={renderInboxGroupSummaryItems}
+                  wishlistGroups={wishlistGroups}
+                  wishlistGroupViews={wishlistGroupViews}
+                  wishlistItemIsCurrentNextStep={wishlistItemIsCurrentNextStep}
+                />
 
                 <TodayActivitySection
                   count={todayActivityCount}
@@ -11152,456 +6254,53 @@ function DashboardApp() {
         toasts={toasts}
       />
 
-      <AnimatePresence initial={false}>
-        {contextMenu && (
-          <ExitPresence key="context-menu">
-            {(exiting, exitProps) => (
-              <ContextMenu
-                exitProps={exitProps}
-                ariaLabel="操作メニュー"
-                onClose={() => dismissContextMenu(false)}
-                onShortcutKey={handleContextMenuShortcut}
-                opener={contextMenuReturnFocusRef.current}
-                x={contextMenu.x}
-                y={contextMenu.y}
-              >
-                {contextMenu.kind === "doNow" ? (
-                  <ContextMenuItem onClick={showNextDoNowCandidate} type="button">
-                    他の一手
-                  </ContextMenuItem>
-                ) : contextMenu.kind === "button" ? (
-                  <>
-                    {showButtonInSidebar(contextMenu.button) && (
-                      <>
-                        <ContextMenuItem
-                          disabled={
-                            (config?.buttons ?? [])
-                              .filter(
-                                (button) =>
-                                  showButtonInSidebar(button) &&
-                                  buttonGroupName(button) === buttonGroupName(contextMenu.button),
-                              )
-                              .findIndex((button) => button.id === contextMenu.button.id) <= 0
-                          }
-                          onClick={() => void moveSidebarButtonByOffset(contextMenu.button.id, -1)}
-                          type="button"
-                        >
-                          上へ移動
-                        </ContextMenuItem>
-                        <ContextMenuItem
-                          disabled={(() => {
-                            const groupButtons = (config?.buttons ?? []).filter(
-                              (button) =>
-                                showButtonInSidebar(button) &&
-                                buttonGroupName(button) === buttonGroupName(contextMenu.button),
-                            );
-                            return (
-                              groupButtons.findIndex((button) => button.id === contextMenu.button.id) >=
-                              groupButtons.length - 1
-                            );
-                          })()}
-                          onClick={() => void moveSidebarButtonByOffset(contextMenu.button.id, 1)}
-                          type="button"
-                        >
-                          下へ移動
-                        </ContextMenuItem>
-                      </>
-                    )}
-                    <ContextMenuItem
-                      onClick={() => openButtonEditDialog(contextMenu.button)}
-                      type="button"
-                    >
-                      編集
-                    </ContextMenuItem>
-                    {canRevealLauncherButton(contextMenu.button) ? (
-                      <ContextMenuItem
-                        onClick={() => void revealButtonInExplorer(contextMenu.button)}
-                        type="button"
-                      >
-                        エクスプローラーで表示する
-                      </ContextMenuItem>
-                    ) : null}
-                    <ContextMenuItem
-                      className="contextMenuSeparatorBefore"
-                      onClick={() => void moveSidebarButtonToDictionary(contextMenu.button)}
-                      type="button"
-                    >
-                      辞書に移動
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      className="contextMenuDanger contextMenuSeparatorBefore"
-                      onClick={() => deleteButton(contextMenu.button)}
-                      type="button"
-                    >
-                      削除
-                    </ContextMenuItem>
-                  </>
-                ) : contextMenu.kind === "today" ? (
-                  <>
-                    <ContextMenuItem
-                      disabled={
-                        !config.today.items[contextMenu.index]?.sourceKey ||
-                        !canonicalSourceKey(config, config.today.items[contextMenu.index].sourceKey!) ||
-                        sourceEditBlocked(
-                          canonicalSourceKey(config, config.today.items[contextMenu.index].sourceKey!) ??
-                            "",
-                          true,
-                        )
-                      }
-                      title={
-                        config.today.items[contextMenu.index]?.sourceKey
-                          ? (sourceEditBlockReason(
-                              canonicalSourceKey(
-                                config,
-                                config.today.items[contextMenu.index].sourceKey!,
-                              ) ?? "",
-                              true,
-                            ) ?? undefined)
-                          : undefined
-                      }
-                      onClick={() => {
-                        const current = configRef.current;
-                        const item = current?.today.items[contextMenu.index];
-                        if (!current || !item?.sourceKey) return;
-                        const key = canonicalSourceKey(current, item.sourceKey);
-                        if (!key || sourceEditBlocked(key, true)) return;
-                        const project = current.projects.find((p) => `project:${p.id}` === key);
-                        if (project) openNextStepEditor(project, { origin: "today" });
-                        else {
-                          const index = current.inbox.findIndex((i) => `wishlist:${i.id}` === key);
-                          if (index >= 0) beginInboxEdit(index, "today");
-                        }
-                      }}
-                      shortcut="F2"
-                      type="button"
-                    >
-                      編集
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      disabled={contextMenu.index <= 0}
-                      onClick={() => void moveTodayItemByOffset(contextMenu.index, -1)}
-                      type="button"
-                    >
-                      左へ移動
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      disabled={contextMenu.index >= (config?.today.items.length ?? 0) - 1}
-                      onClick={() => void moveTodayItemByOffset(contextMenu.index, 1)}
-                      type="button"
-                    >
-                      右へ移動
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      disabled={
-                        !!config?.today.items[contextMenu.index] &&
-                        isTimerOnTodayItem(config.today.items[contextMenu.index], contextMenu.index)
-                      }
-                      title={
-                        config?.today.items[contextMenu.index] &&
-                        isTimerOnTodayItem(config.today.items[contextMenu.index], contextMenu.index)
-                          ? "タイマーを停止してから外してください"
-                          : undefined
-                      }
-                      onClick={() => {
-                        setContextMenu(null);
-                        const item = config?.today.items[contextMenu.index];
-                        if (item) void removeTodayItem(todaySourceKey(item, contextMenu.index));
-                      }}
-                      shortcut="Delete"
-                      type="button"
-                    >
-                      今日の3件から外す
-                    </ContextMenuItem>
-                  </>
-                ) : contextMenu.kind === "inbox" ? (
-                  <>
-                    <ContextMenuItem
-                      disabled={
-                        sourceEditBlocked(`wishlist:${config?.inbox[contextMenu.index]?.id ?? ""}`) ||
-                        Boolean(
-                          config?.inbox[contextMenu.index] &&
-                          wishlistItemIsCurrentNextStep(config.inbox[contextMenu.index]),
-                        )
-                      }
-                      onClick={() => promoteInboxToNextStep(contextMenu.index)}
-                      title={
-                        sourceEditBlockReason(`wishlist:${config?.inbox[contextMenu.index]?.id ?? ""}`) ??
-                        undefined
-                      }
-                      type="button"
-                    >
-                      {config?.inbox[contextMenu.index] &&
-                      wishlistItemIsCurrentNextStep(config.inbox[contextMenu.index])
-                        ? "次の一手に設定済み"
-                        : "次の一手にする"}
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      disabled={inboxNeighborIndex(contextMenu.index, -1) === undefined}
-                      onClick={() => void moveInboxItemByOffset(contextMenu.index, -1)}
-                      type="button"
-                    >
-                      上へ移動
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      disabled={inboxNeighborIndex(contextMenu.index, 1) === undefined}
-                      onClick={() => void moveInboxItemByOffset(contextMenu.index, 1)}
-                      type="button"
-                    >
-                      下へ移動
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      disabled={sourceEditBlocked(`wishlist:${config.inbox[contextMenu.index]?.id}`)}
-                      title={
-                        sourceEditBlockReason(`wishlist:${config.inbox[contextMenu.index]?.id}`) ??
-                        undefined
-                      }
-                      onClick={() => beginInboxEdit(contextMenu.index)}
-                      shortcut="F2"
-                      type="button"
-                    >
-                      編集
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      disabled={
-                        !config?.inbox[contextMenu.index] ||
-                        sourceEditBlocked(`wishlist:${config?.inbox[contextMenu.index]?.id ?? ""}`) ||
-                        isTimerActiveForSource([
-                          wishlistSourceKey(config.inbox[contextMenu.index], contextMenu.index),
-                          legacyWishlistSourceKey(config.inbox[contextMenu.index]),
-                        ])
-                      }
-                      onClick={() => completeInboxItem(contextMenu.index)}
-                      type="button"
-                    >
-                      完了にする
-                    </ContextMenuItem>
-                    {contextMenuTodayAdd ? (
-                      <ContextMenuItem
-                        disabled={contextMenuTodayAdd.disabled}
-                        onClick={() => {
-                          const candidate = contextMenuTodayAdd.candidate;
-                          setContextMenu(null);
-                          void addCandidateToToday(candidate);
-                        }}
-                        shortcut="T"
-                        title={contextMenuTodayAdd.reason}
-                        type="button"
-                      >
-                        今日の3件に入れる
-                      </ContextMenuItem>
-                    ) : null}
-                    <ContextMenuItem
-                      className="contextMenuDanger"
-                      disabled={
-                        !config?.inbox[contextMenu.index] ||
-                        sourceEditBlocked(`wishlist:${config?.inbox[contextMenu.index]?.id ?? ""}`) ||
-                        isTimerActiveForSource([
-                          wishlistSourceKey(config.inbox[contextMenu.index], contextMenu.index),
-                          legacyWishlistSourceKey(config.inbox[contextMenu.index]),
-                        ])
-                      }
-                      onClick={() => deleteInboxItem(contextMenu.index)}
-                      shortcut="Delete"
-                      type="button"
-                    >
-                      削除
-                    </ContextMenuItem>
-                  </>
-                ) : contextMenu.kind === "nextStep" ? (
-                  <>
-                    <ContextMenuItem
-                      onClick={() => openProjectEditDialog(contextMenu.project)}
-                      type="button"
-                    >
-                      プロジェクトを編集
-                    </ContextMenuItem>
-                    {contextMenu.project.nextStep?.text.trim() ? (
-                      <>
-                        <ContextMenuItem
-                          disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
-                          onClick={() => openNextStepEditor(contextMenu.project)}
-                          shortcut="F2"
-                          title={sourceEditBlockReason(`project:${contextMenu.project.id}`) ?? undefined}
-                          type="button"
-                        >
-                          次の一手を編集
-                        </ContextMenuItem>
-                        <ContextMenuItem
-                          disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
-                          onClick={() =>
-                            openNextStepEditor(contextMenu.project, {
-                              mode: "promote",
-                              text: "",
-                              projectLocked: true,
-                            })
-                          }
-                          title={sourceEditBlockReason(`project:${contextMenu.project.id}`) ?? undefined}
-                          type="button"
-                        >
-                          別の行動に入れ替える
-                        </ContextMenuItem>
-                        <ContextMenuItem
-                          disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
-                          onClick={() => clearProjectNextStep(contextMenu.project)}
-                          shortcut="Delete"
-                          title={sourceEditBlockReason(`project:${contextMenu.project.id}`) ?? undefined}
-                          type="button"
-                        >
-                          次の一手を未設定にする
-                        </ContextMenuItem>
-                      </>
-                    ) : (
-                      <ContextMenuItem
-                        disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
-                        onClick={() => openNextStepEditor(contextMenu.project)}
-                        title={sourceEditBlockReason(`project:${contextMenu.project.id}`) ?? undefined}
-                        type="button"
-                      >
-                        次の一手を設定
-                      </ContextMenuItem>
-                    )}
-                    {contextMenuTodayAdd ? (
-                      <ContextMenuItem
-                        disabled={contextMenuTodayAdd.disabled}
-                        onClick={() => {
-                          const candidate = contextMenuTodayAdd.candidate;
-                          setContextMenu(null);
-                          void addCandidateToToday(candidate);
-                        }}
-                        shortcut="T"
-                        title={contextMenuTodayAdd.reason}
-                        type="button"
-                      >
-                        今日の3件に入れる
-                      </ContextMenuItem>
-                    ) : null}
-                    <ContextMenuItem
-                      className="contextMenuDanger contextMenuSeparatorBefore"
-                      onClick={() => requestProjectDeletion(contextMenu.project)}
-                      type="button"
-                    >
-                      プロジェクトを削除…
-                    </ContextMenuItem>
-                  </>
-                ) : contextMenu.kind === "project" ? (
-                  <>
-                    <ContextMenuItem
-                      onClick={() => openProjectEditDialog(contextMenu.project)}
-                      type="button"
-                    >
-                      プロジェクトを編集
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      className="contextMenuSeparatorBefore"
-                      onClick={openProjectManagement}
-                      type="button"
-                    >
-                      プロジェクトを管理
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      className="contextMenuDanger contextMenuSeparatorBefore"
-                      onClick={() => requestProjectDeletion(contextMenu.project)}
-                      type="button"
-                    >
-                      プロジェクトを削除…
-                    </ContextMenuItem>
-                  </>
-                ) : contextMenu.kind === "projects" ? (
-                  <>
-                    <ContextMenuItem onClick={openProjectAddDialog} type="button">
-                      プロジェクトを追加
-                    </ContextMenuItem>
-                    <ContextMenuItem onClick={() => openImportDialog("")} type="button">
-                      まとめて取り込む
-                    </ContextMenuItem>
-                  </>
-                ) : contextMenu.kind === "inboxes" ? (
-                  <>
-                    <ContextMenuItem onClick={() => openInboxAddDialog()} type="button">
-                      やりたいことを追加
-                    </ContextMenuItem>
-                    <ContextMenuItem onClick={() => openImportDialog("")} type="button">
-                      まとめて取り込む
-                    </ContextMenuItem>
-                  </>
-                ) : contextMenu.kind === "session" ? (
-                  <>
-                    <ContextMenuItem
-                      onClick={() => openSessionEditDialog(contextMenu.session)}
-                      type="button"
-                    >
-                      編集
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      className="contextMenuDanger"
-                      onClick={() => requestSessionDelete(contextMenu.session)}
-                      type="button"
-                    >
-                      削除
-                    </ContextMenuItem>
-                  </>
-                ) : (
-                  <>
-                    <ContextMenuItem onClick={openGroupDialog} type="button">
-                      グループを追加
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      onClick={() => openButtonBuilder(contextMenu.groupName)}
-                      type="button"
-                    >
-                      ボタンを追加
-                    </ContextMenuItem>
-                    {contextMenu.groupName && (
-                      <>
-                        <ContextMenuItem
-                          disabled={uniqueGroupNames(config).indexOf(contextMenu.groupName) <= 0}
-                          onClick={() => void moveSidebarGroupByOffset(contextMenu.groupName!, -1)}
-                          type="button"
-                        >
-                          上へ移動
-                        </ContextMenuItem>
-                        <ContextMenuItem
-                          disabled={
-                            uniqueGroupNames(config).indexOf(contextMenu.groupName) >=
-                            uniqueGroupNames(config).length - 1
-                          }
-                          onClick={() => void moveSidebarGroupByOffset(contextMenu.groupName!, 1)}
-                          type="button"
-                        >
-                          下へ移動
-                        </ContextMenuItem>
-                      </>
-                    )}
-                    {!contextMenu.groupName ? null : contextMenu.groupName === DEFAULT_BUTTON_GROUP ? (
-                      <ContextMenuItem disabled type="button">
-                        その他は削除不可
-                      </ContextMenuItem>
-                    ) : (
-                      <>
-                        <ContextMenuItem
-                          onClick={() => openGroupRenameDialog(contextMenu.groupName)}
-                          type="button"
-                        >
-                          名前を変更
-                        </ContextMenuItem>
-                        <ContextMenuItem
-                          className="contextMenuDanger"
-                          onClick={() => {
-                            if (contextMenu.groupName) deleteGroup(contextMenu.groupName);
-                          }}
-                          type="button"
-                        >
-                          {contextMenu.groupName ? `${contextMenu.groupName}を削除` : "グループ削除"}
-                        </ContextMenuItem>
-                      </>
-                    )}
-                  </>
-                )}
-              </ContextMenu>
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
+      <DashboardContextMenu
+        actions={{
+          addCandidateToToday,
+          beginInboxEdit,
+          clearProjectNextStep,
+          completeInboxItem,
+          deleteButton,
+          deleteGroup,
+          deleteInboxItem,
+          dismissContextMenu,
+          handleContextMenuShortcut,
+          moveInboxItemByOffset,
+          moveSidebarButtonByOffset,
+          moveSidebarButtonToDictionary,
+          moveSidebarGroupByOffset,
+          moveTodayItemByOffset,
+          openButtonBuilder,
+          openButtonEditDialog,
+          openGroupDialog,
+          openGroupRenameDialog,
+          openImportDialog,
+          openInboxAddDialog,
+          openNextStepEditor,
+          openProjectAddDialog,
+          openProjectEditDialog,
+          openProjectManagement,
+          openSessionEditDialog,
+          promoteInboxToNextStep,
+          removeTodayItem,
+          requestProjectDeletion,
+          requestSessionDelete,
+          revealButtonInExplorer,
+          setContextMenu,
+          showNextDoNowCandidate,
+          sourceEditBlockReason,
+          sourceEditBlocked,
+          wishlistItemIsCurrentNextStep,
+        }}
+        config={config}
+        configRef={configRef}
+        contextMenu={contextMenu}
+        contextMenuReturnFocusRef={contextMenuReturnFocusRef}
+        contextMenuTodayAdd={contextMenuTodayAdd}
+        inboxNeighborIndex={inboxNeighborIndex}
+        isTimerActiveForSource={isTimerActiveForSource}
+        isTimerOnTodayItem={isTimerOnTodayItem}
+      />
 
       <AnimatePresence initial={false}>
         {inboxEditingIndex !== null && config.inbox[inboxEditingIndex] && (
@@ -11655,9 +6354,16 @@ function DashboardApp() {
                 setTodayPickerQuickText={setTodayPickerQuickText}
                 addTodayPickerQuickWish={addTodayPickerQuickWish}
                 moveTodayPickerItemToIndex={moveTodayPickerItemToIndex}
-                renderTodayPickerCandidate={renderTodayPickerCandidate}
-                renderTodayPickerSelectedItem={renderTodayPickerSelectedItem}
                 requestCloseTodayPicker={requestCloseTodayPicker}
+                rows={{
+                  activeTimer,
+                  chooseTodayCandidate,
+                  moveTodayPickerItem,
+                  projectsById,
+                  removeTodayPickerDraftItem,
+                  setTodayPickerDragIndex,
+                  todayPickerCandidateSelected,
+                }}
                 saveTodayPickerDraft={saveTodayPickerDraft}
               />
             )}
@@ -11706,40 +6412,46 @@ function DashboardApp() {
               <SettingsDialog
                 exitProps={exitProps}
                 config={config}
-                dailyActivityCopying={dailyActivityCopying}
-                instructionSettingsBusy={instructionSettingsBusy}
-                numberInputDragging={numberInputDragging}
-                settingsDraft={settingsDraft}
-                settingsSection={settingsSection}
-                shortcutConflicts={shortcutConflicts}
-                shortcutRecordingField={shortcutRecordingField}
-                softwareResetStage={softwareResetStage}
-                testProfile={testProfile}
-                setHelpGuideOpen={setHelpGuideOpen}
-                setSettingsDraft={setSettingsDraft}
-                setSettingsSection={setSettingsSection}
-                showToast={showToast}
-                addInstructionFolder={addInstructionFolder}
-                beginShortcutRecording={beginShortcutRecording}
-                cancelNumberInputDrag={cancelNumberInputDrag}
-                chooseBackupFolder={chooseBackupFolder}
-                chooseBackupZipForRestore={chooseBackupZipForRestore}
-                copyTodayActivityLog={copyTodayActivityLog}
-                finishNumberInputDrag={finishNumberInputDrag}
-                finishShortcutRecording={finishShortcutRecording}
-                openBackupFolder={openBackupFolder}
-                openRuntimeDataFolder={openRuntimeDataFolder}
-                reloadInstructionList={reloadInstructionList}
-                removeInstructionFolder={removeInstructionFolder}
-                requestClearBackupFolder={requestClearBackupFolder}
-                requestCloseSettings={requestCloseSettings}
-                requestIconCacheRegeneration={requestIconCacheRegeneration}
-                requestInstructionWindowPositionReset={requestInstructionWindowPositionReset}
-                requestMiniWindowPositionReset={requestMiniWindowPositionReset}
-                requestSoftwareReset={requestSoftwareReset}
-                saveSettingsCenter={saveSettingsCenter}
-                startNumberInputDrag={startNumberInputDrag}
-                updateNumberInputDrag={updateNumberInputDrag}
+                data={{
+                  dailyActivityCopying,
+                  instructionSettingsBusy,
+                  numberInputDragging,
+                  settingsDraft,
+                  settingsSection,
+                  shortcutConflicts,
+                  shortcutRecordingField,
+                  softwareResetStage,
+                  testProfile,
+                }}
+                actions={{
+                  beginShortcutRecording,
+                  cancelNumberInputDrag,
+                  finishNumberInputDrag,
+                  finishShortcutRecording,
+                  requestCloseSettings,
+                  saveSettingsCenter,
+                  setHelpGuideOpen,
+                  setSettingsDraft,
+                  setSettingsSection,
+                  showToast,
+                  startNumberInputDrag,
+                  updateNumberInputDrag,
+                }}
+                maintenance={{
+                  addInstructionFolder,
+                  chooseBackupFolder,
+                  chooseBackupZipForRestore,
+                  copyTodayActivityLog,
+                  openBackupFolder,
+                  openRuntimeDataFolder,
+                  reloadInstructionList,
+                  removeInstructionFolder,
+                  requestClearBackupFolder,
+                  requestIconCacheRegeneration,
+                  requestInstructionWindowPositionReset,
+                  requestMiniWindowPositionReset,
+                  requestSoftwareReset,
+                }}
               />
             )}
           </ExitPresence>
@@ -11832,195 +6544,23 @@ function DashboardApp() {
       <AnimatePresence initial={false}>
         {completionFollowup?.source.kind === "nextStep" && (
           <ExitPresence key="completion-next-step">
-            {(exiting, exitProps) => {
-              const projectId = completionFollowup.source.projectId;
-              const followupProject = config.projects.find((project) => project.id === projectId);
-              const followupWishlist = config.inbox.filter(
-                (item): item is AppConfig["inbox"][number] & { id: string } =>
-                  item.projectId === projectId && Boolean(item.id),
-              );
-              const previous = completionFollowup.previousNextStep;
-              const decide = () => {
-                const live = configRef.current;
-                const project = live?.projects.find((candidate) => candidate.id === projectId);
-                if (!project) {
-                  setCompletionFollowup(null);
-                  showToast("warn", "プロジェクトが見つかりません");
-                  return;
-                }
-                if (project.nextStep?.text.trim()) {
-                  setCompletionFollowup(null);
-                  showToast("warn", "次の一手はもう決まっています");
-                  return;
-                }
-                if (completionFollowupChoice === "none") {
-                  setCompletionFollowup(null);
-                  return;
-                }
-                if (completionFollowupChoice.startsWith("wishlist:")) {
-                  const wishlistId = completionFollowupChoice.slice("wishlist:".length);
-                  const index = live?.inbox.findIndex((item) => item.id === wishlistId) ?? -1;
-                  if (index < 0) {
-                    // P10-14 (§8.1): the chosen wishlist item vanished while the dialog was open.
-                    const firstWishlist = live?.inbox.find(
-                      (item) => item.projectId === projectId && Boolean(item.id),
-                    );
-                    setCompletionFollowupChoice(
-                      firstWishlist?.id
-                        ? `wishlist:${firstWishlist.id}`
-                        : previous
-                          ? "repeat"
-                          : "write",
-                    );
-                    showToast("warn", "選んだやりたいことが見つかりません");
-                    return;
-                  }
-                  setCompletionFollowup(null);
-                  promoteInboxToNextStep(index);
-                  return;
-                }
-                if (completionFollowupChoice === "repeat" && previous) {
-                  // Only the buttons that still exist and can be chosen in the editor are copied.
-                  const liveButtons = new Set(projectSelectableButtons.map((button) => button.id));
-                  setCompletionFollowup(null);
-                  openNextStepEditor(project, {
-                    mode: "set",
-                    prefill: {
-                      text: previous.text,
-                      trigger: previous.trigger ?? "",
-                      buttonIds: previous.buttonIds.filter((id) => liveButtons.has(id)),
-                      shortTimerMinutes:
-                        previous.shortTimerMinutes === undefined
-                          ? ""
-                          : String(previous.shortTimerMinutes),
-                      defaultTimerMinutes:
-                        previous.defaultTimerMinutes === undefined
-                          ? ""
-                          : String(previous.defaultTimerMinutes),
-                      instructionPath: previous.instructionPath ?? "",
-                      instructionOpenOnStart: previous.instructionOpenOnStart ?? false,
-                      startNoteTemplate: previous.startNoteTemplate ?? "",
-                      expandTimerOnStart: previous.expandTimerOnStart ?? false,
-                    },
-                  });
-                  return;
-                }
-                setCompletionFollowup(null);
-                openNextStepEditor(project, { mode: "set" });
-              };
-              const choiceClass = (selected: boolean) =>
-                selected
-                  ? "completionFollowupChoice completionFollowupChoice--selected"
-                  : "completionFollowupChoice";
-              return (
-                <div className="modalBackdrop" role="presentation" {...exitProps}>
-                  <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
-                  <section
-                    aria-label="一手進みました"
-                    aria-modal="true"
-                    className="dropDialog completionFollowupDialog"
-                    role="dialog"
-                    tabIndex={-1}
-                  >
-                    <div className="completionDoneHeader">
-                      <span aria-hidden="true" className="completionDoneMark">
-                        ✓
-                      </span>
-                      <div>
-                        <p className="eyebrow">Session</p>
-                        <h2>一手進みました</h2>
-                      </div>
-                    </div>
-                    <div className="completionDoneSubject">
-                      {followupProject && (
-                        <ProjectIdentity
-                          colorId={followupProject.colorId}
-                          compact
-                          name={followupProject.name}
-                          projectId={followupProject.id}
-                        />
-                      )}
-                      <strong title={completionFollowup.text}>{completionFollowup.text}</strong>
-                      {completionFollowup.minutes ? (
-                        <span className="completionDoneMinutes">
-                          {formatSessionRange(completionFollowup) ??
-                            `実行 ${completionFollowup.minutes}分`}
-                        </span>
-                      ) : null}
-                    </div>
-                    <h3 className="completionFollowupQuestion" id="completion-followup-question">
-                      次はどこから始めますか
-                    </h3>
-                    <div
-                      aria-labelledby="completion-followup-question"
-                      className="completionFollowupChoices"
-                      role="radiogroup"
-                    >
-                      {followupWishlist.map((item) => {
-                        const key = `wishlist:${item.id}`;
-                        return (
-                          <label className={choiceClass(completionFollowupChoice === key)} key={key}>
-                            <input
-                              aria-label={item.text}
-                              checked={completionFollowupChoice === key}
-                              onChange={() => setCompletionFollowupChoice(key)}
-                              type="radio"
-                            />
-                            <span>{item.text}</span>
-                            <small>やりたいことから</small>
-                          </label>
-                        );
-                      })}
-                      {previous && (
-                        <label className={choiceClass(completionFollowupChoice === "repeat")}>
-                          <input
-                            aria-label={`同じ一手をもう一度（${previous.text}）`}
-                            checked={completionFollowupChoice === "repeat"}
-                            onChange={() => setCompletionFollowupChoice("repeat")}
-                            type="radio"
-                          />
-                          <span>同じ一手をもう一度（{previous.text}）</span>
-                        </label>
-                      )}
-                      <label className={choiceClass(completionFollowupChoice === "write")}>
-                        <input
-                          aria-label="自分で書く"
-                          checked={completionFollowupChoice === "write"}
-                          onChange={() => setCompletionFollowupChoice("write")}
-                          type="radio"
-                        />
-                        <span>自分で書く</span>
-                      </label>
-                      <label className={choiceClass(completionFollowupChoice === "none")}>
-                        <input
-                          aria-label="今は決めない"
-                          checked={completionFollowupChoice === "none"}
-                          onChange={() => setCompletionFollowupChoice("none")}
-                          type="radio"
-                        />
-                        <span>今は決めない</span>
-                      </label>
-                    </div>
-                    <div className="dialogActions formDialogActions">
-                      <button
-                        className="primaryButton completionFollowupDecide"
-                        onClick={decide}
-                        type="button"
-                      >
-                        決定
-                      </button>
-                      <button
-                        className="secondaryButton dialogCancelButton"
-                        onClick={() => setCompletionFollowup(null)}
-                        type="button"
-                      >
-                        閉じる
-                      </button>
-                    </div>
-                  </section>
-                </div>
-              );
-            }}
+            {(exiting, exitProps) => (
+              <CompletionNextStepDialog
+                actions={{
+                  openNextStepEditor,
+                  projectSelectableButtons,
+                  promoteInboxToNextStep,
+                  showToast,
+                }}
+                choice={completionFollowupChoice}
+                config={config}
+                configRef={configRef}
+                exitProps={exitProps}
+                followup={completionFollowup}
+                setChoice={setCompletionFollowupChoice}
+                setFollowup={setCompletionFollowup}
+              />
+            )}
           </ExitPresence>
         )}
       </AnimatePresence>
@@ -12032,34 +6572,40 @@ function DashboardApp() {
               <NextStepEditDialog
                 exitProps={exitProps}
                 config={config}
-                nextStepEditDraft={nextStepEditDraft}
-                buttonsById={buttonsById}
-                instructionChoices={instructionChoices}
-                instructionChoicesError={instructionChoicesError}
-                instructionChoicesLoading={instructionChoicesLoading}
-                missingButtonIds={missingButtonIds}
-                missingInstructionProjectIds={missingInstructionProjectIds}
-                nextStepOpenMenuOpen={nextStepOpenMenuOpen}
-                nextStepOpenPicker={nextStepOpenPicker}
-                numberInputDragging={numberInputDragging}
-                overlayPages={overlayPages}
-                projectNextStepSuggestions={projectNextStepSuggestions}
-                projectSelectableButtons={projectSelectableButtons}
-                sourceEditSaving={sourceEditSaving}
-                setNextStepEditDraft={setNextStepEditDraft}
-                setNextStepOpenMenuOpen={setNextStepOpenMenuOpen}
-                setNextStepOpenPicker={setNextStepOpenPicker}
-                renderButtonIcon={renderButtonIcon}
-                cancelNumberInputDrag={cancelNumberInputDrag}
-                finishNumberInputDrag={finishNumberInputDrag}
-                updateNumberInputDrag={updateNumberInputDrag}
-                startNumberInputDrag={startNumberInputDrag}
-                chooseLegacyNextStepSettings={chooseLegacyNextStepSettings}
-                closeNextStepEditDialog={closeNextStepEditDialog}
-                refreshInstructionChoices={refreshInstructionChoices}
-                saveNextStepEdit={saveNextStepEdit}
-                selectNextStepDecisionMode={selectNextStepDecisionMode}
-                selectNextStepProject={selectNextStepProject}
+                draft={{
+                  nextStepEditDraft,
+                  nextStepOpenMenuOpen,
+                  nextStepOpenPicker,
+                }}
+                data={{
+                  buttonsById,
+                  instructionChoices,
+                  instructionChoicesError,
+                  instructionChoicesLoading,
+                  missingButtonIds,
+                  missingInstructionProjectIds,
+                  numberInputDragging,
+                  overlayPages,
+                  projectNextStepSuggestions,
+                  projectSelectableButtons,
+                  sourceEditSaving,
+                }}
+                actions={{
+                  cancelNumberInputDrag,
+                  chooseLegacyNextStepSettings,
+                  closeNextStepEditDialog,
+                  finishNumberInputDrag,
+                  refreshInstructionChoices,
+                  renderButtonIcon,
+                  saveNextStepEdit,
+                  selectNextStepDecisionMode,
+                  selectNextStepProject,
+                  setNextStepEditDraft,
+                  setNextStepOpenMenuOpen,
+                  setNextStepOpenPicker,
+                  startNumberInputDrag,
+                  updateNumberInputDrag,
+                }}
               />
             )}
           </ExitPresence>
