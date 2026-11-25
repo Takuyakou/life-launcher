@@ -113,7 +113,7 @@ test("P72-02 Undo lifetime pauses while either hover or focus remains", async ({
   await page.clock.runFor(9000);
   await expect(toast).toBeVisible();
   await page.getByRole("button", { name: "Windows自動起動" }).focus();
-  await page.clock.runFor(4900);
+  await page.clock.runFor(3900);
   await expect(toast).toBeVisible();
   await page.clock.runFor(400);
   await expect(toast).toHaveCount(0);
@@ -135,7 +135,7 @@ test("P72-02 document hidden pauses the remaining Undo time", async ({ page }) =
     Object.defineProperty(document, "hidden", { configurable: true, value: false });
     document.dispatchEvent(new Event("visibilitychange"));
   });
-  await page.clock.runFor(2_900);
+  await page.clock.runFor(1_900);
   await expect(toast).toBeVisible();
   await page.clock.runFor(400);
   await expect(toast).toHaveCount(0);
@@ -165,7 +165,7 @@ test("P72-02 keeps three visible Toasts and starts queued Undo lifetime only on 
   await expect(page.locator(".toast")).toHaveCount(3);
   await page.mouse.move(1, 1);
   await page.getByRole("button", { name: "Windows自動起動" }).focus();
-  await page.clock.runFor(4000);
+  await page.clock.runFor(2500);
   await page.locator(".toast").first().getByRole("button", { name: "通知を閉じる" }).click();
   await page.mouse.move(1, 1);
   await page.getByRole("button", { name: "Windows自動起動" }).focus();
@@ -173,7 +173,7 @@ test("P72-02 keeps three visible Toasts and starts queued Undo lifetime only on 
   const queued = page.locator(".toast" + visibleIds.map((id) => ':not([data-toast-id="' + id + '"])').join(""));
   await expect(queued).toHaveCount(1);
   await expect(page.locator(".toast")).toHaveCount(3);
-  await page.clock.runFor(4700);
+  await page.clock.runFor(3600);
   await expect(queued).toBeVisible();
   await queued.getByRole("button", { name: "元に戻す" }).click();
   await expect(page.locator(".todayTextButton")).toHaveText(["D"]);

@@ -49,6 +49,11 @@
     max-height: calc(100vh - 24px);
     margin: auto 0;
   }
+
+  /* まとめて取り込むも、低い窓で上に寄らず真ん中に出す(v1.6.4) */
+  .importDialog {
+    margin: auto 0;
+  }
 }
 
 .settingsSection {
