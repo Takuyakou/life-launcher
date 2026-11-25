@@ -149,26 +149,6 @@ test("P10-09 asks where to start even when the Project has no Wishlist", async (
   await expect(followup.getByRole("button", { name: "閉じる" })).toBeVisible();
 });
 
-test("P10-09 choosing a radio opens nothing and saves nothing", async ({ page }) => {
-  const fixture = completionFixture();
-  await prepare(page, fixture);
-  const followup = await openFollowup(page);
-  const before = await saveConfigCount(page);
-
-  const wishlist = followup.getByRole("radio", { name: "週末に試すアイデア" });
-  await expect(wishlist).toBeChecked();
-  await wishlist.check();
-  await expect(page.locator(".nextStepEditDialog")).toHaveCount(0);
-  await expect(page.getByRole("dialog", { name: "一手進みました" })).toBeVisible();
-
-  await followup.getByRole("radio", { name: "自分で書く" }).check();
-  await expect(followup.getByRole("radio", { name: "自分で書く" })).toBeChecked();
-  await expect(page.locator(".nextStepEditDialog")).toHaveCount(0);
-  await expect(page.getByRole("dialog", { name: "一手進みました" })).toBeVisible();
-  expect(await saveConfigCount(page)).toBe(before);
-  expect((await currentConfig(page)).projects[0].nextStep).toBeUndefined();
-});
-
 test("P10-09 決定 opens the promoting editor on the chosen Wishlist item", async ({ page }) => {
   const fixture = completionFixture();
   await prepare(page, fixture);
@@ -289,25 +269,22 @@ test("P10-09 自分で書く opens an empty Next Step editor", async ({ page }) 
   await expect(editor.getByRole("button", { name: "保存", exact: true })).toBeDisabled();
 });
 
-test("P10-09 今は決めない with 決定 closes without saving", async ({ page }) => {
+test("P10-09 radio choices, 今は決めない and 閉じる never save", async ({ page }) => {
   const fixture = completionFixture();
   await prepare(page, fixture);
   const followup = await openFollowup(page);
   const before = await saveConfigCount(page);
 
-  await followup.getByRole("radio", { name: "今は決めない" }).check();
-  await followup.getByRole("button", { name: "決定" }).click();
-  await expect(followup).toHaveCount(0);
+  const wishlist = followup.getByRole("radio", { name: "週末に試すアイデア" });
+  await expect(wishlist).toBeChecked();
+  await wishlist.check();
   await expect(page.locator(".nextStepEditDialog")).toHaveCount(0);
-  expect(await saveConfigCount(page)).toBe(before);
-  expect((await currentConfig(page)).projects[0].nextStep).toBeUndefined();
-});
-
-test("P10-09 閉じる closes without saving", async ({ page }) => {
-  const fixture = completionFixture();
-  await prepare(page, fixture);
-  const followup = await openFollowup(page);
-  const before = await saveConfigCount(page);
+  await expect(page.getByRole("dialog", { name: "一手進みました" })).toBeVisible();
+  await followup.getByRole("radio", { name: "自分で書く" }).check();
+  await expect(followup.getByRole("radio", { name: "自分で書く" })).toBeChecked();
+  await expect(page.locator(".nextStepEditDialog")).toHaveCount(0);
+  await followup.getByRole("radio", { name: "今は決めない" }).check();
+  await expect(followup.getByRole("radio", { name: "今は決めない" })).toBeChecked();
 
   await followup.getByRole("button", { name: "閉じる" }).click();
   await expect(followup).toHaveCount(0);

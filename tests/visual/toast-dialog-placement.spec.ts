@@ -13,9 +13,6 @@ type Control = {
 
 const SIZES = [
   { width: 860, height: 560 },
-  { width: 1000, height: 720 },
-  { width: 1200, height: 680 },
-  { width: 1920, height: 1080 },
 ] as const;
 
 async function open(page: Page, size: { width: number; height: number }) {

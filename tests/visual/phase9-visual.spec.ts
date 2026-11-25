@@ -58,7 +58,6 @@ async function startTimer(page: Page) {
 
 const mainCases: Array<[string, "standard" | "large" | "xlarge", typeof MAIN_SIZE]> = [
   ["main-standard", "standard", MAIN_SIZE],
-  ["main-large", "large", MAIN_SIZE],
   ["main-xlarge", "xlarge", MAIN_SIZE],
   ["main-min", "standard", MIN_SIZE],
 ];

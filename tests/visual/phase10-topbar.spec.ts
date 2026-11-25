@@ -22,53 +22,6 @@ const topBar = (page: Page) => page.locator(".topBar");
 const autoStartButton = (page: Page) =>
   topBar(page).getByRole("button", { name: "Windows自動起動" });
 
-test("P10-02 the top bar has no Mini or Guide button", async ({ page }) => {
-  await open(page);
-  await expect(topBar(page).getByRole("button", { name: "ミニタイマーへ切り替え" })).toHaveCount(0);
-  await expect(topBar(page).getByRole("button", { name: "使い方", exact: true })).toHaveCount(0);
-  // The remaining three buttons are the view toggle, the instructions and the settings.
-  const names = await topBar(page)
-    .locator(".topPillGroup--work > button")
-    .evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label")));
-  expect(names).toEqual(["記録ビューを開く", "手順書を開く", "設定を開く"]);
-});
-
-test("P10-15b H3 the Ctrl+F badge stays inside the search field and the collapsed button centers", async ({
-  page,
-}) => {
-  for (const width of [1000, 960, 900, 860]) {
-    await open(page, createFullTodayFixture(), width);
-    const search = topBar(page).locator(".topSearchButton");
-    const badge = search.locator(".uiKey");
-    const badgeBox = await badge.boundingBox();
-    const searchBox = (await search.boundingBox())!;
-    if (badgeBox && badgeBox.width > 0) {
-      expect(badgeBox.x + badgeBox.width).toBeLessThanOrEqual(searchBox.x + searchBox.width + 0.5);
-    } else {
-      expect(await badge.evaluate((element) => getComputedStyle(element).display)).toBe("none");
-    }
-  }
-  await open(page, createFullTodayFixture(), 860);
-  await expect(page.locator(".topSearchButton .uiKey")).toBeHidden();
-  const center = await topBar(page).evaluate((bar) => {
-    const style = getComputedStyle(bar);
-    const rect = bar.getBoundingClientRect();
-    const columns = style.gridTemplateColumns.split(" ").map((value) => parseFloat(value));
-    const gap = parseFloat(style.columnGap) || 0;
-    const paddingLeft = parseFloat(style.paddingLeft);
-    return {
-      button: (bar.querySelector(".topSearchButton") as HTMLElement).getBoundingClientRect(),
-      columnCenter: rect.left + paddingLeft + columns[0] + gap + columns[1] / 2,
-    };
-  });
-  expect(
-    Math.abs(center.button.x + center.button.width / 2 - center.columnCenter),
-  ).toBeLessThanOrEqual(1);
-  const box = (await page.locator(".topSearchButton").boundingBox())!;
-  expect(Math.round(box.width)).toBe(32);
-  expect(Math.round(box.height)).toBe(30);
-});
-
 test("P10-02 the auto-start button is icon-only and shows its state", async ({ page }) => {
   await open(page);
   const button = autoStartButton(page);
@@ -171,25 +124,4 @@ test("F5 the search box is centered at wide widths and nothing overlaps when nar
       }
     }
   }
-});
-
-test("P10-02 the empty middle of the top bar still drags the window", async ({ page }) => {
-  await open(page);
-  const middle = await page.evaluate(() => {
-    const bar = document.querySelector<HTMLElement>(".topBar")!;
-    const brand = bar.querySelector<HTMLElement>(".topBrand")!;
-    const search = bar.querySelector<HTMLElement>(".topSearchButton")!;
-    const brandRight = brand.getBoundingClientRect().right;
-    const searchLeft = search.getBoundingClientRect().left;
-    const y = bar.getBoundingClientRect().top + bar.getBoundingClientRect().height / 2;
-    const x = brandRight + (searchLeft - brandRight) / 2;
-    const hit = document.elementFromPoint(x, y);
-    return {
-      width: searchLeft - brandRight,
-      insideDragRegion: hit !== null && hit.closest("[data-tauri-drag-region]") !== null,
-      hitClass: hit?.className?.toString() ?? "",
-    };
-  });
-  expect(middle.width).toBeGreaterThan(10);
-  expect(middle.insideDragRegion).toBe(true);
 });

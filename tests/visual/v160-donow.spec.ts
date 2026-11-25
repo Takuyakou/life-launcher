@@ -46,6 +46,11 @@ test("V160-B4 the Do Now chip shows p.34 and reads it in the label", async ({ pa
   await prepare(page, doNowFixture());
   const chip = page.locator(".doNowOpenChip--button");
   await expect(chip).toContainText("英単語ドリル.zip");
+  // P10-14d M2: static chips stay spans; only the handbook chip is a real button.
+  const staticChip = page.locator(".doNowOpenChip").first();
+  await expect(staticChip).toHaveText("サンプル資料");
+  expect(await staticChip.evaluate((element) => element.tagName)).toBe("SPAN");
+  expect(await chip.evaluate((element) => element.tagName)).toBe("BUTTON");
   const badge = chip.locator(".doNowOpenChipPage");
   await expect(badge).toHaveText("p.34");
   await expect(chip).toHaveAttribute("aria-label", "英単語ドリル.zip、34ページから");

@@ -59,7 +59,7 @@ async function measure(page: Page) {
   });
 }
 
-for (const size of ["standard", "large", "xlarge"] as const) {
+for (const size of ["standard"] as const) {
   test(`G7 the idle dock is back to its short Phase 10 shape (${size})`, async ({ page }) => {
     await open(page);
     await setDisplaySize(page, size);

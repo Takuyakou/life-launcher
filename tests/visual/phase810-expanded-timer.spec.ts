@@ -42,6 +42,16 @@ test("P8.10 TX-01 manual expand shares timer state and Esc keeps it running", as
   await expand.click();
   const overlay = page.getByRole("dialog", { name: "拡大タイマー" });
   await expect(overlay).toBeVisible();
+  // P10-14d G5/G6: the overlay header keeps the top bar's line and logo.
+  const mainLogo = (await page.locator(".topBar .topBrandIcon").boundingBox())!;
+  const header = (await overlay.locator(".expandedTimerHeader").boundingBox())!;
+  const overlayLogo = (await overlay.locator(".topBrandIcon").boundingBox())!;
+  expect(Math.round(header.x)).toBe(0);
+  expect(Math.round(header.y)).toBe(0);
+  expect(Math.round(header.width)).toBe(1920);
+  expect(Math.round(overlayLogo.x - mainLogo.x)).toBe(0);
+  expect(Math.round(overlayLogo.y - mainLogo.y)).toBe(0);
+  expect(Math.round(overlayLogo.width)).toBe(30);
   for (const viewport of [
     { width: 1920, height: 1080 },
     { width: 1200, height: 800 },

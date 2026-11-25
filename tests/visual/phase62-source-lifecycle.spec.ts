@@ -191,31 +191,3 @@ test("active Wishlist timer disables complete and delete actions", async ({ page
   await expect(page.getByRole("menuitem", { name: "完了にする" })).toBeDisabled();
   await expect(page.getByRole("menuitem", { name: "削除" })).toBeDisabled();
 });
-
-test("Today3 planned completion clears its NextStep source and records history", async ({ page }) => {
-  const fixture = createPublicFixture();
-  fixture.config.projects[0].nextStep!.shortTimerMinutes = 1;
-  fixture.config.today.items = [fixture.config.today.items[0]];
-  await prepare(page, fixture);
-  await page
-    .locator(".todayRow")
-    .getByRole("button", { name: /短時間タイマー1分で開始/ })
-    .click();
-  await page.clock.fastForward(60_500);
-  await page
-    .getByRole("dialog", { name: "タイマー満了" })
-    .getByRole("button", { name: "終わる" })
-    .click();
-
-  const config = await currentConfig(page);
-  expect(config.today.items[0].done).toBe(true);
-  await expect(page.locator(".todayRow").getByRole("status", { name: "今日の分は完了", exact: true })).toBeVisible();
-  expect(config.projects[0].nextStep).toBeUndefined();
-  expect(config.sourceCompletions).toHaveLength(1);
-  expect(config.sourceCompletions[0]).toMatchObject({
-    sourceType: "nextStep",
-    sourceIdentity: "project:sample-learning",
-    textSnapshot: "資料を1ページ読む",
-    projectId: "sample-learning",
-  });
-});

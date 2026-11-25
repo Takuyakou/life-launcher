@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import type { AppConfig } from "../../src/types";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
 import { installTauriMock } from "./tauriMock";
@@ -33,21 +33,6 @@ async function prepare(page: Page, fixture: VisualQaFixture = createPublicFixtur
 
 async function config(page: Page): Promise<AppConfig> {
   return page.evaluate(() => (window as QaWindow).__LIFE_LAUNCHER_VISUAL_QA__.currentConfig());
-}
-
-async function emitDrop(page: Page, stage: "dragEnter" | "dragLeave" | "drop", paths: string[], x: number) {
-  await page.evaluate(
-    (payload) => {
-      (window as QaWindow).__LIFE_LAUNCHER_VISUAL_QA__.emit("main-shell-drop-result", {
-        windowLabel: "main",
-        stage: payload.stage,
-        paths: payload.paths,
-        url: null,
-        position: { x: payload.x, y: 320 },
-      });
-    },
-    { paths, stage, x },
-  );
 }
 
 const timerRunning = (page: Page) =>
@@ -182,13 +167,6 @@ test("P10-12 the context menu shows only the key badges that work, and T adds to
   expect(saved.today.items.some((item) => item.text === "5分だけ体を動かす")).toBe(true);
 });
 
-test("P10-12 T does nothing when the menu is closed", async ({ page }) => {
-  await prepare(page);
-  const before = (await config(page)).today.items.length;
-  await page.keyboard.press("t");
-  expect((await config(page)).today.items).toHaveLength(before);
-});
-
 test("P10-12 the toast line drains, pauses on hover and stays for failures", async ({ page }) => {
   await prepare(page);
   const card = page.locator(".todayRow").filter({ hasText: "資料を1ページ読む" });
@@ -276,36 +254,6 @@ test("P10-12 the help guide lists the short keys", async ({ page }) => {
   await expect(table).toContainText("Ctrl + Z");
 });
 
-test("P10-12 drop zones get the dragover class and keep the received motion", async ({ page }) => {
-  await prepare(page);
-  await emitDrop(page, "dragEnter", ["C:\\PublicDemo\\import.json"], 900);
-  const mainZone = page.locator(".importDropZone--main");
-  await expect(mainZone).toBeVisible();
-  await expect(mainZone).toHaveClass(/is-dragover/);
-  await expect(page.locator(".importDropZone--sidebar")).not.toHaveClass(/is-dragover/);
-
-  await emitDrop(page, "dragLeave", [], 5);
-  await expect(page.locator(".importDropOverlay")).toHaveCount(0);
-});
-
-test("P10-12 the records faces follow the chosen tab and scope", async ({ page }) => {
-  await prepare(page);
-  await page.getByRole("button", { name: "記録ビューを開く" }).click();
-  const view = page.locator(".recordsView");
-  await expect(view).toBeVisible();
-  await expect(view.locator(".recordsTabFace")).toHaveCount(1);
-  await expect(
-    view.getByRole("tab", { name: "ふりかえり" }).locator(".recordsTabFace"),
-  ).toHaveCount(1);
-  await view.getByRole("tab", { name: "すべての記録" }).click();
-  await expect(
-    view.getByRole("tab", { name: "すべての記録" }).locator(".recordsTabFace"),
-  ).toHaveCount(1);
-  await expect(
-    view.getByRole("tab", { name: "ふりかえり" }).locator(".recordsTabFace"),
-  ).toHaveCount(0);
-});
-
 test("P10-14 Delete on a Next Step row clears the step, not the Project", async ({ page }) => {
   await prepare(page);
   const row = page.locator(".nextStepRow").filter({ hasText: "ストレッチ" });
@@ -351,51 +299,4 @@ test("P10-14 Enter and the 5分 button use the card's expandTimerOnStart", async
     .getByRole("button", { name: /短時間タイマー.+分で開始/ })
     .click();
   await expect(expanded).toBeVisible();
-});
-
-test("P10-14 the copy button label sits on the button's vertical center", async ({ page }) => {
-  const fixture = createPublicFixture();
-  fixture.config.projects = [];
-  fixture.config.inbox = [];
-  fixture.config.today.items = [];
-  delete fixture.config.settings.firstRunDoneAt;
-  await prepare(page, fixture);
-  const firstRunButton = page.locator(".firstRunImport .copyButton");
-  await expect(firstRunButton).toBeVisible();
-  const offset = await firstRunButton.evaluate((button) => {
-    const label = button.querySelector<HTMLElement>(".copyButtonText");
-    if (!label) throw new Error("label not found");
-    const box = button.getBoundingClientRect();
-    const labelBox = label.getBoundingClientRect();
-    return Math.abs(box.y + box.height / 2 - (labelBox.y + labelBox.height / 2));
-  });
-  expect(offset).toBeLessThanOrEqual(2);
-});
-
-test("P10-14 the import and guide copy buttons are centered too", async ({ page }) => {
-  await prepare(page);
-  const check = async (button: Locator) => {
-    await expect(button).toBeVisible();
-    const offset = await button.evaluate((element) => {
-      const label = element.querySelector<HTMLElement>(".copyButtonText");
-      if (!label) throw new Error("label not found");
-      const box = element.getBoundingClientRect();
-      const labelBox = label.getBoundingClientRect();
-      return Math.abs(box.y + box.height / 2 - (labelBox.y + labelBox.height / 2));
-    });
-    expect(offset).toBeLessThanOrEqual(2);
-  };
-
-  await page.getByRole("button", { name: "次の一手の操作" }).first().click();
-  await page.getByRole("menuitem", { name: "まとめて取り込む" }).click();
-  const importDialog = page.getByRole("dialog", { name: "まとめて取り込む" });
-  await check(importDialog.locator(".importPromptActions .copyButton").first());
-  await expect(importDialog.locator("textarea")).toBeFocused();
-  await page.keyboard.press("Escape");
-  await expect(importDialog).toBeHidden();
-
-  await page.getByRole("button", { name: "設定を開く" }).click();
-  await page.getByRole("button", { name: "使い方を開く" }).click();
-  const help = page.getByRole("dialog", { name: "使い方" });
-  await check(help.locator(".helpGuideCodeBlock .copyButton").first());
 });

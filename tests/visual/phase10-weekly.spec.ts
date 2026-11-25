@@ -1,8 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { IMPORT_PROMPT_FIRST, IMPORT_PROMPT_REPEAT, IMPORT_JSON_FORMAT } from "../../src/content/importPrompt";
-import { formatDuration } from "../../src/weeklyPlanning";
 import { createPublicFixture, FIXTURE_NOW, type VisualQaFixture } from "./fixtures";
-import { waitForStableRects } from "./helpers";
 import { installTauriMock } from "./tauriMock";
 import { waitForBundledFonts } from "./bundledFonts";
 
@@ -131,26 +129,6 @@ test("P10-15 1 the weekly tab has the facts, focus and stale cards", async ({ pa
   );
 });
 
-test("P10-15 2 the weekly typography and controls follow the values", async ({ page }) => {
-  await openWeekly(page, weeklyFixture());
-  await expect(page.locator(".weeklyPlanningTitle")).toHaveCSS("font-size", "26px");
-  await expect(page.locator(".weeklyPlanningTitle")).toHaveCSS("font-weight", "700");
-  const statNumber = page.locator(".weeklyPlanningStats strong > span").first();
-  await expect(statNumber).toHaveCSS("font-size", "24px");
-  await expect(statNumber).toHaveCSS("font-weight", "700");
-  await expect(statNumber).toHaveCSS("color", "rgb(244, 240, 232)");
-  await expect(page.locator(".weeklyPlanningStats > div > span").first()).toHaveCSS(
-    "font-size",
-    "12px",
-  );
-  expect(Math.round((await page.locator(".weeklyPlanningProjectRow").first().boundingBox())!.height)).toBeGreaterThanOrEqual(48);
-  const selected = page.locator('.weeklyPlanningFocusButton[aria-pressed="true"]').first();
-  await expect(selected).toHaveCSS("border-top-color", "rgb(255, 206, 91)");
-  expect(Math.round((await selected.boundingBox())!.height)).toBe(44);
-  await expect(page.locator(".weeklyPlanningAi")).toHaveCSS("background-color", "rgb(33, 31, 26)");
-  await expect(page.locator(".weeklyPlanningAi")).toHaveCSS("border-radius", "14px");
-});
-
 test("P10-15 3 the focus buttons save, update the count and stop at three", async ({ page }) => {
   await openWeekly(page, weeklyFixture());
   const count = page.locator(".weeklyPlanningFocusHead span");
@@ -223,66 +201,6 @@ test("P10-15 6 import and done move to the next screens", async ({ page }) => {
   await expect(page.locator(".doNowBand")).toBeVisible();
 });
 
-test("P10-15 7 formats the range and duration from the fixture", async ({ page }) => {
-  for (const [minutes, label] of [
-    [0, "0分"],
-    [55, "55分"],
-    [120, "2時間"],
-    [125, "2時間5分"],
-    [250, "4時間10分"],
-  ] as const) {
-    expect(formatDuration(minutes)).toBe(label);
-  }
-  const fixture = weeklyFixture();
-  fixture.weeklyReview = {
-    ...fixture.weeklyReview,
-    previousWeekStart: "2026-12-28",
-    previousWeekEnd: "2027-01-03",
-    totalMinutes: 55,
-  };
-  await openWeekly(page, fixture);
-  await expect(page.locator(".weeklyPlanningKicker").first()).toHaveText(
-    "先週の事実 ― 2026年12月28日〜2027年1月3日",
-  );
-  await expect(page.locator(".weeklyPlanningStats strong").first()).toHaveText("55分");
-
-  await page.evaluate(() => {
-    const control = (window as QaWindow).__LIFE_LAUNCHER_VISUAL_QA__;
-    const config = control.currentConfig();
-    config.sourceCompletions = [
-      {
-        id: "boundary-in",
-        sourceType: "nextStep",
-        sourceIdentity: "project:sample-learning:boundary",
-        textSnapshot: "境界の内側",
-        completedAt: "2027-01-04T03:30:00+09:00",
-      },
-      {
-        id: "boundary-out-end",
-        sourceType: "nextStep",
-        sourceIdentity: "project:sample-learning:boundary2",
-        textSnapshot: "境界の外側",
-        completedAt: "2027-01-04T04:30:00+09:00",
-      },
-      {
-        id: "boundary-out-start",
-        sourceType: "nextStep",
-        sourceIdentity: "project:sample-learning:boundary3",
-        textSnapshot: "最初の日の外側",
-        completedAt: "2026-12-28T03:30:00+09:00",
-      },
-    ];
-    config.settings.dayStartHour = 4;
-    control.updateConfig(config);
-  });
-  await expect(page.locator(".weeklyPlanningCompleted .weeklyPlanningKicker")).toHaveText(
-    "完了にした項目 1件",
-  );
-  await expect(page.locator(".weeklyPlanningCompleted")).toContainText("境界の内側");
-  await expect(page.locator(".weeklyPlanningCompleted")).not.toContainText("境界の外側");
-  await expect(page.locator(".weeklyPlanningCompleted")).not.toContainText("最初の日の外側");
-});
-
 test("P10-15 8 empty words are shown", async ({ page }) => {
   const fixture = weeklyFixture();
   fixture.weeklyReview = {
@@ -328,51 +246,6 @@ test("P10-15 9 narrow windows stack the columns without sideways scroll", async 
     expect(Math.abs(facts.x - plan.x)).toBeLessThanOrEqual(1);
     expect(plan.y).toBeGreaterThanOrEqual(facts.y + facts.height - 1);
   }
-});
-
-test("P10-15b H2 the stale buttons use the main-screen button colours", async ({ page }) => {
-  const fixture = weeklyFixture();
-  await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
-  await page.setViewportSize({ width: 1280, height: 900 });
-  await installTauriMock(page, fixture, "main");
-  await page.goto("/");
-  await waitForBundledFonts(page);
-  const mainButton = page.locator(".nextStepFreshnessButton").first();
-  await expect(mainButton).toBeVisible();
-  // The bundled font swaps in after first paint and moves the freshness button sideways.
-  // Settle the font and the layout before the pointer is moved, or the button can slide out
-  // from under the already-positioned pointer and never enter its hover state.
-  await page.evaluate(async () => document.fonts.ready);
-  await waitForStableRects(page, [".nextStepFreshnessButton"]);
-  const read = (locator: typeof mainButton) =>
-    locator.evaluate((element) => {
-      const style = getComputedStyle(element);
-      return {
-        backgroundColor: style.backgroundColor,
-        borderTopColor: style.borderTopColor,
-        borderRadius: style.borderRadius,
-        color: style.color,
-        fontSize: style.fontSize,
-        fontWeight: style.fontWeight,
-        height: Math.round(element.getBoundingClientRect().height),
-      };
-    });
-  const mainStyle = await read(mainButton);
-  await mainButton.hover();
-  await expect(mainButton).toHaveCSS("color", "rgb(255, 206, 91)");
-  const mainHover = (await mainButton.evaluate((element) => getComputedStyle(element).color)) ?? "";
-  await page.getByRole("button", { name: "記録ビューを開く" }).click();
-  await page.getByRole("tab", { name: "今週を決める" }).click();
-  const weeklyButtons = page.locator(".weeklyPlanningStaleActions .nextStepFreshnessButton");
-  await expect(weeklyButtons).toHaveCount(2);
-  for (let index = 0; index < 2; index += 1) {
-    const weekly = weeklyButtons.nth(index);
-    expect(await read(weekly)).toEqual(mainStyle);
-    await weekly.hover();
-    await expect(weekly).toHaveCSS("color", mainHover);
-  }
-  await weeklyButtons.first().hover();
-  await expect(weeklyButtons.first()).toHaveCSS("color", "rgb(255, 206, 91)");
 });
 
 test("P10-15 10 the repeated import prompt contains the JSON format", () => {

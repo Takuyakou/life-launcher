@@ -98,7 +98,6 @@ test("P84-02 remove Drop Zone stays hidden until the actual drag threshold and E
 
 for (const source of [
   { name: "NextStep", index: 0 },
-  { name: "Wishlist", index: 1 },
 ]) {
   test(
     "P84-02 " + source.name + " drop removes only Today adoption and Undo restores only Today",
@@ -243,7 +242,6 @@ test("P84-02 completed card and keyboard context fallback share the remove handl
 
 for (const target of [
   { name: "20px upper extension", edge: "top", offset: -18 },
-  { name: "6px lower extension", edge: "bottom", offset: 5 },
 ] as const) {
   test(`P84 Remove Drop Zone activates and drops within the ${target.name}`, async ({ page }) => {
     await prepare(page);

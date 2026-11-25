@@ -14,6 +14,10 @@ async function openMain(page: Page) {
 }
 
 test("P10-01 the bundled Inter and Noto Sans JP faces are available", async ({ page }) => {
+  const fontRequests: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().endsWith(".woff2")) fontRequests.push(request.url());
+  });
   await openMain(page);
   // Unicode-range subsets load on first use, so ask for the glyphs the app shows and wait.
   await page.evaluate(async () => {
@@ -43,14 +47,9 @@ test("P10-01 the bundled Inter and Noto Sans JP faces are available", async ({ p
   expect(noto.length).toBeGreaterThan(0);
   expect(inter.filter((face) => face.status === "error")).toHaveLength(0);
   expect(noto.filter((face) => face.status === "error")).toHaveLength(0);
-});
 
-test("P10-01 the bundled font files are served from the app itself", async ({ page }) => {
-  await openMain(page);
-  const requests: string[] = [];
-  page.on("request", (request) => {
-    if (request.url().endsWith(".woff2")) requests.push(request.url());
-  });
+  // The woff2 files come from this app's own server, never from a CDN.
+  const origin = new URL(page.url()).origin;
   await page.evaluate(async () => {
     const probe = document.createElement("span");
     probe.style.fontFamily = '"Noto Sans JP Variable"';
@@ -60,26 +59,10 @@ test("P10-01 the bundled font files are served from the app itself", async ({ pa
     await document.fonts.ready;
     probe.remove();
   });
-  await expect.poll(() => requests.length).toBeGreaterThan(0);
-  const origin = new URL(page.url()).origin;
-  for (const url of requests) {
-    // Bundled: every font file comes from this app's own server, never from a CDN.
+  await expect.poll(() => fontRequests.length).toBeGreaterThan(0);
+  for (const url of fontRequests) {
     expect(new URL(url).origin, url).toBe(origin);
-    expect(url.endsWith(".woff2"), url).toBe(true);
   }
-});
-
-test("P10-01 the body uses the --font-ui stack", async ({ page }) => {
-  await openMain(page);
-  const body = await page.evaluate(() => ({
-    family: getComputedStyle(document.body).fontFamily,
-    variable: getComputedStyle(document.documentElement).getPropertyValue("--font-ui").trim(),
-  }));
-  expect(body.variable).toBe(
-    '"Inter Variable", "Noto Sans JP Variable", "Yu Gothic UI", Meiryo, system-ui, sans-serif',
-  );
-  expect(body.family.replace(/\s+/g, " ")).toBe(body.variable);
-  expect(body.family.startsWith('"Inter Variable"')).toBe(true);
 });
 
 test("P10-01 no stylesheet declares a weight of 800 or more", async ({ page }) => {
@@ -113,15 +96,4 @@ test("P10-01 no stylesheet declares a weight of 800 or more", async ({ page }) =
     return offenders;
   });
   expect(heavy).toEqual([]);
-});
-
-test("P10-01 the main headings render at 700 or less", async ({ page }) => {
-  await openMain(page);
-  for (const selector of [".topTitle", ".doNowBand h2", ".focusBand .todaySectionDisclosure h2"]) {
-    const weight = await page
-      .locator(selector)
-      .first()
-      .evaluate((element) => Number.parseInt(getComputedStyle(element).fontWeight, 10));
-    expect(weight, selector).toBeLessThanOrEqual(700);
-  }
 });

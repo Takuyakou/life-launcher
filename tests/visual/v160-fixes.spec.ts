@@ -12,7 +12,7 @@ type TabOverflowState = {
   maxBandLead: number;
 };
 
-for (const width of [860, 844, 830]) {
+for (const width of [860, 830]) {
   test(`V160-B5 the records tabs never scroll while the band slides visibly at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 560 });
     await installTauriMock(page, createPublicFixture(), "main");

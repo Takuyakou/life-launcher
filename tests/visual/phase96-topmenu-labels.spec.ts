@@ -15,9 +15,7 @@ test.describe("P96-01 top menu label level", () => {
   test("hides the first group as soon as the full row does not fit", () => {
     expect(pickTopMenuLabelLevel(needed, 649, 0)).toBe(1);
     expect(pickTopMenuLabelLevel(needed, 517, 0)).toBe(1);
-  });
-
-  test("hides the second group when the short row still does not fit", () => {
+    // The short row still does not fit: the second group is hidden as well.
     expect(pickTopMenuLabelLevel(needed, 516, 0)).toBe(2);
     expect(pickTopMenuLabelLevel(needed, 100, 0)).toBe(2);
   });
@@ -30,9 +28,7 @@ test.describe("P96-01 top menu label level", () => {
     expect(pickTopMenuLabelLevel(needed, 650 + hysteresis, 1)).toBe(0);
     expect(pickTopMenuLabelLevel(needed, 517 + hysteresis - 1, 2)).toBe(2);
     expect(pickTopMenuLabelLevel(needed, 517 + hysteresis, 2)).toBe(1);
-  });
-
-  test("does not move back and forth for a one pixel change", () => {
+    // A one pixel change does not move the labels back and forth.
     const first = pickTopMenuLabelLevel(needed, 649, 0);
     const second = pickTopMenuLabelLevel(needed, 650, first);
     expect(first).toBe(1);

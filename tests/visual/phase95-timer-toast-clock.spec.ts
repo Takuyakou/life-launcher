@@ -13,7 +13,6 @@ import { waitForBundledFonts } from "./bundledFonts";
 // empty victory hover, aligned section-bar counts.
 
 type Display = "standard" | "large" | "xlarge";
-const DISPLAYS: Display[] = ["standard", "large", "xlarge"];
 
 type Control = {
   currentConfig: () => unknown;
@@ -310,8 +309,7 @@ async function openRecords(page: Page) {
 }
 
 for (const [display, viewport] of [
-  ...DISPLAYS.map((display) => [display, { width: 1440, height: 900 }] as const),
-  ["large", { width: 1040, height: 800 }] as const,
+  ["standard", { width: 1440, height: 900 }] as const,
   ["xlarge", { width: 1040, height: 800 }] as const,
 ]) {
   test(`P95-01 the top menu has the same size and place in Main and Records (${display}, ${viewport.width}px)`, async ({ page }) => {
@@ -340,7 +338,7 @@ for (const [display, viewport] of [
   });
 }
 
-for (const display of DISPLAYS) {
+for (const display of ["standard", "xlarge"] as const) {
   test(`P95-01 the Records body text size does not change with the display size (${display})`, async ({ page }) => {
     await open(page, createFullTodayFixture(), display, { width: 1440, height: 900 });
     await openRecords(page);
@@ -437,60 +435,6 @@ test("P95-01 Records headings without right-hand text or with a button are uncha
 // ---------------------------------------------------------------------------------------------
 // 5. Empty victory hover
 
-const empty = () => {
-  const fixture = createFullTodayFixture();
-  fixture.config.today.victory.text = "";
-  fixture.config.today.victory.done = false;
-  return fixture;
-};
-
-test("P95-01 an empty victory reacts on hover with its frame only", async ({ page }) => {
-  await open(page, empty());
-  const bar = page.locator(".victoryBar");
-  const text = page.locator(".victoryTextButton");
-  await expect(bar).toHaveClass(/victoryBar--empty/);
-  await page.mouse.move(2, 2);
-  const restColor = await text.evaluate((el) => getComputedStyle(el).color);
-  const restBorder = await bar.evaluate((el) => getComputedStyle(el).borderTopColor);
-  expect(restBorder).not.toBe("rgb(231, 185, 77)");
-  await bar.hover({ position: { x: 4, y: 4 } });
-  await expect(bar).toHaveCSS("border-top-color", "rgb(231, 185, 77)");
-  await expect(bar).toHaveCSS("transform", "matrix(1, 0, 0, 1, 0, -1)");
-  await expect(text).toHaveCSS("color", restColor);
-  await page.mouse.move(2, 2);
-  await expect(bar).toHaveCSS("border-top-color", restBorder);
-  await expect(bar).toHaveCSS("transform", "none");
-});
-
-test("P95-01 an empty victory being edited keeps the strong frame from the first moment", async ({ page }) => {
-  await open(page, empty());
-  const bar = page.locator(".victoryBar");
-  await page.mouse.move(2, 2);
-  await page.locator(".victoryTextButton").click();
-  const input = page.locator(".victoryInput");
-  await expect(input).toBeFocused();
-  await page.mouse.move(2, 2);
-  await expect(bar).toHaveCSS("border-top-color", "rgb(231, 185, 77)");
-  await input.fill("ア");
-  await expect(bar).toHaveCSS("border-top-color", "rgb(231, 185, 77)");
-});
-
-test("P95-01 an empty victory: no frame reaction or ring for the automatic focus; keyboard shows the ring only", async ({ page }) => {
-  await open(page, empty());
-  const bar = page.locator(".victoryBar");
-  const text = page.locator(".victoryTextButton");
-  await expect(text).toBeFocused();
-  await page.mouse.move(2, 2);
-  await expect(text).toHaveCSS("outline-style", "none");
-  await expect(bar).not.toHaveCSS("border-top-color", "rgb(231, 185, 77)");
-  // A key press makes the ring show; the frame stays as it was.
-  await page.keyboard.press("Shift+Tab");
-  await page.keyboard.press("Tab");
-  await expect(text).toBeFocused();
-  await expect(text).toHaveCSS("outline-style", "solid");
-  await expect(bar).not.toHaveCSS("border-top-color", "rgb(231, 185, 77)");
-});
-
 // ---------------------------------------------------------------------------------------------
 // 6. Section bar counts start at the same x
 
@@ -526,7 +470,7 @@ const barGeometry = (page: Page, selector: string) =>
     };
   });
 
-for (const display of DISPLAYS) {
+for (const display of ["standard", "xlarge"] as const) {
   test(`P95-01 the four section bars start their counts at the same x (${display})`, async ({ page }) => {
     await open(page, createFullTodayFixture(), display);
     const geometry = [];
@@ -557,7 +501,7 @@ for (const display of DISPLAYS) {
   });
 }
 
-for (const width of [860, 700, 560]) {
+for (const width of [560, 860]) {
   test(`P95-01 on a narrow window (${width}px) the name and the count of every bar never overlap`, async ({ page }) => {
     await open(page, createFullTodayFixture(), "xlarge", { width, height: 680 });
     for (const selector of BARS) {

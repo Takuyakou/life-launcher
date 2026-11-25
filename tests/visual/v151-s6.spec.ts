@@ -273,7 +273,25 @@ test("V151-S6 T2 closing and opening a sidebar heading has no 10px jump", async 
 const pause = (page: Page) => page.locator(".doNowActions .runningPauseButton");
 const stop = (page: Page) => page.locator(".doNowActions .runningStopButton");
 
+/** P10-14e (1): the play glyph sits left of the label and shares its centre line. */
+async function expectStartIconAligned(page: Page) {
+  for (const selector of [".doNowStartPrimary", ".doNowStartSecondary"]) {
+    const button = page.locator(selector);
+    if ((await button.count()) === 0) continue;
+    const glyph = await button.locator(".timerStartHoverGlyph").boundingBox();
+    const label = await button.locator(".timerStartDuration").boundingBox();
+    expect(glyph, selector).not.toBeNull();
+    expect(label, selector).not.toBeNull();
+    expect(glyph!.x + glyph!.width, selector).toBeLessThanOrEqual(label!.x);
+    expect(
+      Math.abs(glyph!.y + glyph!.height / 2 - (label!.y + label!.height / 2)),
+      selector,
+    ).toBeLessThanOrEqual(2);
+  }
+}
+
 async function startDoNow(page: Page) {
+  await expectStartIconAligned(page);
   await page.locator(".doNowStartPrimary").click();
   await expect(pause(page)).toBeVisible();
   await page.mouse.move(0, 0);

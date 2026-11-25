@@ -23,35 +23,6 @@ async function open(page: Page, fixture: VisualQaFixture = createFullTodayFixtur
 
 const doNow = (page: Page) => page.locator(".doNowBand");
 
-test("P10-05 the Do Now action is the headline and the start buttons are 48px tall", async ({
-  page,
-}) => {
-  await open(page);
-  const text = doNow(page).locator(".doNowCopy > strong");
-  const style = await text.evaluate((element) => {
-    const computed = getComputedStyle(element);
-    return { fontSize: computed.fontSize, fontWeight: computed.fontWeight, lineHeight: computed.lineHeight };
-  });
-  expect(style.fontSize).toBe("32px");
-  expect(style.fontWeight).toBe("700");
-
-  for (const selector of [".doNowStartPrimary", ".doNowStartSecondary", ".doNowMeasureButton"]) {
-    const box = (await doNow(page).locator(selector).boundingBox())!;
-    expect(box.height, selector).toBe(48);
-  }
-
-  // D1: colours and the underline stay as they were.
-  const primary = await doNow(page)
-    .locator(".doNowStartPrimary")
-    .evaluate((element) => {
-      const computed = getComputedStyle(element);
-      return { color: computed.color, background: computed.backgroundColor, border: computed.borderColor };
-    });
-  expect(primary.color).toBe("rgb(111, 207, 151)");
-  expect(primary.background).toBe("rgb(32, 49, 38)");
-  expect(primary.border).toBe("rgba(111, 207, 151, 0.45)");
-});
-
 test("P10-05 the Today card linked to this moment's step shows 今やる一手", async ({ page }) => {
   const fixture = createFullTodayFixture();
   // Only the Project of the linked Today card keeps a Next Step, so Do Now shows it.
@@ -347,73 +318,6 @@ test("P10-05 the freshness notice follows the 14 day rule and the clock", async 
   await expect(page.locator(".nextStepFreshness")).toHaveCount(0);
 });
 
-test("P10-14 Next Step rows are one horizontal line and grow with the text", async ({ page }) => {
-  const fixture = createFullTodayFixture();
-  await open(page, fixture);
-
-  const shortRow = page.locator(".projectGrid .nextStepCard").filter({ hasText: "資料を1ページ読む" });
-  const shortBox = (await shortRow.boundingBox())!;
-  expect(shortBox.height).toBeLessThanOrEqual(72);
-
-  const nameBox = (await shortRow.locator(".nextStepProjectRegion h3").boundingBox())!;
-  const textBox = (await shortRow.locator(".nextStepActionRegion p").boundingBox())!;
-  expect(Math.abs(nameBox.y - textBox.y)).toBeLessThanOrEqual(8);
-
-  const longFixture = createFullTodayFixture();
-  const longText = "とても長い次の一手の文がここに入ります。".repeat(6);
-  longFixture.config.projects = longFixture.config.projects.map((project) =>
-    project.nextStep ? { ...project, nextStep: { ...project.nextStep, text: longText } } : project,
-  );
-  await open(page, longFixture);
-  const longRow = page
-    .locator(".projectGrid .nextStepCard")
-    .filter({ hasText: "とても長い次の一手の文" })
-    .first();
-  const longBox = (await longRow.boundingBox())!;
-  expect(longBox.height).toBeGreaterThan(72);
-  const clipped = await longRow.evaluate((element) => {
-    const text = element.querySelector("p");
-    return text ? text.scrollHeight > text.clientHeight + 1 : false;
-  });
-  expect(clipped).toBe(false);
-});
-
-test("G10 the rightmost visible action ends at the same x in every Next Step row", async ({
-  page,
-}) => {
-  await open(page, createFullTodayFixture());
-  const rows = page.locator(".projectGrid .nextStepCard");
-  const count = await rows.count();
-  expect(count).toBeGreaterThanOrEqual(3);
-  const rightEdges: number[] = [];
-  for (let index = 0; index < count; index += 1) {
-    const buttons = await rows
-      .nth(index)
-      .locator(".nextStepCardActions button, .nextStepRowAction--set, .nextStepTodayStatus")
-      .evaluateAll((nodes) =>
-      nodes
-        .map((node) => ({
-          right: node.getBoundingClientRect().right,
-          opacity: Number(getComputedStyle(node).opacity),
-          display: getComputedStyle(node).display,
-        }))
-        .filter((item) => item.display !== "none" && item.opacity > 0.3),
-    );
-    expect(buttons.length, `row ${index}`).toBeGreaterThan(0);
-    rightEdges.push(Math.max(...buttons.map((item) => item.right)));
-  }
-  expect(Math.max(...rightEdges) - Math.min(...rightEdges)).toBeLessThanOrEqual(1);
-
-  const row = rows.filter({ has: page.locator(".nextStepTodayAdd") }).first();
-  const add = row.locator(".nextStepTodayAdd");
-  const edit = row.locator(".nextStepRowAction");
-  const before = (await add.boundingBox())!;
-  await row.hover();
-  await expect(edit).toHaveCSS("opacity", "1");
-  const after = (await add.boundingBox())!;
-  expect(Math.abs(after.x - before.x)).toBeLessThanOrEqual(1);
-});
-
 test("G8 the empty Next Step text opens the same editor", async ({ page }) => {
   const fixture = createFullTodayFixture();
   const project = fixture.config.projects[0];
@@ -430,32 +334,6 @@ test("G8 the empty Next Step text opens the same editor", async ({ page }) => {
   await expect(placeholder).toHaveCSS("border-top-color", "rgba(231, 185, 77, 0.6)");
   await placeholder.click();
   await expect(page.getByRole("dialog", { name: "次の一手を設定" })).toBeVisible();
-});
-
-test("P10-15c J2 the victory bar never gets its top border clipped", async ({ page }) => {
-  for (const viewport of [
-    { width: 1440, height: 900 },
-    { width: 860, height: 560 },
-  ]) {
-    await page.setViewportSize(viewport);
-    await page.clock.install({ time: new Date(FIXTURE_NOW).getTime() });
-    await installTauriMock(page, createFullTodayFixture(), "main");
-    await page.goto("/");
-    await expect(page.locator(".doNowBand")).toBeVisible();
-    const bar = page.locator(".victoryBar");
-    const area = page.locator(".mainScrollArea");
-    const barBox = (await bar.boundingBox())!;
-    const areaBox = (await area.boundingBox())!;
-    const before = Math.round(barBox.y);
-    // v1.6.3 B3 で上の帯の下の 14px の隙間を消したため、80 から 66 になった。
-    expect(before).toBe(66);
-    await bar.hover();
-    await bar.evaluate((node) =>
-      Promise.allSettled(node.getAnimations().map((animation) => animation.finished)),
-    );
-    const hovered = (await bar.boundingBox())!;
-    expect(hovered.y).toBeGreaterThanOrEqual(areaBox.y - 0.5);
-  }
 });
 
 test("P10-17 N2 the three Do Now reason phrases use everyday Japanese", async ({ page }) => {

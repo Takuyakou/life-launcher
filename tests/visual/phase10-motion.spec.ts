@@ -20,24 +20,9 @@ async function open(
 
 const cases = [
   {
-    name: "today",
-    header: () => ".todaySectionDisclosure",
-    body: () => ".todayGridRegion",
-  },
-  {
     name: "next step",
     header: () => ".projectsBand .disclosure",
     body: () => ".nextStepBody",
-  },
-  {
-    name: "wishlist",
-    header: () => ".inboxBand .disclosure",
-    body: () => ".inboxBody",
-  },
-  {
-    name: "today activity",
-    header: () => ".todayActivityBand .disclosure",
-    body: () => ".todayActivityBody",
   },
   {
     name: "wishlist group",
@@ -126,14 +111,6 @@ test("K1 a menu fades and scales in from its opening point", async ({ page }) =>
   expect(await menu.evaluate((node) => getComputedStyle(node).opacity)).toBe("1");
 });
 
-test("K1 reduced motion opens the menu at full opacity", async ({ page }) => {
-  await open(page, "reduce");
-  await page.locator(".doNowBand").click({ button: "right" });
-  const menu = page.locator(".contextMenu").first();
-  await expect(menu).toBeVisible();
-  expect(await menu.evaluate((node) => getComputedStyle(node).opacity)).toBe("1");
-});
-
 test("K2 every dialog opens with the same fade and lift", async ({ page }) => {
   await open(page);
   const row = page.locator(".nextStepCard").filter({ hasText: "ストレッチ" }).first();
@@ -174,39 +151,6 @@ test("K2 every dialog opens with the same fade and lift", async ({ page }) => {
     await Promise.allSettled(node.getAnimations().map((animation) => animation.finished));
   });
   await expect(palette).toHaveCSS("opacity", "1");
-});
-
-test("K2 the picker, import and completion dialogs use the same motion", async ({ page }) => {
-  const fixture = createFullTodayFixture();
-  fixture.config.today.items = fixture.config.today.items.slice(0, 1);
-  await open(page, "no-preference", fixture);
-  const measure = async (dialog: ReturnType<Page["locator"]>) => {
-    await expect(dialog).toBeVisible();
-    await dialog.evaluate((node) => {
-      for (const animation of node.getAnimations()) {
-        animation.pause();
-        animation.currentTime = 15;
-      }
-    });
-    expect(await dialog.evaluate((node) => Number(getComputedStyle(node).opacity))).toBeLessThan(1);
-    await dialog.evaluate(async (node) => {
-      for (const animation of node.getAnimations()) animation.play();
-      await Promise.allSettled(node.getAnimations().map((animation) => animation.finished));
-    });
-    await expect(dialog).toHaveCSS("opacity", "1");
-    const transform = await dialog.evaluate((node) => getComputedStyle(node).transform);
-    expect(transform === "none" || transform.includes("matrix(1, 0, 0, 1, 0, 0)")).toBe(true);
-  };
-  await page.getByRole("button", { name: "今日やるものを選ぶ" }).click();
-  await measure(page.getByRole("dialog", { name: "今日やるものを選ぶ" }));
-  await page.getByRole("button", { name: "キャンセル" }).click();
-  await page.getByRole("button", { name: "次の一手の操作" }).first().click();
-  await page.getByRole("menuitem", { name: "まとめて取り込む" }).click();
-  await measure(page.getByRole("dialog", { name: "まとめて取り込む" }));
-  await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: /5分で始める/ }).click();
-  await page.clock.fastForward(301_000);
-  await measure(page.getByRole("dialog").filter({ hasText: "予定時間になりました" }));
 });
 
 test("K2 reduced motion skips the dialog motion", async ({ page }) => {

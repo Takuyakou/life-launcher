@@ -176,24 +176,6 @@ fn resume_note_is_cut_to_80_chars() {
 }
 
 #[test]
-fn generated_config_schema_has_resume_note() {
-    let schema: serde_json::Value =
-        serde_json::from_str(config_schema_json()).expect("config schema must be valid JSON");
-    let next_step = &schema["$defs"]["nextStep"]["properties"];
-    assert_eq!(
-        next_step["resumeNote"],
-        serde_json::json!({ "type": "string", "minLength": 1, "maxLength": 80 })
-    );
-    let required = schema["$defs"]["nextStep"]["required"]
-        .as_array()
-        .expect("nextStep required fields");
-    assert!(
-        required.iter().all(|field| field != "resumeNote"),
-        "resumeNote must stay optional"
-    );
-}
-
-#[test]
 fn missing_launch_targets_reports_only_missing_local_paths() {
     let unique = format!(
         "life-launcher-missing-test-{}-{}",

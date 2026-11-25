@@ -65,10 +65,7 @@ for (const file of readmes) {
     for (const path of paths.filter((path) => !/^https?:/.test(path))) {
       expect(existsSync(resolve(path)), `${file}: missing ${path}`).toBe(true);
     }
-  });
-
-  test(`${file} has no per-version change section`, () => {
-    const text = readFileSync(file, "utf8");
+    // The published README never grows a per-version change section.
     expect(text).not.toMatch(/^##\s+(?:Changes In\s+)?v\d+\.\d+\.\d+(?:の変更)?\s*$/m);
   });
 }
