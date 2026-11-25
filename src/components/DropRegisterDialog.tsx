@@ -5,6 +5,7 @@ import { actionDescription } from "../app/helpers";
 import { DEFAULT_BUTTON_GROUP } from "../constants";
 import { GroupModeField } from "./GroupModeField";
 import { UiIcon } from "./UiIcon";
+import type { ExitPresenceAttributes } from "./ExitPresence";
 
 // V163-A3: the Drop Register / Button Builder dialog, moved out of App.tsx
 // (same DOM, text and handlers).
@@ -30,6 +31,8 @@ export type DropRegisterDialogProps = {
   pickBuilderSource: () => void;
   switchBuilderKind: (kind: BuilderKind) => void;
   updateBuilderSource: (source: string) => void;
+  /** V164 (E1): attributes for the close motion; the backdrop is removed when it ends. */
+  exitProps?: ExitPresenceAttributes;
 };
 
 export function DropRegisterDialog(props: DropRegisterDialogProps) {
@@ -48,10 +51,11 @@ export function DropRegisterDialog(props: DropRegisterDialogProps) {
     setDropDraft,
     switchBuilderKind,
     updateBuilderSource,
+    exitProps,
   } = props;
 
   return (
-    <div className="modalBackdrop" role="presentation">
+    <div className="modalBackdrop" role="presentation" {...exitProps}>
       <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
       <section
         aria-label={builderKind ? "Button Builder" : "ボタン登録"}

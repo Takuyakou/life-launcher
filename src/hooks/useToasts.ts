@@ -204,7 +204,12 @@ export function useToasts() {
       ) {
         return;
       }
-      if (document.querySelector('[aria-modal="true"], [role="menu"]')) return;
+      if (
+        document.querySelector(
+          '[aria-modal="true"]:not([data-exiting="true"]):not([data-exiting="true"] *), [role="menu"]:not([data-exiting="true"]):not([data-exiting="true"] *)',
+        )
+      )
+        return;
       const newest = [...toastsRef.current]
         .filter((toast) => toast.onAction && !toast.leaving && !toast.actionPending)
         .sort((left, right) => right.id - left.id)[0];

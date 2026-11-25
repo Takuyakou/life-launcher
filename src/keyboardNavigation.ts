@@ -113,13 +113,17 @@ export function navigateAppArrow(event: KeyboardEvent, captureActive: boolean): 
   const settingsInput =
     current instanceof HTMLInputElement && current.closest(SETTINGS) !== null && !isEditing(current);
   if (!settingsInput && current.matches('input:not([type="checkbox"]), textarea, select, [contenteditable="true"]')) return;
-  if (current.closest('[role="menu"]')) return;
+  if (current.closest('[role="menu"]:not([data-exiting="true"])')) return;
 
   const modals = Array.from(
-    document.querySelectorAll<HTMLElement>('.modalBackdrop [role="dialog"][aria-modal="true"]'),
+    document.querySelectorAll<HTMLElement>(
+      '.modalBackdrop:not([data-exiting="true"]) [role="dialog"][aria-modal="true"]',
+    ),
   );
   const modal = modals[modals.length - 1];
-  const timer = document.querySelector<HTMLElement>('.expandedTimer[role="dialog"]');
+  const timer = document.querySelector<HTMLElement>(
+    '.expandedTimerBackdrop:not([data-exiting="true"]) .expandedTimer[role="dialog"]',
+  );
   const surface = modal ?? timer;
   if (surface) {
     if (!surface.contains(current)) {

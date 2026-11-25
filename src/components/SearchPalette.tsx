@@ -4,6 +4,7 @@ import { springSnappy } from "../motion";
 import { buttonGlyph, PROJECT_COLOR_IDS, resolveProjectColorId } from "../projectIdentity";
 import type { ProjectColorId } from "../types";
 import { UiIcon } from "./UiIcon";
+import type { ExitPresenceAttributes } from "./ExitPresence";
 
 export type SearchItemKind = "nextStep" | "wishlist" | "button" | "instruction" | "action";
 
@@ -38,6 +39,8 @@ type SearchPaletteProps = {
   onActivate: (item: SearchItem, mode: "enter" | "shift") => void;
   onClose: () => void;
   busy?: boolean;
+  /** V164 (E1): attributes for the close motion; the backdrop is removed when it ends. */
+  exitProps?: ExitPresenceAttributes;
 };
 
 const LIST_ID = "search-palette-list";
@@ -100,6 +103,7 @@ export function SearchPalette({
   onActivate,
   onClose,
   busy = false,
+  exitProps,
 }: SearchPaletteProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const dialogRef = useRef<HTMLElement | null>(null);
@@ -214,7 +218,11 @@ export function SearchPalette({
   // V151-S2-3: the palette only receives keydown while focus is inside it. When focus moves to the
   // page (body) the window listener still closes the palette with one Escape. The capture phase and
   // stopImmediatePropagation keep the app's other Escape handlers (dialogs, menus, drags) out of it.
+  // V164: while the close motion plays, the palette no longer takes Escape (the next one belongs to
+  // whatever is under it).
+  const exiting = exitProps?.["data-exiting"] === "true";
   useEffect(() => {
+    if (exiting) return;
     const closeOnEscape = (event: globalThis.KeyboardEvent) => {
       if (event.key !== "Escape") return;
       if (event.isComposing || event.keyCode === 229) return;
@@ -224,7 +232,7 @@ export function SearchPalette({
     };
     window.addEventListener("keydown", closeOnEscape, true);
     return () => window.removeEventListener("keydown", closeOnEscape, true);
-  }, [onClose]);
+  }, [exiting, onClose]);
 
   return (
     <div
@@ -233,6 +241,7 @@ export function SearchPalette({
         if (event.target === event.currentTarget) onClose();
       }}
       role="presentation"
+      {...exitProps}
     >
       <section
         aria-label="検索"

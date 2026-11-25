@@ -5,6 +5,7 @@ import type { TodayCandidate } from "../todayCandidates";
 import { TODAY_ITEM_LIMIT } from "../constants";
 import { springSnappy } from "../motion";
 import { UiIcon } from "./UiIcon";
+import type { ExitPresenceAttributes } from "./ExitPresence";
 
 // V163-A2: the Today picker, moved out of App.tsx (same DOM, text and handlers).
 // The two render helpers stay in App.tsx and come in as props, so the markup is unchanged.
@@ -27,6 +28,8 @@ export type TodayPickerDialogProps = {
   renderTodayPickerSelectedItem: (item: TodayItem, index: number) => ReactNode;
   requestCloseTodayPicker: () => void;
   saveTodayPickerDraft: () => void;
+  /** V164 (E1): attributes for the close motion; the backdrop is removed when it ends. */
+  exitProps?: ExitPresenceAttributes;
 };
 
 export function TodayPickerDialog(props: TodayPickerDialogProps) {
@@ -48,10 +51,11 @@ export function TodayPickerDialog(props: TodayPickerDialogProps) {
     todayPickerSaving,
     todayPickerVisibleNextSteps,
     todayPickerVisibleWishlist,
+    exitProps,
   } = props;
 
   return (
-    <div className="modalBackdrop" role="presentation">
+    <div className="modalBackdrop" role="presentation" {...exitProps}>
       <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
       <section
         aria-label="今日やるものを選ぶ"

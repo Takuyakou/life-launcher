@@ -782,6 +782,111 @@
   }
 }
 
+/* V164 (E1): the four surfaces that had no open motion get the same values as the others. */
+.expandedTimerBackdrop,
+.dictionarySettingsBackdrop {
+  animation: ui-backdrop-enter 140ms ease-out both;
+}
+
+.dictionarySettingsBackdrop > [role="dialog"] {
+  animation: ui-dialog-enter 220ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+.expandedTimerBackdrop > .expandedTimer {
+  animation: ui-expanded-timer-enter 220ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+.dictionaryTitlebarMenu,
+.nextStepOpenMenu {
+  animation: ui-menu-enter 140ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  transform-origin: top left;
+}
+
+@keyframes ui-expanded-timer-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* V164 (E1): the close motions. `<ExitPresence>` puts `data-exiting="true"` on the surface
+   while it plays, and removes the surface when the last of these ends. */
+.modalBackdrop[data-exiting="true"],
+.searchPaletteBackdrop[data-exiting="true"],
+.dictionarySettingsBackdrop[data-exiting="true"],
+.expandedTimerBackdrop[data-exiting="true"] {
+  animation: ui-backdrop-exit 130ms ease-in both;
+}
+
+.modalBackdrop[data-exiting="true"] > [role="dialog"],
+.modalBackdrop[data-exiting="true"] > [role="alertdialog"],
+.searchPaletteBackdrop[data-exiting="true"] > [role="dialog"],
+.dictionarySettingsBackdrop[data-exiting="true"] > [role="dialog"] {
+  animation: ui-dialog-exit 150ms cubic-bezier(0.32, 0, 0.67, 0) both;
+}
+
+.expandedTimerBackdrop[data-exiting="true"] > .expandedTimer {
+  animation: ui-expanded-timer-exit 150ms cubic-bezier(0.32, 0, 0.67, 0) both;
+}
+
+.uiMenuEnter[data-exiting="true"],
+.dictionaryTitlebarMenu[data-exiting="true"],
+.nextStepOpenMenu[data-exiting="true"] {
+  animation: ui-menu-exit 110ms cubic-bezier(0.32, 0, 0.67, 0) both;
+}
+
+.modalBackdrop[data-exiting="true"],
+.searchPaletteBackdrop[data-exiting="true"],
+.dictionarySettingsBackdrop[data-exiting="true"],
+.expandedTimerBackdrop[data-exiting="true"],
+.uiMenuEnter[data-exiting="true"],
+.dictionaryTitlebarMenu[data-exiting="true"],
+.nextStepOpenMenu[data-exiting="true"] {
+  pointer-events: none;
+}
+
+@keyframes ui-backdrop-exit {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes ui-dialog-exit {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+  }
+}
+
+@keyframes ui-expanded-timer-exit {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes ui-menu-exit {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.98) translateY(-3px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .uiMenuEnter {
     animation: none;
@@ -791,6 +896,27 @@
   .searchPaletteBackdrop,
   .modalBackdrop > [role="dialog"],
   .searchPaletteBackdrop > [role="dialog"] {
+    animation: none;
+  }
+
+  .expandedTimerBackdrop,
+  .dictionarySettingsBackdrop,
+  .dictionarySettingsBackdrop > [role="dialog"],
+  .expandedTimerBackdrop > .expandedTimer,
+  .dictionaryTitlebarMenu,
+  .nextStepOpenMenu,
+  .modalBackdrop[data-exiting="true"],
+  .searchPaletteBackdrop[data-exiting="true"],
+  .dictionarySettingsBackdrop[data-exiting="true"],
+  .expandedTimerBackdrop[data-exiting="true"],
+  .modalBackdrop[data-exiting="true"] > [role="dialog"],
+  .modalBackdrop[data-exiting="true"] > [role="alertdialog"],
+  .searchPaletteBackdrop[data-exiting="true"] > [role="dialog"],
+  .dictionarySettingsBackdrop[data-exiting="true"] > [role="dialog"],
+  .expandedTimerBackdrop[data-exiting="true"] > .expandedTimer,
+  .uiMenuEnter[data-exiting="true"],
+  .dictionaryTitlebarMenu[data-exiting="true"],
+  .nextStepOpenMenu[data-exiting="true"] {
     animation: none;
   }
 }

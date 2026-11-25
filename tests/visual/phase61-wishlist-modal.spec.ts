@@ -145,6 +145,9 @@ test("Wishlist explicit close protects drafts and backdrop clicks do nothing", a
   dialog = wishlistDialog(page);
   const backdropDraft = dialog.getByRole("textbox", { name: "やりたいこと" });
   await backdropDraft.fill("外側では閉じない入力");
+  // V164: the confirm that closed above leaves the DOM only after its close motion; wait for it so
+  // the backdrop below is the only one on the screen.
+  await expect(page.locator('[data-exiting="true"]')).toHaveCount(0);
   await page.locator(".modalBackdrop").click({ position: { x: 2, y: 2 } });
   await expect(dialog).toBeVisible();
   await expect(backdropDraft).toHaveValue("外側では閉じない入力");

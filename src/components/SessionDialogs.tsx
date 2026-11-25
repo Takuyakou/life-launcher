@@ -2,6 +2,7 @@ import type { ManualSessionDraft, SessionEditDraft } from "../app/dashboardTypes
 import { resolveProjectColorId } from "../projectIdentity";
 import type { LauncherProject } from "../types";
 import { ProjectIdentity } from "./ProjectIdentity";
+import type { ExitPresenceAttributes } from "./ExitPresence";
 
 function SessionProjectField({
   projects,
@@ -58,6 +59,8 @@ type ManualSessionDialogProps = {
   onDraftChange: (next: ManualSessionDraft) => void;
   onSave: () => void;
   onCancel: () => void;
+  /** V164 (E1): attributes for the close motion; the backdrop is removed when it ends. */
+  exitProps?: ExitPresenceAttributes;
 };
 
 /** Modal dialog for manually adding a session record. */
@@ -68,9 +71,10 @@ export function ManualSessionDialog({
   onDraftChange,
   onSave,
   onCancel,
+  exitProps,
 }: ManualSessionDialogProps) {
   return (
-    <div className="modalBackdrop" role="presentation">
+    <div className="modalBackdrop" role="presentation" {...exitProps}>
       <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
       <section
         aria-label="実行記録を追加"
@@ -167,6 +171,8 @@ type SessionEditDialogProps = {
   onDraftChange: (next: SessionEditDraft) => void;
   onSave: () => void;
   onCancel: () => void;
+  /** V164 (E1): attributes for the close motion; the backdrop is removed when it ends. */
+  exitProps?: ExitPresenceAttributes;
 };
 
 /** Modal dialog for editing an existing session record. */
@@ -177,9 +183,10 @@ export function SessionEditDialog({
   onDraftChange,
   onSave,
   onCancel,
+  exitProps,
 }: SessionEditDialogProps) {
   return (
-    <div className="modalBackdrop" role="presentation">
+    <div className="modalBackdrop" role="presentation" {...exitProps}>
       <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
       <section
         aria-label="実行記録を編集"

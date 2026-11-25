@@ -3,6 +3,7 @@ import type { AppConfig, LauncherProject } from "../types";
 import type { ProjectEditDraft } from "../app/dashboardTypes";
 import { PROJECT_COLOR_IDS, PROJECT_COLOR_LABELS } from "../projectIdentity";
 import { UiIcon } from "./UiIcon";
+import type { ExitPresenceAttributes } from "./ExitPresence";
 
 // V163-A2: the Project edit dialog, moved out of App.tsx (same DOM, text and handlers).
 
@@ -15,6 +16,8 @@ export type ProjectEditDialogProps = {
   closeProjectEditDialog: (afterSuccessfulSave?: boolean) => void;
   requestProjectDeletion: (project: LauncherProject) => void;
   saveProjectEdit: () => void;
+  /** V164 (E1): attributes for the close motion; the backdrop is removed when it ends. */
+  exitProps?: ExitPresenceAttributes;
 };
 
 export function ProjectEditDialog(props: ProjectEditDialogProps) {
@@ -27,10 +30,11 @@ export function ProjectEditDialog(props: ProjectEditDialogProps) {
     saveProjectEdit,
     setProjectEditDraft,
     setProjectWeeklyFocus,
+    exitProps,
   } = props;
 
   return (
-    <div className="modalBackdrop" role="presentation">
+    <div className="modalBackdrop" role="presentation" {...exitProps}>
       <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
       <section
         aria-label={projectEditDraft.isNew ? "プロジェクトを追加" : "プロジェクトを編集"}

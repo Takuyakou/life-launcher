@@ -2,6 +2,7 @@ import type { CSSProperties, KeyboardEvent } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { ExitPresence } from "./ExitPresence";
 import { springCollapse, staggerMax, staggerStep } from "../motion";
 import { INSTRUCTION_RELOAD_TREE_EVENT } from "../instructionWindow";
 import { isInstructionBookName } from "../instructionBook";
@@ -1647,264 +1648,276 @@ export function InstructionTree({
         </ContextMenu>
       ) : null}
 
-      {operationDialog ? (
-        <div className="modalBackdrop instructionOperationBackdrop" role="presentation">
-          <section
-            aria-label="手順書操作"
-            aria-modal="true"
-            className="dropDialog instructionOperationDialog"
-            ref={operationDialogRef}
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div className="confirmDialogHeader">
-              <h2>
-                {operationDialog.kind === "create-file"
-                  ? "新しい手順書"
-                  : operationDialog.kind === "create-folder"
-                    ? "新しいフォルダ"
-                    : "名前を変更"}
-              </h2>
-              <button
-                aria-label="操作を閉じる"
-                title="閉じる"
-                className="confirmDialogClose"
-                disabled={operationSubmitting}
-                onClick={() => setOperationDialog(null)}
-                type="button"
-              >
-                <UiIcon name="close" size={16} />
-              </button>
-            </div>
-            <form
-              className="instructionOperationForm"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void submitOperationDialog();
-              }}
-            >
-              {(operationDialog.kind === "create-file" ||
-                operationDialog.kind === "create-folder") &&
-              !operationDialog.parentPath ? (
-                <label className="fieldStack">
-                  <span>作成先</span>
-                  <select
-                    disabled={operationSubmitting}
-                    onChange={(event) => setOperationParent(event.target.value)}
-                    value={operationParent}
-                  >
-                    {roots
-                      .filter((root) => root.available)
-                      .map((root) => (
-                        <option key={root.path} value={root.path}>
-                          {root.name}
-                        </option>
-                      ))}
-                  </select>
-                </label>
-              ) : null}
-              <label className="fieldStack">
-                <span>名前</span>
-                <input autoComplete="off"
-                  disabled={operationSubmitting}
-                  maxLength={48}
-                  onChange={(event) => setOperationName(event.target.value)}
-                  ref={operationNameRef}
-                  value={operationName}
-                />
-              </label>
-              {operationDialog.kind === "create-file" ? (
-                <label className="fieldStack">
-                  <span>形式</span>
-                  <select
-                    disabled={operationSubmitting}
-                    onChange={(event) => setOperationExtension(event.target.value as "md" | "txt")}
-                    value={operationExtension}
-                  >
-                    <option value="md">Markdown (.md)</option>
-                    <option value="txt">Text (.txt)</option>
-                  </select>
-                </label>
-              ) : operationDialog.kind === "rename-file" ? (
-                <div className="instructionOperationExtension">
-                  拡張子: .{operationDialog.extension}
-                </div>
-              ) : null}
-              {operationError ? (
-                <p className="fieldError" role="alert">
-                  {operationError}
-                </p>
-              ) : null}
-              <div className="dialogActions formDialogActions">
-                <button
-                  className="primaryButton"
-                  disabled={operationSubmitting || !operationName.trim()}
-                  type="submit"
+      <AnimatePresence initial={false}>
+        {operationDialog && (
+          <ExitPresence key="instruction-operation-dialog">
+            {(exiting, exitProps) => (
+              <div className="modalBackdrop instructionOperationBackdrop" role="presentation" {...exitProps}>
+                <section
+                  aria-label="手順書操作"
+                  aria-modal="true"
+                  className="dropDialog instructionOperationDialog"
+                  ref={operationDialogRef}
+                  role="dialog"
+                  tabIndex={-1}
                 >
-                  {operationSubmitting
-                    ? "処理中…"
-                    : operationDialog.kind.startsWith("create")
-                      ? "作成"
-                      : "変更"}
-                </button>
-                <button
-                  className="secondaryButton dialogCancelButton"
-                  disabled={operationSubmitting}
-                  onClick={() => setOperationDialog(null)}
-                  type="button"
-                >
-                  キャンセル
-                </button>
-              </div>
-            </form>
-          </section>
-        </div>
-      ) : null}
-
-      {projectLinkDialog ? (
-        <div className="modalBackdrop instructionOperationBackdrop" role="presentation">
-          <section
-            aria-label="次の一手に手順書を紐づける"
-            aria-modal="true"
-            className="dropDialog instructionProjectLinkDialog"
-            ref={projectLinkDialogRef}
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div className="instructionProjectLinkHeader">
-              <div>
-                <p className="eyebrow">Instruction</p>
-                <h2>次の一手に紐づける</h2>
-              </div>
-              <button
-                aria-label="紐付けを閉じる"
-                title="閉じる"
-                className="confirmDialogClose"
-                disabled={projectLinkSubmitting}
-                onClick={() => {
-                  setProjectLinkError(null);
-                  setProjectLinkDialog(null);
-                }}
-                type="button"
-              >
-                <UiIcon name="close" size={16} />
-              </button>
-            </div>
-            <form
-              className="instructionProjectLinkForm"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void submitProjectLink();
-              }}
-            >
-              <div className="instructionProjectLinkBody">
-                <section className="instructionProjectLinkSource">
-                  <span className="instructionProjectLinkLabel">手順書</span>
-                  <div className="instructionProjectLinkSourceCard">
-                    <span
-                      aria-hidden="true"
-                      className={`instructionTreeFileIcon instructionTreeFileIcon--${instructionFileTone(projectLinkDialog.name)}`}
+                  <div className="confirmDialogHeader">
+                    <h2>
+                      {operationDialog.kind === "create-file"
+                        ? "新しい手順書"
+                        : operationDialog.kind === "create-folder"
+                          ? "新しいフォルダ"
+                          : "名前を変更"}
+                    </h2>
+                    <button
+                      aria-label="操作を閉じる"
+                      title="閉じる"
+                      className="confirmDialogClose"
+                      disabled={operationSubmitting}
+                      onClick={() => setOperationDialog(null)}
+                      type="button"
                     >
-                      <UiIcon name={instructionFileIcon(projectLinkDialog.name)} size={18} />
-                    </span>
-                    <span className="instructionProjectLinkSourceCopy">
-                      <strong title={projectLinkDialog.name}>{projectLinkDialog.name}</strong>
-                      <small>この手順書を紐づけます</small>
-                    </span>
+                      <UiIcon name="close" size={16} />
+                    </button>
                   </div>
-                </section>
-
-                <span aria-hidden="true" className="instructionProjectLinkArrow">
-                  ↓
-                </span>
-
-                <section className="instructionProjectLinkTarget">
-                  <label className="fieldStack">
-                    <span>紐づけ先</span>
-                    {projectLinkDialog.projects.length > 0 ? (
-                      <select
-                        disabled={projectLinkSubmitting}
-                        onChange={(event) => {
-                          setProjectLinkError(null);
-                          setProjectLinkDialog({
-                            ...projectLinkDialog,
-                            projectId: event.target.value,
-                          });
-                        }}
-                        ref={projectLinkSelectRef}
-                        value={projectLinkDialog.projectId}
+                  <form
+                    className="instructionOperationForm"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void submitOperationDialog();
+                    }}
+                  >
+                    {(operationDialog.kind === "create-file" ||
+                      operationDialog.kind === "create-folder") &&
+                    !operationDialog.parentPath ? (
+                      <label className="fieldStack">
+                        <span>作成先</span>
+                        <select
+                          disabled={operationSubmitting}
+                          onChange={(event) => setOperationParent(event.target.value)}
+                          value={operationParent}
+                        >
+                          {roots
+                            .filter((root) => root.available)
+                            .map((root) => (
+                              <option key={root.path} value={root.path}>
+                                {root.name}
+                              </option>
+                            ))}
+                        </select>
+                      </label>
+                    ) : null}
+                    <label className="fieldStack">
+                      <span>名前</span>
+                      <input autoComplete="off"
+                        disabled={operationSubmitting}
+                        maxLength={48}
+                        onChange={(event) => setOperationName(event.target.value)}
+                        ref={operationNameRef}
+                        value={operationName}
+                      />
+                    </label>
+                    {operationDialog.kind === "create-file" ? (
+                      <label className="fieldStack">
+                        <span>形式</span>
+                        <select
+                          disabled={operationSubmitting}
+                          onChange={(event) => setOperationExtension(event.target.value as "md" | "txt")}
+                          value={operationExtension}
+                        >
+                          <option value="md">Markdown (.md)</option>
+                          <option value="txt">Text (.txt)</option>
+                        </select>
+                      </label>
+                    ) : operationDialog.kind === "rename-file" ? (
+                      <div className="instructionOperationExtension">
+                        拡張子: .{operationDialog.extension}
+                      </div>
+                    ) : null}
+                    {operationError ? (
+                      <p className="fieldError" role="alert">
+                        {operationError}
+                      </p>
+                    ) : null}
+                    <div className="dialogActions formDialogActions">
+                      <button
+                        className="primaryButton"
+                        disabled={operationSubmitting || !operationName.trim()}
+                        type="submit"
                       >
-                        {projectLinkDialog.projects.map((project) => (
-                          <option key={project.id} value={project.id}>
-                            {project.name} — {project.nextStepText}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <span className="instructionProjectLinkEmpty">
-                        <strong>紐づけられる「次の一手」がありません。</strong>
-                        <small>先にプロジェクトの「次の一手」を設定してください。</small>
-                      </span>
-                    )}
-                  </label>
-
-                  {selectedProjectLinkTarget ? (
-                    <div
-                      aria-label={`${selectedProjectLinkTarget.name}の次の一手`}
-                      className="instructionProjectLinkPreview"
-                      data-project-color={selectedProjectLinkTarget.colorId}
-                    >
-                      <span className="instructionProjectLinkProject">
-                        <i aria-hidden="true" />
-                        {selectedProjectLinkTarget.name}
-                      </span>
-                      <strong>{selectedProjectLinkTarget.nextStepText}</strong>
+                        {operationSubmitting
+                          ? "処理中…"
+                          : operationDialog.kind.startsWith("create")
+                            ? "作成"
+                            : "変更"}
+                      </button>
+                      <button
+                        className="secondaryButton dialogCancelButton"
+                        disabled={operationSubmitting}
+                        onClick={() => setOperationDialog(null)}
+                        type="button"
+                      >
+                        キャンセル
+                      </button>
                     </div>
-                  ) : null}
-                  <p className="instructionProjectLinkHelper">
-                    プロジェクト名と「次の一手」の内容を確認して選べます。
-                  </p>
+                  </form>
                 </section>
+              </div>
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
 
-                {selectedProjectLinkTarget?.instructionPath ? (
-                  <p className="instructionProjectLinkNotice">
-                    現在の手順書設定は、この手順書へ置き換わります。
-                  </p>
-                ) : null}
-                <p className="instructionProjectLinkInfo">
-                  紐づけると、この次の一手を開始するときに手順書を開けるようになります。
-                  既存の「開始時に手順書を開く」設定がある場合は、その設定に従います。
-                </p>
-                {projectLinkError ? (
-                  <p className="fieldError" role="alert">
-                    {projectLinkError}
-                  </p>
-                ) : null}
-              </div>
-              <div className="dialogActions formDialogActions instructionProjectLinkFooter">
-                <button
-                  className="primaryButton"
-                  disabled={projectLinkSubmitting || !projectLinkDialog.projectId}
-                  type="submit"
+      <AnimatePresence initial={false}>
+        {projectLinkDialog && (
+          <ExitPresence key="instruction-project-link-dialog">
+            {(exiting, exitProps) => (
+              <div className="modalBackdrop instructionOperationBackdrop" role="presentation" {...exitProps}>
+                <section
+                  aria-label="次の一手に手順書を紐づける"
+                  aria-modal="true"
+                  className="dropDialog instructionProjectLinkDialog"
+                  ref={projectLinkDialogRef}
+                  role="dialog"
+                  tabIndex={-1}
                 >
-                  {projectLinkSubmitting ? "保存中…" : "紐づける"}
-                </button>
-                <button
-                  className="secondaryButton dialogCancelButton"
-                  disabled={projectLinkSubmitting}
-                  onClick={() => {
-                    setProjectLinkError(null);
-                    setProjectLinkDialog(null);
-                  }}
-                  type="button"
-                >
-                  キャンセル
-                </button>
+                  <div className="instructionProjectLinkHeader">
+                    <div>
+                      <p className="eyebrow">Instruction</p>
+                      <h2>次の一手に紐づける</h2>
+                    </div>
+                    <button
+                      aria-label="紐付けを閉じる"
+                      title="閉じる"
+                      className="confirmDialogClose"
+                      disabled={projectLinkSubmitting}
+                      onClick={() => {
+                        setProjectLinkError(null);
+                        setProjectLinkDialog(null);
+                      }}
+                      type="button"
+                    >
+                      <UiIcon name="close" size={16} />
+                    </button>
+                  </div>
+                  <form
+                    className="instructionProjectLinkForm"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void submitProjectLink();
+                    }}
+                  >
+                    <div className="instructionProjectLinkBody">
+                      <section className="instructionProjectLinkSource">
+                        <span className="instructionProjectLinkLabel">手順書</span>
+                        <div className="instructionProjectLinkSourceCard">
+                          <span
+                            aria-hidden="true"
+                            className={`instructionTreeFileIcon instructionTreeFileIcon--${instructionFileTone(projectLinkDialog.name)}`}
+                          >
+                            <UiIcon name={instructionFileIcon(projectLinkDialog.name)} size={18} />
+                          </span>
+                          <span className="instructionProjectLinkSourceCopy">
+                            <strong title={projectLinkDialog.name}>{projectLinkDialog.name}</strong>
+                            <small>この手順書を紐づけます</small>
+                          </span>
+                        </div>
+                      </section>
+
+                      <span aria-hidden="true" className="instructionProjectLinkArrow">
+                        ↓
+                      </span>
+
+                      <section className="instructionProjectLinkTarget">
+                        <label className="fieldStack">
+                          <span>紐づけ先</span>
+                          {projectLinkDialog.projects.length > 0 ? (
+                            <select
+                              disabled={projectLinkSubmitting}
+                              onChange={(event) => {
+                                setProjectLinkError(null);
+                                setProjectLinkDialog({
+                                  ...projectLinkDialog,
+                                  projectId: event.target.value,
+                                });
+                              }}
+                              ref={projectLinkSelectRef}
+                              value={projectLinkDialog.projectId}
+                            >
+                              {projectLinkDialog.projects.map((project) => (
+                                <option key={project.id} value={project.id}>
+                                  {project.name} — {project.nextStepText}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className="instructionProjectLinkEmpty">
+                              <strong>紐づけられる「次の一手」がありません。</strong>
+                              <small>先にプロジェクトの「次の一手」を設定してください。</small>
+                            </span>
+                          )}
+                        </label>
+
+                        {selectedProjectLinkTarget ? (
+                          <div
+                            aria-label={`${selectedProjectLinkTarget.name}の次の一手`}
+                            className="instructionProjectLinkPreview"
+                            data-project-color={selectedProjectLinkTarget.colorId}
+                          >
+                            <span className="instructionProjectLinkProject">
+                              <i aria-hidden="true" />
+                              {selectedProjectLinkTarget.name}
+                            </span>
+                            <strong>{selectedProjectLinkTarget.nextStepText}</strong>
+                          </div>
+                        ) : null}
+                        <p className="instructionProjectLinkHelper">
+                          プロジェクト名と「次の一手」の内容を確認して選べます。
+                        </p>
+                      </section>
+
+                      {selectedProjectLinkTarget?.instructionPath ? (
+                        <p className="instructionProjectLinkNotice">
+                          現在の手順書設定は、この手順書へ置き換わります。
+                        </p>
+                      ) : null}
+                      <p className="instructionProjectLinkInfo">
+                        紐づけると、この次の一手を開始するときに手順書を開けるようになります。
+                        既存の「開始時に手順書を開く」設定がある場合は、その設定に従います。
+                      </p>
+                      {projectLinkError ? (
+                        <p className="fieldError" role="alert">
+                          {projectLinkError}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="dialogActions formDialogActions instructionProjectLinkFooter">
+                      <button
+                        className="primaryButton"
+                        disabled={projectLinkSubmitting || !projectLinkDialog.projectId}
+                        type="submit"
+                      >
+                        {projectLinkSubmitting ? "保存中…" : "紐づける"}
+                      </button>
+                      <button
+                        className="secondaryButton dialogCancelButton"
+                        disabled={projectLinkSubmitting}
+                        onClick={() => {
+                          setProjectLinkError(null);
+                          setProjectLinkDialog(null);
+                        }}
+                        type="button"
+                      >
+                        キャンセル
+                      </button>
+                    </div>
+                  </form>
+                </section>
               </div>
-            </form>
-          </section>
-        </div>
-      ) : null}
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
 
       <ConfirmDialog
         confirmLabel="登録を解除"

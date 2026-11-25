@@ -5,6 +5,7 @@ import type { LauncherProject } from "../types";
 import { ProjectIdentity } from "./ProjectIdentity";
 import { TimerMinutesStepper } from "./TimerMinutesStepper";
 import { UiIcon } from "./UiIcon";
+import type { ExitPresenceAttributes } from "./ExitPresence";
 
 type TimerCompletionDialogProps = {
   prompt: TimerCompletionPrompt;
@@ -26,6 +27,8 @@ type TimerCompletionDialogProps = {
   onExtendDragCancel: (event: PointerEvent<HTMLElement>) => void;
   onContinue: () => void;
   onFinish: () => void;
+  /** V164 (E1): attributes for the close motion; the backdrop is removed when it ends. */
+  exitProps?: ExitPresenceAttributes;
 };
 
 /** Prompt shown when a countdown timer reaches its planned duration. */
@@ -48,9 +51,10 @@ export function TimerCompletionDialog({
   onExtendDragCancel,
   onContinue,
   onFinish,
+  exitProps,
 }: TimerCompletionDialogProps) {
   return (
-    <div className="modalBackdrop" role="presentation">
+    <div className="modalBackdrop" role="presentation" {...exitProps}>
       <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
       <section
         aria-label="タイマー満了"

@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
+import { AnimatePresence } from "motion/react";
 import type { AppConfig, LauncherButton, OverlayPage } from "../types";
 import type {
   InstructionChoice,
@@ -15,6 +16,7 @@ import { ProjectIdentity } from "./ProjectIdentity";
 import { SlidingFace } from "./SlidingFace";
 import { TimerMinutesStepper } from "./TimerMinutesStepper";
 import { UiIcon } from "./UiIcon";
+import { ExitPresence, type ExitPresenceAttributes } from "./ExitPresence";
 
 // V163-A4: the Next Step edit dialog (and the Project edit dialog it opens from inside),
 // moved out of App.tsx unchanged.
@@ -53,6 +55,8 @@ export type NextStepEditDialogProps = {
   saveNextStepEdit: () => void;
   selectNextStepDecisionMode: (decisionMode: NextStepDecisionMode) => void;
   selectNextStepProject: (projectId: string) => void;
+  /** V164 (E1): attributes for the close motion; the backdrop is removed when it ends. */
+  exitProps?: ExitPresenceAttributes;
 };
 
 export function NextStepEditDialog(props: NextStepEditDialogProps) {
@@ -86,6 +90,7 @@ export function NextStepEditDialog(props: NextStepEditDialogProps) {
     sourceEditSaving,
     startNumberInputDrag,
     updateNumberInputDrag,
+    exitProps,
   } = props;
 
   return (
@@ -275,7 +280,7 @@ export function NextStepEditDialog(props: NextStepEditDialogProps) {
       );
 
       return (
-        <div className="modalBackdrop" role="presentation">
+        <div className="modalBackdrop" role="presentation" {...exitProps}>
           <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
           <section
             aria-label={dialogTitle}
@@ -681,30 +686,41 @@ export function NextStepEditDialog(props: NextStepEditDialogProps) {
                   ＋ ボタン・手順書を足す
                 </button>
               </div>
-              {nextStepOpenMenuOpen ? (
-                <div aria-label="足す物" className="nextStepOpenMenu" role="menu">
-                  <button
-                    onClick={() => {
-                      setNextStepOpenMenuOpen(false);
-                      setNextStepOpenPicker("buttons");
-                    }}
-                    role="menuitem"
-                    type="button"
-                  >
-                    ボタンを選ぶ
-                  </button>
-                  <button
-                    onClick={() => {
-                      setNextStepOpenMenuOpen(false);
-                      setNextStepOpenPicker("instructions");
-                    }}
-                    role="menuitem"
-                    type="button"
-                  >
-                    手順書を選ぶ
-                  </button>
-                </div>
-              ) : null}
+              <AnimatePresence initial={false}>
+                {nextStepOpenMenuOpen && (
+                  <ExitPresence key="next-step-open-menu">
+                    {(exiting, exitProps) => (
+                      <div
+                        aria-label="足す物"
+                        className="nextStepOpenMenu"
+                        role="menu"
+                        {...exitProps}
+                      >
+                        <button
+                          onClick={() => {
+                            setNextStepOpenMenuOpen(false);
+                            setNextStepOpenPicker("buttons");
+                          }}
+                          role="menuitem"
+                          type="button"
+                        >
+                          ボタンを選ぶ
+                        </button>
+                        <button
+                          onClick={() => {
+                            setNextStepOpenMenuOpen(false);
+                            setNextStepOpenPicker("instructions");
+                          }}
+                          role="menuitem"
+                          type="button"
+                        >
+                          手順書を選ぶ
+                        </button>
+                      </div>
+                    )}
+                  </ExitPresence>
+                )}
+              </AnimatePresence>
               <label className="projectWeeklyFocusToggle projectInstructionStartToggle">
                 <input
                   checked={nextStepEditDraft.instructionOpenOnStart}

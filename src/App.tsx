@@ -110,6 +110,7 @@ import {
   TodayItem,
 } from "./types";
 import { ConfirmDialog, type ConfirmDialogRequest } from "./components/ConfirmDialog";
+import { ExitPresence } from "./components/ExitPresence";
 import { GroupNameDialog } from "./components/GroupNameDialog";
 import { ImportDialog } from "./components/ImportDialog";
 import { InboxAddDialog } from "./components/InboxAddDialog";
@@ -646,6 +647,12 @@ function DashboardApp() {
   completionPromptRef.current = completionPrompt;
 
   const requestConfirmation = useCallback((request: ConfirmDialogRequest) => {
+    // V164 (E1): the confirm closes with a motion, so the focus goes back from the close handler
+    // instead of waiting for the surface to leave the DOM.
+    if (!confirmFocusReturnRef.current) {
+      confirmFocusReturnRef.current =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    }
     setConfirmDialog((current) => {
       const next = current ?? request;
       confirmDialogRef.current = next;
@@ -715,7 +722,7 @@ function DashboardApp() {
       }
       returnFocusRef.current =
         activeElement?.isConnected &&
-        !activeElement.closest(".modalBackdrop")
+        !activeElement.closest('.modalBackdrop:not([data-exiting="true"])')
           ? activeElement
           : null;
     },
@@ -2051,9 +2058,12 @@ function DashboardApp() {
     setTodayPickerAddedWishes([]);
     setTodayPickerQuickText("");
     window.requestAnimationFrame(() => {
-      // Never steal focus from a dialog that opened while the Picker was closing.
+      // Never steal focus from a dialog that opened while the Picker was closing. The Picker itself
+      // stays in the DOM while its close motion runs (V164), so focus still inside it means「戻す」.
       const active = document.activeElement;
-      if (active instanceof HTMLElement && active !== document.body) return;
+      const insideClosingPicker =
+        active instanceof HTMLElement && active.closest(".todayPickerDialog") !== null;
+      if (active instanceof HTMLElement && active !== document.body && !insideClosingPicker) return;
       if (opener?.isConnected) opener.focus();
     });
   }, []);
@@ -2283,7 +2293,7 @@ function DashboardApp() {
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const topSurface = () => {
       const surfaces = document.querySelectorAll<HTMLElement>(
-        ".modalBackdrop",
+        '.modalBackdrop:not([data-exiting="true"])',
       );
       return surfaces.item(surfaces.length - 1)?.querySelector<HTMLElement>("section") ?? null;
     };
@@ -3083,7 +3093,7 @@ function DashboardApp() {
   );
 
   const dropModalOpen = useCallback(
-    () => Boolean(document.querySelector(".modalBackdrop")),
+    () => Boolean(document.querySelector('.modalBackdrop:not([data-exiting="true"])')),
     [],
   );
 
@@ -11142,984 +11152,1137 @@ function DashboardApp() {
         toasts={toasts}
       />
 
-      {contextMenu && (
-        <ContextMenu
-          ariaLabel="操作メニュー"
-          onClose={() => dismissContextMenu(false)}
-          onShortcutKey={handleContextMenuShortcut}
-          opener={contextMenuReturnFocusRef.current}
-          x={contextMenu.x}
-          y={contextMenu.y}
-        >
-          {contextMenu.kind === "doNow" ? (
-            <ContextMenuItem onClick={showNextDoNowCandidate} type="button">
-              他の一手
-            </ContextMenuItem>
-          ) : contextMenu.kind === "button" ? (
-            <>
-              {showButtonInSidebar(contextMenu.button) && (
-                <>
-                  <ContextMenuItem
-                    disabled={
-                      (config?.buttons ?? [])
-                        .filter(
-                          (button) =>
-                            showButtonInSidebar(button) &&
-                            buttonGroupName(button) === buttonGroupName(contextMenu.button),
+      <AnimatePresence initial={false}>
+        {contextMenu && (
+          <ExitPresence key="context-menu">
+            {(exiting, exitProps) => (
+              <ContextMenu
+                exitProps={exitProps}
+                ariaLabel="操作メニュー"
+                onClose={() => dismissContextMenu(false)}
+                onShortcutKey={handleContextMenuShortcut}
+                opener={contextMenuReturnFocusRef.current}
+                x={contextMenu.x}
+                y={contextMenu.y}
+              >
+                {contextMenu.kind === "doNow" ? (
+                  <ContextMenuItem onClick={showNextDoNowCandidate} type="button">
+                    他の一手
+                  </ContextMenuItem>
+                ) : contextMenu.kind === "button" ? (
+                  <>
+                    {showButtonInSidebar(contextMenu.button) && (
+                      <>
+                        <ContextMenuItem
+                          disabled={
+                            (config?.buttons ?? [])
+                              .filter(
+                                (button) =>
+                                  showButtonInSidebar(button) &&
+                                  buttonGroupName(button) === buttonGroupName(contextMenu.button),
+                              )
+                              .findIndex((button) => button.id === contextMenu.button.id) <= 0
+                          }
+                          onClick={() => void moveSidebarButtonByOffset(contextMenu.button.id, -1)}
+                          type="button"
+                        >
+                          上へ移動
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                          disabled={(() => {
+                            const groupButtons = (config?.buttons ?? []).filter(
+                              (button) =>
+                                showButtonInSidebar(button) &&
+                                buttonGroupName(button) === buttonGroupName(contextMenu.button),
+                            );
+                            return (
+                              groupButtons.findIndex((button) => button.id === contextMenu.button.id) >=
+                              groupButtons.length - 1
+                            );
+                          })()}
+                          onClick={() => void moveSidebarButtonByOffset(contextMenu.button.id, 1)}
+                          type="button"
+                        >
+                          下へ移動
+                        </ContextMenuItem>
+                      </>
+                    )}
+                    <ContextMenuItem
+                      onClick={() => openButtonEditDialog(contextMenu.button)}
+                      type="button"
+                    >
+                      編集
+                    </ContextMenuItem>
+                    {canRevealLauncherButton(contextMenu.button) ? (
+                      <ContextMenuItem
+                        onClick={() => void revealButtonInExplorer(contextMenu.button)}
+                        type="button"
+                      >
+                        エクスプローラーで表示する
+                      </ContextMenuItem>
+                    ) : null}
+                    <ContextMenuItem
+                      className="contextMenuSeparatorBefore"
+                      onClick={() => void moveSidebarButtonToDictionary(contextMenu.button)}
+                      type="button"
+                    >
+                      辞書に移動
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                      className="contextMenuDanger contextMenuSeparatorBefore"
+                      onClick={() => deleteButton(contextMenu.button)}
+                      type="button"
+                    >
+                      削除
+                    </ContextMenuItem>
+                  </>
+                ) : contextMenu.kind === "today" ? (
+                  <>
+                    <ContextMenuItem
+                      disabled={
+                        !config.today.items[contextMenu.index]?.sourceKey ||
+                        !canonicalSourceKey(config, config.today.items[contextMenu.index].sourceKey!) ||
+                        sourceEditBlocked(
+                          canonicalSourceKey(config, config.today.items[contextMenu.index].sourceKey!) ??
+                            "",
+                          true,
                         )
-                        .findIndex((button) => button.id === contextMenu.button.id) <= 0
-                    }
-                    onClick={() => void moveSidebarButtonByOffset(contextMenu.button.id, -1)}
-                    type="button"
-                  >
-                    上へ移動
-                  </ContextMenuItem>
-                  <ContextMenuItem
-                    disabled={(() => {
-                      const groupButtons = (config?.buttons ?? []).filter(
-                        (button) =>
-                          showButtonInSidebar(button) &&
-                          buttonGroupName(button) === buttonGroupName(contextMenu.button),
-                      );
-                      return (
-                        groupButtons.findIndex((button) => button.id === contextMenu.button.id) >=
-                        groupButtons.length - 1
-                      );
-                    })()}
-                    onClick={() => void moveSidebarButtonByOffset(contextMenu.button.id, 1)}
-                    type="button"
-                  >
-                    下へ移動
-                  </ContextMenuItem>
-                </>
-              )}
-              <ContextMenuItem
-                onClick={() => openButtonEditDialog(contextMenu.button)}
-                type="button"
-              >
-                編集
-              </ContextMenuItem>
-              {canRevealLauncherButton(contextMenu.button) ? (
-                <ContextMenuItem
-                  onClick={() => void revealButtonInExplorer(contextMenu.button)}
-                  type="button"
-                >
-                  エクスプローラーで表示する
-                </ContextMenuItem>
-              ) : null}
-              <ContextMenuItem
-                className="contextMenuSeparatorBefore"
-                onClick={() => void moveSidebarButtonToDictionary(contextMenu.button)}
-                type="button"
-              >
-                辞書に移動
-              </ContextMenuItem>
-              <ContextMenuItem
-                className="contextMenuDanger contextMenuSeparatorBefore"
-                onClick={() => deleteButton(contextMenu.button)}
-                type="button"
-              >
-                削除
-              </ContextMenuItem>
-            </>
-          ) : contextMenu.kind === "today" ? (
-            <>
-              <ContextMenuItem
-                disabled={
-                  !config.today.items[contextMenu.index]?.sourceKey ||
-                  !canonicalSourceKey(config, config.today.items[contextMenu.index].sourceKey!) ||
-                  sourceEditBlocked(
-                    canonicalSourceKey(config, config.today.items[contextMenu.index].sourceKey!) ??
-                      "",
-                    true,
-                  )
+                      }
+                      title={
+                        config.today.items[contextMenu.index]?.sourceKey
+                          ? (sourceEditBlockReason(
+                              canonicalSourceKey(
+                                config,
+                                config.today.items[contextMenu.index].sourceKey!,
+                              ) ?? "",
+                              true,
+                            ) ?? undefined)
+                          : undefined
+                      }
+                      onClick={() => {
+                        const current = configRef.current;
+                        const item = current?.today.items[contextMenu.index];
+                        if (!current || !item?.sourceKey) return;
+                        const key = canonicalSourceKey(current, item.sourceKey);
+                        if (!key || sourceEditBlocked(key, true)) return;
+                        const project = current.projects.find((p) => `project:${p.id}` === key);
+                        if (project) openNextStepEditor(project, { origin: "today" });
+                        else {
+                          const index = current.inbox.findIndex((i) => `wishlist:${i.id}` === key);
+                          if (index >= 0) beginInboxEdit(index, "today");
+                        }
+                      }}
+                      shortcut="F2"
+                      type="button"
+                    >
+                      編集
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                      disabled={contextMenu.index <= 0}
+                      onClick={() => void moveTodayItemByOffset(contextMenu.index, -1)}
+                      type="button"
+                    >
+                      左へ移動
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                      disabled={contextMenu.index >= (config?.today.items.length ?? 0) - 1}
+                      onClick={() => void moveTodayItemByOffset(contextMenu.index, 1)}
+                      type="button"
+                    >
+                      右へ移動
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                      disabled={
+                        !!config?.today.items[contextMenu.index] &&
+                        isTimerOnTodayItem(config.today.items[contextMenu.index], contextMenu.index)
+                      }
+                      title={
+                        config?.today.items[contextMenu.index] &&
+                        isTimerOnTodayItem(config.today.items[contextMenu.index], contextMenu.index)
+                          ? "タイマーを停止してから外してください"
+                          : undefined
+                      }
+                      onClick={() => {
+                        setContextMenu(null);
+                        const item = config?.today.items[contextMenu.index];
+                        if (item) void removeTodayItem(todaySourceKey(item, contextMenu.index));
+                      }}
+                      shortcut="Delete"
+                      type="button"
+                    >
+                      今日の3件から外す
+                    </ContextMenuItem>
+                  </>
+                ) : contextMenu.kind === "inbox" ? (
+                  <>
+                    <ContextMenuItem
+                      disabled={
+                        sourceEditBlocked(`wishlist:${config?.inbox[contextMenu.index]?.id ?? ""}`) ||
+                        Boolean(
+                          config?.inbox[contextMenu.index] &&
+                          wishlistItemIsCurrentNextStep(config.inbox[contextMenu.index]),
+                        )
+                      }
+                      onClick={() => promoteInboxToNextStep(contextMenu.index)}
+                      title={
+                        sourceEditBlockReason(`wishlist:${config?.inbox[contextMenu.index]?.id ?? ""}`) ??
+                        undefined
+                      }
+                      type="button"
+                    >
+                      {config?.inbox[contextMenu.index] &&
+                      wishlistItemIsCurrentNextStep(config.inbox[contextMenu.index])
+                        ? "次の一手に設定済み"
+                        : "次の一手にする"}
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                      disabled={inboxNeighborIndex(contextMenu.index, -1) === undefined}
+                      onClick={() => void moveInboxItemByOffset(contextMenu.index, -1)}
+                      type="button"
+                    >
+                      上へ移動
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                      disabled={inboxNeighborIndex(contextMenu.index, 1) === undefined}
+                      onClick={() => void moveInboxItemByOffset(contextMenu.index, 1)}
+                      type="button"
+                    >
+                      下へ移動
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                      disabled={sourceEditBlocked(`wishlist:${config.inbox[contextMenu.index]?.id}`)}
+                      title={
+                        sourceEditBlockReason(`wishlist:${config.inbox[contextMenu.index]?.id}`) ??
+                        undefined
+                      }
+                      onClick={() => beginInboxEdit(contextMenu.index)}
+                      shortcut="F2"
+                      type="button"
+                    >
+                      編集
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                      disabled={
+                        !config?.inbox[contextMenu.index] ||
+                        sourceEditBlocked(`wishlist:${config?.inbox[contextMenu.index]?.id ?? ""}`) ||
+                        isTimerActiveForSource([
+                          wishlistSourceKey(config.inbox[contextMenu.index], contextMenu.index),
+                          legacyWishlistSourceKey(config.inbox[contextMenu.index]),
+                        ])
+                      }
+                      onClick={() => completeInboxItem(contextMenu.index)}
+                      type="button"
+                    >
+                      完了にする
+                    </ContextMenuItem>
+                    {contextMenuTodayAdd ? (
+                      <ContextMenuItem
+                        disabled={contextMenuTodayAdd.disabled}
+                        onClick={() => {
+                          const candidate = contextMenuTodayAdd.candidate;
+                          setContextMenu(null);
+                          void addCandidateToToday(candidate);
+                        }}
+                        shortcut="T"
+                        title={contextMenuTodayAdd.reason}
+                        type="button"
+                      >
+                        今日の3件に入れる
+                      </ContextMenuItem>
+                    ) : null}
+                    <ContextMenuItem
+                      className="contextMenuDanger"
+                      disabled={
+                        !config?.inbox[contextMenu.index] ||
+                        sourceEditBlocked(`wishlist:${config?.inbox[contextMenu.index]?.id ?? ""}`) ||
+                        isTimerActiveForSource([
+                          wishlistSourceKey(config.inbox[contextMenu.index], contextMenu.index),
+                          legacyWishlistSourceKey(config.inbox[contextMenu.index]),
+                        ])
+                      }
+                      onClick={() => deleteInboxItem(contextMenu.index)}
+                      shortcut="Delete"
+                      type="button"
+                    >
+                      削除
+                    </ContextMenuItem>
+                  </>
+                ) : contextMenu.kind === "nextStep" ? (
+                  <>
+                    <ContextMenuItem
+                      onClick={() => openProjectEditDialog(contextMenu.project)}
+                      type="button"
+                    >
+                      プロジェクトを編集
+                    </ContextMenuItem>
+                    {contextMenu.project.nextStep?.text.trim() ? (
+                      <>
+                        <ContextMenuItem
+                          disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
+                          onClick={() => openNextStepEditor(contextMenu.project)}
+                          shortcut="F2"
+                          title={sourceEditBlockReason(`project:${contextMenu.project.id}`) ?? undefined}
+                          type="button"
+                        >
+                          次の一手を編集
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                          disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
+                          onClick={() =>
+                            openNextStepEditor(contextMenu.project, {
+                              mode: "promote",
+                              text: "",
+                              projectLocked: true,
+                            })
+                          }
+                          title={sourceEditBlockReason(`project:${contextMenu.project.id}`) ?? undefined}
+                          type="button"
+                        >
+                          別の行動に入れ替える
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                          disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
+                          onClick={() => clearProjectNextStep(contextMenu.project)}
+                          shortcut="Delete"
+                          title={sourceEditBlockReason(`project:${contextMenu.project.id}`) ?? undefined}
+                          type="button"
+                        >
+                          次の一手を未設定にする
+                        </ContextMenuItem>
+                      </>
+                    ) : (
+                      <ContextMenuItem
+                        disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
+                        onClick={() => openNextStepEditor(contextMenu.project)}
+                        title={sourceEditBlockReason(`project:${contextMenu.project.id}`) ?? undefined}
+                        type="button"
+                      >
+                        次の一手を設定
+                      </ContextMenuItem>
+                    )}
+                    {contextMenuTodayAdd ? (
+                      <ContextMenuItem
+                        disabled={contextMenuTodayAdd.disabled}
+                        onClick={() => {
+                          const candidate = contextMenuTodayAdd.candidate;
+                          setContextMenu(null);
+                          void addCandidateToToday(candidate);
+                        }}
+                        shortcut="T"
+                        title={contextMenuTodayAdd.reason}
+                        type="button"
+                      >
+                        今日の3件に入れる
+                      </ContextMenuItem>
+                    ) : null}
+                    <ContextMenuItem
+                      className="contextMenuDanger contextMenuSeparatorBefore"
+                      onClick={() => requestProjectDeletion(contextMenu.project)}
+                      type="button"
+                    >
+                      プロジェクトを削除…
+                    </ContextMenuItem>
+                  </>
+                ) : contextMenu.kind === "project" ? (
+                  <>
+                    <ContextMenuItem
+                      onClick={() => openProjectEditDialog(contextMenu.project)}
+                      type="button"
+                    >
+                      プロジェクトを編集
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                      className="contextMenuSeparatorBefore"
+                      onClick={openProjectManagement}
+                      type="button"
+                    >
+                      プロジェクトを管理
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                      className="contextMenuDanger contextMenuSeparatorBefore"
+                      onClick={() => requestProjectDeletion(contextMenu.project)}
+                      type="button"
+                    >
+                      プロジェクトを削除…
+                    </ContextMenuItem>
+                  </>
+                ) : contextMenu.kind === "projects" ? (
+                  <>
+                    <ContextMenuItem onClick={openProjectAddDialog} type="button">
+                      プロジェクトを追加
+                    </ContextMenuItem>
+                    <ContextMenuItem onClick={() => openImportDialog("")} type="button">
+                      まとめて取り込む
+                    </ContextMenuItem>
+                  </>
+                ) : contextMenu.kind === "inboxes" ? (
+                  <>
+                    <ContextMenuItem onClick={() => openInboxAddDialog()} type="button">
+                      やりたいことを追加
+                    </ContextMenuItem>
+                    <ContextMenuItem onClick={() => openImportDialog("")} type="button">
+                      まとめて取り込む
+                    </ContextMenuItem>
+                  </>
+                ) : contextMenu.kind === "session" ? (
+                  <>
+                    <ContextMenuItem
+                      onClick={() => openSessionEditDialog(contextMenu.session)}
+                      type="button"
+                    >
+                      編集
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                      className="contextMenuDanger"
+                      onClick={() => requestSessionDelete(contextMenu.session)}
+                      type="button"
+                    >
+                      削除
+                    </ContextMenuItem>
+                  </>
+                ) : (
+                  <>
+                    <ContextMenuItem onClick={openGroupDialog} type="button">
+                      グループを追加
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                      onClick={() => openButtonBuilder(contextMenu.groupName)}
+                      type="button"
+                    >
+                      ボタンを追加
+                    </ContextMenuItem>
+                    {contextMenu.groupName && (
+                      <>
+                        <ContextMenuItem
+                          disabled={uniqueGroupNames(config).indexOf(contextMenu.groupName) <= 0}
+                          onClick={() => void moveSidebarGroupByOffset(contextMenu.groupName!, -1)}
+                          type="button"
+                        >
+                          上へ移動
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                          disabled={
+                            uniqueGroupNames(config).indexOf(contextMenu.groupName) >=
+                            uniqueGroupNames(config).length - 1
+                          }
+                          onClick={() => void moveSidebarGroupByOffset(contextMenu.groupName!, 1)}
+                          type="button"
+                        >
+                          下へ移動
+                        </ContextMenuItem>
+                      </>
+                    )}
+                    {!contextMenu.groupName ? null : contextMenu.groupName === DEFAULT_BUTTON_GROUP ? (
+                      <ContextMenuItem disabled type="button">
+                        その他は削除不可
+                      </ContextMenuItem>
+                    ) : (
+                      <>
+                        <ContextMenuItem
+                          onClick={() => openGroupRenameDialog(contextMenu.groupName)}
+                          type="button"
+                        >
+                          名前を変更
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                          className="contextMenuDanger"
+                          onClick={() => {
+                            if (contextMenu.groupName) deleteGroup(contextMenu.groupName);
+                          }}
+                          type="button"
+                        >
+                          {contextMenu.groupName ? `${contextMenu.groupName}を削除` : "グループ削除"}
+                        </ContextMenuItem>
+                      </>
+                    )}
+                  </>
+                )}
+              </ContextMenu>
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence initial={false}>
+        {inboxEditingIndex !== null && config.inbox[inboxEditingIndex] && (
+          <ExitPresence key="inbox-edit">
+            {(exiting, exitProps) => (
+              <InboxEditDialog
+                exitProps={exitProps}
+                config={config}
+                inboxEditDraft={inboxEditDraft}
+                inboxEditProjectId={inboxEditProjectId}
+                inboxEditButtonIds={inboxEditButtonIds}
+                inboxEditInstructionPath={inboxEditInstructionPath}
+                inboxEditInstructionOpenOnStart={inboxEditInstructionOpenOnStart}
+                instructionChoices={instructionChoices}
+                instructionChoicesError={instructionChoicesError}
+                instructionChoicesLoading={instructionChoicesLoading}
+                overlayPages={overlayPages}
+                projectSelectableButtons={projectSelectableButtons}
+                renderButtonIcon={renderButtonIcon}
+                setInboxEditDraft={setInboxEditDraft}
+                setInboxEditProjectId={setInboxEditProjectId}
+                setInboxEditButtonIds={setInboxEditButtonIds}
+                setInboxEditInstructionPath={setInboxEditInstructionPath}
+                setInboxEditInstructionOpenOnStart={setInboxEditInstructionOpenOnStart}
+                refreshInstructionChoices={refreshInstructionChoices}
+                closeInboxEditDialog={closeInboxEditDialog}
+                commitInboxEdit={commitInboxEdit}
+                sourceEditSaving={sourceEditSaving}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence initial={false}>
+        {todayPickerOpen && (
+          <ExitPresence key="today-picker">
+            {(exiting, exitProps) => (
+              <TodayPickerDialog
+                exitProps={exitProps}
+                todayPickerDraftItems={todayPickerDraftItems}
+                todayPickerDragIndex={todayPickerDragIndex}
+                todayPickerFilter={todayPickerFilter}
+                todayPickerPills={todayPickerPills}
+                todayPickerQuickProject={todayPickerQuickProject}
+                todayPickerQuickText={todayPickerQuickText}
+                todayPickerSaving={todayPickerSaving}
+                todayPickerVisibleNextSteps={todayPickerVisibleNextSteps}
+                todayPickerVisibleWishlist={todayPickerVisibleWishlist}
+                setTodayPickerFilter={setTodayPickerFilter}
+                setTodayPickerQuickText={setTodayPickerQuickText}
+                addTodayPickerQuickWish={addTodayPickerQuickWish}
+                moveTodayPickerItemToIndex={moveTodayPickerItemToIndex}
+                renderTodayPickerCandidate={renderTodayPickerCandidate}
+                renderTodayPickerSelectedItem={renderTodayPickerSelectedItem}
+                requestCloseTodayPicker={requestCloseTodayPicker}
+                saveTodayPickerDraft={saveTodayPickerDraft}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence initial={false}>
+        {groupDraft !== null && (
+          <ExitPresence key="group-add">
+            {(exiting, exitProps) => (
+              <GroupNameDialog
+                exitProps={exitProps}
+                mode="add"
+                onCancel={() => setGroupDraft(null)}
+                onChange={setGroupDraft}
+                onConfirm={confirmGroupAddition}
+                value={groupDraft}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence initial={false}>
+        {groupRenameDraft && (
+          <ExitPresence key="group-rename">
+            {(exiting, exitProps) => (
+              <GroupNameDialog
+                exitProps={exitProps}
+                mode="rename"
+                onCancel={() => setGroupRenameDraft(null)}
+                onChange={(to) => setGroupRenameDraft({ ...groupRenameDraft, to })}
+                onConfirm={confirmGroupRename}
+                value={groupRenameDraft.to}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence initial={false}>
+        {settingsDraft && (
+          <ExitPresence key="settings">
+            {(exiting, exitProps) => (
+              <SettingsDialog
+                exitProps={exitProps}
+                config={config}
+                dailyActivityCopying={dailyActivityCopying}
+                instructionSettingsBusy={instructionSettingsBusy}
+                numberInputDragging={numberInputDragging}
+                settingsDraft={settingsDraft}
+                settingsSection={settingsSection}
+                shortcutConflicts={shortcutConflicts}
+                shortcutRecordingField={shortcutRecordingField}
+                softwareResetStage={softwareResetStage}
+                testProfile={testProfile}
+                setHelpGuideOpen={setHelpGuideOpen}
+                setSettingsDraft={setSettingsDraft}
+                setSettingsSection={setSettingsSection}
+                showToast={showToast}
+                addInstructionFolder={addInstructionFolder}
+                beginShortcutRecording={beginShortcutRecording}
+                cancelNumberInputDrag={cancelNumberInputDrag}
+                chooseBackupFolder={chooseBackupFolder}
+                chooseBackupZipForRestore={chooseBackupZipForRestore}
+                copyTodayActivityLog={copyTodayActivityLog}
+                finishNumberInputDrag={finishNumberInputDrag}
+                finishShortcutRecording={finishShortcutRecording}
+                openBackupFolder={openBackupFolder}
+                openRuntimeDataFolder={openRuntimeDataFolder}
+                reloadInstructionList={reloadInstructionList}
+                removeInstructionFolder={removeInstructionFolder}
+                requestClearBackupFolder={requestClearBackupFolder}
+                requestCloseSettings={requestCloseSettings}
+                requestIconCacheRegeneration={requestIconCacheRegeneration}
+                requestInstructionWindowPositionReset={requestInstructionWindowPositionReset}
+                requestMiniWindowPositionReset={requestMiniWindowPositionReset}
+                requestSoftwareReset={requestSoftwareReset}
+                saveSettingsCenter={saveSettingsCenter}
+                startNumberInputDrag={startNumberInputDrag}
+                updateNumberInputDrag={updateNumberInputDrag}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence initial={false}>
+        {manualSessionDraft && (
+          <ExitPresence key="manual-session">
+            {(exiting, exitProps) => (
+              <ManualSessionDialog
+                exitProps={exitProps}
+                draft={manualSessionDraft}
+                onCancel={() => setManualSessionDraft(null)}
+                onDraftChange={setManualSessionDraft}
+                onSave={saveManualSession}
+                projects={config.projects}
+                projectsById={projectsById}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence initial={false}>
+        {sessionEditDraft && (
+          <ExitPresence key="session-edit">
+            {(exiting, exitProps) => (
+              <SessionEditDialog
+                exitProps={exitProps}
+                draft={sessionEditDraft}
+                onCancel={() => setSessionEditDraft(null)}
+                onDraftChange={setSessionEditDraft}
+                onSave={saveSessionEdit}
+                projects={config.projects}
+                projectsById={projectsById}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence initial={false}>
+        {buttonEditDraft && (
+          <ExitPresence key="button-edit">
+            {(exiting, exitProps) => (
+              <ButtonEditDialog
+                exitProps={exitProps}
+                actionDragId={actionDragId}
+                buttonEditDraft={buttonEditDraft}
+                groupNames={groupNames}
+                moveButtonAction={moveButtonAction}
+                moveButtonActionTo={moveButtonActionTo}
+                overlayPages={overlayPages}
+                requestCloseButtonEdit={requestCloseButtonEdit}
+                saveButtonEdit={saveButtonEdit}
+                setActionDragId={setActionDragId}
+                setButtonEditDraft={setButtonEditDraft}
+                updateButtonAction={updateButtonAction}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence initial={false}>
+        {inboxAddOpen && (
+          <ExitPresence key="inbox-add">
+            {(exiting, exitProps) => (
+              <InboxAddDialog
+                exitProps={exitProps}
+                draft={inboxDraft}
+                error={inboxAddError}
+                onClose={() => closeInboxAddDialog()}
+                onDraftChange={(value) => {
+                  setInboxDraft(value);
+                  if (inboxAddError) setInboxAddError(null);
+                }}
+                onProjectIdChange={setInboxAddProjectId}
+                onSubmit={() => void addInboxItem()}
+                projectId={inboxAddProjectId}
+                projects={config.projects}
+                saving={inboxAddSaving}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence initial={false}>
+        {completionFollowup?.source.kind === "nextStep" && (
+          <ExitPresence key="completion-next-step">
+            {(exiting, exitProps) => {
+              const projectId = completionFollowup.source.projectId;
+              const followupProject = config.projects.find((project) => project.id === projectId);
+              const followupWishlist = config.inbox.filter(
+                (item): item is AppConfig["inbox"][number] & { id: string } =>
+                  item.projectId === projectId && Boolean(item.id),
+              );
+              const previous = completionFollowup.previousNextStep;
+              const decide = () => {
+                const live = configRef.current;
+                const project = live?.projects.find((candidate) => candidate.id === projectId);
+                if (!project) {
+                  setCompletionFollowup(null);
+                  showToast("warn", "プロジェクトが見つかりません");
+                  return;
                 }
-                title={
-                  config.today.items[contextMenu.index]?.sourceKey
-                    ? (sourceEditBlockReason(
-                        canonicalSourceKey(
-                          config,
-                          config.today.items[contextMenu.index].sourceKey!,
-                        ) ?? "",
-                        true,
-                      ) ?? undefined)
-                    : undefined
+                if (project.nextStep?.text.trim()) {
+                  setCompletionFollowup(null);
+                  showToast("warn", "次の一手はもう決まっています");
+                  return;
                 }
-                onClick={() => {
-                  const current = configRef.current;
-                  const item = current?.today.items[contextMenu.index];
-                  if (!current || !item?.sourceKey) return;
-                  const key = canonicalSourceKey(current, item.sourceKey);
-                  if (!key || sourceEditBlocked(key, true)) return;
-                  const project = current.projects.find((p) => `project:${p.id}` === key);
-                  if (project) openNextStepEditor(project, { origin: "today" });
-                  else {
-                    const index = current.inbox.findIndex((i) => `wishlist:${i.id}` === key);
-                    if (index >= 0) beginInboxEdit(index, "today");
+                if (completionFollowupChoice === "none") {
+                  setCompletionFollowup(null);
+                  return;
+                }
+                if (completionFollowupChoice.startsWith("wishlist:")) {
+                  const wishlistId = completionFollowupChoice.slice("wishlist:".length);
+                  const index = live?.inbox.findIndex((item) => item.id === wishlistId) ?? -1;
+                  if (index < 0) {
+                    // P10-14 (§8.1): the chosen wishlist item vanished while the dialog was open.
+                    const firstWishlist = live?.inbox.find(
+                      (item) => item.projectId === projectId && Boolean(item.id),
+                    );
+                    setCompletionFollowupChoice(
+                      firstWishlist?.id
+                        ? `wishlist:${firstWishlist.id}`
+                        : previous
+                          ? "repeat"
+                          : "write",
+                    );
+                    showToast("warn", "選んだやりたいことが見つかりません");
+                    return;
                   }
-                }}
-                shortcut="F2"
-                type="button"
-              >
-                編集
-              </ContextMenuItem>
-              <ContextMenuItem
-                disabled={contextMenu.index <= 0}
-                onClick={() => void moveTodayItemByOffset(contextMenu.index, -1)}
-                type="button"
-              >
-                左へ移動
-              </ContextMenuItem>
-              <ContextMenuItem
-                disabled={contextMenu.index >= (config?.today.items.length ?? 0) - 1}
-                onClick={() => void moveTodayItemByOffset(contextMenu.index, 1)}
-                type="button"
-              >
-                右へ移動
-              </ContextMenuItem>
-              <ContextMenuItem
-                disabled={
-                  !!config?.today.items[contextMenu.index] &&
-                  isTimerOnTodayItem(config.today.items[contextMenu.index], contextMenu.index)
+                  setCompletionFollowup(null);
+                  promoteInboxToNextStep(index);
+                  return;
                 }
-                title={
-                  config?.today.items[contextMenu.index] &&
-                  isTimerOnTodayItem(config.today.items[contextMenu.index], contextMenu.index)
-                    ? "タイマーを停止してから外してください"
-                    : undefined
+                if (completionFollowupChoice === "repeat" && previous) {
+                  // Only the buttons that still exist and can be chosen in the editor are copied.
+                  const liveButtons = new Set(projectSelectableButtons.map((button) => button.id));
+                  setCompletionFollowup(null);
+                  openNextStepEditor(project, {
+                    mode: "set",
+                    prefill: {
+                      text: previous.text,
+                      trigger: previous.trigger ?? "",
+                      buttonIds: previous.buttonIds.filter((id) => liveButtons.has(id)),
+                      shortTimerMinutes:
+                        previous.shortTimerMinutes === undefined
+                          ? ""
+                          : String(previous.shortTimerMinutes),
+                      defaultTimerMinutes:
+                        previous.defaultTimerMinutes === undefined
+                          ? ""
+                          : String(previous.defaultTimerMinutes),
+                      instructionPath: previous.instructionPath ?? "",
+                      instructionOpenOnStart: previous.instructionOpenOnStart ?? false,
+                      startNoteTemplate: previous.startNoteTemplate ?? "",
+                      expandTimerOnStart: previous.expandTimerOnStart ?? false,
+                    },
+                  });
+                  return;
                 }
-                onClick={() => {
-                  setContextMenu(null);
-                  const item = config?.today.items[contextMenu.index];
-                  if (item) void removeTodayItem(todaySourceKey(item, contextMenu.index));
-                }}
-                shortcut="Delete"
-                type="button"
-              >
-                今日の3件から外す
-              </ContextMenuItem>
-            </>
-          ) : contextMenu.kind === "inbox" ? (
-            <>
-              <ContextMenuItem
-                disabled={
-                  sourceEditBlocked(`wishlist:${config?.inbox[contextMenu.index]?.id ?? ""}`) ||
-                  Boolean(
-                    config?.inbox[contextMenu.index] &&
-                    wishlistItemIsCurrentNextStep(config.inbox[contextMenu.index]),
-                  )
-                }
-                onClick={() => promoteInboxToNextStep(contextMenu.index)}
-                title={
-                  sourceEditBlockReason(`wishlist:${config?.inbox[contextMenu.index]?.id ?? ""}`) ??
-                  undefined
-                }
-                type="button"
-              >
-                {config?.inbox[contextMenu.index] &&
-                wishlistItemIsCurrentNextStep(config.inbox[contextMenu.index])
-                  ? "次の一手に設定済み"
-                  : "次の一手にする"}
-              </ContextMenuItem>
-              <ContextMenuItem
-                disabled={inboxNeighborIndex(contextMenu.index, -1) === undefined}
-                onClick={() => void moveInboxItemByOffset(contextMenu.index, -1)}
-                type="button"
-              >
-                上へ移動
-              </ContextMenuItem>
-              <ContextMenuItem
-                disabled={inboxNeighborIndex(contextMenu.index, 1) === undefined}
-                onClick={() => void moveInboxItemByOffset(contextMenu.index, 1)}
-                type="button"
-              >
-                下へ移動
-              </ContextMenuItem>
-              <ContextMenuItem
-                disabled={sourceEditBlocked(`wishlist:${config.inbox[contextMenu.index]?.id}`)}
-                title={
-                  sourceEditBlockReason(`wishlist:${config.inbox[contextMenu.index]?.id}`) ??
-                  undefined
-                }
-                onClick={() => beginInboxEdit(contextMenu.index)}
-                shortcut="F2"
-                type="button"
-              >
-                編集
-              </ContextMenuItem>
-              <ContextMenuItem
-                disabled={
-                  !config?.inbox[contextMenu.index] ||
-                  sourceEditBlocked(`wishlist:${config?.inbox[contextMenu.index]?.id ?? ""}`) ||
-                  isTimerActiveForSource([
-                    wishlistSourceKey(config.inbox[contextMenu.index], contextMenu.index),
-                    legacyWishlistSourceKey(config.inbox[contextMenu.index]),
-                  ])
-                }
-                onClick={() => completeInboxItem(contextMenu.index)}
-                type="button"
-              >
-                完了にする
-              </ContextMenuItem>
-              {contextMenuTodayAdd ? (
-                <ContextMenuItem
-                  disabled={contextMenuTodayAdd.disabled}
-                  onClick={() => {
-                    const candidate = contextMenuTodayAdd.candidate;
-                    setContextMenu(null);
-                    void addCandidateToToday(candidate);
-                  }}
-                  shortcut="T"
-                  title={contextMenuTodayAdd.reason}
-                  type="button"
-                >
-                  今日の3件に入れる
-                </ContextMenuItem>
-              ) : null}
-              <ContextMenuItem
-                className="contextMenuDanger"
-                disabled={
-                  !config?.inbox[contextMenu.index] ||
-                  sourceEditBlocked(`wishlist:${config?.inbox[contextMenu.index]?.id ?? ""}`) ||
-                  isTimerActiveForSource([
-                    wishlistSourceKey(config.inbox[contextMenu.index], contextMenu.index),
-                    legacyWishlistSourceKey(config.inbox[contextMenu.index]),
-                  ])
-                }
-                onClick={() => deleteInboxItem(contextMenu.index)}
-                shortcut="Delete"
-                type="button"
-              >
-                削除
-              </ContextMenuItem>
-            </>
-          ) : contextMenu.kind === "nextStep" ? (
-            <>
-              <ContextMenuItem
-                onClick={() => openProjectEditDialog(contextMenu.project)}
-                type="button"
-              >
-                プロジェクトを編集
-              </ContextMenuItem>
-              {contextMenu.project.nextStep?.text.trim() ? (
-                <>
-                  <ContextMenuItem
-                    disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
-                    onClick={() => openNextStepEditor(contextMenu.project)}
-                    shortcut="F2"
-                    title={sourceEditBlockReason(`project:${contextMenu.project.id}`) ?? undefined}
-                    type="button"
+                setCompletionFollowup(null);
+                openNextStepEditor(project, { mode: "set" });
+              };
+              const choiceClass = (selected: boolean) =>
+                selected
+                  ? "completionFollowupChoice completionFollowupChoice--selected"
+                  : "completionFollowupChoice";
+              return (
+                <div className="modalBackdrop" role="presentation" {...exitProps}>
+                  <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
+                  <section
+                    aria-label="一手進みました"
+                    aria-modal="true"
+                    className="dropDialog completionFollowupDialog"
+                    role="dialog"
+                    tabIndex={-1}
                   >
-                    次の一手を編集
-                  </ContextMenuItem>
-                  <ContextMenuItem
-                    disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
-                    onClick={() =>
-                      openNextStepEditor(contextMenu.project, {
-                        mode: "promote",
-                        text: "",
-                        projectLocked: true,
-                      })
-                    }
-                    title={sourceEditBlockReason(`project:${contextMenu.project.id}`) ?? undefined}
-                    type="button"
-                  >
-                    別の行動に入れ替える
-                  </ContextMenuItem>
-                  <ContextMenuItem
-                    disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
-                    onClick={() => clearProjectNextStep(contextMenu.project)}
-                    shortcut="Delete"
-                    title={sourceEditBlockReason(`project:${contextMenu.project.id}`) ?? undefined}
-                    type="button"
-                  >
-                    次の一手を未設定にする
-                  </ContextMenuItem>
-                </>
-              ) : (
-                <ContextMenuItem
-                  disabled={sourceEditBlocked(`project:${contextMenu.project.id}`)}
-                  onClick={() => openNextStepEditor(contextMenu.project)}
-                  title={sourceEditBlockReason(`project:${contextMenu.project.id}`) ?? undefined}
-                  type="button"
-                >
-                  次の一手を設定
-                </ContextMenuItem>
-              )}
-              {contextMenuTodayAdd ? (
-                <ContextMenuItem
-                  disabled={contextMenuTodayAdd.disabled}
-                  onClick={() => {
-                    const candidate = contextMenuTodayAdd.candidate;
-                    setContextMenu(null);
-                    void addCandidateToToday(candidate);
-                  }}
-                  shortcut="T"
-                  title={contextMenuTodayAdd.reason}
-                  type="button"
-                >
-                  今日の3件に入れる
-                </ContextMenuItem>
-              ) : null}
-              <ContextMenuItem
-                className="contextMenuDanger contextMenuSeparatorBefore"
-                onClick={() => requestProjectDeletion(contextMenu.project)}
-                type="button"
-              >
-                プロジェクトを削除…
-              </ContextMenuItem>
-            </>
-          ) : contextMenu.kind === "project" ? (
-            <>
-              <ContextMenuItem
-                onClick={() => openProjectEditDialog(contextMenu.project)}
-                type="button"
-              >
-                プロジェクトを編集
-              </ContextMenuItem>
-              <ContextMenuItem
-                className="contextMenuSeparatorBefore"
-                onClick={openProjectManagement}
-                type="button"
-              >
-                プロジェクトを管理
-              </ContextMenuItem>
-              <ContextMenuItem
-                className="contextMenuDanger contextMenuSeparatorBefore"
-                onClick={() => requestProjectDeletion(contextMenu.project)}
-                type="button"
-              >
-                プロジェクトを削除…
-              </ContextMenuItem>
-            </>
-          ) : contextMenu.kind === "projects" ? (
-            <>
-              <ContextMenuItem onClick={openProjectAddDialog} type="button">
-                プロジェクトを追加
-              </ContextMenuItem>
-              <ContextMenuItem onClick={() => openImportDialog("")} type="button">
-                まとめて取り込む
-              </ContextMenuItem>
-            </>
-          ) : contextMenu.kind === "inboxes" ? (
-            <>
-              <ContextMenuItem onClick={() => openInboxAddDialog()} type="button">
-                やりたいことを追加
-              </ContextMenuItem>
-              <ContextMenuItem onClick={() => openImportDialog("")} type="button">
-                まとめて取り込む
-              </ContextMenuItem>
-            </>
-          ) : contextMenu.kind === "session" ? (
-            <>
-              <ContextMenuItem
-                onClick={() => openSessionEditDialog(contextMenu.session)}
-                type="button"
-              >
-                編集
-              </ContextMenuItem>
-              <ContextMenuItem
-                className="contextMenuDanger"
-                onClick={() => requestSessionDelete(contextMenu.session)}
-                type="button"
-              >
-                削除
-              </ContextMenuItem>
-            </>
-          ) : (
-            <>
-              <ContextMenuItem onClick={openGroupDialog} type="button">
-                グループを追加
-              </ContextMenuItem>
-              <ContextMenuItem
-                onClick={() => openButtonBuilder(contextMenu.groupName)}
-                type="button"
-              >
-                ボタンを追加
-              </ContextMenuItem>
-              {contextMenu.groupName && (
-                <>
-                  <ContextMenuItem
-                    disabled={uniqueGroupNames(config).indexOf(contextMenu.groupName) <= 0}
-                    onClick={() => void moveSidebarGroupByOffset(contextMenu.groupName!, -1)}
-                    type="button"
-                  >
-                    上へ移動
-                  </ContextMenuItem>
-                  <ContextMenuItem
-                    disabled={
-                      uniqueGroupNames(config).indexOf(contextMenu.groupName) >=
-                      uniqueGroupNames(config).length - 1
-                    }
-                    onClick={() => void moveSidebarGroupByOffset(contextMenu.groupName!, 1)}
-                    type="button"
-                  >
-                    下へ移動
-                  </ContextMenuItem>
-                </>
-              )}
-              {!contextMenu.groupName ? null : contextMenu.groupName === DEFAULT_BUTTON_GROUP ? (
-                <ContextMenuItem disabled type="button">
-                  その他は削除不可
-                </ContextMenuItem>
-              ) : (
-                <>
-                  <ContextMenuItem
-                    onClick={() => openGroupRenameDialog(contextMenu.groupName)}
-                    type="button"
-                  >
-                    名前を変更
-                  </ContextMenuItem>
-                  <ContextMenuItem
-                    className="contextMenuDanger"
-                    onClick={() => {
-                      if (contextMenu.groupName) deleteGroup(contextMenu.groupName);
-                    }}
-                    type="button"
-                  >
-                    {contextMenu.groupName ? `${contextMenu.groupName}を削除` : "グループ削除"}
-                  </ContextMenuItem>
-                </>
-              )}
-            </>
-          )}
-        </ContextMenu>
-      )}
-
-      {inboxEditingIndex !== null && config.inbox[inboxEditingIndex] && (
-        <InboxEditDialog
-          config={config}
-          inboxEditDraft={inboxEditDraft}
-          inboxEditProjectId={inboxEditProjectId}
-          inboxEditButtonIds={inboxEditButtonIds}
-          inboxEditInstructionPath={inboxEditInstructionPath}
-          inboxEditInstructionOpenOnStart={inboxEditInstructionOpenOnStart}
-          instructionChoices={instructionChoices}
-          instructionChoicesError={instructionChoicesError}
-          instructionChoicesLoading={instructionChoicesLoading}
-          overlayPages={overlayPages}
-          projectSelectableButtons={projectSelectableButtons}
-          renderButtonIcon={renderButtonIcon}
-          setInboxEditDraft={setInboxEditDraft}
-          setInboxEditProjectId={setInboxEditProjectId}
-          setInboxEditButtonIds={setInboxEditButtonIds}
-          setInboxEditInstructionPath={setInboxEditInstructionPath}
-          setInboxEditInstructionOpenOnStart={setInboxEditInstructionOpenOnStart}
-          refreshInstructionChoices={refreshInstructionChoices}
-          closeInboxEditDialog={closeInboxEditDialog}
-          commitInboxEdit={commitInboxEdit}
-          sourceEditSaving={sourceEditSaving}
-        />
-      )}
-
-      {todayPickerOpen && (
-        <TodayPickerDialog
-          todayPickerDraftItems={todayPickerDraftItems}
-          todayPickerDragIndex={todayPickerDragIndex}
-          todayPickerFilter={todayPickerFilter}
-          todayPickerPills={todayPickerPills}
-          todayPickerQuickProject={todayPickerQuickProject}
-          todayPickerQuickText={todayPickerQuickText}
-          todayPickerSaving={todayPickerSaving}
-          todayPickerVisibleNextSteps={todayPickerVisibleNextSteps}
-          todayPickerVisibleWishlist={todayPickerVisibleWishlist}
-          setTodayPickerFilter={setTodayPickerFilter}
-          setTodayPickerQuickText={setTodayPickerQuickText}
-          addTodayPickerQuickWish={addTodayPickerQuickWish}
-          moveTodayPickerItemToIndex={moveTodayPickerItemToIndex}
-          renderTodayPickerCandidate={renderTodayPickerCandidate}
-          renderTodayPickerSelectedItem={renderTodayPickerSelectedItem}
-          requestCloseTodayPicker={requestCloseTodayPicker}
-          saveTodayPickerDraft={saveTodayPickerDraft}
-        />
-      )}
-
-      {groupDraft !== null && (
-        <GroupNameDialog
-          mode="add"
-          onCancel={() => setGroupDraft(null)}
-          onChange={setGroupDraft}
-          onConfirm={confirmGroupAddition}
-          value={groupDraft}
-        />
-      )}
-
-      {groupRenameDraft && (
-        <GroupNameDialog
-          mode="rename"
-          onCancel={() => setGroupRenameDraft(null)}
-          onChange={(to) => setGroupRenameDraft({ ...groupRenameDraft, to })}
-          onConfirm={confirmGroupRename}
-          value={groupRenameDraft.to}
-        />
-      )}
-
-      {settingsDraft && (
-        <SettingsDialog
-          config={config}
-          dailyActivityCopying={dailyActivityCopying}
-          instructionSettingsBusy={instructionSettingsBusy}
-          numberInputDragging={numberInputDragging}
-          settingsDraft={settingsDraft}
-          settingsSection={settingsSection}
-          shortcutConflicts={shortcutConflicts}
-          shortcutRecordingField={shortcutRecordingField}
-          softwareResetStage={softwareResetStage}
-          testProfile={testProfile}
-          setHelpGuideOpen={setHelpGuideOpen}
-          setSettingsDraft={setSettingsDraft}
-          setSettingsSection={setSettingsSection}
-          showToast={showToast}
-          addInstructionFolder={addInstructionFolder}
-          beginShortcutRecording={beginShortcutRecording}
-          cancelNumberInputDrag={cancelNumberInputDrag}
-          chooseBackupFolder={chooseBackupFolder}
-          chooseBackupZipForRestore={chooseBackupZipForRestore}
-          copyTodayActivityLog={copyTodayActivityLog}
-          finishNumberInputDrag={finishNumberInputDrag}
-          finishShortcutRecording={finishShortcutRecording}
-          openBackupFolder={openBackupFolder}
-          openRuntimeDataFolder={openRuntimeDataFolder}
-          reloadInstructionList={reloadInstructionList}
-          removeInstructionFolder={removeInstructionFolder}
-          requestClearBackupFolder={requestClearBackupFolder}
-          requestCloseSettings={requestCloseSettings}
-          requestIconCacheRegeneration={requestIconCacheRegeneration}
-          requestInstructionWindowPositionReset={requestInstructionWindowPositionReset}
-          requestMiniWindowPositionReset={requestMiniWindowPositionReset}
-          requestSoftwareReset={requestSoftwareReset}
-          saveSettingsCenter={saveSettingsCenter}
-          startNumberInputDrag={startNumberInputDrag}
-          updateNumberInputDrag={updateNumberInputDrag}
-        />
-      )}
-
-      {manualSessionDraft && (
-        <ManualSessionDialog
-          draft={manualSessionDraft}
-          onCancel={() => setManualSessionDraft(null)}
-          onDraftChange={setManualSessionDraft}
-          onSave={saveManualSession}
-          projects={config.projects}
-          projectsById={projectsById}
-        />
-      )}
-
-      {sessionEditDraft && (
-        <SessionEditDialog
-          draft={sessionEditDraft}
-          onCancel={() => setSessionEditDraft(null)}
-          onDraftChange={setSessionEditDraft}
-          onSave={saveSessionEdit}
-          projects={config.projects}
-          projectsById={projectsById}
-        />
-      )}
-
-      {buttonEditDraft && (
-        <ButtonEditDialog
-          actionDragId={actionDragId}
-          buttonEditDraft={buttonEditDraft}
-          groupNames={groupNames}
-          moveButtonAction={moveButtonAction}
-          moveButtonActionTo={moveButtonActionTo}
-          overlayPages={overlayPages}
-          requestCloseButtonEdit={requestCloseButtonEdit}
-          saveButtonEdit={saveButtonEdit}
-          setActionDragId={setActionDragId}
-          setButtonEditDraft={setButtonEditDraft}
-          updateButtonAction={updateButtonAction}
-        />
-      )}
-
-      {inboxAddOpen && (
-        <InboxAddDialog
-          draft={inboxDraft}
-          error={inboxAddError}
-          onClose={() => closeInboxAddDialog()}
-          onDraftChange={(value) => {
-            setInboxDraft(value);
-            if (inboxAddError) setInboxAddError(null);
-          }}
-          onProjectIdChange={setInboxAddProjectId}
-          onSubmit={() => void addInboxItem()}
-          projectId={inboxAddProjectId}
-          projects={config.projects}
-          saving={inboxAddSaving}
-        />
-      )}
-
-      {completionFollowup?.source.kind === "nextStep" &&
-        (() => {
-          const projectId = completionFollowup.source.projectId;
-          const followupProject = config.projects.find((project) => project.id === projectId);
-          const followupWishlist = config.inbox.filter(
-            (item): item is AppConfig["inbox"][number] & { id: string } =>
-              item.projectId === projectId && Boolean(item.id),
-          );
-          const previous = completionFollowup.previousNextStep;
-          const decide = () => {
-            const live = configRef.current;
-            const project = live?.projects.find((candidate) => candidate.id === projectId);
-            if (!project) {
-              setCompletionFollowup(null);
-              showToast("warn", "プロジェクトが見つかりません");
-              return;
-            }
-            if (project.nextStep?.text.trim()) {
-              setCompletionFollowup(null);
-              showToast("warn", "次の一手はもう決まっています");
-              return;
-            }
-            if (completionFollowupChoice === "none") {
-              setCompletionFollowup(null);
-              return;
-            }
-            if (completionFollowupChoice.startsWith("wishlist:")) {
-              const wishlistId = completionFollowupChoice.slice("wishlist:".length);
-              const index = live?.inbox.findIndex((item) => item.id === wishlistId) ?? -1;
-              if (index < 0) {
-                // P10-14 (§8.1): the chosen wishlist item vanished while the dialog was open.
-                const firstWishlist = live?.inbox.find(
-                  (item) => item.projectId === projectId && Boolean(item.id),
-                );
-                setCompletionFollowupChoice(
-                  firstWishlist?.id
-                    ? `wishlist:${firstWishlist.id}`
-                    : previous
-                      ? "repeat"
-                      : "write",
-                );
-                showToast("warn", "選んだやりたいことが見つかりません");
-                return;
-              }
-              setCompletionFollowup(null);
-              promoteInboxToNextStep(index);
-              return;
-            }
-            if (completionFollowupChoice === "repeat" && previous) {
-              // Only the buttons that still exist and can be chosen in the editor are copied.
-              const liveButtons = new Set(projectSelectableButtons.map((button) => button.id));
-              setCompletionFollowup(null);
-              openNextStepEditor(project, {
-                mode: "set",
-                prefill: {
-                  text: previous.text,
-                  trigger: previous.trigger ?? "",
-                  buttonIds: previous.buttonIds.filter((id) => liveButtons.has(id)),
-                  shortTimerMinutes:
-                    previous.shortTimerMinutes === undefined
-                      ? ""
-                      : String(previous.shortTimerMinutes),
-                  defaultTimerMinutes:
-                    previous.defaultTimerMinutes === undefined
-                      ? ""
-                      : String(previous.defaultTimerMinutes),
-                  instructionPath: previous.instructionPath ?? "",
-                  instructionOpenOnStart: previous.instructionOpenOnStart ?? false,
-                  startNoteTemplate: previous.startNoteTemplate ?? "",
-                  expandTimerOnStart: previous.expandTimerOnStart ?? false,
-                },
-              });
-              return;
-            }
-            setCompletionFollowup(null);
-            openNextStepEditor(project, { mode: "set" });
-          };
-          const choiceClass = (selected: boolean) =>
-            selected
-              ? "completionFollowupChoice completionFollowupChoice--selected"
-              : "completionFollowupChoice";
-          return (
-            <div className="modalBackdrop" role="presentation">
-              <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
-              <section
-                aria-label="一手進みました"
-                aria-modal="true"
-                className="dropDialog completionFollowupDialog"
-                role="dialog"
-                tabIndex={-1}
-              >
-                <div className="completionDoneHeader">
-                  <span aria-hidden="true" className="completionDoneMark">
-                    ✓
-                  </span>
-                  <div>
-                    <p className="eyebrow">Session</p>
-                    <h2>一手進みました</h2>
-                  </div>
-                </div>
-                <div className="completionDoneSubject">
-                  {followupProject && (
-                    <ProjectIdentity
-                      colorId={followupProject.colorId}
-                      compact
-                      name={followupProject.name}
-                      projectId={followupProject.id}
-                    />
-                  )}
-                  <strong title={completionFollowup.text}>{completionFollowup.text}</strong>
-                  {completionFollowup.minutes ? (
-                    <span className="completionDoneMinutes">
-                      {formatSessionRange(completionFollowup) ??
-                        `実行 ${completionFollowup.minutes}分`}
-                    </span>
-                  ) : null}
-                </div>
-                <h3 className="completionFollowupQuestion" id="completion-followup-question">
-                  次はどこから始めますか
-                </h3>
-                <div
-                  aria-labelledby="completion-followup-question"
-                  className="completionFollowupChoices"
-                  role="radiogroup"
-                >
-                  {followupWishlist.map((item) => {
-                    const key = `wishlist:${item.id}`;
-                    return (
-                      <label className={choiceClass(completionFollowupChoice === key)} key={key}>
+                    <div className="completionDoneHeader">
+                      <span aria-hidden="true" className="completionDoneMark">
+                        ✓
+                      </span>
+                      <div>
+                        <p className="eyebrow">Session</p>
+                        <h2>一手進みました</h2>
+                      </div>
+                    </div>
+                    <div className="completionDoneSubject">
+                      {followupProject && (
+                        <ProjectIdentity
+                          colorId={followupProject.colorId}
+                          compact
+                          name={followupProject.name}
+                          projectId={followupProject.id}
+                        />
+                      )}
+                      <strong title={completionFollowup.text}>{completionFollowup.text}</strong>
+                      {completionFollowup.minutes ? (
+                        <span className="completionDoneMinutes">
+                          {formatSessionRange(completionFollowup) ??
+                            `実行 ${completionFollowup.minutes}分`}
+                        </span>
+                      ) : null}
+                    </div>
+                    <h3 className="completionFollowupQuestion" id="completion-followup-question">
+                      次はどこから始めますか
+                    </h3>
+                    <div
+                      aria-labelledby="completion-followup-question"
+                      className="completionFollowupChoices"
+                      role="radiogroup"
+                    >
+                      {followupWishlist.map((item) => {
+                        const key = `wishlist:${item.id}`;
+                        return (
+                          <label className={choiceClass(completionFollowupChoice === key)} key={key}>
+                            <input
+                              aria-label={item.text}
+                              checked={completionFollowupChoice === key}
+                              onChange={() => setCompletionFollowupChoice(key)}
+                              type="radio"
+                            />
+                            <span>{item.text}</span>
+                            <small>やりたいことから</small>
+                          </label>
+                        );
+                      })}
+                      {previous && (
+                        <label className={choiceClass(completionFollowupChoice === "repeat")}>
+                          <input
+                            aria-label={`同じ一手をもう一度（${previous.text}）`}
+                            checked={completionFollowupChoice === "repeat"}
+                            onChange={() => setCompletionFollowupChoice("repeat")}
+                            type="radio"
+                          />
+                          <span>同じ一手をもう一度（{previous.text}）</span>
+                        </label>
+                      )}
+                      <label className={choiceClass(completionFollowupChoice === "write")}>
                         <input
-                          aria-label={item.text}
-                          checked={completionFollowupChoice === key}
-                          onChange={() => setCompletionFollowupChoice(key)}
+                          aria-label="自分で書く"
+                          checked={completionFollowupChoice === "write"}
+                          onChange={() => setCompletionFollowupChoice("write")}
                           type="radio"
                         />
-                        <span>{item.text}</span>
-                        <small>やりたいことから</small>
+                        <span>自分で書く</span>
                       </label>
-                    );
-                  })}
-                  {previous && (
-                    <label className={choiceClass(completionFollowupChoice === "repeat")}>
-                      <input
-                        aria-label={`同じ一手をもう一度（${previous.text}）`}
-                        checked={completionFollowupChoice === "repeat"}
-                        onChange={() => setCompletionFollowupChoice("repeat")}
-                        type="radio"
-                      />
-                      <span>同じ一手をもう一度（{previous.text}）</span>
-                    </label>
-                  )}
-                  <label className={choiceClass(completionFollowupChoice === "write")}>
-                    <input
-                      aria-label="自分で書く"
-                      checked={completionFollowupChoice === "write"}
-                      onChange={() => setCompletionFollowupChoice("write")}
-                      type="radio"
-                    />
-                    <span>自分で書く</span>
-                  </label>
-                  <label className={choiceClass(completionFollowupChoice === "none")}>
-                    <input
-                      aria-label="今は決めない"
-                      checked={completionFollowupChoice === "none"}
-                      onChange={() => setCompletionFollowupChoice("none")}
-                      type="radio"
-                    />
-                    <span>今は決めない</span>
-                  </label>
+                      <label className={choiceClass(completionFollowupChoice === "none")}>
+                        <input
+                          aria-label="今は決めない"
+                          checked={completionFollowupChoice === "none"}
+                          onChange={() => setCompletionFollowupChoice("none")}
+                          type="radio"
+                        />
+                        <span>今は決めない</span>
+                      </label>
+                    </div>
+                    <div className="dialogActions formDialogActions">
+                      <button
+                        className="primaryButton completionFollowupDecide"
+                        onClick={decide}
+                        type="button"
+                      >
+                        決定
+                      </button>
+                      <button
+                        className="secondaryButton dialogCancelButton"
+                        onClick={() => setCompletionFollowup(null)}
+                        type="button"
+                      >
+                        閉じる
+                      </button>
+                    </div>
+                  </section>
                 </div>
-                <div className="dialogActions formDialogActions">
-                  <button
-                    className="primaryButton completionFollowupDecide"
-                    onClick={decide}
-                    type="button"
-                  >
-                    決定
-                  </button>
-                  <button
-                    className="secondaryButton dialogCancelButton"
-                    onClick={() => setCompletionFollowup(null)}
-                    type="button"
-                  >
-                    閉じる
-                  </button>
-                </div>
-              </section>
-            </div>
-          );
-        })()}
+              );
+            }}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
 
-      {nextStepEditDraft && (
-        <NextStepEditDialog
-          config={config}
-          nextStepEditDraft={nextStepEditDraft}
-          buttonsById={buttonsById}
-          instructionChoices={instructionChoices}
-          instructionChoicesError={instructionChoicesError}
-          instructionChoicesLoading={instructionChoicesLoading}
-          missingButtonIds={missingButtonIds}
-          missingInstructionProjectIds={missingInstructionProjectIds}
-          nextStepOpenMenuOpen={nextStepOpenMenuOpen}
-          nextStepOpenPicker={nextStepOpenPicker}
-          numberInputDragging={numberInputDragging}
-          overlayPages={overlayPages}
-          projectNextStepSuggestions={projectNextStepSuggestions}
-          projectSelectableButtons={projectSelectableButtons}
-          sourceEditSaving={sourceEditSaving}
-          setNextStepEditDraft={setNextStepEditDraft}
-          setNextStepOpenMenuOpen={setNextStepOpenMenuOpen}
-          setNextStepOpenPicker={setNextStepOpenPicker}
-          renderButtonIcon={renderButtonIcon}
-          cancelNumberInputDrag={cancelNumberInputDrag}
-          finishNumberInputDrag={finishNumberInputDrag}
-          updateNumberInputDrag={updateNumberInputDrag}
-          startNumberInputDrag={startNumberInputDrag}
-          chooseLegacyNextStepSettings={chooseLegacyNextStepSettings}
-          closeNextStepEditDialog={closeNextStepEditDialog}
-          refreshInstructionChoices={refreshInstructionChoices}
-          saveNextStepEdit={saveNextStepEdit}
-          selectNextStepDecisionMode={selectNextStepDecisionMode}
-          selectNextStepProject={selectNextStepProject}
-        />
-      )}
+      <AnimatePresence initial={false}>
+        {nextStepEditDraft && (
+          <ExitPresence key="next-step-edit">
+            {(exiting, exitProps) => (
+              <NextStepEditDialog
+                exitProps={exitProps}
+                config={config}
+                nextStepEditDraft={nextStepEditDraft}
+                buttonsById={buttonsById}
+                instructionChoices={instructionChoices}
+                instructionChoicesError={instructionChoicesError}
+                instructionChoicesLoading={instructionChoicesLoading}
+                missingButtonIds={missingButtonIds}
+                missingInstructionProjectIds={missingInstructionProjectIds}
+                nextStepOpenMenuOpen={nextStepOpenMenuOpen}
+                nextStepOpenPicker={nextStepOpenPicker}
+                numberInputDragging={numberInputDragging}
+                overlayPages={overlayPages}
+                projectNextStepSuggestions={projectNextStepSuggestions}
+                projectSelectableButtons={projectSelectableButtons}
+                sourceEditSaving={sourceEditSaving}
+                setNextStepEditDraft={setNextStepEditDraft}
+                setNextStepOpenMenuOpen={setNextStepOpenMenuOpen}
+                setNextStepOpenPicker={setNextStepOpenPicker}
+                renderButtonIcon={renderButtonIcon}
+                cancelNumberInputDrag={cancelNumberInputDrag}
+                finishNumberInputDrag={finishNumberInputDrag}
+                updateNumberInputDrag={updateNumberInputDrag}
+                startNumberInputDrag={startNumberInputDrag}
+                chooseLegacyNextStepSettings={chooseLegacyNextStepSettings}
+                closeNextStepEditDialog={closeNextStepEditDialog}
+                refreshInstructionChoices={refreshInstructionChoices}
+                saveNextStepEdit={saveNextStepEdit}
+                selectNextStepDecisionMode={selectNextStepDecisionMode}
+                selectNextStepProject={selectNextStepProject}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
 
-      {projectEditDraft && (
-        <ProjectEditDialog
-          config={config}
-          projectEditDraft={projectEditDraft}
-          projectEditSaving={projectEditSaving}
-          setProjectEditDraft={setProjectEditDraft}
-          setProjectWeeklyFocus={setProjectWeeklyFocus}
-          closeProjectEditDialog={closeProjectEditDialog}
-          requestProjectDeletion={requestProjectDeletion}
-          saveProjectEdit={saveProjectEdit}
-        />
-      )}
+      <AnimatePresence initial={false}>
+        {projectEditDraft && (
+          <ExitPresence key="project-edit">
+            {(exiting, exitProps) => (
+              <ProjectEditDialog
+                exitProps={exitProps}
+                config={config}
+                projectEditDraft={projectEditDraft}
+                projectEditSaving={projectEditSaving}
+                setProjectEditDraft={setProjectEditDraft}
+                setProjectWeeklyFocus={setProjectWeeklyFocus}
+                closeProjectEditDialog={closeProjectEditDialog}
+                requestProjectDeletion={requestProjectDeletion}
+                saveProjectEdit={saveProjectEdit}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
 
-      {expandedTimerOpen && activeTimer && (
-        <ExpandedTimerOverlay
-          clock={timerClock}
-          complete={Boolean(completionPrompt)}
-          identity={activeTimerProject ? (
-            <ProjectIdentity
-              colorId={activeTimerProject.colorId}
-              compact
-              name={activeTimerProject.name}
-              projectId={activeTimerProject.id}
-            />
-          ) : undefined}
-          label={timerActionText(activeTimer)}
-          onClose={() => {
-            setExpandedTimerOpen(false);
-            window.requestAnimationFrame(() => expandTimerButtonRef.current?.focus({ preventScroll: true }));
-          }}
-          onFinish={() => {
-            setExpandedTimerOpen(false);
-            finishActiveTimer(activeTimer);
-          }}
-          onMini={() => {
-            setExpandedTimerOpen(false);
-            void toggleMiniMode();
-          }}
-          onPause={togglePause}
-          paused={activeTimer.paused}
-          planLabel={expandedTimerPlanLabel}
-          progressPercent={timerProgressPercent}
-          status={
-            activeTimer.paused
-              ? "一時停止中"
-              : activeTimer.mode === "measure"
-                ? "計測中"
-                : "実行中"
-          }
-        />
-      )}
+      <AnimatePresence initial={false}>
+        {expandedTimerOpen && activeTimer && (
+          <ExitPresence key="expanded-timer">
+            {(exiting, exitProps) => (
+              <ExpandedTimerOverlay
+                exitProps={exitProps}
+                clock={timerClock}
+                complete={Boolean(completionPrompt)}
+                identity={activeTimerProject ? (
+                  <ProjectIdentity
+                    colorId={activeTimerProject.colorId}
+                    compact
+                    name={activeTimerProject.name}
+                    projectId={activeTimerProject.id}
+                  />
+                ) : undefined}
+                label={timerActionText(activeTimer)}
+                onClose={() => {
+                  setExpandedTimerOpen(false);
+                  window.requestAnimationFrame(() => expandTimerButtonRef.current?.focus({ preventScroll: true }));
+                }}
+                onFinish={() => {
+                  setExpandedTimerOpen(false);
+                  finishActiveTimer(activeTimer);
+                }}
+                onMini={() => {
+                  setExpandedTimerOpen(false);
+                  void toggleMiniMode();
+                }}
+                onPause={togglePause}
+                paused={activeTimer.paused}
+                planLabel={expandedTimerPlanLabel}
+                progressPercent={timerProgressPercent}
+                status={
+                  activeTimer.paused
+                    ? "一時停止中"
+                    : activeTimer.mode === "measure"
+                      ? "計測中"
+                      : "実行中"
+                }
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
 
-      {completionPrompt && (
-        <CompletionFollowupDialog
-          config={config}
-          completionPrompt={completionPrompt}
-          completionProject={completionProject}
-          completionCanEditResume={completionCanEditResume}
-          completionExtendDraft={completionExtendDraft}
-          completionExtendMinutes={completionExtendMinutes}
-          completionResumeSaving={completionResumeSaving}
-          timerResumeDraft={timerResumeDraft}
-          numberInputDragging={numberInputDragging}
-          setCompletionExtendDraft={setCompletionExtendDraft}
-          setTimerResumeDraft={setTimerResumeDraft}
-          cancelNumberInputDrag={cancelNumberInputDrag}
-          finishNumberInputDrag={finishNumberInputDrag}
-          updateNumberInputDrag={updateNumberInputDrag}
-          startNumberInputDrag={startNumberInputDrag}
-          continueCompletedTimer={continueCompletedTimer}
-          submitCompletedTimer={submitCompletedTimer}
-        />
-      )}
+      <AnimatePresence initial={false}>
+        {completionPrompt && (
+          <ExitPresence key="completion-prompt">
+            {(exiting, exitProps) => (
+              <CompletionFollowupDialog
+                exitProps={exitProps}
+                config={config}
+                completionPrompt={completionPrompt}
+                completionProject={completionProject}
+                completionCanEditResume={completionCanEditResume}
+                completionExtendDraft={completionExtendDraft}
+                completionExtendMinutes={completionExtendMinutes}
+                completionResumeSaving={completionResumeSaving}
+                timerResumeDraft={timerResumeDraft}
+                numberInputDragging={numberInputDragging}
+                setCompletionExtendDraft={setCompletionExtendDraft}
+                setTimerResumeDraft={setTimerResumeDraft}
+                cancelNumberInputDrag={cancelNumberInputDrag}
+                finishNumberInputDrag={finishNumberInputDrag}
+                updateNumberInputDrag={updateNumberInputDrag}
+                startNumberInputDrag={startNumberInputDrag}
+                continueCompletedTimer={continueCompletedTimer}
+                submitCompletedTimer={submitCompletedTimer}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
 
-      {dropDraft && (
-        <DropRegisterDialog
-          builderBusy={builderBusy}
-          builderKind={builderKind}
-          builderSource={builderSource}
-          confirmDropRegistration={confirmDropRegistration}
-          dropDraft={dropDraft}
-          groupNames={groupNames}
-          overlayPages={overlayPages}
-          pickBuilderSource={pickBuilderSource}
-          setBuilderKind={setBuilderKind}
-          setBuilderLabelTouched={setBuilderLabelTouched}
-          setBuilderModeDrafts={setBuilderModeDrafts}
-          setDropDraft={setDropDraft}
-          switchBuilderKind={switchBuilderKind}
-          updateBuilderSource={updateBuilderSource}
-        />
-      )}
+      <AnimatePresence initial={false}>
+        {dropDraft && (
+          <ExitPresence key="drop-register">
+            {(exiting, exitProps) => (
+              <DropRegisterDialog
+                exitProps={exitProps}
+                builderBusy={builderBusy}
+                builderKind={builderKind}
+                builderSource={builderSource}
+                confirmDropRegistration={confirmDropRegistration}
+                dropDraft={dropDraft}
+                groupNames={groupNames}
+                overlayPages={overlayPages}
+                pickBuilderSource={pickBuilderSource}
+                setBuilderKind={setBuilderKind}
+                setBuilderLabelTouched={setBuilderLabelTouched}
+                setBuilderModeDrafts={setBuilderModeDrafts}
+                setDropDraft={setDropDraft}
+                switchBuilderKind={switchBuilderKind}
+                updateBuilderSource={updateBuilderSource}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
 
-      {softwareResetChoiceOpen && (
-        <SoftwareResetChoiceDialog
-          busy={softwareResetChoiceBusy}
-          onClose={() => closeSoftwareResetChoice()}
-          onContinue={(withBackup) => void continueSoftwareReset(withBackup)}
-        />
-      )}
-      {confirmDialog && <ConfirmDialog {...confirmDialog} onCancel={closeConfirmDialog} open />}
-      {softwareResetStage !== "idle" && (
-        <SoftwareResetProgressDialog
-          progressRef={softwareResetProgressRef}
-          stage={softwareResetStage}
-        />
-      )}
-      {searchOpen && (
-        <SearchPalette
-          busy={searchBusy}
-          onActivate={(item, mode) => void runSearchItem(item, mode)}
-          onClose={closeSearchPalette}
-          onQueryChange={setSearchQuery}
-          query={searchQuery}
-          sections={searchSections}
-        />
-      )}
-      {helpGuideOpen && (
-        <HelpGuideDialog
-          onClose={() => setHelpGuideOpen(false)}
-          onCopyResult={(ok) =>
-            showToast(
-              ok ? "ok" : "error",
-              ok
-                ? "コピーしました"
-                : "コピーできませんでした。テキストを選択してコピーしてください。",
-            )
-          }
-        />
-      )}
-      {earlyStop && (
-        <ConfirmDialog
-          open
-          title="今日の分は完了にしますか？"
-          message="ここまでの実行は記録されます。"
-          confirmLabel="今日の分は完了"
-          cancelLabel="未完了のまま終了"
-          tone="positive"
-          initialFocus="cancel"
-          isProcessing={earlyStopSaving}
-          onConfirm={() => resolveEarlyStop(true)}
-          onCancel={() => {
-            void resolveEarlyStop(false);
-          }}
-        />
-      )}
+      <AnimatePresence initial={false}>
+        {softwareResetChoiceOpen && (
+          <ExitPresence key="reset-choice">
+            {(exiting, exitProps) => (
+              <SoftwareResetChoiceDialog
+                exitProps={exitProps}
+                busy={softwareResetChoiceBusy}
+                onClose={() => closeSoftwareResetChoice()}
+                onContinue={(withBackup) => void continueSoftwareReset(withBackup)}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {confirmDialog && (
+          <ExitPresence key="confirm-dialog">
+            {(exiting, exitProps) => (
+              <ConfirmDialog {...confirmDialog} onCancel={closeConfirmDialog} exitProps={exitProps} open />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {softwareResetStage !== "idle" && (
+          <ExitPresence key="reset-progress">
+            {(exiting, exitProps) => (
+              <SoftwareResetProgressDialog
+                exitProps={exitProps}
+                progressRef={softwareResetProgressRef}
+                stage={softwareResetStage}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {searchOpen && (
+          <ExitPresence key="search">
+            {(exiting, exitProps) => (
+              <SearchPalette
+                exitProps={exitProps}
+                busy={searchBusy}
+                onActivate={(item, mode) => void runSearchItem(item, mode)}
+                onClose={closeSearchPalette}
+                onQueryChange={setSearchQuery}
+                query={searchQuery}
+                sections={searchSections}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {helpGuideOpen && (
+          <ExitPresence key="help">
+            {(exiting, exitProps) => (
+              <HelpGuideDialog
+                exitProps={exitProps}
+                onClose={() => setHelpGuideOpen(false)}
+                onCopyResult={(ok) =>
+                  showToast(
+                    ok ? "ok" : "error",
+                    ok
+                      ? "コピーしました"
+                      : "コピーできませんでした。テキストを選択してコピーしてください。",
+                  )
+                }
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {earlyStop && (
+          <ExitPresence key="early-stop">
+            {(exiting, exitProps) => (
+              <ConfirmDialog
+                exitProps={exitProps}
+                open
+                title="今日の分は完了にしますか？"
+                message="ここまでの実行は記録されます。"
+                confirmLabel="今日の分は完了"
+                cancelLabel="未完了のまま終了"
+                tone="positive"
+                initialFocus="cancel"
+                isProcessing={earlyStopSaving}
+                onConfirm={() => resolveEarlyStop(true)}
+                onCancel={() => {
+                  void resolveEarlyStop(false);
+                }}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
       <ImportDialog
         config={config}
         initialError={importInitialError}

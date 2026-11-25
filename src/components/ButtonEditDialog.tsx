@@ -6,6 +6,7 @@ import { actionValue, makeAction, setActionValue } from "../app/helpers";
 import { DEFAULT_BUTTON_GROUP } from "../constants";
 import { GroupModeField } from "./GroupModeField";
 import { UiIcon } from "./UiIcon";
+import type { ExitPresenceAttributes } from "./ExitPresence";
 
 // V163-A3: the Button edit dialog, moved out of App.tsx (same DOM, text and handlers).
 
@@ -21,6 +22,8 @@ export type ButtonEditDialogProps = {
   updateButtonAction: (draftIdValue: string, action: ActionDraft) => void;
   requestCloseButtonEdit: () => void;
   saveButtonEdit: () => void;
+  /** V164 (E1): attributes for the close motion; the backdrop is removed when it ends. */
+  exitProps?: ExitPresenceAttributes;
 };
 
 export function ButtonEditDialog(props: ButtonEditDialogProps) {
@@ -36,10 +39,11 @@ export function ButtonEditDialog(props: ButtonEditDialogProps) {
     setActionDragId,
     setButtonEditDraft,
     updateButtonAction,
+    exitProps,
   } = props;
 
   return (
-    <div className="modalBackdrop" role="presentation">
+    <div className="modalBackdrop" role="presentation" {...exitProps}>
       <div aria-hidden="true" className="modalDragBand" data-tauri-drag-region="" />
       <section
         aria-label="ボタン編集"
