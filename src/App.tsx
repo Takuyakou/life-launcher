@@ -209,6 +209,17 @@ import { buttonGroupName, buttonHasIconCacheSource, createStableId, formatAction
 import { clearMiniPosition, createMiniReadyWaiter, inactiveMiniSnapshot, isDictionaryView, isFiniteMiniPosition, isInstructionView, isMiniModeView, readMiniPosition, resolveSafeMiniPosition, sameMiniPosition, timerActionText, waitForMiniWindowCreated, writeMiniPosition } from "./app/miniWindow";
 import { notifyTimerComplete } from "./app/dropTargets";
 
+// V165 PR 0: only the overlays that own focus may block a delayed focus return. The inline
+// `.nextStepOpenMenu[role="menu"]` does not own focus and must not match this selector.
+const FOCUS_OWNING_OVERLAY_SELECTOR =
+  '.modalBackdrop:not([data-exiting="true"]), .searchPaletteBackdrop:not([data-exiting="true"]), .expandedTimerBackdrop:not([data-exiting="true"]), [role="dialog"][aria-modal="true"]:not([data-exiting="true"]):not([data-exiting="true"] *), [data-focus-overlay="true"]:not([data-exiting="true"]):not([data-exiting="true"] *)';
+
+function shouldSkipFocusRestore(returnTarget: HTMLElement | null): boolean {
+  return Array.from(document.querySelectorAll<HTMLElement>(FOCUS_OWNING_OVERLAY_SELECTOR)).some(
+    (overlay) => !returnTarget || !overlay.contains(returnTarget),
+  );
+}
+
 const InstructionViewer = lazy(() =>
   import("./components/InstructionViewer").then((module) => ({
     default: module.InstructionViewer,
@@ -684,7 +695,8 @@ function DashboardApp() {
     setContextMenu(null);
     if (restoreFocus) {
       window.requestAnimationFrame(() => {
-        if (returnTarget?.isConnected) returnTarget.focus();
+        if (!returnTarget?.isConnected || shouldSkipFocusRestore(returnTarget)) return;
+        returnTarget.focus();
       });
     }
   }, []);
@@ -713,11 +725,13 @@ function DashboardApp() {
       returnFocusRef.current = null;
       window.requestAnimationFrame(() => {
         window.requestAnimationFrame(() => {
-          if (returnTarget?.isConnected) {
-            returnTarget.focus();
-            return;
-          }
-          if (fallbackSelector) document.querySelector<HTMLElement>(fallbackSelector)?.focus();
+          const target = returnTarget?.isConnected
+            ? returnTarget
+            : fallbackSelector
+              ? document.querySelector<HTMLElement>(fallbackSelector)
+              : null;
+          if (!target?.isConnected || shouldSkipFocusRestore(target)) return;
+          target.focus();
         });
       });
     },
@@ -823,7 +837,10 @@ function DashboardApp() {
     setConfirmDialog(null);
     const returnTarget = confirmFocusReturnRef.current;
     confirmFocusReturnRef.current = null;
-    window.requestAnimationFrame(() => returnTarget?.focus());
+    window.requestAnimationFrame(() => {
+      if (!returnTarget?.isConnected || shouldSkipFocusRestore(returnTarget)) return;
+      returnTarget.focus();
+    });
   }, []);
 
   const buttonsById = useMemo(() => {
@@ -1969,7 +1986,10 @@ function DashboardApp() {
       inboxAddInitialProjectIdRef.current = "";
       setInboxAddError(null);
       setInboxAddSaving(false);
-      window.requestAnimationFrame(() => opener?.focus());
+      window.requestAnimationFrame(() => {
+        if (!opener?.isConnected || shouldSkipFocusRestore(opener)) return;
+        opener.focus();
+      });
     },
     [inboxAddProjectId, inboxDraft, requestDiscardConfirmation],
   );

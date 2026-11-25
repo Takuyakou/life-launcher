@@ -159,6 +159,7 @@ export function ContextMenu({
     <div
       aria-label={ariaLabel}
       className={`${className} uiMenuEnter`}
+      data-focus-overlay="true"
       onClick={handleClick}
       onKeyDown={(event) => {
         if (event.key === "Escape") {
