@@ -1,20 +1,24 @@
-# Life Launcher v1.6.3 UI/UX・機能仕様書
+# Life Launcher UI/UX・機能仕様書
+
+- **対象バージョン**: 1.6.4
+- **状態**: 現行
+- **最終更新**: 2026-11-24
 
 ## 0. 文書情報
 
 | 項目             | 内容                                                                   |
 | ---------------- | ---------------------------------------------------------------------- |
-| 文書版           | 1.6.3                                                                  |
+| 文書版           | 1.6.4                                                                  |
 | 対象             | Windowsデスクトップ版 Life Launcher                                    |
-| 実装基準         | Public repository `Takuyakou/life-launcher` の v1.6.3 実装             |
-| 作業branch       | `v163/03-app-modals-split` |
-| 監査基準コミット | `e2a7c0d`（v1.6.3 の実装と基準画像）                                             |
-| 確認日           | 2026-11-23                                                             |
+| 実装基準         | Public repository `Takuyakou/life-launcher` の v1.6.4 実装             |
+| 作業branch       | `v164/04-docs-public-release` |
+| 監査基準コミット | `5321a91`（v1.6.4 の文書と基準画像）                                             |
+| 確認日           | 2026-11-24                                                             |
 | UI実装           | Tauri 2 / React 18 / TypeScript / CSS                                  |
 
-本書は、Life Launcher v1.6.3 の UI/UX と主要機能を、現在のコード、型、設定、capability、テストから整理した現行仕様書である。
+本書は、Life Launcher の UI/UX と主要機能を、現在のコード、型、設定、capability、テストから整理した現行仕様書である。
 
-アプリ版は `1.6.3`、config schema は `3` である。Phase 10 の画面の作り直し(上の段・検索・メイン画面・今日やるものを選ぶ・次の一手の編集・タイマーとミニ・終わりの確認・はじめての起動・キーとトースト・記録の面)、Project / NextStep / Wishlist再構成、Dictionary / Drop Register / Instruction Viewer / Guide改善、メイン表示サイズ、拡大Timer、一体型タイトルバー、窓の上端のタイマーの線、手順書ビューアーの十字キー操作、MHTML表示、JSON取り込み、プロジェクト色12色、窓の閉じるボタンとCtrl+Wを含む。機能の入口は [Overview](../OVERVIEW.md) を参照する。
+アプリ版は `package.json` の `version`、config schema は `3` である。Phase 10 の画面の作り直し(上の段・検索・メイン画面・今日やるものを選ぶ・次の一手の編集・タイマーとミニ・終わりの確認・はじめての起動・キーとトースト・記録の面)、Project / NextStep / Wishlist再構成、Dictionary / Drop Register / Instruction Viewer / Guide改善、メイン表示サイズ、拡大Timer、一体型タイトルバー、窓の上端のタイマーの線、手順書ビューアーの十字キー操作、MHTML表示、JSON取り込み、プロジェクト色12色、窓の閉じるボタンとCtrl+Wを含む。機能の入口は [Overview](../OVERVIEW.md) を参照する。
 
 ## v1.5.0（Phase 10）での変更
 
@@ -248,6 +252,15 @@ Main Window
 - ボタン、カード、ツールバーには安定した寸法を与える。
 - ダイアログの上に英語の小見出し(eyebrow)、下に日本語の見出しを置く形は、全ダイアログ共通の作りとして残す。同じ対象には同じ英語を使う(やりたいこと=`Wishlist`、辞書=`Dictionary`)(P9-10)。
 - ダイアログの操作行で、保存・追加・決定などの緑のボタンとキャンセルの赤いボタンは、文字の大きさと太さをそろえる(色は変えない)。`.dialogActions`・辞書の設定・手順書の未保存確認の操作行は12px、今日やるものを選ぶ画面は11px(P9-10)。
+
+### 4.4 開閉の動き(PR 1)
+
+- ダイアログ・メニュー・検索・拡大タイマーは、開くときの CSS `@keyframes` をそのまま残し、閉じるときだけ Motion の `<AnimatePresence>` と `usePresence()` で外すのを待つ。閉じる動きの間も DOM に残る。
+- 閉じる動き: 背景 `ui-backdrop-exit` 130ms、ダイアログ `ui-dialog-exit` 150ms、メニュー `ui-menu-exit` 110ms、拡大タイマー `ui-expanded-timer-exit` 150ms。閉じている間は `pointer-events: none`。
+- 閉じかけの面には `data-exiting="true"`・`aria-hidden="true"`・`inert` を付け、`:not([data-exiting="true"])` で「まだ開いている面」の探し方から除く(8 か所)。
+- 閉じる操作では、フォーカスとキーをすぐ返す(閉じかけの面はキーを受け取らず、フォーカスを閉じ込めない)。
+- `prefers-reduced-motion: reduce` では、足した開く動き・閉じる動きを全部止める。
+- 開く動きが無かった 4 つ(拡大タイマー・辞書の設定・辞書のタイトルバーのメニュー・次の一手の「開く」メニュー)にも開く動きを足した。
 
 ## 5. 左サイドバー
 
@@ -489,7 +502,7 @@ Main Window
 - 未完了Today3が参照するcanonical sourceはSource Lock状態にする。NextStepは同一Projectかつ同一generation、Wishlistは同一stable IDだけを対象とし、本文一致ではロックしない。Today3が完了するか採用解除されると即座に解除する。
 - Source Lock中のNextStepはProject名、鍵、緑の「✓ 今日の3件に設定済み」を同じ行へ順に表示し、カード右下には重複した使用中文字を置かない。登録元からの編集、完了、削除、昇格、置換、未設定化、領域間D&DをUIとhandlerの両方で拒否する。未設定NextStepや別generation、別IDのWishlistはロックしない。
 - Source Lock中でもToday3カードの「編集」から開いた元editorだけは保存できる。この経路は元sourceと一致する現在のToday3 snapshotを1回のconfig保存で同時更新し、Timer実行中・一時停止中・確認中の既存guardは迂回しない。
-- 明示保存時だけ、generationが一致するToday3へtext/trigger/projectId/buttonIds/instructionPath/instructionOpenOnStart/defaultTimerMinutes/shortTimerMinutes/expandTimerOnStartを再snapshotする。解除した任意値は残さない。[詳細matrix](../phase7.1/00-field-sync-matrix.md)。
+- 明示保存時だけ、generationが一致するToday3へtext/trigger/projectId/buttonIds/instructionPath/instructionOpenOnStart/defaultTimerMinutes/shortTimerMinutes/expandTimerOnStartを再snapshotする。解除した任意値は残さない。[詳細matrix](../archive/phases/phase7.1/00-field-sync-matrix.md)。
 - 現在のToday3のsourceKey、done、配列順、個数、date、勝利条件は保持する。完了済みの現在カードもdoneを維持して更新し、Session/今日の実行/sourceCompletionsは書き換えない。部分補充なし。
 - Project編集はそのProject sourceだけ更新し、同じprojectIdを持つ別Wishlistは自動更新しない。Wishlist自身の編集保存時に関連Projectの現在の分数を解決する。
 - 同sourceのrunning/paused/満了確認/早期終了確認中はUI・直接handler双方で拒否する。別source Timerは編集を妨げない。保存中は同source開始も拒否し、実行中の分数・開始環境を変更しない。
@@ -948,7 +961,7 @@ URLはWindowsの既定ブラウザで開き、登録ごとのブラウザ指定�
 - backendはcommand受領後に内部snapshotとdurable journalを保存してからruntime file、icon、window state、autostartを変更し、検出した途中失敗ではsnapshotからrollbackする。
 - 起動時は通常のconfig読み込みより前に未完了journalを確認する。中断された処理はsnapshotから復旧し、frontendがlocalStorage復旧を適用してacknowledgeするまで復旧情報を保持する。
 - 成功時は補助windowを閉じてprocess restartを要求する。再起動後はProject 0件を含むcanonical初回起動状態から使用できる。
-- 詳細な境界と失敗時契約は [ソフトウェアリセット](../phase8.3/software-reset.md) に定める。
+- 詳細な境界と失敗時契約は [ソフトウェアリセット](../archive/phases/phase8.3/software-reset.md) に定める。
 
 ## 20. アプリ内ガイド
 
@@ -1001,7 +1014,7 @@ URLはWindowsの既定ブラウザで開き、登録ごとのブラウザ指定�
 | `icons/`              | アイコンキャッシュ                                                           |
 | `backups/`            | 更新前退避                                                                   |
 
-- configの現行データ版は `3`。v2移行は専用decoderとv3全体検証を通し、変換前raw backupの作成成功後にだけ一時ファイルとWindowsの原子的置換で書き込む。失敗時は`changed: false`、`saveBlocked: true`として元ファイルを書き換えず、future versionも拒否する。未リリースv3内で追加したoptional generation fieldはversionや`sourceKey`を変えず、v2 NextStepと既存Today3には遡及付与しない。詳細は[Phase 8.1 config v2→v3移行](../phase8.1/config-v2-to-v3-migration.md)を参照する。
+- configの現行データ版は `3`。v2移行は専用decoderとv3全体検証を通し、変換前raw backupの作成成功後にだけ一時ファイルとWindowsの原子的置換で書き込む。失敗時は`changed: false`、`saveBlocked: true`として元ファイルを書き換えず、future versionも拒否する。未リリースv3内で追加したoptional generation fieldはversionや`sourceKey`を変えず、v2 NextStepと既存Today3には遡及付与しない。詳細は[Phase 8.1 config v2→v3移行](../archive/phases/phase8.1/config-v2-to-v3-migration.md)を参照する。
 - UIからのconfig書き込みはRustのアトミック保存経路へ統一する。
 - 外部変更はホットリロードする。
 - 既定の1日開始時刻は4時。
@@ -1089,7 +1102,7 @@ URLはWindowsの既定ブラウザで開き、登録ごとのブラウザ指定�
 - 候補除外は元sourceを保持したままmatching Today snapshotを外し、localStorageへ保存する。既存schema v2は読み込み時に後方互換補完する。
 - native Explorer、実ランチャー起動、Tauri権限、Rust推薦はDemoへ再実装しない。
 - backend、認証、analytics、外部APIを使用せず、入力はブラウザのlocalStorageだけに保存する。
-- Windows本体Phase 7.2との差分と将来の同期条件は [Web Demo Phase 7.2 Follow-up](../phase7.2/web-demo-followup.md) に記録する。
+- Windows本体Phase 7.2との差分と将来の同期条件は [Web Demo Phase 7.2 Follow-up](../archive/phases/phase7.2/web-demo-followup.md) に記録する。
 
 ## 28. 仕様確認の主要ソース
 
@@ -1107,6 +1120,20 @@ URLはWindowsの既定ブラウザで開き、登録ごとのブラウザ指定�
 - `src/components/TimerCompletionDialog.tsx`
 - `src/components/TimerMinutesStepper.tsx`
 - `src/components/SettingsDialog.tsx`
+- `src/components/ExitPresence.tsx`
+- `src/components/TopBar.tsx`
+- `src/components/MainHeaderVictoryBand.tsx`
+- `src/components/CompletionNextStepDialog.tsx`
+- `src/components/SidebarQuickLaunch.tsx`
+- `src/components/DoNowBand.tsx`
+- `src/components/TodayThreeSection.tsx`
+- `src/components/NextStepsSection.tsx`
+- `src/components/WishlistSection.tsx`
+- `src/components/DashboardContextMenu.tsx`
+- `src/hooks/useSearchPalette.ts`
+- `src/hooks/useLauncherButtons.ts`
+- `src/hooks/useSettingsAndMaintenance.ts`
+- `src/hooks/useDashboardDragAndDrop.ts`
 - `src/content/importPrompt.ts`
 - `src/importJson.ts`
 - `src/dictionaryWindow.ts`
@@ -1125,14 +1152,14 @@ URLはWindowsの既定ブラウザで開き、登録ごとのブラウザ指定�
 - `src-tauri/src/commands/reset/`
 - `src-tauri/tauri.conf.json`
 - `src-tauri/capabilities/*.json`
-- `tests/visual/phase8-entry-forms.spec.ts`
 - `tests/visual/phase8-today3-builder.spec.ts`
 - `tests/visual/phase8-records.spec.ts`
 - `tests/visual/phase8-dictionary-state.spec.ts`
 - `tests/visual/phase61-guide.spec.ts`
-- `docs/v1.3.0-ui-ux-spec.md`
-- `docs/ui-audit/UI-UX-MASTER-AUDIT.md`
 - Phase 8の監査・作業報告書
+
+- **PR 2 の分割後**:`src/App.tsx` は 6,843 行。上の部品と `src/hooks/` のフックに分かれ、`SettingsDialog`・`NextStepEditDialog` は渡す値をまとめた 5 つの props で受ける。
+- **テストの形(2026-11-24 の PR 3 の後)**:Playwright 884 件 / 141 ファイル、`test:fast` 23 件 / 9 ファイル、Rust 207 件、基準画像 27 枚。閉じる動き用の `tests/visual/v164-exit-motion.spec.ts`・`tests/visual/v164-exit-focus.spec.ts` を含む。
 
 計画書や過去の記憶ではなく、現行の実装と自動テストを優先して記述している。
 

@@ -31,22 +31,22 @@ const allowedUserPathFragments = new Map([
   ["package-lock.json", ["i@izs.me"]],
 ]);
 const allowedInternalArtifactPaths = new Set([
-  "docs/phase6/00-visual-baseline.md",
+  "docs/archive/phases/phase6/00-visual-baseline.md",
   "tests/visual/phase6-baseline.spec.ts",
-  "docs/phase7.2/00-baseline.md",
-  "docs/phase7.2/00-timer-size-baseline.md",
-  "docs/phase8.2/00-baseline-audit.md",
-  "docs/phase9/00-baseline.md",
+  "docs/archive/phases/phase7.2/00-baseline.md",
+  "docs/archive/phases/phase7.2/00-timer-size-baseline.md",
+  "docs/archive/phases/phase8.2/00-baseline-audit.md",
+  "docs/archive/phases/phase9/00-baseline.md",
   // User-approved exact synthetic outputs; content checks still run below.
   ...[
     "main-standard", "main-large", "main-xlarge", "main-min", "main-running", "timer-expanded",
     "today-picker", "settings-basic", "mini-idle", "mini-running", "records-review",
     "records-week", "records-all",
-  ].map((name) => `docs/phase9/baseline-v1.3.4/${name}.png`),
+  ].map((name) => `docs/archive/phases/phase9/baseline-v1.3.4/${name}.png`),
   ...[1920, 1440, 1366, 1000, 860].flatMap((width) => [
-    `docs/phase7.2/screenshots/baseline/timer-${width}.json`,
+    `docs/archive/phases/phase7.2/screenshots/baseline/timer-${width}.json`,
     ...["idle", "hover", "focus", "running"].map(
-      (state) => `docs/phase7.2/screenshots/baseline/timer-${width}-${state}.png`,
+      (state) => `docs/archive/phases/phase7.2/screenshots/baseline/timer-${width}-${state}.png`,
     ),
   ]),
 ]);

@@ -1,12 +1,15 @@
 # Life Launcher
 
+[![CI](https://github.com/Takuyakou/life-launcher/actions/workflows/ci.yml/badge.svg)](https://github.com/Takuyakou/life-launcher/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Takuyakou/life-launcher)](https://github.com/Takuyakou/life-launcher/releases/latest)
+
 [日本語](README.md) | **English**
 
 **A Windows app that turns “What should I do?” into “I will do this now.”**
 
-Life Launcher is a Windows desktop app that presents one next step, opens the environment needed for it, and helps you move from deciding to starting. Your data is stored on your own PC.
+Life Launcher is a local-first Windows desktop app that presents one next step, opens the apps, files, and instructions needed for it, and helps you move from deciding to starting. Your data and session history stay on your own PC and are never sent to a server.
 
-[Download Life Launcher for Windows](https://github.com/Takuyakou/life-launcher/releases/latest)
+[Download Life Launcher for Windows](https://github.com/Takuyakou/life-launcher/releases/latest) ・ [Try the Web Demo in your browser](https://life-launcher-web.takuyakou.workers.dev)
 
 ![Life Launcher: start a step for 5 minutes, then leave a “Resume here” note when you finish](docs/screenshots/demo-start.gif)
 
@@ -117,6 +120,15 @@ See [PRIVACY.md](PRIVACY.md) and [SECURITY.md](SECURITY.md) for details.
 ## Development and Technical Information
 
 - **Tech stack.** Tauri 2 / Rust / React 18 / TypeScript / Vite 8 / Zod / Motion / Playwright for deterministic visual QA.
+- **Design and specs.** [Overview and architecture](docs/OVERVIEW.md) / [Current UI/UX and functional spec](docs/spec/current-spec.md) / [Documentation index](docs/README.md)
+
+### Engineering highlights
+
+- **Least privilege per window.** Tauri 2 capabilities are split across the four windows (main, dictionary, instructions, mini). The favicon fetch guards (rejecting local and private destinations, re-validating redirects, capping time and size) are implemented in Rust and covered by automated tests.
+- **Safe saves and migrations.** Settings are validated, then written through a temporary file and an atomic replace. Migrating an older format writes a backup first; if conversion, validation, or the backup fails, the original file is left untouched.
+- **Checks on every change.** CI runs a public-safety scan (secrets and local development paths), ESLint with zero warnings, the build, Playwright screen tests with a fixed clock and baseline images, Rust `cargo fmt`, `clippy -D warnings`, and `cargo test`, and `npm audit`.
+- **No waiting.** Book-style instructions load pages in the background in order, screens are split into separately loaded chunks, and the reduced-motion setting is respected.
+
 - **Bundled assets and libraries**
   - **Fonts.** [Inter](https://github.com/rsms/inter) and [Noto Sans JP](https://github.com/notofonts/noto-cjk) (`@fontsource-variable/inter` and `@fontsource-variable/noto-sans-jp`, both under the SIL Open Font License 1.1).
   - **Animation.** [Motion](https://motion.dev/) (`motion`, MIT License).

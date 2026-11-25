@@ -60,7 +60,7 @@ test("AI tool configuration paths are forbidden", () => {
   ]) {
     assert.equal(isForbiddenAiToolPath(path), true, path);
   }
-  for (const path of [".claude/other.json", "src/App.tsx", "docs/security/secret-guard.md"]) {
+  for (const path of [".claude/other.json", "src/App.tsx", "docs/archive/reports/security/secret-guard.md"]) {
     assert.equal(isForbiddenAiToolPath(path), false, path);
   }
 });
