@@ -110,7 +110,6 @@ import {
   timerMatchesProjectNextStep,
   timerRunsTodayItem,
 } from "./timerSource";
-import { HelpGuideDialog } from "./components/HelpGuideDialog";
 import { SearchPalette } from "./components/SearchPalette";
 import { ProjectIdentity } from "./components/ProjectIdentity";
 import { RecordsView } from "./RecordsView";
@@ -4198,6 +4197,7 @@ function DashboardApp() {
         setDropDraft={setDropDraft}
         switchBuilderKind={switchBuilderKind}
         updateBuilderSource={updateBuilderSource}
+        helpGuideOpen={helpGuideOpen}
       />
       <AnimatePresence initial={false}>
         {softwareResetStage !== "idle" && (
@@ -4224,26 +4224,6 @@ function DashboardApp() {
                 onQueryChange={setSearchQuery}
                 query={searchQuery}
                 sections={searchSections}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-      <AnimatePresence initial={false}>
-        {helpGuideOpen && (
-          <ExitPresence key="help">
-            {(exiting, exitProps) => (
-              <HelpGuideDialog
-                exitProps={exitProps}
-                onClose={() => setHelpGuideOpen(false)}
-                onCopyResult={(ok) =>
-                  showToast(
-                    ok ? "ok" : "error",
-                    ok
-                      ? "コピーしました"
-                      : "コピーできませんでした。テキストを選択してコピーしてください。",
-                  )
-                }
               />
             )}
           </ExitPresence>

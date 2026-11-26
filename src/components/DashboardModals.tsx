@@ -3,6 +3,7 @@ import { AnimatePresence } from "motion/react";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { DropRegisterDialog } from "./DropRegisterDialog";
 import { ExitPresence } from "./ExitPresence";
+import { HelpGuideDialog } from "./HelpGuideDialog";
 import { ImportDialog } from "./ImportDialog";
 import { InboxEditDialog } from "./InboxEditDialog";
 import { InboxAddDialog } from "./InboxAddDialog";
@@ -140,6 +141,7 @@ export function DashboardModals(props: Props) {
     setDropDraft,
     switchBuilderKind,
     updateBuilderSource,
+    helpGuideOpen,
   } = props;
   return (
     <>
@@ -361,6 +363,26 @@ export function DashboardModals(props: Props) {
           <ExitPresence key="confirm-dialog">
             {(exiting, exitProps) => (
               <ConfirmDialog {...confirmDialog} onCancel={onCancel} exitProps={exitProps} open />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {helpGuideOpen && (
+          <ExitPresence key="help">
+            {(exiting, exitProps) => (
+              <HelpGuideDialog
+                exitProps={exitProps}
+                onClose={() => setHelpGuideOpen(false)}
+                onCopyResult={(ok) =>
+                  showToast(
+                    ok ? "ok" : "error",
+                    ok
+                      ? "コピーしました"
+                      : "コピーできませんでした。テキストを選択してコピーしてください。",
+                  )
+                }
+              />
             )}
           </ExitPresence>
         )}
