@@ -1,13 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { AnimatePresence } from "motion/react";
+import { timerActionText } from "../app/miniWindow";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { DropRegisterDialog } from "./DropRegisterDialog";
 import { ExitPresence } from "./ExitPresence";
+import { ExpandedTimerOverlay } from "./ExpandedTimerOverlay";
 import { HelpGuideDialog } from "./HelpGuideDialog";
 import { ImportDialog } from "./ImportDialog";
 import { InboxEditDialog } from "./InboxEditDialog";
 import { InboxAddDialog } from "./InboxAddDialog";
 import { NextStepEditDialog } from "./NextStepEditDialog";
+import { ProjectIdentity } from "./ProjectIdentity";
 import { SearchPalette } from "./SearchPalette";
 import { SettingsDialog } from "./SettingsDialog";
 import { TodayPickerDialog } from "./TodayPickerDialog";
@@ -153,6 +156,17 @@ export function DashboardModals(props: Props) {
     setSearchQuery,
     runSearchItem,
     closeSearchPalette,
+    expandedTimerOpen,
+    timerClock,
+    completionPrompt,
+    activeTimerProject,
+    setExpandedTimerOpen,
+    expandTimerButtonRef,
+    finishActiveTimer,
+    toggleMiniMode,
+    togglePause,
+    expandedTimerPlanLabel,
+    timerProgressPercent,
   } = props;
   return (
     <>
@@ -339,6 +353,53 @@ export function DashboardModals(props: Props) {
                   startNumberInputDrag,
                   updateNumberInputDrag,
                 }}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {expandedTimerOpen && activeTimer && (
+          <ExitPresence key="expanded-timer">
+            {(exiting, exitProps) => (
+              <ExpandedTimerOverlay
+                exitProps={exitProps}
+                clock={timerClock}
+                complete={Boolean(completionPrompt)}
+                identity={activeTimerProject ? (
+                  <ProjectIdentity
+                    colorId={activeTimerProject.colorId}
+                    compact
+                    name={activeTimerProject.name}
+                    projectId={activeTimerProject.id}
+                  />
+                ) : undefined}
+                label={timerActionText(activeTimer)}
+                onClose={() => {
+                  setExpandedTimerOpen(false);
+                  window.requestAnimationFrame(() =>
+                    expandTimerButtonRef.current?.focus({ preventScroll: true }),
+                  );
+                }}
+                onFinish={() => {
+                  setExpandedTimerOpen(false);
+                  finishActiveTimer(activeTimer);
+                }}
+                onMini={() => {
+                  setExpandedTimerOpen(false);
+                  void toggleMiniMode();
+                }}
+                onPause={togglePause}
+                paused={activeTimer.paused}
+                planLabel={expandedTimerPlanLabel}
+                progressPercent={timerProgressPercent}
+                status={
+                  activeTimer.paused
+                    ? "一時停止中"
+                    : activeTimer.mode === "measure"
+                      ? "計測中"
+                      : "実行中"
+                }
               />
             )}
           </ExitPresence>

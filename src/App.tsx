@@ -110,7 +110,6 @@ import {
   timerMatchesProjectNextStep,
   timerRunsTodayItem,
 } from "./timerSource";
-import { ProjectIdentity } from "./components/ProjectIdentity";
 import { RecordsView } from "./RecordsView";
 import {
 } from "./sourceEdit";
@@ -122,7 +121,6 @@ import {
   groupWishlistForDisplay,
   wishlistGroupKey,
 } from "./nextStepWishlist";
-import { ExpandedTimerOverlay } from "./components/ExpandedTimerOverlay";
 import {
   buildTodayCandidates,
   wishlistSourceKey,
@@ -3983,52 +3981,6 @@ function DashboardApp() {
       </AnimatePresence>
 
       <AnimatePresence initial={false}>
-        {expandedTimerOpen && activeTimer && (
-          <ExitPresence key="expanded-timer">
-            {(exiting, exitProps) => (
-              <ExpandedTimerOverlay
-                exitProps={exitProps}
-                clock={timerClock}
-                complete={Boolean(completionPrompt)}
-                identity={activeTimerProject ? (
-                  <ProjectIdentity
-                    colorId={activeTimerProject.colorId}
-                    compact
-                    name={activeTimerProject.name}
-                    projectId={activeTimerProject.id}
-                  />
-                ) : undefined}
-                label={timerActionText(activeTimer)}
-                onClose={() => {
-                  setExpandedTimerOpen(false);
-                  window.requestAnimationFrame(() => expandTimerButtonRef.current?.focus({ preventScroll: true }));
-                }}
-                onFinish={() => {
-                  setExpandedTimerOpen(false);
-                  finishActiveTimer(activeTimer);
-                }}
-                onMini={() => {
-                  setExpandedTimerOpen(false);
-                  void toggleMiniMode();
-                }}
-                onPause={togglePause}
-                paused={activeTimer.paused}
-                planLabel={expandedTimerPlanLabel}
-                progressPercent={timerProgressPercent}
-                status={
-                  activeTimer.paused
-                    ? "一時停止中"
-                    : activeTimer.mode === "measure"
-                      ? "計測中"
-                      : "実行中"
-                }
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence initial={false}>
         {completionPrompt && (
           <ExitPresence key="completion-prompt">
             {(exiting, exitProps) => (
@@ -4207,6 +4159,17 @@ function DashboardApp() {
         setSearchQuery={setSearchQuery}
         runSearchItem={runSearchItem}
         closeSearchPalette={closeSearchPalette}
+        expandedTimerOpen={expandedTimerOpen}
+        timerClock={timerClock}
+        completionPrompt={completionPrompt}
+        activeTimerProject={activeTimerProject}
+        setExpandedTimerOpen={setExpandedTimerOpen}
+        expandTimerButtonRef={expandTimerButtonRef}
+        finishActiveTimer={finishActiveTimer}
+        toggleMiniMode={toggleMiniMode}
+        togglePause={togglePause}
+        expandedTimerPlanLabel={expandedTimerPlanLabel}
+        timerProgressPercent={timerProgressPercent}
       />
       <AnimatePresence initial={false}>
         {softwareResetStage !== "idle" && (
