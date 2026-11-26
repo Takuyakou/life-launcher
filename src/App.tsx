@@ -110,7 +110,6 @@ import {
   timerMatchesProjectNextStep,
   timerRunsTodayItem,
 } from "./timerSource";
-import { SearchPalette } from "./components/SearchPalette";
 import { ProjectIdentity } from "./components/ProjectIdentity";
 import { RecordsView } from "./RecordsView";
 import {
@@ -4201,6 +4200,13 @@ function DashboardApp() {
         earlyStop={earlyStop}
         earlyStopSaving={earlyStopSaving}
         resolveEarlyStop={resolveEarlyStop}
+        searchOpen={searchOpen}
+        searchBusy={searchBusy}
+        searchQuery={searchQuery}
+        searchSections={searchSections}
+        setSearchQuery={setSearchQuery}
+        runSearchItem={runSearchItem}
+        closeSearchPalette={closeSearchPalette}
       />
       <AnimatePresence initial={false}>
         {softwareResetStage !== "idle" && (
@@ -4210,23 +4216,6 @@ function DashboardApp() {
                 exitProps={exitProps}
                 progressRef={softwareResetProgressRef}
                 stage={softwareResetStage}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-      <AnimatePresence initial={false}>
-        {searchOpen && (
-          <ExitPresence key="search">
-            {(exiting, exitProps) => (
-              <SearchPalette
-                exitProps={exitProps}
-                busy={searchBusy}
-                onActivate={(item, mode) => void runSearchItem(item, mode)}
-                onClose={closeSearchPalette}
-                onQueryChange={setSearchQuery}
-                query={searchQuery}
-                sections={searchSections}
               />
             )}
           </ExitPresence>

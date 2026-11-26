@@ -8,6 +8,7 @@ import { ImportDialog } from "./ImportDialog";
 import { InboxEditDialog } from "./InboxEditDialog";
 import { InboxAddDialog } from "./InboxAddDialog";
 import { NextStepEditDialog } from "./NextStepEditDialog";
+import { SearchPalette } from "./SearchPalette";
 import { SettingsDialog } from "./SettingsDialog";
 import { TodayPickerDialog } from "./TodayPickerDialog";
 type Props = Record<string, any>;
@@ -145,6 +146,13 @@ export function DashboardModals(props: Props) {
     earlyStop,
     earlyStopSaving,
     resolveEarlyStop,
+    searchOpen,
+    searchBusy,
+    searchQuery,
+    searchSections,
+    setSearchQuery,
+    runSearchItem,
+    closeSearchPalette,
   } = props;
   return (
     <>
@@ -366,6 +374,23 @@ export function DashboardModals(props: Props) {
           <ExitPresence key="confirm-dialog">
             {(exiting, exitProps) => (
               <ConfirmDialog {...confirmDialog} onCancel={onCancel} exitProps={exitProps} open />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {searchOpen && (
+          <ExitPresence key="search">
+            {(exiting, exitProps) => (
+              <SearchPalette
+                exitProps={exitProps}
+                busy={searchBusy}
+                onActivate={(item, mode) => void runSearchItem(item, mode)}
+                onClose={closeSearchPalette}
+                onQueryChange={setSearchQuery}
+                query={searchQuery}
+                sections={searchSections}
+              />
             )}
           </ExitPresence>
         )}
