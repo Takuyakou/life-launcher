@@ -86,7 +86,6 @@ import { WishlistSection } from "./components/WishlistSection";
 import { DashboardContextMenu } from "./components/DashboardContextMenu";
 import { ExitPresence } from "./components/ExitPresence";
 import { GroupNameDialog } from "./components/GroupNameDialog";
-import { ImportDialog } from "./components/ImportDialog";
 import { InboxAddDialog } from "./components/InboxAddDialog";
 import { CompletionFollowupDialog } from "./components/CompletionFollowupDialog";
 import { NextStepEditDialog } from "./components/NextStepEditDialog";
@@ -4297,7 +4296,17 @@ function DashboardApp() {
           </ExitPresence>
         )}
       </AnimatePresence>
-      <DashboardModals confirmDialog={confirmDialog} onCancel={closeConfirmDialog} />
+      <DashboardModals
+        confirmDialog={confirmDialog}
+        onCancel={closeConfirmDialog}
+        config={config}
+        importDialogOpen={importDialogOpen}
+        importInitialError={importInitialError}
+        importInitialText={importInitialText}
+        closeImportDialog={closeImportDialog}
+        handleImported={handleImported}
+        showToast={showToast}
+      />
       <AnimatePresence initial={false}>
         {softwareResetStage !== "idle" && (
           <ExitPresence key="reset-progress">
@@ -4371,15 +4380,6 @@ function DashboardApp() {
           </ExitPresence>
         )}
       </AnimatePresence>
-      <ImportDialog
-        config={config}
-        initialError={importInitialError}
-        initialText={importInitialText}
-        onClose={closeImportDialog}
-        onImported={handleImported}
-        onNotify={showToast}
-        open={importDialogOpen}
-      />
     </main>
   );
 }
