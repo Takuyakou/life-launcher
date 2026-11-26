@@ -86,7 +86,6 @@ import { DashboardContextMenu } from "./components/DashboardContextMenu";
 import { ExitPresence } from "./components/ExitPresence";
 import { GroupNameDialog } from "./components/GroupNameDialog";
 import { ButtonEditDialog } from "./components/ButtonEditDialog";
-import { ProjectEditDialog } from "./components/ProjectEditDialog";
 import {
   SoftwareResetChoiceDialog,
   SoftwareResetProgressDialog,
@@ -3898,26 +3897,6 @@ function DashboardApp() {
 
 
       <AnimatePresence initial={false}>
-        {projectEditDraft && (
-          <ExitPresence key="project-edit">
-            {(exiting, exitProps) => (
-              <ProjectEditDialog
-                exitProps={exitProps}
-                config={config}
-                projectEditDraft={projectEditDraft}
-                projectEditSaving={projectEditSaving}
-                setProjectEditDraft={setProjectEditDraft}
-                setProjectWeeklyFocus={setProjectWeeklyFocus}
-                closeProjectEditDialog={closeProjectEditDialog}
-                requestProjectDeletion={requestProjectDeletion}
-                saveProjectEdit={saveProjectEdit}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence initial={false}>
         {softwareResetChoiceOpen && (
           <ExitPresence key="reset-choice">
             {(exiting, exitProps) => (
@@ -4101,6 +4080,13 @@ function DashboardApp() {
         sessionEditDraft={sessionEditDraft}
         setSessionEditDraft={setSessionEditDraft}
         saveSessionEdit={saveSessionEdit}
+        projectEditDraft={projectEditDraft}
+        projectEditSaving={projectEditSaving}
+        setProjectEditDraft={setProjectEditDraft}
+        setProjectWeeklyFocus={setProjectWeeklyFocus}
+        closeProjectEditDialog={closeProjectEditDialog}
+        requestProjectDeletion={requestProjectDeletion}
+        saveProjectEdit={saveProjectEdit}
       />
       <AnimatePresence initial={false}>
         {softwareResetStage !== "idle" && (

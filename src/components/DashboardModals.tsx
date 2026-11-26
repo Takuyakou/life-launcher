@@ -13,6 +13,7 @@ import { InboxEditDialog } from "./InboxEditDialog";
 import { InboxAddDialog } from "./InboxAddDialog";
 import { ManualSessionDialog, SessionEditDialog } from "./SessionDialogs";
 import { NextStepEditDialog } from "./NextStepEditDialog";
+import { ProjectEditDialog } from "./ProjectEditDialog";
 import { ProjectIdentity } from "./ProjectIdentity";
 import { SearchPalette } from "./SearchPalette";
 import { SettingsDialog } from "./SettingsDialog";
@@ -193,6 +194,13 @@ export function DashboardModals(props: Props) {
     sessionEditDraft,
     setSessionEditDraft,
     saveSessionEdit,
+    projectEditDraft,
+    projectEditSaving,
+    setProjectEditDraft,
+    setProjectWeeklyFocus,
+    closeProjectEditDialog,
+    requestProjectDeletion,
+    saveProjectEdit,
   } = props;
   return (
     <>
@@ -436,6 +444,25 @@ export function DashboardModals(props: Props) {
                   startNumberInputDrag,
                   updateNumberInputDrag,
                 }}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {projectEditDraft && (
+          <ExitPresence key="project-edit">
+            {(exiting, exitProps) => (
+              <ProjectEditDialog
+                exitProps={exitProps}
+                config={config}
+                projectEditDraft={projectEditDraft}
+                projectEditSaving={projectEditSaving}
+                setProjectEditDraft={setProjectEditDraft}
+                setProjectWeeklyFocus={setProjectWeeklyFocus}
+                closeProjectEditDialog={closeProjectEditDialog}
+                requestProjectDeletion={requestProjectDeletion}
+                saveProjectEdit={saveProjectEdit}
               />
             )}
           </ExitPresence>
