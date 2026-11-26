@@ -19,6 +19,10 @@ import { ProjectEditDialog } from "./ProjectEditDialog";
 import { ProjectIdentity } from "./ProjectIdentity";
 import { SearchPalette } from "./SearchPalette";
 import { SettingsDialog } from "./SettingsDialog";
+import {
+  SoftwareResetChoiceDialog,
+  SoftwareResetProgressDialog,
+} from "./SoftwareResetDialogs";
 import { TodayPickerDialog } from "./TodayPickerDialog";
 type Props = Record<string, any>;
 
@@ -218,6 +222,11 @@ export function DashboardModals(props: Props) {
     setActionDragId,
     setButtonEditDraft,
     updateButtonAction,
+    softwareResetChoiceOpen,
+    softwareResetChoiceBusy,
+    closeSoftwareResetChoice,
+    continueSoftwareReset,
+    softwareResetProgressRef,
   } = props;
   return (
     <>
@@ -640,10 +649,37 @@ export function DashboardModals(props: Props) {
         )}
       </AnimatePresence>
       <AnimatePresence initial={false}>
+        {softwareResetChoiceOpen && (
+          <ExitPresence key="reset-choice">
+            {(exiting, exitProps) => (
+              <SoftwareResetChoiceDialog
+                exitProps={exitProps}
+                busy={softwareResetChoiceBusy}
+                onClose={() => closeSoftwareResetChoice()}
+                onContinue={(withBackup) => void continueSoftwareReset(withBackup)}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
         {confirmDialog && (
           <ExitPresence key="confirm-dialog">
             {(exiting, exitProps) => (
               <ConfirmDialog {...confirmDialog} onCancel={onCancel} exitProps={exitProps} open />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {softwareResetStage !== "idle" && (
+          <ExitPresence key="reset-progress">
+            {(exiting, exitProps) => (
+              <SoftwareResetProgressDialog
+                exitProps={exitProps}
+                progressRef={softwareResetProgressRef}
+                stage={softwareResetStage}
+              />
             )}
           </ExitPresence>
         )}

@@ -21,7 +21,8 @@ import {
   useMemo,
   useRef,
   useState,
-} from "react";import { AnimatePresence, motion } from "motion/react";
+} from "react";
+import { motion } from "motion/react";
 import { springSnappy } from "./motion";
 import { nextStepStaleDays } from "./nextStepFreshness";
 import {
@@ -83,11 +84,6 @@ import { TodayThreeSection } from "./components/TodayThreeSection";
 import { NextStepsSection } from "./components/NextStepsSection";
 import { WishlistSection } from "./components/WishlistSection";
 import { DashboardContextMenu } from "./components/DashboardContextMenu";
-import { ExitPresence } from "./components/ExitPresence";
-import {
-  SoftwareResetChoiceDialog,
-  SoftwareResetProgressDialog,
-} from "./components/SoftwareResetDialogs";
 import { TodayActivitySection } from "./components/TodayActivitySection";
 import { ToastStack } from "./components/ToastStack";
 import { useToasts } from "./hooks/useToasts";
@@ -3836,20 +3832,6 @@ function DashboardApp() {
       />
 
 
-      <AnimatePresence initial={false}>
-        {softwareResetChoiceOpen && (
-          <ExitPresence key="reset-choice">
-            {(exiting, exitProps) => (
-              <SoftwareResetChoiceDialog
-                exitProps={exitProps}
-                busy={softwareResetChoiceBusy}
-                onClose={() => closeSoftwareResetChoice()}
-                onContinue={(withBackup) => void continueSoftwareReset(withBackup)}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
       <DashboardModals
         confirmDialog={confirmDialog}
         onCancel={closeConfirmDialog}
@@ -4042,20 +4024,12 @@ function DashboardApp() {
         setActionDragId={setActionDragId}
         setButtonEditDraft={setButtonEditDraft}
         updateButtonAction={updateButtonAction}
+        softwareResetChoiceOpen={softwareResetChoiceOpen}
+        softwareResetChoiceBusy={softwareResetChoiceBusy}
+        closeSoftwareResetChoice={closeSoftwareResetChoice}
+        continueSoftwareReset={continueSoftwareReset}
+        softwareResetProgressRef={softwareResetProgressRef}
       />
-      <AnimatePresence initial={false}>
-        {softwareResetStage !== "idle" && (
-          <ExitPresence key="reset-progress">
-            {(exiting, exitProps) => (
-              <SoftwareResetProgressDialog
-                exitProps={exitProps}
-                progressRef={softwareResetProgressRef}
-                stage={softwareResetStage}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
     </main>
   );
 }
