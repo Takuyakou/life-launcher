@@ -73,7 +73,7 @@ import {
   WeeklyReviewResponse,
   TodayItem,
 } from "./types";
-import { ConfirmDialog, type ConfirmDialogRequest } from "./components/ConfirmDialog";
+import type { ConfirmDialogRequest } from "./components/ConfirmDialog";
 import { DashboardModals } from "./components/DashboardModals";
 import { TopBar } from "./components/TopBar";
 import { MainHeaderVictoryBand } from "./components/MainHeaderVictoryBand";
@@ -4198,6 +4198,9 @@ function DashboardApp() {
         switchBuilderKind={switchBuilderKind}
         updateBuilderSource={updateBuilderSource}
         helpGuideOpen={helpGuideOpen}
+        earlyStop={earlyStop}
+        earlyStopSaving={earlyStopSaving}
+        resolveEarlyStop={resolveEarlyStop}
       />
       <AnimatePresence initial={false}>
         {softwareResetStage !== "idle" && (
@@ -4224,29 +4227,6 @@ function DashboardApp() {
                 onQueryChange={setSearchQuery}
                 query={searchQuery}
                 sections={searchSections}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-      <AnimatePresence initial={false}>
-        {earlyStop && (
-          <ExitPresence key="early-stop">
-            {(exiting, exitProps) => (
-              <ConfirmDialog
-                exitProps={exitProps}
-                open
-                title="今日の分は完了にしますか？"
-                message="ここまでの実行は記録されます。"
-                confirmLabel="今日の分は完了"
-                cancelLabel="未完了のまま終了"
-                tone="positive"
-                initialFocus="cancel"
-                isProcessing={earlyStopSaving}
-                onConfirm={() => resolveEarlyStop(true)}
-                onCancel={() => {
-                  void resolveEarlyStop(false);
-                }}
               />
             )}
           </ExitPresence>

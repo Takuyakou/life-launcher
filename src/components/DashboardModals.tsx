@@ -142,6 +142,9 @@ export function DashboardModals(props: Props) {
     switchBuilderKind,
     updateBuilderSource,
     helpGuideOpen,
+    earlyStop,
+    earlyStopSaving,
+    resolveEarlyStop,
   } = props;
   return (
     <>
@@ -382,6 +385,29 @@ export function DashboardModals(props: Props) {
                       : "コピーできませんでした。テキストを選択してコピーしてください。",
                   )
                 }
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {earlyStop && (
+          <ExitPresence key="early-stop">
+            {(exiting, exitProps) => (
+              <ConfirmDialog
+                exitProps={exitProps}
+                open
+                title="今日の分は完了にしますか？"
+                message="ここまでの実行は記録されます。"
+                confirmLabel="今日の分は完了"
+                cancelLabel="未完了のまま終了"
+                tone="positive"
+                initialFocus="cancel"
+                isProcessing={earlyStopSaving}
+                onConfirm={() => resolveEarlyStop(true)}
+                onCancel={() => {
+                  void resolveEarlyStop(false);
+                }}
               />
             )}
           </ExitPresence>
