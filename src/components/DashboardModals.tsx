@@ -11,6 +11,7 @@ import { HelpGuideDialog } from "./HelpGuideDialog";
 import { ImportDialog } from "./ImportDialog";
 import { InboxEditDialog } from "./InboxEditDialog";
 import { InboxAddDialog } from "./InboxAddDialog";
+import { ManualSessionDialog, SessionEditDialog } from "./SessionDialogs";
 import { NextStepEditDialog } from "./NextStepEditDialog";
 import { ProjectIdentity } from "./ProjectIdentity";
 import { SearchPalette } from "./SearchPalette";
@@ -186,6 +187,12 @@ export function DashboardModals(props: Props) {
     setTimerResumeDraft,
     continueCompletedTimer,
     submitCompletedTimer,
+    manualSessionDraft,
+    setManualSessionDraft,
+    saveManualSession,
+    sessionEditDraft,
+    setSessionEditDraft,
+    saveSessionEdit,
   } = props;
   return (
     <>
@@ -303,6 +310,40 @@ export function DashboardModals(props: Props) {
                   requestMiniWindowPositionReset,
                   requestSoftwareReset,
                 }}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {manualSessionDraft && (
+          <ExitPresence key="manual-session">
+            {(exiting, exitProps) => (
+              <ManualSessionDialog
+                exitProps={exitProps}
+                draft={manualSessionDraft}
+                onCancel={() => setManualSessionDraft(null)}
+                onDraftChange={setManualSessionDraft}
+                onSave={saveManualSession}
+                projects={config.projects}
+                projectsById={projectsById}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {sessionEditDraft && (
+          <ExitPresence key="session-edit">
+            {(exiting, exitProps) => (
+              <SessionEditDialog
+                exitProps={exitProps}
+                draft={sessionEditDraft}
+                onCancel={() => setSessionEditDraft(null)}
+                onDraftChange={setSessionEditDraft}
+                onSave={saveSessionEdit}
+                projects={config.projects}
+                projectsById={projectsById}
               />
             )}
           </ExitPresence>

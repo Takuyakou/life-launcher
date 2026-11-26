@@ -87,7 +87,6 @@ import { ExitPresence } from "./components/ExitPresence";
 import { GroupNameDialog } from "./components/GroupNameDialog";
 import { ButtonEditDialog } from "./components/ButtonEditDialog";
 import { ProjectEditDialog } from "./components/ProjectEditDialog";
-import { ManualSessionDialog, SessionEditDialog } from "./components/SessionDialogs";
 import {
   SoftwareResetChoiceDialog,
   SoftwareResetProgressDialog,
@@ -3875,42 +3874,6 @@ function DashboardApp() {
       </AnimatePresence>
 
       <AnimatePresence initial={false}>
-        {manualSessionDraft && (
-          <ExitPresence key="manual-session">
-            {(exiting, exitProps) => (
-              <ManualSessionDialog
-                exitProps={exitProps}
-                draft={manualSessionDraft}
-                onCancel={() => setManualSessionDraft(null)}
-                onDraftChange={setManualSessionDraft}
-                onSave={saveManualSession}
-                projects={config.projects}
-                projectsById={projectsById}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence initial={false}>
-        {sessionEditDraft && (
-          <ExitPresence key="session-edit">
-            {(exiting, exitProps) => (
-              <SessionEditDialog
-                exitProps={exitProps}
-                draft={sessionEditDraft}
-                onCancel={() => setSessionEditDraft(null)}
-                onDraftChange={setSessionEditDraft}
-                onSave={saveSessionEdit}
-                projects={config.projects}
-                projectsById={projectsById}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence initial={false}>
         {buttonEditDraft && (
           <ExitPresence key="button-edit">
             {(exiting, exitProps) => (
@@ -4132,6 +4095,12 @@ function DashboardApp() {
         setTimerResumeDraft={setTimerResumeDraft}
         continueCompletedTimer={continueCompletedTimer}
         submitCompletedTimer={submitCompletedTimer}
+        manualSessionDraft={manualSessionDraft}
+        setManualSessionDraft={setManualSessionDraft}
+        saveManualSession={saveManualSession}
+        sessionEditDraft={sessionEditDraft}
+        setSessionEditDraft={setSessionEditDraft}
+        saveSessionEdit={saveSessionEdit}
       />
       <AnimatePresence initial={false}>
         {softwareResetStage !== "idle" && (
