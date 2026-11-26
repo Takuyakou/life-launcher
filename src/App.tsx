@@ -84,7 +84,6 @@ import { NextStepsSection } from "./components/NextStepsSection";
 import { WishlistSection } from "./components/WishlistSection";
 import { DashboardContextMenu } from "./components/DashboardContextMenu";
 import { ExitPresence } from "./components/ExitPresence";
-import { GroupNameDialog } from "./components/GroupNameDialog";
 import { ButtonEditDialog } from "./components/ButtonEditDialog";
 import {
   SoftwareResetChoiceDialog,
@@ -3839,40 +3838,6 @@ function DashboardApp() {
 
 
       <AnimatePresence initial={false}>
-        {groupDraft !== null && (
-          <ExitPresence key="group-add">
-            {(exiting, exitProps) => (
-              <GroupNameDialog
-                exitProps={exitProps}
-                mode="add"
-                onCancel={() => setGroupDraft(null)}
-                onChange={setGroupDraft}
-                onConfirm={confirmGroupAddition}
-                value={groupDraft}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence initial={false}>
-        {groupRenameDraft && (
-          <ExitPresence key="group-rename">
-            {(exiting, exitProps) => (
-              <GroupNameDialog
-                exitProps={exitProps}
-                mode="rename"
-                onCancel={() => setGroupRenameDraft(null)}
-                onChange={(to) => setGroupRenameDraft({ ...groupRenameDraft, to })}
-                onConfirm={confirmGroupRename}
-                value={groupRenameDraft.to}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence initial={false}>
         {buttonEditDraft && (
           <ExitPresence key="button-edit">
             {(exiting, exitProps) => (
@@ -4087,6 +4052,12 @@ function DashboardApp() {
         closeProjectEditDialog={closeProjectEditDialog}
         requestProjectDeletion={requestProjectDeletion}
         saveProjectEdit={saveProjectEdit}
+        groupDraft={groupDraft}
+        setGroupDraft={setGroupDraft}
+        confirmGroupAddition={confirmGroupAddition}
+        groupRenameDraft={groupRenameDraft}
+        setGroupRenameDraft={setGroupRenameDraft}
+        confirmGroupRename={confirmGroupRename}
       />
       <AnimatePresence initial={false}>
         {softwareResetStage !== "idle" && (

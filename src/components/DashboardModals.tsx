@@ -7,6 +7,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { DropRegisterDialog } from "./DropRegisterDialog";
 import { ExitPresence } from "./ExitPresence";
 import { ExpandedTimerOverlay } from "./ExpandedTimerOverlay";
+import { GroupNameDialog } from "./GroupNameDialog";
 import { HelpGuideDialog } from "./HelpGuideDialog";
 import { ImportDialog } from "./ImportDialog";
 import { InboxEditDialog } from "./InboxEditDialog";
@@ -201,6 +202,12 @@ export function DashboardModals(props: Props) {
     closeProjectEditDialog,
     requestProjectDeletion,
     saveProjectEdit,
+    groupDraft,
+    setGroupDraft,
+    confirmGroupAddition,
+    groupRenameDraft,
+    setGroupRenameDraft,
+    confirmGroupRename,
   } = props;
   return (
     <>
@@ -266,6 +273,38 @@ export function DashboardModals(props: Props) {
                   todayPickerCandidateSelected,
                 }}
                 saveTodayPickerDraft={saveTodayPickerDraft}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {groupDraft !== null && (
+          <ExitPresence key="group-add">
+            {(exiting, exitProps) => (
+              <GroupNameDialog
+                exitProps={exitProps}
+                mode="add"
+                onCancel={() => setGroupDraft(null)}
+                onChange={setGroupDraft}
+                onConfirm={confirmGroupAddition}
+                value={groupDraft}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {groupRenameDraft && (
+          <ExitPresence key="group-rename">
+            {(exiting, exitProps) => (
+              <GroupNameDialog
+                exitProps={exitProps}
+                mode="rename"
+                onCancel={() => setGroupRenameDraft(null)}
+                onChange={(to) => setGroupRenameDraft({ ...groupRenameDraft, to })}
+                onConfirm={confirmGroupRename}
+                value={groupRenameDraft.to}
               />
             )}
           </ExitPresence>
