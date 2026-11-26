@@ -84,7 +84,6 @@ import { NextStepsSection } from "./components/NextStepsSection";
 import { WishlistSection } from "./components/WishlistSection";
 import { DashboardContextMenu } from "./components/DashboardContextMenu";
 import { ExitPresence } from "./components/ExitPresence";
-import { ButtonEditDialog } from "./components/ButtonEditDialog";
 import {
   SoftwareResetChoiceDialog,
   SoftwareResetProgressDialog,
@@ -3838,30 +3837,6 @@ function DashboardApp() {
 
 
       <AnimatePresence initial={false}>
-        {buttonEditDraft && (
-          <ExitPresence key="button-edit">
-            {(exiting, exitProps) => (
-              <ButtonEditDialog
-                exitProps={exitProps}
-                actionDragId={actionDragId}
-                buttonEditDraft={buttonEditDraft}
-                groupNames={groupNames}
-                moveButtonAction={moveButtonAction}
-                moveButtonActionTo={moveButtonActionTo}
-                overlayPages={overlayPages}
-                requestCloseButtonEdit={requestCloseButtonEdit}
-                saveButtonEdit={saveButtonEdit}
-                setActionDragId={setActionDragId}
-                setButtonEditDraft={setButtonEditDraft}
-                updateButtonAction={updateButtonAction}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-
-
-      <AnimatePresence initial={false}>
         {softwareResetChoiceOpen && (
           <ExitPresence key="reset-choice">
             {(exiting, exitProps) => (
@@ -4058,6 +4033,15 @@ function DashboardApp() {
         groupRenameDraft={groupRenameDraft}
         setGroupRenameDraft={setGroupRenameDraft}
         confirmGroupRename={confirmGroupRename}
+        actionDragId={actionDragId}
+        buttonEditDraft={buttonEditDraft}
+        moveButtonAction={moveButtonAction}
+        moveButtonActionTo={moveButtonActionTo}
+        requestCloseButtonEdit={requestCloseButtonEdit}
+        saveButtonEdit={saveButtonEdit}
+        setActionDragId={setActionDragId}
+        setButtonEditDraft={setButtonEditDraft}
+        updateButtonAction={updateButtonAction}
       />
       <AnimatePresence initial={false}>
         {softwareResetStage !== "idle" && (

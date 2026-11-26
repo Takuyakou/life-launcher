@@ -3,6 +3,7 @@ import { AnimatePresence } from "motion/react";
 import { timerActionText } from "../app/miniWindow";
 import { CompletionNextStepDialog } from "./CompletionNextStepDialog";
 import { CompletionFollowupDialog } from "./CompletionFollowupDialog";
+import { ButtonEditDialog } from "./ButtonEditDialog";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { DropRegisterDialog } from "./DropRegisterDialog";
 import { ExitPresence } from "./ExitPresence";
@@ -208,6 +209,15 @@ export function DashboardModals(props: Props) {
     groupRenameDraft,
     setGroupRenameDraft,
     confirmGroupRename,
+    actionDragId,
+    buttonEditDraft,
+    moveButtonAction,
+    moveButtonActionTo,
+    requestCloseButtonEdit,
+    saveButtonEdit,
+    setActionDragId,
+    setButtonEditDraft,
+    updateButtonAction,
   } = props;
   return (
     <>
@@ -391,6 +401,28 @@ export function DashboardModals(props: Props) {
                 onSave={saveSessionEdit}
                 projects={config.projects}
                 projectsById={projectsById}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {buttonEditDraft && (
+          <ExitPresence key="button-edit">
+            {(exiting, exitProps) => (
+              <ButtonEditDialog
+                exitProps={exitProps}
+                actionDragId={actionDragId}
+                buttonEditDraft={buttonEditDraft}
+                groupNames={groupNames}
+                moveButtonAction={moveButtonAction}
+                moveButtonActionTo={moveButtonActionTo}
+                overlayPages={overlayPages}
+                requestCloseButtonEdit={requestCloseButtonEdit}
+                saveButtonEdit={saveButtonEdit}
+                setActionDragId={setActionDragId}
+                setButtonEditDraft={setButtonEditDraft}
+                updateButtonAction={updateButtonAction}
               />
             )}
           </ExitPresence>
