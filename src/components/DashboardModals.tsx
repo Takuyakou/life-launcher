@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { AnimatePresence } from "motion/react";
 import { timerActionText } from "../app/miniWindow";
+import { CompletionNextStepDialog } from "./CompletionNextStepDialog";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { DropRegisterDialog } from "./DropRegisterDialog";
 import { ExitPresence } from "./ExitPresence";
@@ -167,6 +168,13 @@ export function DashboardModals(props: Props) {
     togglePause,
     expandedTimerPlanLabel,
     timerProgressPercent,
+    completionFollowup,
+    completionFollowupChoice,
+    setCompletionFollowupChoice,
+    setCompletionFollowup,
+    configRef,
+    openNextStepEditor,
+    promoteInboxToNextStep,
   } = props;
   return (
     <>
@@ -307,6 +315,29 @@ export function DashboardModals(props: Props) {
                 projectId={inboxAddProjectId}
                 projects={config.projects}
                 saving={inboxAddSaving}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {completionFollowup?.source.kind === "nextStep" && (
+          <ExitPresence key="completion-next-step">
+            {(exiting, exitProps) => (
+              <CompletionNextStepDialog
+                actions={{
+                  openNextStepEditor,
+                  projectSelectableButtons,
+                  promoteInboxToNextStep,
+                  showToast,
+                }}
+                choice={completionFollowupChoice}
+                config={config}
+                configRef={configRef}
+                exitProps={exitProps}
+                followup={completionFollowup}
+                setChoice={setCompletionFollowupChoice}
+                setFollowup={setCompletionFollowup}
               />
             )}
           </ExitPresence>

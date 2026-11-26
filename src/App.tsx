@@ -77,7 +77,6 @@ import type { ConfirmDialogRequest } from "./components/ConfirmDialog";
 import { DashboardModals } from "./components/DashboardModals";
 import { TopBar } from "./components/TopBar";
 import { MainHeaderVictoryBand } from "./components/MainHeaderVictoryBand";
-import { CompletionNextStepDialog } from "./components/CompletionNextStepDialog";
 import { SidebarQuickLaunch } from "./components/SidebarQuickLaunch";
 import { DoNowBand } from "./components/DoNowBand";
 import { TodayThreeSection } from "./components/TodayThreeSection";
@@ -3937,30 +3936,6 @@ function DashboardApp() {
 
 
       <AnimatePresence initial={false}>
-        {completionFollowup?.source.kind === "nextStep" && (
-          <ExitPresence key="completion-next-step">
-            {(exiting, exitProps) => (
-              <CompletionNextStepDialog
-                actions={{
-                  openNextStepEditor,
-                  projectSelectableButtons,
-                  promoteInboxToNextStep,
-                  showToast,
-                }}
-                choice={completionFollowupChoice}
-                config={config}
-                configRef={configRef}
-                exitProps={exitProps}
-                followup={completionFollowup}
-                setChoice={setCompletionFollowupChoice}
-                setFollowup={setCompletionFollowup}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence initial={false}>
         {projectEditDraft && (
           <ExitPresence key="project-edit">
             {(exiting, exitProps) => (
@@ -4170,6 +4145,13 @@ function DashboardApp() {
         togglePause={togglePause}
         expandedTimerPlanLabel={expandedTimerPlanLabel}
         timerProgressPercent={timerProgressPercent}
+        completionFollowup={completionFollowup}
+        completionFollowupChoice={completionFollowupChoice}
+        setCompletionFollowupChoice={setCompletionFollowupChoice}
+        setCompletionFollowup={setCompletionFollowup}
+        configRef={configRef}
+        openNextStepEditor={openNextStepEditor}
+        promoteInboxToNextStep={promoteInboxToNextStep}
       />
       <AnimatePresence initial={false}>
         {softwareResetStage !== "idle" && (
