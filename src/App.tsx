@@ -91,7 +91,6 @@ import { ButtonEditDialog } from "./components/ButtonEditDialog";
 import { DropRegisterDialog } from "./components/DropRegisterDialog";
 import { ProjectEditDialog } from "./components/ProjectEditDialog";
 import { SettingsDialog } from "./components/SettingsDialog";
-import { TodayPickerDialog } from "./components/TodayPickerDialog";
 import { ManualSessionDialog, SessionEditDialog } from "./components/SessionDialogs";
 import {
   SoftwareResetChoiceDialog,
@@ -3850,42 +3849,6 @@ function DashboardApp() {
 
 
       <AnimatePresence initial={false}>
-        {todayPickerOpen && (
-          <ExitPresence key="today-picker">
-            {(exiting, exitProps) => (
-              <TodayPickerDialog
-                exitProps={exitProps}
-                todayPickerDraftItems={todayPickerDraftItems}
-                todayPickerDragIndex={todayPickerDragIndex}
-                todayPickerFilter={todayPickerFilter}
-                todayPickerPills={todayPickerPills}
-                todayPickerQuickProject={todayPickerQuickProject}
-                todayPickerQuickText={todayPickerQuickText}
-                todayPickerSaving={todayPickerSaving}
-                todayPickerVisibleNextSteps={todayPickerVisibleNextSteps}
-                todayPickerVisibleWishlist={todayPickerVisibleWishlist}
-                setTodayPickerFilter={setTodayPickerFilter}
-                setTodayPickerQuickText={setTodayPickerQuickText}
-                addTodayPickerQuickWish={addTodayPickerQuickWish}
-                moveTodayPickerItemToIndex={moveTodayPickerItemToIndex}
-                requestCloseTodayPicker={requestCloseTodayPicker}
-                rows={{
-                  activeTimer,
-                  chooseTodayCandidate,
-                  moveTodayPickerItem,
-                  projectsById,
-                  removeTodayPickerDraftItem,
-                  setTodayPickerDragIndex,
-                  todayPickerCandidateSelected,
-                }}
-                saveTodayPickerDraft={saveTodayPickerDraft}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence initial={false}>
         {groupDraft !== null && (
           <ExitPresence key="group-add">
             {(exiting, exitProps) => (
@@ -4252,6 +4215,29 @@ function DashboardApp() {
         selectNextStepProject={selectNextStepProject}
         startNumberInputDrag={startNumberInputDrag}
         updateNumberInputDrag={updateNumberInputDrag}
+        todayPickerOpen={todayPickerOpen}
+        todayPickerDraftItems={todayPickerDraftItems}
+        todayPickerDragIndex={todayPickerDragIndex}
+        todayPickerFilter={todayPickerFilter}
+        todayPickerPills={todayPickerPills}
+        todayPickerQuickProject={todayPickerQuickProject}
+        todayPickerQuickText={todayPickerQuickText}
+        todayPickerSaving={todayPickerSaving}
+        todayPickerVisibleNextSteps={todayPickerVisibleNextSteps}
+        todayPickerVisibleWishlist={todayPickerVisibleWishlist}
+        setTodayPickerFilter={setTodayPickerFilter}
+        setTodayPickerQuickText={setTodayPickerQuickText}
+        addTodayPickerQuickWish={addTodayPickerQuickWish}
+        moveTodayPickerItemToIndex={moveTodayPickerItemToIndex}
+        requestCloseTodayPicker={requestCloseTodayPicker}
+        saveTodayPickerDraft={saveTodayPickerDraft}
+        activeTimer={activeTimer}
+        chooseTodayCandidate={chooseTodayCandidate}
+        moveTodayPickerItem={moveTodayPickerItem}
+        projectsById={projectsById}
+        removeTodayPickerDraftItem={removeTodayPickerDraftItem}
+        setTodayPickerDragIndex={setTodayPickerDragIndex}
+        todayPickerCandidateSelected={todayPickerCandidateSelected}
       />
       <AnimatePresence initial={false}>
         {softwareResetStage !== "idle" && (

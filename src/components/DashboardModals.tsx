@@ -6,6 +6,7 @@ import { ImportDialog } from "./ImportDialog";
 import { InboxEditDialog } from "./InboxEditDialog";
 import { InboxAddDialog } from "./InboxAddDialog";
 import { NextStepEditDialog } from "./NextStepEditDialog";
+import { TodayPickerDialog } from "./TodayPickerDialog";
 type Props = Record<string, any>;
 
 export function DashboardModals(props: Props) {
@@ -70,6 +71,29 @@ export function DashboardModals(props: Props) {
     selectNextStepProject,
     startNumberInputDrag,
     updateNumberInputDrag,
+    todayPickerOpen,
+    todayPickerDraftItems,
+    todayPickerDragIndex,
+    todayPickerFilter,
+    todayPickerPills,
+    todayPickerQuickProject,
+    todayPickerQuickText,
+    todayPickerSaving,
+    todayPickerVisibleNextSteps,
+    todayPickerVisibleWishlist,
+    setTodayPickerFilter,
+    setTodayPickerQuickText,
+    addTodayPickerQuickWish,
+    moveTodayPickerItemToIndex,
+    requestCloseTodayPicker,
+    saveTodayPickerDraft,
+    activeTimer,
+    chooseTodayCandidate,
+    moveTodayPickerItem,
+    projectsById,
+    removeTodayPickerDraftItem,
+    setTodayPickerDragIndex,
+    todayPickerCandidateSelected,
   } = props;
   return (
     <>
@@ -188,6 +212,41 @@ export function DashboardModals(props: Props) {
                   startNumberInputDrag,
                   updateNumberInputDrag,
                 }}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {todayPickerOpen && (
+          <ExitPresence key="today-picker">
+            {(exiting, exitProps) => (
+              <TodayPickerDialog
+                exitProps={exitProps}
+                todayPickerDraftItems={todayPickerDraftItems}
+                todayPickerDragIndex={todayPickerDragIndex}
+                todayPickerFilter={todayPickerFilter}
+                todayPickerPills={todayPickerPills}
+                todayPickerQuickProject={todayPickerQuickProject}
+                todayPickerQuickText={todayPickerQuickText}
+                todayPickerSaving={todayPickerSaving}
+                todayPickerVisibleNextSteps={todayPickerVisibleNextSteps}
+                todayPickerVisibleWishlist={todayPickerVisibleWishlist}
+                setTodayPickerFilter={setTodayPickerFilter}
+                setTodayPickerQuickText={setTodayPickerQuickText}
+                addTodayPickerQuickWish={addTodayPickerQuickWish}
+                moveTodayPickerItemToIndex={moveTodayPickerItemToIndex}
+                requestCloseTodayPicker={requestCloseTodayPicker}
+                rows={{
+                  activeTimer,
+                  chooseTodayCandidate,
+                  moveTodayPickerItem,
+                  projectsById,
+                  removeTodayPickerDraftItem,
+                  setTodayPickerDragIndex,
+                  todayPickerCandidateSelected,
+                }}
+                saveTodayPickerDraft={saveTodayPickerDraft}
               />
             )}
           </ExitPresence>
