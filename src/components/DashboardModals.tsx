@@ -3,6 +3,7 @@ import { AnimatePresence } from "motion/react";
 import { ConfirmDialog, type ConfirmDialogRequest } from "./ConfirmDialog";
 import { ExitPresence } from "./ExitPresence";
 import { ImportDialog } from "./ImportDialog";
+import { InboxAddDialog } from "./InboxAddDialog";
 
 type Props = {
   confirmDialog: ConfirmDialogRequest | null;
@@ -14,6 +15,16 @@ type Props = {
   closeImportDialog: () => void;
   handleImported: (response: any) => void;
   showToast: (...args: any[]) => void;
+  inboxAddOpen: boolean;
+  inboxDraft: string;
+  inboxAddError: string | null;
+  inboxAddProjectId: string;
+  inboxAddSaving: boolean;
+  closeInboxAddDialog: (afterSuccessfulSave?: boolean) => void;
+  setInboxDraft: (value: string) => void;
+  setInboxAddError: (value: string | null) => void;
+  setInboxAddProjectId: (value: string) => void;
+  addInboxItem: () => void;
 };
 
 export function DashboardModals({
@@ -26,6 +37,16 @@ export function DashboardModals({
   closeImportDialog,
   handleImported,
   showToast,
+  inboxAddOpen,
+  inboxDraft,
+  inboxAddError,
+  inboxAddProjectId,
+  inboxAddSaving,
+  closeInboxAddDialog,
+  setInboxDraft,
+  setInboxAddError,
+  setInboxAddProjectId,
+  addInboxItem,
 }: Props) {
   return (
     <>
@@ -34,6 +55,29 @@ export function DashboardModals({
           <ExitPresence key="confirm-dialog">
             {(exiting, exitProps) => (
               <ConfirmDialog {...confirmDialog} onCancel={onCancel} exitProps={exitProps} open />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {inboxAddOpen && (
+          <ExitPresence key="inbox-add">
+            {(exiting, exitProps) => (
+              <InboxAddDialog
+                exitProps={exitProps}
+                draft={inboxDraft}
+                error={inboxAddError}
+                onClose={() => closeInboxAddDialog()}
+                onDraftChange={(value) => {
+                  setInboxDraft(value);
+                  if (inboxAddError) setInboxAddError(null);
+                }}
+                onProjectIdChange={setInboxAddProjectId}
+                onSubmit={() => void addInboxItem()}
+                projectId={inboxAddProjectId}
+                projects={config.projects}
+                saving={inboxAddSaving}
+              />
             )}
           </ExitPresence>
         )}

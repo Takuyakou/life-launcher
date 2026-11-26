@@ -86,7 +86,6 @@ import { WishlistSection } from "./components/WishlistSection";
 import { DashboardContextMenu } from "./components/DashboardContextMenu";
 import { ExitPresence } from "./components/ExitPresence";
 import { GroupNameDialog } from "./components/GroupNameDialog";
-import { InboxAddDialog } from "./components/InboxAddDialog";
 import { CompletionFollowupDialog } from "./components/CompletionFollowupDialog";
 import { NextStepEditDialog } from "./components/NextStepEditDialog";
 import { ButtonEditDialog } from "./components/ButtonEditDialog";
@@ -4066,29 +4065,6 @@ function DashboardApp() {
         )}
       </AnimatePresence>
 
-      <AnimatePresence initial={false}>
-        {inboxAddOpen && (
-          <ExitPresence key="inbox-add">
-            {(exiting, exitProps) => (
-              <InboxAddDialog
-                exitProps={exitProps}
-                draft={inboxDraft}
-                error={inboxAddError}
-                onClose={() => closeInboxAddDialog()}
-                onDraftChange={(value) => {
-                  setInboxDraft(value);
-                  if (inboxAddError) setInboxAddError(null);
-                }}
-                onProjectIdChange={setInboxAddProjectId}
-                onSubmit={() => void addInboxItem()}
-                projectId={inboxAddProjectId}
-                projects={config.projects}
-                saving={inboxAddSaving}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
 
       <AnimatePresence initial={false}>
         {completionFollowup?.source.kind === "nextStep" && (
@@ -4306,6 +4282,16 @@ function DashboardApp() {
         closeImportDialog={closeImportDialog}
         handleImported={handleImported}
         showToast={showToast}
+        inboxAddOpen={inboxAddOpen}
+        inboxDraft={inboxDraft}
+        inboxAddError={inboxAddError}
+        inboxAddProjectId={inboxAddProjectId}
+        inboxAddSaving={inboxAddSaving}
+        closeInboxAddDialog={closeInboxAddDialog}
+        setInboxDraft={setInboxDraft}
+        setInboxAddError={setInboxAddError}
+        setInboxAddProjectId={setInboxAddProjectId}
+        addInboxItem={addInboxItem}
       />
       <AnimatePresence initial={false}>
         {softwareResetStage !== "idle" && (
