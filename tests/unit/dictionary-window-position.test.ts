@@ -1,11 +1,14 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "vitest";
+import { PhysicalPosition, PhysicalSize } from "@tauri-apps/api/dpi";
 import { resolveDictionaryWindowGeometry } from "../../src/dictionaryWindow";
 
+// V165 PR 2: the geometry helper only reads the four numbers below, but the Tauri types name
+// PhysicalPosition / PhysicalSize, so the fixture builds those instead of a plain object.
 function monitor(left: number, top: number, width: number, height: number) {
   return {
     workArea: {
-      position: { x: left, y: top },
-      size: { width, height },
+      position: new PhysicalPosition(left, top),
+      size: new PhysicalSize(width, height),
     },
   };
 }

@@ -1,11 +1,13 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "vitest";
 import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
 test("exact artifact permissions retain content and unknown-path checks", () => {
-  const parent = resolve(test.info().outputPath("public-safety"));
-  mkdirSync(parent, { recursive: true });
+  // V165 PR 2: this ran under Playwright's test.info().outputPath(); the unit layer only needs a
+  // throwaway directory of its own.
+  const parent = resolve(tmpdir());
   const root = mkdtempSync(join(parent, "life-launcher-p72-safety-"));
   try {
     mkdirSync(join(root, "scripts"));
@@ -50,8 +52,6 @@ test("exact artifact permissions retain content and unknown-path checks", () => 
       }
     }
   } finally {
-    if (dirname(resolve(root)) === parent) {
-      rmSync(root, { recursive: true, force: true });
-    }
+    rmSync(root, { recursive: true, force: true });
   }
 });

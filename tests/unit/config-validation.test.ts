@@ -1,6 +1,6 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "vitest";
 import { AppConfigSchema } from "../../src/types";
-import { createPublicFixture } from "./fixtures";
+import { createPublicFixture } from "../visual/fixtures";
 
 test("legacy configuration loads defaults without changing saved choices", () => {
   const config = createPublicFixture().config;

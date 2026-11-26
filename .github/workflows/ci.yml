@@ -28,6 +28,7 @@ jobs:
       - run: npm.cmd run lint
       - run: npm.cmd run build
       - run: npm.cmd run test:fast
+      - run: npm.cmd run test:public-safety
       - run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
       - run: cargo check --manifest-path src-tauri/Cargo.toml
       - run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
