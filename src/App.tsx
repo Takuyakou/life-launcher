@@ -90,7 +90,6 @@ import { CompletionFollowupDialog } from "./components/CompletionFollowupDialog"
 import { NextStepEditDialog } from "./components/NextStepEditDialog";
 import { ButtonEditDialog } from "./components/ButtonEditDialog";
 import { DropRegisterDialog } from "./components/DropRegisterDialog";
-import { InboxEditDialog } from "./components/InboxEditDialog";
 import { ProjectEditDialog } from "./components/ProjectEditDialog";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { TodayPickerDialog } from "./components/TodayPickerDialog";
@@ -3850,38 +3849,6 @@ function DashboardApp() {
         isTimerOnTodayItem={isTimerOnTodayItem}
       />
 
-      <AnimatePresence initial={false}>
-        {inboxEditingIndex !== null && config.inbox[inboxEditingIndex] && (
-          <ExitPresence key="inbox-edit">
-            {(exiting, exitProps) => (
-              <InboxEditDialog
-                exitProps={exitProps}
-                config={config}
-                inboxEditDraft={inboxEditDraft}
-                inboxEditProjectId={inboxEditProjectId}
-                inboxEditButtonIds={inboxEditButtonIds}
-                inboxEditInstructionPath={inboxEditInstructionPath}
-                inboxEditInstructionOpenOnStart={inboxEditInstructionOpenOnStart}
-                instructionChoices={instructionChoices}
-                instructionChoicesError={instructionChoicesError}
-                instructionChoicesLoading={instructionChoicesLoading}
-                overlayPages={overlayPages}
-                projectSelectableButtons={projectSelectableButtons}
-                renderButtonIcon={renderButtonIcon}
-                setInboxEditDraft={setInboxEditDraft}
-                setInboxEditProjectId={setInboxEditProjectId}
-                setInboxEditButtonIds={setInboxEditButtonIds}
-                setInboxEditInstructionPath={setInboxEditInstructionPath}
-                setInboxEditInstructionOpenOnStart={setInboxEditInstructionOpenOnStart}
-                refreshInstructionChoices={refreshInstructionChoices}
-                closeInboxEditDialog={closeInboxEditDialog}
-                commitInboxEdit={commitInboxEdit}
-                sourceEditSaving={sourceEditSaving}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
 
       <AnimatePresence initial={false}>
         {todayPickerOpen && (
@@ -4292,6 +4259,27 @@ function DashboardApp() {
         setInboxAddError={setInboxAddError}
         setInboxAddProjectId={setInboxAddProjectId}
         addInboxItem={addInboxItem}
+        inboxEditDraft={inboxEditDraft}
+        inboxEditProjectId={inboxEditProjectId}
+        inboxEditButtonIds={inboxEditButtonIds}
+        inboxEditInstructionPath={inboxEditInstructionPath}
+        inboxEditInstructionOpenOnStart={inboxEditInstructionOpenOnStart}
+        instructionChoices={instructionChoices}
+        instructionChoicesError={instructionChoicesError}
+        instructionChoicesLoading={instructionChoicesLoading}
+        overlayPages={overlayPages}
+        projectSelectableButtons={projectSelectableButtons}
+        renderButtonIcon={renderButtonIcon}
+        setInboxEditDraft={setInboxEditDraft}
+        setInboxEditProjectId={setInboxEditProjectId}
+        setInboxEditButtonIds={setInboxEditButtonIds}
+        setInboxEditInstructionPath={setInboxEditInstructionPath}
+        setInboxEditInstructionOpenOnStart={setInboxEditInstructionOpenOnStart}
+        refreshInstructionChoices={refreshInstructionChoices}
+        closeInboxEditDialog={closeInboxEditDialog}
+        commitInboxEdit={commitInboxEdit}
+        sourceEditSaving={sourceEditSaving}
+        inboxEditingIndex={inboxEditingIndex}
       />
       <AnimatePresence initial={false}>
         {softwareResetStage !== "idle" && (

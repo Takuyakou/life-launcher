@@ -1,53 +1,56 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { AnimatePresence } from "motion/react";
-import { ConfirmDialog, type ConfirmDialogRequest } from "./ConfirmDialog";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { ExitPresence } from "./ExitPresence";
 import { ImportDialog } from "./ImportDialog";
+import { InboxEditDialog } from "./InboxEditDialog";
 import { InboxAddDialog } from "./InboxAddDialog";
 
-type Props = {
-  confirmDialog: ConfirmDialogRequest | null;
-  onCancel: () => void;
-  config: any;
-  importDialogOpen: boolean;
-  importInitialError: string | null;
-  importInitialText: string;
-  closeImportDialog: () => void;
-  handleImported: (response: any) => void;
-  showToast: (...args: any[]) => void;
-  inboxAddOpen: boolean;
-  inboxDraft: string;
-  inboxAddError: string | null;
-  inboxAddProjectId: string;
-  inboxAddSaving: boolean;
-  closeInboxAddDialog: (afterSuccessfulSave?: boolean) => void;
-  setInboxDraft: (value: string) => void;
-  setInboxAddError: (value: string | null) => void;
-  setInboxAddProjectId: (value: string) => void;
-  addInboxItem: () => void;
-};
+type Props = Record<string, any>;
 
-export function DashboardModals({
-  confirmDialog,
-  onCancel,
-  config,
-  importDialogOpen,
-  importInitialError,
-  importInitialText,
-  closeImportDialog,
-  handleImported,
-  showToast,
-  inboxAddOpen,
-  inboxDraft,
-  inboxAddError,
-  inboxAddProjectId,
-  inboxAddSaving,
-  closeInboxAddDialog,
-  setInboxDraft,
-  setInboxAddError,
-  setInboxAddProjectId,
-  addInboxItem,
-}: Props) {
+export function DashboardModals(props: Props) {
+  const {
+    confirmDialog,
+    onCancel,
+    config,
+    importDialogOpen,
+    importInitialError,
+    importInitialText,
+    closeImportDialog,
+    handleImported,
+    showToast,
+    inboxAddOpen,
+    inboxDraft,
+    inboxAddError,
+    inboxAddProjectId,
+    inboxAddSaving,
+    closeInboxAddDialog,
+    setInboxDraft,
+    setInboxAddError,
+    setInboxAddProjectId,
+    addInboxItem,
+    inboxEditingIndex,
+    inboxEditDraft,
+    inboxEditProjectId,
+    inboxEditButtonIds,
+    inboxEditInstructionPath,
+    inboxEditInstructionOpenOnStart,
+    instructionChoices,
+    instructionChoicesError,
+    instructionChoicesLoading,
+    overlayPages,
+    projectSelectableButtons,
+    renderButtonIcon,
+    setInboxEditDraft,
+    setInboxEditProjectId,
+    setInboxEditButtonIds,
+    setInboxEditInstructionPath,
+    setInboxEditInstructionOpenOnStart,
+    refreshInstructionChoices,
+    closeInboxEditDialog,
+    commitInboxEdit,
+    sourceEditSaving,
+  } = props;
   return (
     <>
       <AnimatePresence initial={false}>
@@ -82,6 +85,39 @@ export function DashboardModals({
           </ExitPresence>
         )}
       </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {inboxEditingIndex !== null && config.inbox[inboxEditingIndex] && (
+          <ExitPresence key="inbox-edit">
+            {(exiting, exitProps) => (
+              <InboxEditDialog
+                exitProps={exitProps}
+                config={config}
+                inboxEditDraft={inboxEditDraft}
+                inboxEditProjectId={inboxEditProjectId}
+                inboxEditButtonIds={inboxEditButtonIds}
+                inboxEditInstructionPath={inboxEditInstructionPath}
+                inboxEditInstructionOpenOnStart={inboxEditInstructionOpenOnStart}
+                instructionChoices={instructionChoices}
+                instructionChoicesError={instructionChoicesError}
+                instructionChoicesLoading={instructionChoicesLoading}
+                overlayPages={overlayPages}
+                projectSelectableButtons={projectSelectableButtons}
+                renderButtonIcon={renderButtonIcon}
+                setInboxEditDraft={setInboxEditDraft}
+                setInboxEditProjectId={setInboxEditProjectId}
+                setInboxEditButtonIds={setInboxEditButtonIds}
+                setInboxEditInstructionPath={setInboxEditInstructionPath}
+                setInboxEditInstructionOpenOnStart={setInboxEditInstructionOpenOnStart}
+                refreshInstructionChoices={refreshInstructionChoices}
+                closeInboxEditDialog={closeInboxEditDialog}
+                commitInboxEdit={commitInboxEdit}
+                sourceEditSaving={sourceEditSaving}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+
       <ImportDialog
         config={config}
         initialError={importInitialError}
