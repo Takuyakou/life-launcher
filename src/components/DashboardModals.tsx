@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { AnimatePresence } from "motion/react";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { DropRegisterDialog } from "./DropRegisterDialog";
 import { ExitPresence } from "./ExitPresence";
 import { ImportDialog } from "./ImportDialog";
 import { InboxEditDialog } from "./InboxEditDialog";
@@ -126,6 +127,19 @@ export function DashboardModals(props: Props) {
     requestInstructionWindowPositionReset,
     requestMiniWindowPositionReset,
     requestSoftwareReset,
+    dropDraft,
+    builderBusy,
+    builderKind,
+    builderSource,
+    confirmDropRegistration,
+    groupNames,
+    pickBuilderSource,
+    setBuilderKind,
+    setBuilderLabelTouched,
+    setBuilderModeDrafts,
+    setDropDraft,
+    switchBuilderKind,
+    updateBuilderSource,
   } = props;
   return (
     <>
@@ -312,6 +326,31 @@ export function DashboardModals(props: Props) {
                   startNumberInputDrag,
                   updateNumberInputDrag,
                 }}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {dropDraft && (
+          <ExitPresence key="drop-register">
+            {(exiting, exitProps) => (
+              <DropRegisterDialog
+                exitProps={exitProps}
+                builderBusy={builderBusy}
+                builderKind={builderKind}
+                builderSource={builderSource}
+                confirmDropRegistration={confirmDropRegistration}
+                dropDraft={dropDraft}
+                groupNames={groupNames}
+                overlayPages={overlayPages}
+                pickBuilderSource={pickBuilderSource}
+                setBuilderKind={setBuilderKind}
+                setBuilderLabelTouched={setBuilderLabelTouched}
+                setBuilderModeDrafts={setBuilderModeDrafts}
+                setDropDraft={setDropDraft}
+                switchBuilderKind={switchBuilderKind}
+                updateBuilderSource={updateBuilderSource}
               />
             )}
           </ExitPresence>

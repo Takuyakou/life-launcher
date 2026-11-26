@@ -88,7 +88,6 @@ import { ExitPresence } from "./components/ExitPresence";
 import { GroupNameDialog } from "./components/GroupNameDialog";
 import { CompletionFollowupDialog } from "./components/CompletionFollowupDialog";
 import { ButtonEditDialog } from "./components/ButtonEditDialog";
-import { DropRegisterDialog } from "./components/DropRegisterDialog";
 import { ProjectEditDialog } from "./components/ProjectEditDialog";
 import { ManualSessionDialog, SessionEditDialog } from "./components/SessionDialogs";
 import {
@@ -4061,32 +4060,6 @@ function DashboardApp() {
       </AnimatePresence>
 
       <AnimatePresence initial={false}>
-        {dropDraft && (
-          <ExitPresence key="drop-register">
-            {(exiting, exitProps) => (
-              <DropRegisterDialog
-                exitProps={exitProps}
-                builderBusy={builderBusy}
-                builderKind={builderKind}
-                builderSource={builderSource}
-                confirmDropRegistration={confirmDropRegistration}
-                dropDraft={dropDraft}
-                groupNames={groupNames}
-                overlayPages={overlayPages}
-                pickBuilderSource={pickBuilderSource}
-                setBuilderKind={setBuilderKind}
-                setBuilderLabelTouched={setBuilderLabelTouched}
-                setBuilderModeDrafts={setBuilderModeDrafts}
-                setDropDraft={setDropDraft}
-                switchBuilderKind={switchBuilderKind}
-                updateBuilderSource={updateBuilderSource}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence initial={false}>
         {softwareResetChoiceOpen && (
           <ExitPresence key="reset-choice">
             {(exiting, exitProps) => (
@@ -4212,6 +4185,19 @@ function DashboardApp() {
         requestInstructionWindowPositionReset={requestInstructionWindowPositionReset}
         requestMiniWindowPositionReset={requestMiniWindowPositionReset}
         requestSoftwareReset={requestSoftwareReset}
+        dropDraft={dropDraft}
+        builderBusy={builderBusy}
+        builderKind={builderKind}
+        builderSource={builderSource}
+        confirmDropRegistration={confirmDropRegistration}
+        groupNames={groupNames}
+        pickBuilderSource={pickBuilderSource}
+        setBuilderKind={setBuilderKind}
+        setBuilderLabelTouched={setBuilderLabelTouched}
+        setBuilderModeDrafts={setBuilderModeDrafts}
+        setDropDraft={setDropDraft}
+        switchBuilderKind={switchBuilderKind}
+        updateBuilderSource={updateBuilderSource}
       />
       <AnimatePresence initial={false}>
         {softwareResetStage !== "idle" && (
