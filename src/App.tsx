@@ -74,6 +74,7 @@ import {
   TodayItem,
 } from "./types";
 import { ConfirmDialog, type ConfirmDialogRequest } from "./components/ConfirmDialog";
+import { DashboardModals } from "./components/DashboardModals";
 import { TopBar } from "./components/TopBar";
 import { MainHeaderVictoryBand } from "./components/MainHeaderVictoryBand";
 import { CompletionNextStepDialog } from "./components/CompletionNextStepDialog";
@@ -4296,15 +4297,7 @@ function DashboardApp() {
           </ExitPresence>
         )}
       </AnimatePresence>
-      <AnimatePresence initial={false}>
-        {confirmDialog && (
-          <ExitPresence key="confirm-dialog">
-            {(exiting, exitProps) => (
-              <ConfirmDialog {...confirmDialog} onCancel={closeConfirmDialog} exitProps={exitProps} open />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
+      <DashboardModals confirmDialog={confirmDialog} onCancel={closeConfirmDialog} />
       <AnimatePresence initial={false}>
         {softwareResetStage !== "idle" && (
           <ExitPresence key="reset-progress">
