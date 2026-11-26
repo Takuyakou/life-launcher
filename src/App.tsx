@@ -85,7 +85,6 @@ import { WishlistSection } from "./components/WishlistSection";
 import { DashboardContextMenu } from "./components/DashboardContextMenu";
 import { ExitPresence } from "./components/ExitPresence";
 import { GroupNameDialog } from "./components/GroupNameDialog";
-import { CompletionFollowupDialog } from "./components/CompletionFollowupDialog";
 import { ButtonEditDialog } from "./components/ButtonEditDialog";
 import { ProjectEditDialog } from "./components/ProjectEditDialog";
 import { ManualSessionDialog, SessionEditDialog } from "./components/SessionDialogs";
@@ -3956,35 +3955,6 @@ function DashboardApp() {
       </AnimatePresence>
 
       <AnimatePresence initial={false}>
-        {completionPrompt && (
-          <ExitPresence key="completion-prompt">
-            {(exiting, exitProps) => (
-              <CompletionFollowupDialog
-                exitProps={exitProps}
-                config={config}
-                completionPrompt={completionPrompt}
-                completionProject={completionProject}
-                completionCanEditResume={completionCanEditResume}
-                completionExtendDraft={completionExtendDraft}
-                completionExtendMinutes={completionExtendMinutes}
-                completionResumeSaving={completionResumeSaving}
-                timerResumeDraft={timerResumeDraft}
-                numberInputDragging={numberInputDragging}
-                setCompletionExtendDraft={setCompletionExtendDraft}
-                setTimerResumeDraft={setTimerResumeDraft}
-                cancelNumberInputDrag={cancelNumberInputDrag}
-                finishNumberInputDrag={finishNumberInputDrag}
-                updateNumberInputDrag={updateNumberInputDrag}
-                startNumberInputDrag={startNumberInputDrag}
-                continueCompletedTimer={continueCompletedTimer}
-                submitCompletedTimer={submitCompletedTimer}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence initial={false}>
         {softwareResetChoiceOpen && (
           <ExitPresence key="reset-choice">
             {(exiting, exitProps) => (
@@ -4152,6 +4122,16 @@ function DashboardApp() {
         configRef={configRef}
         openNextStepEditor={openNextStepEditor}
         promoteInboxToNextStep={promoteInboxToNextStep}
+        completionProject={completionProject}
+        completionCanEditResume={completionCanEditResume}
+        completionExtendDraft={completionExtendDraft}
+        completionExtendMinutes={completionExtendMinutes}
+        completionResumeSaving={completionResumeSaving}
+        timerResumeDraft={timerResumeDraft}
+        setCompletionExtendDraft={setCompletionExtendDraft}
+        setTimerResumeDraft={setTimerResumeDraft}
+        continueCompletedTimer={continueCompletedTimer}
+        submitCompletedTimer={submitCompletedTimer}
       />
       <AnimatePresence initial={false}>
         {softwareResetStage !== "idle" && (

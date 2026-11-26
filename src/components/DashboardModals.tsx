@@ -2,6 +2,7 @@
 import { AnimatePresence } from "motion/react";
 import { timerActionText } from "../app/miniWindow";
 import { CompletionNextStepDialog } from "./CompletionNextStepDialog";
+import { CompletionFollowupDialog } from "./CompletionFollowupDialog";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { DropRegisterDialog } from "./DropRegisterDialog";
 import { ExitPresence } from "./ExitPresence";
@@ -175,6 +176,16 @@ export function DashboardModals(props: Props) {
     configRef,
     openNextStepEditor,
     promoteInboxToNextStep,
+    completionProject,
+    completionCanEditResume,
+    completionExtendDraft,
+    completionExtendMinutes,
+    completionResumeSaving,
+    timerResumeDraft,
+    setCompletionExtendDraft,
+    setTimerResumeDraft,
+    continueCompletedTimer,
+    submitCompletedTimer,
   } = props;
   return (
     <>
@@ -431,6 +442,34 @@ export function DashboardModals(props: Props) {
                       ? "計測中"
                       : "実行中"
                 }
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {completionPrompt && (
+          <ExitPresence key="completion-prompt">
+            {(exiting, exitProps) => (
+              <CompletionFollowupDialog
+                exitProps={exitProps}
+                config={config}
+                completionPrompt={completionPrompt}
+                completionProject={completionProject}
+                completionCanEditResume={completionCanEditResume}
+                completionExtendDraft={completionExtendDraft}
+                completionExtendMinutes={completionExtendMinutes}
+                completionResumeSaving={completionResumeSaving}
+                timerResumeDraft={timerResumeDraft}
+                numberInputDragging={numberInputDragging}
+                setCompletionExtendDraft={setCompletionExtendDraft}
+                setTimerResumeDraft={setTimerResumeDraft}
+                cancelNumberInputDrag={cancelNumberInputDrag}
+                finishNumberInputDrag={finishNumberInputDrag}
+                updateNumberInputDrag={updateNumberInputDrag}
+                startNumberInputDrag={startNumberInputDrag}
+                continueCompletedTimer={continueCompletedTimer}
+                submitCompletedTimer={submitCompletedTimer}
               />
             )}
           </ExitPresence>
