@@ -12,6 +12,8 @@ export default defineConfig({
   clearScreen: false,
   // V163-S3: split the external libraries into react / motion / vendor chunks so the main chunk
   // stays under the 500 kB warning. Only the chunking changes; the drawing order does not.
+  // V165: the hooks (and the plain helpers they import) move to a static `app-core` chunk. They are
+  // imported by the entry, so nothing is loaded lazily and the first paint keeps the same order.
   build: {
     rolldownOptions: {
       output: {
@@ -24,6 +26,10 @@ export default defineConfig({
             {
               name: "motion",
               test: /[\\/]node_modules[\\/](motion|framer-motion|motion-dom|motion-utils)[\\/]/,
+            },
+            {
+              name: "app-core",
+              test: /[\\/]src[\\/]hooks[\\/]/,
             },
             {
               name: "vendor",

@@ -21,18 +21,17 @@ import {
   useMemo,
   useRef,
   useState,
-} from "react";import { AnimatePresence, motion } from "motion/react";
+} from "react";
+import { motion } from "motion/react";
 import { springSnappy } from "./motion";
 import { nextStepStaleDays } from "./nextStepFreshness";
 import {
   DEFAULT_EXTEND_TIMER_MINUTES,
   TIMER_TICK_MS,
   TODAY_ITEM_LIMIT,
-  WEEKLY_FOCUS_LIMIT,
 } from "./constants";
 import {
   acknowledgeSoftwareResetRecovery,
-  deleteSessionEntry,
   deleteButtonIconCache,
   ensureButtonIconCache,
   executeActions,
@@ -45,8 +44,6 @@ import {
   loadNotesHistory,
   loadNextStepFreshness,
   loadNextStepSuggestions,
-  listInstructionDirectory,
-  listInstructionRoots,
   loadSessionEntries,
   loadSessionSummary,
   loadTodaySessionTotal,
@@ -55,16 +52,10 @@ import {
   openDataFolder,
   reapplyDashboardSettings,
   revealLauncherItem,
-  recordManualSession,
-  recordSession,
   notifyDictionaryConfigChanged,
   saveConfig,
-  saveNotesForDate,
   setDisplayAwake,
   loadInstructionBookState,
-  updateSessionEntry,
-  undoTodaySelection,
-  loadTestProfileInfo,
   type ShortcutRegistrationStatus,
   type TestProfileInfo,
 } from "./tauri";
@@ -74,44 +65,25 @@ import {
   InboxItem,
   LauncherAction,
   LauncherButton,
-  LauncherNextStep,
   LauncherProject,
   MiniWindowPosition,
   NotesHistoryResponse,
   SessionEntriesResponse,
   SessionEntryRow,
   SessionSummaryResponse,
-  SourceCompletion,
   WeeklyReviewResponse,
   TodayItem,
 } from "./types";
-import { ConfirmDialog, type ConfirmDialogRequest } from "./components/ConfirmDialog";
+import type { ConfirmDialogRequest } from "./components/ConfirmDialog";
+import { DashboardModals } from "./components/DashboardModals";
 import { TopBar } from "./components/TopBar";
 import { MainHeaderVictoryBand } from "./components/MainHeaderVictoryBand";
-import { CompletionNextStepDialog } from "./components/CompletionNextStepDialog";
 import { SidebarQuickLaunch } from "./components/SidebarQuickLaunch";
 import { DoNowBand } from "./components/DoNowBand";
 import { TodayThreeSection } from "./components/TodayThreeSection";
 import { NextStepsSection } from "./components/NextStepsSection";
 import { WishlistSection } from "./components/WishlistSection";
 import { DashboardContextMenu } from "./components/DashboardContextMenu";
-import { ExitPresence } from "./components/ExitPresence";
-import { GroupNameDialog } from "./components/GroupNameDialog";
-import { ImportDialog } from "./components/ImportDialog";
-import { InboxAddDialog } from "./components/InboxAddDialog";
-import { CompletionFollowupDialog } from "./components/CompletionFollowupDialog";
-import { NextStepEditDialog } from "./components/NextStepEditDialog";
-import { ButtonEditDialog } from "./components/ButtonEditDialog";
-import { DropRegisterDialog } from "./components/DropRegisterDialog";
-import { InboxEditDialog } from "./components/InboxEditDialog";
-import { ProjectEditDialog } from "./components/ProjectEditDialog";
-import { SettingsDialog } from "./components/SettingsDialog";
-import { TodayPickerDialog } from "./components/TodayPickerDialog";
-import { ManualSessionDialog, SessionEditDialog } from "./components/SessionDialogs";
-import {
-  SoftwareResetChoiceDialog,
-  SoftwareResetProgressDialog,
-} from "./components/SoftwareResetDialogs";
 import { TodayActivitySection } from "./components/TodayActivitySection";
 import { ToastStack } from "./components/ToastStack";
 import { useToasts } from "./hooks/useToasts";
@@ -120,8 +92,7 @@ import { useLauncherButtons } from "./hooks/useLauncherButtons";
 import { useDashboardDragAndDrop } from "./hooks/useDashboardDragAndDrop";
 import { useSettingsAndMaintenance } from "./hooks/useSettingsAndMaintenance";
 import { FirstRunBand } from "./components/FirstRunBand";
-import { IMPORT_PROMPT_FIRST } from "./content/importPrompt";
-import { earlyCompletionItem } from "./earlyCompletion";
+import {  } from "./content/importPrompt";
 import { WindowControls } from "./components/WindowControls";
 import {
   findTodayEntryForTimer,
@@ -129,55 +100,25 @@ import {
   timerMatchesProjectNextStep,
   timerRunsTodayItem,
 } from "./timerSource";
-import { HelpGuideDialog } from "./components/HelpGuideDialog";
-import { SearchPalette } from "./components/SearchPalette";
-import { ProjectIdentity } from "./components/ProjectIdentity";
-import {
-  prepareProjectDeletion,
-  projectDeletionBlockReason,
-  projectDeletionSummary,
-  type ProjectDeletionMode,
-} from "./projectDeletion";
 import { RecordsView } from "./RecordsView";
 import {
-  canonicalSourceKey,
-  resnapshotSource,
-  SOURCE_EDIT_TIMER_REASON,
-  SOURCE_LOCK_REASON,
-  sourceLockedByUnfinishedToday,
-  timerSourceKey,
-  unfinishedTodayUsesSource,
 } from "./sourceEdit";
 import {
-  completeTodayItemAndPrepareSource,
-  completeWishlistAfterToday,
-  type TodayCompletionSource,
-} from "./completionFollowup";
-import {
-  buttonGlyph,
   resolveProjectColorId,
 } from "./projectIdentity";
 import {
   groupWishlist,
   groupWishlistForDisplay,
-  prepareNextStepRemoval,
-  prepareWishlistPromotion,
-  sameNextStepSnapshot,
   wishlistGroupKey,
 } from "./nextStepWishlist";
-import { ExpandedTimerOverlay } from "./components/ExpandedTimerOverlay";
 import {
   buildTodayCandidates,
-  legacyWishlistSourceKey,
   wishlistSourceKey,
   type TodayCandidate,
 } from "./todayCandidates";
 import {
   plannedEndAtMs,
-  SESSION_MINIMUM_MINUTES,
-  sessionMinutes,
   timerMetrics,
-  type TimerMode,
 } from "./timerRuntime";
 import { findShortcutConflicts } from "./shortcutConflicts";
 import { localDayKey } from "./localDay";
@@ -201,24 +142,24 @@ import {
   openDictionaryWindow,
   toggleDictionaryWindow,
 } from "./dictionaryWindow";
-import { MINI_READY_EVENT, MINI_RETURN_EVENT, MINI_TIMER_COMMAND_EVENT, MINI_TIMER_SNAPSHOT_EVENT, MINI_WINDOW_HEIGHT_PX, MINI_WINDOW_LABEL, MINI_WINDOW_WIDTH_PX, PROJECT_CARD_COMPACT_LIMIT, SOURCE_LIST_COMPACT_LIMIT, SOURCE_LIST_PAGE_SIZE, SOURCE_LIST_PAGINATION_THRESHOLD } from "./app/constants";
-import { type ActiveTimer, type ActiveView, type ButtonEditDraft, type ButtonGroup, type CompletionFeedback, type CompletionFollowup, type ContextMenuState, type ContextMenuTarget, type DoNowCompletionHold, type DropDialogState, type InboxDragPreview, type InboxPointerDrag, type InstructionChoice, type LegacyNextStepChoice, type ManualSessionDraft, type MiniTimerCommand, type MiniTimerSnapshot, type NextStepDecisionMode, type NextStepEditDraft, type NotesSaveStatus, type NumberInputDrag, type NumberInputDragField, type ProjectDragPreview, type ProjectEditDraft, type ProjectPointerDrag, type RecordsDateScope, SHORTCUT_DRAFT_FIELDS, type SessionEditDraft, type SettingsCenterDraft, type SettingsSectionKey, type ShortcutDraftField, type SidebarDragPreview, type SidebarGroupDragPreview, type SidebarGroupPointerDrag, type SidebarPointerDrag, TOP_MENU_LABELS, type TimerCompletionPrompt, type TodayDragPreview, type TodayPointerDrag, type WishlistGroupDragPreview, type WishlistGroupPointerDrag, type WishlistGroupView } from "./app/dashboardTypes";
+import { MINI_TIMER_SNAPSHOT_EVENT, MINI_WINDOW_HEIGHT_PX, MINI_WINDOW_LABEL, MINI_WINDOW_WIDTH_PX, PROJECT_CARD_COMPACT_LIMIT, SOURCE_LIST_COMPACT_LIMIT, SOURCE_LIST_PAGE_SIZE, SOURCE_LIST_PAGINATION_THRESHOLD } from "./app/constants";
+import { type ActiveTimer, type ActiveView, type ButtonEditDraft, type ButtonGroup, type CompletionFeedback, type CompletionFollowup, type ContextMenuState, type ContextMenuTarget, type DoNowCompletionHold, type DropDialogState, type InboxDragPreview, type InboxPointerDrag, type InstructionChoice, type ManualSessionDraft, type MiniTimerSnapshot, type NextStepEditDraft, type NotesSaveStatus, type NumberInputDrag, type NumberInputDragField, type ProjectDragPreview, type ProjectEditDraft, type ProjectPointerDrag, type RecordsDateScope, SHORTCUT_DRAFT_FIELDS, type SessionEditDraft, type SettingsCenterDraft, type SettingsSectionKey, type ShortcutDraftField, type SidebarDragPreview, type SidebarGroupDragPreview, type SidebarGroupPointerDrag, type SidebarPointerDrag, TOP_MENU_LABELS, type TimerCompletionPrompt, type TodayDragPreview, type TodayPointerDrag, type WishlistGroupDragPreview, type WishlistGroupPointerDrag, type WishlistGroupView } from "./app/dashboardTypes";
 import { MiniModeApp } from "./components/MiniModeApp";
 import { getSoftwareResetRecoveryForBoot, restoreSoftwareResetStorage } from "./app/softwareReset";
-import { buttonGroupName, buttonHasIconCacheSource, createStableId, formatActionSummary, formatClock, formatDateKeyForHeader, formatStartedAt, formatTodayActivityLog, iconForAction, isCloseShortcutValue, isEditableTarget, isValidStartedAt, limitToday, makeAction, matchesHotkey, normalizeTimerMinutes, readCollapsedGroups, shortcutFromKeyboardEvent, showButtonInOverlay, showButtonInSidebar, toThreeNoteDraft, todayEntries, todaySourceKey, todayTimerSourceId, uniqueGroupNames, uniqueProjectId, uniqueSuggestions, writeCollapsedGroups } from "./app/helpers";
+import { buttonGroupName, buttonHasIconCacheSource, createStableId, formatActionSummary, formatClock, formatDateKeyForHeader, isCloseShortcutValue, isEditableTarget, limitToday, matchesHotkey, normalizeTimerMinutes, readCollapsedGroups, shortcutFromKeyboardEvent, showButtonInOverlay, showButtonInSidebar, todayEntries, todaySourceKey, todayTimerSourceId, uniqueGroupNames, uniqueSuggestions, writeCollapsedGroups } from "./app/helpers";
 import { clearMiniPosition, createMiniReadyWaiter, inactiveMiniSnapshot, isDictionaryView, isFiniteMiniPosition, isInstructionView, isMiniModeView, readMiniPosition, resolveSafeMiniPosition, sameMiniPosition, timerActionText, waitForMiniWindowCreated, writeMiniPosition } from "./app/miniWindow";
 import { notifyTimerComplete } from "./app/dropTargets";
-
-// V165 PR 0: only the overlays that own focus may block a delayed focus return. The inline
-// `.nextStepOpenMenu[role="menu"]` does not own focus and must not match this selector.
-const FOCUS_OWNING_OVERLAY_SELECTOR =
-  '.modalBackdrop:not([data-exiting="true"]), .searchPaletteBackdrop:not([data-exiting="true"]), .expandedTimerBackdrop:not([data-exiting="true"]), [role="dialog"][aria-modal="true"]:not([data-exiting="true"]):not([data-exiting="true"] *), [data-focus-overlay="true"]:not([data-exiting="true"]):not([data-exiting="true"] *)';
-
-function shouldSkipFocusRestore(returnTarget: HTMLElement | null): boolean {
-  return Array.from(document.querySelectorAll<HTMLElement>(FOCUS_OWNING_OVERLAY_SELECTOR)).some(
-    (overlay) => !returnTarget || !overlay.contains(returnTarget),
-  );
-}
+import { useWishlistAndSources } from "./hooks/useWishlistAndSources";
+import { useProjectsAndNextSteps } from "./hooks/useProjectsAndNextSteps";
+import { useSessionLogs } from "./hooks/useSessionLogs";
+import { useTodayAndVictory } from "./hooks/useTodayAndVictory";
+import { useMiniWindowSync } from "./hooks/useMiniWindowSync";
+import { useModalsAndFocus } from "./hooks/useModalsAndFocus";
+import { useFirstRunAndGuidedActions } from "./hooks/useFirstRunAndGuidedActions";
+import { useBootstrapAndSubscriptions } from "./hooks/useBootstrapAndSubscriptions";
+import { useTimerRuntime } from "./hooks/useTimerRuntime";
+import { useTimerCompletion } from "./hooks/useTimerCompletion";
+import { shouldSkipFocusRestore } from "./app/focusRestore";
 
 const InstructionViewer = lazy(() =>
   import("./components/InstructionViewer").then((module) => ({
@@ -254,6 +195,24 @@ function DashboardApp() {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [shortcutRegistration, setShortcutRegistration] = useState<ShortcutRegistrationStatus | null>(null);
   const configRef = useRef<AppConfig | null>(null);
+
+  const [projectNextStepSuggestions, setProjectNextStepSuggestions] = useState<string[]>([]);
+  const [projectEditDraft, setProjectEditDraft] = useState<ProjectEditDraft | null>(null);
+  const [projectEditSaving, setProjectEditSaving] = useState(false);
+  const [nextStepEditDraft, setNextStepEditDraft] = useState<NextStepEditDraft | null>(null);
+  const [nextStepOpenMenuOpen, setNextStepOpenMenuOpen] = useState(false);
+  const [nextStepOpenPicker, setNextStepOpenPicker] = useState<"buttons" | "instructions" | null>(
+    null,
+  );
+  const [instructionChoices, setInstructionChoices] = useState<InstructionChoice[]>([]);
+  const [instructionChoicesLoading, setInstructionChoicesLoading] = useState(false);
+  const [instructionChoicesError, setInstructionChoicesError] = useState<string | null>(null);
+  const [instructionSettingsBusy, setInstructionSettingsBusy] = useState(false);
+  const projectEditSavingRef = useRef(false);
+  const projectEditInitialDraftRef = useRef<ProjectEditDraft | null>(null);
+  const nextStepEditInitialDraftRef = useRef<NextStepEditDraft | null>(null);
+  const projectEditReturnFocusRef = useRef<HTMLElement | null>(null);
+  const nextStepEditReturnFocusRef = useRef<HTMLElement | null>(null);
   configRef.current = config;
   const [backupPath, setBackupPath] = useState("");
   const [todaySessionMinutes, setTodaySessionMinutes] = useState(0);
@@ -281,12 +240,15 @@ function DashboardApp() {
   // テスト用の起動（普段のデータから切り離した起動）かどうか。
   // 自動起動の登録を呼ばないことと、「テスト」の表示に使う。
   const [testProfile, setTestProfile] = useState<TestProfileInfo | null>(null);
-  useEffect(() => {
-    void loadTestProfileInfo()
-      .then(setTestProfile)
-      .catch(() => undefined);
-  }, []);
   // P97-02 F: 窓の大きさが変わった直後は、マウスが動くまで乗せた色を出さない。
+  useBootstrapAndSubscriptions({
+    dictionaryLocked,
+    dictionaryVisible,
+    setDictionaryLocked,
+    setDictionaryVisible,
+    setTestProfile,
+  });
+
   useHoverSuppressionAfterResize();
   // 上部メニューの文字は、幅の決まった境目ではなく実測で隠す(P96-01 追加修正)。
   // 段階はメイン画面の見出し(「今日 N分」＋日付)の幅で決め、記録画面も同じ段階にする
@@ -354,62 +316,9 @@ function DashboardApp() {
     };
   }, []);
   // V163-C4: while the lock is on, nothing under the scrim takes clicks or Tab stops.
-  useEffect(() => {
-    if (!dictionaryVisible || !dictionaryLocked) return;
-    const shell = document.querySelector<HTMLElement>(".appShell");
-    if (!shell) return;
-    const children = Array.from(shell.children).filter(
-      (child): child is HTMLElement =>
-        child instanceof HTMLElement &&
-        !child.classList.contains("dictionaryMainScrim") &&
-        child.tagName !== "A",
-    );
-    for (const child of children) child.setAttribute("inert", "");
-    return () => {
-      for (const child of children) child.removeAttribute("inert");
-    };
-  }, [dictionaryLocked, dictionaryVisible]);
   // V163-C4: while the lock is on, focusing the main window sends the focus back to the dictionary.
-  useEffect(() => {
-    if (!dictionaryVisible || !dictionaryLocked) return;
-    let disposed = false;
-    const unlistenPromise = getCurrentWindow().onFocusChanged(({ payload: focused }) => {
-      if (!focused || disposed) return;
-      void focusDictionaryWindowIfVisible();
-    });
-    return () => {
-      disposed = true;
-      void unlistenPromise
-        .then((unlisten) => {
-          if (disposed) unlisten();
-        })
-        .catch(() => undefined);
-    };
-  }, [dictionaryLocked, dictionaryVisible]);
   const [defaultTimerDraft, setDefaultTimerDraft] = useState("");
   const [victoryEditing, setVictoryEditing] = useState(false);
-  const [inboxDraft, setInboxDraft] = useState("");
-  const [inboxAddProjectId, setInboxAddProjectId] = useState("");
-  const [inboxAddOpen, setInboxAddOpen] = useState(false);
-  const [inboxAddSaving, setInboxAddSaving] = useState(false);
-  const [inboxAddError, setInboxAddError] = useState<string | null>(null);
-  const [inboxEditingIndex, setInboxEditingIndex] = useState<number | null>(null);
-  const inboxEditingIdRef = useRef<string | null>(null);
-  const inboxEditInitialDraftRef = useRef<{
-    text: string;
-    projectId: string;
-    buttonIds: string[];
-    instructionPath: string;
-    instructionOpenOnStart: boolean;
-  } | null>(null);
-  const sourceEditBusyRef = useRef<string | null>(null);
-  const [sourceEditSaving, setSourceEditSaving] = useState(false);
-  const [inboxEditDraft, setInboxEditDraft] = useState("");
-  const [inboxEditProjectId, setInboxEditProjectId] = useState("");
-  const [inboxEditButtonIds, setInboxEditButtonIds] = useState<string[]>([]);
-  const [inboxEditInstructionPath, setInboxEditInstructionPath] = useState("");
-  const [inboxEditInstructionOpenOnStart, setInboxEditInstructionOpenOnStart] = useState(false);
-  const [inboxOpen, setInboxOpen] = useState(false);
   const [projectsOpen, setProjectsOpen] = useState(true);
   const [todayOpen, setTodayOpen] = useState(true);
   const [projectsListExpanded, setProjectsListExpanded] = useState(false);
@@ -455,7 +364,6 @@ function DashboardApp() {
   const [sessionProjectFilter, setSessionProjectFilter] = useState("");
   const [sessionDateScope, setSessionDateScope] = useState<RecordsDateScope>("week");
   const [notesHistory, setNotesHistory] = useState<NotesHistoryResponse | null>(null);
-  const [projectNextStepSuggestions, setProjectNextStepSuggestions] = useState<string[]>([]);
   const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(null);
   const [expandedTimerOpen, setExpandedTimerOpen] = useState(false);
   const expandTimerButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -543,18 +451,6 @@ function DashboardApp() {
   const [buttonEditInitialDraft, setButtonEditInitialDraft] = useState<ButtonEditDraft | null>(
     null,
   );
-  const [projectEditDraft, setProjectEditDraft] = useState<ProjectEditDraft | null>(null);
-  const [projectEditSaving, setProjectEditSaving] = useState(false);
-  const [nextStepEditDraft, setNextStepEditDraft] = useState<NextStepEditDraft | null>(null);
-  // P10-10 (§6.2): the "＋ ボタン・手順書を足す" choice and which picker dialog is open.
-  const [nextStepOpenMenuOpen, setNextStepOpenMenuOpen] = useState(false);
-  const [nextStepOpenPicker, setNextStepOpenPicker] = useState<"buttons" | "instructions" | null>(
-    null,
-  );
-  const [instructionChoices, setInstructionChoices] = useState<InstructionChoice[]>([]);
-  const [instructionChoicesLoading, setInstructionChoicesLoading] = useState(false);
-  const [instructionChoicesError, setInstructionChoicesError] = useState<string | null>(null);
-  const [instructionSettingsBusy, setInstructionSettingsBusy] = useState(false);
   const [dailyActivityCopying, setDailyActivityCopying] = useState(false);
   const [sidebarPointerDrag, setSidebarPointerDrag] = useState<SidebarDragPreview | null>(null);
   const [sidebarGroupPointerDrag, setSidebarGroupPointerDrag] =
@@ -580,8 +476,6 @@ function DashboardApp() {
   const projectPointerDragRef = useRef<ProjectPointerDrag | null>(null);
   const inboxPointerDragRef = useRef<InboxPointerDrag | null>(null);
   const wishlistGroupPointerDragRef = useRef<WishlistGroupPointerDrag | null>(null);
-  const inboxAddSavingRef = useRef(false);
-  const projectEditSavingRef = useRef(false);
   const configSaveBlockedRef = useRef(false);
   // P10-11: the first-run guide must not appear while saves are blocked.
   const [configSaveBlocked, setConfigSaveBlocked] = useState(false);
@@ -593,16 +487,11 @@ function DashboardApp() {
   const importOpenerRef = useRef<HTMLElement | null>(null);
   const lastDropRef = useRef<{ signature: string; at: number } | null>(null);
   const dragPathsRef = useRef<string[]>([]);
-  const inboxAddOpenerRef = useRef<HTMLButtonElement | null>(null);
-  const inboxAddInitialProjectIdRef = useRef("");
   const todayPickerOpenerRef = useRef<HTMLElement | null>(null);
   const todayPickerInitialItemsRef = useRef<TodayItem[]>([]);
   // P10-11 (§8.2): the IDs for the first-run guide are created once per guide.
   const firstRunIdsRef = useRef<{ projectId: string; generationId: string } | null>(null);
   const [firstRunSaving, setFirstRunSaving] = useState(false);
-  const projectEditInitialDraftRef = useRef<ProjectEditDraft | null>(null);
-  const nextStepEditInitialDraftRef = useRef<NextStepEditDraft | null>(null);
-  const sourceEditOriginRef = useRef<"source" | "today" | "builder">("source");
   const projectListAnchorRef = useRef<{ id: string; index: number } | null>(null);
   const inboxListAnchorRef = useRef<{ id: string; index: number } | null>(null);
   const mainScrollAreaRef = useRef<HTMLDivElement | null>(null);
@@ -621,8 +510,6 @@ function DashboardApp() {
   const victoryNavigationRef = useRef<HTMLButtonElement | null>(null);
   const victorySaveRef = useRef<Promise<boolean> | null>(null);
   const contextMenuReturnFocusRef = useRef<HTMLElement | null>(null);
-  const projectEditReturnFocusRef = useRef<HTMLElement | null>(null);
-  const nextStepEditReturnFocusRef = useRef<HTMLElement | null>(null);
   const confirmFocusReturnRef = useRef<HTMLElement | null>(null);
   const morningFocusDateRef = useRef<string | null>(null);
   const miniWindowRef = useRef<WebviewWindow | null>(null);
@@ -763,6 +650,8 @@ function DashboardApp() {
     },
     [projectEditDraft, requestDiscardConfirmation, restoreDialogFocus],
   );
+
+  const sourceEditBusyRef = useRef<string | null>(null);
 
   const closeNextStepEditDialog = useCallback(
     (afterSuccessfulSave = false) => {
@@ -1809,23 +1698,33 @@ function DashboardApp() {
     }
   }, [showToast]);
 
-  const copyTodayActivityLog = async () => {
-    if (dailyActivityCopying) return;
-    setDailyActivityCopying(true);
-    try {
-      const sessions = await loadSessionEntries({ dateScope: "today" });
-      if (!navigator.clipboard?.writeText) {
-        throw new Error("clipboard API is not available");
-      }
-      await navigator.clipboard.writeText(formatTodayActivityLog(sessions.date, sessions.entries));
-      showToast("ok", "今日の活動ログをコピーしました");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      showToast("error", `今日の活動ログをコピーできません: ${message}`);
-    } finally {
-      setDailyActivityCopying(false);
-    }
-  };
+
+  const {
+    copyTodayActivityLog,
+    openManualSessionDialog,
+    saveManualSession,
+    openSessionEditDialog,
+    saveSessionEdit,
+    requestSessionDelete,
+  } = useSessionLogs({
+    activeView,
+    config,
+    dailyActivityCopying,
+    manualSessionDraft,
+    persistConfig,
+    refreshRecords,
+    refreshSessions,
+    refreshTodayActivity,
+    requestConfirmation,
+    sessionEditDraft,
+    sessionEntries,
+    setDailyActivityCopying,
+    setManualSessionDraft,
+    setSessionEditDraft,
+    setSessionEntries,
+    setSessionSummary,
+    showToast,
+  });
 
   const {
     addInstructionFolder,
@@ -1968,67 +1867,6 @@ function DashboardApp() {
   }, [buttonEditDraft, buttonEditInitialDraft, requestDiscardConfirmation]);
 
 
-  const closeInboxAddDialog = useCallback(
-    (afterSuccessfulSave = false) => {
-      if (inboxAddSavingRef.current) return;
-      const dirty = Boolean(
-        inboxDraft.trim() || inboxAddProjectId !== inboxAddInitialProjectIdRef.current,
-      );
-      if (!afterSuccessfulSave && dirty) {
-        requestDiscardConfirmation(() => closeInboxAddDialog(true));
-        return;
-      }
-      const opener = inboxAddOpenerRef.current;
-      inboxAddOpenerRef.current = null;
-      setInboxAddOpen(false);
-      setInboxDraft("");
-      setInboxAddProjectId("");
-      inboxAddInitialProjectIdRef.current = "";
-      setInboxAddError(null);
-      setInboxAddSaving(false);
-      window.requestAnimationFrame(() => {
-        if (!opener?.isConnected || shouldSkipFocusRestore(opener)) return;
-        opener.focus();
-      });
-    },
-    [inboxAddProjectId, inboxDraft, requestDiscardConfirmation],
-  );
-
-  const closeInboxEditDialog = useCallback(
-    (afterSuccessfulSave = false) => {
-      if (sourceEditBusyRef.current) return;
-      const currentDraft = {
-        text: inboxEditDraft,
-        projectId: inboxEditProjectId,
-        buttonIds: inboxEditButtonIds,
-        instructionPath: inboxEditInstructionPath,
-        instructionOpenOnStart: inboxEditInstructionOpenOnStart,
-      };
-      const dirty =
-        !afterSuccessfulSave &&
-        JSON.stringify(currentDraft) !== JSON.stringify(inboxEditInitialDraftRef.current);
-      if (dirty) {
-        requestDiscardConfirmation(() => closeInboxEditDialog(true));
-        return;
-      }
-      inboxEditInitialDraftRef.current = null;
-      setInboxEditingIndex(null);
-      setInboxEditDraft("");
-      setInboxEditProjectId("");
-      setInboxEditButtonIds([]);
-      setInboxEditInstructionPath("");
-      setInboxEditInstructionOpenOnStart(false);
-    },
-    [
-      inboxEditButtonIds,
-      inboxEditDraft,
-      inboxEditInstructionOpenOnStart,
-      inboxEditInstructionPath,
-      inboxEditProjectId,
-      requestDiscardConfirmation,
-    ],
-  );
-
   const closeTodayPicker = useCallback(() => {
     const opener = todayPickerOpenerRef.current;
     todayPickerOpenerRef.current = null;
@@ -2092,6 +1930,237 @@ function DashboardApp() {
     setTodayPickerOpen(true);
   }, []);
 
+
+  const refreshInstructionChoicesRef = useRef<() => Promise<void>>(async () => {});
+
+  const withoutSourceFromToday = (currentConfig: AppConfig, sourceKeys: string[]) => {
+    const matchingSourceKeys = new Set(sourceKeys);
+    const selectionMutationTokens = { ...currentConfig.today.selectionMutationTokens };
+    sourceKeys.forEach((sourceKey) => delete selectionMutationTokens[sourceKey]);
+    return {
+      ...currentConfig.today,
+      items: currentConfig.today.items.filter(
+        (item, todayIndex) => !matchingSourceKeys.has(todaySourceKey(item, todayIndex)),
+      ),
+      candidateExcludedSourceKeys: currentConfig.today.candidateExcludedSourceKeys.filter(
+        (sourceKey) => !matchingSourceKeys.has(sourceKey),
+      ),
+      selectionMutationTokens,
+    };
+  };
+
+  const {
+    inboxDraft,
+    setInboxDraft,
+    inboxAddProjectId,
+    setInboxAddProjectId,
+    inboxAddOpen,
+    inboxAddSaving,
+    inboxAddError,
+    setInboxAddError,
+    inboxEditingIndex,
+    sourceEditSaving,
+    setSourceEditSaving,
+    inboxEditDraft,
+    setInboxEditDraft,
+    inboxEditProjectId,
+    setInboxEditProjectId,
+    inboxEditButtonIds,
+    setInboxEditButtonIds,
+    inboxEditInstructionPath,
+    setInboxEditInstructionPath,
+    inboxEditInstructionOpenOnStart,
+    setInboxEditInstructionOpenOnStart,
+    inboxOpen,
+    setInboxOpen,
+    sourceEditOriginRef,
+    addInboxItem,
+    sourceEditBlockReason,
+    sourceEditBlocked,
+    warnSourceEditBlocked,
+    saveSourceEdit,
+    beginInboxEdit,
+    commitInboxEdit,
+    isTimerActiveForSource,
+    completeInboxItem,
+    deleteInboxItem,
+    closeInboxAddDialog,
+    closeInboxEditDialog,
+    openInboxAddDialog,
+  } = useWishlistAndSources({
+    config,
+    configRef,
+    persistConfig,
+    showToast,
+    activeTimer,
+    activeTimerRef,
+    setContextMenu,
+    requestConfirmation,
+    requestDiscardConfirmation,
+    sourceEditBusyRef,
+    refreshInstructionChoices: () => refreshInstructionChoicesRef.current(),
+    withoutSourceFromToday,
+    projectsById,
+  });
+
+  const {
+    chooseLegacyNextStepSettings,
+    clearProjectNextStep,
+    openNextStepEditor,
+    openProjectAddDialog,
+    openProjectEditDialog,
+    openProjectManagement,
+    promoteInboxToNextStep,
+    promoteWishlistToProject,
+    refreshInstructionChoices,
+    removeProjectNextStep,
+    requestProjectDeletion,
+    saveNextStepEdit,
+    saveProjectEdit,
+    selectNextStepDecisionMode,
+    selectNextStepProject,
+    setProjectWeeklyFocus,
+    setWeeklyReviewProjectFocus,
+  } = useProjectsAndNextSteps({
+    activeTimerRef,
+    closeNextStepEditDialog,
+    closeProjectEditDialog,
+    config,
+    configRef,
+    now,
+    persistConfig,
+    projectsById,
+    refreshInstructionChoicesRef,
+    requestConfirmation,
+    requestDiscardConfirmation,
+    captureDialogReturnFocus,
+    restoreDialogFocus,
+    saveSourceEdit,
+    setSourceEditSaving,
+    setContextMenu,
+    setProjectsOpen,
+    showToast,
+    sourceEditBlockReason,
+    sourceEditBlocked,
+    sourceEditBusyRef,
+    sourceEditOriginRef,
+    warnSourceEditBlocked,
+    withoutSourceFromToday,
+    projectNextStepSuggestions,
+    setProjectNextStepSuggestions,
+    projectEditDraft,
+    setProjectEditDraft,
+    projectEditSaving,
+    setProjectEditSaving,
+    nextStepEditDraft,
+    setNextStepEditDraft,
+    nextStepOpenMenuOpen,
+    setNextStepOpenMenuOpen,
+    nextStepOpenPicker,
+    setNextStepOpenPicker,
+    instructionChoices,
+    setInstructionChoices,
+    instructionChoicesLoading,
+    setInstructionChoicesLoading,
+    instructionChoicesError,
+    setInstructionChoicesError,
+    instructionSettingsBusy,
+    setInstructionSettingsBusy,
+    projectEditSavingRef,
+    projectEditInitialDraftRef,
+    nextStepEditInitialDraftRef,
+    projectEditReturnFocusRef,
+    nextStepEditReturnFocusRef,
+    projectSelectableButtons,
+    refreshNextStepSuggestions,
+  });
+  refreshInstructionChoicesRef.current = refreshInstructionChoices;
+
+  const announceReorderRef = useRef<(label: string, position: number) => void>(() => {});
+  const todayPickerCandidateSelectedRef = useRef<(candidate: TodayCandidate) => void>(
+    () => {},
+  );
+
+  const {
+    updateVictoryText,
+    clearVictoryAutoFocus,
+    enterVictoryEditing,
+    leaveVictoryEditing,
+    applyVictorySuggestion,
+    toggleVictoryDone,
+    handleVictoryKeyDown,
+    removeTodayItem,
+    beginTodayTriggerEdit,
+    cancelTodayTriggerEdit,
+    handleTodayTriggerKeyDown,
+    flushHistoryNotesSave,
+    updateHistoryNoteText,
+    addCandidateToToday,
+    saveTodayPickerDraft,
+    chooseTodayCandidate,
+    addTodayPickerQuickWish,
+    removeTodayPickerDraftItem,
+    moveTodayPickerItem,
+    moveTodayPickerItemToIndex,
+    startNextTodayBatch,
+  } = useTodayAndVictory({
+    setBanner,
+    setConfig,
+    todayPickerDraftItems,
+    setTodayPickerDraftItems,
+    setTodayTriggerDraft,
+    todayTriggerDraft,
+    setVictoryEditing,
+    victoryEditing,
+    setTodayTriggerEditingIndex,
+    todayPickerDragIndex,
+    setTodayPickerDragIndex,
+    todayPickerCandidateSelected: (candidate: TodayCandidate) =>
+      todayPickerCandidateSelectedRef.current(candidate),
+    announceReorder: (label: string, position: number) =>
+      announceReorderRef.current(label, position),
+    todayPickerAddedWishes,
+    setTodayPickerAddedWishes,
+    todayPickerInitialItemsRef,
+    todayPickerQuickText,
+    setTodayPickerQuickText,
+    todayPickerFilter,
+    setTodayPickerFilter,
+    closeTodayPicker,
+    resetInProgressRef,
+    notesSaveTimersRef,
+    writeGenerationRef,
+    setNotesSaveStatus,
+    notesHistory,
+    setNotesHistory,
+    activeView,
+    mainScrollAreaRef,
+    refreshSessions,
+    refreshTodayActivity,
+    seenCompletionFeedbackRef,
+    sessionSummary,
+    setCompletionFeedback,
+    setSessionSummary,
+    showCompletionFeedback,
+    todayPickerSaving,
+    todayPickerSavingRef,
+    setTodayPickerSaving,
+    victoryInputRef,
+    victoryNavigationRef,
+    victorySaveRef,
+    activeTimerRef,
+    config,
+    configRef,
+    persistConfig,
+    requestConfirmation,
+    saveSourceEdit,
+    setContextMenu,
+    showToast,
+    sourceEditBlocked,
+    sourceEditBlockReason,
+    warnSourceEditBlocked,
+    withoutSourceFromToday,
+  });
 
   const dismissNonCriticalModal = useCallback(() => {
     if (sourceEditBusyRef.current || projectEditSavingRef.current) return;
@@ -2170,6 +2239,7 @@ function DashboardApp() {
     settingsDraft,
     todayPickerOpen,
     requestCloseTodayPicker,
+    sourceEditBusyRef,
   ]);
 
   const hasDismissibleModal = Boolean(
@@ -2189,148 +2259,22 @@ function DashboardApp() {
     groupDraft !== null,
   );
 
-  useEffect(() => {
-    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
-      if (
-        event.key !== "Escape" ||
-        completionPrompt ||
-        confirmDialog ||
-        earlyStop ||
-        !hasDismissibleModal
-      )
-        return;
-      event.preventDefault();
-      dismissNonCriticalModal();
-    };
-    window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [completionPrompt, confirmDialog, earlyStop, dismissNonCriticalModal, hasDismissibleModal]);
-
-  // P10-03: Ctrl+F opens the search window from the main window (the dictionary and the
-  // instruction viewer keep their own handling).
-  useEffect(() => {
-    const openOnCtrlF = (event: globalThis.KeyboardEvent) => {
-      if (event.key.toLowerCase() !== "f" || !event.ctrlKey) return;
-      if (event.altKey || event.metaKey || event.shiftKey) return;
-      if (event.repeat) return;
-      if (event.isComposing || event.keyCode === 229) return;
-      // The main window always swallows Ctrl+F, even when the search window cannot open
-      // (a dialog or a menu is up): WebView2's own find bar must never come up. Only the
-      // Japanese conversion case above is left alone.
-      event.preventDefault();
-      if (activeView !== "main") return;
-      if (completionPrompt || confirmDialog || earlyStop) return;
-      if (contextMenu) return;
-      if (hasDismissibleModal && !searchOpen) return;
-      openSearchRef.current();
-    };
-    window.addEventListener("keydown", openOnCtrlF, true);
-    return () => window.removeEventListener("keydown", openOnCtrlF, true);
-  }, [
+  useModalsAndFocus({
     activeView,
     completionPrompt,
+    config,
     confirmDialog,
     contextMenu,
-    earlyStop,
-    hasDismissibleModal,
-    searchOpen,
-  ]);
-  // P10-02: F1 opens the guide from the main window. It stays out of the way when a dialog or a
-  // menu is open, while Japanese input is composing, or when the dictionary key is exactly F1.
-  useEffect(() => {
-    const openGuideOnF1 = (event: globalThis.KeyboardEvent) => {
-      if (event.key !== "F1") return;
-      if (event.isComposing || event.keyCode === 229) return;
-      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
-      if (activeView !== "main") return;
-      if (hasDismissibleModal || completionPrompt || confirmDialog || earlyStop) return;
-      if (contextMenu) return;
-      const launcherKey = (config?.settings.launcherHotkey ?? "").trim().toUpperCase();
-      if (launcherKey === "F1") return;
-      event.preventDefault();
-      setHelpGuideOpen(true);
-    };
-    window.addEventListener("keydown", openGuideOnF1);
-    return () => window.removeEventListener("keydown", openGuideOnF1);
-  }, [
-    activeView,
-    completionPrompt,
-    config?.settings.launcherHotkey,
-    confirmDialog,
-    contextMenu,
-    earlyStop,
-    hasDismissibleModal,
-  ]);
-
-  useEffect(() => {
-    if (
-      confirmDialog ||
-      earlyStop ||
-      helpGuideOpen ||
-      (!hasDismissibleModal && !completionPrompt)
-    ) {
-      return;
-    }
-
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const topSurface = () => {
-      const surfaces = document.querySelectorAll<HTMLElement>(
-        '.modalBackdrop:not([data-exiting="true"])',
-      );
-      return surfaces.item(surfaces.length - 1)?.querySelector<HTMLElement>("section") ?? null;
-    };
-    const focusableInside = (surface: HTMLElement) =>
-      Array.from(
-        surface.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-        ),
-      );
-    const focusFrame = window.requestAnimationFrame(() => {
-      const surface = topSurface();
-      if (!surface || surface.contains(document.activeElement)) return;
-      (
-        surface.querySelector<HTMLElement>("[data-initial-focus]:not([disabled])") ??
-        focusableInside(surface)[0] ??
-        surface
-      ).focus();
-    });
-    const trapFocus = (event: globalThis.KeyboardEvent) => {
-      if (event.key !== "Tab") return;
-      const surface = topSurface();
-      if (!surface) return;
-      const controls = focusableInside(surface);
-      if (controls.length === 0) {
-        event.preventDefault();
-        surface.focus();
-        return;
-      }
-      const first = controls[0];
-      const last = controls[controls.length - 1];
-      if (!surface.contains(document.activeElement)) {
-        event.preventDefault();
-        first.focus();
-      } else if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-
-    document.addEventListener("keydown", trapFocus, true);
-    return () => {
-      window.cancelAnimationFrame(focusFrame);
-      document.removeEventListener("keydown", trapFocus, true);
-      opener?.focus();
-    };
-  }, [
-    completionPrompt,
-    confirmDialog,
+    dismissNonCriticalModal,
     earlyStop,
     hasDismissibleModal,
     helpGuideOpen,
-  ]);
+    openSearchRef,
+    searchOpen,
+    setHelpGuideOpen,
+  });
+
+
 
 
 
@@ -2576,265 +2520,6 @@ function DashboardApp() {
       setCompletionFollowupChoice("write");
     }
   }, [completionFollowup]);
-  const queueCompletionFollowup = (
-    key: string,
-    source: TodayCompletionSource | null,
-    text: string,
-    previousNextStep?: LauncherNextStep,
-    minutes?: number,
-    startedAt?: string,
-    endedAt?: string,
-  ) => {
-    if (!source || queuedCompletionFollowupsRef.current.has(key)) return;
-    // P10-09 (§8.1): a Next Step completion always asks where to start next, even when the
-    // Project has no wishlist items yet.
-    if (source.kind === "nextStep" && !source.isCurrentSnapshot) return;
-    queuedCompletionFollowupsRef.current.add(key);
-    if (completionFollowupTimerRef.current !== null) {
-      window.clearTimeout(completionFollowupTimerRef.current);
-    }
-    const showFollowup = () => {
-      completionFollowupTimerRef.current = null;
-      if (source.kind === "nextStep") {
-        // The Project must still be there and its Next Step must still be empty.
-        const current = configRef.current;
-        const project = current?.projects.find((item) => item.id === source.projectId);
-        if (project && !project.nextStep?.text.trim()) {
-          setCompletionFollowup({ key, source, text, minutes, previousNextStep, startedAt, endedAt });
-        }
-        return;
-      }
-      if (confirmDialogRef.current) {
-        completionFollowupTimerRef.current = window.setTimeout(showFollowup, 250);
-        return;
-      }
-      requestConfirmation({
-        title: "この「やりたいこと」はどうしますか？",
-        subject: `「${text}」`,
-        message: "完了にすると、やりたいことから外します。今日の3件と実行記録は残ります。",
-        confirmLabel: "完了にする",
-        cancelLabel: "まだやりたい",
-        onConfirm: async () => {
-          const current = configRef.current;
-          if (!current) return false;
-          const next = completeWishlistAfterToday(
-            current,
-            source,
-            text,
-            new Date().toISOString(),
-            createStableId(),
-          );
-          if (!next) {
-            showToast("warn", "元のやりたいことが見つかりません");
-            return false;
-          }
-          return persistConfig(next);
-        },
-      });
-    };
-    completionFollowupTimerRef.current = window.setTimeout(showFollowup, 1100);
-  };
-
-  const recordTimerSession = useCallback(
-    async (timer: ActiveTimer, stoppedAt: number, reason: "manual" | "switch" | "complete") => {
-      const minutes = sessionMinutes(timer, stoppedAt);
-
-      if (minutes < SESSION_MINIMUM_MINUTES) {
-        if (reason === "manual" || reason === "switch") {
-          showToast("warn", "1分未満なので記録しませんでした");
-        }
-        return true;
-      }
-
-      try {
-        const response = await recordSession({
-          projectId: timer.projectId,
-          label: timer.label,
-          startedAt: timer.startedAt,
-          minutes,
-          note: timer.note,
-        });
-        setTodaySessionMinutes(response.totalMinutes);
-        setTodaySessionDate(response.date);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        showToast("error", `記録できません: ${message}`);
-        return false;
-      }
-      // A refresh error after append must never cause a second Session append.
-      try {
-        if (!timer.doNowSnapshot || reason !== "complete") await refreshDoNow();
-        await refreshTodayActivity();
-        // P97-02 C: 記録画面を開いたままでも集計がすぐ新しくなるように、
-        // 記録に成功したあとだけ記録画面のデータを読み直す（記録の処理は増やさない）。
-        await refreshRecords();
-      } catch {
-        showToast("warn", "記録は保存しましたが、表示を更新できませんでした");
-      }
-      showToast("ok", `${timer.label} ${minutes}分を記録しました`);
-      return true;
-    },
-    [refreshDoNow, refreshTodayActivity, refreshRecords, showToast],
-  );
-
-  const finishTimer = useCallback(
-    async (requested: ActiveTimer, reason: "manual" | "switch" | "complete" = "manual") => {
-      const timer = activeTimerRef.current;
-      if (
-        !timer ||
-        timer.instanceId !== requested.instanceId ||
-        finishingTimerRef.current !== null ||
-        earlyStopRef.current ||
-        (plannedCommitRef.current && reason !== "complete")
-      )
-        return false;
-      const stoppedAt = Date.now();
-      const metrics = timerMetrics(timer, stoppedAt);
-      if (
-        reason === "manual" &&
-        timer.mode === "countdown" &&
-        timer.targetMinutes !== null &&
-        metrics.remainingSeconds !== null &&
-        metrics.remainingSeconds <= 0
-      ) {
-        setCompletionPrompt({
-          sourceId: timer.sourceId,
-          projectId: timer.projectId,
-          targetMinutes: timer.targetMinutes,
-          label: timer.label,
-          actionText: timer.actionText,
-        });
-        return false;
-      }
-      const item =
-        reason === "manual"
-          ? earlyCompletionItem(configRef.current?.today.items ?? [], timer, metrics.elapsedSeconds)
-          : undefined;
-      if (item?.sourceKey) {
-        const pending = { timer, sourceKey: item.sourceKey.trim(), stoppedAt, recorded: false };
-        earlyStopRef.current = pending;
-        setEarlyStop(pending);
-        const frozen = timer.paused
-          ? timer
-          : { ...timer, paused: true, pausedStartedAtMs: stoppedAt };
-        activeTimerRef.current = frozen;
-        setActiveTimer(frozen);
-        void focusDashboardWindow().catch(() => undefined);
-        return false;
-      }
-      finishingTimerRef.current = timer.instanceId;
-      try {
-        const saved = await recordTimerSession(timer, stoppedAt, reason);
-        if (saved && activeTimerRef.current?.instanceId === timer.instanceId) {
-          activeTimerRef.current = null;
-          setActiveTimer(null);
-          setCompletionPrompt(null);
-        }
-        return saved;
-      } finally {
-        finishingTimerRef.current = null;
-      }
-    },
-    [recordTimerSession],
-  );
-
-  const showTimerCompletionFeedback = (
-    timer: ActiveTimer,
-    current: AppConfig,
-    nextItems: AppConfig["today"]["items"],
-    completedSourceKey: string | null,
-    stoppedAt: number,
-  ) => {
-    const key = `timer:${current.today.date}:${timer.instanceId}`;
-    if (timer.doNowSnapshot && (timer.continuedAfterCompletion || !completedSourceKey)) {
-      setDoNowCompletionHold({
-        ...timer.doNowSnapshot,
-        date: current.today.date,
-        minutes: sessionMinutes(timer, stoppedAt),
-      });
-    }
-    if (completedSourceKey && timer.doNowSnapshot) {
-      setDoNowExcludedProjectId(timer.doNowSnapshot.projectId);
-      setDoNowPickedProjectId(null);
-    }
-    if (completedSourceKey && nextItems.length === 3 && nextItems.every((item) => item.done)) {
-      showCompletionFeedback({ key, kind: "todayAll", label: timer.note || timer.label });
-      return;
-    }
-    if (completedSourceKey) {
-      showCompletionFeedback({
-        key,
-        kind: "today",
-        label: timer.note || timer.label,
-        sourceKey: completedSourceKey,
-      });
-      return;
-    }
-  };
-
-  const resolveEarlyStop = async (complete: boolean) => {
-    const pending = earlyStopRef.current;
-    if (
-      !pending ||
-      finishingTimerRef.current !== null ||
-      activeTimerRef.current?.instanceId !== pending.timer.instanceId
-    )
-      return false;
-    finishingTimerRef.current = pending.timer.instanceId;
-    setEarlyStopSaving(true);
-    try {
-      if (!pending.recorded) {
-        if (!(await recordTimerSession(pending.timer, pending.stoppedAt, "manual"))) return false;
-        pending.recorded = true;
-      }
-      // Session is durable before updating Today3; a failed config write rolls back only Today3.
-      if (complete) {
-        const current = configRef.current;
-        if (current) {
-          const completedItem = current.today.items.find(
-            (item, index) => todaySourceKey(item, index) === pending.sourceKey && !item.done,
-          );
-          const prepared = completeTodayItemAndPrepareSource(
-            current,
-            pending.sourceKey,
-            new Date().toISOString(),
-            createStableId(),
-          );
-          const completedSourceKey = prepared.config === current ? null : pending.sourceKey;
-          const saved = prepared.config === current ? true : await persistConfig(prepared.config);
-          if (saved && completedSourceKey) {
-            showTimerCompletionFeedback(
-              pending.timer,
-              current,
-              prepared.config.today.items,
-              completedSourceKey,
-              pending.stoppedAt,
-            );
-            queueCompletionFollowup(
-              `timer:${current.today.date}:${pending.timer.instanceId}:${completedSourceKey}`,
-              prepared.source,
-              completedItem?.text ?? pending.timer.note ?? pending.timer.label,
-              prepared.source?.projectId
-                ? current.projects.find((project) => project.id === prepared.source!.projectId)
-                    ?.nextStep
-                : undefined,
-              sessionMinutes(pending.timer, pending.stoppedAt),
-              new Date(pending.timer.startedAtMs).toISOString(),
-              new Date(pending.stoppedAt).toISOString(),
-            );
-          }
-        }
-      }
-      earlyStopRef.current = null;
-      setEarlyStop(null);
-      activeTimerRef.current = null;
-      setActiveTimer(null);
-      return true;
-    } finally {
-      finishingTimerRef.current = null;
-      setEarlyStopSaving(false);
-    }
-  };
 
   useEffect(() => {
     if (
@@ -2876,146 +2561,6 @@ function DashboardApp() {
       void notifyTimerComplete(activeTimer.label).catch(() => undefined);
     }
   }, [activeTimer, completionPrompt, currentTimerMetrics]);
-
-  const startTimer = useCallback(
-    async (
-      sourceId: string,
-      label: string,
-      projectId: string | null,
-      actions: LauncherAction[] = [],
-      targetMinutes?: number,
-      noteOverride?: string,
-      instructionPathOverride?: string,
-      instructionOpenOnStartOverride?: boolean,
-      mode: TimerMode = "countdown",
-      doNowProject?: LauncherProject,
-      expandOnStart = false,
-    ) => {
-      const cleanLabel = label.trim();
-      if (
-        !config ||
-        !cleanLabel ||
-        (sourceEditBusyRef.current !== null &&
-          timerSourceKey(configRef.current ?? config, sourceId) === sourceEditBusyRef.current) ||
-        earlyStopRef.current ||
-        finishingTimerRef.current !== null ||
-        plannedCommitRef.current
-      )
-        return;
-
-      const requestId = ++timerStartRequestRef.current;
-      const previousTimer = activeTimerRef.current;
-      if (previousTimer) {
-        if (!(await finishTimer(previousTimer, "switch"))) return;
-      }
-
-      if (requestId !== timerStartRequestRef.current) return;
-      setDoNowCompletionHold(null);
-      setCompletionPrompt(null);
-      const start = new Date();
-      const timerConfig = configRef.current ?? config;
-      const directTodayItem = sourceId.startsWith("today:")
-        ? timerConfig.today.items.find(
-            (item, index) => todayTimerSourceId(item, index) === sourceId,
-          )
-        : undefined;
-      const sourceGenerationId = sourceId.startsWith("today:")
-        ? directTodayItem?.sourceGenerationId
-        : projectId !== null && sourceId === projectId
-          ? timerConfig.projects.find((project) => project.id === projectId)?.nextStep?.generationId
-          : undefined;
-      const resolvedTargetMinutes =
-        mode === "countdown" ? (targetMinutes ?? config.settings.defaultTimerMinutes) : null;
-      const fallbackNote =
-        projectId !== null
-          ? (config.projects.find((project) => project.id === projectId)?.nextStep?.text ?? "")
-          : cleanLabel;
-      const note = noteOverride?.trim() || fallbackNote;
-      const startedNextStepText =
-        projectId !== null && sourceId === projectId
-          ? timerConfig.projects.find((project) => project.id === projectId)?.nextStep?.text
-          : undefined;
-      const actionText =
-        (sourceId.startsWith("today:") ? directTodayItem?.text : startedNextStepText)?.trim() ||
-        cleanLabel;
-      setNow(start.getTime());
-      const nextTimer: ActiveTimer = {
-        instanceId: requestId,
-        sourceId,
-        ...(sourceGenerationId ? { sourceGenerationId } : {}),
-        projectId,
-        label: cleanLabel,
-        note,
-        actionText,
-        ...(doNowProject && {
-          doNowSnapshot: {
-            projectId: doNowProject.id,
-            projectName: doNowProject.name,
-            colorId: doNowProject.colorId,
-            taskText: doNowProject.nextStep?.text.trim() || note,
-          },
-        }),
-        mode,
-        startedAtMs: start.getTime(),
-        startedAt: formatStartedAt(start),
-        targetMinutes: resolvedTargetMinutes,
-        paused: false,
-        pausedStartedAtMs: null,
-        pausedTotalMs: 0,
-      };
-      activeTimerRef.current = nextTimer;
-      setActiveTimer(nextTimer);
-      setExpandedTimerOpen(expandOnStart);
-
-      if (actions.length > 0) {
-        void runActions(sourceId, actions);
-      }
-
-      const project = projectId ? config.projects.find((item) => item.id === projectId) : undefined;
-      const instructionPath = instructionPathOverride?.trim() || project?.nextStep?.instructionPath;
-      const opensInstruction = instructionPathOverride?.trim()
-        ? instructionOpenOnStartOverride !== false
-        : project?.nextStep?.instructionOpenOnStart !== false;
-      if (instructionPath && opensInstruction) {
-        void openInstructionWindow({ path: instructionPath, focus: false }).catch((error) => {
-          showToast(
-            "warn",
-            `タイマーは開始しましたが、手順書を開けません: ${error instanceof Error ? error.message : String(error)}`,
-          );
-        });
-      }
-      if (expandOnStart) {
-        const mainWindow = getCurrentWindow();
-        const [visible, minimized] = await Promise.all([
-          mainWindow.isVisible().catch(() => true),
-          mainWindow.isMinimized().catch(() => false),
-        ]);
-        if (!visible || minimized) void returnToMain().catch(() => undefined);
-      }
-    },
-    [config, finishTimer, returnToMain, runActions, showToast],
-  );
-
-  const markNextStepReviewed = async (projectId: string) => {
-    if (!config) return false;
-    // P10-05: one press at a time — the button is disabled while the save runs.
-    if (nextStepReviewBusy === projectId) return false;
-    setNextStepReviewBusy(projectId);
-    const reviewedAt = new Date().toISOString();
-    const saved = await persistConfig({
-      ...config,
-      projects: config.projects.map((project) =>
-        project.id === projectId && project.nextStep
-          ? { ...project, nextStep: { ...project.nextStep, reviewedAt } }
-          : project,
-      ),
-    });
-    if (saved) {
-      setStaleNextStepProjectIds((ids) => ids.filter((id) => id !== projectId));
-    }
-    setNextStepReviewBusy(null);
-    return saved;
-  };
 
   const refreshMissingLaunchTargets = useCallback(async () => {
     const requestId = ++missingTargetsRequestRef.current;
@@ -3065,205 +2610,32 @@ function DashboardApp() {
     }
   }, [completionPrompt]);
 
-  // V163-B4: an empty or invalid entry falls back to the setting (or 15), then stays in 1..240.
-  const completionExtendMinutes = (() => {
-    const fallback = config?.settings.extendTimerMinutes ?? DEFAULT_EXTEND_TIMER_MINUTES;
-    const parsed = Number.parseInt(completionExtendDraft, 10);
-    return normalizeTimerMinutes(Number.isFinite(parsed) && parsed > 0 ? parsed : fallback);
-  })();
+  const finishCompletedTimerRef = useRef<() => void>(() => {});
 
-  const continueCompletedTimer = () => {
-    if (
-      !completionPrompt ||
-      completionResumeSavingRef.current ||
-      plannedCommitRef.current ||
-      finishingTimerRef.current !== null
-    )
-      return;
-    if (!activeTimer || activeTimerRef.current?.instanceId !== activeTimer.instanceId) return;
-    setCompletionPrompt(null);
-    const continuedAt = Date.now();
-    setNow(continuedAt);
-    setActiveTimer((timer) => {
-      if (
-        !timer ||
-        timer.sourceId !== completionPrompt.sourceId ||
-        timer.targetMinutes !== completionPrompt.targetMinutes
-      ) {
-        return timer;
-      }
-
-      // V151-S7: the time spent on the prompt is not counted; the extension starts from the press.
-      const waitedMs =
-        timer.expiredAtMs != null ? Math.max(0, continuedAt - timer.expiredAtMs) : 0;
-      const extended = {
-        ...timer,
-        continuedAfterCompletion: true,
-        targetMinutes:
-          (timer.targetMinutes ?? completionPrompt.targetMinutes) + completionExtendMinutes,
-        pausedTotalMs: timer.pausedTotalMs + waitedMs,
-        expiredAtMs: null,
-      };
-      activeTimerRef.current = extended;
-      return extended;
+  const { recordTimerSession, finishTimer, startTimer, finishActiveTimer, togglePause } =
+    useTimerRuntime({
+      activeTimer, activeTimerRef, config, configRef, expandedTimerOpen,
+      finishCompletedTimer: () => finishCompletedTimerRef.current(),
+      finishingTimerRef, now, persistConfig, plannedCommitRef, setActiveTimer,
+      setCompletionPrompt, setExpandedTimerOpen, setNow, showToast, setTodaySessionDate,
+      setTodaySessionMinutes, refreshDoNow, refreshTodayActivity, refreshRecords, earlyStopRef,
+      setEarlyStop, sourceEditBusyRef, timerStartRequestRef, setDoNowCompletionHold, runActions,
+      returnToMain, nextStepReviewBusy, setNextStepReviewBusy, setStaleNextStepProjectIds,
     });
-  };
 
-  const finishCompletedTimer = () => {
-    if (plannedCommitRef.current || finishingTimerRef.current !== null || earlyStopRef.current)
-      return;
-    const completedTimer = activeTimerRef.current;
-    if (!completedTimer || activeTimer?.instanceId !== completedTimer.instanceId) return;
-    if (
-      !completedTimer.continuedAfterCompletion &&
-      (!completionPrompt || completedTimer.sourceId !== completionPrompt.sourceId)
-    ) {
-      setCompletionPrompt(null);
-      return;
-    }
-
-    plannedCommitRef.current = true;
-    const stoppedAt = Date.now();
-    if (completedTimer.doNowSnapshot && completedTimer.continuedAfterCompletion && configRef.current) {
-      setDoNowCompletionHold({
-        ...completedTimer.doNowSnapshot,
-        date: configRef.current.today.date,
-        minutes: sessionMinutes(completedTimer, stoppedAt),
-      });
-      setDoNowCompletionSaving(true);
-    }
-    let completed = false;
-    void finishTimer(completedTimer, "complete")
-      .then(async (finished) => {
-        if (!finished) return false;
-        const current = configRef.current;
-        if (!current) return true;
-        const completedEntry = findTodayEntryForTimer(
-          todayEntries(current.today.items),
-          completedTimer,
-        );
-        const prepared = completedEntry
-          ? completeTodayItemAndPrepareSource(
-              current,
-              completedEntry.sourceKey,
-              new Date().toISOString(),
-              createStableId(),
-            )
-          : { config: current, source: null };
-        if (prepared.config !== current && !(await persistConfig(prepared.config))) return false;
-
-        showTimerCompletionFeedback(
-          completedTimer,
-          current,
-          prepared.config.today.items,
-          completedEntry?.sourceKey ?? null,
-          stoppedAt,
-        );
-        if (completedEntry) {
-          queueCompletionFollowup(
-            `timer:${current.today.date}:${completedTimer.instanceId}:${completedEntry.sourceKey}`,
-            prepared.source,
-            completedEntry.item.text,
-            prepared.source?.projectId
-              ? current.projects.find((project) => project.id === prepared.source!.projectId)
-                  ?.nextStep
-              : undefined,
-            sessionMinutes(completedTimer, stoppedAt),
-            new Date(completedTimer.startedAtMs).toISOString(),
-            new Date(stoppedAt).toISOString(),
-          );
-        }
-        completed = true;
-        return true;
-      })
-      .finally(() => {
-        if (completedTimer.doNowSnapshot && completedTimer.continuedAfterCompletion) {
-          setDoNowCompletionSaving(false);
-          if (!completed) setDoNowCompletionHold(null);
-        }
-        plannedCommitRef.current = false;
-      });
-  };
-
-  const finishActiveTimer = (timer: ActiveTimer) => {
-    if (activeTimerRef.current?.instanceId !== timer.instanceId) return;
-    if (timer.continuedAfterCompletion && timer.doNowSnapshot) finishCompletedTimer();
-    else void finishTimer(timer);
-  };
   finishActiveTimerRef.current = finishActiveTimer;
 
-  const togglePause = useCallback(() => {
-    if (earlyStopRef.current || finishingTimerRef.current !== null || plannedCommitRef.current)
-      return;
-    // Compute the next state once, outside the state updater: the updater may be called more than
-    // once and must not read the clock or write the ref. The display clock (`now`) is aligned to the
-    // moment of the press so that rapid pause/resume never leaves it behind pausedTotalMs.
-    const timer = activeTimerRef.current;
-    // V151-S7: while the planned-time prompt waits, the timer is already stopped at its end.
-    if (!timer || timer.expiredAtMs != null) return;
-    const current = Date.now();
-    const pausedDelta = timer.pausedStartedAtMs ? current - timer.pausedStartedAtMs : 0;
-    const nextTimer: ActiveTimer = timer.paused
-      ? {
-          ...timer,
-          paused: false,
-          pausedStartedAtMs: null,
-          pausedTotalMs: timer.pausedTotalMs + pausedDelta,
-        }
-      : { ...timer, paused: true, pausedStartedAtMs: current };
-    activeTimerRef.current = nextTimer;
-    setNow(current);
-    setActiveTimer(nextTimer);
-  }, []);
+  useMiniWindowSync({
+    activeTimer,
+    config,
+    finishActiveTimerRef,
+    hideMiniWindow,
+    miniSnapshot,
+    miniSnapshotRef,
+    returnToMain,
+    togglePause,
+  });
 
-  useEffect(() => {
-    let disposed = false;
-    let cleanup: Array<() => void> = [];
-
-    const setup = async () => {
-      const unlistenReady = await listen(MINI_READY_EVENT, () => {
-        void emit(MINI_TIMER_SNAPSHOT_EVENT, miniSnapshotRef.current);
-      });
-      const unlistenCommand = await listen<MiniTimerCommand>(MINI_TIMER_COMMAND_EVENT, (event) => {
-        if (event.payload.action === "pause") {
-          togglePause();
-          return;
-        }
-        if (event.payload.action === "finish" && activeTimer) {
-          finishActiveTimerRef.current(activeTimer);
-        }
-      });
-      const unlistenReturn = await listen(MINI_RETURN_EVENT, () => {
-        void returnToMain().catch((error) =>
-          console.error("[mini-mode] メイン復帰に失敗しました", error),
-        );
-      });
-
-      if (disposed) {
-        unlistenReady();
-        unlistenCommand();
-        unlistenReturn();
-      } else {
-        cleanup = [unlistenReady, unlistenCommand, unlistenReturn];
-      }
-    };
-
-    void setup();
-
-    return () => {
-      disposed = true;
-      cleanup.forEach((dispose) => dispose());
-    };
-  }, [activeTimer, returnToMain, togglePause]);
-
-  useEffect(() => {
-    void emit(MINI_TIMER_SNAPSHOT_EVENT, miniSnapshot);
-  }, [miniSnapshot]);
-
-  useEffect(() => {
-    if (config?.settings.miniMode !== false) return;
-    void hideMiniWindow().catch(() => undefined);
-  }, [hideMiniWindow, config?.settings.miniMode]);
 
   const toggleAutoStart = async () => {
     if (!config) return;
@@ -3291,1697 +2663,7 @@ function DashboardApp() {
     }
   };
 
-  const updateVictoryText = (text: string) => {
-    if (!config) return Promise.resolve(false);
-    if (!text.trim()) {
-      seenCompletionFeedbackRef.current.delete(`victory:${config.today.date}`);
-      setCompletionFeedback((current) => (current?.kind === "victory" ? null : current));
-    }
-    const victory = {
-      text,
-      done: text.trim() ? config.today.victory.done : false,
-    };
-    return persistConfig({ ...config, today: { ...config.today, victory } });
-  };
 
-  const clearVictoryAutoFocus = (event: { currentTarget: HTMLElement }) => {
-    delete event.currentTarget.dataset.autoFocus;
-  };
-
-  const enterVictoryEditing = () => {
-    victorySaveRef.current = null;
-    setVictoryEditing(true);
-    window.requestAnimationFrame(() => victoryInputRef.current?.focus({ preventScroll: true }));
-  };
-
-  const leaveVictoryEditing = () => {
-    setVictoryEditing(false);
-    window.requestAnimationFrame(() => victoryNavigationRef.current?.focus({ preventScroll: true }));
-  };
-
-  const applyVictorySuggestion = (text: string) => {
-    const scrollArea = mainScrollAreaRef.current;
-    const scrollTop = scrollArea?.scrollTop ?? 0;
-    setVictoryEditing(true);
-    victorySaveRef.current = updateVictoryText(text);
-    void victorySaveRef.current.then(() => {
-      window.requestAnimationFrame(() => {
-        if (scrollArea?.isConnected) scrollArea.scrollTop = scrollTop;
-        victoryInputRef.current?.focus({ preventScroll: true });
-        window.requestAnimationFrame(() => {
-          if (scrollArea?.isConnected) scrollArea.scrollTop = scrollTop;
-        });
-      });
-    });
-  };
-
-  const toggleVictoryDone = () => {
-    const current = configRef.current;
-    if (!current) return;
-    const text = current.today.victory.text.trim();
-    if (!text) {
-      showToast("warn", "勝利条件を入力してください");
-      return;
-    }
-
-    const victory = {
-      ...current.today.victory,
-      done: !current.today.victory.done,
-    };
-    void persistConfig({ ...current, today: { ...current.today, victory } }).then((saved) => {
-      if (saved && victory.done) {
-        showCompletionFeedback({
-          key: `victory:${current.today.date}`,
-          kind: "victory",
-          label: text,
-        });
-      } else if (saved) {
-        seenCompletionFeedbackRef.current.delete(`victory:${current.today.date}`);
-        setCompletionFeedback((feedback) => (feedback?.kind === "victory" ? null : feedback));
-      }
-    });
-  };
-
-  const handleVictoryKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key !== "Enter" && event.key !== "Escape") return;
-    event.preventDefault();
-    event.stopPropagation();
-    if (event.key === "Escape") {
-      leaveVictoryEditing();
-      return;
-    }
-    void (victorySaveRef.current ?? Promise.resolve(true)).then((saved) => {
-      if (saved) leaveVictoryEditing();
-    });
-  };
-
-  const sourceSnapshotForUndo = (current: AppConfig, sourceKey: string): unknown | null => {
-    if (sourceKey.startsWith("project:")) {
-      return current.projects.find((project) => `project:${project.id}` === sourceKey) ?? null;
-    }
-    if (sourceKey.startsWith("wishlist:")) {
-      return current.inbox.find((item) => `wishlist:${item.id}` === sourceKey) ?? null;
-    }
-    return null;
-  };
-
-  const undoTodaySelectionOperation = async (input: {
-    operationId: string;
-    dayKey: string;
-    sourceKey: string;
-    item: TodayItem | null;
-    previousSourceKey: string | null;
-    nextSourceKey: string | null;
-    sourceSnapshot: unknown | null;
-    restoreExclusion: boolean;
-  }) => {
-    const current = configRef.current;
-    if (!current) return false;
-    if (
-      activeTimerRef.current?.sourceId === `today:${input.sourceKey}` ||
-      (input.sourceKey.startsWith("project:") &&
-        activeTimerRef.current?.sourceId === input.sourceKey.slice("project:".length))
-    ) {
-      showToast("warn", "タイマーを停止してから元に戻してください");
-      return false;
-    }
-    try {
-      const response = await undoTodaySelection(input);
-      configRef.current = response.config;
-      setConfig(response.config);
-      setBanner(null);
-      return true;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      showToast("error", `元に戻せません: ${message}`);
-      return false;
-    }
-  };
-
-  async function removeTodayItem(sourceKey: string) {
-    const current = configRef.current;
-    if (!current) return;
-    const index = current.today.items.findIndex(
-      (item, itemIndex) => todaySourceKey(item, itemIndex) === sourceKey,
-    );
-    if (index < 0) return;
-    if (
-      timerRunsTodayItem(
-        todayEntries(current.today.items),
-        activeTimerRef.current,
-        todayTimerSourceId(current.today.items[index], index),
-        sourceKey,
-      )
-    ) {
-      showToast("warn", "タイマーを停止してから外してください");
-      return;
-    }
-    // Keep legacy timer identities stable when an earlier card is removed.
-    const stableItems = current.today.items.map((item, itemIndex) =>
-      item.sourceKey?.trim() ? item : { ...item, sourceKey: todaySourceKey(item, itemIndex) },
-    );
-    const removedItem = stableItems[index];
-    const operationId = createStableId();
-    const previousSourceKey = index > 0 ? (stableItems[index - 1]?.sourceKey ?? null) : null;
-    const nextSourceKey = stableItems[index + 1]?.sourceKey ?? null;
-    const items = stableItems.filter((_, itemIndex) => itemIndex !== index);
-    setTodayTriggerEditingIndex(null);
-    if (
-      await persistConfig({
-        ...current,
-        today: {
-          ...current.today,
-          items,
-          selectionMutationTokens: {
-            ...current.today.selectionMutationTokens,
-            [sourceKey]: operationId,
-          },
-        },
-      })
-    ) {
-      showToast("neutral", "今日の3件から外しました", {
-        detail: "元の次の一手・やりたいことは残ります",
-        actionLabel: "元に戻す",
-        onAction: () =>
-          undoTodaySelectionOperation({
-            operationId,
-            dayKey: current.today.date,
-            sourceKey,
-            item: removedItem,
-            previousSourceKey,
-            nextSourceKey,
-            sourceSnapshot: sourceSnapshotForUndo(current, sourceKey),
-            restoreExclusion: false,
-          }),
-      });
-    }
-  }
-
-  const beginTodayTriggerEdit = (index: number) => {
-    if (!config) return;
-    setTodayTriggerDraft(config.today.items[index]?.trigger ?? "");
-    setTodayTriggerEditingIndex(index);
-  };
-
-  const cancelTodayTriggerEdit = () => {
-    setTodayTriggerDraft("");
-    setTodayTriggerEditingIndex(null);
-  };
-
-  const commitTodayTriggerEdit = (index: number) => {
-    if (!config) return;
-    const trigger = todayTriggerDraft.trim();
-    const items = config.today.items.map((item, itemIndex) => {
-      if (itemIndex !== index) return item;
-      const nextItem = { ...item };
-      if (trigger) {
-        nextItem.trigger = trigger;
-      } else {
-        delete nextItem.trigger;
-      }
-      return nextItem;
-    });
-    cancelTodayTriggerEdit();
-    void persistConfig({ ...config, today: { ...config.today, items } });
-  };
-
-  const handleTodayTriggerKeyDown = (event: KeyboardEvent<HTMLInputElement>, index: number) => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      commitTodayTriggerEdit(index);
-      event.currentTarget.blur();
-    } else if (event.key === "Escape") {
-      event.preventDefault();
-      cancelTodayTriggerEdit();
-      event.currentTarget.blur();
-    }
-  };
-
-  const addInboxItem = async () => {
-    if (!config || inboxAddSavingRef.current) return;
-    const text = inboxDraft.trim();
-    if (!text) {
-      setInboxAddError("やりたいことを入力してください");
-      return;
-    }
-    if (text.length > 120) {
-      setInboxAddError("やりたいことは120文字以内で入力してください");
-      return;
-    }
-
-    inboxAddSavingRef.current = true;
-    setInboxAddSaving(true);
-    setInboxAddError(null);
-    const saved = await persistConfig({
-      ...config,
-      inbox: [
-        ...config.inbox,
-        {
-          id: createStableId(),
-          text,
-          ...(inboxAddProjectId ? { projectId: inboxAddProjectId } : {}),
-        },
-      ],
-    });
-    inboxAddSavingRef.current = false;
-    setInboxAddSaving(false);
-    if (!saved) {
-      setInboxAddError("保存できませんでした。内容を残したまま、もう一度お試しください");
-      return;
-    }
-    closeInboxAddDialog(true);
-  };
-
-  function sourceEditBlockReason(key: string, allowTodaySourceSync = false) {
-    const current = configRef.current;
-    if (sourceEditBusyRef.current !== null) return "保存処理が完了してから変更してください";
-    if (
-      current &&
-      activeTimerRef.current &&
-      timerSourceKey(current, activeTimerRef.current.sourceId) === key
-    ) {
-      return SOURCE_EDIT_TIMER_REASON;
-    }
-    if (current && !allowTodaySourceSync && sourceLockedByUnfinishedToday(current, key)) {
-      return SOURCE_LOCK_REASON;
-    }
-    return null;
-  }
-
-  function sourceEditBlocked(key: string, allowTodaySourceSync = false) {
-    return sourceEditBlockReason(key, allowTodaySourceSync) !== null;
-  }
-
-  function warnSourceEditBlocked(key: string, allowTodaySourceSync = false) {
-    const reason = sourceEditBlockReason(key, allowTodaySourceSync);
-    if (reason) showToast("warn", reason);
-    return Boolean(reason);
-  }
-
-  const saveSourceEdit = async (previous: AppConfig, next: AppConfig, key: string) => {
-    const allowTodaySourceSync = sourceEditOriginRef.current === "today";
-    if (warnSourceEditBlocked(key, allowTodaySourceSync)) {
-      return null;
-    }
-    sourceEditBusyRef.current = key;
-    setSourceEditSaving(true);
-    try {
-      const resnapshotted = resnapshotSource(previous, next, key);
-      const todayUpdated = resnapshotted.today !== next.today;
-      return (await persistConfig(resnapshotted)) ? { todayUpdated } : null;
-    } catch (error) {
-      showToast("error", error instanceof Error ? error.message : String(error));
-      return null;
-    } finally {
-      sourceEditBusyRef.current = null;
-      setSourceEditSaving(false);
-    }
-  };
-
-  const beginInboxEdit = (index: number, origin: "source" | "today" | "builder" = "source") => {
-    const item = configRef.current?.inbox[index];
-    if (!item) return;
-    if (!item.id) return;
-    if (warnSourceEditBlocked(`wishlist:${item.id}`, origin === "today")) {
-      return;
-    }
-    inboxEditingIdRef.current = item.id;
-    sourceEditOriginRef.current = origin;
-    setContextMenu(null);
-    setInboxOpen(true);
-    setInboxEditingIndex(index);
-    inboxEditInitialDraftRef.current = {
-      text: item.text,
-      projectId: item.projectId ?? "",
-      buttonIds: [...(item.buttonIds ?? [])],
-      instructionPath: item.instructionPath ?? "",
-      instructionOpenOnStart: Boolean(
-        item.instructionPath && item.instructionOpenOnStart !== false,
-      ),
-    };
-    setInboxEditDraft(item.text);
-    setInboxEditProjectId(item.projectId ?? "");
-    setInboxEditButtonIds(item.buttonIds ?? []);
-    setInboxEditInstructionPath(item.instructionPath ?? "");
-    setInboxEditInstructionOpenOnStart(
-      Boolean(item.instructionPath && item.instructionOpenOnStart !== false),
-    );
-    void refreshInstructionChoices();
-  };
-
-  const commitInboxEdit = async () => {
-    const config = configRef.current;
-    if (!config || inboxEditingIndex === null) return;
-    const editingId = inboxEditingIdRef.current;
-    if (!editingId || !config.inbox.some((item) => item.id === editingId)) {
-      showToast("warn", "元の登録が見つかりません");
-      return;
-    }
-    if (warnSourceEditBlocked(`wishlist:${editingId}`, sourceEditOriginRef.current === "today")) {
-      return;
-    }
-    const text = inboxEditDraft.trim();
-    if (!text) {
-      closeInboxEditDialog(true);
-      return;
-    }
-    const inbox = config.inbox.map((item) =>
-      item.id === editingId
-        ? {
-            id: item.id ?? createStableId(),
-            text,
-            ...(inboxEditProjectId ? { projectId: inboxEditProjectId } : {}),
-            ...(inboxEditButtonIds.length > 0 ? { buttonIds: inboxEditButtonIds } : {}),
-            ...(inboxEditInstructionPath
-              ? {
-                  instructionPath: inboxEditInstructionPath,
-                  instructionOpenOnStart: inboxEditInstructionOpenOnStart,
-                }
-              : {}),
-          }
-        : item,
-    );
-    const result = await saveSourceEdit(config, { ...config, inbox }, `wishlist:${editingId}`);
-    if (!result) return;
-    closeInboxEditDialog(true);
-    const detail =
-      sourceEditOriginRef.current === "source"
-        ? result.todayUpdated
-          ? "今日の3件にも反映しました"
-          : undefined
-        : "元の「やりたいこと」にも反映しました";
-    showToast("ok", "変更を保存しました", { detail });
-  };
-
-  function isTimerActiveForSource(sourceKeys: string[], projectId?: string) {
-    if (!activeTimer) return false;
-    return (
-      (projectId !== undefined && activeTimer.sourceId === projectId) ||
-      sourceKeys.some((sourceKey) => activeTimer.sourceId === `today:${sourceKey}`)
-    );
-  }
-
-  const withoutSourceFromToday = (currentConfig: AppConfig, sourceKeys: string[]) => {
-    const matchingSourceKeys = new Set(sourceKeys);
-    const selectionMutationTokens = { ...currentConfig.today.selectionMutationTokens };
-    sourceKeys.forEach((sourceKey) => delete selectionMutationTokens[sourceKey]);
-    return {
-      ...currentConfig.today,
-      items: currentConfig.today.items.filter(
-        (item, todayIndex) => !matchingSourceKeys.has(todaySourceKey(item, todayIndex)),
-      ),
-      candidateExcludedSourceKeys: currentConfig.today.candidateExcludedSourceKeys.filter(
-        (sourceKey) => !matchingSourceKeys.has(sourceKey),
-      ),
-      selectionMutationTokens,
-    };
-  };
-
-  const completeInboxItem = (index: number) => {
-    if (!config) return;
-    const item = config.inbox[index];
-    if (!item) return;
-    const sourceKeys = [wishlistSourceKey(item, index), legacyWishlistSourceKey(item)];
-    const canonicalKey = canonicalSourceKey(config, sourceKeys[0]) ?? sourceKeys[0];
-    if (warnSourceEditBlocked(canonicalKey)) {
-      setContextMenu(null);
-      return;
-    }
-    if (isTimerActiveForSource(sourceKeys)) {
-      setContextMenu(null);
-      showToast("warn", "タイマーを停止してから完了してください");
-      return;
-    }
-    const project = item.projectId ? projectsById.get(item.projectId) : undefined;
-    setContextMenu(null);
-    requestConfirmation({
-      title: "完了にしますか？",
-      subject: `「${item.text}」`,
-      message: "この項目は今後の候補から外れます。これまでの実行記録は残ります。",
-      confirmLabel: "完了にする",
-      processingLabel: "完了にしています…",
-      onConfirm: async () => {
-        const completion: SourceCompletion = {
-          id: createStableId(),
-          sourceType: "wishlist",
-          sourceIdentity: sourceKeys[0],
-          textSnapshot: item.text,
-          ...(project ? { projectId: project.id, projectNameSnapshot: project.name } : {}),
-          completedAt: new Date().toISOString(),
-        };
-        return persistConfig({
-          ...config,
-          today: withoutSourceFromToday(config, sourceKeys),
-          inbox: config.inbox.filter((_, itemIndex) => itemIndex !== index),
-          sourceCompletions: [...config.sourceCompletions, completion],
-        });
-      },
-    });
-  };
-
-  const deleteInboxItem = (index: number) => {
-    if (!config) return;
-    const item = config.inbox[index];
-    if (!item) return;
-    const sourceKeys = [wishlistSourceKey(item, index), legacyWishlistSourceKey(item)];
-    const canonicalKey = canonicalSourceKey(config, sourceKeys[0]) ?? sourceKeys[0];
-    if (warnSourceEditBlocked(canonicalKey)) {
-      setContextMenu(null);
-      return;
-    }
-    if (isTimerActiveForSource(sourceKeys)) {
-      setContextMenu(null);
-      showToast("warn", "タイマーを停止してから削除してください");
-      return;
-    }
-    setContextMenu(null);
-    requestConfirmation({
-      title: "削除しますか？",
-      subject: `「${item.text}」`,
-      message: "この登録を削除します。完了としては記録されません。",
-      confirmLabel: "削除",
-      processingLabel: "削除しています…",
-      tone: "danger",
-      onConfirm: async () =>
-        persistConfig({
-          ...config,
-          today: withoutSourceFromToday(config, sourceKeys),
-          inbox: config.inbox.filter((_, itemIndex) => itemIndex !== index),
-        }),
-    });
-  };
-
-  const scheduleNotesSave = (key: string, save: () => Promise<void>, immediate = false) => {
-    if (resetInProgressRef.current) return;
-    const existing = notesSaveTimersRef.current.get(key);
-    if (existing !== undefined) window.clearTimeout(existing);
-    const writeGeneration = writeGenerationRef.current;
-    const run = () => {
-      notesSaveTimersRef.current.delete(key);
-      if (resetInProgressRef.current || writeGeneration !== writeGenerationRef.current) return;
-      void save();
-    };
-    if (immediate) {
-      run();
-      return;
-    }
-    setNotesSaveStatus("saving");
-    notesSaveTimersRef.current.set(key, window.setTimeout(run, 500));
-  };
-
-  const flushHistoryNotesSave = (date: string) => {
-    if (!notesHistory) return;
-    const items = notesHistory.entries.find((entry) => entry.date === date)?.items ?? [];
-    scheduleNotesSave(
-      `history-${date}`,
-      async () => {
-        try {
-          const response = await saveNotesForDate({ date, items });
-          setNotesHistory(response);
-          setNotesSaveStatus("saved");
-        } catch (error) {
-          setNotesSaveStatus("error");
-          const message = error instanceof Error ? error.message : String(error);
-          showToast("error", `できたことノートを保存できません: ${message}`);
-        }
-      },
-      true,
-    );
-  };
-
-  const updateHistoryNoteText = (date: string, index: number, text: string) => {
-    if (!notesHistory) return;
-
-    const nextEntries = notesHistory.entries.map((entry) => {
-      if (entry.date !== date) return entry;
-      const nextItems = toThreeNoteDraft(entry.items).map((item, itemIndex) =>
-        itemIndex === index ? text : item,
-      );
-      return { ...entry, items: nextItems };
-    });
-    setNotesHistory({ ...notesHistory, entries: nextEntries });
-
-    scheduleNotesSave(`history-${date}`, async () => {
-      try {
-        const response = await saveNotesForDate({
-          date,
-          items: nextEntries.find((entry) => entry.date === date)?.items ?? [],
-        });
-        setNotesHistory(response);
-        setNotesSaveStatus("saved");
-      } catch (error) {
-        setNotesSaveStatus("error");
-        const message = error instanceof Error ? error.message : String(error);
-        showToast("error", `できたことノートを保存できません: ${message}`);
-      }
-    });
-  };
-
-  async function addCandidateToToday(candidate: TodayCandidate, insertionIndex?: number) {
-    const current = configRef.current;
-    if (!current || !candidate.text.trim()) return false;
-    if (current.today.items.length >= TODAY_ITEM_LIMIT) {
-      showToast("warn", "いま選べるのは3件までです。完了後に次の3件を選べます");
-      return false;
-    }
-    const matchingSourceKeys = new Set([candidate.sourceKey, ...(candidate.sourceAliases ?? [])]);
-    if (
-      current.today.items.some((item, index) => matchingSourceKeys.has(todaySourceKey(item, index)))
-    ) {
-      showToast("warn", "今日の3件に既にあります");
-      return false;
-    }
-    const scrollArea = mainScrollAreaRef.current;
-    const scrollTopBeforeSave = scrollArea?.scrollTop;
-
-    const selectionMutationTokens = { ...current.today.selectionMutationTokens };
-    delete selectionMutationTokens[candidate.sourceKey];
-    const items = [...current.today.items];
-    items.splice(Math.min(Math.max(0, insertionIndex ?? items.length), items.length), 0, {
-      text: candidate.text,
-      done: false,
-      sourceKey: candidate.sourceKey,
-      ...(candidate.sourceGenerationId ? { sourceGenerationId: candidate.sourceGenerationId } : {}),
-      ...(candidate.trigger ? { trigger: candidate.trigger } : {}),
-      ...(candidate.projectId ? { projectId: candidate.projectId } : {}),
-      ...(candidate.buttonIds?.length ? { buttonIds: [...candidate.buttonIds] } : {}),
-      ...(candidate.expandTimerOnStart ? { expandTimerOnStart: true } : {}),
-      ...(candidate.instructionPath
-        ? {
-            instructionPath: candidate.instructionPath,
-            instructionOpenOnStart: candidate.instructionOpenOnStart !== false,
-          }
-        : {}),
-      defaultTimerMinutes: candidate.defaultTimerMinutes,
-      shortTimerMinutes: candidate.shortTimerMinutes,
-    });
-    const savePromise = persistConfig({
-      ...current,
-      today: {
-        ...current.today,
-        items,
-        selectionMutationTokens,
-      },
-    });
-    if (scrollArea && scrollTopBeforeSave !== undefined) {
-      scrollArea.scrollTop = scrollTopBeforeSave;
-      window.requestAnimationFrame(() => {
-        if (scrollArea.isConnected) scrollArea.scrollTop = scrollTopBeforeSave;
-      });
-    }
-    const saved = await savePromise;
-    if (saved && scrollArea && scrollTopBeforeSave !== undefined) {
-      scrollArea.scrollTop = scrollTopBeforeSave;
-    }
-    if (saved) showToast("ok", "今日の3件に追加しました");
-    return saved;
-  }
-
-  const todayItemFromCandidate = (candidate: TodayCandidate): TodayItem => ({
-    text: candidate.text,
-    done: false,
-    sourceKey: candidate.sourceKey,
-    ...(candidate.sourceGenerationId ? { sourceGenerationId: candidate.sourceGenerationId } : {}),
-    ...(candidate.trigger ? { trigger: candidate.trigger } : {}),
-    ...(candidate.projectId ? { projectId: candidate.projectId } : {}),
-    ...(candidate.buttonIds?.length ? { buttonIds: [...candidate.buttonIds] } : {}),
-    ...(candidate.expandTimerOnStart ? { expandTimerOnStart: true } : {}),
-    ...(candidate.instructionPath
-      ? {
-          instructionPath: candidate.instructionPath,
-          instructionOpenOnStart: candidate.instructionOpenOnStart !== false,
-        }
-      : {}),
-    defaultTimerMinutes: candidate.defaultTimerMinutes,
-    shortTimerMinutes: candidate.shortTimerMinutes,
-  });
-
-  // P10-10 (§6.1): the Picker only edits a draft. "決定" is the single save point.
-  const saveTodayPickerDraft = async (items = todayPickerDraftItems) => {
-    const current = configRef.current;
-    if (!current || todayPickerSavingRef.current) return false;
-    const addedWishes = todayPickerAddedWishes;
-    if (
-      JSON.stringify(current.today.items) !== JSON.stringify(todayPickerInitialItemsRef.current)
-    ) {
-      // Something else (a finishing Timer, another window) changed Today3 while the Picker was open.
-      const rebuilt = current.today.items.map((item) => ({
-        ...item,
-        ...(item.buttonIds ? { buttonIds: [...item.buttonIds] } : {}),
-      }));
-      todayPickerInitialItemsRef.current = rebuilt;
-      setTodayPickerDraftItems(rebuilt);
-      showToast("warn", "今日の3件がほかの所で変わりました。もう一度選んでください");
-      return false;
-    }
-    if (
-      addedWishes.length === 0 &&
-      JSON.stringify(items) === JSON.stringify(current.today.items)
-    ) {
-      closeTodayPicker();
-      return true;
-    }
-    todayPickerSavingRef.current = true;
-    setTodayPickerSaving(true);
-    // V163-B7: the quick-added wishes and Today3 are saved together, in this one write.
-    const saved = await persistConfig({
-      ...current,
-      ...(addedWishes.length > 0 ? { inbox: [...current.inbox, ...addedWishes] } : {}),
-      today: {
-        ...current.today,
-        items,
-      },
-    });
-    if (saved) {
-      todayPickerSavingRef.current = false;
-      closeTodayPicker();
-      showToast("ok", "今日の3件を選択しました");
-      return true;
-    }
-    todayPickerSavingRef.current = false;
-    setTodayPickerSaving(false);
-    return false;
-  };
-
-  const chooseTodayCandidate = (candidate: TodayCandidate) => {
-    if (todayPickerSaving || todayPickerDraftItems.length >= TODAY_ITEM_LIMIT) return;
-    const matchingSourceKeys = new Set([candidate.sourceKey, ...(candidate.sourceAliases ?? [])]);
-    if (
-      todayPickerDraftItems.some((item, index) =>
-        matchingSourceKeys.has(todaySourceKey(item, index)),
-      )
-    ) {
-      return;
-    }
-    setTodayPickerDraftItems([...todayPickerDraftItems, todayItemFromCandidate(candidate)]);
-  };
-
-  // V163-B7: one line of quick add inside the Picker. The wish is only a draft until 決定
-  // (P10-10 §6.1: one save point); when Today3 has room it also joins the draft at once.
-  const addTodayPickerQuickWish = () => {
-    if (todayPickerSaving) return;
-    const text = todayPickerQuickText.trim().slice(0, 120);
-    if (!text) return;
-    const current = configRef.current;
-    if (!current) return;
-    const projectId =
-      todayPickerFilter !== "all" && todayPickerFilter !== "unassigned"
-        ? todayPickerFilter
-        : undefined;
-    const wish: InboxItem = {
-      id: createStableId(),
-      text,
-      ...(projectId ? { projectId } : {}),
-      buttonIds: [],
-    };
-    const nextAdded = [...todayPickerAddedWishes, wish];
-    setTodayPickerAddedWishes(nextAdded);
-    setTodayPickerQuickText("");
-    const candidate = buildTodayCandidates({
-      ...current,
-      inbox: [...current.inbox, ...nextAdded],
-    }).find((entry) => entry.sourceKey === wishlistSourceKey(wish, 0));
-    if (!candidate) return;
-    const hasRoom = todayPickerDraftItems.length < TODAY_ITEM_LIMIT;
-    if (!hasRoom) {
-      showToast("warn", "今日の3件は3件埋まっています。候補に追加しました");
-      return;
-    }
-    if (todayPickerCandidateSelected(candidate)) return;
-    setTodayPickerDraftItems([...todayPickerDraftItems, todayItemFromCandidate(candidate)]);
-  };
-
-  const removeTodayPickerDraftItem = (index: number) => {
-    if (todayPickerSaving) return;
-    const draftItem = todayPickerDraftItems[index];
-    if (
-      draftItem &&
-      timerRunsTodayItem(
-        todayEntries(todayPickerDraftItems),
-        activeTimerRef.current,
-        todayTimerSourceId(draftItem, index),
-        todaySourceKey(draftItem, index),
-      )
-    ) {
-      showToast("warn", "タイマーを停止してから外してください");
-      return;
-    }
-    setTodayPickerDraftItems(todayPickerDraftItems.filter((_, itemIndex) => itemIndex !== index));
-  };
-
-  const moveTodayPickerItem = (fromIndex: number, toIndex: number) => {
-    if (todayPickerSaving) return;
-    if (fromIndex === toIndex) return;
-    if (
-      fromIndex < 0 ||
-      toIndex < 0 ||
-      fromIndex >= todayPickerDraftItems.length ||
-      toIndex >= todayPickerDraftItems.length
-    ) {
-      return;
-    }
-    const nextItems = [...todayPickerDraftItems];
-    const [moved] = nextItems.splice(fromIndex, 1);
-    nextItems.splice(toIndex, 0, moved);
-    setTodayPickerDraftItems(nextItems);
-    setTodayPickerDragIndex(null);
-    announceReorder(moved.text || "未入力", toIndex + 1);
-    window.requestAnimationFrame(() => {
-      document
-        .querySelector<HTMLElement>(`[data-today-picker-slot-index="${toIndex}"]`)
-        ?.focus();
-    });
-  };
-
-  const moveTodayPickerItemToIndex = (index: number) => {
-    if (todayPickerDragIndex === null) return;
-    moveTodayPickerItem(
-      todayPickerDragIndex,
-      Math.min(index, Math.max(0, todayPickerDraftItems.length - 1)),
-    );
-  };
-
-  const refreshInstructionChoices = async () => {
-    setInstructionChoicesLoading(true);
-    setInstructionChoicesError(null);
-    try {
-      const roots = (await listInstructionRoots()).filter((root) => root.available);
-      const choices: InstructionChoice[] = [];
-      const queue = roots.map((root) => ({ root, path: root.path }));
-      let scanned = 0;
-      while (queue.length > 0) {
-        const current = queue.shift();
-        if (!current) break;
-        const entries = await listInstructionDirectory(current.path);
-        for (const entry of entries) {
-          scanned += 1;
-          if (scanned > 50_000) throw new Error("手順書一覧が50,000項目を超えています");
-          if (entry.kind === "folder") {
-            queue.push({ root: current.root, path: entry.path });
-          } else {
-            const relative = entry.path
-              .slice(current.root.path.length)
-              .replace(/^[\\/]+/, "")
-              .replace(/[\\/]+/g, " / ");
-            choices.push({ path: entry.path, label: `${current.root.name} / ${relative}` });
-          }
-        }
-      }
-      choices.sort((left, right) => left.label.localeCompare(right.label, "ja"));
-      setInstructionChoices(choices);
-    } catch (error) {
-      setInstructionChoices([]);
-      setInstructionChoicesError(error instanceof Error ? error.message : String(error));
-    } finally {
-      setInstructionChoicesLoading(false);
-    }
-  };
-
-  const openInboxAddDialog = (opener?: HTMLButtonElement, projectId = "") => {
-    if (inboxAddSaving) return;
-    if (opener) inboxAddOpenerRef.current = opener;
-    setContextMenu(null);
-    setInboxOpen(true);
-    setInboxDraft("");
-    const initialProjectId =
-      projectId && config?.projects.some((project) => project.id === projectId) ? projectId : "";
-    inboxAddInitialProjectIdRef.current = initialProjectId;
-    setInboxAddProjectId(initialProjectId);
-    setInboxAddError(null);
-    setInboxAddOpen(true);
-  };
-
-  const openProjectAddDialog = () => {
-    if (!config) return;
-    captureDialogReturnFocus(projectEditReturnFocusRef);
-    setContextMenu(null);
-    const draft: ProjectEditDraft = {
-      id: "",
-      name: "",
-      northStar: "",
-      weeklyFocus: false,
-      colorId: "amber",
-      isNew: true,
-    };
-    projectEditInitialDraftRef.current = draft;
-    setProjectEditDraft(draft);
-  };
-
-  const openProjectEditDialog = (
-    project: LauncherProject,
-    origin: "source" | "today" | "builder" = "source",
-  ) => {
-    sourceEditOriginRef.current = origin;
-    captureDialogReturnFocus(projectEditReturnFocusRef);
-    setContextMenu(null);
-    const draft: ProjectEditDraft = {
-      id: project.id,
-      name: project.name,
-      northStar: project.northStar ?? "",
-      weeklyFocus: project.weeklyFocus === true,
-      colorId: resolveProjectColorId(project.id, project.colorId),
-      isNew: false,
-    };
-    projectEditInitialDraftRef.current = draft;
-    setProjectEditDraft(draft);
-  };
-
-  const nextStepExecutionDraft = (
-    execution?: Partial<LauncherNextStep>,
-  ): Pick<
-    NextStepEditDraft,
-    | "buttonIds"
-    | "defaultTimerMinutes"
-    | "shortTimerMinutes"
-    | "startNoteTemplate"
-    | "instructionPath"
-    | "instructionOpenOnStart"
-    | "expandTimerOnStart"
-  > => ({
-    buttonIds: (execution?.buttonIds ?? []).filter((buttonId) =>
-      projectSelectableButtons.some((button) => button.id === buttonId),
-    ),
-    defaultTimerMinutes: execution?.defaultTimerMinutes
-      ? String(execution.defaultTimerMinutes)
-      : "",
-    shortTimerMinutes: execution?.shortTimerMinutes ? String(execution.shortTimerMinutes) : "",
-    startNoteTemplate: execution?.startNoteTemplate ?? "",
-    instructionPath: execution?.instructionPath ?? "",
-    instructionOpenOnStart: Boolean(
-      execution?.instructionPath && execution.instructionOpenOnStart !== false,
-    ),
-    expandTimerOnStart: execution?.expandTimerOnStart === true,
-  });
-
-  const openNextStepEditor = (
-    project: LauncherProject,
-    options?: {
-      mode?: NextStepEditDraft["mode"];
-      text?: string;
-      promotedWishlistId?: string;
-      projectLocked?: boolean;
-      origin?: "source" | "today" | "builder";
-      /** P10-09: values copied from the Next Step that was just finished. */
-      prefill?: Partial<
-        Pick<
-          NextStepEditDraft,
-          | "text"
-          | "trigger"
-          | "buttonIds"
-          | "shortTimerMinutes"
-          | "defaultTimerMinutes"
-          | "instructionPath"
-          | "instructionOpenOnStart"
-          | "startNoteTemplate"
-          | "expandTimerOnStart"
-        >
-      >;
-    },
-  ) => {
-    const sourceKey = `project:${project.id}`;
-    const origin = options?.origin ?? "source";
-    if (warnSourceEditBlocked(sourceKey, origin === "today")) {
-      setContextMenu(null);
-      return;
-    }
-    const mode = options?.mode ?? (project.nextStep?.text.trim() ? "edit" : "set");
-    const promotingWishlist = mode === "promote" && Boolean(options?.promotedWishlistId);
-    const editingExisting = mode === "edit" && Boolean(project.nextStep);
-    // P10-09 (§8.1): a prefilled Next Step ("same step again") starts on the free-text form so
-    // the copied action and its execution settings are visible as they are.
-    const initialDecisionMode: NextStepDecisionMode = options?.prefill
-      ? "new"
-      : promotingWishlist || mode === "set"
-        ? "wishlist"
-        : "new";
-    sourceEditOriginRef.current = origin;
-    captureDialogReturnFocus(nextStepEditReturnFocusRef);
-    setContextMenu(null);
-    const draft: NextStepEditDraft = {
-      mode,
-      decisionMode: initialDecisionMode,
-      projectId: project.id,
-      projectLocked: options?.projectLocked ?? true,
-      text:
-        initialDecisionMode === "wishlist" ? "" : (options?.text ?? project.nextStep?.text ?? ""),
-      originalText: project.nextStep?.text ?? "",
-      trigger: editingExisting ? (project.nextStep?.trigger ?? "") : "",
-      resumeNote: editingExisting ? (project.nextStep?.resumeNote ?? "") : "",
-      ...nextStepExecutionDraft(editingExisting ? project.nextStep : undefined),
-      legacyChoice:
-        !editingExisting && !project.nextStep && project.legacyNextStepSettings ? null : "discard",
-      replacementChoice: null,
-      replacedNextStep: promotingWishlist ? project.nextStep : undefined,
-      ...(options?.promotedWishlistId ? { promotedWishlistId: options.promotedWishlistId } : {}),
-      ...(options?.prefill ?? {}),
-    };
-    nextStepEditInitialDraftRef.current = draft;
-    setNextStepOpenMenuOpen(false);
-    setNextStepOpenPicker(null);
-    setNextStepEditDraft(draft);
-    void refreshNextStepSuggestions(project.id);
-    void refreshInstructionChoices();
-  };
-
-  const promoteInboxToNextStep = (index: number) => {
-    const current = configRef.current;
-    const item = current?.inbox[index];
-    if (!current || !item) return;
-    if (!item.id) {
-      setContextMenu(null);
-      showToast("warn", "この項目にはstable IDがないため、先に編集して保存してください");
-      return;
-    }
-    if (warnSourceEditBlocked(`wishlist:${item.id}`)) {
-      setContextMenu(null);
-      return;
-    }
-    const project = item.projectId
-      ? current.projects.find((candidate) => candidate.id === item.projectId)
-      : undefined;
-    if (item.projectId && !project) {
-      setContextMenu(null);
-      showToast("warn", "所属プロジェクトが見つかりません");
-      return;
-    }
-    if (project) {
-      openNextStepEditor(project, {
-        mode: "promote",
-        text: item.text,
-        promotedWishlistId: item.id,
-        projectLocked: true,
-      });
-      return;
-    }
-    captureDialogReturnFocus(nextStepEditReturnFocusRef);
-    setContextMenu(null);
-    const draft: NextStepEditDraft = {
-      mode: "promote",
-      decisionMode: "wishlist",
-      projectId: "",
-      projectLocked: false,
-      text: "",
-      originalText: "",
-      trigger: "",
-      resumeNote: "",
-      ...nextStepExecutionDraft(),
-      legacyChoice: "discard",
-      replacementChoice: null,
-      replacedNextStep: undefined,
-      promotedWishlistId: item.id,
-    };
-    nextStepEditInitialDraftRef.current = draft;
-    setNextStepOpenMenuOpen(false);
-    setNextStepOpenPicker(null);
-    setNextStepEditDraft(draft);
-    setProjectNextStepSuggestions([]);
-    void refreshInstructionChoices();
-  };
-
-  async function promoteWishlistToProject(wishlistId: string) {
-    const current = configRef.current;
-    const item = current?.inbox.find((candidate) => candidate.id === wishlistId);
-    const project = item?.projectId
-      ? current?.projects.find((candidate) => candidate.id === item.projectId)
-      : undefined;
-    if (!current || !item || !project || sourceEditBusyRef.current) return false;
-    if (project.nextStep?.sourceWishlistId === wishlistId) {
-      showToast("warn", "すでに次の一手に設定されています");
-      return true;
-    }
-    const projectId = project.id;
-    const wishlistSource = `wishlist:${wishlistId}`;
-    const projectSource = `project:${projectId}`;
-    const blockReason =
-      sourceEditBlockReason(wishlistSource) ?? sourceEditBlockReason(projectSource);
-    if (blockReason) {
-      showToast("warn", blockReason);
-      return false;
-    }
-
-    const legacyExecution = project.nextStep ? undefined : project.legacyNextStepSettings;
-    const instructionPath = item.instructionPath ?? legacyExecution?.instructionPath;
-    const nextStep: LauncherNextStep = {
-      text: item.text.trim(),
-      generationId: createStableId(),
-      buttonIds: [...(item.buttonIds ?? legacyExecution?.buttonIds ?? [])],
-      ...(legacyExecution?.defaultTimerMinutes
-        ? { defaultTimerMinutes: legacyExecution.defaultTimerMinutes }
-        : {}),
-      ...(legacyExecution?.shortTimerMinutes
-        ? { shortTimerMinutes: legacyExecution.shortTimerMinutes }
-        : {}),
-      ...(legacyExecution?.expandTimerOnStart ? { expandTimerOnStart: true } : {}),
-      ...(legacyExecution?.startNoteTemplate
-        ? { startNoteTemplate: legacyExecution.startNoteTemplate }
-        : {}),
-      ...(instructionPath
-        ? {
-            instructionPath,
-            instructionOpenOnStart:
-              item.instructionPath !== undefined
-                ? item.instructionOpenOnStart !== false
-                : legacyExecution?.instructionOpenOnStart !== false,
-          }
-        : {}),
-      updatedAt: new Date().toISOString(),
-    };
-    let nextConfig: AppConfig;
-    try {
-      nextConfig = prepareWishlistPromotion(current, {
-        wishlistId,
-        projectId,
-        nextStep,
-        expectedCurrent: project.nextStep,
-        createId: createStableId,
-      });
-    } catch (error) {
-      showToast("warn", error instanceof Error ? error.message : String(error));
-      return false;
-    }
-
-    sourceEditBusyRef.current = projectSource;
-    try {
-      const saved = await persistConfig(nextConfig);
-      if (saved) {
-        showToast(
-          "ok",
-          project.nextStep?.text.trim() ? "次の一手を変更しました" : "次の一手に設定しました",
-          {
-            detail: project.nextStep?.text.trim()
-              ? "元の次の一手はやりたいことへ戻しました"
-              : undefined,
-          },
-        );
-      }
-      return saved;
-    } finally {
-      sourceEditBusyRef.current = null;
-    }
-  }
-
-  const selectNextStepProject = (projectId: string) => {
-    if (!nextStepEditDraft || nextStepEditDraft.projectLocked) return;
-    const project = configRef.current?.projects.find((candidate) => candidate.id === projectId);
-    if (project && warnSourceEditBlocked(`project:${project.id}`)) {
-      return;
-    }
-    setNextStepEditDraft({
-      ...nextStepEditDraft,
-      mode:
-        nextStepEditDraft.decisionMode === "wishlist"
-          ? "promote"
-          : project?.nextStep
-            ? "edit"
-            : "set",
-      projectId,
-      originalText: project?.nextStep?.text ?? "",
-      trigger: "",
-      resumeNote: "",
-      ...nextStepExecutionDraft(),
-      legacyChoice: project?.legacyNextStepSettings && !project.nextStep ? null : "discard",
-      replacementChoice: null,
-      replacedNextStep:
-        nextStepEditDraft.decisionMode === "wishlist" ? project?.nextStep : undefined,
-      promotedWishlistId: undefined,
-    });
-    void refreshNextStepSuggestions(projectId || null);
-  };
-
-  const selectNextStepDecisionMode = (decisionMode: NextStepDecisionMode) => {
-    const draft = nextStepEditDraft;
-    const current = configRef.current;
-    if (!draft || !current || draft.decisionMode === decisionMode) return;
-    const project = current.projects.find((candidate) => candidate.id === draft.projectId);
-    const selectedWishlistStillMatches = current.inbox.some(
-      (item) => item.id === draft.promotedWishlistId && item.projectId === draft.projectId,
-    );
-    if (decisionMode === "wishlist") {
-      setNextStepEditDraft({
-        ...draft,
-        mode: "promote",
-        decisionMode,
-        trigger: "",
-        resumeNote: "",
-        ...nextStepExecutionDraft(),
-        legacyChoice: "discard",
-        replacementChoice: null,
-        replacedNextStep: project?.nextStep,
-        promotedWishlistId: selectedWishlistStillMatches ? draft.promotedWishlistId : undefined,
-      });
-      return;
-    }
-    setNextStepEditDraft({
-      ...draft,
-      mode: project?.nextStep ? "edit" : "set",
-      decisionMode,
-      resumeNote: project?.nextStep?.resumeNote ?? "",
-      legacyChoice: project?.legacyNextStepSettings && !project.nextStep ? null : "discard",
-      replacementChoice: null,
-      replacedNextStep: undefined,
-    });
-  };
-
-  const chooseLegacyNextStepSettings = (choice: Exclude<LegacyNextStepChoice, null>) => {
-    if (!nextStepEditDraft) return;
-    const project = configRef.current?.projects.find(
-      (candidate) => candidate.id === nextStepEditDraft.projectId,
-    );
-    setNextStepEditDraft({
-      ...nextStepEditDraft,
-      ...nextStepExecutionDraft(choice === "inherit" ? project?.legacyNextStepSettings : undefined),
-      legacyChoice: choice,
-    });
-  };
-
-  const parseNextStepTimer = (raw: string, label: string) => {
-    if (!raw.trim()) return undefined;
-    const value = Number.parseInt(raw, 10);
-    if (!Number.isFinite(value) || value < 1 || value > 240) {
-      throw new Error(`${label}は1〜240分で入力してください`);
-    }
-    return value;
-  };
-
-  const saveNextStepEdit = async () => {
-    const current = configRef.current;
-    const draft = nextStepEditDraft;
-    if (!current || !draft || sourceEditBusyRef.current) return;
-    const project = current.projects.find((candidate) => candidate.id === draft.projectId);
-    if (!project) {
-      showToast("warn", "プロジェクトを選択してください");
-      return;
-    }
-
-    const promotingWishlist = draft.decisionMode === "wishlist";
-    const selectedWishlist =
-      promotingWishlist && draft.promotedWishlistId
-        ? current.inbox.find(
-            (item) => item.id === draft.promotedWishlistId && item.projectId === project.id,
-          )
-        : undefined;
-    if (promotingWishlist && !selectedWishlist) {
-      showToast("warn", "やりたいことを選択してください");
-      return;
-    }
-    if (selectedWishlist && project.nextStep?.sourceWishlistId === selectedWishlist.id) {
-      showToast("warn", "すでに次の一手に設定されています");
-      return;
-    }
-    const text = promotingWishlist ? (selectedWishlist?.text.trim() ?? "") : draft.text.trim();
-    if (!text) {
-      showToast("warn", "次の一手を入力してください");
-      return;
-    }
-    if (promotingWishlist && !sameNextStepSnapshot(project.nextStep, draft.replacedNextStep)) {
-      showToast("warn", "現在の次の一手が変更されたため、内容を確認し直してください");
-      return;
-    }
-    if (
-      !promotingWishlist &&
-      !project.nextStep &&
-      project.legacyNextStepSettings &&
-      draft.legacyChoice === null
-    ) {
-      showToast("warn", "以前の実行設定を引き継ぐか破棄するか選んでください");
-      return;
-    }
-
-    const replacingExisting = Boolean(promotingWishlist && project.nextStep?.text.trim());
-    if (replacingExisting && draft.replacementChoice !== "return") {
-      showToast("warn", "現在の次の一手をやりたいことへ戻すことを確認してください");
-      return;
-    }
-    const projectSourceKey = `project:${project.id}`;
-    const wishlistSourceKey = selectedWishlist ? `wishlist:${selectedWishlist.id}` : null;
-    const allowTodaySourceSync = sourceEditOriginRef.current === "today" && !promotingWishlist;
-    const blockReason =
-      sourceEditBlockReason(projectSourceKey, allowTodaySourceSync) ??
-      (wishlistSourceKey ? sourceEditBlockReason(wishlistSourceKey) : null);
-    if (blockReason) {
-      showToast("warn", blockReason);
-      return;
-    }
-    if (selectedWishlist && unfinishedTodayUsesSource(current, `wishlist:${selectedWishlist.id}`)) {
-      showToast("warn", "今日の3件で未完了のやりたいことは選べません");
-      return;
-    }
-    if (
-      replacingExisting &&
-      unfinishedTodayUsesSource(current, projectSourceKey, project.nextStep?.generationId)
-    ) {
-      showToast("warn", "今日の3件で未完了の次の一手があるため変更できません");
-      return;
-    }
-
-    let defaultTimerMinutes: number | undefined;
-    let shortTimerMinutes: number | undefined;
-    try {
-      defaultTimerMinutes = parseNextStepTimer(draft.defaultTimerMinutes, "通常タイマー");
-      shortTimerMinutes = parseNextStepTimer(draft.shortTimerMinutes, "短時間タイマー");
-    } catch (error) {
-      showToast("warn", error instanceof Error ? error.message : String(error));
-      return;
-    }
-
-    const now = new Date().toISOString();
-    const existing = !promotingWishlist && draft.mode === "edit" ? project.nextStep : undefined;
-    const nextStep: LauncherNextStep = {
-      text,
-      ...(existing ? { generationId: existing.generationId } : { generationId: createStableId() }),
-      ...(existing?.sourceWishlistId ? { sourceWishlistId: existing.sourceWishlistId } : {}),
-      buttonIds: [...draft.buttonIds],
-      ...(draft.trigger.trim() ? { trigger: draft.trigger.trim() } : {}),
-      ...(defaultTimerMinutes ? { defaultTimerMinutes } : {}),
-      ...(shortTimerMinutes ? { shortTimerMinutes } : {}),
-      ...(draft.expandTimerOnStart ? { expandTimerOnStart: true } : {}),
-      ...(draft.startNoteTemplate.trim()
-        ? { startNoteTemplate: draft.startNoteTemplate.trim() }
-        : {}),
-      ...(draft.instructionPath
-        ? {
-            instructionPath: draft.instructionPath,
-            instructionOpenOnStart: draft.instructionOpenOnStart,
-          }
-        : {}),
-      updatedAt: existing?.updatedAt && text === draft.originalText ? existing.updatedAt : now,
-      ...(existing?.reviewedAt ? { reviewedAt: existing.reviewedAt } : {}),
-      ...(existing && draft.resumeNote.trim() ? { resumeNote: draft.resumeNote.trim() } : {}),
-    };
-
-    let nextConfig: AppConfig;
-    if (promotingWishlist && selectedWishlist) {
-      try {
-        nextConfig = prepareWishlistPromotion(current, {
-          wishlistId: selectedWishlist.id!,
-          projectId: project.id,
-          nextStep,
-          expectedCurrent: draft.replacedNextStep,
-          createId: createStableId,
-        });
-      } catch (error) {
-        showToast("warn", error instanceof Error ? error.message : String(error));
-        return;
-      }
-    } else {
-      const nextProject: LauncherProject = {
-        ...project,
-        nextStep,
-        legacyNextStepSettings: undefined,
-      };
-      nextConfig = {
-        ...current,
-        projects: current.projects.map((candidate) =>
-          candidate.id === project.id ? nextProject : candidate,
-        ),
-      };
-    }
-
-    if (!promotingWishlist && draft.mode === "edit") {
-      const result = await saveSourceEdit(current, nextConfig, projectSourceKey);
-      if (!result) return;
-      closeNextStepEditDialog(true);
-      showToast("ok", "次の一手を保存しました", {
-        detail: result.todayUpdated ? "今日の3件にも反映しました" : undefined,
-      });
-      return;
-    }
-
-    sourceEditBusyRef.current = projectSourceKey;
-    setSourceEditSaving(true);
-    try {
-      if (!(await persistConfig(nextConfig))) return;
-      closeNextStepEditDialog(true);
-      showToast("ok", promotingWishlist ? "次の一手にしました" : "次の一手を保存しました", {
-        detail: replacingExisting ? "元の次の一手はやりたいことへ戻しました" : undefined,
-      });
-    } finally {
-      sourceEditBusyRef.current = null;
-      setSourceEditSaving(false);
-    }
-  };
-
-  async function removeProjectNextStep(project: LauncherProject, choice: "return" | "delete") {
-    const current = configRef.current;
-    const liveProject = current?.projects.find((candidate) => candidate.id === project.id);
-    if (!current || !liveProject?.nextStep?.text.trim()) return false;
-    const sourceKey = `project:${project.id}`;
-    if (warnSourceEditBlocked(sourceKey)) {
-      setContextMenu(null);
-      return false;
-    }
-    let nextConfig: AppConfig;
-    try {
-      nextConfig = prepareNextStepRemoval(current, {
-        projectId: liveProject.id,
-        expectedCurrent: liveProject.nextStep,
-        choice,
-        createId: createStableId,
-      });
-    } catch (error) {
-      showToast("warn", error instanceof Error ? error.message : String(error));
-      return false;
-    }
-    const saved = await persistConfig(nextConfig);
-    if (saved) {
-      setContextMenu(null);
-      showToast(
-        "neutral",
-        choice === "return" ? "やりたいことへ戻しました" : "次の一手を未設定にしました",
-      );
-    }
-    return saved;
-  }
-
-  const clearProjectNextStep = (project: LauncherProject) => {
-    const current = configRef.current;
-    const liveProject = current?.projects.find((candidate) => candidate.id === project.id);
-    if (!current || !liveProject?.nextStep?.text.trim()) return;
-    const sourceKey = `project:${project.id}`;
-    if (warnSourceEditBlocked(sourceKey)) {
-      setContextMenu(null);
-      return;
-    }
-    setContextMenu(null);
-    requestConfirmation({
-      title: "次の一手を未設定にしますか？",
-      subject: `「${liveProject.nextStep.text}」`,
-      message: "今日の3件に採用済みの内容と実行記録は変更しません。",
-      confirmLabel: "やりたいことへ戻す",
-      alternateLabel: "削除して未設定にする",
-      alternateTone: "danger",
-      processingLabel: "保存しています…",
-      alternateProcessingLabel: "保存しています…",
-      tone: "warning",
-      onConfirm: () => removeProjectNextStep(liveProject, "return"),
-      onAlternate: () => removeProjectNextStep(liveProject, "delete"),
-    });
-  };
-
-  const projectDeleteBlockReason = (projectId: string) => {
-    const current = configRef.current;
-    if (!current) return "設定を読み込んでから削除してください";
-    if (sourceEditBusyRef.current !== null || projectEditSavingRef.current) {
-      return "保存処理が完了してから削除してください";
-    }
-    return projectDeletionBlockReason(current, projectId, activeTimerRef.current?.sourceId);
-  };
-
-  const executeProjectDeletion = async (projectId: string, mode: ProjectDeletionMode) => {
-    const current = configRef.current;
-    if (!current) return false;
-    const reason = projectDeleteBlockReason(projectId);
-    if (reason) {
-      showToast("warn", reason);
-      return false;
-    }
-    const summary = projectDeletionSummary(current, projectId);
-    if (!summary) {
-      showToast("warn", "削除するプロジェクトが見つかりません");
-      return false;
-    }
-    const nextConfig = prepareProjectDeletion(current, projectId, mode, {
-      completedAt: new Date().toISOString(),
-      createId: createStableId,
-    });
-    if (!nextConfig) return false;
-    if (!(await persistConfig(nextConfig))) return false;
-
-    if (projectEditDraft?.id === projectId) closeProjectEditDialog(true);
-    showToast(
-      "danger",
-      mode === "complete"
-        ? `残っている項目を完了扱いにして、プロジェクト「${summary.project.name}」を削除しました`
-        : `プロジェクト「${summary.project.name}」を削除しました`,
-    );
-    return true;
-  };
-
-  const requestProjectDeletion = (project: LauncherProject) => {
-    setContextMenu(null);
-    const current = configRef.current;
-    if (!current) return;
-    const reason = projectDeleteBlockReason(project.id);
-    if (reason) {
-      showToast("warn", reason);
-      return;
-    }
-    const summary = projectDeletionSummary(current, project.id);
-    if (!summary) {
-      showToast("warn", "削除するプロジェクトが見つかりません");
-      return;
-    }
-    requestConfirmation({
-      title: "プロジェクトを削除しますか？",
-      subject: `「${summary.project.name}」と、現在登録されている関連項目が対象です。`,
-      message: `次の一手: ${summary.nextStepCount}件\nやりたいこと: ${summary.wishlistCount}件\n\n過去の実行記録は残ります。`,
-      confirmLabel: "関連項目も削除",
-      alternateLabel: "残っている項目を完了扱いにして削除",
-      processingLabel: "削除しています…",
-      alternateProcessingLabel: "完了扱いにして削除しています…",
-      tone: "danger",
-      alternateTone: "danger",
-      initialFocus: "cancel",
-      onConfirm: () => executeProjectDeletion(project.id, "delete"),
-      onAlternate: () => executeProjectDeletion(project.id, "complete"),
-    });
-  };
-
-  const openProjectManagement = () => {
-    setContextMenu(null);
-    setProjectsOpen(true);
-    window.requestAnimationFrame(() => {
-      document.querySelector<HTMLElement>(".projectsBand")?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    });
-  };
-
-  const saveProjectEdit = async () => {
-    const config = configRef.current;
-    if (!config || !projectEditDraft || projectEditSavingRef.current) return;
-    if (!projectEditDraft.isNew && !config.projects.some((p) => p.id === projectEditDraft.id)) {
-      showToast("warn", "元の登録が見つかりません");
-      return;
-    }
-    const name = projectEditDraft.name.trim();
-    if (!name) {
-      showToast("warn", "プロジェクト名を入力してください");
-      return;
-    }
-
-    const existingProject = projectEditDraft.isNew
-      ? undefined
-      : config.projects.find((item) => item.id === projectEditDraft.id);
-    const project: LauncherProject = {
-      ...(existingProject ?? {}),
-      id: projectEditDraft.isNew ? uniqueProjectId(name, config.projects) : projectEditDraft.id,
-      name,
-      northStar: projectEditDraft.northStar.trim() || undefined,
-      weeklyFocus: projectEditDraft.weeklyFocus || undefined,
-      colorId: projectEditDraft.colorId,
-    };
-
-    const projects = projectEditDraft.isNew
-      ? [...config.projects, project]
-      : config.projects.map((item) => (item.id === project.id ? project : item));
-
-    projectEditSavingRef.current = true;
-    setProjectEditSaving(true);
-    try {
-      if (!(await persistConfig({ ...config, projects }))) return;
-      closeProjectEditDialog(true);
-      if (projectEditDraft.isNew) {
-        showToast("ok", `${name} を追加しました`);
-      } else {
-        showToast("ok", "プロジェクトを保存しました");
-      }
-    } finally {
-      projectEditSavingRef.current = false;
-      setProjectEditSaving(false);
-    }
-  };
-
-  const setProjectWeeklyFocus = (checked: boolean) => {
-    if (!config || !projectEditDraft) return;
-    const otherFocusedProjects = config.projects.filter(
-      (project) => project.id !== projectEditDraft.id && project.weeklyFocus === true,
-    ).length;
-    if (checked && otherFocusedProjects >= WEEKLY_FOCUS_LIMIT) {
-      showToast("neutral", `今週の重点は最大${WEEKLY_FOCUS_LIMIT}件まで選べます`);
-      return;
-    }
-    setProjectEditDraft({ ...projectEditDraft, weeklyFocus: checked });
-  };
-
-  const setWeeklyReviewProjectFocus = (projectId: string, checked: boolean) => {
-    if (!config) return;
-    const otherFocusedProjects = config.projects.filter(
-      (project) => project.id !== projectId && project.weeklyFocus === true,
-    ).length;
-    if (checked && otherFocusedProjects >= WEEKLY_FOCUS_LIMIT) {
-      showToast("neutral", `今週の重点は最大${WEEKLY_FOCUS_LIMIT}件まで選べます`);
-      return;
-    }
-
-    void persistConfig({
-      ...config,
-      projects: config.projects.map((project) =>
-        project.id === projectId ? { ...project, weeklyFocus: checked || undefined } : project,
-      ),
-    });
-  };
-
-  const openManualSessionDialog = () => {
-    if (!config) return;
-    setManualSessionDraft({
-      projectId: config.projects[0]?.id ?? null,
-      date: config.today.date,
-      startedAt: formatStartedAt(new Date()),
-      minutes: String(config.settings.defaultTimerMinutes),
-      note: "",
-    });
-  };
-
-  const startNextTodayBatch = async () => {
-    if (!config || !allTodayItemsCompleted) return;
-    const saved = await persistConfig({
-      ...config,
-      today: { ...config.today, items: [], selectionMutationTokens: {} },
-    });
-    if (!saved) return;
-    showToast("ok", "次の3件を選べます");
-  };
-
-  const saveManualSession = async () => {
-    if (!config || !manualSessionDraft) return;
-    const minutes = Number.parseInt(manualSessionDraft.minutes, 10);
-    if (!Number.isFinite(minutes) || minutes < 1) {
-      showToast("warn", "分数は1以上で入力してください");
-      return;
-    }
-    const startedAt = manualSessionDraft.startedAt.trim() || formatStartedAt(new Date());
-    if (!isValidStartedAt(startedAt)) {
-      showToast("warn", "開始時刻はHH:mm形式で入力してください");
-      return;
-    }
-
-    const project = manualSessionDraft.projectId
-      ? config.projects.find((item) => item.id === manualSessionDraft.projectId)
-      : null;
-    const label = project?.name ?? "手動の実行記録";
-
-    try {
-      const summary = await recordManualSession({
-        projectId: project?.id ?? null,
-        label,
-        date: manualSessionDraft.date,
-        startedAt,
-        minutes,
-        note: manualSessionDraft.note,
-      });
-      setSessionSummary(summary);
-      await refreshSessions();
-      await refreshTodayActivity();
-      if (activeView === "records") {
-        await refreshRecords();
-      }
-      setManualSessionDraft(null);
-      showToast("ok", "実行記録を追加しました");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      showToast("error", `実行記録を追加できません: ${message}`);
-    }
-  };
-
-  const openSessionEditDialog = (session: SessionEntryRow) => {
-    setSessionEditDraft({
-      rowKey: session.rowKey,
-      projectId: session.projectId ?? null,
-      label: session.label,
-      date: session.date,
-      startedAt: session.startedAt,
-      minutes: String(session.minutes),
-      note: session.note,
-    });
-  };
-
-  const saveSessionEdit = async () => {
-    if (!sessionEditDraft) return;
-    const minutes = Number.parseInt(sessionEditDraft.minutes, 10);
-    if (!sessionEditDraft.date.trim()) {
-      showToast("warn", "日付を入力してください");
-      return;
-    }
-    if (!sessionEditDraft.label.trim()) {
-      showToast("warn", "ラベルを入力してください");
-      return;
-    }
-    if (!sessionEditDraft.startedAt.trim()) {
-      showToast("warn", "開始時刻を入力してください");
-      return;
-    }
-    if (!Number.isFinite(minutes) || minutes < 1) {
-      showToast("warn", "分数は1以上で入力してください");
-      return;
-    }
-
-    try {
-      const response = await updateSessionEntry({
-        rowKey: sessionEditDraft.rowKey,
-        projectId: sessionEditDraft.projectId,
-        label: sessionEditDraft.label.trim(),
-        date: sessionEditDraft.date,
-        startedAt: sessionEditDraft.startedAt.trim(),
-        minutes,
-        note: sessionEditDraft.note,
-      });
-      setSessionEntries(response);
-      await refreshTodayActivity();
-      if (response.warning) {
-        showToast("warn", response.warning);
-      }
-      await refreshSessions();
-      await refreshRecords();
-      setSessionEditDraft(null);
-      showToast("ok", "実行記録を更新しました");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      showToast("error", `実行記録を更新できません: ${message}`);
-    }
-  };
-
-  const confirmSessionDelete = async (session: SessionEntryRow) => {
-    try {
-      const response = await deleteSessionEntry({ rowKey: session.rowKey });
-      setSessionEntries(response);
-      await refreshTodayActivity();
-      if (response.warning) {
-        showToast("warn", response.warning);
-      }
-      await refreshSessions();
-      await refreshRecords();
-      showToast("neutral", "実行記録を削除しました");
-      return true;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      showToast("error", `実行記録を削除できません: ${message}`);
-      return false;
-    }
-  };
-
-  const requestSessionDelete = (session: SessionEntryRow) => {
-    requestConfirmation({
-      title: "実行記録を削除しますか？",
-      subject: `${session.date} ${session.startedAt} / ${session.label} / ${session.minutes}分`,
-      message: "この操作は元に戻せません。",
-      confirmLabel: "削除する",
-      processingLabel: "削除しています…",
-      tone: "danger",
-      onConfirm: () => confirmSessionDelete(session),
-    });
-  };
 
   useEffect(() => {
     const projects = config?.projects ?? [];
@@ -5127,6 +2809,108 @@ function DashboardApp() {
     };
   }, [config, inboxOpen, loading]);
 
+  const startDoNowProjectRef = useRef<
+    (project: LauncherProject, timerKind: "short" | "normal" | "measure") => void
+  >(() => {});
+  const isTimerOnTodayItemRef = useRef<(item: TodayItem, index: number) => boolean>(
+    () => false,
+  );
+
+  const {
+    submitFirstRun,
+    laterFirstRun,
+    copyFirstRunPrompt,
+    handleRowShortcutKey,
+    startProjectShort,
+    startTodayItemShort,
+    editTodayRowItem,
+    acknowledgeDoNowCompletion,
+    renderButtonIcon,
+    renderSidebarButtonIcon,
+    skipLinkBlocked,
+    focusSkipTarget,
+  } = useFirstRunAndGuidedActions({
+    softwareResetStage,
+    earlyStop,
+    manualSessionDraft,
+    sessionEditDraft,
+    buttonEditDraft,
+    projectEditDraft,
+    dropDraft,
+    importDialogOpen,
+    groupDraft,
+    groupRenameDraft,
+    completionPrompt,
+    openNextStepEditor,
+    beginInboxEdit,
+    refreshDoNow,
+    activeTimer,
+    buttonsById,
+    firstRunIdsRef,
+    firstRunSaving,
+    projectsById,
+    setFirstRunSaving,
+    startTimer,
+    startDoNowProject: (project: LauncherProject, timerKind: "short" | "normal" | "measure") =>
+      startDoNowProjectRef.current(project, timerKind),
+    isTimerOnTodayItem: (item: TodayItem, index: number) =>
+      isTimerOnTodayItemRef.current(item, index),
+    activeView,
+    config,
+    configRef,
+    mainScrollAreaRef,
+    persistConfig,
+    setContextMenu,
+    showToast,
+    setDoNowExcludedProjectId,
+    doNowCompletionHold,
+    setDoNowPickedProjectId,
+    setDoNowCompletionHold,
+    buttonIconSources,
+    settingsDraft,
+    helpGuideOpen,
+    confirmDialog,
+    softwareResetChoiceOpen,
+  });
+
+  const completionProject = completionPrompt?.projectId
+    ? config?.projects.find((project) => project.id === completionPrompt.projectId)
+    : undefined;
+  const completionCanEditResume = Boolean(
+    completionPrompt &&
+      completionProject &&
+      completionProject.nextStep?.text.trim() &&
+      activeTimer &&
+      timerMatchesProjectNextStep(
+        activeTimer,
+        completionProject.id,
+        completionProject.nextStep.generationId,
+      ) &&
+      sameSourceGeneration(
+        completionProject.nextStep.generationId,
+        activeTimer.sourceGenerationId,
+      ) &&
+      !findTodayEntryForTimer(todayEntries(config?.today.items ?? []), activeTimer),
+  );
+
+  const {
+    resolveEarlyStop,
+    completionExtendMinutes, continueCompletedTimer, finishCompletedTimer,
+    submitCompletedTimer, markNextStepReviewed,
+  } = useTimerCompletion({
+    activeTimer, activeTimerRef, config, configRef, earlyStop, earlyStopRef, finishingTimerRef,
+    plannedCommitRef, setActiveTimer, setCompletionPrompt, setCompletionFollowup,
+    setCompletionExtendDraft, setCompletionResumeSaving, setEarlyStop, setDoNowCompletionHold,
+    setTimerResumeDraft, showToast, persistConfig, requestConfirmation, startTimer, finishTimer,
+    recordTimerSession, refreshDoNow, refreshTodayActivity, refreshRecords, setNow,
+    showCompletionFeedback, setDoNowExcludedProjectId, setDoNowPickedProjectId,
+    setDoNowCompletionSaving, setEarlyStopSaving, queuedCompletionFollowupsRef,
+    completionFollowupTimerRef, confirmDialogRef, completionExtendDraft, completionPrompt,
+    completionResumeSavingRef, completionCanEditResume, completionProject, timerResumeDraft,
+    nextStepReviewBusy, setNextStepReviewBusy, setStaleNextStepProjectIds,
+  });
+  finishCompletedTimerRef.current = finishCompletedTimer;
+
   if (loading) {
     return (
       <main className="appShell appShell--loading">
@@ -5198,6 +2982,8 @@ function DashboardApp() {
     5,
   );
   const rawTodayBuilderCandidates = buildTodayCandidates(config);
+  announceReorderRef.current = announceReorder;
+
   const todayCandidateSelected = (candidate: TodayCandidate) => {
     const matchingSourceKeys = new Set([candidate.sourceKey, ...(candidate.sourceAliases ?? [])]);
     return config.today.items.some((item, index) =>
@@ -5210,6 +2996,7 @@ function DashboardApp() {
       matchingSourceKeys.has(todaySourceKey(item, index)),
     );
   };
+  todayPickerCandidateSelectedRef.current = todayPickerCandidateSelected;
   // P10-12 (D15): the "add to Today3" item exists only in the Next Step / Wishlist menus and
   // answers the T key while that menu is open.
   const contextMenuTodayAdd = (() => {
@@ -5377,77 +3164,7 @@ function DashboardApp() {
   const activeTimerProject = activeTimer?.projectId
     ? config.projects.find((project) => project.id === activeTimer.projectId)
     : undefined;
-  const completionProject = completionPrompt?.projectId
-    ? config.projects.find((project) => project.id === completionPrompt.projectId)
-    : undefined;
-  const completionCanEditResume = Boolean(
-    completionPrompt &&
-      completionProject &&
-      completionProject.nextStep?.text.trim() &&
-      activeTimer &&
-      timerMatchesProjectNextStep(
-        activeTimer,
-        completionProject.id,
-        completionProject.nextStep.generationId,
-      ) &&
-      sameSourceGeneration(
-        completionProject.nextStep.generationId,
-        activeTimer.sourceGenerationId,
-      ) &&
-      !findTodayEntryForTimer(todayEntries(config.today.items), activeTimer),
-  );
-  const submitCompletedTimer = async () => {
-    if (
-      completionResumeSavingRef.current ||
-      plannedCommitRef.current ||
-      finishingTimerRef.current !== null ||
-      earlyStopRef.current
-    ) {
-      return;
-    }
-    if (completionCanEditResume && completionProject?.nextStep) {
-      const trimmed = timerResumeDraft.trim();
-      const currentResume = completionProject.nextStep.resumeNote?.trim() ?? "";
-      if (trimmed !== currentResume) {
-        const currentConfig = configRef.current;
-        const liveProject = currentConfig?.projects.find(
-          (project) => project.id === completionProject.id,
-        );
-        if (
-          currentConfig &&
-          liveProject?.nextStep &&
-          sameSourceGeneration(
-            liveProject.nextStep.generationId,
-            completionProject.nextStep.generationId,
-          )
-        ) {
-          completionResumeSavingRef.current = true;
-          setCompletionResumeSaving(true);
-          try {
-            const nextStep: LauncherNextStep = { ...liveProject.nextStep };
-            if (trimmed) {
-              nextStep.resumeNote = trimmed;
-            } else {
-              delete nextStep.resumeNote;
-            }
-            const nextConfig: AppConfig = {
-              ...currentConfig,
-              projects: currentConfig.projects.map((project) =>
-                project.id === liveProject.id ? { ...project, nextStep } : project,
-              ),
-            };
-            await persistConfig(nextConfig, false, {
-              errorToastMessage: "次はここからを保存できませんでした",
-            });
-          } finally {
-            completionResumeSavingRef.current = false;
-            setCompletionResumeSaving(false);
-          }
-        }
-      }
-    }
-    finishCompletedTimer();
-  };
+
   const nextStepSetupProject =
     config.projects.find((project) => !project.nextStep?.text.trim()) ?? config.projects[0];
   const doNowCandidates = (doNowResponse?.candidates ?? [])
@@ -5543,6 +3260,9 @@ function DashboardApp() {
       project.nextStep?.expandTimerOnStart === true,
     );
   };
+  startDoNowProjectRef.current = startDoNowProject;
+  isTimerOnTodayItemRef.current = isTimerOnTodayItem;
+
   const showNextDoNowCandidate = () => {
     if (doNowCandidates.length <= 1) return;
     const next = doNowCandidates[(doNowCandidateIndex + 1) % doNowCandidates.length];
@@ -5568,218 +3288,7 @@ function DashboardApp() {
       generationId: createStableId(),
     };
   }
-  const submitFirstRun = async (projectName: string, stepText: string) => {
-    const current = configRef.current;
-    const ids = firstRunIdsRef.current;
-    if (!current || !ids || firstRunSaving) return;
-    setFirstRunSaving(true);
-    try {
-      const now = new Date().toISOString();
-      const existing = current.projects.find((project) => project.id === ids.projectId);
-      const project: LauncherProject =
-        existing ?? {
-          id: ids.projectId,
-          name: projectName,
-          colorId: resolveProjectColorId(ids.projectId, undefined),
-          nextStep: {
-            text: stepText,
-            generationId: ids.generationId,
-            buttonIds: [],
-            defaultTimerMinutes: current.settings.defaultTimerMinutes,
-            shortTimerMinutes: current.settings.shortTimerMinutes,
-            updatedAt: now,
-          },
-        };
-      const saved = await persistConfig({
-        ...current,
-        projects: existing ? current.projects : [...current.projects, project],
-        settings: {
-          ...current.settings,
-          firstRunDoneAt: current.settings.firstRunDoneAt ?? now,
-        },
-      });
-      if (!saved) return;
-      try {
-        startDoNowProject(project, "short");
-      } catch (error) {
-        showToast(
-          "warn",
-          `タイマーを始められませんでした: ${error instanceof Error ? error.message : String(error)}`,
-        );
-      }
-    } finally {
-      setFirstRunSaving(false);
-    }
-  };
-  const laterFirstRun = async () => {
-    const current = configRef.current;
-    if (!current || firstRunSaving) return;
-    setFirstRunSaving(true);
-    try {
-      const now = new Date().toISOString();
-      await persistConfig({
-        ...current,
-        settings: {
-          ...current.settings,
-          firstRunDoneAt: current.settings.firstRunDoneAt ?? now,
-        },
-      });
-    } finally {
-      setFirstRunSaving(false);
-    }
-  };
-  const copyFirstRunPrompt = async () => {
-    try {
-      if (!navigator.clipboard?.writeText) throw new Error("clipboard API is not available");
-      await navigator.clipboard.writeText(IMPORT_PROMPT_FIRST);
-    } catch (error) {
-      showToast("warn", "プロンプトをコピーできませんでした");
-      throw error;
-    }
-  };
 
-  // P10-12 (§8.3): keys on the row itself (not on a button inside it).
-  const handleRowShortcutKey = (
-    event: KeyboardEvent<HTMLElement>,
-    handlers: { activate?: () => void; edit?: () => void; remove?: () => void },
-  ): boolean => {
-    if (event.target !== event.currentTarget) return false;
-    if (event.nativeEvent.isComposing || event.key === "Process") return false;
-    if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return false;
-    const action =
-      event.key === "Enter"
-        ? handlers.activate
-        : event.key === "F2"
-          ? handlers.edit
-          : event.key === "Delete"
-            ? handlers.remove
-            : undefined;
-    if (!action) return false;
-    event.preventDefault();
-    event.stopPropagation();
-    action();
-    return true;
-  };
-  const startProjectShort = (project: LauncherProject) => {
-    if (!project.nextStep?.text.trim()) return;
-    startDoNowProject(project, "short");
-  };
-  // P10-14 (§4.3): the card's 5分 button and the row's Enter share this one path.
-  const startTodayItemShort = (
-    item: TodayItem,
-    index: number,
-    timerSourceId: string,
-    minutes: number,
-  ) => {
-    if (item.done || !item.text.trim()) return;
-    if (isTimerOnTodayItem(item, index)) return;
-    const project = item.projectId ? projectsById.get(item.projectId) : undefined;
-    void startTimer(
-      timerSourceId,
-      item.projectId && project ? project.name : item.text,
-      item.projectId && project ? item.projectId : null,
-      (item.buttonIds ?? []).flatMap((buttonId) => buttonsById.get(buttonId)?.actions ?? []),
-      minutes,
-      item.text,
-      item.instructionPath,
-      item.instructionOpenOnStart,
-      "countdown",
-      undefined,
-      item.sourceKey?.startsWith("project:") && item.expandTimerOnStart === true,
-    );
-  };
-  const editTodayRowItem = (index: number) => {
-    const current = configRef.current;
-    const item = current?.today.items[index];
-    if (!current || !item?.sourceKey) return;
-    const key = canonicalSourceKey(current, item.sourceKey);
-    if (!key) return;
-    const project = current.projects.find((p) => `project:${p.id}` === key);
-    if (project) openNextStepEditor(project, { origin: "today" });
-    else {
-      const inboxIndex = current.inbox.findIndex((i) => `wishlist:${i.id}` === key);
-      if (inboxIndex >= 0) beginInboxEdit(inboxIndex, "today");
-    }
-  };
-  const acknowledgeDoNowCompletion = async () => {
-    if (!(await refreshDoNow())) return;
-    setDoNowExcludedProjectId(doNowCompletionHold?.projectId ?? null);
-    setDoNowPickedProjectId(null);
-    setDoNowCompletionHold(null);
-    window.requestAnimationFrame(() => {
-      document
-        .querySelector<HTMLElement>(".doNowStartPrimary, .doNowEmptyContent button")
-        ?.focus({ preventScroll: true });
-    });
-  };
-  const renderButtonIcon = (button: LauncherButton, className: string) => {
-    const source = buttonIconSources[button.id];
-    if (source) {
-      return (
-        <img alt="" className={`${className} buttonIconImage`} draggable={false} src={source} />
-      );
-    }
-
-    return (
-      <span className={className}>
-        {button.icon ?? iconForAction(button.actions[0] ?? makeAction("open_file"))}
-      </span>
-    );
-  };
-
-  // P10-14e (6): a sidebar row without a picture shows the first letter of its
-  // name in a small square. The colour comes from the button id, so it is stable.
-  const renderSidebarButtonIcon = (button: LauncherButton) => {
-    const source = buttonIconSources[button.id];
-    if (source) {
-      return (
-        <span className="quickButtonIcon">
-          <img alt="" draggable={false} src={source} />
-        </span>
-      );
-    }
-    return (
-      <span
-        className="uiLetterIcon"
-        data-project-color={resolveProjectColorId(button.id)}
-      >
-        {buttonGlyph(button)}
-      </span>
-    );
-  };
-  const skipLinkBlocked = Boolean(
-    settingsDraft ||
-    helpGuideOpen ||
-    confirmDialog ||
-    softwareResetChoiceOpen ||
-    softwareResetStage !== "idle" ||
-    earlyStop ||
-    manualSessionDraft ||
-    sessionEditDraft ||
-    buttonEditDraft ||
-    projectEditDraft ||
-    dropDraft ||
-    importDialogOpen ||
-    groupDraft !== null ||
-    groupRenameDraft ||
-    completionPrompt,
-  );
-
-  const focusSkipTarget = () => {
-    const scrollArea = mainScrollAreaRef.current;
-    if (!scrollArea) return;
-    const target =
-      activeView === "records"
-        ? scrollArea.querySelector<HTMLElement>("[data-skip-target='records']")
-        : (scrollArea.querySelector<HTMLElement>(".doNowStartPrimary:not(:disabled)") ??
-          scrollArea.querySelector<HTMLElement>(
-            "[data-skip-target='main'] button:not(:disabled)",
-          ) ??
-          scrollArea.querySelector<HTMLElement>("[data-skip-target='main']"));
-    if (!target) return;
-    target.focus({ preventScroll: true });
-    target.scrollIntoView({ block: "start", inline: "nearest" });
-  };
   // --- P10-03: the search window (D4) ---------------------------------------
   const { closeSearchPalette, openSearchPalette, runSearchItem, searchSections } =
     // useSearchPalette returns what a hook would, but it holds no React state of its own, so
@@ -6322,541 +3831,204 @@ function DashboardApp() {
         isTimerOnTodayItem={isTimerOnTodayItem}
       />
 
-      <AnimatePresence initial={false}>
-        {inboxEditingIndex !== null && config.inbox[inboxEditingIndex] && (
-          <ExitPresence key="inbox-edit">
-            {(exiting, exitProps) => (
-              <InboxEditDialog
-                exitProps={exitProps}
-                config={config}
-                inboxEditDraft={inboxEditDraft}
-                inboxEditProjectId={inboxEditProjectId}
-                inboxEditButtonIds={inboxEditButtonIds}
-                inboxEditInstructionPath={inboxEditInstructionPath}
-                inboxEditInstructionOpenOnStart={inboxEditInstructionOpenOnStart}
-                instructionChoices={instructionChoices}
-                instructionChoicesError={instructionChoicesError}
-                instructionChoicesLoading={instructionChoicesLoading}
-                overlayPages={overlayPages}
-                projectSelectableButtons={projectSelectableButtons}
-                renderButtonIcon={renderButtonIcon}
-                setInboxEditDraft={setInboxEditDraft}
-                setInboxEditProjectId={setInboxEditProjectId}
-                setInboxEditButtonIds={setInboxEditButtonIds}
-                setInboxEditInstructionPath={setInboxEditInstructionPath}
-                setInboxEditInstructionOpenOnStart={setInboxEditInstructionOpenOnStart}
-                refreshInstructionChoices={refreshInstructionChoices}
-                closeInboxEditDialog={closeInboxEditDialog}
-                commitInboxEdit={commitInboxEdit}
-                sourceEditSaving={sourceEditSaving}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
 
-      <AnimatePresence initial={false}>
-        {todayPickerOpen && (
-          <ExitPresence key="today-picker">
-            {(exiting, exitProps) => (
-              <TodayPickerDialog
-                exitProps={exitProps}
-                todayPickerDraftItems={todayPickerDraftItems}
-                todayPickerDragIndex={todayPickerDragIndex}
-                todayPickerFilter={todayPickerFilter}
-                todayPickerPills={todayPickerPills}
-                todayPickerQuickProject={todayPickerQuickProject}
-                todayPickerQuickText={todayPickerQuickText}
-                todayPickerSaving={todayPickerSaving}
-                todayPickerVisibleNextSteps={todayPickerVisibleNextSteps}
-                todayPickerVisibleWishlist={todayPickerVisibleWishlist}
-                setTodayPickerFilter={setTodayPickerFilter}
-                setTodayPickerQuickText={setTodayPickerQuickText}
-                addTodayPickerQuickWish={addTodayPickerQuickWish}
-                moveTodayPickerItemToIndex={moveTodayPickerItemToIndex}
-                requestCloseTodayPicker={requestCloseTodayPicker}
-                rows={{
-                  activeTimer,
-                  chooseTodayCandidate,
-                  moveTodayPickerItem,
-                  projectsById,
-                  removeTodayPickerDraftItem,
-                  setTodayPickerDragIndex,
-                  todayPickerCandidateSelected,
-                }}
-                saveTodayPickerDraft={saveTodayPickerDraft}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence initial={false}>
-        {groupDraft !== null && (
-          <ExitPresence key="group-add">
-            {(exiting, exitProps) => (
-              <GroupNameDialog
-                exitProps={exitProps}
-                mode="add"
-                onCancel={() => setGroupDraft(null)}
-                onChange={setGroupDraft}
-                onConfirm={confirmGroupAddition}
-                value={groupDraft}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence initial={false}>
-        {groupRenameDraft && (
-          <ExitPresence key="group-rename">
-            {(exiting, exitProps) => (
-              <GroupNameDialog
-                exitProps={exitProps}
-                mode="rename"
-                onCancel={() => setGroupRenameDraft(null)}
-                onChange={(to) => setGroupRenameDraft({ ...groupRenameDraft, to })}
-                onConfirm={confirmGroupRename}
-                value={groupRenameDraft.to}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence initial={false}>
-        {settingsDraft && (
-          <ExitPresence key="settings">
-            {(exiting, exitProps) => (
-              <SettingsDialog
-                exitProps={exitProps}
-                config={config}
-                data={{
-                  dailyActivityCopying,
-                  instructionSettingsBusy,
-                  numberInputDragging,
-                  settingsDraft,
-                  settingsSection,
-                  shortcutConflicts,
-                  shortcutRecordingField,
-                  softwareResetStage,
-                  testProfile,
-                }}
-                actions={{
-                  beginShortcutRecording,
-                  cancelNumberInputDrag,
-                  finishNumberInputDrag,
-                  finishShortcutRecording,
-                  requestCloseSettings,
-                  saveSettingsCenter,
-                  setHelpGuideOpen,
-                  setSettingsDraft,
-                  setSettingsSection,
-                  showToast,
-                  startNumberInputDrag,
-                  updateNumberInputDrag,
-                }}
-                maintenance={{
-                  addInstructionFolder,
-                  chooseBackupFolder,
-                  chooseBackupZipForRestore,
-                  copyTodayActivityLog,
-                  openBackupFolder,
-                  openRuntimeDataFolder,
-                  reloadInstructionList,
-                  removeInstructionFolder,
-                  requestClearBackupFolder,
-                  requestIconCacheRegeneration,
-                  requestInstructionWindowPositionReset,
-                  requestMiniWindowPositionReset,
-                  requestSoftwareReset,
-                }}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence initial={false}>
-        {manualSessionDraft && (
-          <ExitPresence key="manual-session">
-            {(exiting, exitProps) => (
-              <ManualSessionDialog
-                exitProps={exitProps}
-                draft={manualSessionDraft}
-                onCancel={() => setManualSessionDraft(null)}
-                onDraftChange={setManualSessionDraft}
-                onSave={saveManualSession}
-                projects={config.projects}
-                projectsById={projectsById}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence initial={false}>
-        {sessionEditDraft && (
-          <ExitPresence key="session-edit">
-            {(exiting, exitProps) => (
-              <SessionEditDialog
-                exitProps={exitProps}
-                draft={sessionEditDraft}
-                onCancel={() => setSessionEditDraft(null)}
-                onDraftChange={setSessionEditDraft}
-                onSave={saveSessionEdit}
-                projects={config.projects}
-                projectsById={projectsById}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence initial={false}>
-        {buttonEditDraft && (
-          <ExitPresence key="button-edit">
-            {(exiting, exitProps) => (
-              <ButtonEditDialog
-                exitProps={exitProps}
-                actionDragId={actionDragId}
-                buttonEditDraft={buttonEditDraft}
-                groupNames={groupNames}
-                moveButtonAction={moveButtonAction}
-                moveButtonActionTo={moveButtonActionTo}
-                overlayPages={overlayPages}
-                requestCloseButtonEdit={requestCloseButtonEdit}
-                saveButtonEdit={saveButtonEdit}
-                setActionDragId={setActionDragId}
-                setButtonEditDraft={setButtonEditDraft}
-                updateButtonAction={updateButtonAction}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence initial={false}>
-        {inboxAddOpen && (
-          <ExitPresence key="inbox-add">
-            {(exiting, exitProps) => (
-              <InboxAddDialog
-                exitProps={exitProps}
-                draft={inboxDraft}
-                error={inboxAddError}
-                onClose={() => closeInboxAddDialog()}
-                onDraftChange={(value) => {
-                  setInboxDraft(value);
-                  if (inboxAddError) setInboxAddError(null);
-                }}
-                onProjectIdChange={setInboxAddProjectId}
-                onSubmit={() => void addInboxItem()}
-                projectId={inboxAddProjectId}
-                projects={config.projects}
-                saving={inboxAddSaving}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence initial={false}>
-        {completionFollowup?.source.kind === "nextStep" && (
-          <ExitPresence key="completion-next-step">
-            {(exiting, exitProps) => (
-              <CompletionNextStepDialog
-                actions={{
-                  openNextStepEditor,
-                  projectSelectableButtons,
-                  promoteInboxToNextStep,
-                  showToast,
-                }}
-                choice={completionFollowupChoice}
-                config={config}
-                configRef={configRef}
-                exitProps={exitProps}
-                followup={completionFollowup}
-                setChoice={setCompletionFollowupChoice}
-                setFollowup={setCompletionFollowup}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence initial={false}>
-        {nextStepEditDraft && (
-          <ExitPresence key="next-step-edit">
-            {(exiting, exitProps) => (
-              <NextStepEditDialog
-                exitProps={exitProps}
-                config={config}
-                draft={{
-                  nextStepEditDraft,
-                  nextStepOpenMenuOpen,
-                  nextStepOpenPicker,
-                }}
-                data={{
-                  buttonsById,
-                  instructionChoices,
-                  instructionChoicesError,
-                  instructionChoicesLoading,
-                  missingButtonIds,
-                  missingInstructionProjectIds,
-                  numberInputDragging,
-                  overlayPages,
-                  projectNextStepSuggestions,
-                  projectSelectableButtons,
-                  sourceEditSaving,
-                }}
-                actions={{
-                  cancelNumberInputDrag,
-                  chooseLegacyNextStepSettings,
-                  closeNextStepEditDialog,
-                  finishNumberInputDrag,
-                  refreshInstructionChoices,
-                  renderButtonIcon,
-                  saveNextStepEdit,
-                  selectNextStepDecisionMode,
-                  selectNextStepProject,
-                  setNextStepEditDraft,
-                  setNextStepOpenMenuOpen,
-                  setNextStepOpenPicker,
-                  startNumberInputDrag,
-                  updateNumberInputDrag,
-                }}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence initial={false}>
-        {projectEditDraft && (
-          <ExitPresence key="project-edit">
-            {(exiting, exitProps) => (
-              <ProjectEditDialog
-                exitProps={exitProps}
-                config={config}
-                projectEditDraft={projectEditDraft}
-                projectEditSaving={projectEditSaving}
-                setProjectEditDraft={setProjectEditDraft}
-                setProjectWeeklyFocus={setProjectWeeklyFocus}
-                closeProjectEditDialog={closeProjectEditDialog}
-                requestProjectDeletion={requestProjectDeletion}
-                saveProjectEdit={saveProjectEdit}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence initial={false}>
-        {expandedTimerOpen && activeTimer && (
-          <ExitPresence key="expanded-timer">
-            {(exiting, exitProps) => (
-              <ExpandedTimerOverlay
-                exitProps={exitProps}
-                clock={timerClock}
-                complete={Boolean(completionPrompt)}
-                identity={activeTimerProject ? (
-                  <ProjectIdentity
-                    colorId={activeTimerProject.colorId}
-                    compact
-                    name={activeTimerProject.name}
-                    projectId={activeTimerProject.id}
-                  />
-                ) : undefined}
-                label={timerActionText(activeTimer)}
-                onClose={() => {
-                  setExpandedTimerOpen(false);
-                  window.requestAnimationFrame(() => expandTimerButtonRef.current?.focus({ preventScroll: true }));
-                }}
-                onFinish={() => {
-                  setExpandedTimerOpen(false);
-                  finishActiveTimer(activeTimer);
-                }}
-                onMini={() => {
-                  setExpandedTimerOpen(false);
-                  void toggleMiniMode();
-                }}
-                onPause={togglePause}
-                paused={activeTimer.paused}
-                planLabel={expandedTimerPlanLabel}
-                progressPercent={timerProgressPercent}
-                status={
-                  activeTimer.paused
-                    ? "一時停止中"
-                    : activeTimer.mode === "measure"
-                      ? "計測中"
-                      : "実行中"
-                }
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence initial={false}>
-        {completionPrompt && (
-          <ExitPresence key="completion-prompt">
-            {(exiting, exitProps) => (
-              <CompletionFollowupDialog
-                exitProps={exitProps}
-                config={config}
-                completionPrompt={completionPrompt}
-                completionProject={completionProject}
-                completionCanEditResume={completionCanEditResume}
-                completionExtendDraft={completionExtendDraft}
-                completionExtendMinutes={completionExtendMinutes}
-                completionResumeSaving={completionResumeSaving}
-                timerResumeDraft={timerResumeDraft}
-                numberInputDragging={numberInputDragging}
-                setCompletionExtendDraft={setCompletionExtendDraft}
-                setTimerResumeDraft={setTimerResumeDraft}
-                cancelNumberInputDrag={cancelNumberInputDrag}
-                finishNumberInputDrag={finishNumberInputDrag}
-                updateNumberInputDrag={updateNumberInputDrag}
-                startNumberInputDrag={startNumberInputDrag}
-                continueCompletedTimer={continueCompletedTimer}
-                submitCompletedTimer={submitCompletedTimer}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence initial={false}>
-        {dropDraft && (
-          <ExitPresence key="drop-register">
-            {(exiting, exitProps) => (
-              <DropRegisterDialog
-                exitProps={exitProps}
-                builderBusy={builderBusy}
-                builderKind={builderKind}
-                builderSource={builderSource}
-                confirmDropRegistration={confirmDropRegistration}
-                dropDraft={dropDraft}
-                groupNames={groupNames}
-                overlayPages={overlayPages}
-                pickBuilderSource={pickBuilderSource}
-                setBuilderKind={setBuilderKind}
-                setBuilderLabelTouched={setBuilderLabelTouched}
-                setBuilderModeDrafts={setBuilderModeDrafts}
-                setDropDraft={setDropDraft}
-                switchBuilderKind={switchBuilderKind}
-                updateBuilderSource={updateBuilderSource}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence initial={false}>
-        {softwareResetChoiceOpen && (
-          <ExitPresence key="reset-choice">
-            {(exiting, exitProps) => (
-              <SoftwareResetChoiceDialog
-                exitProps={exitProps}
-                busy={softwareResetChoiceBusy}
-                onClose={() => closeSoftwareResetChoice()}
-                onContinue={(withBackup) => void continueSoftwareReset(withBackup)}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-      <AnimatePresence initial={false}>
-        {confirmDialog && (
-          <ExitPresence key="confirm-dialog">
-            {(exiting, exitProps) => (
-              <ConfirmDialog {...confirmDialog} onCancel={closeConfirmDialog} exitProps={exitProps} open />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-      <AnimatePresence initial={false}>
-        {softwareResetStage !== "idle" && (
-          <ExitPresence key="reset-progress">
-            {(exiting, exitProps) => (
-              <SoftwareResetProgressDialog
-                exitProps={exitProps}
-                progressRef={softwareResetProgressRef}
-                stage={softwareResetStage}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-      <AnimatePresence initial={false}>
-        {searchOpen && (
-          <ExitPresence key="search">
-            {(exiting, exitProps) => (
-              <SearchPalette
-                exitProps={exitProps}
-                busy={searchBusy}
-                onActivate={(item, mode) => void runSearchItem(item, mode)}
-                onClose={closeSearchPalette}
-                onQueryChange={setSearchQuery}
-                query={searchQuery}
-                sections={searchSections}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-      <AnimatePresence initial={false}>
-        {helpGuideOpen && (
-          <ExitPresence key="help">
-            {(exiting, exitProps) => (
-              <HelpGuideDialog
-                exitProps={exitProps}
-                onClose={() => setHelpGuideOpen(false)}
-                onCopyResult={(ok) =>
-                  showToast(
-                    ok ? "ok" : "error",
-                    ok
-                      ? "コピーしました"
-                      : "コピーできませんでした。テキストを選択してコピーしてください。",
-                  )
-                }
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-      <AnimatePresence initial={false}>
-        {earlyStop && (
-          <ExitPresence key="early-stop">
-            {(exiting, exitProps) => (
-              <ConfirmDialog
-                exitProps={exitProps}
-                open
-                title="今日の分は完了にしますか？"
-                message="ここまでの実行は記録されます。"
-                confirmLabel="今日の分は完了"
-                cancelLabel="未完了のまま終了"
-                tone="positive"
-                initialFocus="cancel"
-                isProcessing={earlyStopSaving}
-                onConfirm={() => resolveEarlyStop(true)}
-                onCancel={() => {
-                  void resolveEarlyStop(false);
-                }}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-      <ImportDialog
+      <DashboardModals
+        confirmDialog={confirmDialog}
+        onCancel={closeConfirmDialog}
         config={config}
-        initialError={importInitialError}
-        initialText={importInitialText}
-        onClose={closeImportDialog}
-        onImported={handleImported}
-        onNotify={showToast}
-        open={importDialogOpen}
+        importDialogOpen={importDialogOpen}
+        importInitialError={importInitialError}
+        importInitialText={importInitialText}
+        closeImportDialog={closeImportDialog}
+        handleImported={handleImported}
+        showToast={showToast}
+        inboxAddOpen={inboxAddOpen}
+        inboxDraft={inboxDraft}
+        inboxAddError={inboxAddError}
+        inboxAddProjectId={inboxAddProjectId}
+        inboxAddSaving={inboxAddSaving}
+        closeInboxAddDialog={closeInboxAddDialog}
+        setInboxDraft={setInboxDraft}
+        setInboxAddError={setInboxAddError}
+        setInboxAddProjectId={setInboxAddProjectId}
+        addInboxItem={addInboxItem}
+        inboxEditDraft={inboxEditDraft}
+        inboxEditProjectId={inboxEditProjectId}
+        inboxEditButtonIds={inboxEditButtonIds}
+        inboxEditInstructionPath={inboxEditInstructionPath}
+        inboxEditInstructionOpenOnStart={inboxEditInstructionOpenOnStart}
+        instructionChoices={instructionChoices}
+        instructionChoicesError={instructionChoicesError}
+        instructionChoicesLoading={instructionChoicesLoading}
+        overlayPages={overlayPages}
+        projectSelectableButtons={projectSelectableButtons}
+        renderButtonIcon={renderButtonIcon}
+        setInboxEditDraft={setInboxEditDraft}
+        setInboxEditProjectId={setInboxEditProjectId}
+        setInboxEditButtonIds={setInboxEditButtonIds}
+        setInboxEditInstructionPath={setInboxEditInstructionPath}
+        setInboxEditInstructionOpenOnStart={setInboxEditInstructionOpenOnStart}
+        refreshInstructionChoices={refreshInstructionChoices}
+        closeInboxEditDialog={closeInboxEditDialog}
+        commitInboxEdit={commitInboxEdit}
+        sourceEditSaving={sourceEditSaving}
+        inboxEditingIndex={inboxEditingIndex}
+        buttonsById={buttonsById}
+        closeNextStepEditDialog={closeNextStepEditDialog}
+        missingButtonIds={missingButtonIds}
+        missingInstructionProjectIds={missingInstructionProjectIds}
+        nextStepEditDraft={nextStepEditDraft}
+        nextStepOpenMenuOpen={nextStepOpenMenuOpen}
+        nextStepOpenPicker={nextStepOpenPicker}
+        numberInputDragging={numberInputDragging}
+        projectNextStepSuggestions={projectNextStepSuggestions}
+        setNextStepEditDraft={setNextStepEditDraft}
+        setNextStepOpenMenuOpen={setNextStepOpenMenuOpen}
+        setNextStepOpenPicker={setNextStepOpenPicker}
+        cancelNumberInputDrag={cancelNumberInputDrag}
+        chooseLegacyNextStepSettings={chooseLegacyNextStepSettings}
+        finishNumberInputDrag={finishNumberInputDrag}
+        saveNextStepEdit={saveNextStepEdit}
+        selectNextStepDecisionMode={selectNextStepDecisionMode}
+        selectNextStepProject={selectNextStepProject}
+        startNumberInputDrag={startNumberInputDrag}
+        updateNumberInputDrag={updateNumberInputDrag}
+        todayPickerOpen={todayPickerOpen}
+        todayPickerDraftItems={todayPickerDraftItems}
+        todayPickerDragIndex={todayPickerDragIndex}
+        todayPickerFilter={todayPickerFilter}
+        todayPickerPills={todayPickerPills}
+        todayPickerQuickProject={todayPickerQuickProject}
+        todayPickerQuickText={todayPickerQuickText}
+        todayPickerSaving={todayPickerSaving}
+        todayPickerVisibleNextSteps={todayPickerVisibleNextSteps}
+        todayPickerVisibleWishlist={todayPickerVisibleWishlist}
+        setTodayPickerFilter={setTodayPickerFilter}
+        setTodayPickerQuickText={setTodayPickerQuickText}
+        addTodayPickerQuickWish={addTodayPickerQuickWish}
+        moveTodayPickerItemToIndex={moveTodayPickerItemToIndex}
+        requestCloseTodayPicker={requestCloseTodayPicker}
+        saveTodayPickerDraft={saveTodayPickerDraft}
+        activeTimer={activeTimer}
+        chooseTodayCandidate={chooseTodayCandidate}
+        moveTodayPickerItem={moveTodayPickerItem}
+        projectsById={projectsById}
+        removeTodayPickerDraftItem={removeTodayPickerDraftItem}
+        setTodayPickerDragIndex={setTodayPickerDragIndex}
+        todayPickerCandidateSelected={todayPickerCandidateSelected}
+        settingsDraft={settingsDraft}
+        settingsSection={settingsSection}
+        dailyActivityCopying={dailyActivityCopying}
+        instructionSettingsBusy={instructionSettingsBusy}
+        shortcutConflicts={shortcutConflicts}
+        shortcutRecordingField={shortcutRecordingField}
+        softwareResetStage={softwareResetStage}
+        testProfile={testProfile}
+        beginShortcutRecording={beginShortcutRecording}
+        finishShortcutRecording={finishShortcutRecording}
+        requestCloseSettings={requestCloseSettings}
+        saveSettingsCenter={saveSettingsCenter}
+        setHelpGuideOpen={setHelpGuideOpen}
+        setSettingsDraft={setSettingsDraft}
+        setSettingsSection={setSettingsSection}
+        addInstructionFolder={addInstructionFolder}
+        chooseBackupFolder={chooseBackupFolder}
+        chooseBackupZipForRestore={chooseBackupZipForRestore}
+        copyTodayActivityLog={copyTodayActivityLog}
+        openBackupFolder={openBackupFolder}
+        openRuntimeDataFolder={openRuntimeDataFolder}
+        reloadInstructionList={reloadInstructionList}
+        removeInstructionFolder={removeInstructionFolder}
+        requestClearBackupFolder={requestClearBackupFolder}
+        requestIconCacheRegeneration={requestIconCacheRegeneration}
+        requestInstructionWindowPositionReset={requestInstructionWindowPositionReset}
+        requestMiniWindowPositionReset={requestMiniWindowPositionReset}
+        requestSoftwareReset={requestSoftwareReset}
+        dropDraft={dropDraft}
+        builderBusy={builderBusy}
+        builderKind={builderKind}
+        builderSource={builderSource}
+        confirmDropRegistration={confirmDropRegistration}
+        groupNames={groupNames}
+        pickBuilderSource={pickBuilderSource}
+        setBuilderKind={setBuilderKind}
+        setBuilderLabelTouched={setBuilderLabelTouched}
+        setBuilderModeDrafts={setBuilderModeDrafts}
+        setDropDraft={setDropDraft}
+        switchBuilderKind={switchBuilderKind}
+        updateBuilderSource={updateBuilderSource}
+        helpGuideOpen={helpGuideOpen}
+        earlyStop={earlyStop}
+        earlyStopSaving={earlyStopSaving}
+        resolveEarlyStop={resolveEarlyStop}
+        searchOpen={searchOpen}
+        searchBusy={searchBusy}
+        searchQuery={searchQuery}
+        searchSections={searchSections}
+        setSearchQuery={setSearchQuery}
+        runSearchItem={runSearchItem}
+        closeSearchPalette={closeSearchPalette}
+        expandedTimerOpen={expandedTimerOpen}
+        timerClock={timerClock}
+        completionPrompt={completionPrompt}
+        activeTimerProject={activeTimerProject}
+        setExpandedTimerOpen={setExpandedTimerOpen}
+        expandTimerButtonRef={expandTimerButtonRef}
+        finishActiveTimer={finishActiveTimer}
+        toggleMiniMode={toggleMiniMode}
+        togglePause={togglePause}
+        expandedTimerPlanLabel={expandedTimerPlanLabel}
+        timerProgressPercent={timerProgressPercent}
+        completionFollowup={completionFollowup}
+        completionFollowupChoice={completionFollowupChoice}
+        setCompletionFollowupChoice={setCompletionFollowupChoice}
+        setCompletionFollowup={setCompletionFollowup}
+        configRef={configRef}
+        openNextStepEditor={openNextStepEditor}
+        promoteInboxToNextStep={promoteInboxToNextStep}
+        completionProject={completionProject}
+        completionCanEditResume={completionCanEditResume}
+        completionExtendDraft={completionExtendDraft}
+        completionExtendMinutes={completionExtendMinutes}
+        completionResumeSaving={completionResumeSaving}
+        timerResumeDraft={timerResumeDraft}
+        setCompletionExtendDraft={setCompletionExtendDraft}
+        setTimerResumeDraft={setTimerResumeDraft}
+        continueCompletedTimer={continueCompletedTimer}
+        submitCompletedTimer={submitCompletedTimer}
+        manualSessionDraft={manualSessionDraft}
+        setManualSessionDraft={setManualSessionDraft}
+        saveManualSession={saveManualSession}
+        sessionEditDraft={sessionEditDraft}
+        setSessionEditDraft={setSessionEditDraft}
+        saveSessionEdit={saveSessionEdit}
+        projectEditDraft={projectEditDraft}
+        projectEditSaving={projectEditSaving}
+        setProjectEditDraft={setProjectEditDraft}
+        setProjectWeeklyFocus={setProjectWeeklyFocus}
+        closeProjectEditDialog={closeProjectEditDialog}
+        requestProjectDeletion={requestProjectDeletion}
+        saveProjectEdit={saveProjectEdit}
+        groupDraft={groupDraft}
+        setGroupDraft={setGroupDraft}
+        confirmGroupAddition={confirmGroupAddition}
+        groupRenameDraft={groupRenameDraft}
+        setGroupRenameDraft={setGroupRenameDraft}
+        confirmGroupRename={confirmGroupRename}
+        actionDragId={actionDragId}
+        buttonEditDraft={buttonEditDraft}
+        moveButtonAction={moveButtonAction}
+        moveButtonActionTo={moveButtonActionTo}
+        requestCloseButtonEdit={requestCloseButtonEdit}
+        saveButtonEdit={saveButtonEdit}
+        setActionDragId={setActionDragId}
+        setButtonEditDraft={setButtonEditDraft}
+        updateButtonAction={updateButtonAction}
+        softwareResetChoiceOpen={softwareResetChoiceOpen}
+        softwareResetChoiceBusy={softwareResetChoiceBusy}
+        closeSoftwareResetChoice={closeSoftwareResetChoice}
+        continueSoftwareReset={continueSoftwareReset}
+        softwareResetProgressRef={softwareResetProgressRef}
       />
     </main>
   );
