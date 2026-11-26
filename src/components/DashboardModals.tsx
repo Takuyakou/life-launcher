@@ -6,9 +6,13 @@ import { ImportDialog } from "./ImportDialog";
 import { InboxEditDialog } from "./InboxEditDialog";
 import { InboxAddDialog } from "./InboxAddDialog";
 import { NextStepEditDialog } from "./NextStepEditDialog";
+import { SettingsDialog } from "./SettingsDialog";
 import { TodayPickerDialog } from "./TodayPickerDialog";
 type Props = Record<string, any>;
 
+// V165 (C5): the surfaces below keep the document order they had in App.tsx.
+// ConfirmDialog closes on Escape only while it is the last aria-modal dialog in the DOM, so the
+// confirm block stays after every dialog that can open it, and before the import surface.
 export function DashboardModals(props: Props) {
   const {
     confirmDialog,
@@ -94,41 +98,37 @@ export function DashboardModals(props: Props) {
     removeTodayPickerDraftItem,
     setTodayPickerDragIndex,
     todayPickerCandidateSelected,
+    settingsDraft,
+    settingsSection,
+    dailyActivityCopying,
+    instructionSettingsBusy,
+    shortcutConflicts,
+    shortcutRecordingField,
+    softwareResetStage,
+    testProfile,
+    beginShortcutRecording,
+    finishShortcutRecording,
+    requestCloseSettings,
+    saveSettingsCenter,
+    setHelpGuideOpen,
+    setSettingsDraft,
+    setSettingsSection,
+    addInstructionFolder,
+    chooseBackupFolder,
+    chooseBackupZipForRestore,
+    copyTodayActivityLog,
+    openBackupFolder,
+    openRuntimeDataFolder,
+    reloadInstructionList,
+    removeInstructionFolder,
+    requestClearBackupFolder,
+    requestIconCacheRegeneration,
+    requestInstructionWindowPositionReset,
+    requestMiniWindowPositionReset,
+    requestSoftwareReset,
   } = props;
   return (
     <>
-      <AnimatePresence initial={false}>
-        {confirmDialog && (
-          <ExitPresence key="confirm-dialog">
-            {(exiting, exitProps) => (
-              <ConfirmDialog {...confirmDialog} onCancel={onCancel} exitProps={exitProps} open />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-      <AnimatePresence initial={false}>
-        {inboxAddOpen && (
-          <ExitPresence key="inbox-add">
-            {(exiting, exitProps) => (
-              <InboxAddDialog
-                exitProps={exitProps}
-                draft={inboxDraft}
-                error={inboxAddError}
-                onClose={() => closeInboxAddDialog()}
-                onDraftChange={(value) => {
-                  setInboxDraft(value);
-                  if (inboxAddError) setInboxAddError(null);
-                }}
-                onProjectIdChange={setInboxAddProjectId}
-                onSubmit={() => void addInboxItem()}
-                projectId={inboxAddProjectId}
-                projects={config.projects}
-                saving={inboxAddSaving}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
       <AnimatePresence initial={false}>
         {inboxEditingIndex !== null && config.inbox[inboxEditingIndex] && (
           <ExitPresence key="inbox-edit">
@@ -161,16 +161,116 @@ export function DashboardModals(props: Props) {
           </ExitPresence>
         )}
       </AnimatePresence>
-
-      <ImportDialog
-        config={config}
-        initialError={importInitialError}
-        initialText={importInitialText}
-        onClose={closeImportDialog}
-        onImported={handleImported}
-        onNotify={showToast}
-        open={importDialogOpen}
-      />
+      <AnimatePresence initial={false}>
+        {todayPickerOpen && (
+          <ExitPresence key="today-picker">
+            {(exiting, exitProps) => (
+              <TodayPickerDialog
+                exitProps={exitProps}
+                todayPickerDraftItems={todayPickerDraftItems}
+                todayPickerDragIndex={todayPickerDragIndex}
+                todayPickerFilter={todayPickerFilter}
+                todayPickerPills={todayPickerPills}
+                todayPickerQuickProject={todayPickerQuickProject}
+                todayPickerQuickText={todayPickerQuickText}
+                todayPickerSaving={todayPickerSaving}
+                todayPickerVisibleNextSteps={todayPickerVisibleNextSteps}
+                todayPickerVisibleWishlist={todayPickerVisibleWishlist}
+                setTodayPickerFilter={setTodayPickerFilter}
+                setTodayPickerQuickText={setTodayPickerQuickText}
+                addTodayPickerQuickWish={addTodayPickerQuickWish}
+                moveTodayPickerItemToIndex={moveTodayPickerItemToIndex}
+                requestCloseTodayPicker={requestCloseTodayPicker}
+                rows={{
+                  activeTimer,
+                  chooseTodayCandidate,
+                  moveTodayPickerItem,
+                  projectsById,
+                  removeTodayPickerDraftItem,
+                  setTodayPickerDragIndex,
+                  todayPickerCandidateSelected,
+                }}
+                saveTodayPickerDraft={saveTodayPickerDraft}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {settingsDraft && (
+          <ExitPresence key="settings">
+            {(exiting, exitProps) => (
+              <SettingsDialog
+                exitProps={exitProps}
+                config={config}
+                data={{
+                  dailyActivityCopying,
+                  instructionSettingsBusy,
+                  numberInputDragging,
+                  settingsDraft,
+                  settingsSection,
+                  shortcutConflicts,
+                  shortcutRecordingField,
+                  softwareResetStage,
+                  testProfile,
+                }}
+                actions={{
+                  beginShortcutRecording,
+                  cancelNumberInputDrag,
+                  finishNumberInputDrag,
+                  finishShortcutRecording,
+                  requestCloseSettings,
+                  saveSettingsCenter,
+                  setHelpGuideOpen,
+                  setSettingsDraft,
+                  setSettingsSection,
+                  showToast,
+                  startNumberInputDrag,
+                  updateNumberInputDrag,
+                }}
+                maintenance={{
+                  addInstructionFolder,
+                  chooseBackupFolder,
+                  chooseBackupZipForRestore,
+                  copyTodayActivityLog,
+                  openBackupFolder,
+                  openRuntimeDataFolder,
+                  reloadInstructionList,
+                  removeInstructionFolder,
+                  requestClearBackupFolder,
+                  requestIconCacheRegeneration,
+                  requestInstructionWindowPositionReset,
+                  requestMiniWindowPositionReset,
+                  requestSoftwareReset,
+                }}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {inboxAddOpen && (
+          <ExitPresence key="inbox-add">
+            {(exiting, exitProps) => (
+              <InboxAddDialog
+                exitProps={exitProps}
+                draft={inboxDraft}
+                error={inboxAddError}
+                onClose={() => closeInboxAddDialog()}
+                onDraftChange={(value) => {
+                  setInboxDraft(value);
+                  if (inboxAddError) setInboxAddError(null);
+                }}
+                onProjectIdChange={setInboxAddProjectId}
+                onSubmit={() => void addInboxItem()}
+                projectId={inboxAddProjectId}
+                projects={config.projects}
+                saving={inboxAddSaving}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
       <AnimatePresence initial={false}>
         {nextStepEditDraft && (
           <ExitPresence key="next-step-edit">
@@ -218,40 +318,23 @@ export function DashboardModals(props: Props) {
         )}
       </AnimatePresence>
       <AnimatePresence initial={false}>
-        {todayPickerOpen && (
-          <ExitPresence key="today-picker">
+        {confirmDialog && (
+          <ExitPresence key="confirm-dialog">
             {(exiting, exitProps) => (
-              <TodayPickerDialog
-                exitProps={exitProps}
-                todayPickerDraftItems={todayPickerDraftItems}
-                todayPickerDragIndex={todayPickerDragIndex}
-                todayPickerFilter={todayPickerFilter}
-                todayPickerPills={todayPickerPills}
-                todayPickerQuickProject={todayPickerQuickProject}
-                todayPickerQuickText={todayPickerQuickText}
-                todayPickerSaving={todayPickerSaving}
-                todayPickerVisibleNextSteps={todayPickerVisibleNextSteps}
-                todayPickerVisibleWishlist={todayPickerVisibleWishlist}
-                setTodayPickerFilter={setTodayPickerFilter}
-                setTodayPickerQuickText={setTodayPickerQuickText}
-                addTodayPickerQuickWish={addTodayPickerQuickWish}
-                moveTodayPickerItemToIndex={moveTodayPickerItemToIndex}
-                requestCloseTodayPicker={requestCloseTodayPicker}
-                rows={{
-                  activeTimer,
-                  chooseTodayCandidate,
-                  moveTodayPickerItem,
-                  projectsById,
-                  removeTodayPickerDraftItem,
-                  setTodayPickerDragIndex,
-                  todayPickerCandidateSelected,
-                }}
-                saveTodayPickerDraft={saveTodayPickerDraft}
-              />
+              <ConfirmDialog {...confirmDialog} onCancel={onCancel} exitProps={exitProps} open />
             )}
           </ExitPresence>
         )}
       </AnimatePresence>
+      <ImportDialog
+        config={config}
+        initialError={importInitialError}
+        initialText={importInitialText}
+        onClose={closeImportDialog}
+        onImported={handleImported}
+        onNotify={showToast}
+        open={importDialogOpen}
+      />
     </>
   );
 }

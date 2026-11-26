@@ -90,7 +90,6 @@ import { CompletionFollowupDialog } from "./components/CompletionFollowupDialog"
 import { ButtonEditDialog } from "./components/ButtonEditDialog";
 import { DropRegisterDialog } from "./components/DropRegisterDialog";
 import { ProjectEditDialog } from "./components/ProjectEditDialog";
-import { SettingsDialog } from "./components/SettingsDialog";
 import { ManualSessionDialog, SessionEditDialog } from "./components/SessionDialogs";
 import {
   SoftwareResetChoiceDialog,
@@ -3883,59 +3882,6 @@ function DashboardApp() {
       </AnimatePresence>
 
       <AnimatePresence initial={false}>
-        {settingsDraft && (
-          <ExitPresence key="settings">
-            {(exiting, exitProps) => (
-              <SettingsDialog
-                exitProps={exitProps}
-                config={config}
-                data={{
-                  dailyActivityCopying,
-                  instructionSettingsBusy,
-                  numberInputDragging,
-                  settingsDraft,
-                  settingsSection,
-                  shortcutConflicts,
-                  shortcutRecordingField,
-                  softwareResetStage,
-                  testProfile,
-                }}
-                actions={{
-                  beginShortcutRecording,
-                  cancelNumberInputDrag,
-                  finishNumberInputDrag,
-                  finishShortcutRecording,
-                  requestCloseSettings,
-                  saveSettingsCenter,
-                  setHelpGuideOpen,
-                  setSettingsDraft,
-                  setSettingsSection,
-                  showToast,
-                  startNumberInputDrag,
-                  updateNumberInputDrag,
-                }}
-                maintenance={{
-                  addInstructionFolder,
-                  chooseBackupFolder,
-                  chooseBackupZipForRestore,
-                  copyTodayActivityLog,
-                  openBackupFolder,
-                  openRuntimeDataFolder,
-                  reloadInstructionList,
-                  removeInstructionFolder,
-                  requestClearBackupFolder,
-                  requestIconCacheRegeneration,
-                  requestInstructionWindowPositionReset,
-                  requestMiniWindowPositionReset,
-                  requestSoftwareReset,
-                }}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence initial={false}>
         {manualSessionDraft && (
           <ExitPresence key="manual-session">
             {(exiting, exitProps) => (
@@ -4238,6 +4184,34 @@ function DashboardApp() {
         removeTodayPickerDraftItem={removeTodayPickerDraftItem}
         setTodayPickerDragIndex={setTodayPickerDragIndex}
         todayPickerCandidateSelected={todayPickerCandidateSelected}
+        settingsDraft={settingsDraft}
+        settingsSection={settingsSection}
+        dailyActivityCopying={dailyActivityCopying}
+        instructionSettingsBusy={instructionSettingsBusy}
+        shortcutConflicts={shortcutConflicts}
+        shortcutRecordingField={shortcutRecordingField}
+        softwareResetStage={softwareResetStage}
+        testProfile={testProfile}
+        beginShortcutRecording={beginShortcutRecording}
+        finishShortcutRecording={finishShortcutRecording}
+        requestCloseSettings={requestCloseSettings}
+        saveSettingsCenter={saveSettingsCenter}
+        setHelpGuideOpen={setHelpGuideOpen}
+        setSettingsDraft={setSettingsDraft}
+        setSettingsSection={setSettingsSection}
+        addInstructionFolder={addInstructionFolder}
+        chooseBackupFolder={chooseBackupFolder}
+        chooseBackupZipForRestore={chooseBackupZipForRestore}
+        copyTodayActivityLog={copyTodayActivityLog}
+        openBackupFolder={openBackupFolder}
+        openRuntimeDataFolder={openRuntimeDataFolder}
+        reloadInstructionList={reloadInstructionList}
+        removeInstructionFolder={removeInstructionFolder}
+        requestClearBackupFolder={requestClearBackupFolder}
+        requestIconCacheRegeneration={requestIconCacheRegeneration}
+        requestInstructionWindowPositionReset={requestInstructionWindowPositionReset}
+        requestMiniWindowPositionReset={requestMiniWindowPositionReset}
+        requestSoftwareReset={requestSoftwareReset}
       />
       <AnimatePresence initial={false}>
         {softwareResetStage !== "idle" && (
