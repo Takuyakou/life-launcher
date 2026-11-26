@@ -1,8 +1,8 @@
-import { expect, test } from "@playwright/test";
+import { describe, expect, test } from "vitest";
 import { pickTopMenuLabelLevel, TOP_MENU_LABEL_HYSTERESIS_PX } from "../../src/topMenuLabels";
 
 // P96-01 追加修正: 上部メニューの文字を隠す段階の決め方(純粋関数)。
-test.describe("P96-01 top menu label level", () => {
+describe("P96-01 top menu label level", () => {
   // すべて出す / 自動起動・ミニ・使い方・設定を隠す / すべて隠す、に必要な幅。
   const needed = [650, 517, 452] as const;
   const hysteresis = TOP_MENU_LABEL_HYSTERESIS_PX;
