@@ -87,7 +87,6 @@ import { DashboardContextMenu } from "./components/DashboardContextMenu";
 import { ExitPresence } from "./components/ExitPresence";
 import { GroupNameDialog } from "./components/GroupNameDialog";
 import { CompletionFollowupDialog } from "./components/CompletionFollowupDialog";
-import { NextStepEditDialog } from "./components/NextStepEditDialog";
 import { ButtonEditDialog } from "./components/ButtonEditDialog";
 import { DropRegisterDialog } from "./components/DropRegisterDialog";
 import { ProjectEditDialog } from "./components/ProjectEditDialog";
@@ -4058,53 +4057,6 @@ function DashboardApp() {
       </AnimatePresence>
 
       <AnimatePresence initial={false}>
-        {nextStepEditDraft && (
-          <ExitPresence key="next-step-edit">
-            {(exiting, exitProps) => (
-              <NextStepEditDialog
-                exitProps={exitProps}
-                config={config}
-                draft={{
-                  nextStepEditDraft,
-                  nextStepOpenMenuOpen,
-                  nextStepOpenPicker,
-                }}
-                data={{
-                  buttonsById,
-                  instructionChoices,
-                  instructionChoicesError,
-                  instructionChoicesLoading,
-                  missingButtonIds,
-                  missingInstructionProjectIds,
-                  numberInputDragging,
-                  overlayPages,
-                  projectNextStepSuggestions,
-                  projectSelectableButtons,
-                  sourceEditSaving,
-                }}
-                actions={{
-                  cancelNumberInputDrag,
-                  chooseLegacyNextStepSettings,
-                  closeNextStepEditDialog,
-                  finishNumberInputDrag,
-                  refreshInstructionChoices,
-                  renderButtonIcon,
-                  saveNextStepEdit,
-                  selectNextStepDecisionMode,
-                  selectNextStepProject,
-                  setNextStepEditDraft,
-                  setNextStepOpenMenuOpen,
-                  setNextStepOpenPicker,
-                  startNumberInputDrag,
-                  updateNumberInputDrag,
-                }}
-              />
-            )}
-          </ExitPresence>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence initial={false}>
         {projectEditDraft && (
           <ExitPresence key="project-edit">
             {(exiting, exitProps) => (
@@ -4280,6 +4232,26 @@ function DashboardApp() {
         commitInboxEdit={commitInboxEdit}
         sourceEditSaving={sourceEditSaving}
         inboxEditingIndex={inboxEditingIndex}
+        buttonsById={buttonsById}
+        closeNextStepEditDialog={closeNextStepEditDialog}
+        missingButtonIds={missingButtonIds}
+        missingInstructionProjectIds={missingInstructionProjectIds}
+        nextStepEditDraft={nextStepEditDraft}
+        nextStepOpenMenuOpen={nextStepOpenMenuOpen}
+        nextStepOpenPicker={nextStepOpenPicker}
+        numberInputDragging={numberInputDragging}
+        projectNextStepSuggestions={projectNextStepSuggestions}
+        setNextStepEditDraft={setNextStepEditDraft}
+        setNextStepOpenMenuOpen={setNextStepOpenMenuOpen}
+        setNextStepOpenPicker={setNextStepOpenPicker}
+        cancelNumberInputDrag={cancelNumberInputDrag}
+        chooseLegacyNextStepSettings={chooseLegacyNextStepSettings}
+        finishNumberInputDrag={finishNumberInputDrag}
+        saveNextStepEdit={saveNextStepEdit}
+        selectNextStepDecisionMode={selectNextStepDecisionMode}
+        selectNextStepProject={selectNextStepProject}
+        startNumberInputDrag={startNumberInputDrag}
+        updateNumberInputDrag={updateNumberInputDrag}
       />
       <AnimatePresence initial={false}>
         {softwareResetStage !== "idle" && (

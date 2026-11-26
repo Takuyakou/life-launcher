@@ -5,7 +5,7 @@ import { ExitPresence } from "./ExitPresence";
 import { ImportDialog } from "./ImportDialog";
 import { InboxEditDialog } from "./InboxEditDialog";
 import { InboxAddDialog } from "./InboxAddDialog";
-
+import { NextStepEditDialog } from "./NextStepEditDialog";
 type Props = Record<string, any>;
 
 export function DashboardModals(props: Props) {
@@ -50,6 +50,26 @@ export function DashboardModals(props: Props) {
     closeInboxEditDialog,
     commitInboxEdit,
     sourceEditSaving,
+    buttonsById,
+    closeNextStepEditDialog,
+    missingButtonIds,
+    missingInstructionProjectIds,
+    nextStepEditDraft,
+    nextStepOpenMenuOpen,
+    nextStepOpenPicker,
+    numberInputDragging,
+    projectNextStepSuggestions,
+    setNextStepEditDraft,
+    setNextStepOpenMenuOpen,
+    setNextStepOpenPicker,
+    cancelNumberInputDrag,
+    chooseLegacyNextStepSettings,
+    finishNumberInputDrag,
+    saveNextStepEdit,
+    selectNextStepDecisionMode,
+    selectNextStepProject,
+    startNumberInputDrag,
+    updateNumberInputDrag,
   } = props;
   return (
     <>
@@ -127,6 +147,52 @@ export function DashboardModals(props: Props) {
         onNotify={showToast}
         open={importDialogOpen}
       />
+      <AnimatePresence initial={false}>
+        {nextStepEditDraft && (
+          <ExitPresence key="next-step-edit">
+            {(exiting, exitProps) => (
+              <NextStepEditDialog
+                exitProps={exitProps}
+                config={config}
+                draft={{
+                  nextStepEditDraft,
+                  nextStepOpenMenuOpen,
+                  nextStepOpenPicker,
+                }}
+                data={{
+                  buttonsById,
+                  instructionChoices,
+                  instructionChoicesError,
+                  instructionChoicesLoading,
+                  missingButtonIds,
+                  missingInstructionProjectIds,
+                  numberInputDragging,
+                  overlayPages,
+                  projectNextStepSuggestions,
+                  projectSelectableButtons,
+                  sourceEditSaving,
+                }}
+                actions={{
+                  cancelNumberInputDrag,
+                  chooseLegacyNextStepSettings,
+                  closeNextStepEditDialog,
+                  finishNumberInputDrag,
+                  refreshInstructionChoices,
+                  renderButtonIcon,
+                  saveNextStepEdit,
+                  selectNextStepDecisionMode,
+                  selectNextStepProject,
+                  setNextStepEditDraft,
+                  setNextStepOpenMenuOpen,
+                  setNextStepOpenPicker,
+                  startNumberInputDrag,
+                  updateNumberInputDrag,
+                }}
+              />
+            )}
+          </ExitPresence>
+        )}
+      </AnimatePresence>
     </>
   );
 }
